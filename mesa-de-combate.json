@@ -1,0 +1,2559 @@
+{
+  "combats": [
+    {
+      "id": "combat-1791233276074-ry02",
+      "name": "teste 35",
+      "description": "",
+      "createdAt": "05/10/2026",
+      "npcs": [
+        {
+          "id": "npc-1791242371417-7e8px",
+          "name": "NOVO NPC",
+          "title": "",
+          "weight": "",
+          "height": "",
+          "avatar": "",
+          "avatarPreset": "knight",
+          "isVisibleToPlayer": false,
+          "isDead": false,
+          "hpCurrent": 6,
+          "hpMax": 0,
+          "fpCurrent": 6,
+          "fpMax": 0,
+          "statusConditions": [],
+          "turnActions": {
+            "parryCount": 0,
+            "dodgeCount": 0,
+            "blockCount": 0,
+            "usedRetreat": false,
+            "usedBlockThisTurn": false,
+            "shock": 0,
+            "usedFatigueThisTurn": false,
+            "fatigueAmountUsed": 0,
+            "notes": ""
+          },
+          "st": 0,
+          "dx": 0,
+          "iq": 0,
+          "ht": 0,
+          "per": 0,
+          "will": 0,
+          "basicSpeed": 0,
+          "basicMove": 0,
+          "naturalDr": 0,
+          "parries": [
+            {
+              "id": "parry-npc-1791242371417-7e8px-1",
+              "weaponName": "",
+              "parryType": "",
+              "value": 0,
+              "notes": ""
+            }
+          ],
+          "dodge": 0,
+          "block": 0,
+          "weapons": [],
+          "spells": [],
+          "armorLocations": [
+            {
+              "location": "Eye",
+              "rollTarget": "—",
+              "penalty": "-9",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 2]",
+              "id": "armor-npc-1791242371417-7e8px-0"
+            },
+            {
+              "location": "Skull",
+              "rollTarget": "3-4",
+              "penalty": "-7",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 3]",
+              "id": "armor-npc-1791242371417-7e8px-1"
+            },
+            {
+              "location": "Face",
+              "rollTarget": "5",
+              "penalty": "-5",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 4]",
+              "id": "armor-npc-1791242371417-7e8px-2"
+            },
+            {
+              "location": "Right Leg",
+              "rollTarget": "6-7",
+              "penalty": "-2",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[5]",
+              "id": "armor-npc-1791242371417-7e8px-3"
+            },
+            {
+              "location": "Right Arm",
+              "rollTarget": "8",
+              "penalty": "-2",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[5, 6]",
+              "id": "armor-npc-1791242371417-7e8px-4"
+            },
+            {
+              "location": "Torso",
+              "rollTarget": "9-10",
+              "penalty": "0",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "",
+              "id": "armor-npc-1791242371417-7e8px-5"
+            },
+            {
+              "location": "Groin",
+              "rollTarget": "11",
+              "penalty": "-3",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 7]",
+              "id": "armor-npc-1791242371417-7e8px-6"
+            },
+            {
+              "location": "Left Arm",
+              "rollTarget": "12",
+              "penalty": "-2",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[5, 6]",
+              "id": "armor-npc-1791242371417-7e8px-7"
+            },
+            {
+              "location": "Left Leg",
+              "rollTarget": "13-14",
+              "penalty": "-2",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[5]",
+              "id": "armor-npc-1791242371417-7e8px-8"
+            },
+            {
+              "location": "Hand",
+              "rollTarget": "15",
+              "penalty": "-4",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[6, 8, 9]",
+              "id": "armor-npc-1791242371417-7e8px-9"
+            },
+            {
+              "location": "Foot",
+              "rollTarget": "16",
+              "penalty": "-4",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[8, 9]",
+              "id": "armor-npc-1791242371417-7e8px-10"
+            },
+            {
+              "location": "Neck",
+              "rollTarget": "17-18",
+              "penalty": "-5",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 10]",
+              "id": "armor-npc-1791242371417-7e8px-11"
+            },
+            {
+              "location": "Vitals",
+              "rollTarget": "—",
+              "penalty": "-3",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 11]",
+              "id": "armor-npc-1791242371417-7e8px-12"
+            }
+          ],
+          "advantages": "",
+          "disadvantages": "",
+          "skills": "",
+          "combatSkills": "",
+          "combatPerks": "",
+          "equipment": "",
+          "masterNotes": "",
+          "assistantNotes": "",
+          "history": [],
+          "characterType": "npc",
+          "updatedAt": 1791242415065,
+          "combatManeuver": "other"
+        }
+      ],
+      "playerIds": [
+        "player-azur"
+      ],
+      "round": 4,
+      "roundLog": [
+        {
+          "round": 1,
+          "endedAt": 1791233370753
+        },
+        {
+          "round": 2,
+          "endedAt": 1791233990228
+        },
+        {
+          "round": 3,
+          "endedAt": 1791241824355
+        }
+      ],
+      "events": []
+    },
+    {
+      "id": "combat-1791232652429-cdeg",
+      "name": "teste5",
+      "description": "",
+      "createdAt": "05/10/2026",
+      "npcs": [],
+      "playerIds": []
+    },
+    {
+      "id": "combat-1791232581036-jd8o",
+      "name": "teste 4",
+      "description": "",
+      "createdAt": "05/10/2026",
+      "npcs": [],
+      "playerIds": []
+    },
+    {
+      "id": "combat-1791232335275-9519",
+      "name": "teste",
+      "description": "na taverna",
+      "createdAt": "05/10/2026",
+      "npcs": []
+    },
+    {
+      "id": "combat-floresta-sombria",
+      "name": "Emboscada na Floresta Sombria",
+      "description": "Bandidos emboscaram o grupo na estrada antiga cercada por pinheiros altos.",
+      "createdAt": "28/09/2026",
+      "npcs": [
+        {
+          "id": "npc-lider-salteadores",
+          "name": "Gareth o Impiedoso",
+          "title": "Líder dos Salteadores",
+          "weight": "92 kg",
+          "height": "1,86 m",
+          "avatar": "",
+          "avatarPreset": "warrior",
+          "isVisibleToPlayer": true,
+          "isDead": false,
+          "hpCurrent": 14,
+          "hpMax": 14,
+          "fpCurrent": 12,
+          "fpMax": 12,
+          "statusConditions": [],
+          "characterType": "npc",
+          "extraItems": [
+            {
+              "id": "item-gareth-1",
+              "name": "Flechas",
+              "current": 20,
+              "max": 20
+            },
+            {
+              "id": "item-gareth-2",
+              "name": "Pedras de Mana",
+              "current": 6,
+              "max": 6
+            },
+            {
+              "id": "item-gareth-3",
+              "name": "Escudo (Durabilidade)",
+              "current": 30,
+              "max": 30
+            }
+          ],
+          "turnActions": {
+            "parryCount": 0,
+            "dodgeCount": 0,
+            "blockCount": 0,
+            "usedRetreat": false,
+            "usedBlockThisTurn": false,
+            "shock": 0,
+            "usedFatigueThisTurn": false,
+            "fatigueAmountUsed": 0,
+            "notes": ""
+          },
+          "st": 14,
+          "dx": 12,
+          "iq": 10,
+          "ht": 12,
+          "per": 11,
+          "will": 11,
+          "basicSpeed": 6,
+          "basicMove": 6,
+          "naturalDr": 0,
+          "parries": [
+            {
+              "id": "p-1",
+              "weaponName": "Machado Duplo",
+              "parryType": "0U",
+              "value": 10,
+              "notes": "Machado de batalha de duas mãos"
+            },
+            {
+              "id": "p-2",
+              "weaponName": "Desarmado (Briga)",
+              "parryType": "Desarmado",
+              "value": 9,
+              "notes": "Defesa corpo a corpo"
+            }
+          ],
+          "dodge": 9,
+          "block": 0,
+          "weapons": [
+            {
+              "id": "wpn-1",
+              "name": "Machado de Batalha (Battleaxe)",
+              "nh": 14,
+              "damage": "2d+2 corte",
+              "type": "Corte",
+              "reach": "1, 2",
+              "modes": [
+                {
+                  "id": "m-1",
+                  "name": "Golpe a Duas Mãos",
+                  "damage": "2d+2 corte",
+                  "type": "Corte",
+                  "reach": "1, 2"
+                },
+                {
+                  "id": "m-2",
+                  "name": "Golpe a Uma Mão",
+                  "damage": "2d corte",
+                  "type": "Corte",
+                  "reach": "1"
+                }
+              ],
+              "notes": "Desbalanceada (0U). Ataque violento."
+            },
+            {
+              "id": "wpn-2",
+              "name": "Machadinha de Arremesso (Throwing Axe)",
+              "nh": 12,
+              "damage": "2d corte",
+              "type": "Corte",
+              "reach": "1",
+              "modes": [
+                {
+                  "id": "m-3",
+                  "name": "Corpo a Corpo",
+                  "damage": "2d corte",
+                  "type": "Corte",
+                  "reach": "1"
+                },
+                {
+                  "id": "m-4",
+                  "name": "Arremesso",
+                  "damage": "2d corte",
+                  "type": "Corte",
+                  "reach": "10/20m"
+                }
+              ],
+              "notes": "Pode ser arremessada."
+            },
+            {
+              "id": "wpn-3",
+              "name": "Adaga de Lâmina Serrilhada",
+              "nh": 12,
+              "damage": "1d-1 perf",
+              "type": "Perfurante",
+              "reach": "C, 1",
+              "modes": [
+                {
+                  "id": "m-5",
+                  "name": "Estocada",
+                  "damage": "1d-1 perf",
+                  "type": "Perfurante",
+                  "reach": "C, 1"
+                },
+                {
+                  "id": "m-6",
+                  "name": "Corte",
+                  "damage": "1d-2 corte",
+                  "type": "Corte",
+                  "reach": "C"
+                }
+              ],
+              "notes": "Escondida na bota."
+            }
+          ],
+          "combatSkills": "Machado/Maça-14; Briga-13; Arremesso-12; Golpe Poderoso-13.",
+          "combatPerks": "Aparência Ameaçadora, Pele Curtida.",
+          "spells": [],
+          "armorLocations": [
+            {
+              "id": "arm-1",
+              "location": "Crânio (Skull)",
+              "rollTarget": "3-4",
+              "penalty": "-7",
+              "armorName": "Elmo de Ferro",
+              "dr": 4,
+              "notes": ""
+            },
+            {
+              "id": "arm-2",
+              "location": "Rosto (Face)",
+              "rollTarget": "5",
+              "penalty": "-5",
+              "armorName": "Sem proteção",
+              "dr": 0,
+              "notes": ""
+            },
+            {
+              "id": "arm-3",
+              "location": "Tronco (Torso)",
+              "rollTarget": "9-11",
+              "penalty": "0",
+              "armorName": "Cota de Malha Rebitada",
+              "dr": 4,
+              "notes": ""
+            },
+            {
+              "id": "arm-4",
+              "location": "Virilha (Groin)",
+              "rollTarget": "11",
+              "penalty": "-3",
+              "armorName": "Saia de Couro Reforçado",
+              "dr": 2,
+              "notes": ""
+            },
+            {
+              "id": "arm-5",
+              "location": "Braço Direito",
+              "rollTarget": "8",
+              "penalty": "-2",
+              "armorName": "Braçadeira de Couro Endurecido",
+              "dr": 2,
+              "notes": ""
+            },
+            {
+              "id": "arm-6",
+              "location": "Braço Esquerdo",
+              "rollTarget": "12",
+              "penalty": "-2",
+              "armorName": "Braçadeira de Couro Endurecido",
+              "dr": 2,
+              "notes": ""
+            },
+            {
+              "id": "arm-7",
+              "location": "Mãos",
+              "rollTarget": "—",
+              "penalty": "-4",
+              "armorName": "Luvas de Couro",
+              "dr": 1,
+              "notes": ""
+            },
+            {
+              "id": "arm-8",
+              "location": "Perna Direita",
+              "rollTarget": "6-7",
+              "penalty": "-2",
+              "armorName": "Grevas de Couro",
+              "dr": 2,
+              "notes": ""
+            },
+            {
+              "id": "arm-9",
+              "location": "Perna Esquerda",
+              "rollTarget": "13-14",
+              "penalty": "-2",
+              "armorName": "Grevas de Couro",
+              "dr": 2,
+              "notes": ""
+            },
+            {
+              "id": "arm-10",
+              "location": "Pés (Feet)",
+              "rollTarget": "—",
+              "penalty": "-4",
+              "armorName": "Botas de Montaria",
+              "dr": 2,
+              "notes": ""
+            }
+          ],
+          "advantages": "Reflexos em Combate (+1 em esquiva e defesas), Tolerância à Dor (+3 contra atordoamento e choque reduzido pela metade).",
+          "disadvantages": "Sanguinolência (Não recua sem motivo sério), Ganância, Presunção.",
+          "skills": "Intimidação-13; Liderança-11; Sobrevivência-12.",
+          "equipment": "Machado duplo enfeitado com ossos, 2 machadinhas, bolsa com 45 moedas de ouro, cantil de hidromel forte.",
+          "masterNotes": "Gareth comanda o grupo com pulso de ferro. Se ele cair ou ficar inconsciente, o restante dos bandidos faz teste de Vontade com -3 ou foge!",
+          "assistantNotes": "Gareth sofreu 2 de dano superficial no braço direito.",
+          "history": [
+            {
+              "id": "h-1",
+              "timestamp": "19:42",
+              "author": "mestre",
+              "type": "note",
+              "description": "Gareth avançou gritando e sacou o machado de duas mãos."
+            }
+          ]
+        },
+        {
+          "id": "npc-xamã-cultista",
+          "name": "Malkor Olhos-de-Coruja",
+          "title": "Xamã das Sombras",
+          "weight": "68 kg",
+          "height": "1,72 m",
+          "avatar": "",
+          "avatarPreset": "mage",
+          "isVisibleToPlayer": true,
+          "isDead": false,
+          "hpCurrent": 10,
+          "hpMax": 10,
+          "fpCurrent": 15,
+          "fpMax": 15,
+          "statusConditions": [],
+          "turnActions": {
+            "parryCount": 0,
+            "dodgeCount": 0,
+            "blockCount": 0,
+            "usedRetreat": false,
+            "usedBlockThisTurn": false,
+            "shock": 0,
+            "usedFatigueThisTurn": false,
+            "fatigueAmountUsed": 0,
+            "notes": ""
+          },
+          "st": 9,
+          "dx": 11,
+          "iq": 14,
+          "ht": 10,
+          "per": 12,
+          "will": 13,
+          "basicSpeed": 5.25,
+          "basicMove": 5,
+          "naturalDr": 0,
+          "parries": [
+            {
+              "id": "px-1",
+              "weaponName": "Cajado Rúnico",
+              "parryType": "Normal",
+              "value": 10,
+              "notes": "Bônus de cajado"
+            }
+          ],
+          "dodge": 8,
+          "block": 0,
+          "weapons": [
+            {
+              "id": "wpn-x1",
+              "name": "Cajado de Madeira Negra",
+              "nh": 12,
+              "damage": "1d+1 cont",
+              "type": "Contusão",
+              "reach": "1, 2",
+              "modes": [
+                {
+                  "id": "mx-1",
+                  "name": "Golpe Contuso",
+                  "damage": "1d+1 cont",
+                  "type": "Contusão",
+                  "reach": "1, 2"
+                }
+              ],
+              "notes": "Foco arcano (+2 no Aparar)."
+            },
+            {
+              "id": "wpn-x2",
+              "name": "Projétil Ígneo (Mágico)",
+              "nh": 14,
+              "damage": "1d a 3d queima",
+              "type": "Queima / Fogo",
+              "reach": "10/20m",
+              "modes": [
+                {
+                  "id": "mx-2",
+                  "name": "Disparo Ígneo",
+                  "damage": "1d a 3d queima",
+                  "type": "Queima",
+                  "reach": "10/20m"
+                }
+              ],
+              "notes": "Requer concentração prévia"
+            }
+          ],
+          "combatSkills": "Cajado-12; Conjuração Rápida-14.",
+          "combatPerks": "Taumatologia Intuitiva.",
+          "spells": [
+            {
+              "id": "spl-1",
+              "name": "Bola de Fogo (Fireball)",
+              "nh": 15,
+              "isFavorite": true
+            },
+            {
+              "id": "spl-2",
+              "name": "Escudo Mágico (Shield)",
+              "nh": 14,
+              "isFavorite": true
+            },
+            {
+              "id": "spl-3",
+              "name": "Nuvem de Fumaça (Smoke)",
+              "nh": 13,
+              "isFavorite": false
+            },
+            {
+              "id": "spl-4",
+              "name": "Cura Menor (Minor Healing)",
+              "nh": 14,
+              "isFavorite": true
+            },
+            {
+              "id": "spl-5",
+              "name": "Pavor Mental (Fear)",
+              "nh": 14,
+              "isFavorite": false
+            }
+          ],
+          "armorLocations": [
+            {
+              "id": "arm-x1",
+              "location": "Crânio (Skull)",
+              "rollTarget": "3-4",
+              "penalty": "-7",
+              "armorName": "Capuz de Lã Encantado",
+              "dr": 1,
+              "notes": ""
+            },
+            {
+              "id": "arm-x2",
+              "location": "Rosto (Face)",
+              "rollTarget": "5",
+              "penalty": "-5",
+              "armorName": "Sem proteção",
+              "dr": 0,
+              "notes": ""
+            },
+            {
+              "id": "arm-x3",
+              "location": "Tronco (Torso)",
+              "rollTarget": "9-11",
+              "penalty": "0",
+              "armorName": "Túnica de Couro Macio",
+              "dr": 1,
+              "notes": ""
+            },
+            {
+              "id": "arm-x4",
+              "location": "Braços",
+              "rollTarget": "8 / 12",
+              "penalty": "-2",
+              "armorName": "Túnica de Linho",
+              "dr": 0,
+              "notes": ""
+            },
+            {
+              "id": "arm-x5",
+              "location": "Pernas",
+              "rollTarget": "6-7 / 13-14",
+              "penalty": "-2",
+              "armorName": "Calças de Lã",
+              "dr": 0,
+              "notes": ""
+            },
+            {
+              "id": "arm-x6",
+              "location": "Pés",
+              "rollTarget": "—",
+              "penalty": "-4",
+              "armorName": "Mocassins de Couro",
+              "dr": 1,
+              "notes": ""
+            }
+          ],
+          "advantages": "Aptidão Mágica 2 (Magery 2), Voz Atraente / Tenebrosa, Resistência Mental.",
+          "disadvantages": "Covardia (evita combate corpo a corpo), Segredo Sombrio.",
+          "skills": "Ocultismo-14; Pesquisa-13; Alquimia-12; Furtividade-11; Primeiros Socorros-13.",
+          "equipment": "Frascos de poção (2 de cura), ervas aromáticas, pó fosfórico, bolsa com componentes mágicos.",
+          "masterNotes": "Malkor conjura Escudo no primeiro turno e tenta cegar o grupo com Nuvem de Fumaça.",
+          "assistantNotes": "",
+          "history": []
+        },
+        {
+          "id": "npc-arqueiro-emboscador",
+          "name": "Arqueiro da Floresta",
+          "title": "Caçador Furtivo",
+          "weight": "73 kg",
+          "height": "1,78 m",
+          "avatar": "",
+          "avatarPreset": "ranger",
+          "isVisibleToPlayer": true,
+          "isDead": false,
+          "hpCurrent": 11,
+          "hpMax": 11,
+          "fpCurrent": 11,
+          "fpMax": 11,
+          "statusConditions": [],
+          "turnActions": {
+            "parryCount": 0,
+            "dodgeCount": 0,
+            "blockCount": 0,
+            "usedRetreat": false,
+            "usedBlockThisTurn": false,
+            "shock": 0,
+            "usedFatigueThisTurn": false,
+            "fatigueAmountUsed": 0,
+            "notes": ""
+          },
+          "st": 11,
+          "dx": 13,
+          "iq": 10,
+          "ht": 11,
+          "per": 12,
+          "will": 10,
+          "basicSpeed": 6,
+          "basicMove": 6,
+          "naturalDr": 0,
+          "parries": [
+            {
+              "id": "pa-1",
+              "weaponName": "Faca Curta",
+              "parryType": "Normal",
+              "value": 8,
+              "notes": "Defesa corpo a corpo secundária"
+            }
+          ],
+          "dodge": 9,
+          "block": 0,
+          "weapons": [
+            {
+              "id": "wpn-a1",
+              "name": "Arco Composto Longo",
+              "nh": 14,
+              "damage": "1d+1 perf",
+              "type": "Perfurante",
+              "reach": "150/200 yd",
+              "modes": [
+                {
+                  "id": "ma-1",
+                  "name": "Disparo de Flecha",
+                  "damage": "1d+1 perf",
+                  "type": "Perfurante",
+                  "reach": "150/200 yd"
+                }
+              ],
+              "notes": "Precisão +2, Mirar dá bônus total de +4."
+            },
+            {
+              "id": "wpn-a2",
+              "name": "Faca de Caça",
+              "nh": 12,
+              "damage": "1d-1 corte",
+              "type": "Corte",
+              "reach": "C, 1",
+              "modes": [
+                {
+                  "id": "ma-2",
+                  "name": "Corte",
+                  "damage": "1d-1 corte",
+                  "type": "Corte",
+                  "reach": "C, 1"
+                },
+                {
+                  "id": "ma-3",
+                  "name": "Estocada",
+                  "damage": "1d-2 perf",
+                  "type": "Perfurante",
+                  "reach": "C"
+                }
+              ],
+              "notes": ""
+            }
+          ],
+          "combatSkills": "Arco-14; Briga-11; Disparo Mirado-15.",
+          "combatPerks": "Puxada Rápida (Flecha).",
+          "spells": [],
+          "armorLocations": [
+            {
+              "id": "arm-a1",
+              "location": "Tronco (Torso)",
+              "rollTarget": "9-11",
+              "penalty": "0",
+              "armorName": "Colete de Couro Leve",
+              "dr": 2,
+              "notes": ""
+            },
+            {
+              "id": "arm-a2",
+              "location": "Braços e Pernas",
+              "rollTarget": "—",
+              "penalty": "-2",
+              "armorName": "Roupas Camufladas",
+              "dr": 1,
+              "notes": ""
+            },
+            {
+              "id": "arm-a3",
+              "location": "Cabeça",
+              "rollTarget": "3-5",
+              "penalty": "-5",
+              "armorName": "Capuz Florestal",
+              "dr": 0,
+              "notes": ""
+            }
+          ],
+          "advantages": "Visão Aguçada +2, Senso de Direção, Furtividade Natural.",
+          "disadvantages": "Paranóico, Excesso de Confiança.",
+          "skills": "Furtividade-14; Camuflagem-13; Rastreamento-12.",
+          "equipment": "Aljava com 18 flechas, corda de seda, camuflagem florestal.",
+          "masterNotes": "Posicionado no alto da árvore a 15 metros. Tem bônus de cobertura parcial (-2 para ser atingido).",
+          "assistantNotes": "",
+          "history": []
+        }
+      ]
+    },
+    {
+      "id": "combat-cripta-esquecida",
+      "name": "Confronto na Cripta dos Reis",
+      "description": "Batalha subterrânea contra guardiões de tumbas.",
+      "createdAt": "28/09/2026",
+      "npcs": [
+        {
+          "id": "npc-cavaleiro-esqueleto",
+          "name": "Cavaleiro Sepulcral",
+          "title": "Guardião da Tumba",
+          "weight": "40 kg (ossos)",
+          "height": "1,80 m",
+          "avatar": "",
+          "avatarPreset": "undead",
+          "isVisibleToPlayer": true,
+          "isDead": false,
+          "hpCurrent": 14,
+          "hpMax": 14,
+          "fpCurrent": 20,
+          "fpMax": 20,
+          "statusConditions": [],
+          "turnActions": {
+            "parryCount": 0,
+            "dodgeCount": 0,
+            "blockCount": 0,
+            "usedRetreat": false,
+            "usedBlockThisTurn": false,
+            "shock": 0,
+            "usedFatigueThisTurn": false,
+            "fatigueAmountUsed": 0,
+            "notes": ""
+          },
+          "st": 13,
+          "dx": 11,
+          "iq": 8,
+          "ht": 12,
+          "per": 10,
+          "will": 12,
+          "basicSpeed": 5.75,
+          "basicMove": 5,
+          "naturalDr": 2,
+          "parries": [
+            {
+              "id": "psk-1",
+              "weaponName": "Espada Antiga",
+              "parryType": "Normal",
+              "value": 10,
+              "notes": "Arma principal"
+            }
+          ],
+          "dodge": 8,
+          "block": 10,
+          "weapons": [
+            {
+              "id": "wpn-sk1",
+              "name": "Espada Antiga Enferrujada",
+              "nh": 13,
+              "damage": "1d+3 corte",
+              "type": "Corte",
+              "reach": "1",
+              "modes": [
+                {
+                  "id": "msk-1",
+                  "name": "Corte",
+                  "damage": "1d+3 corte",
+                  "type": "Corte",
+                  "reach": "1"
+                },
+                {
+                  "id": "msk-2",
+                  "name": "Estocada",
+                  "damage": "1d+1 perf",
+                  "type": "Perfurante",
+                  "reach": "1"
+                }
+              ],
+              "notes": "Infecção sombria"
+            },
+            {
+              "id": "wpn-sk2",
+              "name": "Escudo de Carvalho com Ferro",
+              "nh": 12,
+              "damage": "1d+1 cont",
+              "type": "Contusão",
+              "reach": "1",
+              "modes": [
+                {
+                  "id": "msk-3",
+                  "name": "Pancada com Escudo",
+                  "damage": "1d+1 cont",
+                  "type": "Contusão",
+                  "reach": "1"
+                }
+              ],
+              "notes": "DB +2"
+            }
+          ],
+          "combatSkills": "Espada-13; Escudo-12; Tática-9; Pancada com Escudo-12.",
+          "combatPerks": "Impassível.",
+          "spells": [],
+          "armorLocations": [
+            {
+              "id": "arm-sk1",
+              "location": "Crânio (Skull)",
+              "rollTarget": "3-4",
+              "penalty": "-7",
+              "armorName": "Elmo Enferrujado + Ossos",
+              "dr": 5,
+              "notes": ""
+            },
+            {
+              "id": "arm-sk2",
+              "location": "Tronco (Torso)",
+              "rollTarget": "9-11",
+              "penalty": "0",
+              "armorName": "Cota de Malha Corroída",
+              "dr": 4,
+              "notes": ""
+            }
+          ],
+          "advantages": "Imunidade a Doenças e Venenos, Sem Respiração, RD Natural 2.",
+          "disadvantages": "Vulnerável a Contusão.",
+          "skills": "Intimidação-10.",
+          "equipment": "Escudo antigo, espada corroída.",
+          "masterNotes": "Não sente dor nem choque. Ataques perfurantes causam apenas dano x0.5.",
+          "assistantNotes": "",
+          "history": []
+        }
+      ]
+    },
+    {
+      "id": "combat-vazio",
+      "name": "Combate Vazio (Ocultar Tela)",
+      "description": "Nenhum NPC neste combate. Deixa a tela dos jogadores limpa e oculta.",
+      "createdAt": "29/09/2026",
+      "npcs": [
+        {
+          "id": "npc-1791219676025-9f3c1",
+          "name": "NOVO NPC",
+          "title": "",
+          "weight": "",
+          "height": "",
+          "avatar": "",
+          "avatarPreset": "knight",
+          "isVisibleToPlayer": false,
+          "isDead": false,
+          "hpCurrent": 4,
+          "hpMax": 4,
+          "fpCurrent": 0,
+          "fpMax": 0,
+          "statusConditions": [],
+          "turnActions": {
+            "parryCount": 0,
+            "dodgeCount": 0,
+            "blockCount": 0,
+            "usedRetreat": false,
+            "usedBlockThisTurn": false,
+            "shock": 0,
+            "usedFatigueThisTurn": false,
+            "fatigueAmountUsed": 0,
+            "notes": ""
+          },
+          "st": 0,
+          "dx": 0,
+          "iq": 0,
+          "ht": 0,
+          "per": 0,
+          "will": 0,
+          "basicSpeed": 0,
+          "basicMove": 0,
+          "naturalDr": 0,
+          "parries": [
+            {
+              "id": "parry-npc-1791219676025-9f3c1-1",
+              "weaponName": "",
+              "parryType": "",
+              "value": 0,
+              "notes": ""
+            }
+          ],
+          "dodge": 0,
+          "block": 0,
+          "weapons": [],
+          "spells": [],
+          "armorLocations": [
+            {
+              "location": "Eye",
+              "rollTarget": "—",
+              "penalty": "-9",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 2]",
+              "id": "armor-npc-1791219676025-9f3c1-0"
+            },
+            {
+              "location": "Skull",
+              "rollTarget": "3-4",
+              "penalty": "-7",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 3]",
+              "id": "armor-npc-1791219676025-9f3c1-1"
+            },
+            {
+              "location": "Face",
+              "rollTarget": "5",
+              "penalty": "-5",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 4]",
+              "id": "armor-npc-1791219676025-9f3c1-2"
+            },
+            {
+              "location": "Right Leg",
+              "rollTarget": "6-7",
+              "penalty": "-2",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[5]",
+              "id": "armor-npc-1791219676025-9f3c1-3"
+            },
+            {
+              "location": "Right Arm",
+              "rollTarget": "8",
+              "penalty": "-2",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[5, 6]",
+              "id": "armor-npc-1791219676025-9f3c1-4"
+            },
+            {
+              "location": "Torso",
+              "rollTarget": "9-10",
+              "penalty": "0",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "",
+              "id": "armor-npc-1791219676025-9f3c1-5"
+            },
+            {
+              "location": "Groin",
+              "rollTarget": "11",
+              "penalty": "-3",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 7]",
+              "id": "armor-npc-1791219676025-9f3c1-6"
+            },
+            {
+              "location": "Left Arm",
+              "rollTarget": "12",
+              "penalty": "-2",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[5, 6]",
+              "id": "armor-npc-1791219676025-9f3c1-7"
+            },
+            {
+              "location": "Left Leg",
+              "rollTarget": "13-14",
+              "penalty": "-2",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[5]",
+              "id": "armor-npc-1791219676025-9f3c1-8"
+            },
+            {
+              "location": "Hand",
+              "rollTarget": "15",
+              "penalty": "-4",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[6, 8, 9]",
+              "id": "armor-npc-1791219676025-9f3c1-9"
+            },
+            {
+              "location": "Foot",
+              "rollTarget": "16",
+              "penalty": "-4",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[8, 9]",
+              "id": "armor-npc-1791219676025-9f3c1-10"
+            },
+            {
+              "location": "Neck",
+              "rollTarget": "17-18",
+              "penalty": "-5",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 10]",
+              "id": "armor-npc-1791219676025-9f3c1-11"
+            },
+            {
+              "location": "Vitals",
+              "rollTarget": "—",
+              "penalty": "-3",
+              "armorName": "",
+              "dr": 0,
+              "notes": "",
+              "gurpsNotesRef": "[1, 11]",
+              "id": "armor-npc-1791219676025-9f3c1-12"
+            }
+          ],
+          "advantages": "",
+          "disadvantages": "",
+          "skills": "",
+          "combatSkills": "",
+          "combatPerks": "",
+          "equipment": "",
+          "masterNotes": "",
+          "assistantNotes": "",
+          "history": [],
+          "characterType": "npc",
+          "updatedAt": 1791219688801
+        }
+      ]
+    }
+  ],
+  "conditions": [
+    {
+      "id": "cond-stunned",
+      "label": "Atordoado",
+      "description": "Não pode agir, defesas ativas com -4, requer teste de HT por turno para recuperar."
+    },
+    {
+      "id": "cond-prone",
+      "label": "Caído",
+      "description": "-4 para atacar corpo a corpo, -2 para defesas ativas."
+    },
+    {
+      "id": "cond-shock2",
+      "label": "Chocado (-2)",
+      "description": "-2 em DX e IQ neste turno por dano recente sofrido."
+    },
+    {
+      "id": "cond-shock4",
+      "label": "Chocado (-4)",
+      "description": "-4 em DX e IQ por dano recente severo."
+    },
+    {
+      "id": "cond-bleeding",
+      "label": "Sangrando",
+      "description": "Perde 1 PV por minuto sem tratamento ou primeiros socorros."
+    },
+    {
+      "id": "cond-crippled",
+      "label": "Membro Aleijado",
+      "description": "Membro (braço, perna, mão ou pé) inutilizado no combate."
+    },
+    {
+      "id": "cond-unconscious",
+      "label": "Inconsciente",
+      "description": "Incapacitado, falhou no teste de HT contra desmaio."
+    },
+    {
+      "id": "cond-fleeing",
+      "label": "Em Fuga / Pânico",
+      "description": "Falhou em teste de Vontade / Fright Check."
+    },
+    {
+      "id": "cond-exhausted",
+      "label": "Exausto (FP < 1/3)",
+      "description": "Movimento, Esquiva e ST reduzidos pela metade."
+    },
+    {
+      "id": "cond-blinded",
+      "label": "Cegado",
+      "description": "-10 para atacar, defesas ativas apenas com Percepção/Audição."
+    },
+    {
+      "id": "cond-grappled",
+      "label": "Agarrado",
+      "description": "-4 para DX, não pode mudar de postura nem se deslocar livremente."
+    },
+    {
+      "id": "cond-disarmed",
+      "label": "Desarmado",
+      "description": "Arma foi derrubada ou arrancada das mãos."
+    }
+  ],
+  "players": [
+    {
+      "id": "player-azur",
+      "name": "Azur",
+      "title": "Personagem Jogador (Aba Azur)",
+      "characterType": "player",
+      "playerName": "Azur",
+      "weight": "82 kg",
+      "height": "1.78 m",
+      "avatar": "",
+      "avatarPreset": "warrior",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 14,
+      "hpMax": 14,
+      "fpCurrent": 12,
+      "fpMax": 12,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-azur-1",
+          "name": "Flechas",
+          "current": 24,
+          "max": 24,
+          "notes": "Aljava de caça"
+        },
+        {
+          "id": "item-azur-2",
+          "name": "Pedras de Mana",
+          "current": 4,
+          "max": 4,
+          "notes": "1 PM cada"
+        },
+        {
+          "id": "item-azur-3",
+          "name": "Escudo (Durabilidade)",
+          "current": 30,
+          "max": 30,
+          "notes": "Madeira reforçada"
+        },
+        {
+          "id": "item-azur-4",
+          "name": "Poções de Cura",
+          "current": 2,
+          "max": 2,
+          "notes": "Recupera 1d PV"
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 13,
+      "dx": 12,
+      "iq": 11,
+      "ht": 12,
+      "per": 12,
+      "will": 11,
+      "basicSpeed": 6,
+      "basicMove": 6,
+      "naturalDr": 0,
+      "dodge": 9,
+      "block": 10,
+      "parries": [
+        {
+          "id": "p-azur-1",
+          "weaponName": "Espada Larga",
+          "value": 10,
+          "notes": "Aparar (Célula B19)"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-azur-1",
+          "name": "Espada Larga",
+          "nh": 14,
+          "damage": "1d+2 corte",
+          "type": "Corte",
+          "reach": "1",
+          "notes": "Aparar 10"
+        },
+        {
+          "id": "w-azur-2",
+          "name": "Escudo Médio",
+          "nh": 12,
+          "damage": "1d cont",
+          "type": "Contusão",
+          "reach": "1",
+          "notes": "DB +2 | Bloqueio 10"
+        },
+        {
+          "id": "w-azur-3",
+          "name": "Arco Curto",
+          "nh": 13,
+          "damage": "1d-1 perf",
+          "type": "Perfurante",
+          "reach": "Distância",
+          "notes": "Precisão 1"
+        },
+        {
+          "id": "w-azur-4",
+          "name": "Adaga de Aço",
+          "nh": 12,
+          "damage": "1d-1 perf",
+          "type": "Perfurante",
+          "reach": "C, 1",
+          "notes": "Fácil ocultar"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-azur-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Cota de Malha",
+          "dr": 4,
+          "notes": ""
+        },
+        {
+          "id": "arm-azur-2",
+          "location": "Crânio (Skull)",
+          "armorName": "Elmo de Couro Reforçado",
+          "dr": 2,
+          "notes": ""
+        }
+      ],
+      "advantages": "Reflexos em Combate, Prontidão.",
+      "disadvantages": "Código de Cavalaria.",
+      "skills": "Espada Larga-14; Arco-13; Escudo-12; Tática-10.",
+      "equipment": "Espada larga, escudo médio, arco curto com 24 flechas, bolsa de viagem.",
+      "masterNotes": "Primeiro personagem da planilha (Aba Azur). PV: B5, Fadiga: B6, Defesas: B17..B19, Armas: A26..D29, Itens: I5..L8.",
+      "assistantNotes": "Combatente do grupo The Hounds.",
+      "history": [
+        {
+          "id": "log-1791244016027-m1bo",
+          "timestamp": "20:46:56",
+          "author": "mestre",
+          "type": "edit",
+          "auto": 1,
+          "keys": "cond",
+          "from": {
+            "cond": "Atordoado"
+          },
+          "by": "user-leandro",
+          "at": 1791244016027,
+          "combatId": "combat-1791233276074-ry02",
+          "description": "Condição removida: Atordoado — por Leandro"
+        },
+        {
+          "id": "log-1791242818720-2oa1",
+          "timestamp": "20:26:58",
+          "author": "mestre",
+          "type": "edit",
+          "auto": 1,
+          "keys": "combatManeuver",
+          "from": {
+            "combatManeuver": "move_and_attack"
+          },
+          "by": "user-leandro",
+          "at": 1791242818720,
+          "combatId": "combat-1791233276074-ry02",
+          "description": "Manobra: Move and Attack → Attack — por Leandro"
+        }
+      ],
+      "updatedAt": 1791244016027,
+      "combatManeuver": "attack"
+    },
+    {
+      "id": "player-rodrigo",
+      "name": "Rodrigo \"Lobo Cinzento\"",
+      "title": "Guerreiro de Vanguarda",
+      "characterType": "player",
+      "playerName": "Rodrigo",
+      "weight": "88 kg",
+      "height": "1.82 m",
+      "avatar": "",
+      "avatarPreset": "warrior",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 14,
+      "hpMax": 14,
+      "fpCurrent": 12,
+      "fpMax": 12,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-rod-1",
+          "name": "Flechas",
+          "current": 24,
+          "max": 24
+        },
+        {
+          "id": "item-rod-2",
+          "name": "Pedras de Mana",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-rod-3",
+          "name": "Escudo",
+          "current": 0,
+          "max": 0
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 14,
+      "dx": 12,
+      "iq": 10,
+      "ht": 12,
+      "per": 11,
+      "will": 11,
+      "basicSpeed": 6,
+      "basicMove": 6,
+      "naturalDr": 0,
+      "dodge": 9,
+      "block": 0,
+      "parries": [
+        {
+          "id": "p-rod-1",
+          "weaponName": "Espada Montante",
+          "value": 10,
+          "notes": "Aparar a duas mãos"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-rod-1",
+          "name": "Espada Montante",
+          "nh": 14,
+          "damage": "2d+2 corte",
+          "type": "Corte",
+          "reach": "1, 2"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-rod-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Cota de Malha Pesada",
+          "dr": 4,
+          "notes": ""
+        },
+        {
+          "id": "arm-rod-2",
+          "location": "Crânio (Skull)",
+          "armorName": "Elmo de Aço",
+          "dr": 4,
+          "notes": ""
+        }
+      ],
+      "advantages": "Reflexos em Combate, Força de Vontade.",
+      "disadvantages": "Código de Honra.",
+      "skills": "Espada de Duas Mãos-14; Liderança-12; Tática-11.",
+      "equipment": "Espada Montante, cantil, rações.",
+      "masterNotes": "Líder tático do grupo The Hounds.",
+      "assistantNotes": "Linha de frente.",
+      "history": []
+    },
+    {
+      "id": "player-renato",
+      "name": "Renato \"Arqueiro Sombrio\"",
+      "title": "Arqueiro & Rastreador",
+      "characterType": "player",
+      "playerName": "Renato",
+      "weight": "72 kg",
+      "height": "1.75 m",
+      "avatar": "",
+      "avatarPreset": "rogue",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 11,
+      "hpMax": 11,
+      "fpCurrent": 11,
+      "fpMax": 11,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-ren-1",
+          "name": "Flechas",
+          "current": 30,
+          "max": 30
+        },
+        {
+          "id": "item-ren-2",
+          "name": "Pedras de Mana",
+          "current": 4,
+          "max": 4
+        },
+        {
+          "id": "item-ren-3",
+          "name": "Escudo",
+          "current": 0,
+          "max": 0
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 11,
+      "dx": 14,
+      "iq": 11,
+      "ht": 11,
+      "per": 13,
+      "will": 11,
+      "basicSpeed": 6.25,
+      "basicMove": 6,
+      "naturalDr": 0,
+      "dodge": 10,
+      "block": 0,
+      "parries": [
+        {
+          "id": "p-ren-1",
+          "weaponName": "Adaga",
+          "value": 8,
+          "notes": "Aparar de emergência"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-ren-1",
+          "name": "Arco Longo Élfico",
+          "nh": 15,
+          "damage": "1d+2 perf",
+          "type": "Perfurante",
+          "reach": "Distância"
+        },
+        {
+          "id": "w-ren-2",
+          "name": "Adaga Fina",
+          "nh": 13,
+          "damage": "1d-1 perf",
+          "type": "Perfurante",
+          "reach": "C, 1"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-ren-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Armadura de Couro Fino",
+          "dr": 2,
+          "notes": ""
+        }
+      ],
+      "advantages": "Visão Aguçada +2, Tiro Rápido.",
+      "disadvantages": "Solitário.",
+      "skills": "Arco-15; Rastreamento-13; Furtividade-14.",
+      "equipment": "Arco longo, aljava com 30 flechas, corda de seda.",
+      "masterNotes": "",
+      "assistantNotes": "Especialista em emboscada e reconhecimento aéreo.",
+      "history": []
+    },
+    {
+      "id": "player-bruno",
+      "name": "Bruno \"Escudeiro de Ferro\"",
+      "title": "Guardião Inquebrável",
+      "characterType": "player",
+      "playerName": "Bruno",
+      "weight": "95 kg",
+      "height": "1.80 m",
+      "avatar": "",
+      "avatarPreset": "paladin",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 13,
+      "hpMax": 13,
+      "fpCurrent": 13,
+      "fpMax": 13,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-bru-1",
+          "name": "Flechas",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-bru-2",
+          "name": "Pedras de Mana",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-bru-3",
+          "name": "Escudo Torre (Durabilidade)",
+          "current": 40,
+          "max": 40
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 13,
+      "dx": 11,
+      "iq": 10,
+      "ht": 13,
+      "per": 10,
+      "will": 12,
+      "basicSpeed": 6,
+      "basicMove": 5,
+      "naturalDr": 0,
+      "dodge": 9,
+      "block": 11,
+      "parries": [
+        {
+          "id": "p-bru-1",
+          "weaponName": "Espada Curta",
+          "value": 9,
+          "notes": "Aparar de espada"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-bru-1",
+          "name": "Espada Curta",
+          "nh": 13,
+          "damage": "1d+1 corte",
+          "type": "Corte",
+          "reach": "1"
+        },
+        {
+          "id": "w-bru-2",
+          "name": "Escudo Torre (Pancada)",
+          "nh": 13,
+          "damage": "1d cont",
+          "type": "Contusão",
+          "reach": "1"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-bru-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Placas de Aço Reforçado",
+          "dr": 6,
+          "notes": ""
+        },
+        {
+          "id": "arm-bru-2",
+          "location": "Braços (Arms)",
+          "armorName": "Braçadeiras de Aço",
+          "dr": 4,
+          "notes": ""
+        }
+      ],
+      "advantages": "Resistência a Dor, Escudeiro Sagrado.",
+      "disadvantages": "Excesso de Confiança.",
+      "skills": "Escudo-14; Espada Curta-13; Pancada com Escudo-13.",
+      "equipment": "Escudo torre grande, kit de reparos.",
+      "masterNotes": "Muralha protetora para os aliados vulneráveis.",
+      "assistantNotes": "Defensor da vanguarda com escudo torre.",
+      "history": []
+    },
+    {
+      "id": "player-arthur",
+      "name": "Arthur \"Mago da Chama\"",
+      "title": "Feiticeiro Elemental",
+      "characterType": "player",
+      "playerName": "Arthur",
+      "weight": "65 kg",
+      "height": "1.70 m",
+      "avatar": "",
+      "avatarPreset": "wizard",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 9,
+      "hpMax": 9,
+      "fpCurrent": 11,
+      "fpMax": 11,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-art-1",
+          "name": "Flechas",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-art-2",
+          "name": "Pedras de Mana",
+          "current": 12,
+          "max": 12
+        },
+        {
+          "id": "item-art-3",
+          "name": "Escudo",
+          "current": 0,
+          "max": 0
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 9,
+      "dx": 11,
+      "iq": 15,
+      "ht": 11,
+      "per": 12,
+      "will": 14,
+      "basicSpeed": 5.5,
+      "basicMove": 5,
+      "naturalDr": 0,
+      "dodge": 8,
+      "block": 0,
+      "parries": [
+        {
+          "id": "p-art-1",
+          "weaponName": "Cajado",
+          "value": 7,
+          "notes": "Aparar de cajado"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-art-1",
+          "name": "Cajado de Madeira Rúnica",
+          "nh": 11,
+          "damage": "1d-1 cont",
+          "type": "Contusão",
+          "reach": "1, 2"
+        }
+      ],
+      "spells": [
+        {
+          "id": "sp-art-1",
+          "name": "Bola de Fogo",
+          "nh": 15,
+          "isFavorite": true,
+          "notes": "1d a 3d de dano por queima"
+        },
+        {
+          "id": "sp-art-2",
+          "name": "Armadura Mística",
+          "nh": 14,
+          "isFavorite": true,
+          "notes": "RD +3 temporário"
+        }
+      ],
+      "armorLocations": [
+        {
+          "id": "arm-art-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Túnica Encantada",
+          "dr": 1,
+          "notes": ""
+        }
+      ],
+      "advantages": "Aptidão Mágica 3, Foco Mental.",
+      "disadvantages": "Frágil.",
+      "skills": "Taumatologia-15; Ocultismo-14; Pesquisa-13.",
+      "equipment": "Cajado rúnico, 12 pedras de mana, grimório.",
+      "masterNotes": "Causa dano massivo em área.",
+      "assistantNotes": "Conjurador de magias elementais.",
+      "history": []
+    },
+    {
+      "id": "player-daniel",
+      "name": "Daniel \"Ladino das Sombras\"",
+      "title": "Infiltrador & Assassino",
+      "characterType": "player",
+      "playerName": "Daniel",
+      "weight": "68 kg",
+      "height": "1.74 m",
+      "avatar": "",
+      "avatarPreset": "rogue",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 10,
+      "hpMax": 10,
+      "fpCurrent": 11,
+      "fpMax": 11,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-dan-1",
+          "name": "Flechas",
+          "current": 12,
+          "max": 12
+        },
+        {
+          "id": "item-dan-2",
+          "name": "Pedras de Mana",
+          "current": 2,
+          "max": 2
+        },
+        {
+          "id": "item-dan-3",
+          "name": "Escudo",
+          "current": 0,
+          "max": 0
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 10,
+      "dx": 15,
+      "iq": 12,
+      "ht": 11,
+      "per": 13,
+      "will": 11,
+      "basicSpeed": 6.5,
+      "basicMove": 7,
+      "naturalDr": 0,
+      "dodge": 10,
+      "block": 0,
+      "parries": [
+        {
+          "id": "p-dan-1",
+          "weaponName": "Adagas Duplas",
+          "value": 10,
+          "notes": "Aparar duplo"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-dan-1",
+          "name": "Adaga Envenenada",
+          "nh": 15,
+          "damage": "1d perf",
+          "type": "Perfurante",
+          "reach": "C, 1"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-dan-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Gibão de Couro Furtivo",
+          "dr": 2,
+          "notes": ""
+        }
+      ],
+      "advantages": "Passo Silencioso, Sexto Sentido.",
+      "disadvantages": "Cobiça.",
+      "skills": "Arrombamento-14; Furtividade-16; Facas-15; Punga-14.",
+      "equipment": "Gazua de precisão, 4 facas de arremesso, frasco de veneno.",
+      "masterNotes": "Golpes pelas costas ignoram defesas ativas.",
+      "assistantNotes": "Furtividade, arrombamento e facas.",
+      "history": []
+    },
+    {
+      "id": "player-lucas",
+      "name": "Lucas \"Cavaleiro do Norte\"",
+      "title": "Paladino Guerreiro",
+      "characterType": "player",
+      "playerName": "Lucas",
+      "weight": "90 kg",
+      "height": "1.85 m",
+      "avatar": "",
+      "avatarPreset": "knight",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 13,
+      "hpMax": 13,
+      "fpCurrent": 12,
+      "fpMax": 12,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-luc-1",
+          "name": "Flechas",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-luc-2",
+          "name": "Pedras de Mana",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-luc-3",
+          "name": "Escudo Pesado",
+          "current": 35,
+          "max": 35
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 13,
+      "dx": 12,
+      "iq": 11,
+      "ht": 12,
+      "per": 11,
+      "will": 12,
+      "basicSpeed": 6,
+      "basicMove": 6,
+      "naturalDr": 0,
+      "dodge": 9,
+      "block": 10,
+      "parries": [
+        {
+          "id": "p-luc-1",
+          "weaponName": "Espada Bastarda",
+          "value": 10,
+          "notes": "Aparar de espada"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-luc-1",
+          "name": "Espada Bastarda",
+          "nh": 14,
+          "damage": "2d corte",
+          "type": "Corte",
+          "reach": "1, 2"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-luc-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Cota de Placas Completa",
+          "dr": 5,
+          "notes": ""
+        }
+      ],
+      "advantages": "Coragem +3, Status Nobre.",
+      "disadvantages": "Dever Sagrado.",
+      "skills": "Espada Larga-14; Cavalaria-13; Liderança-12.",
+      "equipment": "Espada bastarda, escudo nobiliárquico, cavalo de guerra.",
+      "masterNotes": "",
+      "assistantNotes": "Lança de cavalaria e espada longa.",
+      "history": []
+    },
+    {
+      "id": "player-gabriel",
+      "name": "Gabriel \"Clérigo da Luz\"",
+      "title": "Curandeiro Sagrado",
+      "characterType": "player",
+      "playerName": "Gabriel",
+      "weight": "82 kg",
+      "height": "1.78 m",
+      "avatar": "",
+      "avatarPreset": "cleric",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 12,
+      "hpMax": 12,
+      "fpCurrent": 12,
+      "fpMax": 12,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-gab-1",
+          "name": "Flechas",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-gab-2",
+          "name": "Pedras de Mana",
+          "current": 8,
+          "max": 8
+        },
+        {
+          "id": "item-gab-3",
+          "name": "Escudo Sagrado",
+          "current": 30,
+          "max": 30
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 12,
+      "dx": 10,
+      "iq": 13,
+      "ht": 12,
+      "per": 13,
+      "will": 14,
+      "basicSpeed": 5.5,
+      "basicMove": 5,
+      "naturalDr": 0,
+      "dodge": 8,
+      "block": 9,
+      "parries": [
+        {
+          "id": "p-gab-1",
+          "weaponName": "Maça da Alvorada",
+          "value": 8,
+          "notes": "Aparar"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-gab-1",
+          "name": "Maça Sagrada",
+          "nh": 12,
+          "damage": "1d+2 cont",
+          "type": "Contusão",
+          "reach": "1"
+        }
+      ],
+      "spells": [
+        {
+          "id": "sp-gab-1",
+          "name": "Cura Maior",
+          "nh": 15,
+          "isFavorite": true,
+          "notes": "Recupera PV de aliados"
+        },
+        {
+          "id": "sp-gab-2",
+          "name": "Bênção de Proteção",
+          "nh": 14,
+          "isFavorite": true,
+          "notes": "+2 em defesas ativas"
+        }
+      ],
+      "armorLocations": [
+        {
+          "id": "arm-gab-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Cota de Escamas de Prata",
+          "dr": 4,
+          "notes": ""
+        }
+      ],
+      "advantages": "Investidura Sagrada, Cura pelas Mãos.",
+      "disadvantages": "Voto de Paz (evitar matar desnecessariamente).",
+      "skills": "Cura-14; Teologia-14; Primeiros Socorros-15.",
+      "equipment": "Maça de prata, símbolo sagrado, ervas medicinais.",
+      "masterNotes": "Suporte vital do time.",
+      "assistantNotes": "Curas e bênçãos protetoras.",
+      "history": []
+    },
+    {
+      "id": "player-marcos",
+      "name": "Marcos \"Caçador Selvagem\"",
+      "title": "Guia da Floresta",
+      "characterType": "player",
+      "playerName": "Marcos",
+      "weight": "78 kg",
+      "height": "1.80 m",
+      "avatar": "",
+      "avatarPreset": "ranger",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 12,
+      "hpMax": 12,
+      "fpCurrent": 12,
+      "fpMax": 12,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-mar-1",
+          "name": "Flechas",
+          "current": 20,
+          "max": 20
+        },
+        {
+          "id": "item-mar-2",
+          "name": "Pedras de Mana",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-mar-3",
+          "name": "Escudo",
+          "current": 0,
+          "max": 0
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 12,
+      "dx": 13,
+      "iq": 11,
+      "ht": 12,
+      "per": 13,
+      "will": 11,
+      "basicSpeed": 6.25,
+      "basicMove": 6,
+      "naturalDr": 0,
+      "dodge": 9,
+      "block": 0,
+      "parries": [
+        {
+          "id": "p-mar-1",
+          "weaponName": "Machado de Mão",
+          "value": 9,
+          "notes": "Aparar"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-mar-1",
+          "name": "Machado de Mão",
+          "nh": 13,
+          "damage": "1d+2 corte",
+          "type": "Corte",
+          "reach": "1"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-mar-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Couro Rústico Curtido",
+          "dr": 2,
+          "notes": ""
+        }
+      ],
+      "advantages": "Sentido de Direção, Empatia com Animais.",
+      "disadvantages": "Desconfiado.",
+      "skills": "Sobrevivência-14; Armadilhas-13; Rastreamento-13.",
+      "equipment": "Machado, armadilhas de caça, pederneira.",
+      "masterNotes": "",
+      "assistantNotes": "Sobrevivência e machado de mão.",
+      "history": []
+    },
+    {
+      "id": "player-felipe",
+      "name": "Felipe \"Duelista Veloz\"",
+      "title": "Mestre da Rapieira",
+      "characterType": "player",
+      "playerName": "Felipe",
+      "weight": "70 kg",
+      "height": "1.76 m",
+      "avatar": "",
+      "avatarPreset": "rogue",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 11,
+      "hpMax": 11,
+      "fpCurrent": 11,
+      "fpMax": 11,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-fel-1",
+          "name": "Flechas",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-fel-2",
+          "name": "Pedras de Mana",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-fel-3",
+          "name": "Escudo",
+          "current": 0,
+          "max": 0
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 11,
+      "dx": 14,
+      "iq": 12,
+      "ht": 11,
+      "per": 12,
+      "will": 11,
+      "basicSpeed": 6.25,
+      "basicMove": 7,
+      "naturalDr": 0,
+      "dodge": 10,
+      "block": 0,
+      "parries": [
+        {
+          "id": "p-fel-1",
+          "weaponName": "Rapieira Nobre",
+          "value": 11,
+          "notes": "Aparar de Esgrima (0F)"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-fel-1",
+          "name": "Rapieira",
+          "nh": 15,
+          "damage": "1d perf",
+          "type": "Perfurante",
+          "reach": "1, 2"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-fel-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Colete Reforçado com Seda",
+          "dr": 1,
+          "notes": ""
+        }
+      ],
+      "advantages": "Esgrima Avançada, Reflexos Rápidos.",
+      "disadvantages": "Orgulho Fidalgo.",
+      "skills": "Rapieira-15; Esquiva Acrobática-13; Diplomacia-12.",
+      "equipment": "Rapieira forjada, capa de veludo, luvas de couro.",
+      "masterNotes": "Alta iniciativa e grande esquiva.",
+      "assistantNotes": "Rapieira e esgrima elegante.",
+      "history": []
+    },
+    {
+      "id": "player-thiago",
+      "name": "Thiago \"Bárbaro Feroz\"",
+      "title": "Fúria das Montanhas",
+      "characterType": "player",
+      "playerName": "Thiago",
+      "weight": "105 kg",
+      "height": "1.92 m",
+      "avatar": "",
+      "avatarPreset": "barbarian",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 15,
+      "hpMax": 15,
+      "fpCurrent": 13,
+      "fpMax": 13,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-thi-1",
+          "name": "Flechas",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-thi-2",
+          "name": "Pedras de Mana",
+          "current": 0,
+          "max": 0
+        },
+        {
+          "id": "item-thi-3",
+          "name": "Escudo",
+          "current": 0,
+          "max": 0
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 15,
+      "dx": 11,
+      "iq": 9,
+      "ht": 13,
+      "per": 11,
+      "will": 11,
+      "basicSpeed": 6,
+      "basicMove": 6,
+      "naturalDr": 0,
+      "dodge": 9,
+      "block": 0,
+      "parries": [
+        {
+          "id": "p-thi-1",
+          "weaponName": "Machado Gigante",
+          "value": 9,
+          "notes": "Aparar pesado"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-thi-1",
+          "name": "Machado Gigante de Batalha",
+          "nh": 14,
+          "damage": "2d+3 corte",
+          "type": "Corte",
+          "reach": "1, 2"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-thi-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Peles Grossas de Urso",
+          "dr": 2,
+          "notes": ""
+        }
+      ],
+      "advantages": "Fúria de Batalha, Constituição Robusta.",
+      "disadvantages": "Pavio Curto.",
+      "skills": "Machado de Duas Mãos-14; Intimidação-13; Briga-12.",
+      "equipment": "Machado gigante, colar de presas de lobo.",
+      "masterNotes": "Causa dano colossal com ataques violentos.",
+      "assistantNotes": "Fúria de batalha e machado duplo.",
+      "history": []
+    },
+    {
+      "id": "char-1791242349769-eywf",
+      "name": "Azur 2",
+      "title": "Personagem Jogador (Aba Azur)",
+      "characterType": "player",
+      "playerName": "Azur",
+      "weight": "82 kg",
+      "height": "1.78 m",
+      "avatar": "",
+      "avatarPreset": "warrior",
+      "isVisibleToPlayer": true,
+      "isDead": false,
+      "hpCurrent": 14,
+      "hpMax": 14,
+      "fpCurrent": 12,
+      "fpMax": 12,
+      "statusConditions": [],
+      "extraItems": [
+        {
+          "id": "item-azur-1",
+          "name": "Flechas",
+          "current": 24,
+          "max": 24,
+          "notes": "Aljava de caça"
+        },
+        {
+          "id": "item-azur-2",
+          "name": "Pedras de Mana",
+          "current": 4,
+          "max": 4,
+          "notes": "1 PM cada"
+        },
+        {
+          "id": "item-azur-3",
+          "name": "Escudo (Durabilidade)",
+          "current": 30,
+          "max": 30,
+          "notes": "Madeira reforçada"
+        },
+        {
+          "id": "item-azur-4",
+          "name": "Poções de Cura",
+          "current": 2,
+          "max": 2,
+          "notes": "Recupera 1d PV"
+        }
+      ],
+      "turnActions": {
+        "parryCount": 0,
+        "dodgeCount": 0,
+        "blockCount": 0,
+        "usedRetreat": false,
+        "usedBlockThisTurn": false,
+        "shock": 0,
+        "usedFatigueThisTurn": false,
+        "fatigueAmountUsed": 0,
+        "notes": ""
+      },
+      "st": 13,
+      "dx": 12,
+      "iq": 11,
+      "ht": 12,
+      "per": 12,
+      "will": 11,
+      "basicSpeed": 6,
+      "basicMove": 6,
+      "naturalDr": 0,
+      "dodge": 9,
+      "block": 10,
+      "parries": [
+        {
+          "id": "p-azur-1",
+          "weaponName": "Espada Larga",
+          "value": 10,
+          "notes": "Aparar (Célula B19)"
+        }
+      ],
+      "weapons": [
+        {
+          "id": "w-azur-1",
+          "name": "Espada Larga",
+          "nh": 14,
+          "damage": "1d+2 corte",
+          "type": "Corte",
+          "reach": "1",
+          "notes": "Aparar 10"
+        },
+        {
+          "id": "w-azur-2",
+          "name": "Escudo Médio",
+          "nh": 12,
+          "damage": "1d cont",
+          "type": "Contusão",
+          "reach": "1",
+          "notes": "DB +2 | Bloqueio 10"
+        },
+        {
+          "id": "w-azur-3",
+          "name": "Arco Curto",
+          "nh": 13,
+          "damage": "1d-1 perf",
+          "type": "Perfurante",
+          "reach": "Distância",
+          "notes": "Precisão 1"
+        },
+        {
+          "id": "w-azur-4",
+          "name": "Adaga de Aço",
+          "nh": 12,
+          "damage": "1d-1 perf",
+          "type": "Perfurante",
+          "reach": "C, 1",
+          "notes": "Fácil ocultar"
+        }
+      ],
+      "spells": [],
+      "armorLocations": [
+        {
+          "id": "arm-azur-1",
+          "location": "Tronco (Torso)",
+          "armorName": "Cota de Malha",
+          "dr": 4,
+          "notes": ""
+        },
+        {
+          "id": "arm-azur-2",
+          "location": "Crânio (Skull)",
+          "armorName": "Elmo de Couro Reforçado",
+          "dr": 2,
+          "notes": ""
+        }
+      ],
+      "advantages": "Reflexos em Combate, Prontidão.",
+      "disadvantages": "Código de Cavalaria.",
+      "skills": "Espada Larga-14; Arco-13; Escudo-12; Tática-10.",
+      "equipment": "Espada larga, escudo médio, arco curto com 24 flechas, bolsa de viagem.",
+      "masterNotes": "Primeiro personagem da planilha (Aba Azur). PV: B5, Fadiga: B6, Defesas: B17..B19, Armas: A26..D29, Itens: I5..L8.",
+      "assistantNotes": "Combatente do grupo The Hounds.",
+      "history": [
+        {
+          "id": "hist-1791242349769",
+          "timestamp": "20:19",
+          "author": "mestre",
+          "type": "note",
+          "combatId": "combat-1791233276074-ry02",
+          "description": "Copiado a partir de Azur"
+        }
+      ],
+      "updatedAt": 1791234297568,
+      "combatManeuver": "move_and_attack"
+    }
+  ],
+  "activeCombatId": "combat-1791233276074-ry02"
+}
