@@ -1,0 +1,11 @@
+{
+  "name": "hounds-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "importar": "node importar-dados.mjs"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0"
+  }
+}

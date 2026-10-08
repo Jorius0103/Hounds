@@ -7,11 +7,14 @@ Exportação completa do projeto: o código do hub e uma cópia dos dados da cam
 | Caminho | O que é |
 |---|---|
 | `index.html` | O hub completo num arquivo só (menu, Informações, Anotações, Usuários e a Mesa de Combate embutida). |
-| `src/mesa.html` | A Mesa de Combate (Dash RPG) compilada, separada, para consulta. |
-| `dados/` | Cópia dos dados salvos no site, em JSON. |
-| `imagens/` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |
+| `mesa.html` | A Mesa de Combate (Dash RPG) compilada, separada, para consulta. |
+| `*.json` | Cópia dos dados salvos no site, em JSON. |
+| `*.jpg`, `*.png` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |
+| `firebase-config.js` | Configuração do banco de dados (Firebase). Veja [FIREBASE.md](FIREBASE.md). |
+| `firestore.rules` | Regras de acesso do banco: só a conta da campanha lê e grava. |
+| `tools/` | Script que importa os JSON e as imagens para o Firebase. |
 
-### Arquivos em `dados/`
+### Arquivos de dados
 
 - `maps.json`: mapas, com hierarquia (`parentId`), imagem (`image.ref`) e visibilidade (`visible`).
 - `locations.json`: locais.
@@ -24,9 +27,13 @@ Cada arquivo é um objeto `{ id: documento }`.
 
 ## Onde roda
 
-O hub foi feito para ser publicado como artifact do claude.ai, onde usa o banco de dados e o armazenamento de imagens compartilhados da plataforma.
+O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. A página escolhe onde guardar os dados, nesta ordem:
 
-Abrindo `index.html` direto no navegador ou numa hospedagem comum, a página funciona, mas os dados ficam só no navegador de quem usa e começam vazios. Os arquivos de `dados/` não são carregados automaticamente.
+1. **Artifact do claude.ai:** usa o banco de dados e o armazenamento de imagens da plataforma.
+2. **Firebase:** quando `firebase-config.js` está preenchido. Todos veem os mesmos dados, em tempo real, e o grupo entra com a senha da campanha. Configuração em [FIREBASE.md](FIREBASE.md).
+3. **Só o navegador:** sem nenhum dos dois, a página funciona, mas os dados ficam só no navegador de quem usa e começam vazios.
+
+Os arquivos JSON não são carregados automaticamente. Para levá-los ao Firebase, use `tools/importar-dados.mjs`.
 
 ## Funcionalidades
 
@@ -44,4 +51,6 @@ Abrindo `index.html` direto no navegador ou numa hospedagem comum, a página fun
 
 ## Segurança
 
-Não há senha: quem tem acesso escolhe qualquer usuário. "Só o Mestre" esconde itens da tela, mas eles ainda são enviados ao navegador. Não guarde nada sigiloso.
+Com o Firebase, só quem sabe a senha da campanha lê ou altera os dados. Dentro do site, porém, quem entrou escolhe qualquer usuário, inclusive o Mestre. "Só o Mestre" esconde itens da tela, mas eles ainda são enviados ao navegador. Não guarde nada sigiloso.
+
+Os arquivos JSON e as imagens deste repositório ficam públicos no GitHub Pages, sem senha.
