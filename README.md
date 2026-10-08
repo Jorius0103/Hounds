@@ -10,9 +10,10 @@ Exportação completa do projeto: o código do hub e uma cópia dos dados da cam
 | `mesa.html` | A Mesa de Combate (Dash RPG) compilada, separada, para consulta. |
 | `*.json` | Cópia dos dados salvos no site, em JSON. |
 | `*.jpg`, `*.png` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |
+| `supabase-config.js` | Configuração do banco de dados (Supabase). Veja [SUPABASE.md](SUPABASE.md). |
 | `firebase-config.js` | Configuração do banco de dados (Firebase). Veja [FIREBASE.md](FIREBASE.md). |
 | `firestore.rules` | Regras de acesso do banco: só a conta da campanha lê e grava. |
-| `tools/` | Script que importa os JSON e as imagens para o Firebase. |
+| `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase. |
 
 ### Arquivos de dados
 
@@ -30,10 +31,11 @@ Cada arquivo é um objeto `{ id: documento }`.
 O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. A página escolhe onde guardar os dados, nesta ordem:
 
 1. **Artifact do claude.ai:** usa o banco de dados e o armazenamento de imagens da plataforma.
-2. **Firebase:** quando `firebase-config.js` está preenchido. Todos veem os mesmos dados, em tempo real, e o grupo entra com a senha da campanha. Configuração em [FIREBASE.md](FIREBASE.md).
-3. **Só o navegador:** sem nenhum dos dois, a página funciona, mas os dados ficam só no navegador de quem usa e começam vazios.
+2. **Supabase:** quando `supabase-config.js` está preenchido. Dados em tempo real (PostgreSQL + Realtime + Storage). Configuração em [SUPABASE.md](SUPABASE.md).
+3. **Firebase:** quando `firebase-config.js` está preenchido. Todos veem os mesmos dados, em tempo real, e o grupo entra com a senha da campanha. Configuração em [FIREBASE.md](FIREBASE.md).
+4. **Só o navegador:** sem nenhum dos dois, a página funciona, mas os dados ficam só no navegador de quem usa e começam vazios.
 
-Os arquivos JSON não são carregados automaticamente. Para levá-los ao Firebase, use `tools/importar-dados.mjs`.
+Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabase, use `tools/importar-supabase.mjs`.
 
 ## Funcionalidades
 

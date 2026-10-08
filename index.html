@@ -497,6 +497,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="firebase-config.js"></script>
+<script src="supabase-config.js"></script>
 <script>
 (function () {
   'use strict';
@@ -682,8 +683,10 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
        firestore.rules. Set up in firebase-config.js; see FIREBASE.md.
      ===================================================================== */
   var FB_SDK = 'https://www.gstatic.com/firebasejs/12.19.0/';
+  var SB_SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
   var BRAND_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>';
   function fbConfig() { var c = window.HOUNDS_FIREBASE; return c && c.apiKey && c.projectId ? c : null; }
+  function sbConfig() { var c = window.HOUNDS_SUPABASE; return c && c.url && c.anonKey ? c : null; }
   function loadScript(src) {
     return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = function () { rej(new Error('script ' + src)); }; document.head.appendChild(s); });
   }
@@ -803,7 +806,163 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     });
   }
 
+  function SupabaseStore(client, bucket) {
+    var bName = bucket || 'hounds-images';
+
+    function parseRows(data) {
+      if (!data || !Array.isArray(data)) return [];
+      return data.map(function (r) {
+        return Object.assign({ id: r.id }, r.data);
+      }).sort(function (a, b) {
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      });
+    }
+
+    function all(col) {
+      return client
+        .from('hounds_docs')
+        .select('id, data')
+        .eq('col', col)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return parseRows(res.data);
+        });
+    }
+
+    function query(col, field, value) {
+      return all(col).then(function (list) {
+        return list.filter(function (d) { return d[field] === value; });
+      });
+    }
+
+    function put(col, id, body) {
+      var docId = id || uid();
+      return client
+        .from('hounds_docs')
+        .upsert({
+          col: col,
+          id: docId,
+          data: body,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'col,id' })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return docId;
+        });
+    }
+
+    function patch(col, id, p) {
+      return client
+        .rpc('patch_hounds_doc', { p_col: col, p_id: id, p_patch: p })
+        .then(function (res) {
+          if (res.error) {
+            return client.from('hounds_docs').select('data').eq('col', col).eq('id', id).single().then(function (sel) {
+              if (sel.error) throw sel.error;
+              var merged = Object.assign({}, sel.data && sel.data.data, p);
+              return client.from('hounds_docs').upsert({
+                col: col,
+                id: id,
+                data: merged,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'col,id' }).then(function (uRes) {
+                if (uRes.error) throw uRes.error;
+              });
+            });
+          }
+        });
+    }
+
+    function remove(col, id) {
+      return client
+        .from('hounds_docs')
+        .delete()
+        .eq('col', col)
+        .eq('id', id)
+        .then(function (res) {
+          if (res.error) throw res.error;
+        });
+    }
+
+    function watch(col, cb, err) {
+      all(col).then(cb).catch(function (e) {
+        if (err) err(e);
+      });
+
+      var chName = 'watch_' + col.replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + Math.random().toString(36).slice(2, 8);
+      var ch = client.channel(chName)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'hounds_docs',
+          filter: 'col=eq.' + col
+        }, function () {
+          all(col).then(cb).catch(function (e) {
+            if (err) err(e);
+          });
+        })
+        .subscribe();
+
+      return function () {
+        client.removeChannel(ch);
+      };
+    }
+
+    function upload(file) {
+      var ext = file.name ? file.name.slice(file.name.lastIndexOf('.')) : '';
+      if (!ext && file.type) {
+        var map = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
+        ext = map[file.type] || '';
+      }
+      var ref = uid() + (ext || '');
+      return client.storage
+        .from(bName)
+        .upload(ref, file, { contentType: file.type, upsert: true })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return { ref: ref, type: file.type, size: file.size };
+        });
+    }
+
+    function imageUrl(ref) {
+      if (!ref) return Promise.resolve('');
+      if (ref.indexOf('http://') === 0 || ref.indexOf('https://') === 0 || ref.indexOf('data:') === 0) {
+        return Promise.resolve(ref);
+      }
+      var res = client.storage.from(bName).getPublicUrl(ref);
+      return Promise.resolve(res && res.data ? res.data.publicUrl : '');
+    }
+
+    function dropImage(ref) {
+      if (!ref) return Promise.resolve();
+      return client.storage.from(bName).remove([ref]).then(function () {});
+    }
+
+    return {
+      kind: 'supabase',
+      canUpload: true,
+      canWrite: function () { return true; },
+      init: function () { return Promise.resolve(); },
+      watch: watch,
+      all: all,
+      query: query,
+      put: put,
+      patch: patch,
+      remove: remove,
+      upload: upload,
+      imageUrl: imageUrl,
+      dropImage: dropImage
+    };
+  }
+
+  function connectSupabase(cfg) {
+    return loadScript(SB_SDK).then(function () {
+      var client = window.supabase.createClient(cfg.url, cfg.anonKey);
+      return SupabaseStore(client, cfg.bucket || 'hounds-images');
+    });
+  }
+
   function errorText(e) {
+    if (e && e.message) return e.message;
     var c = e && e.code;
     var M = {
       too_large: 'A imagem passa de 20 MB. Reduza o arquivo e tente de novo.',
@@ -2607,6 +2766,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     var use = window.claude && typeof window.claude.use === 'function' ? function (n) { return window.claude.use(n).catch(function () { return null; }); } : function () { return Promise.resolve(null); };
     return Promise.all([use('db'), use('assets'), use('user')]).then(function (r) {
       if (r[0]) return SharedStore(r[0], r[1], r[2]);
+      var sb = sbConfig();
+      if (sb) return connectSupabase(sb).catch(function (e) { console.error('Supabase connect error:', e); return null; });
       var fb = fbConfig();
       if (fb) return connectFirebase(fb).catch(function () { return null; });
       try { return window.indexedDB ? LocalStore() : null; } catch (e) { return null; }
