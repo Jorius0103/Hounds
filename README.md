@@ -43,6 +43,7 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 - **Visibilidade:** cada item tem a opção "Visível para todos". Desmarcado, só o Mestre vê.
 - **Informações:** mapas em hierarquia com marcadores, localizações e personagens.
 - **Anotações:** títulos com vários arquivos de anotação.
+- **Tema claro e escuro:** botão no rodapé do menu. A escolha fica salva em cada navegador. Sem escolha, o site segue o tema do sistema. A Mesa de Combate acompanha.
 - **Mesa de Combate:**
   - Escolha ou criação de jogo ao entrar.
   - Personagens salvos e reutilizáveis entre jogos.
