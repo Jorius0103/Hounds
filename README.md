@@ -41,7 +41,7 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 
 - **Página inicial:** é a primeira página ao abrir o site. Tem atalhos para cada seção, com as contagens, e a lista do que foi atualizado por último. Para voltar a ela, clique na patinha no topo do menu.
 - **Usuários:** escolha de usuário ao abrir, com perfis Mestre (administrador de tudo), Jogador e Espectador. Só o Mestre gerencia os usuários.
-- **Visibilidade:** cada item tem a opção "Visível para todos". Desmarcado, só o Mestre vê.
+- **Visibilidade:** fora da Mesa de Combate, quem cria um item (mapa, local, personagem, marcador, título ou anotação) marca se ele fica "Visível para todos". Desmarcado, só o Mestre e quem criou veem, e só os dois podem mudar isso depois. Os itens criados antes dessa regra continuam sob controle do Mestre.
 - **Informações:** mapas em hierarquia com marcadores, localizações e personagens.
 - **Anotações:** títulos com vários arquivos de anotação.
 - **Tema claro e escuro:** botão no rodapé do menu. A escolha fica salva em cada navegador. Sem escolha, o site segue o tema do sistema. A Mesa de Combate acompanha.
@@ -55,6 +55,6 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 
 ## Segurança
 
-Com o Firebase, só quem sabe a senha da campanha lê ou altera os dados. Dentro do site, porém, quem entrou escolhe qualquer usuário, inclusive o Mestre. "Só o Mestre" esconde itens da tela, mas eles ainda são enviados ao navegador. Não guarde nada sigiloso.
+Com o Firebase, só quem sabe a senha da campanha lê ou altera os dados. Dentro do site, porém, quem entrou escolhe qualquer usuário, inclusive o Mestre. Itens que não estão visíveis para todos somem da tela, mas ainda são enviados ao navegador de todo mundo. Não guarde nada sigiloso.
 
 Os arquivos JSON e as imagens deste repositório ficam públicos no GitHub Pages, sem senha.

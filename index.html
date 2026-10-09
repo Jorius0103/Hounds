@@ -443,7 +443,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .vis-flag span { display: grid; gap: 2px; }
 .vis-flag b { font-size: 13px; }
 .vis-flag small { font-size: 12px; color: var(--muted); }
-.secret-tag { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; margin-left: 10px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; color: var(--tag-violet); border: 1px solid rgba(139,92,246,.45); background: rgba(139,92,246,.14); letter-spacing: 0; }
+.secret-tag { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; margin-left: 10px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; color: var(--tag-violet); border: 1px solid rgba(139,92,246,.45); background: rgba(139,92,246,.14); letter-spacing: 0; white-space: nowrap; }
 .node-row .secret-ico { flex: none; color: var(--tag-violet-strong); margin-left: auto; display: inline-flex; }
 .app.collapsed .node-row .secret-ico { display: none; }
 .pin.secret .pin-head { outline: 2px dashed #c4b5fd; outline-offset: 2px; }
@@ -1189,19 +1189,38 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   }
 
 
-  /* ---------- visibility: items with visible === false are seen only by the Mestre ---------- */
-  var EYE_OFF = '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>';
+  /* ---------- visibility ----------
+     What people create here (maps, places, characters, markers, notebooks
+     and notes; not the Mesa) records who created it in createdBy. An item
+     with visible === false is seen only by the Mestre and by whoever
+     created it, and only they can change that. Items from before createdBy
+     existed belong to the Mestre. */
+  var EYE_OFF ='<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>';
+  function me() { return (window.hubUser && window.hubUser.id) || null; }
   function isSecret(x) { return !!x && x.visible === false; }
-  function pub(list) { return window.hubUser && window.hubUser.role === 'mestre' ? list : list.filter(function (x) { return !isSecret(x); }); }
+  function isMine(x) { return !!x && !!x.createdBy && x.createdBy === me(); }
+  function pub(list) { return isMestre() ? list : list.filter(function (x) { return !isSecret(x) || isMine(x); }); }
+  // createdBy for a body being saved: kept on edits, this user on new items.
+  function owner(prev) { return prev ? (prev.createdBy || null) : me(); }
+  function canSetVis(item) { return isMestre() || !item || isMine(item); }
+  // Who sees an item that is not visible to everyone: "o Mestre", "você e o Mestre" or "o Mestre e Ana".
+  function seenBy(item) {
+    var by = item ? item.createdBy : me(), u = null;
+    for (var i = 0; by && i < W.users.length; i++) if (W.users[i].id === by) u = W.users[i];
+    if (!by || (u && u.role === 'mestre')) return 'o Mestre';
+    if (by === me()) return 'você e o Mestre';
+    return 'o Mestre e ' + (u ? u.name : 'quem criou');
+  }
+  function seenVerb(item) { return seenBy(item) === 'o Mestre' ? 'vê' : 'veem'; }
   function rawHas(col, id) { return !!id && (W.raw[col] || []).some(function (x) { return x.id === id; }); }
   function rawGet(col, id) { var l = W.raw[col] || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
   function flagHtml(id, item) {
-    if (!(window.hubUser && window.hubUser.role === 'mestre')) return '';
+    if (!window.hubUser || !canSetVis(item)) return '';
     var on = item ? !isSecret(item) : false;
-    return '<label class="vis-flag" for="' + id + '"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span><b>Visível para todos</b><small>Desmarcado, só o Mestre vê.</small></span></label>';
+    return '<label class="vis-flag" for="' + id + '"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span><b>Visível para todos</b><small>Desmarcado, só ' + esc(seenBy(item)) + ' ' + seenVerb(item) + '.</small></span></label>';
   }
   function flagVal(id, item) { var el = document.getElementById(id); if (el) return !!el.checked; return item ? !isSecret(item) : true; }
-  function secretTag() { return '<span class="secret-tag" title="Só o Mestre vê">' + svg(EYE_OFF, 12, 2.4) + 'Só o Mestre</span>'; }
+  function secretTag(item) { return '<span class="secret-tag" title="Não está visível para todos">' + svg(EYE_OFF, 12, 2.4) + esc('Só ' + seenBy(item)) + '</span>'; }
   function refilter() {
     W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters);
     indexMaps(); indexLocations(); indexCharacters(); filterNotes();
@@ -1215,7 +1234,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     createMap: function (name, parentId, file, dims, visible) {
       return W.store.upload(file).then(function (up) {
         var t = now();
-        return W.store.put('maps', null, { v: 2, name: name, parentId: parentId || null, visible: visible !== false, image: { ref: up.ref, w: dims.w, h: dims.h, type: up.type, size: up.size }, createdAt: t, updatedAt: t });
+        return W.store.put('maps', null, { v: 2, name: name, parentId: parentId || null, visible: visible !== false, image: { ref: up.ref, w: dims.w, h: dims.h, type: up.type, size: up.size }, createdBy: me(), createdAt: t, updatedAt: t });
       });
     },
     updateMap: function (id, name, parentId, visible) {
@@ -1252,7 +1271,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
         if (loc) (loc.characterIds || []).forEach(function (id) { if (!W.charIdx[id] && rawHas('characters', id) && cids.indexOf(id) < 0) cids.push(id); });
         if (!mid && loc && loc.mapId && !W.mapIdx[loc.mapId] && rawHas('maps', loc.mapId)) mid = loc.mapId;
         var body = { v: 1, name: fields.name, description: fields.description, image: image, characterIds: cids, mapId: mid, visible: fields.visible !== false,
-                     position: (loc && loc.position) || null, createdAt: (loc && loc.createdAt) || t, updatedAt: t };
+                     position: (loc && loc.position) || null, createdBy: owner(loc), createdAt: (loc && loc.createdAt) || t, updatedAt: t };
         return W.store.put('locations', loc ? loc.id : null, body).then(function (id) {
           if (oldRef && (newFile || removeImage)) W.store.dropImage(oldRef);
           return id;
@@ -1278,7 +1297,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
           var existing = W.characters.filter(function (c) { return norm(c.name) === norm(s.name); })[0];
           if (existing) return ids.concat([existing.id]);
           var t = now();
-          return W.store.put('characters', null, { name: s.name, source: s.source || 'manual', mesaId: s.mesaId || null, visible: visible !== false, createdAt: t, updatedAt: t }).then(function (id) { return ids.concat([id]); });
+          return W.store.put('characters', null, { name: s.name, source: s.source || 'manual', mesaId: s.mesaId || null, visible: visible !== false, createdBy: me(), createdAt: t, updatedAt: t }).then(function (id) { return ids.concat([id]); });
         });
       }, Promise.resolve([])).then(function (ids) { return ids.filter(function (v, i) { return ids.indexOf(v) === i; }); });
     }
@@ -1375,7 +1394,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   function renderNodes(list, depth) {
     return list.map(function (n) {
       var size = depth ? 16 : 20, isGroup = !!n.children, isPage = !!n.route;
-      var label = '<span class="label">' + esc(n.label) + '</span>' + (n.secret ? '<span class="secret-ico" title="Só o Mestre vê">' + svg(EYE_OFF, 13, 2.2) + '</span>' : ''), row;
+      var label = '<span class="label">' + esc(n.label) + '</span>' + (n.secret ? '<span class="secret-ico" title="Não está visível para todos">' + svg(EYE_OFF, 13, 2.2) + '</span>' : ''), row;
       if (isPage && isGroup) {
         row = '<div class="row"><a class="node-row" href="' + hrefFor(n.id) + '" data-id="' + esc(n.id) + '" data-act="page-group" title="' + esc(n.label) + '">' + svg(n.icon, size) + label + '</a>' +
           '<button type="button" class="chev-btn" data-id="' + esc(n.id) + '" data-act="toggle" aria-expanded="false" aria-label="Mostrar ou ocultar itens de ' + esc(n.label) + '">' + CHEV + '</button></div>';
@@ -2013,7 +2032,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     function saveMarker(m) {
       var col = 'maps/' + st.map.id + '/markers', t = now();
       var lid = m.locationId && (locById(m.locationId) || rawHas('locations', m.locationId)) ? m.locationId : null;
-      return W.store.put(col, m.id || null, { x: m.x, y: m.y, title: m.title, description: m.description || '', category: m.category, locationId: lid, visible: m.visible !== false, createdAt: m.createdAt || t, updatedAt: t });
+      return W.store.put(col, m.id || null, { x: m.x, y: m.y, title: m.title, description: m.description || '', category: m.category, locationId: lid, visible: m.visible !== false, createdBy: owner(m.id ? m : null), createdAt: m.createdAt || t, updatedAt: t });
     }
     function findMarker(id) { for (var i = 0; i < markers.length; i++) if (markers[i].id === id) return markers[i]; return null; }
     function pinHtml(m, extra) {
@@ -2244,7 +2263,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       var mids = (fields.mapIds || []).slice();
       if (c) (c.mapIds || []).forEach(function (id) { if (!W.mapIdx[id] && rawHas('maps', id) && mids.indexOf(id) < 0) mids.push(id); });
       var body = { v: 1, name: fields.name, description: fields.description, race: fields.race, organization: fields.organization, mapIds: mids, image: image, visible: fields.visible !== false,
-                   source: (c && c.source) || 'manual', mesaId: (c && c.mesaId) || null, createdAt: (c && c.createdAt) || t, updatedAt: t };
+                   source: (c && c.source) || 'manual', mesaId: (c && c.mesaId) || null, createdBy: owner(c), createdAt: (c && c.createdAt) || t, updatedAt: t };
       return W.store.put('characters', c ? c.id : null, body);
     }).then(function (id) {
       if (oldRef && (newFile || removeImage)) W.store.dropImage(oldRef);
@@ -2498,12 +2517,13 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   function tagPage(item, col) {
     var h1 = pageRoot.querySelector('h1'); if (!h1 || !item || h1.querySelector('.secret-tag, .vis-toggle')) return;
     var secret = isSecret(item);
-    if (secret) h1.insertAdjacentHTML('beforeend', secretTag());
-    if (!isMestre() || !canWrite()) return;
-    h1.insertAdjacentHTML('beforeend', '<button class="btn vis-toggle" type="button" id="visToggle">' + (secret ? 'Revelar a todos' : 'Ocultar dos jogadores') + '</button>');
+    if (secret) h1.insertAdjacentHTML('beforeend', secretTag(item));
+    if (!canSetVis(item) || !canWrite()) return;
+    var who = seenBy(item);
+    h1.insertAdjacentHTML('beforeend', '<button class="btn vis-toggle" type="button" id="visToggle">' + (secret ? 'Revelar a todos' : who === 'o Mestre' ? 'Ocultar dos jogadores' : 'Ocultar dos outros') + '</button>');
     $('visToggle').onclick = function () {
       var b = this; b.disabled = true;
-      W.store.patch(col, item.id, { visible: secret, updatedAt: now() }).then(function () { toast(secret ? 'Agora todos podem ver.' : 'Agora só o Mestre vê.'); }, function (er) { b.disabled = false; toast(errorText(er), true); });
+      W.store.patch(col, item.id, { visible: secret, updatedAt: now() }).then(function () { toast(secret ? 'Agora todos podem ver.' : 'Agora só ' + who + ' ' + seenVerb(item) + '.'); }, function (er) { b.disabled = false; toast(errorText(er), true); });
     };
   }
   var _rMap = renderMapPage, _rLoc = renderLocalPage, _rChar = renderCharPage;
@@ -2627,7 +2647,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     else if (!W.notebooks.length) body = '<div class="empty-state">' + svg(ICON.notes, 34, 1.6) + '<strong>Nenhum título criado</strong><span>' + (can ? 'Crie o primeiro com <b>Novo título</b>.' : 'Os títulos criados vão aparecer aqui.') + '</span></div>';
     else body = '<div class="nb-grid">' + W.notebooks.slice().sort(byName).map(function (nb) {
       var k = nbNotes(nb.id).length;
-      return '<a class="nb-card" href="' + hrefFor('nb:' + nb.id) + '"><span class="ico">' + svg(ICON.notes, 20) + '</span><span class="txt"><strong>' + esc(nb.name) + (isSecret(nb) ? ' ' + secretTag() : '') + '</strong><span class="meta">' + (k ? plural(k, 'anotação', 'anotações') : 'Nenhuma anotação') + '</span></span></a>';
+      return '<a class="nb-card" href="' + hrefFor('nb:' + nb.id) + '"><span class="ico">' + svg(ICON.notes, 20) + '</span><span class="txt"><strong>' + esc(nb.name) + (isSecret(nb) ? ' ' + secretTag(nb) : '') + '</strong><span class="meta">' + (k ? plural(k, 'anotação', 'anotações') : 'Nenhuma anotação') + '</span></span></a>';
     }).join('') + '</div>';
     pageRoot.innerHTML = head + body;
     var b = $('newNbBtn'); if (b) b.onclick = function () { openNotebookForm(null); };
@@ -2645,7 +2665,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir o título <b>' + esc(nb.name) + '</b>' + (list.length ? ' e ' + plural(list.length, 'anotação', 'anotações') + ' dentro dele' : '') + '? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delNbYes">Excluir título</button><button class="btn ghost" type="button" id="delNbNo">Cancelar</button></div></div>' : '');
     var body = list.length ? '<div class="note-list">' + list.map(function (n) {
       var ex = String(n.body || '').replace(/\s+/g, ' ').trim();
-      return '<a class="note-row" href="' + hrefFor('note:' + n.id) + '"><span class="ico">' + svg(ICON.note, 18) + '</span><span class="txt"><strong>' + esc(n.title) + (isSecret(n) ? ' ' + secretTag() : '') + '</strong>' +
+      return '<a class="note-row" href="' + hrefFor('note:' + n.id) + '"><span class="ico">' + svg(ICON.note, 18) + '</span><span class="txt"><strong>' + esc(n.title) + (isSecret(n) ? ' ' + secretTag(n) : '') + '</strong>' +
         (ex ? '<span class="ex">' + esc(clip(ex, 160)) + '</span>' : '') + '<span class="meta">Atualizada em ' + esc(fmtDate(n.updatedAt)) + '</span></span></a>';
     }).join('') + '</div>' : '<div class="empty-state">' + svg(ICON.note, 34, 1.6) + '<strong>Nenhuma anotação neste título</strong><span>' + (can ? 'Crie a primeira com <b>Nova anotação</b>.' : 'As anotações criadas vão aparecer aqui.') + '</span></div>';
     pageRoot.innerHTML = head + body;
@@ -2727,7 +2747,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       var n = name.value.trim().replace(/\s+/g, ' ');
       if (!n) { $('err_nbname').textContent = 'Informe o título.'; $('f_nbname').classList.add('invalid'); name.focus(); return; }
       var t = now(), vis = flagVal('nbvis', nb), btn = $('nbfSave'); btn.disabled = true; modalOpen.busy = true;
-      var p = editing ? W.store.patch('notebooks', nb.id, { name: n, visible: vis, updatedAt: t }).then(function () { return nb.id; }) : W.store.put('notebooks', null, { name: n, visible: vis, createdAt: t, updatedAt: t });
+      var p = editing ? W.store.patch('notebooks', nb.id, { name: n, visible: vis, updatedAt: t }).then(function () { return nb.id; }) : W.store.put('notebooks', null, { name: n, visible: vis, createdBy: me(), createdAt: t, updatedAt: t });
       p.then(function (id) { closeModal(true); toast(editing ? 'Título salvo.' : 'Título criado.'); if (!editing) go(hrefFor('nb:' + id)); },
         function (er) { if (!modalOpen) return; modalOpen.busy = false; btn.disabled = false; $('nbfErr').textContent = errorText(er); });
     };
@@ -2736,7 +2756,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   function openNoteForm(nb) {
     showModal('<form id="noteForm" novalidate><h2 id="nfTitle">Nova anotação</h2><p class="lede" style="margin-top:-6px">Em ' + esc(nb.name) + '</p>' +
       '<div class="field" id="f_nfname"><label for="nfname">Título da anotação</label><input type="text" id="nfname" maxlength="120" autocomplete="off" placeholder="Ex.: Resumo da sessão" value=""><div class="err" id="err_nfname"></div></div>' +
-      flagHtml('nfvis', isSecret(nb) ? nb : null) +
+      flagHtml('nfvis', null) +
       '<div class="form-err" id="nfErr" role="alert"></div>' +
       '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="nfCancel">Cancelar</button><button class="btn primary" type="submit" id="nfSave">Criar e escrever</button></div></form>');
     modal.setAttribute('aria-labelledby', 'nfTitle');
@@ -2748,7 +2768,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       var n = name.value.trim().replace(/\s+/g, ' ');
       if (!n) { $('err_nfname').textContent = 'Dê um título à anotação.'; $('f_nfname').classList.add('invalid'); name.focus(); return; }
       var t = now(), btn = $('nfSave'); btn.disabled = true; modalOpen.busy = true;
-      W.store.put('notes', null, { notebookId: nb.id, title: n, body: '', visible: flagVal('nfvis', null), createdAt: t, updatedAt: t }).then(function (id) {
+      W.store.put('notes', null, { notebookId: nb.id, title: n, body: '', visible: flagVal('nfvis', null), createdBy: me(), createdAt: t, updatedAt: t }).then(function (id) {
         closeModal(true); toast('Anotação criada.');
         S.pendingEdit = id; go(hrefFor('note:' + id));
       }, function (er) { if (!modalOpen) return; modalOpen.busy = false; btn.disabled = false; $('nfErr').textContent = errorText(er); });
@@ -2941,7 +2961,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     ).sort(function (a, b) { return (b.t || 0) - (a.t || 0); }).slice(0, 6);
     var allLoaded = W.loaded.maps && W.loaded.locations && W.loaded.characters && W.loaded.notes;
     var recentHtml = recent.length ? '<div class="note-list">' + recent.map(function (x) {
-      return '<a class="note-row" href="' + x.href + '"><span class="ico">' + svg(x.icon, 18) + '</span><span class="txt"><strong>' + esc(x.name || 'Sem nome') + (isSecret(x.item) ? ' ' + secretTag() : '') + '</strong>' +
+      return '<a class="note-row" href="' + x.href + '"><span class="ico">' + svg(x.icon, 18) + '</span><span class="txt"><strong>' + esc(x.name || 'Sem nome') + (isSecret(x.item) ? ' ' + secretTag(x.item) : '') + '</strong>' +
         '<span class="meta">' + esc(x.kind) + (x.t ? ' · atualizado em ' + esc(fmtDate(x.t)) : '') + '</span></span></a>';
     }).join('') + '</div>' : allLoaded ? '<div class="empty-state">' + svg(ICON.notes, 34, 1.6) + '<strong>Nada por aqui ainda</strong><span>Mapas, locais, personagens e anotações criados vão aparecer aqui.</span></div>' : '<p class="lede">Carregando…</p>';
 
