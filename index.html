@@ -393,6 +393,12 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .char-thumb img { object-position: 50% 25%; }
 .loc-grid:has(.char-thumb) { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rels { display: flex; flex-direction: column; gap: 6px; }
+.rels:empty { display: none; }
+.rel-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rel-row .person { flex: 0 1 auto; max-width: 45%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel-row .person i { flex: none; }
+.field .rel-row input[type=text] { flex: 1; min-width: 0; width: auto; padding: 7px 10px; font-size: 13px; }
 .facts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
 .facts dt { color: var(--muted); font-size: 12px; font-weight: 700; align-self: center; }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
@@ -443,6 +449,16 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .vis-flag span { display: grid; gap: 2px; }
 .vis-flag b { font-size: 13px; }
 .vis-flag small { font-size: 12px; color: var(--muted); }
+.vis-wrap { display: flex; flex-direction: column; gap: 8px; }
+.vis-share { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line-2); }
+.vis-share[hidden] { display: none; }
+.vis-share .lab { font-size: 12px; font-weight: 700; color: var(--muted); }
+.vis-users { display: flex; flex-wrap: wrap; gap: 6px; }
+.vis-user { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--well); border: 1px solid var(--line-2); font-size: 13px; cursor: pointer; }
+.vis-user:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.vis-user:has(input:disabled) { cursor: default; opacity: .75; }
+.vis-user input { margin: 0; width: 14px; height: 14px; accent-color: var(--accent); }
+.vis-user small { font-size: 11px; color: var(--faint); }
 .secret-tag { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; margin-left: 10px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; color: var(--tag-violet); border: 1px solid rgba(139,92,246,.45); background: rgba(139,92,246,.14); letter-spacing: 0; white-space: nowrap; }
 .node-row .secret-ico { flex: none; color: var(--tag-violet-strong); margin-left: auto; display: inline-flex; }
 .app.collapsed .node-row .secret-ico { display: none; }
@@ -1199,27 +1215,59 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   function me() { return (window.hubUser && window.hubUser.id) || null; }
   function isSecret(x) { return !!x && x.visible === false; }
   function isMine(x) { return !!x && !!x.createdBy && x.createdBy === me(); }
-  function pub(list) { return isMestre() ? list : list.filter(function (x) { return !isSecret(x) || isMine(x); }); }
+  // The Mestre can also share a hidden item with chosen accounts (sharedWith: [userId]).
+  function sharedWithMe(x) { return !!x && !!me() && (x.sharedWith || []).indexOf(me()) >= 0; }
+  function pub(list) { return isMestre() ? list : list.filter(function (x) { return !isSecret(x) || isMine(x) || sharedWithMe(x); }); }
   // createdBy for a body being saved: kept on edits, this user on new items.
   function owner(prev) { return prev ? (prev.createdBy || null) : me(); }
   function canSetVis(item) { return isMestre() || !item || isMine(item); }
-  // Who sees an item that is not visible to everyone: "o Mestre", "você e o Mestre" or "o Mestre e Ana".
+  // Who sees an item that is not visible to everyone: "o Mestre", "você e o Mestre", "o Mestre e Ana"
+  // or, with accounts it was shared with, "o Mestre, Ana e Bruno".
   function seenBy(item) {
-    var by = item ? item.createdBy : me(), u = null;
-    for (var i = 0; by && i < W.users.length; i++) if (W.users[i].id === by) u = W.users[i];
-    if (!by || (u && u.role === 'mestre')) return 'o Mestre';
-    if (by === me()) return 'você e o Mestre';
-    return 'o Mestre e ' + (u ? u.name : 'quem criou');
+    var by = item ? item.createdBy : me(), names = [], mine = false;
+    function add(id, isCreator) {
+      if (!id) return;
+      var u = W.users.filter(function (x) { return x.id === id; })[0];
+      if (u && u.role === 'mestre') return;
+      if (id === me()) { mine = true; return; }
+      var n = u ? u.name : isCreator ? 'quem criou' : null;
+      if (n && names.indexOf(n) < 0) names.push(n);
+    }
+    add(by, true);
+    ((item && item.sharedWith) || []).forEach(function (id) { add(id, false); });
+    var all = (mine ? ['você', 'o Mestre'] : ['o Mestre']).concat(names);
+    return all.length === 1 ? all[0] : all.slice(0, -1).join(', ') + ' e ' + all[all.length - 1];
   }
   function seenVerb(item) { return seenBy(item) === 'o Mestre' ? 'vê' : 'veem'; }
   function rawHas(col, id) { return !!id && (W.raw[col] || []).some(function (x) { return x.id === id; }); }
   function rawGet(col, id) { var l = W.raw[col] || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
-  function flagHtml(id, item) {
+  // share: the Mestre also gets a list of accounts that can see the item while it is hidden.
+  function flagHtml(id, item, share) {
     if (!window.hubUser || !canSetVis(item)) return '';
     var on = item ? !isSecret(item) : false;
-    return '<label class="vis-flag" for="' + id + '"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span><b>Visível para todos</b><small>Desmarcado, só ' + esc(seenBy(item)) + ' ' + seenVerb(item) + '.</small></span></label>';
+    var users = share && isMestre() ? W.users.filter(function (u) { return u.role !== 'mestre'; }).sort(byName) : [];
+    var flag = '<label class="vis-flag" for="' + id + '"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span><b>Visível para todos</b><small>' +
+      (users.length ? 'Desmarcado, só o Mestre e as contas marcadas abaixo veem.' : 'Desmarcado, só ' + esc(seenBy(item)) + ' ' + seenVerb(item) + '.') + '</small></span></label>';
+    if (!users.length) return flag;
+    var shared = (item && item.sharedWith) || [];
+    return '<div class="vis-wrap">' + flag + '<div class="vis-share" id="' + id + '_share"' + (on ? ' hidden' : '') + '><span class="lab">Contas que podem ver</span><div class="vis-users">' +
+      users.map(function (u) {
+        var creator = !!item && item.createdBy === u.id;
+        return '<label class="vis-user"><input type="checkbox" data-share="' + esc(u.id) + '"' + (creator || shared.indexOf(u.id) >= 0 ? ' checked' : '') + (creator ? ' disabled' : '') + '>' +
+          '<span>' + esc(u.name) + '</span><small>' + (creator ? 'Criou' : esc(roleLabel(u.role))) + '</small></label>';
+      }).join('') + '</div></div></div>';
   }
   function flagVal(id, item) { var el = document.getElementById(id); if (el) return !!el.checked; return item ? !isSecret(item) : true; }
+  // The accounts picked in flagHtml's list; without the list (not the Mestre), the item keeps what it had.
+  function shareVal(id, item) {
+    var box = document.getElementById(id + '_share');
+    if (!box) return ((item && item.sharedWith) || []).slice();
+    return [].map.call(box.querySelectorAll('input[data-share]:checked:not(:disabled)'), function (el) { return el.getAttribute('data-share'); });
+  }
+  document.addEventListener('change', function (e) {
+    var box = e.target.closest && e.target.closest('.vis-flag') && document.getElementById(e.target.id + '_share');
+    if (box) box.hidden = e.target.checked;
+  });
   function secretTag(item) { return '<span class="secret-tag" title="Não está visível para todos">' + svg(EYE_OFF, 12, 2.4) + esc('Só ' + seenBy(item)) + '</span>'; }
   function refilter() {
     W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters);
@@ -1231,18 +1279,18 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   // ---------- writes ----------
   function now() { return Date.now(); }
   var Ops = {
-    createMap: function (name, parentId, file, dims, visible) {
+    createMap: function (name, parentId, file, dims, visible, shared) {
       return W.store.upload(file).then(function (up) {
         var t = now();
-        return W.store.put('maps', null, { v: 2, name: name, parentId: parentId || null, visible: visible !== false, image: { ref: up.ref, w: dims.w, h: dims.h, type: up.type, size: up.size }, createdBy: me(), createdAt: t, updatedAt: t });
+        return W.store.put('maps', null, { v: 2, name: name, parentId: parentId || null, visible: visible !== false, sharedWith: shared || [], image: { ref: up.ref, w: dims.w, h: dims.h, type: up.type, size: up.size }, createdBy: me(), createdAt: t, updatedAt: t });
       });
     },
-    updateMap: function (id, name, parentId, visible) {
+    updateMap: function (id, name, parentId, visible, shared) {
       parentId = parentId || null;
       var orig = rawGet('maps', id);
       if (!parentId && orig && orig.parentId && !W.mapIdx[orig.parentId] && rawHas('maps', orig.parentId)) parentId = orig.parentId;
       if (parentId && validParents(id)[parentId]) return Promise.reject({ code: 'cycle' });
-      return W.store.patch('maps', id, { name: name, parentId: parentId, visible: visible !== false, updatedAt: now() });
+      return W.store.patch('maps', id, { name: name, parentId: parentId, visible: visible !== false, sharedWith: shared || (orig && orig.sharedWith) || [], updatedAt: now() });
     },
     deleteMap: function (m) {
       var up = W.parent[m.id] || null, col = 'maps/' + m.id + '/markers';
@@ -1270,7 +1318,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
         var cids = (fields.characterIds || []).slice(), mid = fields.mapId || null;
         if (loc) (loc.characterIds || []).forEach(function (id) { if (!W.charIdx[id] && rawHas('characters', id) && cids.indexOf(id) < 0) cids.push(id); });
         if (!mid && loc && loc.mapId && !W.mapIdx[loc.mapId] && rawHas('maps', loc.mapId)) mid = loc.mapId;
-        var body = { v: 1, name: fields.name, description: fields.description, image: image, characterIds: cids, mapId: mid, visible: fields.visible !== false,
+        var body = { v: 1, name: fields.name, description: fields.description, image: image, characterIds: cids, mapId: mid, visible: fields.visible !== false, sharedWith: fields.sharedWith || (loc && loc.sharedWith) || [],
                      position: (loc && loc.position) || null, createdBy: owner(loc), createdAt: (loc && loc.createdAt) || t, updatedAt: t };
         return W.store.put('locations', loc ? loc.id : null, body).then(function (id) {
           if (oldRef && (newFile || removeImage)) W.store.dropImage(oldRef);
@@ -1290,14 +1338,14 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
         .then(function () { return W.store.dropImage(l.image && l.image.ref); });
     },
     // Turn picker selections into character ids, creating characters that do not exist yet.
-    ensureCharacters: function (sel, visible) {
+    ensureCharacters: function (sel, visible, shared) {
       return sel.reduce(function (p, s) {
         return p.then(function (ids) {
           if (s.id && W.charIdx[s.id]) return ids.concat([s.id]);
           var existing = W.characters.filter(function (c) { return norm(c.name) === norm(s.name); })[0];
           if (existing) return ids.concat([existing.id]);
           var t = now();
-          return W.store.put('characters', null, { name: s.name, source: s.source || 'manual', mesaId: s.mesaId || null, visible: visible !== false, createdBy: me(), createdAt: t, updatedAt: t }).then(function (id) { return ids.concat([id]); });
+          return W.store.put('characters', null, { name: s.name, source: s.source || 'manual', mesaId: s.mesaId || null, visible: visible !== false, sharedWith: shared || [], createdBy: me(), createdAt: t, updatedAt: t }).then(function (id) { return ids.concat([id]); });
         });
       }, Promise.resolve([])).then(function (ids) { return ids.filter(function (v, i) { return ids.indexOf(v) === i; }); });
     }
@@ -1769,7 +1817,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       '<div class="field"><label for="mparent">Mapa pai</label><select id="mparent">' + mapOptions(parentNow, exclude, 'Nenhum (mapa de nível superior)') + '</select>' +
       '<span class="hint-text">O mapa mais amplo onde este fica. Ex.: uma cidade dentro de uma região.' + (editing && exclude && Object.keys(exclude).length > 1 ? ' Submapas deste mapa não aparecem na lista, para não criar ciclos.' : '') + '</span></div>' +
       (editing ? '' : imageFieldHtml('mimg', 'Imagem do mapa', 'PNG, JPG, WebP ou GIF, até 20 MB. A imagem é guardada no tamanho original.')) +
-      flagHtml('mvis', m) +
+      flagHtml('mvis', m, true) +
       '<div class="form-err" id="mfErr" role="alert"></div>' +
       '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="mfCancel">Cancelar</button><button class="btn primary" type="submit" id="mfSave">' + (editing ? 'Salvar mapa' : 'Criar mapa') + '</button></div></form>';
     var img;
@@ -1789,8 +1837,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       if (!ok) { (n ? (img ? img.drop : $('mparent')) : name).focus(); return; }
       modalOpen.busy = true;
       var btn = $('mfSave'); btn.disabled = true; btn.textContent = editing ? 'Salvando…' : 'Enviando imagem…'; $('mfCancel').disabled = true; $('mfErr').textContent = '';
-      var vis = flagVal('mvis', m);
-      var p = editing ? Ops.updateMap(m.id, n, parent, vis).then(function () { return m.id; }) : Ops.createMap(n, parent, img.file, img.dims, vis);
+      var vis = flagVal('mvis', m), share = shareVal('mvis', m);
+      var p = editing ? Ops.updateMap(m.id, n, parent, vis, share).then(function () { return m.id; }) : Ops.createMap(n, parent, img.file, img.dims, vis, share);
       p.then(function (id) {
         closeModal(true);
         toast(editing ? 'Mapa salvo.' : 'Mapa criado.');
@@ -1816,7 +1864,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       '<input type="text" id="lchar" autocomplete="off" placeholder="Buscar ou digitar um nome" role="combobox" aria-expanded="false" aria-controls="pickList" aria-autocomplete="list">' +
       '<div class="suggest" id="pickList" role="listbox" hidden></div></div><span class="hint-text">Sugere personagens já cadastrados e os da Mesa de Combate. Enter adiciona um nome novo.</span></div>' +
       '<div class="field"><label for="lmap">Mapa relacionado</label><select id="lmap">' + mapOptions(editing ? locMapId(l) : (presetMap || ''), null, 'Nenhum mapa') + '</select><span class="hint-text">O mapa onde este local fica, dentro da hierarquia de mapas.</span></div>' +
-      flagHtml('lvis', l) +
+      flagHtml('lvis', l, true) +
       '<div class="form-err" id="lfErr" role="alert"></div>' +
       '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="lfCancel">Cancelar</button><button class="btn primary" type="submit" id="lfSave">' + (editing ? 'Salvar local' : 'Criar local') + '</button></div></form>';
     var img;
@@ -1881,9 +1929,9 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       var btn = $('lfSave'); btn.disabled = true; btn.textContent = img && img.file ? 'Enviando imagem…' : 'Salvando…'; $('lfCancel').disabled = true; $('lfErr').textContent = '';
       var mapId = $('lmap').value || null;
       if (mapId && !mapById(mapId)) mapId = null;
-      var lvis = flagVal('lvis', l);
-      Ops.ensureCharacters(sel, lvis).then(function (ids) {
-        return Ops.saveLocation(l, { name: n, description: $('ldesc').value.trim(), characterIds: ids, mapId: mapId, visible: lvis }, img && img.file, img && img.dims, img && img.removed);
+      var lvis = flagVal('lvis', l), lshare = shareVal('lvis', l);
+      Ops.ensureCharacters(sel, lvis, lshare).then(function (ids) {
+        return Ops.saveLocation(l, { name: n, description: $('ldesc').value.trim(), characterIds: ids, mapId: mapId, visible: lvis, sharedWith: lshare }, img && img.file, img && img.dims, img && img.removed);
       }).then(function (id) {
         closeModal(true);
         toast(editing ? 'Local salvo.' : 'Local criado.');
@@ -2252,6 +2300,26 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   function charMaps(c) { return ((c && c.mapIds) || []).map(function (id) { return W.mapIdx[id]; }).filter(Boolean).sort(byName); }
   function mapCharacters(mapId) { return W.characters.filter(function (c) { return (c.mapIds || []).indexOf(mapId) >= 0; }).sort(byName); }
   function charSubtitle(c) { return [c.race, c.organization].filter(function (v) { return v && v.trim(); }).join(' · '); }
+  // A character ↔ character link lives in character.relations ([{ charId, type }]) of the one who
+  // declared it; "type" is how that character sees the other. The other side shows it as "back".
+  var RELATION_DEFAULTS = ['Aliado', 'Amigo', 'Rival', 'Inimigo', 'Família', 'Irmão', 'Pai', 'Mãe', 'Filho', 'Cônjuge', 'Mentor', 'Aprendiz', 'Líder', 'Subordinado'];
+  function relationTypes() {
+    var seen = {}, out = [];
+    W.characters.forEach(function (c) { (c.relations || []).forEach(function (r) { var v = (r.type || '').trim(); if (v && !seen[norm(v)]) { seen[norm(v)] = true; out.push(v); } }); });
+    RELATION_DEFAULTS.forEach(function (v) { if (!seen[norm(v)]) { seen[norm(v)] = true; out.push(v); } });
+    return out.sort(function (a, b) { return a.localeCompare(b, 'pt'); });
+  }
+  function charRelations(c) {
+    var seen = {}, own = [], back = [];
+    (c.relations || []).forEach(function (r) { var o = charById(r.charId); if (o && o.id !== c.id && !seen[o.id]) { seen[o.id] = true; own.push({ c: o, type: r.type || '' }); } });
+    W.characters.forEach(function (o) {
+      if (o.id === c.id || seen[o.id]) return;
+      var r = (o.relations || []).filter(function (x) { return x.charId === c.id; })[0];
+      if (r) back.push({ c: o, type: r.type || '', back: true });
+    });
+    function byChar(a, b) { return byName(a.c, b.c); }
+    return own.sort(byChar).concat(back.sort(byChar));
+  }
 
   Ops.saveCharacter = function (c, fields, newFile, newDims, removeImage, locIds) {
     var oldRef = c && c.image && c.image.ref;
@@ -2262,7 +2330,10 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       var t = now();
       var mids = (fields.mapIds || []).slice();
       if (c) (c.mapIds || []).forEach(function (id) { if (!W.mapIdx[id] && rawHas('maps', id) && mids.indexOf(id) < 0) mids.push(id); });
-      var body = { v: 1, name: fields.name, description: fields.description, race: fields.race, organization: fields.organization, mapIds: mids, image: image, visible: fields.visible !== false,
+      // Keep links to characters this user can't see, the same way as maps.
+      var rels = (fields.relations || []).slice();
+      if (c) (c.relations || []).forEach(function (r) { if (!W.charIdx[r.charId] && rawHas('characters', r.charId) && !rels.some(function (x) { return x.charId === r.charId; })) rels.push(r); });
+      var body = { v: 1, name: fields.name, description: fields.description, race: fields.race, organization: fields.organization, mapIds: mids, relations: rels, image: image, visible: fields.visible !== false, sharedWith: fields.sharedWith || (c && c.sharedWith) || [],
                    source: (c && c.source) || 'manual', mesaId: (c && c.mesaId) || null, createdBy: owner(c), createdAt: (c && c.createdAt) || t, updatedAt: t };
       return W.store.put('characters', c ? c.id : null, body);
     }).then(function (id) {
@@ -2278,7 +2349,11 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   Ops.deleteCharacter = function (c) {
     return W.raw.locations.filter(function (l) { return (l.characterIds || []).indexOf(c.id) >= 0; }).reduce(function (q, l) {
       return q.then(function () { return W.store.patch('locations', l.id, { characterIds: (l.characterIds || []).filter(function (x) { return x !== c.id; }), updatedAt: now() }); });
-    }, Promise.resolve()).then(function () { return W.store.remove('characters', c.id); })
+    }, Promise.resolve()).then(function () {
+      return W.raw.characters.filter(function (o) { return o.id !== c.id && (o.relations || []).some(function (r) { return r.charId === c.id; }); }).reduce(function (q, o) {
+        return q.then(function () { return W.store.patch('characters', o.id, { relations: o.relations.filter(function (r) { return r.charId !== c.id; }), updatedAt: now() }); });
+      }, Promise.resolve());
+    }).then(function () { return W.store.remove('characters', c.id); })
       .then(function () { return W.store.dropImage(c.image && c.image.ref); });
   };
 
@@ -2303,13 +2378,13 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     var q = norm(S.ui.q);
     var list = W.characters.slice().sort(byName).filter(function (c) {
       if (!q) return true;
-      return norm(c.name + ' ' + (c.race || '') + ' ' + (c.organization || '') + ' ' + (c.description || '') + ' ' + charLocations(c.id).map(function (l) { return l.name; }).join(' ') + ' ' + charMaps(c).map(function (m) { return m.name; }).join(' ')).indexOf(q) >= 0;
+      return norm(c.name + ' ' + (c.race || '') + ' ' + (c.organization || '') + ' ' + (c.description || '') + ' ' + charLocations(c.id).map(function (l) { return l.name; }).join(' ') + ' ' + charMaps(c).map(function (m) { return m.name; }).join(' ') + ' ' + charRelations(c).map(function (r) { return r.c.name; }).join(' ')).indexOf(q) >= 0;
     });
     var cnt = $('charCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.characters.length : plural(W.characters.length, 'personagem', 'personagens');
     el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (c) {
-      var L = charLocations(c.id).length, M = charMaps(c).length, sub = charSubtitle(c);
+      var L = charLocations(c.id).length, M = charMaps(c).length, R = charRelations(c).length, sub = charSubtitle(c);
       return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
-        '<span class="where">' + (sub ? esc(sub) : 'Sem raça ou organização') + '</span>' + (L || M ? '<span class="meta">' + [M ? plural(M, 'mapa', 'mapas') : '', L ? plural(L, 'local', 'locais') : ''].filter(Boolean).join(' · ') + '</span>' : '') + '</div></a>';
+        '<span class="where">' + (sub ? esc(sub) : 'Sem raça ou organização') + '</span>' + (L || M || R ? '<span class="meta">' + [M ? plural(M, 'mapa', 'mapas') : '', L ? plural(L, 'local', 'locais') : '', R ? plural(R, 'relação', 'relações') : ''].filter(Boolean).join(' · ') + '</span>' : '') + '</div></a>';
     }).join('') + '</div>' : '<p class="lede">Nenhum personagem encontrado para essa busca.</p>';
     fillImages(el);
   }
@@ -2320,7 +2395,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       pageRoot.innerHTML = crumbsHtml('chars') + (W.loaded.characters ? '<h1>Personagem não encontrado</h1><p class="lede">Esse personagem foi excluído ou o link está incompleto.</p><div><a class="btn" href="#personagens">Voltar para Personagens</a></div>' : '<p class="lede">Carregando personagem…</p>');
       return;
     }
-    var can = canWrite(), locs = charLocations(c.id);
+    var can = canWrite(), locs = charLocations(c.id), rels = charRelations(c);
     var head = crumbsHtml('char:' + c.id) + '<div class="head-row"><div><span class="badge">' + svg(ICON.user, 12, 2.4) + 'Personagem</span><h1>' + esc(c.name) + '</h1>' +
       (charSubtitle(c) ? '<p class="lede">' + esc(charSubtitle(c)) + '</p>' : '') + '</div>' +
       (can ? '<div class="btn-row"><button class="btn" type="button" id="editCharBtn">' + svg(ICON.edit, 15) + 'Editar personagem</button><button class="btn danger" type="button" id="delCharBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
@@ -2329,6 +2404,11 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       '<section><h2 class="sec-title">Descrição</h2>' + (c.description ? '<p class="long">' + esc(c.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>';
     var side = '<div class="box"><h2 class="sec-title" style="margin:0">Ficha</h2><dl class="facts"><dt>Raça</dt><dd>' + (c.race ? esc(c.race) : '<span class="none">Não informada</span>') + '</dd>' +
       '<dt>Organização</dt><dd>' + (c.organization ? esc(c.organization) : '<span class="none">Não informada</span>') + '</dd></dl></div>' +
+      '<div class="box"><h2 class="sec-title" style="margin:0">Relacionamentos</h2>' +
+      (rels.length ? '<ul class="links">' + rels.map(function (r) {
+        var how = r.back ? (r.type ? 'Vê ' + c.name + ' como ' + r.type : 'Cita ' + c.name) : (r.type || 'Relação sem tipo');
+        return '<li><a class="row-link" href="' + charHref(r.c.id) + '">' + thumbSlot(r.c.image && r.c.image.ref, ICON.user) + '<span class="mtext"><b>' + esc(r.c.name) + '</b><span class="where">' + esc(how) + '</span></span></a></li>';
+      }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum relacionamento.' + (can ? ' Use <b>Editar personagem</b> para ligar outros personagens.' : '') + '</p>') + '</div>' +
       '<div class="box"><h2 class="sec-title" style="margin:0">Mapas relacionados</h2>' +
       (charMaps(c).length ? '<ul class="links">' + charMaps(c).map(function (m) { var pth = mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › '); return '<li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<span class="mtext"><b>' + esc(m.name) + '</b><span class="where">' + (pth ? esc(pth) : 'Nível superior') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum mapa relacionado.' + (can ? ' Use <b>Editar personagem</b> para ligar mapas.' : '') + '</p>') + '</div>' +
       '<div class="box"><h2 class="sec-title" style="margin:0">Locais relacionados</h2>' +
@@ -2349,6 +2429,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     var editing = !!c, canImg = W.store.canUpload;
     var races = distinct('race'); RACE_DEFAULTS.forEach(function (r) { if (!races.some(function (x) { return norm(x) === norm(r); })) races.push(r); });
     var orgs = distinct('organization');
+    var others = W.characters.filter(function (o) { return !editing || o.id !== c.id; }).sort(byName);
     var html = '<form id="charForm" novalidate><h2 id="cfTitle">' + (editing ? 'Editar personagem' : 'Novo personagem') + '</h2>' +
       '<div class="field" id="f_cname"><label for="cname">Nome</label><input type="text" id="cname" maxlength="100" autocomplete="off" placeholder="Ex.: Brynhild" value="' + esc(editing ? c.name : '') + '"><div class="err" id="err_cname"></div></div>' +
       (canImg ? imageFieldHtml('cimg', 'Imagem', 'Retrato ou ilustração. Opcional, até 20 MB.') : '') +
@@ -2361,7 +2442,12 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       '<div class="field"><label for="cloc">Locais relacionados</label><div class="picker"><div class="people" id="cLocSel"></div>' +
       '<input type="text" id="cloc" autocomplete="off" placeholder="' + (W.locations.length ? 'Buscar local' : 'Nenhum local cadastrado ainda') + '"' + (W.locations.length ? '' : ' disabled') + ' role="combobox" aria-expanded="false" aria-controls="cLocList" aria-autocomplete="list">' +
       '<div class="suggest" id="cLocList" role="listbox" hidden></div></div><span class="hint-text">Opcional. Os locais criados em Localização aparecem aqui.</span></div>' +
-      flagHtml('cvis', c) +
+      '<div class="field"><label for="crel">Relacionamentos</label><div class="picker"><div class="rels" id="cRelSel"></div>' +
+      '<input type="text" id="crel" autocomplete="off" placeholder="' + (others.length ? 'Buscar personagem' : 'Nenhum outro personagem cadastrado ainda') + '"' + (others.length ? '' : ' disabled') + ' role="combobox" aria-expanded="false" aria-controls="cRelList" aria-autocomplete="list">' +
+      '<div class="suggest" id="cRelList" role="listbox" hidden></div></div>' +
+      '<datalist id="relTypeList">' + relationTypes().map(function (r) { return '<option value="' + esc(r) + '">'; }).join('') + '</datalist>' +
+      '<span class="hint-text">Opcional. Ao lado de cada um, diga como este personagem o vê. Ex.: Irmão, Rival, Mentor. A relação aparece na ficha dos dois.</span></div>' +
+      flagHtml('cvis', c, true) +
       '<div class="form-err" id="cfErr" role="alert"></div>' +
       '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="cfCancel">Cancelar</button><button class="btn primary" type="submit" id="cfSave">' + (editing ? 'Salvar personagem' : 'Criar personagem') + '</button></div></form>';
     var img;
@@ -2434,6 +2520,50 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     $('cLocSel').addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; sel.splice(+b.getAttribute('data-rm'), 1); paintSel(); input.focus(); });
     paintSel();
 
+    // ---- relationship picker (other characters, each with a free-text type) ----
+    var relSel = [];
+    if (editing) (c.relations || []).forEach(function (r) { if (r.charId !== c.id && charById(r.charId) && !relSel.some(function (x) { return x.charId === r.charId; })) relSel.push({ charId: r.charId, type: r.type || '' }); });
+    (function () {
+      var input = $('crel'), list = $('cRelList'), box = $('cRelSel'), active = 0, options = [];
+      function paintSel() {
+        box.innerHTML = relSel.map(function (r, i) {
+          var o = charById(r.charId); if (!o) return '';
+          return '<div class="rel-row"><span class="person">' + avatarI(o) + esc(o.name) + '</span>' +
+            '<input type="text" data-ti="' + i + '" list="relTypeList" maxlength="60" autocomplete="off" placeholder="Tipo de relação" aria-label="Tipo de relação com ' + esc(o.name) + '" value="' + esc(r.type) + '">' +
+            '<button class="icon-btn" type="button" data-rm="' + i + '" aria-label="Remover ' + esc(o.name) + '">' + svg(ICON.x, 14, 2.6) + '</button></div>';
+        }).join('');
+        fillImages(box);
+      }
+      function paintList() {
+        var q = norm(input.value.trim());
+        options = others.filter(function (o) { return !relSel.some(function (r) { return r.charId === o.id; }) && (!q || norm(o.name + ' ' + charSubtitle(o)).indexOf(q) >= 0); }).slice(0, 40);
+        if (!options.length) { list.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
+        active = Math.min(active, options.length - 1);
+        list.innerHTML = options.map(function (o, i) { return '<button type="button" role="option" id="ropt' + i + '" data-i="' + i + '" class="' + (i === active ? 'act' : '') + '" aria-selected="' + (i === active) + '">' + esc(o.name) + '<small>' + esc(charSubtitle(o)) + '</small></button>'; }).join('');
+        list.hidden = false; input.setAttribute('aria-expanded', 'true'); input.setAttribute('aria-activedescendant', 'ropt' + active);
+      }
+      function pick(i) {
+        var o = options[i]; if (!o) return;
+        relSel.push({ charId: o.id, type: '' }); input.value = ''; active = 0; paintSel(); list.hidden = true; input.setAttribute('aria-expanded', 'false');
+        var t = box.querySelector('[data-ti="' + (relSel.length - 1) + '"]'); if (t) t.focus();
+      }
+      input.addEventListener('focus', paintList);
+      input.addEventListener('input', function () { active = 0; paintList(); });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); if (list.hidden) { active = 0; paintList(); } else { active = Math.min(options.length - 1, active + 1); paintList(); } }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(0, active - 1); paintList(); }
+        else if (e.key === 'Enter') { e.preventDefault(); if (!list.hidden && options.length) pick(active); }
+        else if (e.key === 'Escape' && !list.hidden) { e.stopPropagation(); list.hidden = true; }
+      });
+      input.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement !== input) list.hidden = true; }, 150); });
+      list.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      list.addEventListener('click', function (e) { var b = e.target.closest('[data-i]'); if (b) pick(+b.getAttribute('data-i')); });
+      box.addEventListener('input', function (e) { var t = e.target.closest('[data-ti]'); if (t) relSel[+t.getAttribute('data-ti')].type = t.value; });
+      box.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('[data-ti]')) { e.preventDefault(); input.focus(); } });
+      box.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; relSel.splice(+b.getAttribute('data-rm'), 1); paintSel(); input.focus(); });
+      paintSel();
+    })();
+
     $('cfCancel').onclick = function () { closeModal(); };
     $('charForm').onsubmit = function (e) {
       e.preventDefault();
@@ -2447,7 +2577,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       modalOpen.busy = true;
       var btn = $('cfSave'); btn.disabled = true; btn.textContent = img && img.file ? 'Enviando imagem…' : 'Salvando…'; $('cfCancel').disabled = true; $('cfErr').textContent = '';
       var locIds = sel.filter(function (id) { return locById(id); });
-      Ops.saveCharacter(c, { name: n, description: $('cdesc').value.trim(), race: $('crace').value.trim(), organization: $('corg').value.trim(), mapIds: mapSel.filter(function (id) { return mapById(id); }), visible: flagVal('cvis', c) }, img && img.file, img && img.dims, img && img.removed, locIds)
+      Ops.saveCharacter(c, { name: n, description: $('cdesc').value.trim(), race: $('crace').value.trim(), organization: $('corg').value.trim(), mapIds: mapSel.filter(function (id) { return mapById(id); }), relations: relSel.filter(function (r) { return charById(r.charId); }).map(function (r) { return { charId: r.charId, type: r.type.trim() }; }), visible: flagVal('cvis', c), sharedWith: shareVal('cvis', c) }, img && img.file, img && img.dims, img && img.removed, locIds)
         .then(function (id) {
           closeModal(true);
           toast(editing ? 'Personagem salvo.' : 'Personagem criado.');
