@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus, onlineSyncService } from '../utils/onlineSync';
-import { Swords, Settings, Plus, Download, Upload, Users, LogIn, LogOut, ShieldCheck, UserCheck, Radio, Copy, Check, EyeOff, Eye, Activity } from 'lucide-react';
+import { Swords, Settings, Plus, Download, Upload, Users, LogIn, LogOut, ShieldCheck, UserCheck, Radio, Copy, Check, EyeOff, Eye, Activity, Map, Columns, FileText } from 'lucide-react';
+
+export type ViewMode = 'sheets' | 'tactical' | 'split';
 
 interface TopNavProps {
   combats: Combat[];
@@ -18,6 +20,8 @@ interface TopNavProps {
   onOpenOnlineRoomModal: () => void;
   onOpenSystemLog: () => void;
   systemLogsCount: number;
+  activeViewMode: ViewMode;
+  onSelectViewMode: (mode: ViewMode) => void;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
@@ -35,6 +39,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   onOpenOnlineRoomModal,
   onOpenSystemLog,
   systemLogsCount,
+  activeViewMode,
+  onSelectViewMode,
 }) => {
   const [copied, setCopied] = useState(false);
   const [combatMenuOpen, setCombatMenuOpen] = useState(false);
@@ -180,6 +186,48 @@ export const TopNav: React.FC<TopNavProps> = ({
               </div>
             )}
           </div>
+        </div>
+
+        {/* Zone 1.5: Modo de Visualização (Ficha & Log / Mesa Tática / Dividida) */}
+        <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
+          <button
+            onClick={() => onSelectViewMode('sheets')}
+            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+              activeViewMode === 'sheets'
+                ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+            title="Visualização em Fichas, Lista de NPCs e Log de Combate"
+          >
+            <FileText size={13} />
+            <span className="hidden sm:inline">Fichas & Log</span>
+          </button>
+
+          <button
+            onClick={() => onSelectViewMode('tactical')}
+            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+              activeViewMode === 'tactical'
+                ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-amber-400 hover:bg-slate-800'
+            }`}
+            title="Mesa Tática Interativa (Grid Hexagonal GURPS, Tokens e Medição)"
+          >
+            <Map size={13} className={activeViewMode === 'tactical' ? 'text-slate-950' : 'text-amber-400'} />
+            <span className="font-bold">Mesa Tática</span>
+          </button>
+
+          <button
+            onClick={() => onSelectViewMode('split')}
+            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+              activeViewMode === 'split'
+                ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+            title="Visão Dividida: Mesa Tática e Ficha lado a lado"
+          >
+            <Columns size={13} />
+            <span className="hidden md:inline">Dividida</span>
+          </button>
         </div>
 
         {/* Zone 2: Real-time Online Sync Indicator + Usuário Logado e Sair à direita */}

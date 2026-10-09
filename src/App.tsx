@@ -3,9 +3,11 @@ import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
 import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';
-import { TopNav } from './components/TopNav';
+import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
 import { NpcDetailView } from './components/NpcDetailView';
+import { TacticalMapWorkspace } from './components/TacticalMap/TacticalMapWorkspace';
+import { TacticalState, DEFAULT_TACTICAL_STATE } from './types/tactical';
 import { DamageCalculatorModal } from './components/DamageCalculatorModal';
 import { AvatarPickerModal } from './components/AvatarPickerModal';
 import { CombatManagerModal } from './components/CombatManagerModal';
@@ -270,11 +272,33 @@ export default function App() {
   const [systemLogModalOpen, setSystemLogModalOpen] = useState(false);
   const [systemLogsCount, setSystemLogsCount] = useState(0);
 
+  // View Mode: 'sheets' | 'tactical' | 'split'
+  const [activeViewMode, setActiveViewMode] = useState<ViewMode>('tactical');
+
   useEffect(() => {
     return systemLogger.subscribe((logs) => {
       setSystemLogsCount(logs.length);
     });
   }, []);
+
+  // Tactical State do combate ativo
+  const activeTacticalState: TacticalState = useMemo(() => {
+    return activeCombat?.tacticalState || DEFAULT_TACTICAL_STATE;
+  }, [activeCombat?.tacticalState]);
+
+  const handleUpdateTacticalState = (updated: Partial<TacticalState>) => {
+    if (!activeCombat) return;
+    const current = activeCombat.tacticalState || DEFAULT_TACTICAL_STATE;
+    const merged: TacticalState = {
+      ...current,
+      ...updated,
+    };
+    const updatedCombats = combats.map((c) =>
+      c.id === activeCombatId ? { ...c, tacticalState: merged } : c
+    );
+    setCombats(updatedCombats);
+    broadcastSync(updatedCombats);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
@@ -1269,6 +1293,8 @@ export default function App() {
         onOpenOnlineRoomModal={() => setOnlineRoomModalOpen(true)}
         onOpenSystemLog={() => setSystemLogModalOpen(true)}
         systemLogsCount={systemLogsCount}
+        activeViewMode={activeViewMode}
+        onSelectViewMode={setActiveViewMode}
       />
 
       {/* 2. BARRA DE PERSONAGENS & NPCS (Espalha até a direita, filtros na esquerda) */}
@@ -1282,84 +1308,142 @@ export default function App() {
         currentUserRole={currentUser?.role || 'mestre'}
       />
 
-      {/* 3. MAIN WORKSPACE (Layout Amplo estendido até a direita) */}
-      <main className="flex-1 w-full p-3 sm:p-4 lg:px-5">
-        <div className="flex flex-col xl:flex-row gap-4 items-start w-full">
-          {/* Coluna da Esquerda: Ficha do Personagem/NPC Selecionado */}
-          <div className="flex-1 min-w-0 w-full">
-            {allCharacters.length === 0 ? (
-              isPlayerUser ? (
-                <div className="py-20 text-center space-y-3 max-w-md mx-auto bg-slate-900/60 border border-slate-800 rounded-2xl p-8 shadow-xl">
-                  <div className="w-12 h-12 rounded-xl bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
-                    <EyeOff size={24} className="text-slate-500" />
-                  </div>
-                  <h2 className="text-base font-bold text-white">Cena Oculta ou em Preparação</h2>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Nenhum personagem ou NPC visível no momento. Aguarde as orientações do Mestre.
-                  </p>
-                </div>
-              ) : (
-                <div className="py-16 text-center space-y-4 max-w-md mx-auto bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl p-8">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center">
-                    <Swords size={28} />
-                  </div>
-                  <h2 className="text-lg font-bold text-white">Nenhum Personagem ou NPC</h2>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Use os botões na barra superior esquerda para cadastrar novos Personagens ou NPCs.
-                  </p>
-                  <div className="pt-2 flex items-center justify-center gap-2">
-                    <button
-                      onClick={handleAddNewPlayer}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-colors"
-                    >
-                      <Plus size={15} />
-                      <span>Cadastrar Personagem</span>
-                    </button>
-                    <button
-                      onClick={handleAddNewNpc}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow transition-colors"
-                    >
-                      <Plus size={15} />
-                      <span>Criar NPC</span>
-                    </button>
-                  </div>
-                </div>
-              )
-            ) : selectedNpc ? (
-              <NpcDetailView
-                npc={selectedNpc}
-                onUpdateNpc={handleUpdateNpc}
-                onDeleteNpc={handleDeleteNpc}
-                onDuplicateNpc={handleDuplicateNpc}
-                onOpenAvatarPicker={(npc) => setAvatarModalNpc(npc)}
-                onOpenConditionsCrud={() => setConditionsCrudOpen(true)}
-                onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
-                onOpenWeaponModal={(weapon) =>
-                  setWeaponModalState({ isOpen: true, weapon: weapon || null })
-                }
-                isPlayerUser={isPlayerUser}
-                currentUserRole={currentUser?.role || 'mestre'}
-              />
-            ) : (
-              <div className="py-12 text-center text-xs text-slate-400">
-                Selecione um Personagem ou NPC nos cards acima para exibir e controlar a ficha completa.
-              </div>
-            )}
-          </div>
-
-          {/* Coluna da Direita: Log Geral de Combate */}
-          <div className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky xl:top-14">
-            <GeneralCombatLog
-              activeCombat={activeCombat}
-              additionalCharacters={players}
-              onSelectNpc={(npcId) => setSelectedNpcId(npcId)}
+      {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}
+      <main className="flex-1 w-full p-2.5 sm:p-3.5 lg:px-5">
+        {activeViewMode === 'tactical' ? (
+          /* MODO MESA TÁTICA COMPLETA */
+          <div className="w-full">
+            <TacticalMapWorkspace
+              tacticalState={activeTacticalState}
+              onUpdateTacticalState={handleUpdateTacticalState}
+              characters={allCharacters}
               selectedNpcId={selectedNpcId}
+              onSelectNpc={setSelectedNpcId}
+              onUpdateNpc={handleUpdateNpc}
               currentUserRole={currentUser?.role || 'mestre'}
-              onClearHistory={handleClearActiveCombatHistory}
-              onDeleteEntry={handleDeleteLogEntry}
+              onOpenFullNpcSheet={(npcId) => {
+                setSelectedNpcId(npcId);
+                setActiveViewMode('split');
+              }}
             />
           </div>
-        </div>
+        ) : activeViewMode === 'split' ? (
+          /* MODO VISÃO DIVIDIDA: MESA TÁTICA + FICHA DO PERSONAGEM */
+          <div className="flex flex-col xl:flex-row gap-3.5 items-start w-full">
+            <div className="flex-1 min-w-0 w-full xl:w-7/12">
+              <TacticalMapWorkspace
+                tacticalState={activeTacticalState}
+                onUpdateTacticalState={handleUpdateTacticalState}
+                characters={allCharacters}
+                selectedNpcId={selectedNpcId}
+                onSelectNpc={setSelectedNpcId}
+                onUpdateNpc={handleUpdateNpc}
+                currentUserRole={currentUser?.role || 'mestre'}
+                onOpenFullNpcSheet={(npcId) => setSelectedNpcId(npcId)}
+              />
+            </div>
+            <div className="w-full xl:w-5/12 shrink-0 xl:sticky xl:top-14">
+              {selectedNpc ? (
+                <NpcDetailView
+                  npc={selectedNpc}
+                  onUpdateNpc={handleUpdateNpc}
+                  onDeleteNpc={handleDeleteNpc}
+                  onDuplicateNpc={handleDuplicateNpc}
+                  onOpenAvatarPicker={(npc) => setAvatarModalNpc(npc)}
+                  onOpenConditionsCrud={() => setConditionsCrudOpen(true)}
+                  onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
+                  onOpenWeaponModal={(weapon) =>
+                    setWeaponModalState({ isOpen: true, weapon: weapon || null })
+                  }
+                  isPlayerUser={isPlayerUser}
+                  currentUserRole={currentUser?.role || 'mestre'}
+                />
+              ) : (
+                <div className="py-16 text-center text-xs text-slate-400 bg-slate-900/60 rounded-2xl border border-slate-800 p-8">
+                  Selecione um token na mesa tática para exibir e gerenciar a ficha completa aqui.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* MODO FICHAS & LOG GERAL */
+          <div className="flex flex-col xl:flex-row gap-4 items-start w-full">
+            {/* Coluna da Esquerda: Ficha do Personagem/NPC Selecionado */}
+            <div className="flex-1 min-w-0 w-full">
+              {allCharacters.length === 0 ? (
+                isPlayerUser ? (
+                  <div className="py-20 text-center space-y-3 max-w-md mx-auto bg-slate-900/60 border border-slate-800 rounded-2xl p-8 shadow-xl">
+                    <div className="w-12 h-12 rounded-xl bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
+                      <EyeOff size={24} className="text-slate-500" />
+                    </div>
+                    <h2 className="text-base font-bold text-white">Cena Oculta ou em Preparação</h2>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Nenhum personagem ou NPC visível no momento. Aguarde as orientações do Mestre.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="py-16 text-center space-y-4 max-w-md mx-auto bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl p-8">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center">
+                      <Swords size={28} />
+                    </div>
+                    <h2 className="text-lg font-bold text-white">Nenhum Personagem ou NPC</h2>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Use os botões na barra superior esquerda para cadastrar novos Personagens ou NPCs.
+                    </p>
+                    <div className="pt-2 flex items-center justify-center gap-2">
+                      <button
+                        onClick={handleAddNewPlayer}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-colors"
+                      >
+                        <Plus size={15} />
+                        <span>Cadastrar Personagem</span>
+                      </button>
+                      <button
+                        onClick={handleAddNewNpc}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow transition-colors"
+                      >
+                        <Plus size={15} />
+                        <span>Criar NPC</span>
+                      </button>
+                    </div>
+                  </div>
+                )
+              ) : selectedNpc ? (
+                <NpcDetailView
+                  npc={selectedNpc}
+                  onUpdateNpc={handleUpdateNpc}
+                  onDeleteNpc={handleDeleteNpc}
+                  onDuplicateNpc={handleDuplicateNpc}
+                  onOpenAvatarPicker={(npc) => setAvatarModalNpc(npc)}
+                  onOpenConditionsCrud={() => setConditionsCrudOpen(true)}
+                  onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
+                  onOpenWeaponModal={(weapon) =>
+                    setWeaponModalState({ isOpen: true, weapon: weapon || null })
+                  }
+                  isPlayerUser={isPlayerUser}
+                  currentUserRole={currentUser?.role || 'mestre'}
+                />
+              ) : (
+                <div className="py-12 text-center text-xs text-slate-400">
+                  Selecione um Personagem ou NPC nos cards acima para exibir e controlar a ficha completa.
+                </div>
+              )}
+            </div>
+
+            {/* Coluna da Direita: Log Geral de Combate */}
+            <div className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky xl:top-14">
+              <GeneralCombatLog
+                activeCombat={activeCombat}
+                additionalCharacters={players}
+                onSelectNpc={(npcId) => setSelectedNpcId(npcId)}
+                selectedNpcId={selectedNpcId}
+                currentUserRole={currentUser?.role || 'mestre'}
+                onClearHistory={handleClearActiveCombatHistory}
+                onDeleteEntry={handleDeleteLogEntry}
+              />
+            </div>
+          </div>
+        )}
       </main>
 
       {/* 4. MODALS */}

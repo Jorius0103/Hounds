@@ -1,3 +1,5 @@
+import { TacticalState } from './tactical';
+
 export type UserRole = 'mestre' | 'jogador' | 'visualizador';
 
 export interface UserAccount {
@@ -200,4 +202,5 @@ export interface Combat {
   createdAt: string;
   sheetSyncUrl?: string; // URL da Planilha Google (publicada como CSV ou link direto)
   npcs: NPC[];
+  tacticalState?: TacticalState;
 }
