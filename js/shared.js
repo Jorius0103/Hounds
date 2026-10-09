@@ -23,7 +23,14 @@ var ICON = {
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
   image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
   arrow: '<path d="M5 12h14M12 5l7 7-7 7"/>',
-  eyeOff: '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>'
+  eyeOff: '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>',
+  settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+  terminal: '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'
 };
 
 var CHEV = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
@@ -356,3 +363,69 @@ function pathTree(chain, opts) {
 function tagPage(doc, col) {
   // Utility hook for page header tags
 }
+
+/* =====================================================================
+   AppLogger — Sistema de Registro de Eventos e Depuração
+   ===================================================================== */
+var AppLogger = (function () {
+  var LOGS_KEY = 'hounds_system_logs_v1';
+  var MAX_LOGS = 300;
+  var listeners = [];
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(LOGS_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  function save(arr) {
+    try {
+      if (arr.length > MAX_LOGS) arr = arr.slice(arr.length - MAX_LOGS);
+      localStorage.setItem(LOGS_KEY, JSON.stringify(arr));
+    } catch (e) {}
+  }
+
+  function add(level, category, message, details) {
+    var logs = load();
+    var entry = {
+      id: 'log_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
+      timestamp: Date.now(),
+      level: level || 'INFO', // INFO, WARN, ERROR, SYNC
+      category: category || 'SISTEMA',
+      message: String(message || ''),
+      details: details ? (typeof details === 'object' ? JSON.stringify(details) : String(details)) : null,
+      user: window.hubUser ? window.hubUser.name : 'Visitante'
+    };
+    logs.push(entry);
+    save(logs);
+    listeners.forEach(function (fn) {
+      try { fn(entry, logs); } catch (e) {}
+    });
+    if (level === 'ERROR') console.error('[Hounds Logger]', entry.category, entry.message, details);
+    else console.log('[Hounds Logger]', entry.category, entry.message);
+    return entry;
+  }
+
+  return {
+    info: function (cat, msg, det) { return add('INFO', cat, msg, det); },
+    warn: function (cat, msg, det) { return add('WARN', cat, msg, det); },
+    error: function (cat, msg, det) { return add('ERROR', cat, msg, det); },
+    sync: function (cat, msg, det) { return add('SYNC', cat, msg, det); },
+    getLogs: function () { return load().reverse(); },
+    clearLogs: function () {
+      save([]);
+      listeners.forEach(function (fn) { try { fn(null, []); } catch (e) {} });
+    },
+    subscribe: function (fn) {
+      listeners.push(fn);
+      return function () { listeners = listeners.filter(function (x) { return x !== fn; }); };
+    }
+  };
+})();
+
+window.AppLogger = AppLogger;

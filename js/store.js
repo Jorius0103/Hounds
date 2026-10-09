@@ -93,10 +93,40 @@ function LocalStore() {
   }
 
   var urls = {}, watchers = {};
-  function emit(col) {
+  var syncBc = null;
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      syncBc = new BroadcastChannel('hounds_world_realtime_sync');
+      syncBc.onmessage = function (ev) {
+        if (ev && ev.data && ev.data.col) {
+          emit(ev.data.col, false);
+          if (window.AppLogger) window.AppLogger.sync('REALTIME_SYNC', 'Dados atualizados em tempo real de outra aba/sessão', { col: ev.data.col });
+        }
+      };
+    }
+  } catch (e) {}
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', function (e) {
+      if (e.key === 'hounds_sync_ping_v1' && e.newValue) {
+        var col = e.newValue.split(':')[0];
+        if (col) emit(col, false);
+      }
+    });
+  }
+
+  function emit(col, broadcast) {
     list(col).then(function (l) {
       (watchers[col] || []).forEach(function (cb) { cb(l); });
     });
+    if (broadcast !== false) {
+      if (syncBc) {
+        try { syncBc.postMessage({ col: col, timestamp: Date.now() }); } catch (e) {}
+      }
+      try {
+        localStorage.setItem('hounds_sync_ping_v1', col + ':' + Date.now());
+      } catch (e) {}
+    }
   }
 
   function list(col) {
@@ -114,7 +144,11 @@ function LocalStore() {
   function write(col, id, body) {
     return tx(['docs'], 'readwrite', function (t) {
       t.objectStore('docs').put({ k: col + '|' + id, col: col, id: id, data: body });
-    }).then(function () { emit(col); return id; });
+    }).then(function () {
+      emit(col, true);
+      if (window.AppLogger) window.AppLogger.info('DB_WRITE', 'Documento salvo em ' + col, { id: id });
+      return id;
+    });
   }
 
   return {
@@ -520,6 +554,130 @@ var Ops = {
   }
 };
 
+/* =====================================================================
+   Importação & Exportação Completa do Banco de Dados
+   ===================================================================== */
+function exportDatabase() {
+  if (window.AppLogger) window.AppLogger.info('BACKUP', 'Iniciando exportação do banco de dados');
+  var cols = ['maps', 'locations', 'characters', 'notebooks', 'notes', 'users', 'mesa'];
+  var dump = {
+    exportedAt: new Date().toISOString(),
+    version: '2.0',
+    app: 'Hounds — Campanha GURPS',
+    collections: {},
+    localData: {}
+  };
+
+  cols.forEach(function (col) {
+    dump.collections[col] = W.raw[col] || W[col] || [];
+  });
+
+  var lsKeys = [
+    'gurps_combat_master_data_v2',
+    'gurps_combat_master_conditions_v2',
+    'gurps_fixed_personagens_v1',
+    'gurps_tactical_state_v1',
+    'gurps_combat_master_users_v2'
+  ];
+  lsKeys.forEach(function (k) {
+    try {
+      var val = localStorage.getItem(k);
+      if (val) dump.localData[k] = JSON.parse(val);
+    } catch (e) {}
+  });
+
+  var json = JSON.stringify(dump, null, 2);
+  var blob = new Blob([json], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  a.href = url;
+  a.download = 'hounds_banco_campanha_' + ts + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+
+  if (window.AppLogger) window.AppLogger.sync('BACKUP', 'Banco exportado com sucesso', { colecoes: Object.keys(dump.collections).length });
+  return dump;
+}
+
+function importDatabase(jsonString) {
+  return new Promise(function (resolve, reject) {
+    var data;
+    try {
+      data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+    } catch (e) {
+      if (window.AppLogger) window.AppLogger.error('BACKUP', 'Arquivo JSON inválido para importação', e);
+      return reject(new Error('Arquivo JSON inválido ou corrompido.'));
+    }
+
+    if (!data || (!data.collections && !data.combats && !data.maps)) {
+      return reject(new Error('Formato de backup não reconhecido.'));
+    }
+
+    if (window.AppLogger) window.AppLogger.info('BACKUP', 'Importando dados para o banco...', { data: data });
+
+    var cols = data.collections || {};
+    var seq = Promise.resolve();
+
+    Object.keys(cols).forEach(function (col) {
+      var items = cols[col];
+      if (Array.isArray(items)) {
+        items.forEach(function (item) {
+          if (item && item.id) {
+            seq = seq.then(function () {
+              var body = Object.assign({}, item);
+              delete body.id;
+              return W.store.put(col, item.id, body).catch(function (e) {
+                console.warn('Erro ao restaurar ' + col + '/' + item.id, e);
+              });
+            });
+          }
+        });
+      }
+    });
+
+    if (data.localData) {
+      Object.keys(data.localData).forEach(function (k) {
+        try {
+          localStorage.setItem(k, JSON.stringify(data.localData[k]));
+        } catch (e) {}
+      });
+    }
+
+    if (data.combats && Array.isArray(data.combats)) {
+      try {
+        localStorage.setItem('gurps_combat_master_data_v2', JSON.stringify(data.combats));
+      } catch (e) {}
+    }
+    if (data.conditions && Array.isArray(data.conditions)) {
+      try {
+        localStorage.setItem('gurps_combat_master_conditions_v2', JSON.stringify(data.conditions));
+      } catch (e) {}
+    }
+    if (data.players && Array.isArray(data.players)) {
+      try {
+        localStorage.setItem('gurps_fixed_personagens_v1', JSON.stringify(data.players));
+      } catch (e) {}
+    }
+
+    seq.then(function () {
+      if (window.AppLogger) window.AppLogger.sync('BACKUP', 'Importação concluída com sucesso');
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          var bc = new BroadcastChannel('hounds_world_realtime_sync');
+          bc.postMessage({ col: 'all', timestamp: Date.now() });
+        } catch (e) {}
+      }
+      try { localStorage.setItem('hounds_sync_ping_v1', 'all:' + Date.now()); } catch (e) {}
+      resolve(data);
+    }).catch(reject);
+  });
+}
+
 window.W = W;
 window.Ops = Ops;
 window.indexMaps = indexMaps;
+window.exportDatabase = exportDatabase;
+window.importDatabase = importDatabase;

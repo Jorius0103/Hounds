@@ -143,36 +143,20 @@ export const TopNav: React.FC<TopNavProps> = ({
                       <button
                         onClick={() => {
                           setCombatMenuOpen(false);
-                          onOpenUserAccounts();
+                          try {
+                            if (window.parent && window.parent !== window && (window.parent as any).go) {
+                              (window.parent as any).go('#configuracoes');
+                            } else {
+                              window.location.hash = '#configuracoes';
+                            }
+                          } catch (e) {
+                            window.location.hash = '#configuracoes';
+                          }
                         }}
                         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-slate-800 hover:text-amber-300 transition-colors text-left font-medium"
                       >
-                        <Users size={14} className="text-amber-400" />
-                        <span>Controle de Usuários</span>
-                      </button>
-
-                      <div className="h-px bg-slate-800 my-1" />
-
-                      <button
-                        onClick={() => {
-                          setCombatMenuOpen(false);
-                          onExport();
-                        }}
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-slate-800 hover:text-amber-300 transition-colors text-left"
-                      >
-                        <Download size={14} className="text-amber-400" />
-                        <span>Exportar Campanha (JSON)</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setCombatMenuOpen(false);
-                          onImport();
-                        }}
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-slate-800 hover:text-amber-300 transition-colors text-left"
-                      >
-                        <Upload size={14} className="text-amber-400" />
-                        <span>Importar Campanha (JSON)</span>
+                        <Settings size={14} className="text-amber-400" />
+                        <span>Configurações da Campanha</span>
                       </button>
                     </div>
                   </>

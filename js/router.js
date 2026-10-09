@@ -58,29 +58,18 @@
   }
 
   function buildMenu() {
-    return [
+    var items = [
       { id: 'inicio', label: 'Início', icon: ICON.mundo, route: true },
-      { id: 'tatica', label: 'Mesa Tática', icon: ICON.tatica, route: true },
       { id: 'mesa', label: 'Mesa de Combate', icon: ICON.mesa, route: true },
-      {
-        id: 'info',
-        label: 'Informações',
-        icon: ICON.info,
-        children: [
-          {
-            id: 'mundo',
-            label: 'Mundo',
-            icon: ICON.mundo,
-            children: [
-              { id: 'maps', label: 'Maps', icon: ICON.maps, route: true, children: mapNodes(null) },
-              { id: 'locais', label: 'Localização', icon: ICON.pin, route: true, children: locNodes() },
-              { id: 'chars', label: 'Personagens', icon: ICON.user, route: true, children: charNodes() }
-            ]
-          }
-        ]
-      },
-      { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, children: noteNodes() }
-    ].concat(isMestre() ? [{ id: 'users', label: 'Usuários', icon: ICON.users, route: true }] : []);
+      { id: 'personagens', label: 'Personagens', icon: ICON.user, route: true },
+      { id: 'locais', label: 'Locais', icon: ICON.pin, route: true },
+      { id: 'anotacoes', label: 'Anotações', icon: ICON.notes, route: true }
+    ];
+    if (window.renderMesaTatica) {
+      items.splice(2, 0, { id: 'tatica', label: 'Mesa Tática', icon: ICON.tatica, route: true });
+    }
+    items.push({ id: 'configuracoes', label: 'Configurações', icon: ICON.settings, route: true });
+    return items;
   }
 
   function indexTree(list, parent) {
@@ -114,11 +103,10 @@
     if (id === 'inicio') return '#inicio';
     if (id === 'tatica') return '#tatica';
     if (id === 'mesa') return '#mesa';
-    if (id === 'maps') return '#maps';
-    if (id === 'locais') return '#locais';
-    if (id === 'chars') return '#personagens';
-    if (id === 'notes') return '#anotacoes';
-    if (id === 'users') return '#usuarios';
+    if (id === 'personagens' || id === 'chars') return '#personagens';
+    if (id === 'locais' || id === 'maps') return '#locais';
+    if (id === 'anotacoes' || id === 'notes') return '#anotacoes';
+    if (id === 'configuracoes' || id === 'usuarios' || id === 'users') return '#configuracoes';
     if (id.indexOf('map:') === 0) return '#map~' + encodeURIComponent(id.slice(4));
     if (id.indexOf('loc:') === 0) return '#loc~' + encodeURIComponent(id.slice(4));
     if (id.indexOf('char:') === 0) return '#char~' + encodeURIComponent(id.slice(5));
@@ -330,30 +318,29 @@
     if (!raw || raw === 'inicio' || raw === 'home') return { tab: 'page', page: 'home', node: 'inicio', title: 'Início' };
     if (raw === 'tatica') return { tab: 'tatica', node: 'tatica', title: 'Mesa Tática' };
     if (raw === 'mesa') return { tab: 'mesa', node: 'mesa', title: 'Mesa de Combate' };
-    if (raw === 'maps') return { tab: 'page', page: 'maps', node: 'maps', title: 'Mapas' };
-    if (raw === 'locais') return { tab: 'page', page: 'locais', node: 'locais', title: 'Localização' };
-    if (raw === 'personagens') return { tab: 'page', page: 'chars', node: 'chars', title: 'Personagens' };
-    if (raw === 'anotacoes') return { tab: 'page', page: 'notes', node: 'notes', title: 'Anotações' };
-    if (raw === 'usuarios') return { tab: 'page', page: 'users', node: 'users', title: 'Usuários' };
+    if (raw === 'personagens' || raw === 'chars') return { tab: 'page', page: 'chars', node: 'personagens', title: 'Personagens' };
+    if (raw === 'locais' || raw === 'maps') return { tab: 'page', page: 'locais', node: 'locais', title: 'Locais' };
+    if (raw === 'anotacoes' || raw === 'notes') return { tab: 'page', page: 'notes', node: 'anotacoes', title: 'Anotações' };
+    if (raw === 'configuracoes' || raw === 'usuarios' || raw === 'users') return { tab: 'page', page: 'configuracoes', node: 'configuracoes', title: 'Configurações' };
 
     var parts = raw.split('~');
     var p0 = parts[0], p1 = decodeURIComponent(parts[1] || ''), p2 = parts[2];
     if (p0 === 'map') {
-      return { tab: p2 === 'explorar' ? 'explorer' : 'page', page: 'map', mapId: p1, explore: p2 === 'explorar', node: 'map:' + p1, title: 'Mapa' };
+      return { tab: p2 === 'explorar' ? 'explorer' : 'page', page: 'map', mapId: p1, explore: p2 === 'explorar', node: 'locais', title: 'Mapa' };
     }
     if (p0 === 'loc') {
-      return { tab: 'page', page: 'local', locId: p1, node: 'loc:' + p1, title: 'Localização' };
+      return { tab: 'page', page: 'local', locId: p1, node: 'locais', title: 'Local' };
     }
     if (p0 === 'char') {
-      return { tab: 'page', page: 'char', charId: p1, node: 'char:' + p1, title: 'Personagem' };
+      return { tab: 'page', page: 'char', charId: p1, node: 'personagens', title: 'Personagem' };
     }
     if (p0 === 'nb') {
-      return { tab: 'page', page: 'notebook', nbId: p1, node: 'nb:' + p1, title: 'Caderno' };
+      return { tab: 'page', page: 'notebook', nbId: p1, node: 'anotacoes', title: 'Caderno' };
     }
     if (p0 === 'note') {
-      return { tab: 'page', page: 'note', noteId: p1, node: 'note:' + p1, title: 'Anotação' };
+      return { tab: 'page', page: 'note', noteId: p1, node: 'anotacoes', title: 'Anotação' };
     }
-    return { tab: 'tatica', node: 'tatica', title: 'Mesa Tática' };
+    return { tab: 'page', page: 'home', node: 'inicio', title: 'Início' };
   }
 
   function onRoute() {
@@ -405,6 +392,7 @@
       else if (r.page === 'notes' && window.renderNotesPage) window.renderNotesPage();
       else if (r.page === 'notebook' && window.renderNotebookPage) window.renderNotebookPage();
       else if (r.page === 'note' && window.renderNotePage) window.renderNotePage();
+      else if (r.page === 'configuracoes' && window.renderConfiguracoesPage) window.renderConfiguracoesPage();
       else if (r.page === 'users' && window.renderUsersPage) window.renderUsersPage();
     }
 
