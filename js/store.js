@@ -213,76 +213,193 @@ function LocalStore() {
   };
 }
 
-function SupabaseStore(client, bName) {
-  function rows(res) {
-    if (res.error) throw res.error;
-    return (res.data || []).map(function (r) {
-      return Object.assign({ id: r.id }, r.data);
+function SupabaseStore(client, bucket) {
+  var bName = bucket || "hounds-images", T = "hounds_docs";
+  var cols = {}, channel = null, live = false, bcast = {};
+
+  function stable(v) {
+    if (Array.isArray(v)) return "[" + v.map(function (x) { return x === undefined ? "null" : stable(x); }).join(",") + "]";
+    if (v && typeof v === "object") return "{" + Object.keys(v).sort().filter(function (k) { return v[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ":" + stable(v[k]); }).join(",") + "}";
+    return JSON.stringify(v);
+  }
+
+  function doc(row) { return Object.assign({ id: row.id }, row.data); }
+  function byCreated(a, b) { return (a.createdAt || 0) - (b.createdAt || 0); }
+  function list(c) { return Object.keys(c.rows).map(function (k) { return c.rows[k]; }).sort(byCreated); }
+
+  function emit(c) {
+    if (c.queued) return;
+    c.queued = true;
+    Promise.resolve().then(function () {
+      c.queued = false;
+      if (cols[c.col] !== c || !c.ready) return;
+      var l = list(c);
+      c.subs.slice().forEach(function (cb) { cb(l.slice()); });
     });
   }
 
-  function all(col) {
-    return client.from('hounds_docs').select('id, data').eq('col', col).then(rows);
-  }
-
-  function query(col, field, value) {
-    return client.from('hounds_docs').select('id, data').eq('col', col).then(function (res) {
-      return rows(res).filter(function (d) { return d[field] === value; });
-    });
-  }
-
-  function put(col, id, body) {
-    var docId = id || uid();
-    return client.from('hounds_docs').upsert({
-      col: col,
-      id: docId,
-      data: body,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'col,id' }).then(function (res) {
+  function fetchRows(col) {
+    return client.from(T).select("id, data").eq("col", col).then(function (res) {
       if (res.error) throw res.error;
-      return docId;
+      return res.data || [];
     });
   }
 
-  function patch(col, id, p) {
-    return client.from('hounds_docs').select('data').eq('col', col).eq('id', id).single().then(function (sel) {
-      if (sel.error) throw sel.error;
-      var merged = Object.assign({}, sel.data && sel.data.data, p);
-      return client.from('hounds_docs').upsert({
-        col: col,
-        id: id,
-        data: merged,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'col,id' }).then(function (uRes) {
-        if (uRes.error) throw uRes.error;
-      });
+  function load(c) {
+    var gen = ++c.gen;
+    c.buffer = [];
+    return fetchRows(c.col).then(function (data) {
+      if (cols[c.col] !== c || gen !== c.gen) return;
+      var before = c.ready ? stable(list(c)) : null, rows = {};
+      data.forEach(function (r) { rows[r.id] = doc(r); });
+      var buf = c.buffer; c.buffer = null; c.rows = rows; c.ready = true;
+      buf.forEach(function (p) { apply(c, p, true); });
+      if (before === null || stable(list(c)) !== before) emit(c);
+    }, function (e) {
+      if (cols[c.col] !== c || gen !== c.gen) return;
+      c.buffer = null;
+      c.errs.slice().forEach(function (f) { f(e); });
     });
   }
 
-  function remove(col, id) {
-    return client.from('hounds_docs').delete().eq('col', col).eq('id', id).then(function (res) {
-      if (res.error) throw res.error;
+  function resync() { Object.keys(cols).forEach(function (k) { load(cols[k]); }); }
+  function expect(c, id, e) { e.at = Date.now(); (c.echo[id] = c.echo[id] || []).push(e); }
+  function isEcho(e, del, row) {
+    if (e.del || del) return !!e.del && del;
+    var d = row.data;
+    if (d === undefined) return false;
+    if (e.keys) return e.keys.every(function (k) { return stable(d[k]) === e.vals[k]; });
+    return stable(d) === e.val;
+  }
+  function failed(col, id) { var c = cols[col]; if (c) { delete c.echo[id]; load(c); } }
+
+  function apply(c, p, replay) {
+    var del = p.eventType === "DELETE", row = del ? p.old : p.new;
+    if (!row || row.id == null) return;
+    var id = row.id, q = c.echo[id];
+    if (q) {
+      var now = Date.now(), hit = -1;
+      q = q.filter(function (e) { return now - e.at < 15000; });
+      for (var i = 0; i < q.length; i++) if (isEcho(q[i], del, row)) { hit = i; break; }
+      if (hit >= 0) q.splice(0, hit + 1);
+      if (q.length) { c.echo[id] = q; return; }
+      delete c.echo[id];
+    }
+    c.ver[id] = (c.ver[id] || 0) + 1;
+    if (del) {
+      if (!(id in c.rows)) return;
+      delete c.rows[id];
+    } else if (row.data === undefined) {
+      refetch(c, id); return;
+    } else {
+      var d = doc(row);
+      if (c.rows[id] && stable(c.rows[id]) === stable(d)) return;
+      c.rows[id] = d;
+    }
+    if (!replay) emit(c);
+  }
+
+  function refetch(c, id) {
+    var v = c.ver[id];
+    client.from(T).select("id, data").eq("col", c.col).eq("id", id).then(function (res) {
+      if (res.error || cols[c.col] !== c || c.ver[id] !== v) return;
+      var r = res.data && res.data[0];
+      if (r) c.rows[id] = doc(r); else delete c.rows[id];
+      emit(c);
     });
+  }
+
+  function onChange(p) {
+    var row = p && (p.eventType === "DELETE" ? p.old : p.new), c = row && cols[row.col];
+    if (!c) return;
+    if (c.buffer) c.buffer.push(p);
+    if (c.ready) apply(c, p, false);
+  }
+
+  function ensureChannel() {
+    if (channel) return;
+    channel = client.channel("hounds", { config: { broadcast: { self: false } } })
+      .on("postgres_changes", { event: "*", schema: "public", table: T }, onChange)
+      .on("broadcast", { event: "hub" }, function (m) { var p = m && m.payload, f = p && bcast[p.kind]; if (f) f(p.data); });
+    channel.subscribe(function (status) {
+      live = status === "SUBSCRIBED";
+      if (live) resync();
+    });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) resync(); });
+    window.addEventListener("online", resync);
+    setInterval(function () { if (!document.hidden) resync(); }, 60000);
   }
 
   function watch(col, cb, err) {
-    all(col).then(cb).catch(function (e) { if (err) err(e); });
-    var chName = 'watch_' + col.replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + Math.random().toString(36).slice(2, 8);
-    var ch = client.channel(chName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hounds_docs', filter: 'col=eq.' + col }, function () {
-        all(col).then(cb).catch(function (e) { if (err) err(e); });
-      })
-      .subscribe();
-    return function () { client.removeChannel(ch); };
+    ensureChannel();
+    var c = cols[col] || (cols[col] = { col: col, rows: {}, ready: false, buffer: null, subs: [], errs: [], echo: {}, ver: {}, gen: 0 });
+    c.subs.push(cb);
+    if (err) c.errs.push(err);
+    if (c.ready) emit(c);
+    else if (!c.buffer) load(c);
+    return function () {
+      c.subs = c.subs.filter(function (x) { return x !== cb; });
+      c.errs = c.errs.filter(function (x) { return x !== err; });
+      if (!c.subs.length && cols[col] === c) delete cols[col];
+    };
+  }
+
+  function all(col) {
+    var c = cols[col];
+    if (c && c.ready) return Promise.resolve(list(c));
+    return fetchRows(col).then(function (d) { return d.map(doc).sort(byCreated); });
+  }
+
+  function query(col, field, value) {
+    var c = cols[col];
+    if (c && c.ready) return Promise.resolve(list(c).filter(function (d) { return d[field] === value; }));
+    if (typeof value !== "string") return all(col).then(function (l) { return l.filter(function (d) { return d[field] === value; }); });
+    return client.from(T).select("id, data").eq("col", col).eq("data->>" + field, value)
+      .then(function (res) { if (res.error) throw res.error; return (res.data || []).map(doc).sort(byCreated); });
+  }
+
+  function put(col, id, body) {
+    var docId = id || uid(), c = cols[col];
+    if (c && c.ready) { expect(c, docId, { val: stable(body) }); c.rows[docId] = Object.assign({ id: docId }, body); emit(c); }
+    return client.from(T).upsert({ col: col, id: docId, data: body, updated_at: new Date().toISOString() }, { onConflict: "col,id" })
+      .then(function (res) { if (res.error) throw res.error; return docId; })
+      .catch(function (e) { failed(col, docId); throw e; });
+  }
+
+  function patch(col, id, p) {
+    var c = cols[col];
+    if (c && c.ready && c.rows[id]) {
+      var keys = Object.keys(p).filter(function (k) { return p[k] !== undefined; }), vals = {};
+      keys.forEach(function (k) { vals[k] = stable(p[k]); });
+      expect(c, id, { keys: keys, vals: vals });
+      c.rows[id] = Object.assign({}, c.rows[id], p); emit(c);
+    }
+    return client.rpc("patch_hounds_doc", { p_col: col, p_id: id, p_patch: p }).then(function (res) {
+      if (!res.error) return;
+      return client.from(T).select("data").eq("col", col).eq("id", id).single().then(function (sel) {
+        if (sel.error) throw sel.error;
+        var merged = Object.assign({}, sel.data && sel.data.data, p);
+        return client.from(T).upsert({ col: col, id: id, data: merged, updated_at: new Date().toISOString() }, { onConflict: "col,id" })
+          .then(function (uRes) { if (uRes.error) throw uRes.error; });
+      });
+    }).catch(function (e) { failed(col, id); throw e; });
+  }
+
+  function remove(col, id) {
+    var c = cols[col];
+    if (c && c.ready && c.rows[id]) { expect(c, id, { del: true }); delete c.rows[id]; emit(c); }
+    return client.from(T).delete().eq("col", col).eq("id", id)
+      .then(function (res) { if (res.error) throw res.error; })
+      .catch(function (e) { failed(col, id); throw e; });
   }
 
   function upload(file) {
-    var ext = file.name ? file.name.slice(file.name.lastIndexOf('.')) : '';
+    var ext = file.name ? file.name.slice(file.name.lastIndexOf(".")) : "";
     if (!ext && file.type) {
-      var map = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
-      ext = map[file.type] || '';
+      var map = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif" };
+      ext = map[file.type] || "";
     }
-    var ref = uid() + (ext || '');
+    var ref = uid() + (ext || "");
     return client.storage.from(bName).upload(ref, file, { contentType: file.type, upsert: true }).then(function (res) {
       if (res.error) throw res.error;
       return { ref: ref, type: file.type, size: file.size };
@@ -290,12 +407,10 @@ function SupabaseStore(client, bName) {
   }
 
   function imageUrl(ref) {
-    if (!ref) return Promise.resolve('');
-    if (ref.indexOf('http://') === 0 || ref.indexOf('https://') === 0 || ref.indexOf('/') === 0 || ref.indexOf('data:') === 0) {
-      return Promise.resolve(ref);
-    }
+    if (!ref) return Promise.resolve("");
+    if (ref.indexOf("http://") === 0 || ref.indexOf("https://") === 0 || ref.indexOf("data:") === 0) return Promise.resolve(ref);
     var res = client.storage.from(bName).getPublicUrl(ref);
-    return Promise.resolve(res && res.data ? res.data.publicUrl : '');
+    return Promise.resolve(res && res.data ? res.data.publicUrl : "");
   }
 
   function dropImage(ref) {
@@ -304,26 +419,28 @@ function SupabaseStore(client, bName) {
   }
 
   return {
-    kind: 'supabase',
+    kind: "supabase",
     canUpload: true,
     canWrite: function () { return true; },
     init: function () { return Promise.resolve(); },
-    watch: watch,
-    all: all,
-    query: query,
-    put: put,
-    patch: patch,
-    remove: remove,
-    upload: upload,
-    imageUrl: imageUrl,
-    dropImage: dropImage
+    watch: watch, all: all, query: query, put: put, patch: patch, remove: remove,
+    upload: upload, imageUrl: imageUrl, dropImage: dropImage,
+    saveDelay: 300,
+    inlineMax: 5000000,
+    realtime: {
+      send: function (kind, data) {
+        if (!channel || !live) return Promise.resolve("closed");
+        return Promise.resolve(channel.send({ type: "broadcast", event: "hub", payload: { kind: kind, data: data } })).catch(function () { return "error"; });
+      },
+      on: function (kind, fn) { ensureChannel(); bcast[kind] = fn; }
+    }
   };
 }
 
 function connectSupabase(cfg) {
   return loadScript(SB_SDK).then(function () {
-    var client = window.supabase.createClient(cfg.url, cfg.anonKey);
-    return SupabaseStore(client, cfg.bucket || 'hounds-images');
+    var client = window.supabase.createClient(cfg.url, cfg.anonKey, { realtime: { params: { eventsPerSecond: 40 } } });
+    return SupabaseStore(client, cfg.bucket || "hounds-images");
   });
 }
 
