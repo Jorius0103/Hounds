@@ -344,6 +344,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .loc-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
 .loc-hero { background: var(--well); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: grid; place-items: center; }
 .loc-hero img { max-width: 100%; max-height: 56vh; display: block; }
+.loc-pics { display: grid; gap: 12px; }
+.loc-pics.two-pics { grid-template-columns: 1fr 1fr; }
+.loc-pics.two-pics .loc-hero img { max-height: 40vh; }
+@media (max-width: 760px) { .loc-pics.two-pics { grid-template-columns: 1fr; } }
 .long { margin: 0; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 72ch; }
 .long.none { color: var(--faint); font-style: italic; }
 .people { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1308,20 +1312,25 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       then(function () { return W.store.dropImage(m.image && m.image.ref); });
       return seq;
     },
-    saveLocation: function (loc, fields, newFile, newDims, removeImage) {
-      var oldRef = loc && loc.image && loc.image.ref;
-      var p = Promise.resolve(loc && loc.image ? loc.image : null);
-      if (newFile) p = W.store.upload(newFile).then(function (u) { return { ref: u.ref, w: newDims.w, h: newDims.h, type: u.type, size: u.size }; });
-      else if (removeImage) p = Promise.resolve(null);
-      return p.then(function (image) {
+    // A location has up to two images: image (the one used in thumbnails) and image2.
+    // second = { file, dims, removed } for image2, like the arguments for image.
+    saveLocation: function (loc, fields, newFile, newDims, removeImage, second) {
+      second = second || {};
+      var old = [loc && loc.image, loc && loc.image2];
+      function pick(cur, file, dims, removed) {
+        if (file) return W.store.upload(file).then(function (u) { return { ref: u.ref, w: dims.w, h: dims.h, type: u.type, size: u.size }; });
+        return Promise.resolve(removed ? null : cur || null);
+      }
+      return Promise.all([pick(old[0], newFile, newDims, removeImage), pick(old[1], second.file, second.dims, second.removed)]).then(function (imgs) {
+        var image = imgs[0] || imgs[1], image2 = imgs[0] ? imgs[1] : null;
         var t = now();
         var cids = (fields.characterIds || []).slice(), mid = fields.mapId || null;
         if (loc) (loc.characterIds || []).forEach(function (id) { if (!W.charIdx[id] && rawHas('characters', id) && cids.indexOf(id) < 0) cids.push(id); });
         if (!mid && loc && loc.mapId && !W.mapIdx[loc.mapId] && rawHas('maps', loc.mapId)) mid = loc.mapId;
-        var body = { v: 1, name: fields.name, description: fields.description, image: image, characterIds: cids, mapId: mid, visible: fields.visible !== false, sharedWith: fields.sharedWith || (loc && loc.sharedWith) || [],
+        var body = { v: 1, name: fields.name, description: fields.description, image: image, image2: image2, characterIds: cids, mapId: mid, visible: fields.visible !== false, sharedWith: fields.sharedWith || (loc && loc.sharedWith) || [],
                      position: (loc && loc.position) || null, createdBy: owner(loc), createdAt: (loc && loc.createdAt) || t, updatedAt: t };
         return W.store.put('locations', loc ? loc.id : null, body).then(function (id) {
-          if (oldRef && (newFile || removeImage)) W.store.dropImage(oldRef);
+          old.forEach(function (o) { if (o && o.ref && o.ref !== (image && image.ref) && o.ref !== (image2 && image2.ref)) W.store.dropImage(o.ref); });
           return id;
         });
       });
@@ -1335,7 +1344,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
           });
         });
       }, Promise.resolve()).then(function () { return W.store.remove('locations', l.id); })
-        .then(function () { return W.store.dropImage(l.image && l.image.ref); });
+        .then(function () { return W.store.dropImage(l.image && l.image.ref); })
+        .then(function () { return W.store.dropImage(l.image2 && l.image2.ref); });
     },
     // Turn picker selections into character ids, creating characters that do not exist yet.
     ensureCharacters: function (sel, visible, shared) {
@@ -1713,7 +1723,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       (m ? '<p class="lede">Em <a class="inline" href="' + mapHref(m.id) + '">' + esc(mapPathText(m.id)) + '</a></p>' : '') + '</div>' +
       (can ? '<div class="btn-row"><button class="btn" type="button" id="editLocBtn">' + svg(ICON.edit, 15) + 'Editar local</button><button class="btn danger" type="button" id="delLocBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
       (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir o local <b>' + esc(l.name) + '</b>? Marcadores ligados a ele continuam no mapa, sem o vínculo. Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delLocYes">Excluir local</button><button class="btn ghost" type="button" id="delLocNo">Cancelar</button></div></div>' : '');
-    var main = (l.image ? '<div class="loc-hero" id="locHero">' + svg(ICON.image, 32, 1.6) + '</div>' : '') +
+    var pics = [l.image, l.image2].filter(function (im) { return im && im.ref; });
+    var main = (pics.length ? '<div class="loc-pics' + (pics.length > 1 ? ' two-pics' : '') + '">' + pics.map(function (im, i) { return '<div class="loc-hero" id="locHero' + i + '">' + svg(ICON.image, 32, 1.6) + '</div>'; }).join('') + '</div>' : '') +
       '<section><h2 class="sec-title">Descrição</h2>' + (l.description ? '<p class="long">' + esc(l.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>';
     var side = '<div class="box"><h2 class="sec-title" style="margin:0">Personagens</h2>' +
       (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem ligado.</p>') + '</div>' +
@@ -1721,7 +1732,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       (m ? '<ul class="links"><li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<b>' + esc(m.name) + '</b></a></li></ul><div class="btn-row" id="locMapActions"></div>' : '<p class="lede" style="font-size:13px">Este local não está em nenhum mapa.</p>') + '</div>' +
       '<div class="box"><h2 class="sec-title" style="margin:0">Localização no mapa</h2>' + (m ? pathTree(mapChain(m.id), { leaf: l }) : '<p class="lede" style="font-size:13px">Escolha um mapa em <b>Editar local</b> para posicionar este local na hierarquia.</p>') + '</div>';
     pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
-    if (l.image) W.store.imageUrl(l.image.ref).then(function (u) { var h = $('locHero'); if (h && u) h.innerHTML = '<img src="' + esc(u) + '" alt="' + esc(l.name) + '">'; });
+    pics.forEach(function (im, i) { W.store.imageUrl(im.ref).then(function (u) { var h = $('locHero' + i); if (h && u) h.innerHTML = '<img src="' + esc(u) + '" alt="' + esc(l.name) + (i ? ' (2ª imagem)' : '') + '">'; }); });
     fillImages(pageRoot);
     // Is there a marker for this location on its map?
     if (m) W.store.query('maps/' + m.id + '/markers', 'locationId', l.id).then(function (list) {
@@ -1858,7 +1869,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     var editing = !!l, canImg = W.store.canUpload;
     var html = '<form id="locForm" novalidate><h2 id="lfTitle">' + (editing ? 'Editar local' : 'Novo local') + '</h2>' +
       '<div class="field" id="f_lname"><label for="lname">Nome do local</label><input type="text" id="lname" maxlength="100" autocomplete="off" placeholder="Ex.: Taverna Anão Caolho" value="' + esc(editing ? l.name : '') + '"><div class="err" id="err_lname"></div></div>' +
-      (canImg ? imageFieldHtml('limg', 'Imagem de referência', 'Foto, ilustração, arte conceitual ou planta. Opcional, até 20 MB.') : '') +
+      (canImg ? imageFieldHtml('limg', 'Imagem de referência', 'Foto, ilustração, arte conceitual ou planta. Opcional, até 20 MB. É a que aparece nas miniaturas.') +
+        imageFieldHtml('limg2', 'Segunda imagem', 'Opcional, até 20 MB. Ex.: outro ângulo, a planta ou um detalhe do local.') : '') +
       '<div class="field"><label for="ldesc">Descrição</label><textarea id="ldesc" rows="7" maxlength="20000" placeholder="História, aparência, quem vive ali, o que o grupo descobriu…">' + esc(editing ? l.description : '') + '</textarea></div>' +
       '<div class="field"><label for="lchar">Personagens relacionados</label><div class="picker" id="picker"><div class="people" id="pickSel"></div>' +
       '<input type="text" id="lchar" autocomplete="off" placeholder="Buscar ou digitar um nome" role="combobox" aria-expanded="false" aria-controls="pickList" aria-autocomplete="list">' +
@@ -1867,10 +1879,11 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       flagHtml('lvis', l, true) +
       '<div class="form-err" id="lfErr" role="alert"></div>' +
       '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="lfCancel">Cancelar</button><button class="btn primary" type="submit" id="lfSave">' + (editing ? 'Salvar local' : 'Criar local') + '</button></div></form>';
-    var img;
-    showModal(html, function () { if (img) img.dispose(); });
+    var img, img2;
+    showModal(html, function () { if (img) img.dispose(); if (img2) img2.dispose(); });
     modal.setAttribute('aria-labelledby', 'lfTitle');
-    if (canImg) img = imageField('limg', { removable: true, existing: editing && l.image ? W.store.imageUrl(l.image.ref).then(function (u) { return { url: u, name: 'Imagem atual', dims: l.image.w ? l.image.w + ' × ' + l.image.h + ' px' : '' }; }) : null });
+    function current(im) { return editing && im && im.ref ? W.store.imageUrl(im.ref).then(function (u) { return { url: u, name: 'Imagem atual', dims: im.w ? im.w + ' × ' + im.h + ' px' : '' }; }) : null; }
+    if (canImg) { img = imageField('limg', { removable: true, existing: current(l && l.image) }); img2 = imageField('limg2', { removable: true, existing: current(l && l.image2) }); }
     var name = $('lname');
     name.addEventListener('input', function () { if (name.value.trim()) { $('err_lname').textContent = ''; $('f_lname').classList.remove('invalid'); } });
 
@@ -1925,13 +1938,16 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       var n = name.value.trim();
       if (!n) { $('err_lname').textContent = 'Informe o nome do local.'; $('f_lname').classList.add('invalid'); name.focus(); return; }
       if (img && $('err_limg').textContent && !img.file) { img.drop.focus(); return; }
+      if (img2 && $('err_limg2').textContent && !img2.file) { img2.drop.focus(); return; }
       modalOpen.busy = true;
-      var btn = $('lfSave'); btn.disabled = true; btn.textContent = img && img.file ? 'Enviando imagem…' : 'Salvando…'; $('lfCancel').disabled = true; $('lfErr').textContent = '';
+      var sending = (img && img.file ? 1 : 0) + (img2 && img2.file ? 1 : 0);
+      var btn = $('lfSave'); btn.disabled = true; btn.textContent = sending ? (sending > 1 ? 'Enviando imagens…' : 'Enviando imagem…') : 'Salvando…'; $('lfCancel').disabled = true; $('lfErr').textContent = '';
       var mapId = $('lmap').value || null;
       if (mapId && !mapById(mapId)) mapId = null;
       var lvis = flagVal('lvis', l), lshare = shareVal('lvis', l);
       Ops.ensureCharacters(sel, lvis, lshare).then(function (ids) {
-        return Ops.saveLocation(l, { name: n, description: $('ldesc').value.trim(), characterIds: ids, mapId: mapId, visible: lvis, sharedWith: lshare }, img && img.file, img && img.dims, img && img.removed);
+        return Ops.saveLocation(l, { name: n, description: $('ldesc').value.trim(), characterIds: ids, mapId: mapId, visible: lvis, sharedWith: lshare }, img && img.file, img && img.dims, img && img.removed,
+          img2 ? { file: img2.file, dims: img2.dims, removed: img2.removed } : null);
       }).then(function (id) {
         closeModal(true);
         toast(editing ? 'Local salvo.' : 'Local criado.');
