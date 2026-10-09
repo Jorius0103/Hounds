@@ -39,7 +39,7 @@ interface TacticalMapWorkspaceProps {
   characters: NPC[];
   selectedNpcId: string;
   onSelectNpc: (npcId: string) => void;
-  onUpdateNpc: (updated: Partial<NPC>) => void;
+  onUpdateNpc: (updated: NPC) => void;
   currentUserRole: string;
   onOpenFullNpcSheet: (npcId: string) => void;
 }
@@ -415,7 +415,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           }}
           onPlaceToken={handlePlaceToken}
           onFocusToken={handleFocusToken}
-          onUpdateNpc={onUpdateNpc}
+          onUpdateNpc={(partial) => {
+            if (selectedTokenNpc) onUpdateNpc({ ...selectedTokenNpc, ...partial });
+          }}
           currentUserRole={currentUserRole}
         />
       </div>
@@ -441,7 +443,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               onUpdateTacticalState({ tokens: updatedTokens });
               setPopoverToken({ ...popoverToken, ...updated });
             }}
-            onUpdateNpc={onUpdateNpc}
+            onUpdateNpc={(partial) => onUpdateNpc({ ...selectedTokenNpc, ...partial })}
             onRemoveToken={() => {
               const updatedTokens = tacticalState.tokens.filter(
                 (t) => t.id !== popoverToken.id

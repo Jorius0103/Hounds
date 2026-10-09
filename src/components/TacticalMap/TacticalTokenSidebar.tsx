@@ -98,7 +98,7 @@ export const TacticalTokenSidebar: React.FC<TacticalTokenSidebarProps> = ({
             >
               <NpcAvatar
                 avatar={npc.avatar}
-                avatarPreset={npc.avatarPreset}
+                preset={npc.avatarPreset}
                 name={npc.name}
                 className="w-full h-full"
               />

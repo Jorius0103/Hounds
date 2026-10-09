@@ -90,7 +90,7 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
           >
             <NpcAvatar
               avatar={npc.avatar}
-              avatarPreset={npc.avatarPreset}
+              preset={npc.avatarPreset}
               name={npc.name}
               className="w-full h-full"
             />
