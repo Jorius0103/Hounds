@@ -39,6 +39,7 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 
 ## Funcionalidades
 
+- **Página inicial:** é a primeira página ao abrir o site. Tem atalhos para cada seção, com as contagens, e a lista do que foi atualizado por último. Para voltar a ela, clique na patinha no topo do menu.
 - **Usuários:** escolha de usuário ao abrir, com perfis Mestre (administrador de tudo), Jogador e Espectador. Só o Mestre gerencia os usuários.
 - **Visibilidade:** cada item tem a opção "Visível para todos". Desmarcado, só o Mestre vê.
 - **Informações:** mapas em hierarquia com marcadores, localizações e personagens.
@@ -50,7 +51,7 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
   - Botões de copiar e remover que agem no combate atual.
   - Botões "Finalizar Ação" e "Finalizar Round".
   - Log de Combate com manobra, PV, FP e condições, navegação por rounds e exclusão de round.
-  - Botão de sair, que salva e volta à escolha de jogo.
+  - Botão de sair, que salva e volta para a página inicial. Ao voltar para a Mesa, ela abre na escolha de jogo.
 
 ## Segurança
 

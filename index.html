@@ -85,7 +85,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* Rail */
 .rail { background: var(--rail); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
-.brand { display: flex; align-items: center; gap: 12px; padding: 16px 14px; border-bottom: 1px solid var(--line); min-height: 64px; box-sizing: border-box; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 16px 14px; border-bottom: 1px solid var(--line); min-height: 64px; box-sizing: border-box; color: inherit; text-decoration: none; }
+.brand:hover .brand-mark { background: var(--accent); color: var(--accent-ink); }
+.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .brand-mark { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(245,158,11,.35); }
 .brand-text { min-width: 0; white-space: nowrap; }
 .brand-text strong { display: block; font-size: 16px; font-weight: 800; letter-spacing: .02em; }
@@ -457,6 +459,15 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .nb-card .txt { min-width: 0; display: grid; gap: 4px; }
 .nb-card strong { overflow-wrap: anywhere; }
 .note-list { display: grid; gap: 8px; }
+
+/* Home */
+.home-hero { display: flex; gap: 18px; align-items: center; }
+.home-hero .brand-mark { width: 60px; height: 60px; border-radius: 16px; }
+.home-hero .brand-mark svg { width: 30px; height: 30px; }
+.nb-card.feature { border-color: rgba(245,158,11,.35); background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--surface); }
+.nb-card.feature .ico { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+@media (min-width: 761px) { .home-grid .feature { grid-column: span 2; } }
+@media (max-width: 760px) { .home-hero .brand-mark { width: 48px; height: 48px; } .home-hero .brand-mark svg { width: 24px; height: 24px; } }
 .note-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); text-decoration: none; color: inherit; min-width: 0; }
 .note-row:hover { border-color: var(--line-2); }
 .note-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -479,12 +490,12 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 
 <div class="app" id="app">
   <aside class="rail" id="rail" aria-label="Menu">
-    <div class="brand">
+    <a class="brand" id="brandLink" href="#inicio" title="Página inicial" aria-label="Hounds, página inicial">
       <div class="brand-mark" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>
       </div>
       <div class="brand-text"><strong>Hounds</strong><span>Campanha GURPS</span></div>
-    </div>
+    </a>
     <nav class="nav" aria-label="Páginas">
       <div class="nav-label">Páginas</div>
       <ul class="tree" id="menu"></ul>
@@ -1224,6 +1235,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
     if (p[0] === 'caderno' && p[1]) return { page: 'nb', nbId: p[1], node: 'nb:' + p[1] };
     if (p[0] === 'nota' && p[1]) return { page: 'note', noteId: p[1], node: 'note:' + p[1] };
+    if (p[0] === 'inicio') return { page: 'home', node: null };
     return null;
   }
   function hrefFor(node) {
@@ -1382,6 +1394,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   document.querySelector('.main').addEventListener('pointerdown', closeOverlay);
   window.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement && document.activeElement.id === 'mesaFrame') closeOverlay(); }, 0); });
   scrim.addEventListener('click', function () { setDrawer(false); });
+  $('brandLink').addEventListener('click', function () { setDrawer(false); });
 
   /* =====================================================================
      Shared page pieces
@@ -2439,7 +2452,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   window.addEventListener('hub:user', function () {
     refilter();
     renderMenu();
-    if (S.route && S.route.page !== 'mesa' && S.route.page !== 'home' && S.route.page !== 'users' && !modalOpen) renderPage();
+    if (S.route && S.route.page !== 'mesa' && S.route.page !== 'users' && !modalOpen) renderPage();
     if (S.route && S.route.page === 'users') { topTitle.textContent = byId.users ? byId.users.label : 'Usuários'; renderPage(); }
   });
 
@@ -2781,14 +2794,57 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   })();
   window.hubMesaBus = { publish: MesaSync.publish, subscribe: MesaSync.subscribe };
   window.hubMesaPrepare = function () { return MesaSync.prepare(); };
-  window.hubMesaFlush = function () { return MesaSync.flushNow(); };
+  // The Mesa's exit button: save, then go to the home page.
+  window.hubMesaFlush = function () { var saved = MesaSync.flushNow(); go('#inicio'); return saved; };
   window.addEventListener('beforeunload', function () { });
+
+  /* =====================================================================
+     Home: the first page when the site opens, and where the Mesa's exit
+     button and the paw mark in the menu lead.
+     ===================================================================== */
+  function renderHomePage() {
+    var u = window.hubUser;
+    var count = function (kind, n, one, many) { return W.loaded[kind] ? (n ? plural(n, one, many) : 'Nenhum ainda') : 'Carregando…'; };
+    var card = function (href, icon, title, meta, cls) {
+      return '<a class="nb-card' + (cls ? ' ' + cls : '') + '" href="' + href + '"><span class="ico">' + svg(icon, 20) + '</span><span class="txt"><strong>' + esc(title) + '</strong><span class="meta">' + esc(meta) + '</span></span></a>';
+    };
+    var notesMeta = !W.loaded.notebooks ? 'Carregando…' : W.notebooks.length ? plural(W.notebooks.length, 'título', 'títulos') + ' · ' + plural(W.notes.length, 'anotação', 'anotações') : 'Nenhum título ainda';
+    var cards = [
+      card('#mesa', ICON.mesa, 'Mesa de Combate', 'Combates, NPCs e o log de cada round', 'feature'),
+      card('#maps', ICON.maps, 'Maps', count('maps', W.maps.length, 'mapa', 'mapas')),
+      card('#locais', ICON.pin, 'Localização', count('locations', W.locations.length, 'local', 'locais')),
+      card('#personagens', ICON.user, 'Personagens', count('characters', W.characters.length, 'personagem', 'personagens')),
+      card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
+    ];
+    if (isMestre()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));
+
+    // What changed lately, across the kinds of things people open most.
+    var recent = [].concat(
+      W.maps.map(function (m) { return { t: m.updatedAt || m.createdAt, href: mapHref(m.id), icon: ICON.map, name: m.name, kind: 'Mapa', item: m }; }),
+      W.locations.map(function (l) { return { t: l.updatedAt || l.createdAt, href: locHref(l.id), icon: ICON.pin, name: l.name, kind: 'Local', item: l }; }),
+      W.characters.map(function (c) { return { t: c.updatedAt || c.createdAt, href: charHref(c.id), icon: ICON.user, name: c.name, kind: 'Personagem', item: c }; }),
+      W.notes.map(function (n) { return { t: n.updatedAt || n.createdAt, href: hrefFor('note:' + n.id), icon: ICON.note, name: n.title, kind: 'Anotação', item: n }; })
+    ).sort(function (a, b) { return (b.t || 0) - (a.t || 0); }).slice(0, 6);
+    var allLoaded = W.loaded.maps && W.loaded.locations && W.loaded.characters && W.loaded.notes;
+    var recentHtml = recent.length ? '<div class="note-list">' + recent.map(function (x) {
+      return '<a class="note-row" href="' + x.href + '"><span class="ico">' + svg(x.icon, 18) + '</span><span class="txt"><strong>' + esc(x.name || 'Sem nome') + (isSecret(x.item) ? ' ' + secretTag() : '') + '</strong>' +
+        '<span class="meta">' + esc(x.kind) + (x.t ? ' · atualizado em ' + esc(fmtDate(x.t)) : '') + '</span></span></a>';
+    }).join('') + '</div>' : allLoaded ? '<div class="empty-state">' + svg(ICON.notes, 34, 1.6) + '<strong>Nada por aqui ainda</strong><span>Mapas, locais, personagens e anotações criados vão aparecer aqui.</span></div>' : '<p class="lede">Carregando…</p>';
+
+    pageRoot.innerHTML =
+      '<div class="home-hero"><div class="brand-mark" aria-hidden="true">' + BRAND_SVG + '</div><div><span class="badge">Campanha GURPS</span>' +
+        '<h1>' + (u ? 'Olá, ' + esc(u.name) : 'Hounds') + '</h1><p class="lede">Mapas, locais, personagens, anotações e a Mesa de Combate do grupo. Escolha por onde começar.</p></div></div>' +
+      notice() +
+      '<div class="nb-grid home-grid">' + cards.join('') + '</div>' +
+      '<section><h2 class="sec-title">Atualizados recentemente</h2>' + recentHtml + '</section>';
+  }
 
   function renderPage() {
     var r = S.route; if (!r) return;
-    if (r.page === 'mesa' || r.page === 'home') return;
+    if (r.page === 'mesa') return;
     if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
-    if (r.page === 'maps') renderMapsPage();
+    if (r.page === 'home') renderHomePage();
+    else if (r.page === 'maps') renderMapsPage();
     else if (r.page === 'map') { watchMarkersFor(r.mapId); renderMapPage(); var m = mapById(r.mapId); if (r.explore && m) Explorer.open(m); }
     else if (r.page === 'locais') renderLocaisPage();
     else if (r.page === 'local') renderLocalPage();
@@ -2809,10 +2865,10 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     app.classList.toggle('on-mesa', isMesa);
     if (isMesa) setCollapsed(true, true);
     else if (wasMesa) setCollapsed(lstore('hounds_rail_collapsed') === '1', true);
-    document.querySelectorAll('.view').forEach(function (v) { v.hidden = r.page === 'home' || v.id !== (r.page === 'mesa' ? 'view-mesa' : 'view-page'); });
+    document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : 'view-page'); });
     if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
     paintMenu();
-    topTitle.textContent = byId[r.node] ? byId[r.node].label : 'Hounds';
+    topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
     if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : hrefFor(r.node));
     if (!(r.page === 'map' && r.explore)) Explorer.close();
     if (prev && prev.node !== r.node) { var pg = $('view-page'); if (pg) pg.scrollTop = 0; }
@@ -2960,7 +3016,9 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (mesaHtml == null) {
       var b = atob(el('mesaSrc').textContent.trim()), u = new Uint8Array(b.length);
       for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
-      mesaHtml = new TextDecoder('utf-8').decode(u).replace('</head>', MESA_THEME + '</head>');
+      mesaHtml = new TextDecoder('utf-8').decode(u).replace('</head>', MESA_THEME + '</head>')
+        // Its exit button now leads to the hub's home page (see hubMesaFlush).
+        .replace('title:"Salvar e voltar para a escolha de jogo"', 'title:"Salvar e voltar para a página inicial"');
     }
     return mesaHtml;
   }
