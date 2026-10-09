@@ -2611,6 +2611,9 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       Object.keys(MESA_LS).forEach(function (k) { if (st[k] != null) { try { localStorage.setItem(MESA_LS[k], JSON.stringify(st[k])); } catch (e) {} } });
     }
     function fetchRev(h) {
+      // A head written with the state inline (no pieces) is read as is.
+      if (Array.isArray(h.combats)) return Promise.resolve({ combats: h.combats, conditions: h.conditions, players: h.players, activeCombatId: h.activeCombatId || null });
+      if (!(h.n > 0)) return Promise.resolve(null);
       return W.store.query('mesa_chunks', 'rev', h.rev).then(function (rows) {
         if (rows.length < h.n) return null;
         rows.sort(function (a, b) { return a.i - b.i; });
