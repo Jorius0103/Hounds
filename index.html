@@ -344,6 +344,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .loc-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
 .loc-hero { background: var(--well); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: grid; place-items: center; }
 .loc-hero img { max-width: 100%; max-height: 56vh; display: block; }
+.hero-zoom { display: block; padding: 0; border: 0; background: none; cursor: zoom-in; max-width: 100%; }
+.hero-zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.zoom-back { position: fixed; inset: 0; z-index: 95; background: rgba(2, 6, 23, .92); display: grid; place-items: center; overflow: hidden; touch-action: none; user-select: none; }
+.zoom-img { max-width: calc(100vw - 32px); max-height: calc(100vh - 96px); display: block; transform-origin: center; will-change: transform; }
+.zoom-bar { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(15, 23, 42, .85); border: 1px solid rgba(148, 163, 184, .25); }
+.zoom-bar .icon-btn { color: #e2e8f0; font-size: 18px; font-weight: 700; }
+.zoom-bar .icon-btn:hover { background: rgba(148, 163, 184, .2); color: #fff; }
+.zoom-pct { min-width: 46px; text-align: center; font-size: 12px; font-weight: 700; color: #cbd5e1; font-variant-numeric: tabular-nums; }
 .loc-pics { display: grid; gap: 12px; }
 .loc-pics.two-pics { grid-template-columns: 1fr 1fr; }
 .loc-pics.two-pics .loc-hero img { max-height: 40vh; }
@@ -499,6 +507,48 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .note-body.none { color: var(--faint); font-style: italic; }
 .note-edit { display: flex; flex-direction: column; gap: 12px; }
 .note-edit textarea { min-height: 52vh; font-size: 15px; line-height: 1.7; }
+/* Formatted note text, the same in the editor and on the page */
+.rich { white-space: normal; }
+.rich > :first-child { margin-top: 0; }
+.rich > :last-child { margin-bottom: 0; }
+.rich p { margin: 0 0 .75em; }
+.rich h1, .rich h2, .rich h3, .rich h4 { line-height: 1.25; margin: 1.1em 0 .45em; }
+.rich h1 { font-size: 1.7em; }
+.rich h2 { font-size: 1.35em; }
+.rich h3 { font-size: 1.14em; }
+.rich ul, .rich ol { margin: 0 0 .75em; padding-left: 1.6em; }
+.rich li { margin: .15em 0; }
+.rich li > ul, .rich li > ol { margin: .15em 0; }
+.rich blockquote { margin: 0 0 .75em; padding: .45em 1em; border-left: 3px solid var(--accent); background: var(--well); border-radius: 0 8px 8px 0; color: var(--muted); }
+.rich blockquote blockquote { margin-left: 0; }
+.rich pre { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; background: var(--well); border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px; white-space: pre-wrap; margin: 0 0 .75em; }
+.rich code { font-family: var(--font-mono); font-size: .9em; }
+.rich a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.rich hr { border: 0; border-top: 1px solid var(--line-2); margin: 1.3em 0; }
+.rich mark { background: rgba(250, 204, 21, .4); color: inherit; }
+/* Rich text editor */
+.rte { position: relative; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface); }
+.rte:focus-within { border-color: var(--accent); }
+.rte-bar { position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px; background: var(--surface-2); border-bottom: 1px solid var(--line); border-radius: 13px 13px 0 0; }
+.rte-group { display: flex; align-items: center; gap: 2px; padding-right: 4px; margin-right: 2px; border-right: 1px solid var(--line-2); }
+.rte-group:last-child { border-right: 0; }
+.rte-bar button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.rte-bar button:hover { background: var(--surface); color: var(--text); }
+.rte-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rte-bar button.on { background: var(--accent-soft); color: var(--accent); border-color: rgba(245,158,11,.35); }
+.rte-bar select { height: 32px; border-radius: 8px; background: var(--well); color: var(--text); border: 1px solid var(--line-2); padding: 0 8px; font-size: 13px; cursor: pointer; }
+.rte-a { font-weight: 800; font-size: 15px; line-height: 1; padding: 0 2px 1px; border-bottom: 3px solid #ef4444; }
+.rte-area { min-height: 52vh; padding: 18px 22px; outline: none; font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; color: var(--text); }
+.rte-area.is-empty::before { content: attr(data-ph); float: left; height: 0; color: var(--faint); pointer-events: none; }
+.rte-pop { position: absolute; z-index: 6; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px; box-shadow: 0 10px 30px var(--shadow); }
+.rte-pop[hidden] { display: none; }
+.rte-swatches { display: grid; grid-template-columns: repeat(5, 28px); gap: 6px; }
+.rte-swatches button { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--line-2); cursor: pointer; padding: 0; display: grid; place-items: center; color: var(--muted); background: var(--well); }
+.rte-swatches button:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rte-link { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.rte-link input, .field .rte-link input[type=text] { width: min(260px, 70vw); background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 10px; color: var(--text); font-size: 13px; }
+.rte-link input:focus, .field .rte-link input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+@media (max-width: 760px) { .rte-area { padding: 14px; } .rte-group { border-right: 0; } }
 
 /* On the Mesa de Combate the rail stays collapsed and opens over the table */
 @media (min-width: 761px) {
@@ -2296,6 +2346,99 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   })();
 
   /* =====================================================================
+     Image zoom: full-screen viewer. Click toggles zoom at that point, the
+     wheel or a pinch zooms, dragging pans, Esc / ✕ / a click outside closes.
+     ===================================================================== */
+  function zoomImage(url, alt) {
+    var back = document.createElement('div'), prev = document.activeElement;
+    back.className = 'zoom-back'; back.setAttribute('role', 'dialog'); back.setAttribute('aria-modal', 'true'); back.setAttribute('aria-label', alt || 'Imagem');
+    back.innerHTML = '<img class="zoom-img" alt="' + esc(alt || '') + '" draggable="false">' +
+      '<div class="zoom-bar"><button class="icon-btn" type="button" data-z="out" aria-label="Diminuir zoom">−</button><span class="zoom-pct" aria-live="polite">100%</span>' +
+      '<button class="icon-btn" type="button" data-z="in" aria-label="Aumentar zoom">+</button><button class="icon-btn" type="button" data-z="close" aria-label="Fechar">' + svg(ICON.x, 16, 2.4) + '</button></div>';
+    document.body.appendChild(back);
+    var img = back.querySelector('.zoom-img'), pct = back.querySelector('.zoom-pct');
+    var s = 1, tx = 0, ty = 0, MAX = 6, ptrs = {}, drag = null, pinch = null;
+    function clampT() {
+      var r = back.getBoundingClientRect(), w = img.offsetWidth * s, h = img.offsetHeight * s;
+      var mx = Math.max(0, (w - r.width) / 2), my = Math.max(0, (h - r.height) / 2);
+      tx = Math.max(-mx, Math.min(mx, tx)); ty = Math.max(-my, Math.min(my, ty));
+    }
+    function paint(anim) {
+      clampT();
+      img.style.transition = anim ? 'transform .18s ease' : 'none';
+      img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+      img.style.cursor = s > 1 ? 'grab' : 'zoom-in';
+      pct.textContent = Math.round(s * 100) + '%';
+    }
+    // Zoom to `ns`, keeping the screen point (x, y) still.
+    function zoomAt(ns, x, y, anim) {
+      ns = Math.max(1, Math.min(MAX, ns));
+      var r = back.getBoundingClientRect(), px = x - (r.left + r.width / 2), py = y - (r.top + r.height / 2);
+      tx = px - (px - tx) * ns / s; ty = py - (py - ty) * ns / s; s = ns;
+      if (s === 1) { tx = 0; ty = 0; }
+      paint(anim);
+    }
+    function center() { var r = back.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+    function close() {
+      document.removeEventListener('keydown', onKey, true);
+      back.remove();
+      if (prev && prev.focus) prev.focus();
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+      else if (e.key === '+' || e.key === '=') { var c = center(); zoomAt(s * 1.5, c[0], c[1], true); }
+      else if (e.key === '-') { var c2 = center(); zoomAt(s / 1.5, c2[0], c2[1], true); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    back.querySelector('.zoom-bar').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-z]'); if (!b) return;
+      var z = b.getAttribute('data-z'), c = center();
+      if (z === 'close') close(); else zoomAt(z === 'in' ? s * 1.5 : s / 1.5, c[0], c[1], true);
+    });
+    back.addEventListener('wheel', function (e) { e.preventDefault(); zoomAt(s * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY, false); }, { passive: false });
+    back.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.zoom-bar')) return;
+      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(ptrs);
+      if (ids.length === 2) {
+        var a = ptrs[ids[0]], b = ptrs[ids[1]];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: s }; drag = null;
+      } else if (ids.length === 1) {
+        drag = { x: e.clientX, y: e.clientY, tx: tx, ty: ty, moved: false, onImg: e.target === img };
+      }
+      try { back.setPointerCapture(e.pointerId); } catch (er) {}
+    });
+    back.addEventListener('pointermove', function (e) {
+      if (!ptrs[e.pointerId]) return;
+      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(ptrs);
+      if (pinch && ids.length === 2) {
+        var a = ptrs[ids[0]], b = ptrs[ids[1]];
+        zoomAt(pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, (a.x + b.x) / 2, (a.y + b.y) / 2, false);
+      } else if (drag) {
+        var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+        if (drag.moved && s > 1) { tx = drag.tx + dx; ty = drag.ty + dy; img.style.cursor = 'grabbing'; paint(false); }
+      }
+    });
+    function up(e) {
+      if (!ptrs[e.pointerId]) return;
+      delete ptrs[e.pointerId];
+      if (pinch) { if (!Object.keys(ptrs).length) pinch = null; drag = null; return; }
+      var d = drag; drag = null;
+      if (!d || d.moved || e.type === 'pointercancel') { paint(false); return; }
+      if (d.onImg) { if (s > 1) zoomAt(1, e.clientX, e.clientY, true); else zoomAt(2.5, e.clientX, e.clientY, true); }
+      else close();
+    }
+    back.addEventListener('pointerup', up);
+    back.addEventListener('pointercancel', up);
+    window.addEventListener('resize', function onResize() { if (!back.isConnected) { window.removeEventListener('resize', onResize); return; } paint(false); });
+    img.onload = function () { paint(false); };
+    img.src = url;
+    back.querySelector('[data-z="close"]').focus();
+  }
+
+  /* =====================================================================
      Characters (Mundo › Personagens)
      A character ↔ location link is stored once, in location.characterIds,
      so editing it from either side always gives the same answer.
@@ -2430,7 +2573,11 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       '<div class="box"><h2 class="sec-title" style="margin:0">Locais relacionados</h2>' +
       (locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local relacionado.' + (can ? ' Use <b>Editar personagem</b> para ligar locais.' : '') + '</p>') + '</div>';
     pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
-    if (c.image) W.store.imageUrl(c.image.ref).then(function (u) { var h = $('charHero'); if (h && u) h.innerHTML = '<img src="' + esc(u) + '" alt="' + esc(c.name) + '">'; });
+    if (c.image) W.store.imageUrl(c.image.ref).then(function (u) {
+      var h = $('charHero'); if (!h || !u) return;
+      h.innerHTML = '<button class="hero-zoom" type="button" aria-label="Ampliar a imagem de ' + esc(c.name) + '" title="Clique para ampliar"><img src="' + esc(u) + '" alt="' + esc(c.name) + '"></button>';
+      h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, c.name); };
+    });
     fillImages(pageRoot);
     var e = $('editCharBtn'); if (e) e.onclick = function () { openCharForm(c); };
     var d = $('delCharBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderCharPage(); };
@@ -2810,7 +2957,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       (can ? '<div class="btn-row"><button class="btn primary" type="button" id="newNoteBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova anotação</button><button class="btn" type="button" id="editNbBtn">' + svg(ICON.edit, 15) + 'Renomear</button><button class="btn danger" type="button" id="delNbBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
       (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir o título <b>' + esc(nb.name) + '</b>' + (list.length ? ' e ' + plural(list.length, 'anotação', 'anotações') + ' dentro dele' : '') + '? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delNbYes">Excluir título</button><button class="btn ghost" type="button" id="delNbNo">Cancelar</button></div></div>' : '');
     var body = list.length ? '<div class="note-list">' + list.map(function (n) {
-      var ex = String(n.body || '').replace(/\s+/g, ' ').trim();
+      var ex = noteText(n);
       return '<a class="note-row" href="' + hrefFor('note:' + n.id) + '"><span class="ico">' + svg(ICON.note, 18) + '</span><span class="txt"><strong>' + esc(n.title) + (isSecret(n) ? ' ' + secretTag(n) : '') + '</strong>' +
         (ex ? '<span class="ex">' + esc(clip(ex, 160)) + '</span>' : '') + '<span class="meta">Atualizada em ' + esc(fmtDate(n.updatedAt)) + '</span></span></a>';
     }).join('') + '</div>' : '<div class="empty-state">' + svg(ICON.note, 34, 1.6) + '<strong>Nenhuma anotação neste título</strong><span>' + (can ? 'Crie a primeira com <b>Nova anotação</b>.' : 'As anotações criadas vão aparecer aqui.') + '</span></div>';
@@ -2829,6 +2976,221 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     };
   }
 
+  /* ---------- rich text notes ----------
+     A note saved by the editor has format: 'html' and its body is HTML that
+     went through cleanRich (an allow-list), both when saved and when shown,
+     since anyone who can write could otherwise inject markup into other
+     people's browsers. Older notes are plain text and keep showing as such. */
+  var RTE_TAGS = { P: 1, BR: 1, H1: 1, H2: 1, H3: 1, H4: 1, B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, MARK: 1, SUB: 1, SUP: 1, UL: 1, OL: 1, LI: 1, BLOCKQUOTE: 1, PRE: 1, CODE: 1, A: 1, HR: 1, SPAN: 1, DIV: 1, FONT: 1 };
+  var RTE_DROP = /^(SCRIPT|STYLE|IFRAME|FRAME|OBJECT|EMBED|SVG|MATH|TEMPLATE|NOSCRIPT|LINK|META|TITLE|HEAD|BASE|FORM|INPUT|BUTTON|TEXTAREA|SELECT|OPTION|IMG|PICTURE|VIDEO|AUDIO|SOURCE|CANVAS)$/;
+  var RTE_CSS = ['color', 'background-color', 'text-align', 'font-weight', 'font-style', 'text-decoration-line'];
+  function safeCss(v) { return !!v && /^[#a-z0-9\s(),.%-]+$/i.test(v) && !/url|expression|var\(/i.test(v); }
+  function safeHref(h) {
+    h = String(h || '').trim();
+    if (/^(https?:|mailto:)/i.test(h) || /^#[\w-]*$/.test(h)) return h;
+    return '';
+  }
+  // paste: drop colors and weights brought from other pages, keep structure.
+  function cleanRich(html, paste) {
+    var doc = new DOMParser().parseFromString('<!doctype html><body>' + String(html || ''), 'text/html');
+    var out = doc.createElement('div');
+    (function walk(src, dst) {
+      [].forEach.call(src.childNodes, function (node) {
+        if (node.nodeType === 3) { dst.appendChild(doc.createTextNode(node.nodeValue)); return; }
+        if (node.nodeType !== 1) return;
+        var tag = node.tagName.toUpperCase();
+        if (RTE_DROP.test(tag)) return;
+        if (!RTE_TAGS[tag]) { walk(node, dst); return; }
+        var el = doc.createElement(tag === 'FONT' ? 'span' : tag.toLowerCase());
+        RTE_CSS.forEach(function (p) {
+          if (paste && p !== 'text-align') return;
+          var v = node.style && node.style.getPropertyValue(p);
+          if (safeCss(v)) el.style.setProperty(p, v);
+        });
+        if (tag === 'FONT' && !paste && /^#?[a-z0-9]+$/i.test(node.getAttribute('color') || '')) el.style.color = node.getAttribute('color');
+        if (tag === 'A') {
+          var href = safeHref(node.getAttribute('href'));
+          if (href) { el.setAttribute('href', href); if (href.charAt(0) !== '#') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer'); } }
+        }
+        walk(node, el);
+        if ((tag === 'SPAN' || tag === 'FONT') && !el.getAttribute('style')) { while (el.firstChild) dst.appendChild(el.firstChild); return; }
+        // Browsers leave empty <p></p> around lists; <p><br></p> is a blank line on purpose and stays.
+        if (tag === 'P' && !el.firstChild) return;
+        dst.appendChild(el);
+      });
+    })(doc.body, out);
+    return out.innerHTML;
+  }
+  function textToHtml(t) {
+    t = String(t || '').replace(/\r\n?/g, '\n').trim();
+    return t ? t.split(/\n{2,}/).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join('') : '';
+  }
+  function richToText(html) {
+    var spaced = String(html || '').replace(/<(br|hr)[^>]*>|<\/(p|li|h\d|div|blockquote|pre)>/gi, ' ');
+    return (new DOMParser().parseFromString(spaced, 'text/html').body.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  function noteText(n) { return n.format === 'html' ? richToText(n.body) : String(n.body || '').replace(/\s+/g, ' ').trim(); }
+  function noteEditHtml(n) { return n.format === 'html' ? cleanRich(n.body) : textToHtml(n.body); }
+
+  var RTE_ICON = {
+    undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
+    redo: '<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>',
+    bold: '<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',
+    italic: '<line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/>',
+    underline: '<path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" x2="20" y1="20" y2="20"/>',
+    strike: '<path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" x2="20" y1="12" y2="12"/>',
+    hilite: '<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>',
+    ul: '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
+    ol: '<line x1="10" x2="21" y1="6" y2="6"/><line x1="10" x2="21" y1="12" y2="12"/><line x1="10" x2="21" y1="18" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>',
+    outdent: '<polyline points="7 8 3 12 7 16"/><line x1="21" x2="11" y1="12" y2="12"/><line x1="21" x2="11" y1="6" y2="6"/><line x1="21" x2="11" y1="18" y2="18"/>',
+    indent: '<polyline points="3 8 7 12 3 16"/><line x1="21" x2="11" y1="12" y2="12"/><line x1="21" x2="11" y1="6" y2="6"/><line x1="21" x2="11" y1="18" y2="18"/>',
+    left: '<line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/>',
+    center: '<line x1="21" x2="3" y1="6" y2="6"/><line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="18" y2="18"/>',
+    right: '<line x1="21" x2="3" y1="6" y2="6"/><line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="18" y2="18"/>',
+    justify: '<line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    hr: '<line x1="3" x2="21" y1="12" y2="12"/><line x1="8" x2="16" y1="6" y2="6" opacity=".4"/><line x1="8" x2="16" y1="18" y2="18" opacity=".4"/>',
+    clear: '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>'
+  };
+  var RTE_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899', '#94a3b8'];
+  var RTE_HILITES = ['rgba(250, 204, 21, 0.4)', 'rgba(34, 197, 94, 0.35)', 'rgba(59, 130, 246, 0.35)', 'rgba(236, 72, 153, 0.35)', 'rgba(239, 68, 68, 0.35)', 'rgba(148, 163, 184, 0.35)'];
+  var RTE_BLOCKS = [['p', 'Parágrafo'], ['h1', 'Título 1'], ['h2', 'Título 2'], ['h3', 'Título 3'], ['blockquote', 'Citação'], ['pre', 'Código']];
+
+  // Builds the editor inside `host`. opts: { html, label, placeholder, onInput(html), onSave() }.
+  function richEditor(host, opts) {
+    function btn(cmd, label, keys) { return '<button type="button" data-cmd="' + cmd + '" title="' + esc(label + (keys ? ' (' + keys + ')' : '')) + '" aria-label="' + esc(label) + '">' + svg(RTE_ICON[cmd], 16, 2.2) + '</button>'; }
+    host.innerHTML = '<div class="rte"><div class="rte-bar" role="toolbar" aria-label="Formatação do texto">' +
+      '<div class="rte-group">' + btn('undo', 'Desfazer', 'Ctrl+Z') + btn('redo', 'Refazer', 'Ctrl+Y') + '</div>' +
+      '<div class="rte-group"><select data-block aria-label="Estilo do parágrafo" title="Estilo do parágrafo">' + RTE_BLOCKS.map(function (b) { return '<option value="' + b[0] + '">' + b[1] + '</option>'; }).join('') + '</select></div>' +
+      '<div class="rte-group">' + btn('bold', 'Negrito', 'Ctrl+B') + btn('italic', 'Itálico', 'Ctrl+I') + btn('underline', 'Sublinhado', 'Ctrl+U') + btn('strike', 'Tachado') + '</div>' +
+      '<div class="rte-group"><button type="button" data-pop="color" title="Cor do texto" aria-label="Cor do texto" aria-haspopup="true"><span class="rte-a">A</span></button>' +
+        '<button type="button" data-pop="hilite" title="Marca-texto" aria-label="Marca-texto" aria-haspopup="true">' + svg(RTE_ICON.hilite, 16, 2.2) + '</button></div>' +
+      '<div class="rte-group">' + btn('ul', 'Lista com marcadores') + btn('ol', 'Lista numerada') + btn('outdent', 'Diminuir recuo', 'Shift+Tab') + btn('indent', 'Aumentar recuo', 'Tab') + '</div>' +
+      '<div class="rte-group">' + btn('left', 'Alinhar à esquerda') + btn('center', 'Centralizar') + btn('right', 'Alinhar à direita') + btn('justify', 'Justificar') + '</div>' +
+      '<div class="rte-group"><button type="button" data-pop="link" title="Link (Ctrl+K)" aria-label="Link" aria-haspopup="true">' + svg(RTE_ICON.link, 16, 2.2) + '</button>' + btn('hr', 'Linha divisória') + btn('clear', 'Limpar formatação') + '</div>' +
+      '</div><div class="rte-pop" hidden></div>' +
+      '<div class="rte-area rich" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" aria-label="' + esc(opts.label || 'Texto') + '" data-ph="' + esc(opts.placeholder || 'Escreva aqui…') + '"></div></div>';
+    var root = host.firstChild, bar = root.querySelector('.rte-bar'), pop = root.querySelector('.rte-pop'), area = root.querySelector('.rte-area'), block = bar.querySelector('[data-block]');
+    var CMD = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strikeThrough', ul: 'insertUnorderedList', ol: 'insertOrderedList', outdent: 'outdent', indent: 'indent',
+                left: 'justifyLeft', center: 'justifyCenter', right: 'justifyRight', justify: 'justifyFull', undo: 'undo', redo: 'redo', hr: 'insertHorizontalRule', clear: 'removeFormat' };
+    var STATE = ['bold', 'italic', 'underline', 'strike', 'ul', 'ol', 'left', 'center', 'right', 'justify'];
+    var saved = null, popKind = null;
+    area.innerHTML = opts.html || '<p><br></p>';
+    try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
+
+    function inArea(node) { return !!node && (node === area || area.contains(node)); }
+    function save() { var s = window.getSelection(); if (s.rangeCount && inArea(s.anchorNode)) saved = s.getRangeAt(0).cloneRange(); }
+    function restore() {
+      area.focus();
+      if (!saved) return;
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(saved);
+    }
+    function changed() {
+      area.classList.toggle('is-empty', !area.textContent.trim() && !area.querySelector('hr, li'));
+      if (opts.onInput) opts.onInput(area.innerHTML);
+    }
+    function refresh() {
+      var s = window.getSelection(); if (!s.rangeCount || !inArea(s.anchorNode)) return;
+      STATE.forEach(function (k) {
+        var on = false; try { on = document.queryCommandState(CMD[k]); } catch (e) {}
+        var b = bar.querySelector('[data-cmd="' + k + '"]'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+      });
+      var v = ''; try { v = String(document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch (e) {}
+      block.value = RTE_BLOCKS.some(function (b) { return b[0] === v; }) ? v : 'p';
+    }
+    function exec(cmd, val, css) {
+      restore();
+      try { document.execCommand('styleWithCSS', false, !!css); } catch (e) {}
+      document.execCommand(cmd, false, val);
+      try { document.execCommand('styleWithCSS', false, false); } catch (e) {}
+      save(); changed(); refresh();
+    }
+    function closePop() { pop.hidden = true; popKind = null; }
+    function openPop(kind, anchor) {
+      if (popKind === kind) { closePop(); return; }
+      popKind = kind;
+      if (kind === 'link') {
+        var a = saved && (saved.startContainer.nodeType === 1 ? saved.startContainer : saved.startContainer.parentNode).closest('a');
+        // A div, not a form: the editor usually sits inside a form, and forms can't nest.
+        pop.innerHTML = '<div class="rte-link"><input type="text" placeholder="https://…" aria-label="Endereço do link" value="' + esc(a && inArea(a) ? a.getAttribute('href') : '') + '">' +
+          '<button class="btn primary" type="button" data-apply>Aplicar</button>' + (a && inArea(a) ? '<button class="btn ghost" type="button" data-unlink>Remover</button>' : '') + '</div>';
+        var f = pop.querySelector('.rte-link'), inp = f.querySelector('input');
+        function apply() {
+          var url = inp.value.trim(); if (!url) { closePop(); restore(); return; }
+          if (!/^(https?:|mailto:|#)/i.test(url)) url = (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(url) ? 'mailto:' : 'https://') + url;
+          if (!safeHref(url)) { inp.focus(); return; }
+          closePop();
+          if (!saved || saved.collapsed) exec('insertHTML', '<a href="' + esc(url) + '">' + esc(url.replace(/^mailto:/, '')) + '</a>');
+          else exec('createLink', url);
+        }
+        f.querySelector('[data-apply]').onclick = apply;
+        var un = f.querySelector('[data-unlink]');
+        if (un) un.onclick = function () { closePop(); if (a) { var r = document.createRange(); r.selectNodeContents(a); saved = r; } exec('unlink'); };
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); apply(); }
+          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(); restore(); }
+        });
+      } else {
+        var list = kind === 'color' ? RTE_COLORS : RTE_HILITES;
+        pop.innerHTML = '<div class="rte-swatches">' + list.map(function (c) { return '<button type="button" data-color="' + c + '" style="background:' + c + '" aria-label="' + (kind === 'color' ? 'Cor ' : 'Marca-texto ') + c + '"></button>'; }).join('') +
+          '<button type="button" class="none" data-color="" aria-label="' + (kind === 'color' ? 'Cor padrão' : 'Sem marca-texto') + '" title="' + (kind === 'color' ? 'Cor padrão' : 'Sem marca-texto') + '">' + svg(ICON.x, 12, 2.6) + '</button></div>';
+      }
+      var rb = root.getBoundingClientRect(), ab = anchor.getBoundingClientRect();
+      pop.style.top = (ab.bottom - rb.top + 4) + 'px';
+      pop.style.left = Math.max(0, Math.min(ab.left - rb.left, rb.width - 260)) + 'px';
+      pop.hidden = false;
+      var first = pop.querySelector('input'); if (first) { first.focus(); first.select(); }
+    }
+
+    bar.addEventListener('mousedown', function (e) { if (!e.target.closest('select')) e.preventDefault(); });
+    pop.addEventListener('mousedown', function (e) { if (!e.target.closest('input')) e.preventDefault(); });
+    bar.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var c = b.getAttribute('data-cmd'), p = b.getAttribute('data-pop');
+      if (p) { openPop(p, b); return; }
+      closePop();
+      if (c === 'clear') { exec('removeFormat'); exec('unlink'); exec('formatBlock', '<p>'); return; }
+      if (c) exec(CMD[c]);
+    });
+    block.addEventListener('change', function () { closePop(); exec('formatBlock', '<' + block.value + '>'); });
+    pop.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-color]'); if (!b) return;
+      var c = b.getAttribute('data-color'), kind = popKind; closePop();
+      if (kind === 'color') exec('foreColor', c || 'inherit', true);
+      else exec('hiliteColor', c || 'transparent', true);
+    });
+    area.addEventListener('input', changed);
+    area.addEventListener('keyup', refresh);
+    area.addEventListener('mouseup', refresh);
+    area.addEventListener('keydown', function (e) {
+      var k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+      if (mod && k === 's') { e.preventDefault(); if (opts.onSave) opts.onSave(); }
+      else if (mod && k === 'k') { e.preventDefault(); save(); openPop('link', bar.querySelector('[data-pop="link"]')); }
+      else if (e.key === 'Tab') {
+        var s = window.getSelection(), li = s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode).closest('li');
+        if (li && inArea(li)) { e.preventDefault(); exec(e.shiftKey ? 'outdent' : 'indent'); }
+      }
+      else if (e.key === 'Escape' && !pop.hidden) { e.stopPropagation(); closePop(); }
+    });
+    area.addEventListener('paste', function (e) {
+      var cd = e.clipboardData; if (!cd) return;
+      e.preventDefault();
+      var h = cd.getData('text/html'), t = cd.getData('text/plain');
+      document.execCommand('insertHTML', false, h ? cleanRich(h, true) : esc(t).replace(/\r?\n/g, '<br>'));
+      changed();
+    });
+    area.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) e.preventDefault(); });
+    function onSel() { if (!area.isConnected) { document.removeEventListener('selectionchange', onSel); return; } save(); }
+    document.addEventListener('selectionchange', onSel);
+    document.addEventListener('mousedown', function onDoc(e) { if (!root.isConnected) { document.removeEventListener('mousedown', onDoc); return; } if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('[data-pop]')) closePop(); });
+    changed();
+    return {
+      el: area,
+      html: function () { var h = cleanRich(area.innerHTML); return richToText(h) || /<(hr|li)\b/i.test(h) ? h : ''; },
+      focus: function () { area.focus(); var r = document.createRange(); r.selectNodeContents(area); r.collapse(false); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); save(); refresh(); }
+    };
+  }
+
   function renderNotePage() {
     var n = noteById(S.route.noteId), ui = S.ui, can = canWrite();
     if (n && S.pendingEdit === n.id) { S.pendingEdit = null; ui.editing = true; }
@@ -2840,23 +3202,25 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (ui.editing) {
       pageRoot.innerHTML = crumbsHtml('note:' + n.id) +
         '<form class="note-edit" id="noteEdit" novalidate><div class="field" id="f_ntitle"><label for="ntitle">Título da anotação</label><input type="text" id="ntitle" maxlength="120" autocomplete="off" value="' + esc(ui.draftTitle != null ? ui.draftTitle : n.title) + '"><div class="err" id="err_ntitle"></div></div>' +
-        '<div class="field"><label for="nbody">Texto</label><textarea id="nbody" maxlength="200000" placeholder="Escreva aqui…">' + esc(ui.draftBody != null ? ui.draftBody : (n.body || '')) + '</textarea><span class="hint-text">Ctrl+S salva.</span></div>' +
+        '<div class="field"><span class="lab" id="lab_nbody">Texto</span><div id="nbody"></div><span class="hint-text">Ctrl+B negrito · Ctrl+I itálico · Ctrl+U sublinhado · Ctrl+K link · Ctrl+S salva.</span></div>' +
         flagHtml('nvis', n) +
         '<div class="form-err" id="nErr" role="alert"></div>' +
         '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="nCancel">Cancelar</button><button class="btn primary" type="submit" id="nSave">Salvar anotação</button></div></form>';
-      var t = $('ntitle'), bd = $('nbody'), f = $('noteEdit');
+      var t = $('ntitle'), f = $('noteEdit');
+      function submit() { f.requestSubmit ? f.requestSubmit() : f.onsubmit(); }
+      var bd = richEditor($('nbody'), { html: ui.draftBody != null ? ui.draftBody : noteEditHtml(n), label: 'Texto da anotação', onInput: function (h) { ui.draftBody = h; }, onSave: submit });
       t.oninput = function () { ui.draftTitle = t.value; $('err_ntitle').textContent = ''; $('f_ntitle').classList.remove('invalid'); };
-      bd.oninput = function () { ui.draftBody = bd.value; };
-      bd.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); f.requestSubmit ? f.requestSubmit() : f.onsubmit(e); } });
-      t.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); f.requestSubmit ? f.requestSubmit() : f.onsubmit(e); } });
+      t.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); submit(); } });
       setTimeout(function () { bd.focus(); }, 20);
       $('nCancel').onclick = function () { ui.editing = false; ui.draftTitle = ui.draftBody = null; renderNotePage(); };
       f.onsubmit = function (e) {
         if (e && e.preventDefault) e.preventDefault();
         var title = t.value.trim().replace(/\s+/g, ' ');
         if (!title) { $('err_ntitle').textContent = 'Dê um título à anotação.'; $('f_ntitle').classList.add('invalid'); t.focus(); return; }
+        var html = bd.html();
+        if (html.length > 500000) { $('nErr').textContent = 'O texto ficou grande demais para uma anotação só. Divida em mais de uma anotação.'; return; }
         var btn = $('nSave'); btn.disabled = true; btn.textContent = 'Salvando…';
-        W.store.patch('notes', n.id, { title: title, body: bd.value, visible: flagVal('nvis', n), updatedAt: now() }).then(function () {
+        W.store.patch('notes', n.id, { title: title, body: html, format: 'html', visible: flagVal('nvis', n), updatedAt: now() }).then(function () {
           ui.editing = false; ui.draftTitle = ui.draftBody = null; toast('Anotação salva.'); renderPage();
         }, function (er) { btn.disabled = false; btn.textContent = 'Salvar anotação'; $('nErr').textContent = errorText(er); });
       };
@@ -2866,7 +3230,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       '<p class="lede">' + (nb ? 'Em <a class="inline" href="' + hrefFor('nb:' + nb.id) + '">' + esc(nb.name) + '</a> · ' : '') + 'Atualizada em ' + esc(fmtDate(n.updatedAt)) + '</p></div>' +
       (can ? '<div class="btn-row"><button class="btn primary" type="button" id="editNoteBtn">' + svg(ICON.edit, 15) + 'Editar</button><button class="btn danger" type="button" id="delNoteBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
       (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a anotação <b>' + esc(n.title) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delNoteYes">Excluir anotação</button><button class="btn ghost" type="button" id="delNoteNo">Cancelar</button></div></div>' : '');
-    pageRoot.innerHTML = head + (n.body ? '<p class="note-body">' + esc(n.body) + '</p>' : '<p class="note-body none">Anotação vazia.' + (can ? ' Clique em Editar para escrever.' : '') + '</p>');
+    var shown = n.format === 'html' ? cleanRich(n.body) : '';
+    pageRoot.innerHTML = head + (shown ? '<div class="note-body rich">' + shown + '</div>' : n.body && n.format !== 'html' ? '<p class="note-body">' + esc(n.body) + '</p>' : '<p class="note-body none">Anotação vazia.' + (can ? ' Clique em Editar para escrever.' : '') + '</p>');
     tagPage(n, 'notes');
     var ed = $('editNoteBtn'); if (ed) ed.onclick = function () { ui.editing = true; renderNotePage(); };
     var d = $('delNoteBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderNotePage(); };
