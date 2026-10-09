@@ -59,6 +59,7 @@
 
   function buildMenu() {
     return [
+      { id: 'inicio', label: 'Início', icon: ICON.mundo, route: true },
       { id: 'tatica', label: 'Mesa Tática', icon: ICON.tatica, route: true },
       { id: 'mesa', label: 'Mesa de Combate', icon: ICON.mesa, route: true },
       {
@@ -110,6 +111,7 @@
   }
 
   function hrefFor(id) {
+    if (id === 'inicio') return '#inicio';
     if (id === 'tatica') return '#tatica';
     if (id === 'mesa') return '#mesa';
     if (id === 'maps') return '#maps';
@@ -262,6 +264,21 @@
         setCollapsed(!app.classList.contains('collapsed'));
       });
     }
+    var themeBtn = $('themeBtn');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var cur = document.documentElement.getAttribute('data-theme') || 'dark';
+        var next = cur === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('hounds_theme', next); } catch (e) {}
+      });
+    }
+    var brandLink = $('brandLink');
+    if (brandLink) {
+      brandLink.addEventListener('click', function () {
+        setDrawer(false);
+      });
+    }
     if (menuBtn) {
       menuBtn.addEventListener('click', function () {
         setDrawer(true);
@@ -310,7 +327,8 @@
      ===================================================================== */
   function parseHash(h) {
     var raw = (h || location.hash || '').replace(/^#/, '').trim();
-    if (!raw || raw === 'tatica') return { tab: 'tatica', node: 'tatica', title: 'Mesa Tática' };
+    if (!raw || raw === 'inicio' || raw === 'home') return { tab: 'page', page: 'home', node: 'inicio', title: 'Início' };
+    if (raw === 'tatica') return { tab: 'tatica', node: 'tatica', title: 'Mesa Tática' };
     if (raw === 'mesa') return { tab: 'mesa', node: 'mesa', title: 'Mesa de Combate' };
     if (raw === 'maps') return { tab: 'page', page: 'maps', node: 'maps', title: 'Mapas' };
     if (raw === 'locais') return { tab: 'page', page: 'locais', node: 'locais', title: 'Localização' };
@@ -377,7 +395,8 @@
       if (vMesa) vMesa.hidden = true;
       if (vPage) vPage.hidden = false;
 
-      if (r.page === 'maps' && window.renderMapsPage) window.renderMapsPage();
+      if (r.page === 'home' && window.renderHomePage) window.renderHomePage();
+      else if (r.page === 'maps' && window.renderMapsPage) window.renderMapsPage();
       else if (r.page === 'map' && window.renderMapPage) window.renderMapPage();
       else if (r.page === 'locais' && window.renderLocaisPage) window.renderLocaisPage();
       else if (r.page === 'local' && window.renderLocalPage) window.renderLocalPage();
