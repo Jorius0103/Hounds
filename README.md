@@ -31,7 +31,7 @@ Cada arquivo é um objeto `{ id: documento }`.
 O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. A página escolhe onde guardar os dados, nesta ordem:
 
 1. **Artifact do claude.ai:** usa o banco de dados e o armazenamento de imagens da plataforma.
-2. **Supabase:** quando `supabase-config.js` está preenchido. Dados em tempo real (PostgreSQL + Realtime + Storage). Configuração em [SUPABASE.md](SUPABASE.md).
+2. **Supabase:** quando `supabase-config.js` está preenchido. Dados em tempo real (PostgreSQL + Realtime + Storage): cada mudança aparece na hora para quem altera e em uma fração de segundo nos outros navegadores. Configuração e detalhes da sincronização em [SUPABASE.md](SUPABASE.md).
 3. **Firebase:** quando `firebase-config.js` está preenchido. Todos veem os mesmos dados, em tempo real, e o grupo entra com a senha da campanha. Configuração em [FIREBASE.md](FIREBASE.md).
 4. **Só o navegador:** sem nenhum dos dois, a página funciona, mas os dados ficam só no navegador de quem usa e começam vazios.
 
@@ -50,7 +50,7 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
   - Personagens salvos e reutilizáveis entre jogos.
   - Botões de copiar e remover que agem no combate atual.
   - Botões "Finalizar Ação" e "Finalizar Round".
-  - Log de Combate com manobra, PV, FP e condições, navegação por rounds e exclusão de round.
+  - Log de Combate com PV, FP e condições, navegação por rounds e exclusão de round. A manobra entra no log ao clicar em "Finalizar Ação", e não a cada troca.
   - Botão de sair, que salva e volta para a página inicial. Ao voltar para a Mesa, ela abre na escolha de jogo.
 
 ## Segurança
