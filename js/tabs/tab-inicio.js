@@ -42,7 +42,7 @@ function renderHomePage() {
   }).join('') + '</div>' : allLoaded ? '<div class="empty-state">' + svg(ICON.notes, 34, 1.6) + '<strong>Nada por aqui ainda</strong><span>Mapas, locais, personagens e anotações criados vão aparecer aqui.</span></div>' : '<p class="lede">Carregando…</p>';
 
   pageRoot.innerHTML =
-    '<div class="home-hero"><div class="brand-mark" aria-hidden="true">' + BRAND_SVG + '</div><div><span class="badge">Campanha GURPS</span>' +
+    '<div class="home-hero"><div class="brand-mark" aria-hidden="true">' + BRAND_MARK + '</div><div><span class="badge">Campanha GURPS</span>' +
       '<h1>' + (u ? 'Olá, ' + esc(u.name) : 'Hounds') + '</h1><p class="lede">Mapas, locais, personagens, anotações e a Mesa de Combate do grupo. Escolha por onde começar.</p></div></div>' +
     notice() +
     '<div class="nb-grid home-grid">' + cards.join('') + '</div>' +

@@ -18,7 +18,7 @@
    ===================================================================== */
 var FB_SDK = 'https://www.gstatic.com/firebasejs/12.19.0/';
 var SB_SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-var BRAND_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>';
+var BRAND_MARK = '<img src="imagens/brasao.jpg" alt="" width="256" height="256">';
 function fbConfig() { var c = window.HOUNDS_FIREBASE; return c && c.apiKey && c.projectId ? c : null; }
 function sbConfig() { var c = window.HOUNDS_SUPABASE; return c && c.url && c.anonKey ? c : null; }
 function loadScript(src) {
@@ -111,7 +111,7 @@ function askPassword(auth, email) {
     var g = document.createElement('div');
     g.className = 'gate'; g.style.zIndex = '95';
     g.innerHTML = '<form class="gate-card" role="dialog" aria-modal="true" aria-labelledby="authTitle" novalidate>' +
-      '<div class="gate-head"><div class="brand-mark" aria-hidden="true">' + BRAND_SVG + '</div><h1 id="authTitle">Hounds</h1><p>Digite a senha da campanha</p></div>' +
+      '<div class="gate-head"><div class="brand-mark" aria-hidden="true">' + BRAND_MARK + '</div><h1 id="authTitle">Hounds</h1><p>Digite a senha da campanha</p></div>' +
       '<div class="field"><label for="authPass">Senha</label><input type="password" id="authPass" autocomplete="current-password"><p class="err" id="authErr" hidden></p></div>' +
       '<button class="btn primary gate-close" type="submit">Entrar</button></form>';
     document.body.appendChild(g);
