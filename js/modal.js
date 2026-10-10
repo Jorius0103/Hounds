@@ -11,10 +11,53 @@
    ===================================================================== */
 var modalBack = $('modalBack'), modal = $('modal'), modalOpen = null;
 function showModal(html, onClose) {
-  modalOpen = { last: document.activeElement, onClose: onClose, busy: false };
-  modal.innerHTML = html; modalBack.hidden = false;
+  var m = modalOpen = { last: document.activeElement, onClose: onClose, busy: false, base: null, touched: false };
+  modal.innerHTML = '<button class="icon-btn modal-x" type="button" aria-label="Fechar" title="Fechar (Esc)">' + svg(ICON.x, 18) + '</button>' + html;
+  modalBack.hidden = false;
   var f = modal.querySelector('input[type=text],textarea,select'); if (f) setTimeout(function () { f.focus(); }, 20);
+  // The form as it opened, once the caller has filled it in (right after this call).
+  setTimeout(function () { if (modalOpen === m) m.base = modalFormState(); }, 0);
 }
+
+// Unsaved changes: the fields and the picks of the pickers, compared with how the form opened.
+// Pickers' search boxes (role=combobox) are left out; images count once picked, dropped or removed.
+function modalFormState() {
+  var parts = [];
+  modal.querySelectorAll('input, select, textarea').forEach(function (el) {
+    if (el.type === 'file' || el.getAttribute('role') === 'combobox' || el.closest('.modal-discard')) return;
+    parts.push(el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value);
+  });
+  modal.querySelectorAll('.picker > .people, .picker > .rels').forEach(function (b) { parts.push(b.textContent); });
+  return JSON.stringify(parts);
+}
+function modalDirty() {
+  var m = modalOpen;
+  return !!m && (m.touched || (m.base != null && modalFormState() !== m.base));
+}
+modal.addEventListener('change', function (e) { if (modalOpen && /** @type {AnyEl} */ (e.target).type === 'file') modalOpen.touched = true; });
+modal.addEventListener('drop', function () { if (modalOpen) modalOpen.touched = true; }, true);
+modal.addEventListener('click', function (e) { if (modalOpen && e.target.closest('[id^="pvrm_"]')) modalOpen.touched = true; }, true);
+
+// X, click outside and Esc. With unsaved changes, asks before discarding; Esc while asking keeps editing.
+// The Cancel buttons call closeModal() directly: they already say "discard".
+function requestCloseModal(fromEsc) {
+  if (!modalOpen || modalOpen.busy) return;
+  var bar = modal.querySelector('.modal-discard');
+  if (bar) { if (fromEsc) keepEditing(); else bar.querySelector('#mdKeep').focus(); return; }
+  if (!modalDirty()) { closeModal(); return; }
+  modalOpen.focusBack = document.activeElement;
+  modal.insertAdjacentHTML('beforeend', '<div class="modal-discard"><div class="confirm" role="alert"><span>Há alterações não salvas. Descartar?</span>' +
+    '<div class="btn-row"><button class="btn danger solid" type="button" id="mdDiscard">Descartar</button><button class="btn ghost" type="button" id="mdKeep">Continuar editando</button></div></div></div>');
+  $('mdDiscard').onclick = function () { closeModal(); };
+  $('mdKeep').onclick = keepEditing;
+  $('mdKeep').focus();
+}
+function keepEditing() {
+  var b = modal.querySelector('.modal-discard'); if (b) b.remove();
+  var f = modalOpen && modalOpen.focusBack;
+  if (f && f.focus && f.isConnected && modal.contains(f)) f.focus();
+}
+window.addEventListener('beforeunload', function (e) { if (modalDirty()) { e.preventDefault(); e.returnValue = ''; } });
 function closeModal(force) {
   if (!modalOpen || (modalOpen.busy && !force)) return;
   var m = modalOpen; modalOpen = null;
@@ -23,7 +66,13 @@ function closeModal(force) {
   renderPage(); // data that arrived while the form was open
   if (m.last && m.last.focus && m.last.isConnected) m.last.focus();
 }
-modalBack.addEventListener('mousedown', function (e) { if (e.target === modalBack) closeModal(); });
+// Closes on a click outside the modal: press and release both on the backdrop, so dragging out
+// of a field while selecting text does not close it. A click (not mousedown) also fires on phones.
+// Esc is handled in explorer.js.
+var pressOnBack = false;
+modalBack.addEventListener('pointerdown', function (e) { pressOnBack = e.target === modalBack; });
+modalBack.addEventListener('click', function (e) { if (pressOnBack && e.target === modalBack) requestCloseModal(); pressOnBack = false; });
+modal.addEventListener('click', function (e) { if (e.target.closest('.modal-x')) requestCloseModal(); });
 
 var ACCEPT = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 function imageFieldHtml(id, label, help) {

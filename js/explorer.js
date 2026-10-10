@@ -281,7 +281,7 @@ var Explorer = (function () {
   function leave() { go(st.map ? mapHref(st.map.id) : '#maps'); }
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    if (modalOpen) { closeModal(); return; }
+    if (modalOpen) { requestCloseModal(true); return; }
     if (ex.hidden) { setDrawer(false); return; }
     if (mode) { setMode(null); linkPreset = null; return; }
     if (!panel.hidden) { closePanel(); vp.focus(); return; }
