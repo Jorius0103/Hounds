@@ -60,6 +60,8 @@
 /* Close button: stays at the top right while the form scrolls, without taking a row of its own. */
 .modal .modal-x { position: sticky; top: 0; align-self: flex-end; margin: -6px -6px -44px 0; z-index: 1; background: var(--rail); }
 .modal .modal-x:hover { background: var(--surface); }
+/* "Unsaved changes" bar: stays visible at the bottom while the form scrolls. */
+.modal .modal-discard { position: sticky; bottom: -20px; z-index: 2; background: var(--rail); margin: 0 -20px -20px; padding: 0 20px 20px; }
 .drop { border: 1.5px dashed var(--line-2); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: var(--muted); cursor: pointer; background: var(--well); }
 .drop:hover, .drop.over { border-color: var(--accent); color: var(--text); }
 .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
