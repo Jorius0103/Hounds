@@ -1433,6 +1433,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (p[0] === 'local' && p[1]) return { page: 'local', locId: p[1], node: 'loc:' + p[1] };
     if (p[0] === 'personagens') return { page: 'chars', node: 'chars' };
     if (p[0] === 'personagem' && p[1]) return { page: 'char', charId: p[1], node: 'char:' + p[1] };
+    if (p[0] === 'organizacoes') return { page: 'orgs', node: 'orgs' };
+    if (p[0] === 'organizacao' && p[1]) return { page: 'org', orgKey: orgKey(p[1]), node: 'org:' + orgKey(p[1]) };
     if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
     if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
     if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
@@ -1451,6 +1453,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (node.indexOf('nb:') === 0) return '#caderno~' + encodeURIComponent(node.slice(3));
     if (node.indexOf('note:') === 0) return '#nota~' + encodeURIComponent(node.slice(5));
     if (node.indexOf('char:') === 0) return '#personagem~' + encodeURIComponent(node.slice(5));
+    if (node === 'orgs') return '#organizacoes';
+    if (node.indexOf('org:') === 0) return '#organizacao~' + encodeURIComponent(node.slice(4));
     return '#';
   }
   function mapHref(id) { return hrefFor('map:' + id); }
@@ -1482,7 +1486,9 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
           { id: 'locais', label: 'Localização', icon: ICON.pin, route: true, emptyText: W.loaded.locations ? 'Nenhum local ainda' : 'Carregando…',
             children: W.locations.slice().sort(byName).map(function (l) { return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l) }; }) },
           { id: 'chars', label: 'Personagens', icon: ICON.user, route: true, emptyText: W.loaded.characters ? 'Nenhum personagem ainda' : 'Carregando…',
-            children: W.characters.slice().sort(byName).map(function (c) { return { id: 'char:' + c.id, label: c.name, icon: ICON.user, route: true, secret: isSecret(c) }; }) }
+            children: W.characters.slice().sort(byName).map(function (c) { return { id: 'char:' + c.id, label: c.name, icon: ICON.user, route: true, secret: isSecret(c) }; }) },
+          { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, emptyText: W.loaded.characters ? 'Nenhuma organização ainda' : 'Carregando…',
+            children: organizations().map(function (o) { return { id: 'org:' + o.key, label: o.name, icon: ICON.org, route: true }; }) }
         ] }
       ] }
       ,
@@ -2562,7 +2568,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     var main = (c.image ? '<div class="loc-hero" id="charHero">' + svg(ICON.user, 32, 1.6) + '</div>' : '') +
       '<section><h2 class="sec-title">Descrição</h2>' + (c.description ? '<p class="long">' + esc(c.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>';
     var side = '<div class="box"><h2 class="sec-title" style="margin:0">Ficha</h2><dl class="facts"><dt>Raça</dt><dd>' + (c.race ? esc(c.race) : '<span class="none">Não informada</span>') + '</dd>' +
-      '<dt>Organização</dt><dd>' + (c.organization ? esc(c.organization) : '<span class="none">Não informada</span>') + '</dd></dl></div>' +
+      '<dt>Organização</dt><dd>' + (orgKey(c.organization) ? '<a href="' + orgHref(c.organization) + '">' + esc(c.organization) + '</a>' : '<span class="none">Não informada</span>') + '</dd></dl></div>' +
       '<div class="box"><h2 class="sec-title" style="margin:0">Relacionamentos</h2>' +
       (rels.length ? '<ul class="links">' + rels.map(function (r) {
         var how = r.back ? (r.type ? 'Vê ' + c.name + ' como ' + r.type : 'Cita ' + c.name) : (r.type || 'Relação sem tipo');
@@ -2751,6 +2757,74 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
           $('cfErr').textContent = errorText(er);
         });
     };
+  }
+
+  /* =====================================================================
+     Organizações (Mundo › Organizações)
+     Not a collection of its own: an organization is the "organization"
+     field of the characters, grouped ignoring case and accents.
+     ===================================================================== */
+  ICON.org = '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>';
+  function orgKey(v) { return norm(String(v || '').trim()); }
+  function orgHref(v) { return hrefFor('org:' + orgKey(v)); }
+  function organizations() {
+    var by = {}, out = [];
+    W.characters.forEach(function (c) {
+      var v = (c.organization || '').trim(), k = orgKey(v); if (!k) return;
+      if (!by[k]) { by[k] = { key: k, name: v, members: [] }; out.push(by[k]); }
+      by[k].members.push(c);
+    });
+    out.forEach(function (o) { o.members.sort(byName); });
+    return out.sort(byName);
+  }
+  function orgByKey(k) { var l = organizations(); for (var i = 0; i < l.length; i++) if (l[i].key === k) return l[i]; return null; }
+  function orgLocations(o) {
+    var seen = {}, out = [];
+    o.members.forEach(function (c) { charLocations(c.id).forEach(function (l) { if (!seen[l.id]) { seen[l.id] = true; out.push(l); } }); });
+    return out.sort(byName);
+  }
+  function renderOrgsPage() {
+    pageRoot.innerHTML =
+      '<div class="head-row"><div>' + crumbsHtml('orgs') + '<h1>Organizações</h1><p class="lede">Guildas, ordens, casas e bandos do mundo. Uma organização aparece aqui quando algum personagem faz parte dela; para incluir alguém, edite o personagem e preencha o campo <b>Organização</b>.</p></div></div>' +
+      (organizations().length ? '<div class="toolbar"><label for="orgSearch" style="position:absolute;left:-9999px">Buscar organizações</label><input class="search" id="orgSearch" type="search" placeholder="Buscar por nome ou membro" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="orgCount"></span></div>' : '') +
+      '<div id="orgList"></div>';
+    var s = $('orgSearch'); if (s) s.addEventListener('input', function () { S.ui.q = s.value; renderOrgList(); });
+    renderOrgList();
+  }
+  function renderOrgList() {
+    var el = $('orgList'); if (!el) return;
+    if (!W.loaded.characters) { el.innerHTML = '<p class="lede">Carregando organizações…</p>'; return; }
+    var orgs = organizations();
+    if (!orgs.length) {
+      el.innerHTML = '<div class="empty-state">' + svg(ICON.org, 34, 1.6) + '<strong>Nenhuma organização ainda</strong><span>' + (canWrite() ? 'Abra um personagem, use <b>Editar personagem</b> e preencha o campo <b>Organização</b>.' : 'As organizações dos personagens vão aparecer aqui.') + '</span></div>';
+      return;
+    }
+    var q = norm(S.ui.q);
+    var list = orgs.filter(function (o) { return !q || norm(o.name + ' ' + o.members.map(function (c) { return c.name; }).join(' ')).indexOf(q) >= 0; });
+    var cnt = $('orgCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + orgs.length : plural(orgs.length, 'organização', 'organizações');
+    el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (o) {
+      var names = o.members.slice(0, 3).map(function (c) { return c.name; }).join(', ') + (o.members.length > 3 ? ' e mais ' + (o.members.length - 3) : '');
+      return '<a class="loc-card" href="' + hrefFor('org:' + o.key) + '"><div class="thumb">' + svg(ICON.org, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(o.name) + '</strong>' +
+        '<span class="where">' + esc(names) + '</span><span class="meta">' + plural(o.members.length, 'membro', 'membros') + '</span></div></a>';
+    }).join('') + '</div>' : '<p class="lede">Nenhuma organização encontrada para essa busca.</p>';
+  }
+  function renderOrgPage() {
+    var o = orgByKey(S.route.orgKey);
+    if (!o) {
+      pageRoot.innerHTML = crumbsHtml('orgs') + (W.loaded.characters ? '<h1>Organização não encontrada</h1><p class="lede">Nenhum personagem faz parte dessa organização agora, ou o link está incompleto.</p><div><a class="btn" href="#organizacoes">Voltar para Organizações</a></div>' : '<p class="lede">Carregando organização…</p>');
+      return;
+    }
+    var locs = orgLocations(o);
+    var head = crumbsHtml('org:' + o.key) + '<div class="head-row"><div><span class="badge">' + svg(ICON.org, 12, 2.4) + 'Organização</span><h1>' + esc(o.name) + '</h1>' +
+      '<p class="lede">' + plural(o.members.length, 'membro', 'membros') + '</p></div></div>';
+    var main = '<section><h2 class="sec-title">Membros</h2><div class="loc-grid">' + o.members.map(function (c) {
+      return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
+        '<span class="where">' + (c.race ? esc(c.race) : 'Raça não informada') + '</span></div></a>';
+    }).join('') + '</div></section>';
+    var side = '<div class="box"><h2 class="sec-title" style="margin:0">Locais dos membros</h2>' +
+      (locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum membro está ligado a um local.</p>') + '</div>';
+    pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
+    fillImages(pageRoot);
   }
 
   /* =====================================================================
@@ -3459,6 +3533,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       card('#maps', ICON.maps, 'Maps', count('maps', W.maps.length, 'mapa', 'mapas')),
       card('#locais', ICON.pin, 'Localização', count('locations', W.locations.length, 'local', 'locais')),
       card('#personagens', ICON.user, 'Personagens', count('characters', W.characters.length, 'personagem', 'personagens')),
+      card('#organizacoes', ICON.org, 'Organizações', count('characters', organizations().length, 'organização', 'organizações')),
       card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
     ];
     if (isMestre()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));
@@ -3495,6 +3570,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     else if (r.page === 'local') renderLocalPage();
     else if (r.page === 'chars') renderCharsPage();
     else if (r.page === 'char') renderCharPage();
+    else if (r.page === 'orgs') renderOrgsPage();
+    else if (r.page === 'org') renderOrgPage();
     else if (r.page === 'users') renderUsersPage();
     else if (r.page === 'notes') renderNotesPage();
     else if (r.page === 'nb') renderNotebookPage();
@@ -3511,7 +3588,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (isMesa) setCollapsed(true, true);
     else if (wasMesa) setCollapsed(lstore('hounds_rail_collapsed') === '1', true);
     document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : 'view-page'); });
-    if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
+    if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'orgs' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
     paintMenu();
     topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
     if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : hrefFor(r.node));
@@ -3538,6 +3615,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (S.route.page === 'note' && S.ui.editing) return;
     if (S.route.page === 'locais' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'locSearch') { renderLocList(); return; }
     if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
+    if (S.route.page === 'orgs' && document.activeElement && document.activeElement.id === 'orgSearch') { renderOrgList(); return; }
     renderPage();
   }
 
