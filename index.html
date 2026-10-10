@@ -701,6 +701,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
        maps/{id}/markers    { x, y (0..1 of the image), title, description, category, locationId, createdAt, updatedAt }
        locations            { v, name, description, image{...}|null, characterIds[], mapId, position|null, createdAt, updatedAt }
        characters           { name, source, mesaId, createdAt, updatedAt }
+       organizations        { v, name, description, reputation, members[{ charId, rank }], createdAt, updatedAt }
      `position` on a location is reserved for coordinates inside its map.
      ===================================================================== */
   function SharedStore(db, assets, user) {
@@ -1210,8 +1211,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
      Everything derived (hierarchy, paths, counts) is recomputed from the
      stored documents, so a change anywhere shows up everywhere.
      ===================================================================== */
-  var W = { store: null, maps: [], locations: [], characters: [], raw: { maps: [], locations: [], characters: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [], loaded: { maps: false, locations: false, characters: false, users: false, notebooks: false, notes: false },
-            mapIdx: {}, locIdx: {}, charIdx: {}, parent: {}, kids: {} };
+  var W = { store: null, maps: [], locations: [], characters: [], organizations: [], raw: { maps: [], locations: [], characters: [], organizations: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [], loaded: { maps: false, locations: false, characters: false, organizations: false, users: false, notebooks: false, notes: false },
+            mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, parent: {}, kids: {} };
 
   function indexMaps() {
     var idx = {}; W.maps.forEach(function (m) { idx[m.id] = m; }); W.mapIdx = idx;
@@ -1324,8 +1325,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   });
   function secretTag(item) { return '<span class="secret-tag" title="Não está visível para todos">' + svg(EYE_OFF, 12, 2.4) + esc('Só ' + seenBy(item)) + '</span>'; }
   function refilter() {
-    W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters);
-    indexMaps(); indexLocations(); indexCharacters(); filterNotes();
+    W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters); W.organizations = pub(W.raw.organizations);
+    indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); filterNotes();
     S.markers = pub(S.rawMarkers || []);
     if (Explorer.isOpen() && S.route && S.route.explore) Explorer.setMarkers(S.markers);
   }
@@ -1434,7 +1435,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (p[0] === 'personagens') return { page: 'chars', node: 'chars' };
     if (p[0] === 'personagem' && p[1]) return { page: 'char', charId: p[1], node: 'char:' + p[1] };
     if (p[0] === 'organizacoes') return { page: 'orgs', node: 'orgs' };
-    if (p[0] === 'organizacao' && p[1]) return { page: 'org', orgKey: orgKey(p[1]), node: 'org:' + orgKey(p[1]) };
+    if (p[0] === 'organizacao' && p[1]) return { page: 'org', orgId: p[1], node: 'org:' + p[1] };
     if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
     if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
     if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
@@ -1487,8 +1488,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
             children: W.locations.slice().sort(byName).map(function (l) { return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l) }; }) },
           { id: 'chars', label: 'Personagens', icon: ICON.user, route: true, emptyText: W.loaded.characters ? 'Nenhum personagem ainda' : 'Carregando…',
             children: W.characters.slice().sort(byName).map(function (c) { return { id: 'char:' + c.id, label: c.name, icon: ICON.user, route: true, secret: isSecret(c) }; }) },
-          { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, emptyText: W.loaded.characters ? 'Nenhuma organização ainda' : 'Carregando…',
-            children: organizations().map(function (o) { return { id: 'org:' + o.key, label: o.name, icon: ICON.org, route: true }; }) }
+          { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, emptyText: W.loaded.organizations ? 'Nenhuma organização ainda' : 'Carregando…',
+            children: W.organizations.slice().sort(byName).map(function (o) { return { id: 'org:' + o.id, label: o.name, icon: ICON.org, route: true, secret: isSecret(o) }; }) }
         ] }
       ] }
       ,
@@ -2464,7 +2465,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   }
   function charMaps(c) { return ((c && c.mapIds) || []).map(function (id) { return W.mapIdx[id]; }).filter(Boolean).sort(byName); }
   function mapCharacters(mapId) { return W.characters.filter(function (c) { return (c.mapIds || []).indexOf(mapId) >= 0; }).sort(byName); }
-  function charSubtitle(c) { return [c.race, c.organization].filter(function (v) { return v && v.trim(); }).join(' · '); }
+  function charSubtitle(c) { return [c.race, charOrgText(c)].filter(function (v) { return v && v.trim(); }).join(' · '); }
   // A character ↔ character link lives in character.relations ([{ charId, type }]) of the one who
   // declared it; "type" is how that character sees the other. The other side shows it as "back".
   var RELATION_DEFAULTS = ['Aliado', 'Amigo', 'Rival', 'Inimigo', 'Família', 'Irmão', 'Pai', 'Mãe', 'Filho', 'Cônjuge', 'Mentor', 'Aprendiz', 'Líder', 'Subordinado'];
@@ -2498,7 +2499,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       // Keep links to characters this user can't see, the same way as maps.
       var rels = (fields.relations || []).slice();
       if (c) (c.relations || []).forEach(function (r) { if (!W.charIdx[r.charId] && rawHas('characters', r.charId) && !rels.some(function (x) { return x.charId === r.charId; })) rels.push(r); });
-      var body = { v: 1, name: fields.name, description: fields.description, race: fields.race, organization: fields.organization, mapIds: mids, relations: rels, image: image, visible: fields.visible !== false, sharedWith: fields.sharedWith || (c && c.sharedWith) || [],
+      var body = { v: 1, name: fields.name, description: fields.description, race: fields.race, organization: '', mapIds: mids, relations: rels, image: image, visible: fields.visible !== false, sharedWith: fields.sharedWith || (c && c.sharedWith) || [],
                    source: (c && c.source) || 'manual', mesaId: (c && c.mesaId) || null, createdBy: owner(c), createdAt: (c && c.createdAt) || t, updatedAt: t };
       return W.store.put('characters', c ? c.id : null, body);
     }).then(function (id) {
@@ -2517,6 +2518,10 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     }, Promise.resolve()).then(function () {
       return W.raw.characters.filter(function (o) { return o.id !== c.id && (o.relations || []).some(function (r) { return r.charId === c.id; }); }).reduce(function (q, o) {
         return q.then(function () { return W.store.patch('characters', o.id, { relations: o.relations.filter(function (r) { return r.charId !== c.id; }), updatedAt: now() }); });
+      }, Promise.resolve());
+    }).then(function () {
+      return W.raw.organizations.filter(function (o) { return (o.members || []).some(function (m) { return m.charId === c.id; }); }).reduce(function (q, o) {
+        return q.then(function () { return W.store.patch('organizations', o.id, { members: o.members.filter(function (m) { return m.charId !== c.id; }), updatedAt: now() }); });
       }, Promise.resolve());
     }).then(function () { return W.store.remove('characters', c.id); })
       .then(function () { return W.store.dropImage(c.image && c.image.ref); });
@@ -2543,7 +2548,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     var q = norm(S.ui.q);
     var list = W.characters.slice().sort(byName).filter(function (c) {
       if (!q) return true;
-      return norm(c.name + ' ' + (c.race || '') + ' ' + (c.organization || '') + ' ' + (c.description || '') + ' ' + charLocations(c.id).map(function (l) { return l.name; }).join(' ') + ' ' + charMaps(c).map(function (m) { return m.name; }).join(' ') + ' ' + charRelations(c).map(function (r) { return r.c.name; }).join(' ')).indexOf(q) >= 0;
+      return norm(c.name + ' ' + (c.race || '') + ' ' + charOrgText(c) + ' ' + (c.description || '') + ' ' + charLocations(c.id).map(function (l) { return l.name; }).join(' ') + ' ' + charMaps(c).map(function (m) { return m.name; }).join(' ') + ' ' + charRelations(c).map(function (r) { return r.c.name; }).join(' ')).indexOf(q) >= 0;
     });
     var cnt = $('charCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.characters.length : plural(W.characters.length, 'personagem', 'personagens');
     el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (c) {
@@ -2568,7 +2573,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     var main = (c.image ? '<div class="loc-hero" id="charHero">' + svg(ICON.user, 32, 1.6) + '</div>' : '') +
       '<section><h2 class="sec-title">Descrição</h2>' + (c.description ? '<p class="long">' + esc(c.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>';
     var side = '<div class="box"><h2 class="sec-title" style="margin:0">Ficha</h2><dl class="facts"><dt>Raça</dt><dd>' + (c.race ? esc(c.race) : '<span class="none">Não informada</span>') + '</dd>' +
-      '<dt>Organização</dt><dd>' + (orgKey(c.organization) ? '<a href="' + orgHref(c.organization) + '">' + esc(c.organization) + '</a>' : '<span class="none">Não informada</span>') + '</dd></dl></div>' +
+      '<dt>Organizações</dt><dd>' + (charOrgs(c.id).length ? charOrgs(c.id).map(function (x) { return '<a href="' + orgHref(x.o.id) + '">' + esc(x.o.name) + '</a>' + (x.rank ? ' · ' + esc(x.rank) : ''); }).join('<br>')
+        : c.organization ? esc(c.organization) : '<span class="none">Nenhuma</span>') + '</dd></dl></div>' +
       '<div class="box"><h2 class="sec-title" style="margin:0">Relacionamentos</h2>' +
       (rels.length ? '<ul class="links">' + rels.map(function (r) {
         var how = r.back ? (r.type ? 'Vê ' + c.name + ' como ' + r.type : 'Cita ' + c.name) : (r.type || 'Relação sem tipo');
@@ -2597,14 +2603,16 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   function openCharForm(c) {
     var editing = !!c, canImg = W.store.canUpload;
     var races = distinct('race'); RACE_DEFAULTS.forEach(function (r) { if (!races.some(function (x) { return norm(x) === norm(r); })) races.push(r); });
-    var orgs = distinct('organization');
     var others = W.characters.filter(function (o) { return !editing || o.id !== c.id; }).sort(byName);
     var html = '<form id="charForm" novalidate><h2 id="cfTitle">' + (editing ? 'Editar personagem' : 'Novo personagem') + '</h2>' +
       '<div class="field" id="f_cname"><label for="cname">Nome</label><input type="text" id="cname" maxlength="100" autocomplete="off" placeholder="Ex.: Brynhild" value="' + esc(editing ? c.name : '') + '"><div class="err" id="err_cname"></div></div>' +
       (canImg ? imageFieldHtml('cimg', 'Imagem', 'Retrato ou ilustração. Opcional, até 20 MB.') : '') +
       '<div class="field"><label for="cdesc">Descrição</label><textarea id="cdesc" rows="6" maxlength="20000" placeholder="Quem é, aparência, história, ligação com o grupo…">' + esc(editing ? c.description || '' : '') + '</textarea></div>' +
-      '<div class="two"><div class="field"><label for="crace">Raça</label><input type="text" id="crace" list="raceList" maxlength="60" autocomplete="off" placeholder="Ex.: Anão" value="' + esc(editing ? c.race || '' : '') + '"><datalist id="raceList">' + races.map(function (r) { return '<option value="' + esc(r) + '">'; }).join('') + '</datalist></div>' +
-      '<div class="field"><label for="corg">Organização</label><input type="text" id="corg" list="orgList" maxlength="80" autocomplete="off" placeholder="Ex.: The Hounds" value="' + esc(editing ? c.organization || '' : '') + '"><datalist id="orgList">' + orgs.map(function (r) { return '<option value="' + esc(r) + '">'; }).join('') + '</datalist></div></div>' +
+      '<div class="field"><label for="crace">Raça</label><input type="text" id="crace" list="raceList" maxlength="60" autocomplete="off" placeholder="Ex.: Anão" value="' + esc(editing ? c.race || '' : '') + '"><datalist id="raceList">' + races.map(function (r) { return '<option value="' + esc(r) + '">'; }).join('') + '</datalist></div>' +
+      '<div class="field"><label for="corg">Organizações</label><div class="picker"><div class="rels" id="cOrgSel"></div>' +
+      '<input type="text" id="corg" autocomplete="off" placeholder="Buscar ou criar organização" role="combobox" aria-expanded="false" aria-controls="cOrgList" aria-autocomplete="list">' +
+      '<div class="suggest" id="cOrgList" role="listbox" hidden></div></div>' + datalistHtml('cRankList', rankTypes()) +
+      '<span class="hint-text">Opcional. Ao lado de cada uma, o cargo do personagem nela. Ex.: Líder, General. Digite um nome novo para criar a organização.</span></div>' +
       '<div class="field"><label for="cmap">Mapas relacionados</label><div class="picker"><div class="people" id="cMapSel"></div>' +
       '<input type="text" id="cmap" autocomplete="off" placeholder="' + (W.maps.length ? 'Buscar mapa' : 'Nenhum mapa cadastrado ainda') + '"' + (W.maps.length ? '' : ' disabled') + ' role="combobox" aria-expanded="false" aria-controls="cMapList" aria-autocomplete="list">' +
       '<div class="suggest" id="cMapList" role="listbox" hidden></div></div><span class="hint-text">Opcional. Ex.: o reino de onde vem ou as regiões por onde anda.</span></div>' +
@@ -2625,6 +2633,26 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (canImg) img = imageField('cimg', { removable: true, existing: editing && c.image ? W.store.imageUrl(c.image.ref).then(function (u) { return { url: u, name: 'Imagem atual', dims: c.image.w ? c.image.w + ' × ' + c.image.h + ' px' : '' }; }) : null });
     var name = $('cname');
     name.addEventListener('input', function () { if (name.value.trim()) { $('err_cname').textContent = ''; $('f_cname').classList.remove('invalid'); } });
+
+    // ---- organization picker (existing or new organizations, each with the character's rank) ----
+    var orgSel = editing ? charOrgs(c.id).map(function (x) { return { id: x.o.id, text: x.rank }; }) : [];
+    var legacyOrg = editing ? (c.organization || '').trim() : '';
+    if (legacyOrg) {
+      var lo = W.organizations.filter(function (o) { return norm(o.name) === norm(legacyOrg); })[0];
+      if (!lo) orgSel.push({ id: null, name: legacyOrg, text: '' });
+      else if (!orgSel.some(function (s) { return s.id === lo.id; })) orgSel.push({ id: lo.id, text: '' });
+    }
+    function orgPickName(s) { return s.id ? orgById(s.id).name : s.name; }
+    textPicker({ input: 'corg', list: 'cOrgList', box: 'cOrgSel', sel: orgSel, datalist: 'cRankList', textLabel: 'Cargo',
+      name: orgPickName,
+      chip: function (s) { return '<span class="person"><i>' + svg(ICON.org, 12, 2.4) + '</i>' + esc(orgPickName(s)) + (s.id ? '' : ' (nova)') + '</span>'; },
+      find: function (q, raw) {
+        var out = W.organizations.slice().sort(byName).filter(function (o) { return !orgSel.some(function (s) { return s.id === o.id; }) && (!q || norm(o.name).indexOf(q) >= 0); })
+          .map(function (o) { var n = orgMembers(o).length; return { label: o.name, sub: n ? plural(n, 'membro', 'membros') : 'Sem membros', pick: { id: o.id, text: '' } }; });
+        var taken = W.organizations.some(function (o) { return norm(o.name) === q; }) || orgSel.some(function (s) { return norm(orgPickName(s)) === q; });
+        if (q && !taken) out.push({ label: 'Criar organização “' + raw + '”', sub: 'Nova', pick: { id: null, name: raw, text: '' } });
+        return out;
+      } });
 
     // ---- map picker (existing maps, in hierarchy order) ----
     var mapSel = editing ? charMaps(c).map(function (m) { return m.id; }) : [];
@@ -2746,7 +2774,9 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       modalOpen.busy = true;
       var btn = $('cfSave'); btn.disabled = true; btn.textContent = img && img.file ? 'Enviando imagem…' : 'Salvando…'; $('cfCancel').disabled = true; $('cfErr').textContent = '';
       var locIds = sel.filter(function (id) { return locById(id); });
-      Ops.saveCharacter(c, { name: n, description: $('cdesc').value.trim(), race: $('crace').value.trim(), organization: $('corg').value.trim(), mapIds: mapSel.filter(function (id) { return mapById(id); }), relations: relSel.filter(function (r) { return charById(r.charId); }).map(function (r) { return { charId: r.charId, type: r.type.trim() }; }), visible: flagVal('cvis', c), sharedWith: shareVal('cvis', c) }, img && img.file, img && img.dims, img && img.removed, locIds)
+      var vis = flagVal('cvis', c), shared = shareVal('cvis', c);
+      Ops.saveCharacter(c, { name: n, description: $('cdesc').value.trim(), race: $('crace').value.trim(), mapIds: mapSel.filter(function (id) { return mapById(id); }), relations: relSel.filter(function (r) { return charById(r.charId); }).map(function (r) { return { charId: r.charId, type: r.type.trim() }; }), visible: vis, sharedWith: shared }, img && img.file, img && img.dims, img && img.removed, locIds)
+        .then(function (id) { return Ops.setCharOrgs(id, orgSel.filter(function (s) { return !s.id || orgById(s.id); }), vis, shared).then(function () { return id; }); })
         .then(function (id) {
           closeModal(true);
           toast(editing ? 'Personagem salvo.' : 'Personagem criado.');
@@ -2761,70 +2791,261 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 
   /* =====================================================================
      Organizações (Mundo › Organizações)
-     Not a collection of its own: an organization is the "organization"
-     field of the characters, grouped ignoring case and accents.
+     A character ↔ organization link is stored once, in organization.members
+     ([{ charId, rank }]), so the organization form and the character form
+     edit the same list. "rank" is free text: Líder, General, Recruta…
      ===================================================================== */
   ICON.org = '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>';
-  function orgKey(v) { return norm(String(v || '').trim()); }
-  function orgHref(v) { return hrefFor('org:' + orgKey(v)); }
-  function organizations() {
-    var by = {}, out = [];
-    W.characters.forEach(function (c) {
-      var v = (c.organization || '').trim(), k = orgKey(v); if (!k) return;
-      if (!by[k]) { by[k] = { key: k, name: v, members: [] }; out.push(by[k]); }
-      by[k].members.push(c);
-    });
-    out.forEach(function (o) { o.members.sort(byName); });
-    return out.sort(byName);
+  var RANK_DEFAULTS = ['Líder', 'General', 'Capitão', 'Conselheiro', 'Oficial', 'Membro', 'Recruta', 'Aliado', 'Informante'];
+  var REPUTATION_DEFAULTS = ['Excelente', 'Boa', 'Neutra', 'Ruim', 'Péssima', 'Temida', 'Desconhecida'];
+  function indexOrgs() { var idx = {}; W.organizations.forEach(function (o) { idx[o.id] = o; }); W.orgIdx = idx; }
+  function orgById(id) { return W.orgIdx[id] || null; }
+  function orgHref(id) { return hrefFor('org:' + id); }
+  // Defaults first in their own order, then anything else already in use.
+  function withDefaults(defaults, used) {
+    var seen = {}, out = [];
+    defaults.concat(used.sort(function (a, b) { return a.localeCompare(b, 'pt'); })).forEach(function (v) { v = (v || '').trim(); if (v && !seen[norm(v)]) { seen[norm(v)] = true; out.push(v); } });
+    return out;
   }
-  function orgByKey(k) { var l = organizations(); for (var i = 0; i < l.length; i++) if (l[i].key === k) return l[i]; return null; }
+  function rankTypes() { var used = []; W.organizations.forEach(function (o) { (o.members || []).forEach(function (m) { used.push(m.rank); }); }); return withDefaults(RANK_DEFAULTS, used); }
+  function reputations() { return withDefaults(REPUTATION_DEFAULTS, W.organizations.map(function (o) { return o.reputation; })); }
+  function datalistHtml(id, list) { return '<datalist id="' + id + '">' + list.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>'; }
+  function rankOrder(rank) { var r = norm(rank); if (!r) return RANK_DEFAULTS.length + 1; for (var i = 0; i < RANK_DEFAULTS.length; i++) if (norm(RANK_DEFAULTS[i]) === r) return i; return RANK_DEFAULTS.length; }
+  // Visible members as [{ c, rank }]: by rank (Líder first, unranked last), then by name.
+  function orgMembers(o) {
+    return ((o && o.members) || []).map(function (m) { return { c: W.charIdx[m.charId], rank: (m.rank || '').trim() }; }).filter(function (m) { return m.c; })
+      .sort(function (a, b) { return (rankOrder(a.rank) - rankOrder(b.rank)) || a.rank.localeCompare(b.rank, 'pt') || byName(a.c, b.c); });
+  }
+  // Organizations a character belongs to, as [{ o, rank }].
+  function charOrgs(id) {
+    var out = [];
+    W.organizations.forEach(function (o) { (o.members || []).forEach(function (m) { if (m.charId === id) out.push({ o: o, rank: (m.rank || '').trim() }); }); });
+    return out.sort(function (a, b) { return byName(a.o, b.o); });
+  }
+  // Names for subtitles and search; the old free-text field until it is migrated.
+  function charOrgText(c) { var l = charOrgs(c.id); return l.length ? l.map(function (x) { return x.o.name; }).join(', ') : (c.organization || '').trim(); }
   function orgLocations(o) {
     var seen = {}, out = [];
-    o.members.forEach(function (c) { charLocations(c.id).forEach(function (l) { if (!seen[l.id]) { seen[l.id] = true; out.push(l); } }); });
+    orgMembers(o).forEach(function (m) { charLocations(m.c.id).forEach(function (l) { if (!seen[l.id]) { seen[l.id] = true; out.push(l); } }); });
     return out.sort(byName);
   }
+
+  Ops.saveOrganization = function (o, fields) {
+    var t = now();
+    // Keep members this user can't see, the same way as a character's relations.
+    var members = (fields.members || []).slice();
+    if (o) (o.members || []).forEach(function (m) { if (!W.charIdx[m.charId] && rawHas('characters', m.charId) && !members.some(function (x) { return x.charId === m.charId; })) members.push(m); });
+    var body = { v: 1, name: fields.name, description: fields.description, reputation: fields.reputation, members: members, visible: fields.visible !== false, sharedWith: fields.sharedWith || (o && o.sharedWith) || [],
+                 createdBy: owner(o), createdAt: (o && o.createdAt) || t, updatedAt: t };
+    return W.store.put('organizations', o ? o.id : null, body);
+  };
+  Ops.deleteOrganization = function (o) { return W.store.remove('organizations', o.id); };
+  // A character's memberships as picked in its form ([{ id: orgId|null, name, text: rank }]). Visible
+  // organizations left out lose the character; picks without an id are new organizations.
+  Ops.setCharOrgs = function (charId, picks, visible, shared) {
+    var t = now(), q = Promise.resolve();
+    W.organizations.forEach(function (o) {
+      var cur = o.members || [], had = cur.filter(function (m) { return m.charId === charId; })[0], want = picks.filter(function (p) { return p.id === o.id; })[0];
+      if (!had && !want) return;
+      var rank = want ? want.text.trim() : '';
+      if (had && want && (had.rank || '') === rank) return;
+      var next = !want ? cur.filter(function (m) { return m.charId !== charId; })
+        : had ? cur.map(function (m) { return m.charId === charId ? { charId: charId, rank: rank } : m; }) : cur.concat([{ charId: charId, rank: rank }]);
+      q = q.then(function () { return W.store.patch('organizations', o.id, { members: next, updatedAt: t }); });
+    });
+    picks.filter(function (p) { return !p.id && p.name.trim(); }).forEach(function (p) {
+      q = q.then(function () {
+        return W.store.put('organizations', null, { v: 1, name: p.name.trim(), description: '', reputation: '', members: [{ charId: charId, rank: p.text.trim() }],
+          visible: visible !== false, sharedWith: shared || [], createdBy: me(), createdAt: t, updatedAt: t });
+      });
+    });
+    return q;
+  };
+
+  // One-time: the old free-text "organization" of characters becomes organization records.
+  var migratedOrgs = false;
+  function migrateOrganizations() {
+    if (migratedOrgs || !isMestre() || !canWrite() || !W.loaded.characters || !W.loaded.organizations) return;
+    migratedOrgs = true;
+    var found = {}, groups = {}, keys = [], t = now(), seq = Promise.resolve();
+    W.raw.organizations.forEach(function (o) { found[norm((o.name || '').trim())] = o; });
+    W.raw.characters.forEach(function (c) {
+      var v = (c.organization || '').trim(), k = norm(v); if (!k) return;
+      if (!groups[k]) { groups[k] = { name: v, chars: [] }; keys.push(k); }
+      groups[k].chars.push(c);
+    });
+    keys.forEach(function (k) {
+      var g = groups[k], ex = found[k];
+      seq = seq.then(function () {
+        if (ex) {
+          var members = (ex.members || []).slice();
+          g.chars.forEach(function (c) { if (!members.some(function (m) { return m.charId === c.id; })) members.push({ charId: c.id, rank: '' }); });
+          return W.store.patch('organizations', ex.id, { members: members, updatedAt: t });
+        }
+        return W.store.put('organizations', null, { v: 1, name: g.name, description: '', reputation: '', members: g.chars.map(function (c) { return { charId: c.id, rank: '' }; }),
+          visible: g.chars.some(function (c) { return !isSecret(c); }), sharedWith: [], createdBy: me(), createdAt: t, updatedAt: t });
+      }).then(function () {
+        return g.chars.reduce(function (q, c) { return q.then(function () { return W.store.patch('characters', c.id, { organization: '', updatedAt: t }); }); }, Promise.resolve());
+      }).catch(function () {});
+    });
+  }
+
+  // A picker whose picks each carry a short free-text field (a member's rank).
+  //   sel: [{ id, text, … }] (edited in place) · find(q, raw): [{ label, sub, pick }] · chip(s), name(s): how a pick shows.
+  function textPicker(o) {
+    var input = $(o.input), list = $(o.list), box = $(o.box), sel = o.sel, active = 0, options = [];
+    function paintSel() {
+      box.innerHTML = sel.map(function (s, i) {
+        return '<div class="rel-row">' + o.chip(s) +
+          '<input type="text" data-ti="' + i + '" list="' + o.datalist + '" maxlength="60" autocomplete="off" placeholder="' + esc(o.textLabel) + '" aria-label="' + esc(o.textLabel + ' de ' + o.name(s)) + '" value="' + esc(s.text) + '">' +
+          '<button class="icon-btn" type="button" data-rm="' + i + '" aria-label="Remover ' + esc(o.name(s)) + '">' + svg(ICON.x, 14, 2.6) + '</button></div>';
+      }).join('');
+      fillImages(box);
+    }
+    function paintList() {
+      options = o.find(norm(input.value.trim()), input.value.trim()).slice(0, 40);
+      if (!options.length) { list.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
+      active = Math.min(active, options.length - 1);
+      list.innerHTML = options.map(function (x, i) { return '<button type="button" role="option" id="' + o.input + 'opt' + i + '" data-i="' + i + '" class="' + (i === active ? 'act' : '') + '" aria-selected="' + (i === active) + '">' + esc(x.label) + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</button>'; }).join('');
+      list.hidden = false; input.setAttribute('aria-expanded', 'true'); input.setAttribute('aria-activedescendant', o.input + 'opt' + active);
+    }
+    function pick(i) {
+      var x = options[i]; if (!x) return;
+      sel.push(x.pick); input.value = ''; active = 0; paintSel(); list.hidden = true; input.setAttribute('aria-expanded', 'false');
+      var t = box.querySelector('[data-ti="' + (sel.length - 1) + '"]'); if (t) t.focus();
+    }
+    input.addEventListener('focus', paintList);
+    input.addEventListener('input', function () { active = 0; paintList(); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (list.hidden) { active = 0; paintList(); } else { active = Math.min(options.length - 1, active + 1); paintList(); } }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(0, active - 1); paintList(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (!list.hidden && options.length) pick(active); }
+      else if (e.key === 'Escape' && !list.hidden) { e.stopPropagation(); list.hidden = true; }
+    });
+    input.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement !== input) list.hidden = true; }, 150); });
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    list.addEventListener('click', function (e) { var b = e.target.closest('[data-i]'); if (b) pick(+b.getAttribute('data-i')); });
+    box.addEventListener('input', function (e) { var t = e.target.closest('[data-ti]'); if (t) sel[+t.getAttribute('data-ti')].text = t.value; });
+    box.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('[data-ti]')) { e.preventDefault(); input.focus(); } });
+    box.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; sel.splice(+b.getAttribute('data-rm'), 1); paintSel(); input.focus(); });
+    paintSel();
+  }
+
   function renderOrgsPage() {
+    var can = canWrite();
     pageRoot.innerHTML =
-      '<div class="head-row"><div>' + crumbsHtml('orgs') + '<h1>Organizações</h1><p class="lede">Guildas, ordens, casas e bandos do mundo. Uma organização aparece aqui quando algum personagem faz parte dela; para incluir alguém, edite o personagem e preencha o campo <b>Organização</b>.</p></div></div>' +
-      (organizations().length ? '<div class="toolbar"><label for="orgSearch" style="position:absolute;left:-9999px">Buscar organizações</label><input class="search" id="orgSearch" type="search" placeholder="Buscar por nome ou membro" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="orgCount"></span></div>' : '') +
+      '<div class="head-row"><div>' + crumbsHtml('orgs') + '<h1>Organizações</h1><p class="lede">Guildas, ordens, casas e bandos do mundo. Cada organização tem reputação e membros, e cada membro pode ter um cargo, como Líder ou General.</p></div>' +
+      (can ? '<button class="btn primary" type="button" id="newOrgBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova organização</button>' : '') + '</div>' + notice() +
+      (W.organizations.length ? '<div class="toolbar"><label for="orgSearch" style="position:absolute;left:-9999px">Buscar organizações</label><input class="search" id="orgSearch" type="search" placeholder="Buscar por nome, reputação ou membro" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="orgCount"></span></div>' : '') +
       '<div id="orgList"></div>';
+    var b = $('newOrgBtn'); if (b) b.onclick = function () { openOrgForm(null); };
     var s = $('orgSearch'); if (s) s.addEventListener('input', function () { S.ui.q = s.value; renderOrgList(); });
     renderOrgList();
   }
   function renderOrgList() {
     var el = $('orgList'); if (!el) return;
-    if (!W.loaded.characters) { el.innerHTML = '<p class="lede">Carregando organizações…</p>'; return; }
-    var orgs = organizations();
-    if (!orgs.length) {
-      el.innerHTML = '<div class="empty-state">' + svg(ICON.org, 34, 1.6) + '<strong>Nenhuma organização ainda</strong><span>' + (canWrite() ? 'Abra um personagem, use <b>Editar personagem</b> e preencha o campo <b>Organização</b>.' : 'As organizações dos personagens vão aparecer aqui.') + '</span></div>';
+    if (!W.loaded.organizations) { el.innerHTML = '<p class="lede">Carregando organizações…</p>'; return; }
+    if (!W.organizations.length) {
+      el.innerHTML = '<div class="empty-state">' + svg(ICON.org, 34, 1.6) + '<strong>Nenhuma organização cadastrada</strong><span>' + (canWrite() ? 'Crie a primeira com <b>Nova organização</b>.' : 'As organizações criadas vão aparecer aqui.') + '</span></div>';
       return;
     }
     var q = norm(S.ui.q);
-    var list = orgs.filter(function (o) { return !q || norm(o.name + ' ' + o.members.map(function (c) { return c.name; }).join(' ')).indexOf(q) >= 0; });
-    var cnt = $('orgCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + orgs.length : plural(orgs.length, 'organização', 'organizações');
+    var list = W.organizations.slice().sort(byName).filter(function (o) {
+      return !q || norm(o.name + ' ' + (o.reputation || '') + ' ' + (o.description || '') + ' ' + orgMembers(o).map(function (m) { return m.c.name + ' ' + m.rank; }).join(' ')).indexOf(q) >= 0;
+    });
+    var cnt = $('orgCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.organizations.length : plural(W.organizations.length, 'organização', 'organizações');
     el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (o) {
-      var names = o.members.slice(0, 3).map(function (c) { return c.name; }).join(', ') + (o.members.length > 3 ? ' e mais ' + (o.members.length - 3) : '');
-      return '<a class="loc-card" href="' + hrefFor('org:' + o.key) + '"><div class="thumb">' + svg(ICON.org, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(o.name) + '</strong>' +
-        '<span class="where">' + esc(names) + '</span><span class="meta">' + plural(o.members.length, 'membro', 'membros') + '</span></div></a>';
+      var n = orgMembers(o).length;
+      return '<a class="loc-card" href="' + orgHref(o.id) + '"><div class="thumb">' + svg(ICON.org, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(o.name) + '</strong>' +
+        '<span class="where">' + (o.reputation ? 'Reputação: ' + esc(o.reputation) : 'Reputação não informada') + '</span><span class="meta">' + (n ? plural(n, 'membro', 'membros') : 'Sem membros') + '</span></div></a>';
     }).join('') + '</div>' : '<p class="lede">Nenhuma organização encontrada para essa busca.</p>';
   }
+
   function renderOrgPage() {
-    var o = orgByKey(S.route.orgKey);
+    var o = orgById(S.route.orgId), ui = S.ui;
     if (!o) {
-      pageRoot.innerHTML = crumbsHtml('orgs') + (W.loaded.characters ? '<h1>Organização não encontrada</h1><p class="lede">Nenhum personagem faz parte dessa organização agora, ou o link está incompleto.</p><div><a class="btn" href="#organizacoes">Voltar para Organizações</a></div>' : '<p class="lede">Carregando organização…</p>');
+      pageRoot.innerHTML = crumbsHtml('orgs') + (W.loaded.organizations ? '<h1>Organização não encontrada</h1><p class="lede">Essa organização foi excluída ou o link está incompleto.</p><div><a class="btn" href="#organizacoes">Voltar para Organizações</a></div>' : '<p class="lede">Carregando organização…</p>');
       return;
     }
-    var locs = orgLocations(o);
-    var head = crumbsHtml('org:' + o.key) + '<div class="head-row"><div><span class="badge">' + svg(ICON.org, 12, 2.4) + 'Organização</span><h1>' + esc(o.name) + '</h1>' +
-      '<p class="lede">' + plural(o.members.length, 'membro', 'membros') + '</p></div></div>';
-    var main = '<section><h2 class="sec-title">Membros</h2><div class="loc-grid">' + o.members.map(function (c) {
-      return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
-        '<span class="where">' + (c.race ? esc(c.race) : 'Raça não informada') + '</span></div></a>';
-    }).join('') + '</div></section>';
-    var side = '<div class="box"><h2 class="sec-title" style="margin:0">Locais dos membros</h2>' +
+    var can = canWrite(), members = orgMembers(o), locs = orgLocations(o);
+    var head = crumbsHtml('org:' + o.id) + '<div class="head-row"><div><span class="badge">' + svg(ICON.org, 12, 2.4) + 'Organização</span><h1>' + esc(o.name) + '</h1>' +
+      '<p class="lede">' + (members.length ? plural(members.length, 'membro', 'membros') : 'Sem membros') + (o.reputation ? ' · Reputação: ' + esc(o.reputation) : '') + '</p></div>' +
+      (can ? '<div class="btn-row"><button class="btn" type="button" id="editOrgBtn">' + svg(ICON.edit, 15) + 'Editar organização</button><button class="btn danger" type="button" id="delOrgBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
+      (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(o.name) + '</b>? Os personagens continuam cadastrados, só deixam de ser membros. Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delOrgYes">Excluir organização</button><button class="btn ghost" type="button" id="delOrgNo">Cancelar</button></div></div>' : '');
+    var main = '<section><h2 class="sec-title">Descrição</h2>' + (o.description ? '<p class="long">' + esc(o.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>' +
+      '<section><div class="head-row" style="align-items:center"><h2 class="sec-title" style="margin:0">Membros</h2>' + (can ? '<button class="btn" type="button" id="addMemberBtn">' + svg(ICON.plus, 15, 2.4) + 'Adicionar membro</button>' : '') + '</div>' +
+      (members.length ? '<div class="loc-grid" style="margin-top:12px">' + members.map(function (m) {
+        var c = m.c;
+        return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
+          '<span class="where">' + (m.rank ? esc(m.rank) : 'Sem cargo') + '</span>' + (c.race ? '<span class="meta">' + esc(c.race) + '</span>' : '') + '</div></a>';
+      }).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum membro ainda.' + (can ? ' Use <b>Adicionar membro</b> ou escolha a organização no cadastro do personagem.' : '') + '</p>') + '</section>';
+    var side = '<div class="box"><h2 class="sec-title" style="margin:0">Ficha</h2><dl class="facts"><dt>Reputação</dt><dd>' + (o.reputation ? esc(o.reputation) : '<span class="none">Não informada</span>') + '</dd>' +
+      '<dt>Membros</dt><dd>' + (members.length || '<span class="none">Nenhum</span>') + '</dd></dl></div>' +
+      '<div class="box"><h2 class="sec-title" style="margin:0">Locais dos membros</h2>' +
       (locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum membro está ligado a um local.</p>') + '</div>';
     pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
     fillImages(pageRoot);
+    var e = $('editOrgBtn'); if (e) e.onclick = function () { openOrgForm(o); };
+    var a = $('addMemberBtn'); if (a) a.onclick = function () { openOrgForm(o, true); };
+    var d = $('delOrgBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderOrgPage(); };
+    var dn = $('delOrgNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderOrgPage(); };
+    var dy = $('delOrgYes'); if (dy) dy.onclick = function () {
+      dy.disabled = true;
+      Ops.deleteOrganization(o).then(function () { toast('Organização excluída.'); go('#organizacoes', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
+    };
+  }
+
+  function openOrgForm(o, focusMembers) {
+    var editing = !!o;
+    var html = '<form id="orgForm" novalidate><h2 id="ofTitle">' + (editing ? 'Editar organização' : 'Nova organização') + '</h2>' +
+      '<div class="field" id="f_oname"><label for="oname">Nome</label><input type="text" id="oname" maxlength="100" autocomplete="off" placeholder="Ex.: The Hounds" value="' + esc(editing ? o.name : '') + '"><div class="err" id="err_oname"></div></div>' +
+      '<div class="field"><label for="odesc">Descrição</label><textarea id="odesc" rows="6" maxlength="20000" placeholder="O que é, objetivos, história, onde atua…">' + esc(editing ? o.description || '' : '') + '</textarea></div>' +
+      '<div class="field"><label for="orep">Reputação</label><input type="text" id="orep" list="repList" maxlength="120" autocomplete="off" placeholder="Ex.: Temida no porto, +2 entre os nobres" value="' + esc(editing ? o.reputation || '' : '') + '">' + datalistHtml('repList', reputations()) + '</div>' +
+      '<div class="field"><label for="omem">Membros</label><div class="picker"><div class="rels" id="oMemSel"></div>' +
+      '<input type="text" id="omem" autocomplete="off" placeholder="' + (W.characters.length ? 'Buscar personagem' : 'Nenhum personagem cadastrado ainda') + '"' + (W.characters.length ? '' : ' disabled') + ' role="combobox" aria-expanded="false" aria-controls="oMemList" aria-autocomplete="list">' +
+      '<div class="suggest" id="oMemList" role="listbox" hidden></div></div>' + datalistHtml('rankList', rankTypes()) +
+      '<span class="hint-text">Opcional. Ao lado de cada membro, o cargo dele. Ex.: Líder, General, Recruta. Dá para mudar o cargo quando quiser.</span></div>' +
+      flagHtml('ovis', o, true) +
+      '<div class="form-err" id="ofErr" role="alert"></div>' +
+      '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="ofCancel">Cancelar</button><button class="btn primary" type="submit" id="ofSave">' + (editing ? 'Salvar organização' : 'Criar organização') + '</button></div></form>';
+    showModal(html);
+    modal.setAttribute('aria-labelledby', 'ofTitle');
+    var name = $('oname');
+    name.addEventListener('input', function () { if (name.value.trim()) { $('err_oname').textContent = ''; $('f_oname').classList.remove('invalid'); } });
+
+    var sel = editing ? orgMembers(o).map(function (m) { return { id: m.c.id, text: m.rank }; }) : [];
+    textPicker({ input: 'omem', list: 'oMemList', box: 'oMemSel', sel: sel, datalist: 'rankList', textLabel: 'Cargo',
+      name: function (s) { return charById(s.id).name; },
+      chip: function (s) { var c = charById(s.id); return '<span class="person">' + avatarI(c) + esc(c.name) + '</span>'; },
+      find: function (q) {
+        return W.characters.slice().sort(byName).filter(function (c) { return !sel.some(function (s) { return s.id === c.id; }) && (!q || norm(c.name + ' ' + charSubtitle(c)).indexOf(q) >= 0); })
+          .map(function (c) { return { label: c.name, sub: charSubtitle(c), pick: { id: c.id, text: '' } }; });
+      } });
+    if (focusMembers && W.characters.length) setTimeout(function () { $('omem').focus(); }, 30);
+
+    $('ofCancel').onclick = function () { closeModal(); };
+    $('orgForm').onsubmit = function (e) {
+      e.preventDefault();
+      if (modalOpen.busy) return;
+      var n = name.value.trim();
+      if (!n) { $('err_oname').textContent = 'Informe o nome da organização.'; $('f_oname').classList.add('invalid'); name.focus(); return; }
+      if (W.organizations.some(function (x) { return (!editing || x.id !== o.id) && norm(x.name) === norm(n); }) && !$('ofErr').dataset.warned) {
+        $('ofErr').textContent = 'Já existe uma organização com esse nome. Clique em ' + (editing ? 'Salvar' : 'Criar') + ' organização de novo para continuar mesmo assim.'; $('ofErr').dataset.warned = '1'; return;
+      }
+      modalOpen.busy = true;
+      var btn = $('ofSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('ofCancel').disabled = true; $('ofErr').textContent = '';
+      Ops.saveOrganization(o, { name: n, description: $('odesc').value.trim(), reputation: $('orep').value.trim(),
+        members: sel.filter(function (s) { return charById(s.id); }).map(function (s) { return { charId: s.id, rank: s.text.trim() }; }), visible: flagVal('ovis', o), sharedWith: shareVal('ovis', o) })
+        .then(function (id) {
+          closeModal(true);
+          toast(editing ? 'Organização salva.' : 'Organização criada.');
+          if (!editing) go(orgHref(id));
+        }, function (er) {
+          if (!modalOpen) return;
+          modalOpen.busy = false; btn.disabled = false; btn.textContent = editing ? 'Salvar organização' : 'Criar organização'; $('ofCancel').disabled = false;
+          $('ofErr').textContent = errorText(er);
+        });
+    };
   }
 
   /* =====================================================================
@@ -2897,6 +3118,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
   renderMapPage = function () { _rMap(); tagPage(mapById(S.route.mapId), 'maps'); };
   renderLocalPage = function () { _rLoc(); tagPage(locById(S.route.locId), 'locations'); };
   renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'characters'); };
+  var _rOrg = renderOrgPage;
+  renderOrgPage = function () { _rOrg(); tagPage(orgById(S.route.orgId), 'organizations'); };
 
   // One-time: items created before the visibility flag existed become Mestre-only.
   var migratedVis = false;
@@ -2912,6 +3135,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     });
   }
   window.addEventListener('hub:user', migrateVisibility);
+  window.addEventListener('hub:user', migrateOrganizations);
   window.addEventListener('hub:user', function () {
     refilter();
     renderMenu();
@@ -3533,7 +3757,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       card('#maps', ICON.maps, 'Maps', count('maps', W.maps.length, 'mapa', 'mapas')),
       card('#locais', ICON.pin, 'Localização', count('locations', W.locations.length, 'local', 'locais')),
       card('#personagens', ICON.user, 'Personagens', count('characters', W.characters.length, 'personagem', 'personagens')),
-      card('#organizacoes', ICON.org, 'Organizações', count('characters', organizations().length, 'organização', 'organizações')),
+      card('#organizacoes', ICON.org, 'Organizações', count('organizations', W.organizations.length, 'organização', 'organizações')),
       card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
     ];
     if (isMestre()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));
@@ -3543,6 +3767,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
       W.maps.map(function (m) { return { t: m.updatedAt || m.createdAt, href: mapHref(m.id), icon: ICON.map, name: m.name, kind: 'Mapa', item: m }; }),
       W.locations.map(function (l) { return { t: l.updatedAt || l.createdAt, href: locHref(l.id), icon: ICON.pin, name: l.name, kind: 'Local', item: l }; }),
       W.characters.map(function (c) { return { t: c.updatedAt || c.createdAt, href: charHref(c.id), icon: ICON.user, name: c.name, kind: 'Personagem', item: c }; }),
+      W.organizations.map(function (o) { return { t: o.updatedAt || o.createdAt, href: orgHref(o.id), icon: ICON.org, name: o.name, kind: 'Organização', item: o }; }),
       W.notes.map(function (n) { return { t: n.updatedAt || n.createdAt, href: hrefFor('note:' + n.id), icon: ICON.note, name: n.title, kind: 'Anotação', item: n }; })
     ).sort(function (a, b) { return (b.t || 0) - (a.t || 0); }).slice(0, 6);
     var allLoaded = W.loaded.maps && W.loaded.locations && W.loaded.characters && W.loaded.notes;
@@ -3603,6 +3828,8 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (kind === 'maps') indexMaps();
     if (kind === 'locations') indexLocations();
     if (kind === 'characters') indexCharacters();
+    if (kind === 'organizations') indexOrgs();
+    migrateOrganizations();
     renderMenu();
     if (!S.route) return;
     topTitle.textContent = byId[S.route.node] ? byId[S.route.node].label : topTitle.textContent;
@@ -3615,7 +3842,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     if (S.route.page === 'note' && S.ui.editing) return;
     if (S.route.page === 'locais' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'locSearch') { renderLocList(); return; }
     if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
-    if (S.route.page === 'orgs' && document.activeElement && document.activeElement.id === 'orgSearch') { renderOrgList(); return; }
+    if (S.route.page === 'orgs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'orgSearch') { renderOrgList(); return; }
     renderPage();
   }
 
@@ -3639,13 +3866,14 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
     });
   }
   connect().then(function (s) {
-    if (!s) { W.loaded = { maps: true, locations: true, characters: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
+    if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
     W.store = s;
     return s.init().then(function () {
       var fail = function () { toast('Não foi possível carregar os dados.', true); };
       s.watch('maps', function (l) { W.raw.maps = l; W.maps = pub(l); W.loaded.maps = true; onData('maps'); }, fail);
       s.watch('locations', function (l) { W.raw.locations = l; W.locations = pub(l); W.loaded.locations = true; onData('locations'); }, fail);
       s.watch('characters', function (l) { W.raw.characters = l; W.characters = pub(l); W.loaded.characters = true; onData('characters'); }, fail);
+      s.watch('organizations', function (l) { W.raw.organizations = l; W.organizations = pub(l); W.loaded.organizations = true; onData('organizations'); }, fail);
       s.watch('users', onUsers, fail);
       MesaSync.start();
       s.watch('notebooks', function (l) { W.raw.notebooks = l; filterNotes(); W.loaded.notebooks = true; onData('notes'); }, fail);
