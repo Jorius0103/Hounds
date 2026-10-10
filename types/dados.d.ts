@@ -55,7 +55,7 @@ interface Character extends Doc {
 interface Member { charId: string; rank: string }
 
 /** Coleção `organizations`. */
-interface Organization extends Doc { name: string; description?: string; reputation?: string; members?: Member[]; locationIds?: string[] }
+interface Organization extends Doc { name: string; description?: string; reputation?: string; members?: Member[]; locationIds?: string[]; image?: ImageInfo | null }
 
 /** Coleção `notebooks` (títulos). */
 interface Notebook extends Doc { name: string }

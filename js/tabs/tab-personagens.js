@@ -207,7 +207,7 @@ function openCharForm(c) {
   function orgPickName(s) { return s.id ? orgById(s.id).name : s.name; }
   textPicker({ input: 'corg', list: 'cOrgList', box: 'cOrgSel', sel: orgSel, datalist: 'cRankList', textLabel: 'Cargo',
     name: orgPickName,
-    chip: function (s) { return '<span class="person"><i>' + svg(ICON.org, 12, 2.4) + '</i>' + esc(orgPickName(s)) + (s.id ? '' : ' (nova)') + '</span>'; },
+    chip: function (s) { var o = s.id && orgById(s.id); return '<span class="person"><i' + (o && o.image ? ' data-img="' + esc(o.image.ref) + '"' : '') + '>' + svg(ICON.org, 12, 2.4) + '</i>' + esc(orgPickName(s)) + (s.id ? '' : ' (nova)') + '</span>'; },
     find: function (q, raw) {
       var out = W.organizations.slice().sort(byName).filter(function (o) { return !orgSel.some(function (s) { return s.id === o.id; }) && (!q || norm(o.name).indexOf(q) >= 0); })
         .map(function (o) { var n = orgMembers(o).length; return { label: o.name, sub: n ? plural(n, 'membro', 'membros') : 'Sem membros', pick: { id: o.id, text: '' } }; });

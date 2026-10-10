@@ -47,16 +47,27 @@ function orgLocations(o) {
   return out.sort(byName);
 }
 
-Ops.saveOrganization = function (o, fields) {
-  var t = now();
-  // Keep members this user can't see, the same way as a character's relations.
-  var members = (fields.members || []).slice();
-  if (o) (o.members || []).forEach(function (m) { if (!W.charIdx[m.charId] && rawHas('characters', m.charId) && !members.some(function (x) { return x.charId === m.charId; })) members.push(m); });
-  var body = { v: 1, name: fields.name, description: fields.description, reputation: fields.reputation, members: members, visible: fields.visible !== false, sharedWith: fields.sharedWith || (o && o.sharedWith) || [],
-               createdBy: owner(o), createdAt: (o && o.createdAt) || t, updatedAt: t };
-  return W.store.put('organizations', o ? o.id : null, body);
+Ops.saveOrganization = function (o, fields, newFile, newDims, removeImage) {
+  var oldRef = o && o.image && o.image.ref;
+  var p = Promise.resolve(o && o.image ? o.image : null);
+  if (newFile) p = W.store.upload(newFile).then(function (u) { return { ref: u.ref, w: newDims.w, h: newDims.h, type: u.type, size: u.size }; });
+  else if (removeImage) p = Promise.resolve(null);
+  return p.then(function (image) {
+    var t = now();
+    // Keep members this user can't see, the same way as a character's relations.
+    var members = (fields.members || []).slice();
+    if (o) (o.members || []).forEach(function (m) { if (!W.charIdx[m.charId] && rawHas('characters', m.charId) && !members.some(function (x) { return x.charId === m.charId; })) members.push(m); });
+    var body = { v: 1, name: fields.name, description: fields.description, reputation: fields.reputation, members: members, image: image, visible: fields.visible !== false, sharedWith: fields.sharedWith || (o && o.sharedWith) || [],
+                 createdBy: owner(o), createdAt: (o && o.createdAt) || t, updatedAt: t };
+    return W.store.put('organizations', o ? o.id : null, body);
+  }).then(function (id) {
+    if (oldRef && (newFile || removeImage)) W.store.dropImage(oldRef);
+    return id;
+  });
 };
-Ops.deleteOrganization = function (o) { return W.store.remove('organizations', o.id); };
+Ops.deleteOrganization = function (o) {
+  return W.store.remove('organizations', o.id).then(function () { return W.store.dropImage(o.image && o.image.ref); });
+};
 // A character's memberships as picked in its form ([{ id: orgId|null, name, text: rank }]). Visible
 // organizations left out lose the character; picks without an id are new organizations.
 Ops.setCharOrgs = function (charId, picks, visible, shared) {
@@ -173,9 +184,10 @@ function renderOrgList() {
   var cnt = $('orgCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.organizations.length : plural(W.organizations.length, 'organização', 'organizações');
   el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (o) {
     var n = orgMembers(o).length;
-    return '<a class="loc-card" href="' + orgHref(o.id) + '"><div class="thumb">' + svg(ICON.org, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(o.name) + '</strong>' +
+    return '<a class="loc-card" href="' + orgHref(o.id) + '"><div class="thumb"' + (o.image ? ' data-img="' + esc(o.image.ref) + '"' : '') + '>' + svg(ICON.org, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(o.name) + '</strong>' +
       '<span class="where">' + (o.reputation ? 'Reputação: ' + esc(o.reputation) : 'Reputação não informada') + '</span><span class="meta">' + (n ? plural(n, 'membro', 'membros') : 'Sem membros') + '</span></div></a>';
   }).join('') + '</div>' : '<p class="lede">Nenhuma organização encontrada para essa busca.</p>';
+  fillImages(el);
 }
 
 function renderOrgPage() {
@@ -189,7 +201,8 @@ function renderOrgPage() {
     '<p class="lede">' + (members.length ? plural(members.length, 'membro', 'membros') : 'Sem membros') + (o.reputation ? ' · Reputação: ' + esc(o.reputation) : '') + '</p></div>' +
     (can ? '<div class="btn-row"><button class="btn" type="button" id="editOrgBtn">' + svg(ICON.edit, 15) + 'Editar organização</button><button class="btn danger" type="button" id="delOrgBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(o.name) + '</b>? Os personagens continuam cadastrados, só deixam de ser membros. Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delOrgYes">Excluir organização</button><button class="btn ghost" type="button" id="delOrgNo">Cancelar</button></div></div>' : '');
-  var main = '<section><h2 class="sec-title">Descrição</h2>' + (o.description ? '<p class="long">' + esc(o.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>' +
+  var main = (o.image ? '<div class="loc-hero" id="orgHero">' + svg(ICON.org, 32, 1.6) + '</div>' : '') +
+    '<section><h2 class="sec-title">Descrição</h2>' + (o.description ? '<p class="long">' + esc(o.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>' +
     '<section><div class="head-row" style="align-items:center"><h2 class="sec-title" style="margin:0">Membros</h2>' + (can ? '<button class="btn" type="button" id="addMemberBtn">' + svg(ICON.plus, 15, 2.4) + 'Adicionar membro</button>' : '') + '</div>' +
     (members.length ? '<div class="loc-grid" style="margin-top:12px">' + members.map(function (m) {
       var c = m.c;
@@ -201,6 +214,11 @@ function renderOrgPage() {
     '<div class="box"><h2 class="sec-title" style="margin:0">Locais dos membros</h2>' +
     (locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum membro está ligado a um local.</p>') + '</div>';
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
+  if (o.image) W.store.imageUrl(o.image.ref).then(function (u) {
+    var h = $('orgHero'); if (!h || !u) return;
+    h.innerHTML = '<button class="hero-zoom" type="button" aria-label="Ampliar a imagem de ' + esc(o.name) + '" title="Clique para ampliar"><img src="' + esc(u) + '" alt="' + esc(o.name) + '"></button>';
+    h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, o.name); };
+  });
   fillImages(pageRoot);
   var e = $('editOrgBtn'); if (e) e.onclick = function () { openOrgForm(o); };
   var a = $('addMemberBtn'); if (a) a.onclick = function () { openOrgForm(o, true); };
@@ -213,9 +231,10 @@ function renderOrgPage() {
 }
 
 function openOrgForm(o, focusMembers) {
-  var editing = !!o;
+  var editing = !!o, canImg = W.store.canUpload;
   var html = '<form id="orgForm" novalidate><h2 id="ofTitle">' + (editing ? 'Editar organização' : 'Nova organização') + '</h2>' +
     '<div class="field" id="f_oname"><label for="oname">Nome</label><input type="text" id="oname" maxlength="100" autocomplete="off" placeholder="Ex.: The Hounds" value="' + esc(editing ? o.name : '') + '"><div class="err" id="err_oname"></div></div>' +
+    (canImg ? imageFieldHtml('oimg', 'Imagem', 'Brasão, símbolo ou ilustração. Opcional, até 20 MB.') : '') +
     '<div class="field"><label for="odesc">Descrição</label><textarea id="odesc" rows="6" maxlength="20000" placeholder="O que é, objetivos, história, onde atua…">' + esc(editing ? o.description || '' : '') + '</textarea></div>' +
     '<div class="field"><label for="orep">Reputação</label><input type="text" id="orep" list="repList" maxlength="120" autocomplete="off" placeholder="Ex.: Temida no porto, +2 entre os nobres" value="' + esc(editing ? o.reputation || '' : '') + '">' + datalistHtml('repList', reputations()) + '</div>' +
     '<div class="field"><label for="omem">Membros</label><div class="picker"><div class="rels" id="oMemSel"></div>' +
@@ -225,8 +244,10 @@ function openOrgForm(o, focusMembers) {
     flagHtml('ovis', o, true) +
     '<div class="form-err" id="ofErr" role="alert"></div>' +
     '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="ofCancel">Cancelar</button><button class="btn primary" type="submit" id="ofSave">' + (editing ? 'Salvar organização' : 'Criar organização') + '</button></div></form>';
-  showModal(html);
+  var img;
+  showModal(html, function () { if (img) img.dispose(); });
   modal.setAttribute('aria-labelledby', 'ofTitle');
+  if (canImg) img = imageField('oimg', { removable: true, existing: editing && o.image ? W.store.imageUrl(o.image.ref).then(function (u) { return { url: u, name: 'Imagem atual', dims: o.image.w ? o.image.w + ' × ' + o.image.h + ' px' : '' }; }) : null });
   var name = $('oname');
   name.addEventListener('input', function () { if (name.value.trim()) { $('err_oname').textContent = ''; $('f_oname').classList.remove('invalid'); } });
 
@@ -249,10 +270,12 @@ function openOrgForm(o, focusMembers) {
     if (W.organizations.some(function (x) { return (!editing || x.id !== o.id) && norm(x.name) === norm(n); }) && !$('ofErr').dataset.warned) {
       $('ofErr').textContent = 'Já existe uma organização com esse nome. Clique em ' + (editing ? 'Salvar' : 'Criar') + ' organização de novo para continuar mesmo assim.'; $('ofErr').dataset.warned = '1'; return;
     }
+    if (img && $('err_oimg').textContent && !img.file) { img.drop.focus(); return; }
     modalOpen.busy = true;
-    var btn = $('ofSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('ofCancel').disabled = true; $('ofErr').textContent = '';
+    var btn = $('ofSave'); btn.disabled = true; btn.textContent = img && img.file ? 'Enviando imagem…' : 'Salvando…'; $('ofCancel').disabled = true; $('ofErr').textContent = '';
     Ops.saveOrganization(o, { name: n, description: $('odesc').value.trim(), reputation: $('orep').value.trim(),
-      members: sel.filter(function (s) { return charById(s.id); }).map(function (s) { return { charId: s.id, rank: s.text.trim() }; }), visible: flagVal('ovis', o), sharedWith: shareVal('ovis', o) })
+      members: sel.filter(function (s) { return charById(s.id); }).map(function (s) { return { charId: s.id, rank: s.text.trim() }; }), visible: flagVal('ovis', o), sharedWith: shareVal('ovis', o) },
+      img && img.file, img && img.dims, img && img.removed)
       .then(function (id) {
         closeModal(true);
         toast(editing ? 'Organização salva.' : 'Organização criada.');
