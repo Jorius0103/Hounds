@@ -983,8 +983,8 @@ export const HOUNDS_PLAYERS: NPC[] = [
 
 export const EMPTY_COMBAT_PRESET: Combat = {
   id: 'combat-vazio',
-  name: 'Combate Vazio (Ocultar Tela)',
-  description: 'Nenhum NPC neste combate. Deixa a tela dos jogadores limpa e oculta.',
+  name: 'Sem combate (Apenas personagens)',
+  description: 'Nenhum NPC neste combate. Exibe apenas os personagens da campanha.',
   createdAt: '29/09/2026',
   npcs: [],
 };
