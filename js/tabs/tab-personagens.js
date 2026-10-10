@@ -179,7 +179,7 @@ function openCharForm(c) {
     '<div class="suggest" id="cMapList" role="listbox" hidden></div></div><span class="hint-text">Opcional. Ex.: o reino de onde vem ou as regiões por onde anda.</span></div>' +
     '<div class="field"><label for="cloc">Locais relacionados</label><div class="picker"><div class="people" id="cLocSel"></div>' +
     '<input type="text" id="cloc" autocomplete="off" placeholder="' + (W.locations.length ? 'Buscar local' : 'Nenhum local cadastrado ainda') + '"' + (W.locations.length ? '' : ' disabled') + ' role="combobox" aria-expanded="false" aria-controls="cLocList" aria-autocomplete="list">' +
-    '<div class="suggest" id="cLocList" role="listbox" hidden></div></div><span class="hint-text">Opcional. Os locais criados em Localização aparecem aqui.</span></div>' +
+    '<div class="suggest" id="cLocList" role="listbox" hidden></div></div><span class="hint-text">Opcional. Os locais criados em Locais aparecem aqui.</span></div>' +
     '<div class="field"><label for="crel">Relacionamentos</label><div class="picker"><div class="rels" id="cRelSel"></div>' +
     '<input type="text" id="crel" autocomplete="off" placeholder="' + (others.length ? 'Buscar personagem' : 'Nenhum outro personagem cadastrado ainda') + '"' + (others.length ? '' : ' disabled') + ' role="combobox" aria-expanded="false" aria-controls="cRelList" aria-autocomplete="list">' +
     '<div class="suggest" id="cRelList" role="listbox" hidden></div></div>' +
@@ -257,10 +257,10 @@ function openCharForm(c) {
   }
   function paintList() {
     var q = norm(input.value.trim());
-    options = W.locations.slice().sort(byName).filter(function (l) { return sel.indexOf(l.id) < 0 && (!q || norm(l.name + ' ' + mapPathText(locMapId(l))).indexOf(q) >= 0); }).slice(0, 40);
+    options = W.locations.slice().sort(byName).filter(function (l) { return sel.indexOf(l.id) < 0 && (!q || norm(locPathText(l.id) + ' ' + mapPathText(locMapId(l))).indexOf(q) >= 0); }).slice(0, 40);
     if (!options.length) { list.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
     active = Math.min(active, options.length - 1);
-    list.innerHTML = options.map(function (l, i) { var mid = locMapId(l); return '<button type="button" role="option" id="copt' + i + '" data-i="' + i + '" class="' + (i === active ? 'act' : '') + '" aria-selected="' + (i === active) + '">' + esc(l.name) + '<small>' + esc(mid ? mapById(mid).name : 'Sem mapa') + '</small></button>'; }).join('');
+    list.innerHTML = options.map(function (l, i) { var mid = locMapId(l); return '<button type="button" role="option" id="copt' + i + '" data-i="' + i + '" class="' + (i === active ? 'act' : '') + '" aria-selected="' + (i === active) + '">' + esc(locPathText(l.id)) + '<small>' + esc(mid ? mapById(mid).name : 'Sem mapa') + '</small></button>'; }).join('');
     list.hidden = false; input.setAttribute('aria-expanded', 'true'); input.setAttribute('aria-activedescendant', 'copt' + active);
   }
   function pick(i) { var l = options[i]; if (!l) return; sel.push(l.id); input.value = ''; active = 0; paintSel(); list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.focus(); }

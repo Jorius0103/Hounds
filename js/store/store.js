@@ -13,7 +13,7 @@
    Collections
      maps                 { v, name, parentId, image{ref,w,h,type,size}, createdAt, updatedAt }
      maps/{id}/markers    { x, y (0..1 of the image), title, description, category, locationId, createdAt, updatedAt }
-     locations            { v, name, description, image{...}|null, characterIds[], mapId, position|null, createdAt, updatedAt }
+     locations            { v, name, description, image{...}|null, characterIds[], mapId, parentId, position|null, createdAt, updatedAt }
      characters           { name, source, mesaId, createdAt, updatedAt }
      organizations        { v, name, description, reputation, members[{ charId, rank }], createdAt, updatedAt }
    `position` on a location is reserved for coordinates inside its map.

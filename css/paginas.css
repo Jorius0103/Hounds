@@ -59,6 +59,8 @@ a.inline:hover { text-decoration: underline; }
 .row-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row-link b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-link .mthumb { width: 36px; height: 26px; border-radius: 6px; }
+.row-link .meta { margin-left: auto; flex: none; }
+.modal .mtree ul > li:last-child::after { background: var(--rail); }
 .links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 
 /* Character picker */

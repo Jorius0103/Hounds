@@ -1,5 +1,5 @@
 /* =====================================================================
-   Hounds — Aba Localização: lista, página do local e formulário
+   Hounds — Aba Locais: lista, página do local e formulário
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
@@ -7,12 +7,13 @@
 'use strict';
 
 /* =====================================================================
-   Page: Localização (list)
+   Page: Locais (list). Without a search, only the top-level locations;
+   the ones inside them are on each location's page.
    ===================================================================== */
 function renderLocaisPage() {
   var can = canWrite();
   pageRoot.innerHTML =
-    '<div class="head-row"><div>' + crumbsHtml('locais') + '<h1>Localização</h1><p class="lede">Os locais do mundo: cidades, castelos, florestas, vilas. Cada local pode ficar num mapa e ter personagens ligados a ele.</p></div>' +
+    '<div class="head-row"><div>' + crumbsHtml('locais') + '<h1>Locais</h1><p class="lede">Os locais do mundo: cidades, castelos, florestas, vilas. Um local pode ficar dentro de outro, como uma taverna dentro de uma cidade, e também num mapa e com personagens ligados a ele.</p></div>' +
     (can ? '<button class="btn primary" type="button" id="newLocBtn">' + svg(ICON.plus, 16, 2.4) + 'Novo local</button>' : '') + '</div>' + notice() +
     (W.locations.length ? '<div class="toolbar"><label class="sr" for="locSearch" style="position:absolute;left:-9999px">Buscar locais</label><input class="search" id="locSearch" type="search" placeholder="Buscar por nome, mapa ou personagem" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="locCount"></span></div>' : '') +
     '<div id="locList"></div>';
@@ -28,17 +29,19 @@ function renderLocList() {
     return;
   }
   var q = norm(S.ui.q);
-  var list = W.locations.slice().sort(byName).filter(function (l) {
-    if (!q) return true;
-    return norm(l.name + ' ' + (l.description || '') + ' ' + mapPathText(locMapId(l)) + ' ' + locChars(l).map(function (c) { return c.name; }).join(' ')).indexOf(q) >= 0;
-  });
+  var list = q ? W.locations.slice().sort(byName).filter(function (l) {
+    return norm(l.name + ' ' + (l.description || '') + ' ' + locPathText(l.id) + ' ' + mapPathText(locMapId(l)) + ' ' + locChars(l).map(function (c) { return c.name; }).join(' ')).indexOf(q) >= 0;
+  }) : childLocs(null);
   var cnt = $('locCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.locations.length : plural(W.locations.length, 'local', 'locais');
-  el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (l) {
-    var mid = locMapId(l), chars = locChars(l).length;
-    return '<a class="loc-card" href="' + locHref(l.id) + '"><div class="thumb"' + (l.image ? ' data-img="' + esc(l.image.ref) + '"' : '') + '>' + svg(ICON.pin, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(l.name) + '</strong>' +
-      '<span class="where">' + (mid ? svg(ICON.map, 12) + ' ' + esc(mapPathText(mid)) : 'Sem mapa') + '</span>' + (chars ? '<span class="meta">' + plural(chars, 'personagem', 'personagens') + '</span>' : '') + '</div></a>';
-  }).join('') + '</div>' : '<p class="lede">Nenhum local encontrado para essa busca.</p>';
+  el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(locCard).join('') + '</div>' : '<p class="lede">Nenhum local encontrado para essa busca.</p>';
   fillImages(el);
+}
+function locCard(l) {
+  var mid = locMapId(l), chars = locChars(l).length, kids = childLocs(l.id).length, up = W.locParent[l.id];
+  var meta = [kids ? plural(kids, 'sublocal', 'sublocais') : '', chars ? plural(chars, 'personagem', 'personagens') : ''].filter(Boolean).join(' · ');
+  return '<a class="loc-card" href="' + locHref(l.id) + '"><div class="thumb"' + (l.image ? ' data-img="' + esc(l.image.ref) + '"' : '') + '>' + svg(ICON.pin, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(l.name) + '</strong>' +
+    (up ? '<span class="where">' + svg(ICON.pin, 12) + ' Em ' + esc(locPathText(up)) + '</span>' : '') +
+    '<span class="where">' + (mid ? svg(ICON.map, 12) + ' ' + esc(mapPathText(mid)) : 'Sem mapa') + '</span>' + (meta ? '<span class="meta">' + meta + '</span>' : '') + '</div></a>';
 }
 
 /* =====================================================================
@@ -47,18 +50,24 @@ function renderLocList() {
 function renderLocalPage() {
   var l = locById(S.route.locId), ui = S.ui;
   if (!l) {
-    pageRoot.innerHTML = crumbsHtml('locais') + (W.loaded.locations ? '<h1>Local não encontrado</h1><p class="lede">Esse local foi excluído ou o link está incompleto.</p><div><a class="btn" href="#locais">Voltar para Localização</a></div>' : '<p class="lede">Carregando local…</p>');
+    pageRoot.innerHTML = crumbsHtml('locais') + (W.loaded.locations ? '<h1>Local não encontrado</h1><p class="lede">Esse local foi excluído ou o link está incompleto.</p><div><a class="btn" href="#locais">Voltar para Locais</a></div>' : '<p class="lede">Carregando local…</p>');
     return;
   }
-  var can = canWrite(), mid = locMapId(l), m = mapById(mid), chars = locChars(l);
+  var can = canWrite(), mid = locMapId(l), m = mapById(mid), chars = locChars(l), up = locById(W.locParent[l.id]), kids = childLocs(l.id);
+  var gone = (kids.length ? plural(kids.length, 'sublocal passa', 'sublocais passam') + ' para ' + (up ? '<b>' + esc(up.name) + '</b>' : 'o nível superior') + '. ' : '') + 'Marcadores ligados a ele continuam no mapa, sem o vínculo.';
   var head = crumbsHtml('loc:' + l.id) + '<div class="head-row"><div><span class="badge">' + svg(ICON.pin, 12, 2.4) + 'Local</span><h1>' + esc(l.name) + '</h1>' +
-    (m ? '<p class="lede">Em <a class="inline" href="' + mapHref(m.id) + '">' + esc(mapPathText(m.id)) + '</a></p>' : '') + '</div>' +
-    (can ? '<div class="btn-row"><button class="btn" type="button" id="editLocBtn">' + svg(ICON.edit, 15) + 'Editar local</button><button class="btn danger" type="button" id="delLocBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
-    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir o local <b>' + esc(l.name) + '</b>? Marcadores ligados a ele continuam no mapa, sem o vínculo. Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delLocYes">Excluir local</button><button class="btn ghost" type="button" id="delLocNo">Cancelar</button></div></div>' : '');
+    (up ? '<p class="lede">Dentro de <a class="inline" href="' + locHref(up.id) + '">' + esc(locPathText(up.id)) + '</a></p>' : '') +
+    (m ? '<p class="lede">No mapa <a class="inline" href="' + mapHref(m.id) + '">' + esc(mapPathText(m.id)) + '</a></p>' : '') + '</div>' +
+    (kids.length || can ? '<div class="btn-row">' + (kids.length ? '<button class="btn" type="button" id="locTreeBtn">' + svg(ICON.tree, 15) + 'Árvore</button>' : '') +
+      (can ? '<button class="btn" type="button" id="editLocBtn">' + svg(ICON.edit, 15) + 'Editar local</button><button class="btn danger" type="button" id="delLocBtn">' + svg(ICON.trash, 15) + 'Excluir</button>' : '') + '</div>' : '') + '</div>' +
+    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir o local <b>' + esc(l.name) + '</b>? ' + gone + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delLocYes">Excluir local</button><button class="btn ghost" type="button" id="delLocNo">Cancelar</button></div></div>' : '');
   var pics = [l.image, l.image2].filter(function (im) { return im && im.ref; });
   var main = (pics.length ? '<div class="loc-pics' + (pics.length > 1 ? ' two-pics' : '') + '">' + pics.map(function (im, i) { return '<div class="loc-hero" id="locHero' + i + '">' + svg(ICON.image, 32, 1.6) + '</div>'; }).join('') + '</div>' : '') +
     '<section><h2 class="sec-title">Descrição</h2>' + (l.description ? '<p class="long">' + esc(l.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>';
-  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Personagens</h2>' +
+  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Sublocais</h2>' +
+    (kids.length ? '<ul class="links">' + kids.map(function (k) { var n = childLocs(k.id).length; return '<li><a class="row-link" href="' + locHref(k.id) + '">' + thumbSlot(k.image && k.image.ref, ICON.pin) + '<b>' + esc(k.name) + '</b>' + (n ? '<span class="meta">' + plural(n, 'sublocal', 'sublocais') + '</span>' : '') + '</a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local dentro deste.</p>') +
+    (can ? '<div><button class="btn" type="button" id="newSubLoc">' + svg(ICON.plus, 15, 2.4) + 'Novo local dentro deste</button></div>' : '') + '</div>' +
+    '<div class="box"><h2 class="sec-title" style="margin:0">Personagens</h2>' +
     (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem ligado.</p>') + '</div>' +
     '<div class="box"><h2 class="sec-title" style="margin:0">Mapa relacionado</h2>' +
     (m ? '<ul class="links"><li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<b>' + esc(m.name) + '</b></a></li></ul><div class="btn-row" id="locMapActions"></div>' : '<p class="lede" style="font-size:13px">Este local não está em nenhum mapa.</p>') + '</div>' +
@@ -75,24 +84,52 @@ function renderLocalPage() {
     var a = $('seeOnMap'); if (a) a.onclick = function () { Explorer.pending = { locationId: l.id }; };
     var b = $('markOnMap'); if (b) b.onclick = function () { Explorer.pending = { linkLocationId: l.id }; };
   }).catch(function () {});
+  var tb = $('locTreeBtn'); if (tb) tb.onclick = function () { openLocTree(l); };
   var e = $('editLocBtn'); if (e) e.onclick = function () { openLocationForm(l); };
+  var ns = $('newSubLoc'); if (ns) ns.onclick = function () { openLocationForm(null, mid || '', l.id); };
   var d = $('delLocBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderLocalPage(); };
   var dn = $('delLocNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderLocalPage(); };
   var dy = $('delLocYes'); if (dy) dy.onclick = function () {
     dy.disabled = true;
-    Ops.deleteLocation(l).then(function () { toast('Local excluído.'); go('#locais', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
+    Ops.deleteLocation(l).then(function () { toast('Local excluído.'); go(up ? locHref(up.id) : '#locais', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
   };
+}
+
+/* =====================================================================
+   Tree: a location and everything inside it, at every depth
+   ===================================================================== */
+function locRow(l, here) {
+  var k = childLocs(l.id).length;
+  return '<a class="mrow' + (here ? ' here' : '') + '" href="' + locHref(l.id) + '"' + (here ? ' aria-current="page"' : '') + '>' + thumbSlot(l.image && l.image.ref, ICON.pin) +
+    '<span class="mtext"><b>' + esc(l.name) + '</b>' + (k ? '<span class="meta">' + plural(k, 'sublocal', 'sublocais') + '</span>' : '') + '</span></a>';
+}
+function locTree(pid) {
+  var list = childLocs(pid);
+  return list.length ? '<ul>' + list.map(function (c) { return '<li>' + locRow(c) + locTree(c.id) + '</li>'; }).join('') + '</ul>' : '';
+}
+function openLocTree(l) {
+  var n = locDescendants(l.id).length;
+  showModal('<h2 id="ltTitle">Árvore de ' + esc(l.name) + '</h2><p class="lede" style="margin:0">' + plural(n, 'local fica', 'locais ficam') + ' dentro de <b>' + esc(l.name) + '</b>.</p>' +
+    '<div class="mtree">' + locRow(l, true) + locTree(l.id) + '</div>');
+  modal.setAttribute('aria-labelledby', 'ltTitle');
+  fillImages(modal);
+  modal.querySelectorAll('.mtree a').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault(); var h = a.getAttribute('href'); closeModal(); go(h); });
+  });
 }
 
 
 
 /* =====================================================================
-   Form: location (name, image, description, characters, map)
+   Form: location (name, parent location, image, description, characters, map)
    ===================================================================== */
-function openLocationForm(l, presetMap) {
+function openLocationForm(l, presetMap, presetParent) {
   var editing = !!l, canImg = W.store.canUpload;
+  var exclude = editing ? badLocParents(l.id) : null, parentNow = editing ? (W.locParent[l.id] || '') : (presetParent || '');
   var html = '<form id="locForm" novalidate><h2 id="lfTitle">' + (editing ? 'Editar local' : 'Novo local') + '</h2>' +
     '<div class="field" id="f_lname"><label for="lname">Nome do local</label><input type="text" id="lname" maxlength="100" autocomplete="off" placeholder="Ex.: Taverna Anão Caolho" value="' + esc(editing ? l.name : '') + '"><div class="err" id="err_lname"></div></div>' +
+    '<div class="field"><label for="lparent">Fica dentro de</label><select id="lparent">' + locParentOptions(parentNow, exclude, 'Nenhum (local de nível superior)') + '</select>' +
+    '<span class="hint-text">O local maior onde este fica. Ex.: uma taverna dentro de uma cidade.' + (exclude && Object.keys(exclude).length > 1 ? ' Os locais que estão dentro deste não aparecem na lista.' : '') + '</span></div>' +
     (canImg ? imageFieldHtml('limg', 'Imagem de referência', 'Foto, ilustração, arte conceitual ou planta. Opcional, até 20 MB. É a que aparece nas miniaturas.') +
       imageFieldHtml('limg2', 'Segunda imagem', 'Opcional, até 20 MB. Ex.: outro ângulo, a planta ou um detalhe do local.') : '') +
     '<div class="field"><label for="ldesc">Descrição</label><textarea id="ldesc" rows="7" maxlength="20000" placeholder="História, aparência, quem vive ali, o que o grupo descobriu…">' + esc(editing ? l.description : '') + '</textarea></div>' +
@@ -168,9 +205,11 @@ function openLocationForm(l, presetMap) {
     var btn = $('lfSave'); btn.disabled = true; btn.textContent = sending ? (sending > 1 ? 'Enviando imagens…' : 'Enviando imagem…') : 'Salvando…'; $('lfCancel').disabled = true; $('lfErr').textContent = '';
     var mapId = $('lmap').value || null;
     if (mapId && !mapById(mapId)) mapId = null;
+    var parentId = $('lparent').value || null;
+    if (parentId && !locById(parentId)) parentId = null;
     var lvis = flagVal('lvis', l), lshare = shareVal('lvis', l);
     Ops.ensureCharacters(sel, lvis, lshare).then(function (ids) {
-      return Ops.saveLocation(l, { name: n, description: $('ldesc').value.trim(), characterIds: ids, mapId: mapId, visible: lvis, sharedWith: lshare }, img && img.file, img && img.dims, img && img.removed,
+      return Ops.saveLocation(l, { name: n, description: $('ldesc').value.trim(), characterIds: ids, mapId: mapId, parentId: parentId, visible: lvis, sharedWith: lshare }, img && img.file, img && img.dims, img && img.removed,
         img2 ? { file: img2.file, dims: img2.dims, removed: img2.removed } : null);
     }).then(function (id) {
       closeModal(true);

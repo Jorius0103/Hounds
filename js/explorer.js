@@ -210,7 +210,7 @@ var Explorer = (function () {
 
   function locOptions(selectedId) {
     var here = mapLocations(st.map.id), others = W.locations.filter(function (x) { return x.mapId !== st.map.id; }).sort(byName);
-    function opt(x) { return '<option value="' + esc(x.id) + '"' + (x.id === selectedId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }
+    function opt(x) { return '<option value="' + esc(x.id) + '"' + (x.id === selectedId ? ' selected' : '') + '>' + esc(locPathText(x.id)) + '</option>'; }
     return '<option value="">Nenhum</option>' + (here.length ? '<optgroup label="Neste mapa">' + here.map(opt).join('') + '</optgroup>' : '') + (others.length ? '<optgroup label="Outros locais">' + others.map(opt).join('') + '</optgroup>' : '');
   }
   function showForm(m) {
