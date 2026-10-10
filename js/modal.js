@@ -12,7 +12,8 @@
 var modalBack = $('modalBack'), modal = $('modal'), modalOpen = null;
 function showModal(html, onClose) {
   modalOpen = { last: document.activeElement, onClose: onClose, busy: false };
-  modal.innerHTML = html; modalBack.hidden = false;
+  modal.innerHTML = '<button class="icon-btn modal-x" type="button" aria-label="Fechar" title="Fechar (Esc)">' + svg(ICON.x, 18) + '</button>' + html;
+  modalBack.hidden = false;
   var f = modal.querySelector('input[type=text],textarea,select'); if (f) setTimeout(function () { f.focus(); }, 20);
 }
 function closeModal(force) {
@@ -23,7 +24,13 @@ function closeModal(force) {
   renderPage(); // data that arrived while the form was open
   if (m.last && m.last.focus && m.last.isConnected) m.last.focus();
 }
-modalBack.addEventListener('mousedown', function (e) { if (e.target === modalBack) closeModal(); });
+// Closes on a click outside the modal: press and release both on the backdrop, so dragging out
+// of a field while selecting text does not close it. A click (not mousedown) also fires on phones.
+// Esc is handled in explorer.js.
+var pressOnBack = false;
+modalBack.addEventListener('pointerdown', function (e) { pressOnBack = e.target === modalBack; });
+modalBack.addEventListener('click', function (e) { if (pressOnBack && e.target === modalBack) closeModal(); pressOnBack = false; });
+modal.addEventListener('click', function (e) { if (e.target.closest('.modal-x')) closeModal(); });
 
 var ACCEPT = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 function imageFieldHtml(id, label, help) {
