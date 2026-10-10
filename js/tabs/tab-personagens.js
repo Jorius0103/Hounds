@@ -196,6 +196,7 @@ function openCharForm(c) {
   name.addEventListener('input', function () { if (name.value.trim()) { $('err_cname').textContent = ''; $('f_cname').classList.remove('invalid'); } });
 
   // ---- organization picker (existing or new organizations, each with the character's rank) ----
+  /** @type {{ id: string | null, name?: string, text: string }[]} */
   var orgSel = editing ? charOrgs(c.id).map(function (x) { return { id: x.o.id, text: x.rank }; }) : [];
   var legacyOrg = editing ? (c.organization || '').trim() : '';
   if (legacyOrg) {

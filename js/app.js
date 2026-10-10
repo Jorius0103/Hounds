@@ -30,15 +30,19 @@ function tagPage(item, col) {
   var who = seenBy(item);
   h1.insertAdjacentHTML('beforeend', '<button class="btn vis-toggle" type="button" id="visToggle">' + (secret ? 'Revelar a todos' : who === 'o Mestre' ? 'Ocultar dos jogadores' : 'Ocultar dos outros') + '</button>');
   $('visToggle').onclick = function () {
-    var b = this; b.disabled = true;
+    var b = /** @type {AnyEl} */ (this); b.disabled = true;
     W.store.patch(col, item.id, { visible: secret, updatedAt: now() }).then(function () { toast(secret ? 'Agora todos podem ver.' : 'Agora só ' + who + ' ' + seenVerb(item) + '.'); }, function (er) { b.disabled = false; toast(errorText(er), true); });
   };
 }
 var _rMap = renderMapPage, _rLoc = renderLocalPage, _rChar = renderCharPage;
+// @ts-expect-error -- substitui a função de tab-mapas.js por uma que também desenha o botão de visibilidade
 renderMapPage = function () { _rMap(); tagPage(mapById(S.route.mapId), 'maps'); };
+// @ts-expect-error -- idem, tab-locais.js
 renderLocalPage = function () { _rLoc(); tagPage(locById(S.route.locId), 'locations'); };
+// @ts-expect-error -- idem, tab-personagens.js
 renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'characters'); };
 var _rOrg = renderOrgPage;
+// @ts-expect-error -- idem, tab-organizacoes.js
 renderOrgPage = function () { _rOrg(); tagPage(orgById(S.route.orgId), 'organizations'); };
 
 // One-time: items created before the visibility flag existed become Mestre-only.
@@ -46,12 +50,12 @@ var migratedVis = false;
 function migrateVisibility() {
   if (migratedVis || !isMestre() || !canWrite() || !W.loaded.maps || !W.loaded.locations || !W.loaded.characters) return;
   migratedVis = true;
-  var seq = Promise.resolve(), t = now();
+  var seq = /** @type {Promise<any>} */ (Promise.resolve()), t = now();
   function fix(col, list) { list.forEach(function (x) { if (!('visible' in x)) seq = seq.then(function () { return W.store.patch(col, x.id, { visible: false, updatedAt: t }).catch(function () {}); }); }); }
   fix('maps', W.raw.maps); fix('locations', W.raw.locations); fix('characters', W.raw.characters);
   W.raw.maps.forEach(function (m) {
     var col = 'maps/' + m.id + '/markers';
-    seq = seq.then(function () { return W.store.all(col).then(function (l) { var q = Promise.resolve(); l.forEach(function (mk) { if (!('visible' in mk)) q = q.then(function () { return W.store.patch(col, mk.id, { visible: false, updatedAt: t }).catch(function () {}); }); }); return q; }).catch(function () {}); });
+    seq = seq.then(function () { return W.store.all(col).then(function (l) { var q = /** @type {Promise<any>} */ (Promise.resolve()); l.forEach(function (mk) { if (!('visible' in mk)) q = q.then(function () { return W.store.patch(col, mk.id, { visible: false, updatedAt: t }).catch(function () {}); }); }); return q; }).catch(function () {}); });
   });
 }
 window.addEventListener('hub:user', migrateVisibility);
@@ -147,7 +151,7 @@ function connect() {
   });
 }
 connect().then(function (s) {
-  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
+  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
   W.store = s;
   return s.init().then(function () {
     var fail = function () { toast('Não foi possível carregar os dados.', true); };

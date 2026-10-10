@@ -9,6 +9,7 @@
 /* =====================================================================
    Shared page pieces
    ===================================================================== */
+/** @type {PageState} */
 var S = { route: null, markers: [], markersFor: null, unMarkers: null, ui: {} };
 var pageRoot = $('pageRoot');
 function canWrite() { return !!(W.store && W.store.canWrite()); }

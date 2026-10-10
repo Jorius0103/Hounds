@@ -53,7 +53,9 @@ var Explorer = (function () {
   }
 
   // ----- input: drag to pan, pinch / wheel to zoom, tap to place -----
-  var pts = {}, gesture = null;
+  var pts = {};
+  /** @type {{ moved: number, multi: boolean, dist?: number | null, mid?: { x: number, y: number } } | null} */
+  var gesture = null;
   function ptList() { return Object.keys(pts).map(function (k) { return pts[k]; }); }
   vp.addEventListener('pointerdown', function (e) {
     if (e.target.closest('.pin')) return;

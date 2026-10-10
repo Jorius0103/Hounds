@@ -109,7 +109,7 @@ function FirebaseStore(db) {
 function askPassword(auth, email) {
   return new Promise(function (done) {
     var g = document.createElement('div');
-    g.className = 'gate'; g.style.zIndex = 95;
+    g.className = 'gate'; g.style.zIndex = '95';
     g.innerHTML = '<form class="gate-card" role="dialog" aria-modal="true" aria-labelledby="authTitle" novalidate>' +
       '<div class="gate-head"><div class="brand-mark" aria-hidden="true">' + BRAND_SVG + '</div><h1 id="authTitle">Hounds</h1><p>Digite a senha da campanha</p></div>' +
       '<div class="field"><label for="authPass">Senha</label><input type="password" id="authPass" autocomplete="current-password"><p class="err" id="authErr" hidden></p></div>' +

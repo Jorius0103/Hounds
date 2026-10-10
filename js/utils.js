@@ -40,7 +40,8 @@ var CAT = {}; CATEGORIES.forEach(function (c) { CAT[c.id] = c; });
 function cat(id) { return CAT[id] || CATEGORIES[0]; }
 function svg(paths, size, sw) { return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>'; }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-function $(id) { return document.getElementById(id); }
+/** @returns {AnyEl} */
+function $(id) { return /** @type {AnyEl} */ (document.getElementById(id)); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
 function byName(a, b) { return String(a.name || '').localeCompare(String(b.name || ''), 'pt', { sensitivity: 'base', numeric: true }); }
 function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
