@@ -1,0 +1,28 @@
+/* Hounds — Celular e movimento reduzido. Fica antes dos estilos das páginas, como no arquivo original: a ordem dos arquivos importa na cascata. */
+
+/* Phone */
+@media (max-width: 760px) {
+  .app, .app.collapsed { grid-template-columns: 1fr; }
+  .rail { position: fixed; inset: 0 auto 0 0; width: 280px; z-index: 20; transform: translateX(-100%); transition: transform .2s ease; padding-top: env(safe-area-inset-top, 0px); }
+  .app.drawer .rail { transform: none; }
+  .app.collapsed .brand-text, .app.collapsed .nav-label { display: block; }
+  .app.collapsed .node-row .label { display: block; }
+  .app.collapsed .chev, .app.collapsed .chev-btn { display: grid; }
+  .app.collapsed .kids { display: grid; }
+  .app.collapsed .brand { justify-content: flex-start; padding-inline: 14px; }
+  .app.collapsed .node-row { justify-content: flex-start; }
+  .toggle:not(.theme-btn) { display: none; }
+  .toggle.theme-btn { margin-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .app.collapsed .toggle.theme-btn { justify-content: flex-start; }
+  .app.collapsed .toggle.theme-btn span { display: inline; }
+  .scrim { position: fixed; inset: 0; background: rgba(2,6,23,.6); z-index: 15; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--rail); }
+  .topbar strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-btn { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
+  .page-inner { padding: 22px 16px 40px; }
+  .page h1 { font-size: 25px; }
+  .map-layout { grid-template-columns: 1fr; }
+  .ex-bar .lbl { display: none; }
+  .panel { position: absolute; left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; border-left: 0; border-top: 1px solid var(--line-2); border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); box-shadow: 0 -10px 30px var(--shadow); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

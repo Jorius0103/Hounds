@@ -1,0 +1,8 @@
+/* Hounds — Na Mesa de Combate o menu fica recolhido e abre por cima da mesa */
+
+/* On the Mesa de Combate the rail stays collapsed and opens over the table */
+@media (min-width: 761px) {
+  .app.on-mesa, .app.on-mesa.collapsed { grid-template-columns: var(--rail-closed) 1fr; }
+  .app.on-mesa .rail { position: relative; z-index: 70; width: var(--rail-closed); transition: width .2s ease, box-shadow .2s ease; }
+  .app.on-mesa:not(.collapsed) .rail { width: var(--rail-open); box-shadow: 16px 0 40px var(--shadow); }
+}

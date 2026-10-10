@@ -53,4 +53,4 @@ Os valores de `firebase-config.js` não são secretos e podem ficar no repositó
 
 ## Depois de importar
 
-Os arquivos `*.json` e as imagens na raiz do repositório continuam públicos no GitHub Pages, sem senha. Por exemplo, qualquer pessoa abre `https://jorius0103.github.io/Hounds/notes.json`. Depois de importar, considere apagá-los do repositório. Eles continuam no histórico do git.
+Os arquivos de `dados/` e `imagens/` continuam públicos no GitHub Pages, sem senha. Por exemplo, qualquer pessoa abre `https://jorius0103.github.io/Hounds/dados/notes.json`. Depois de importar, considere apagá-los do repositório. Eles continuam no histórico do git.
