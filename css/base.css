@@ -1,0 +1,79 @@
+/* Hounds — Base: estilos mínimos do esqueleto da página, variáveis dos temas escuro e claro, reset e grade do app */
+
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}
+img{max-width:100%}
+[hidden]:not([hidden=until-found i]){display:none!important}
+
+/* Layout: retractable left rail with a data-driven menu tree + full-height content pane; maps open in a full-screen explorer. Dark and light themes, matching the Mesa de Combate app. */
+:root {
+  color-scheme: dark;
+  --ground: #020617;
+  --rail: #0b1222;
+  --surface: #0f172a;
+  --surface-2: #131c31;
+  --well: #0b1222;
+  --line: #1e293b;
+  --line-2: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --faint: #64748b;
+  --accent: #f59e0b;
+  --accent-ink: #0b1222;
+  --accent-soft: rgba(245, 158, 11, .12);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, .12);
+  --danger-ink: #1a0505;
+  --stage: #01040d;
+  --stage-grid: rgba(148, 163, 184, .05);
+  --glass: rgba(11, 18, 34, .94);
+  --overlay: rgba(2, 6, 23, .72);
+  --shadow: rgba(0, 0, 0, .5);
+  --tag-amber: #fbbf24;
+  --tag-blue: #93c5fd;
+  --tag-cyan: #67e8f9;
+  --tag-violet: #c4b5fd;
+  --tag-violet-strong: #a78bfa;
+  --tag-pink: #f9a8d4;
+  --font-ui: "Plus Jakarta Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --rail-open: 268px;
+  --rail-closed: 64px;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ground: #f1f5f9;
+  --rail: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --well: #f1f5f9;
+  --line: #e2e8f0;
+  --line-2: #cbd5e1;
+  --text: #0f172a;
+  --muted: #475569;
+  --faint: #64748b;
+  --accent: #b45309;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(217, 119, 6, .12);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, .08);
+  --danger-ink: #ffffff;
+  --stage: #e2e8f0;
+  --stage-grid: rgba(15, 23, 42, .06);
+  --glass: rgba(255, 255, 255, .94);
+  --overlay: rgba(15, 23, 42, .45);
+  --shadow: rgba(15, 23, 42, .14);
+  --tag-amber: #b45309;
+  --tag-blue: #1d4ed8;
+  --tag-cyan: #0e7490;
+  --tag-violet: #6d28d9;
+  --tag-violet-strong: #7c3aed;
+  --tag-pink: #be185d;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--ground); color: var(--text); font-family: var(--font-ui); font-size: 14px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.app { display: grid; grid-template-columns: var(--rail-open) 1fr; height: 100%; transition: grid-template-columns .2s ease; }
+.app.collapsed { grid-template-columns: var(--rail-closed) 1fr; }
+

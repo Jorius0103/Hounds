@@ -1,21 +1,26 @@
 # Hounds — Hub da campanha GURPS
 
-Exportação completa do projeto: o código do hub e uma cópia dos dados da campanha.
+O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, leia também [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Pastas
 
 | Caminho | O que é |
 |---|---|
-| `index.html` | O hub completo num arquivo só (menu, Informações, Anotações, Usuários e a Mesa de Combate embutida). |
-| `mesa.html` | A Mesa de Combate (Dash RPG) compilada, separada, para consulta. |
-| `*.json` | Cópia dos dados salvos no site, em JSON. |
-| `*.jpg`, `*.png` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |
+| `index.html` | Só o esqueleto da página (menu, áreas de conteúdo, modais) e a lista de CSS e JS carregados, em ordem. |
+| `css/` | Estilos, divididos por área. A ordem dos `<link>` no `index.html` importa. |
+| `js/` | O código do hub. Base (utilitários, banco, modelo do mundo, rotas, menu, modal), `explorer.js`, `editor-texto.js`, a sincronização da Mesa e `app.js`, que inicializa tudo. |
+| `js/store/` | Acesso ao banco: API genérica e IndexedDB local (`store.js`), `firebase.js` e `supabase.js`. |
+| `js/tabs/` | Uma aba por arquivo: `tab-inicio`, `tab-mapas`, `tab-locais`, `tab-personagens`, `tab-organizacoes`, `tab-anotacoes`, `tab-usuarios`. |
+| `mesa.html` | A Mesa de Combate (Dash RPG) compilada. O hub a carrega no iframe por `js/mesa-frame.js`. |
+| `dados/` | Cópia dos dados salvos no site, em JSON. |
+| `imagens/` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |
 | `supabase-config.js` | Configuração do banco de dados (Supabase). Veja [SUPABASE.md](SUPABASE.md). |
 | `firebase-config.js` | Configuração do banco de dados (Firebase). Veja [FIREBASE.md](FIREBASE.md). |
 | `firestore.rules` | Regras de acesso do banco: só a conta da campanha lê e grava. |
 | `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase. |
+| `src/`, `vite.config.ts`, `package.json` | Código-fonte React da Mesa (trazido do AI Studio). Ainda não gera o `mesa.html`. |
 
-### Arquivos de dados
+### Arquivos de dados (`dados/`)
 
 - `maps.json`: mapas, com hierarquia (`parentId`), imagem (`image.ref`) e visibilidade (`visible`).
 - `locations.json`: locais.
@@ -25,6 +30,16 @@ Exportação completa do projeto: o código do hub e uma cópia dos dados da cam
 - `mesa-de-combate.json`: estado completo da Mesa (combates, NPCs, personagens salvos, condições, rounds e log).
 
 Cada arquivo é um objeto `{ id: documento }`.
+
+## Rodar no computador
+
+A página precisa ser aberta por um servidor HTTP: abrindo o `index.html` direto (`file://`), o navegador bloqueia o carregamento da Mesa de Combate. Qualquer servidor estático serve, por exemplo:
+
+- VS Code: extensão **Live Server**, botão "Go Live".
+- Node: `npx serve .`
+- Python: `python -m http.server 8000`
+
+Com o `supabase-config.js` preenchido, o site local usa o **mesmo banco de produção**. Para testar sem mexer nos dados reais, esvazie a `url` localmente (sem fazer commit) e a página passa a salvar só no navegador.
 
 ## Onde roda
 
@@ -57,4 +72,4 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 
 Com o Firebase, só quem sabe a senha da campanha lê ou altera os dados. Dentro do site, porém, quem entrou escolhe qualquer usuário, inclusive o Mestre. Itens que não estão visíveis para todos somem da tela, mas ainda são enviados ao navegador de todo mundo. Não guarde nada sigiloso.
 
-Os arquivos JSON e as imagens deste repositório ficam públicos no GitHub Pages, sem senha.
+Os arquivos de `dados/` e `imagens/` deste repositório ficam públicos no GitHub Pages, sem senha.

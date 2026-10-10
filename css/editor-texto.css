@@ -1,0 +1,44 @@
+/* Hounds — Texto formatado das anotações e editor de texto */
+
+/* Formatted note text, the same in the editor and on the page */
+.rich { white-space: normal; }
+.rich > :first-child { margin-top: 0; }
+.rich > :last-child { margin-bottom: 0; }
+.rich p { margin: 0 0 .75em; }
+.rich h1, .rich h2, .rich h3, .rich h4 { line-height: 1.25; margin: 1.1em 0 .45em; }
+.rich h1 { font-size: 1.7em; }
+.rich h2 { font-size: 1.35em; }
+.rich h3 { font-size: 1.14em; }
+.rich ul, .rich ol { margin: 0 0 .75em; padding-left: 1.6em; }
+.rich li { margin: .15em 0; }
+.rich li > ul, .rich li > ol { margin: .15em 0; }
+.rich blockquote { margin: 0 0 .75em; padding: .45em 1em; border-left: 3px solid var(--accent); background: var(--well); border-radius: 0 8px 8px 0; color: var(--muted); }
+.rich blockquote blockquote { margin-left: 0; }
+.rich pre { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; background: var(--well); border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px; white-space: pre-wrap; margin: 0 0 .75em; }
+.rich code { font-family: var(--font-mono); font-size: .9em; }
+.rich a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.rich hr { border: 0; border-top: 1px solid var(--line-2); margin: 1.3em 0; }
+.rich mark { background: rgba(250, 204, 21, .4); color: inherit; }
+/* Rich text editor */
+.rte { position: relative; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface); }
+.rte:focus-within { border-color: var(--accent); }
+.rte-bar { position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px; background: var(--surface-2); border-bottom: 1px solid var(--line); border-radius: 13px 13px 0 0; }
+.rte-group { display: flex; align-items: center; gap: 2px; padding-right: 4px; margin-right: 2px; border-right: 1px solid var(--line-2); }
+.rte-group:last-child { border-right: 0; }
+.rte-bar button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.rte-bar button:hover { background: var(--surface); color: var(--text); }
+.rte-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rte-bar button.on { background: var(--accent-soft); color: var(--accent); border-color: rgba(245,158,11,.35); }
+.rte-bar select { height: 32px; border-radius: 8px; background: var(--well); color: var(--text); border: 1px solid var(--line-2); padding: 0 8px; font-size: 13px; cursor: pointer; }
+.rte-a { font-weight: 800; font-size: 15px; line-height: 1; padding: 0 2px 1px; border-bottom: 3px solid #ef4444; }
+.rte-area { min-height: 52vh; padding: 18px 22px; outline: none; font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; color: var(--text); }
+.rte-area.is-empty::before { content: attr(data-ph); float: left; height: 0; color: var(--faint); pointer-events: none; }
+.rte-pop { position: absolute; z-index: 6; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px; box-shadow: 0 10px 30px var(--shadow); }
+.rte-pop[hidden] { display: none; }
+.rte-swatches { display: grid; grid-template-columns: repeat(5, 28px); gap: 6px; }
+.rte-swatches button { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--line-2); cursor: pointer; padding: 0; display: grid; place-items: center; color: var(--muted); background: var(--well); }
+.rte-swatches button:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rte-link { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.rte-link input, .field .rte-link input[type=text] { width: min(260px, 70vw); background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 10px; color: var(--text); font-size: 13px; }
+.rte-link input:focus, .field .rte-link input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+@media (max-width: 760px) { .rte-area { padding: 14px; } .rte-group { border-right: 0; } }

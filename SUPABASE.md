@@ -17,7 +17,7 @@ Com o Supabase configurado, o Hounds armazena mapas, locais, personagens, anota�
 
 ## 2. Importar os Dados Existentes (Opcional)
 
-Se você já tem arquivos JSON (`maps.json`, `characters.json`, etc.) e imagens locais que quer enviar para o Supabase:
+Se você já tem arquivos JSON (`dados/maps.json`, `dados/characters.json`, etc.) e imagens locais (`imagens/`) que quer enviar para o Supabase:
 
 1. No terminal, abra a pasta `tools`:
    ```bash
