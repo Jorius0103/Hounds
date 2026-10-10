@@ -130,9 +130,9 @@ function richEditor(host, opts) {
   }
   function exec(cmd, val, css) {
     restore();
-    try { document.execCommand('styleWithCSS', false, !!css); } catch (e) {}
+    try { document.execCommand('styleWithCSS', false, css ? 'true' : 'false'); } catch (e) {}
     document.execCommand(cmd, false, val);
-    try { document.execCommand('styleWithCSS', false, false); } catch (e) {}
+    try { document.execCommand('styleWithCSS', false, 'false'); } catch (e) {}
     save(); changed(); refresh();
   }
   function closePop() { pop.hidden = true; popKind = null; }

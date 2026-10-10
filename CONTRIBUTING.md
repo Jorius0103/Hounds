@@ -24,12 +24,22 @@ O site não tem build. Os arquivos de `js/` são scripts comuns, carregados em o
 3. **A ordem dos `<link>` de CSS também importa**: em empate de especificidade, vence o arquivo carregado depois.
 4. Siga o estilo do arquivo que está editando: `var`, `function`, aspas simples, sem dependências novas.
 
+## Checagem de tipos
+
+O VS Code checa os arquivos de `js/` como TypeScript, sem build: o `jsconfig.json` liga a checagem e a pasta `types/` descreve os dados (mapa, local, personagem, organização, anotação, usuário), o estado global `W` e `S` e o que fica em `window`. Erros como `W.mpas`, `personagem.nmae`, uma função escrita errado ou um campo que não existe aparecem sublinhados e na aba **Problemas** (Ctrl+Shift+M).
+
+- Ao criar um campo novo num documento, declare-o em `types/dados.d.ts`.
+- Ao pendurar algo novo em `window`, declare em `types/globais.d.ts`.
+- Use `/** @type {...} */` quando o editor não conseguir deduzir um tipo, como nos exemplos do código. Evite `@ts-ignore`; quando for intencional, use `// @ts-expect-error -- motivo`.
+
+Em cada Pull Request, o GitHub roda a mesma checagem e o `tools/checar-globais.mjs`, que acusa nomes globais declarados em mais de um arquivo (a checagem de tipos não pega isso). O PR mostra ✗ se algum falhar.
+
 ## Fluxo de trabalho
 
 1. Atualize a `main` e crie uma branch por tarefa: `git checkout -b feat/nome-curto` (ou `fix/...`).
 2. Faça commits pequenos, com mensagens que digam o que muda.
 3. Abra um Pull Request para a `main`. Outra pessoa da equipe revisa antes do merge.
-4. Antes de pedir revisão, rode o site localmente (veja "Rodar no computador" no README). Passe pelas páginas que você mexeu, com um usuário Mestre e um Jogador, e confira o console do navegador (F12) sem erros.
+4. Antes de pedir revisão, confira a aba **Problemas** do VS Code sem erros e rode o site localmente (veja "Rodar no computador" no README). Passe pelas páginas que você mexeu, com um usuário Mestre e um Jogador, e confira o console do navegador (F12) sem erros.
 
 Evite que duas pessoas mexam no mesmo arquivo ao mesmo tempo. Se precisar, combine antes.
 

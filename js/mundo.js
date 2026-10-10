@@ -11,13 +11,14 @@
    Everything derived (hierarchy, paths, counts) is recomputed from the
    stored documents, so a change anywhere shows up everywhere.
    ===================================================================== */
+/** @type {World} */
 var W = { store: null, maps: [], locations: [], characters: [], organizations: [], raw: { maps: [], locations: [], characters: [], organizations: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [], loaded: { maps: false, locations: false, characters: false, organizations: false, users: false, notebooks: false, notes: false },
           mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, parent: {}, kids: {} };
 
 function indexMaps() {
-  var idx = {}; W.maps.forEach(function (m) { idx[m.id] = m; }); W.mapIdx = idx;
+  var idx = /** @type {Record<string, HMap>} */ ({}); W.maps.forEach(function (m) { idx[m.id] = m; }); W.mapIdx = idx;
   // Effective parent: ignore missing parents, self references and anything that would loop.
-  var parent = {};
+  var parent = /** @type {Record<string, string | null>} */ ({});
   W.maps.forEach(function (m) {
     var p = m.parentId;
     if (!p || !idx[p] || p === m.id) { parent[m.id] = null; return; }
@@ -26,12 +27,12 @@ function indexMaps() {
     parent[m.id] = loop ? null : p;
   });
   W.parent = parent;
-  var kids = {}; W.maps.forEach(function (m) { var p = parent[m.id] || ''; (kids[p] = kids[p] || []).push(m); });
+  var kids = /** @type {Record<string, HMap[]>} */ ({}); W.maps.forEach(function (m) { var p = parent[m.id] || ''; (kids[p] = kids[p] || []).push(m); });
   Object.keys(kids).forEach(function (k) { kids[k].sort(byName); });
   W.kids = kids;
 }
-function indexLocations() { var idx = {}; W.locations.forEach(function (l) { idx[l.id] = l; }); W.locIdx = idx; }
-function indexCharacters() { var idx = {}; W.characters.forEach(function (c) { idx[c.id] = c; }); W.charIdx = idx; }
+function indexLocations() { var idx = /** @type {Record<string, HLocation>} */ ({}); W.locations.forEach(function (l) { idx[l.id] = l; }); W.locIdx = idx; }
+function indexCharacters() { var idx = /** @type {Record<string, Character>} */ ({}); W.characters.forEach(function (c) { idx[c.id] = c; }); W.charIdx = idx; }
 function mapById(id) { return W.mapIdx[id] || null; }
 function locById(id) { return W.locIdx[id] || null; }
 function childMaps(id) { return W.kids[id || ''] || []; }

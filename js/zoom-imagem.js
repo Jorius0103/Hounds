@@ -11,7 +11,7 @@
    wheel or a pinch zooms, dragging pans, Esc / ✕ / a click outside closes.
    ===================================================================== */
 function zoomImage(url, alt) {
-  var back = document.createElement('div'), prev = document.activeElement;
+  var back = document.createElement('div'), prev = /** @type {HTMLElement} */ (document.activeElement);
   back.className = 'zoom-back'; back.setAttribute('role', 'dialog'); back.setAttribute('aria-modal', 'true'); back.setAttribute('aria-label', alt || 'Imagem');
   back.innerHTML = '<img class="zoom-img" alt="' + esc(alt || '') + '" draggable="false">' +
     '<div class="zoom-bar"><button class="icon-btn" type="button" data-z="out" aria-label="Diminuir zoom">−</button><span class="zoom-pct" aria-live="polite">100%</span>' +

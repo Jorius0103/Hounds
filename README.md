@@ -17,7 +17,8 @@ O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, 
 | `supabase-config.js` | Configuração do banco de dados (Supabase). Veja [SUPABASE.md](SUPABASE.md). |
 | `firebase-config.js` | Configuração do banco de dados (Firebase). Veja [FIREBASE.md](FIREBASE.md). |
 | `firestore.rules` | Regras de acesso do banco: só a conta da campanha lê e grava. |
-| `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase. |
+| `types/`, `jsconfig.json` | Tipos dos dados para a checagem do VS Code (não vão para o navegador). Veja [CONTRIBUTING.md](CONTRIBUTING.md). |
+| `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase, e `checar-globais.mjs`, usado na checagem dos PRs. |
 | `src/`, `vite.config.ts`, `package.json` | Código-fonte React da Mesa (trazido do AI Studio). Ainda não gera o `mesa.html`. |
 
 ### Arquivos de dados (`dados/`)

@@ -1,0 +1,20 @@
+# Checa os tipos (jsconfig.json + types/) e os nomes globais repetidos em cada PR e na main.
+name: Checagem
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checagem:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tipos
+        run: npx --yes -p typescript@6.0 tsc -p jsconfig.json
+      - name: Nomes globais repetidos
+        run: node tools/checar-globais.mjs

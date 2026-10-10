@@ -9,7 +9,7 @@
     { id: 'user-espectador', name: 'Espectador', role: 'visualizador' }
   ];
   var ROLE = { mestre: 'Mestre', jogador: 'Jogador', visualizador: 'Espectador' };
-  function el(id) { return document.getElementById(id); }
+  function el(id) { return /** @type {AnyEl} */ (document.getElementById(id)); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ini(n) { var p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0][1] || ''))).toUpperCase(); }
   function users() {

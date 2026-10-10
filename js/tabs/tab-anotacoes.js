@@ -54,7 +54,7 @@ function renderNotebookPage() {
   }).join('') + '</div>' : '<div class="empty-state">' + svg(ICON.note, 34, 1.6) + '<strong>Nenhuma anotação neste título</strong><span>' + (can ? 'Crie a primeira com <b>Nova anotação</b>.' : 'As anotações criadas vão aparecer aqui.') + '</span></div>';
   pageRoot.innerHTML = head + body;
   tagPage(nb, 'notebooks');
-  var a = $('newNoteBtn'); if (a) a.onclick = function () { openNoteForm(nb, null); };
+  var a = $('newNoteBtn'); if (a) a.onclick = function () { openNoteForm(nb); };
   var e = $('editNbBtn'); if (e) e.onclick = function () { openNotebookForm(nb); };
   var d = $('delNbBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderNotebookPage(); };
   var dn = $('delNbNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderNotebookPage(); };
@@ -85,7 +85,7 @@ function renderNotePage() {
       '<div class="form-err" id="nErr" role="alert"></div>' +
       '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="nCancel">Cancelar</button><button class="btn primary" type="submit" id="nSave">Salvar anotação</button></div></form>';
     var t = $('ntitle'), f = $('noteEdit');
-    function submit() { f.requestSubmit ? f.requestSubmit() : f.onsubmit(); }
+    function submit() { f.requestSubmit ? f.requestSubmit() : /** @type {any} */ (f).onsubmit(); }
     var bd = richEditor($('nbody'), { html: ui.draftBody != null ? ui.draftBody : noteEditHtml(n), label: 'Texto da anotação', onInput: function (h) { ui.draftBody = h; }, onSave: submit });
     t.oninput = function () { ui.draftTitle = t.value; $('err_ntitle').textContent = ''; $('f_ntitle').classList.remove('invalid'); };
     t.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); submit(); } });

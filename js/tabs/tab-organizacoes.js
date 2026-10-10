@@ -15,7 +15,7 @@
 ICON.org = '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>';
 var RANK_DEFAULTS = ['Líder', 'General', 'Capitão', 'Conselheiro', 'Oficial', 'Membro', 'Recruta', 'Aliado', 'Informante'];
 var REPUTATION_DEFAULTS = ['Excelente', 'Boa', 'Neutra', 'Ruim', 'Péssima', 'Temida', 'Desconhecida'];
-function indexOrgs() { var idx = {}; W.organizations.forEach(function (o) { idx[o.id] = o; }); W.orgIdx = idx; }
+function indexOrgs() { var idx = /** @type {Record<string, Organization>} */ ({}); W.organizations.forEach(function (o) { idx[o.id] = o; }); W.orgIdx = idx; }
 function orgById(id) { return W.orgIdx[id] || null; }
 function orgHref(id) { return hrefFor('org:' + id); }
 // Defaults first in their own order, then anything else already in use.
@@ -60,7 +60,7 @@ Ops.deleteOrganization = function (o) { return W.store.remove('organizations', o
 // A character's memberships as picked in its form ([{ id: orgId|null, name, text: rank }]). Visible
 // organizations left out lose the character; picks without an id are new organizations.
 Ops.setCharOrgs = function (charId, picks, visible, shared) {
-  var t = now(), q = Promise.resolve();
+  var t = now(), q = /** @type {Promise<any>} */ (Promise.resolve());
   W.organizations.forEach(function (o) {
     var cur = o.members || [], had = cur.filter(function (m) { return m.charId === charId; })[0], want = picks.filter(function (p) { return p.id === o.id; })[0];
     if (!had && !want) return;
@@ -84,7 +84,7 @@ var migratedOrgs = false;
 function migrateOrganizations() {
   if (migratedOrgs || !isMestre() || !canWrite() || !W.loaded.characters || !W.loaded.organizations) return;
   migratedOrgs = true;
-  var found = {}, groups = {}, keys = [], t = now(), seq = Promise.resolve();
+  var found = {}, groups = {}, keys = [], t = now(), seq = /** @type {Promise<any>} */ (Promise.resolve());
   W.raw.organizations.forEach(function (o) { found[norm((o.name || '').trim())] = o; });
   W.raw.characters.forEach(function (c) {
     var v = (c.organization || '').trim(), k = norm(v); if (!k) return;
