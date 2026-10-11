@@ -444,3 +444,4 @@ function seedSpellsFromLocal() {
       return Ops.importSpells(list);
     });
 }
+
