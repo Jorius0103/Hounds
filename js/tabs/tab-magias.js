@@ -261,6 +261,10 @@ function renderSpellList() {
 
 function renderSpellPage() {
   var s = spellById(S.route.spellId), ui = S.ui;
+  if (s && s.id && s.id !== S.route.spellId) {
+    go(spellHref(s.id), true);
+    return;
+  }
   if (!s) {
     pageRoot.innerHTML = crumbsHtml('spells') +
       (W.loaded.spells
@@ -454,7 +458,7 @@ function openSpellForm(s) {
   };
 }
 
-function seedSpellsFromLocal() {
+function seedSpellsFromLocal(force) {
   if (!W.store) return Promise.reject({ message: 'Armazenamento indisponível.' });
   return fetch('dados/magias.json')
     .then(function (res) {
@@ -463,7 +467,7 @@ function seedSpellsFromLocal() {
     })
     .then(function (list) {
       if (!Array.isArray(list) || !list.length) throw new Error('Arquivo de magias vazio.');
-      return Ops.importSpells(list).then(function () {
+      return Ops.importSpells(list, !!force).then(function () {
         return list.length;
       });
     });

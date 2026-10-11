@@ -54,3 +54,22 @@ function fmtBytes(b) { if (!b && b !== 0) return ''; return b > 1048576 ? (b / 1
 var toastT;
 function toast(msg, bad) { var t = $('toast'); t.textContent = msg; t.classList.toggle('bad', !!bad); t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 3400); }
 function lstore(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+
+var HOUNDS_BUILD = {
+  version: '2.5.0',
+  date: '11/10/2026',
+  time: '01:25',
+  timestamp: '11/10/2026 01:25'
+};
+
+function initBuildStatus() {
+  var el = $('buildTime');
+  if (el) el.textContent = HOUNDS_BUILD.timestamp;
+  var bs = $('buildStatus');
+  if (bs) bs.title = 'Última atualização do sistema: ' + HOUNDS_BUILD.timestamp;
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initBuildStatus);
+} else {
+  initBuildStatus();
+}

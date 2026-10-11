@@ -161,13 +161,27 @@ function connect() {
     try { return window.indexedDB ? LocalStore() : null; } catch (e) { return null; }
   });
 }
+var SPELLS_DATA_VERSION = '2026-10-11-v3';
 function checkAutoSeedSpells(list) {
-  if (list && list.length === 0 && isMestre() && !W._seedingSpells) {
+  var storedVersion = lstore('hounds_spells_version');
+  var createAir = (list || []).filter(function (s) { return s.name === 'Create Air'; })[0];
+  var needsUpdate = !list || list.length === 0 || storedVersion !== SPELLS_DATA_VERSION;
+
+  if (createAir && (!createAir.description || createAir.description.indexOf('breathable air in a vacuum') < 0)) {
+    needsUpdate = true;
+  }
+
+  if (needsUpdate && !W._seedingSpells) {
     W._seedingSpells = true;
     if (typeof seedSpellsFromLocal === 'function') {
-      seedSpellsFromLocal().then(function (count) {
-        toast((count || 647) + ' magias importadas com sucesso.');
-      }).catch(function () {});
+      seedSpellsFromLocal(true).then(function (count) {
+        lstore('hounds_spells_version', SPELLS_DATA_VERSION);
+        W._seedingSpells = false;
+        toast((count || 647) + ' magias atualizadas com sucesso.');
+      }).catch(function (err) {
+        W._seedingSpells = false;
+        console.warn('Falha na sincronização de magias:', err);
+      });
     }
   }
 }

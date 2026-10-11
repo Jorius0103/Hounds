@@ -50,6 +50,15 @@
 .app.collapsed .toggle.theme-btn svg { transform: none; }
 .theme-btn .i-moon, :root[data-theme="light"] .theme-btn .i-sun { display: none; }
 :root[data-theme="light"] .theme-btn .i-moon { display: block; }
+
+/* Status da última atualização */
+.build-status { display: flex; align-items: center; gap: 8px; margin: 8px 10px 4px; padding: 7px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--muted); line-height: 1.3; cursor: default; user-select: none; }
+.build-status .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,.7); flex: none; }
+.build-status .status-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.build-status strong { color: var(--text); font-weight: 600; }
+.app.collapsed .build-status { margin: 8px auto 4px; padding: 8px; justify-content: center; width: 34px; height: 34px; box-sizing: border-box; }
+.app.collapsed .build-status .status-text { display: none; }
+
 .app.collapsed .brand-text, .app.collapsed .nav-label, .app.collapsed .toggle span, .app.collapsed .node-row .label, .app.collapsed .chev, .app.collapsed .chev-btn, .app.collapsed .kids { display: none; }
 .app.collapsed .brand { justify-content: center; padding-inline: 0; }
 .app.collapsed .node-row, .app.collapsed .toggle { justify-content: center; }

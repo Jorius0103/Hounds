@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus } from '../utils/onlineSync';
 import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users } from 'lucide-react';

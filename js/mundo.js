@@ -41,7 +41,29 @@ function indexLocations() {
 }
 function indexCharacters() { var idx = /** @type {Record<string, Character>} */ ({}); W.characters.forEach(function (c) { idx[c.id] = c; }); W.charIdx = idx; }
 function indexSpells() { var idx = /** @type {Record<string, Spell>} */ ({}); (W.spells || []).forEach(function (s) { idx[s.id] = s; }); W.spellIdx = idx; }
-function spellById(id) { return (W.spellIdx && W.spellIdx[id]) || null; }
+function spellById(id) {
+  if (!id) return null;
+  if (W.spellIdx && W.spellIdx[id]) return W.spellIdx[id];
+  var spells = W.spells || [];
+  // 1. Tentar por slug do nome (ex: "spell_create-air_120" -> "create-air" -> "create air")
+  var slug = String(id).toLowerCase().replace(/^spell_/, '').replace(/_\d+$/, '').replace(/[-_]/g, ' ').trim();
+  if (slug) {
+    var matchName = spells.filter(function (s) { return norm(s.name) === norm(slug); })[0];
+    if (matchName) return matchName;
+  }
+  // 2. Tentar por prefixo de ID (ex: "spell_create-air" em "spell_create-air_2")
+  var idPrefix = String(id).toLowerCase().replace(/_\d+$/, '');
+  if (idPrefix) {
+    var matchPrefix = spells.filter(function (s) { return s.id && s.id.toLowerCase().indexOf(idPrefix) === 0; })[0];
+    if (matchPrefix) return matchPrefix;
+  }
+  // 3. Fallback: procurar por substring no nome
+  var cleanId = String(id).toLowerCase().replace(/[_-]/g, ' ');
+  for (var i = 0; i < spells.length; i++) {
+    if (cleanId.indexOf(norm(spells[i].name)) >= 0) return spells[i];
+  }
+  return null;
+}
 function mapById(id) { return W.mapIdx[id] || null; }
 function locById(id) { return W.locIdx[id] || null; }
 function childMaps(id) { return W.kids[id || ''] || []; }
@@ -276,42 +298,53 @@ var Ops = {
     if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode excluir magias.' });
     return W.store.remove('spells', spell.id);
   },
-  importSpells: function (list) {
-    if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode importar magias.' });
+  importSpells: function (list, force) {
+    if (!force && !isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode importar magias.' });
     var t = now();
     var newIds = {};
     list.forEach(function (x) { if (x.id) newIds[x.id] = true; });
     var toRemove = (W.raw.spells || []).filter(function (s) {
       return s.id && s.id.indexOf('spell_') === 0 && !newIds[s.id];
+    }).map(function (s) { return s.id; });
+
+    var items = list.map(function (item) {
+      return {
+        id: item.id,
+        data: {
+          v: 1,
+          name: item.name,
+          difficulty: item.difficulty || 'H',
+          class: item.class || '',
+          college: item.college || '',
+          timeToCast: item.timeToCast || '',
+          duration: item.duration || '',
+          initialCost: item.initialCost || '',
+          maintenanceCost: item.maintenanceCost || '',
+          prerequisites: item.prerequisites || '',
+          description: item.description || '',
+          page: item.page || '',
+          source: item.source || '',
+          visible: item.visible !== false,
+          sharedWith: item.sharedWith || [],
+          createdBy: me(),
+          createdAt: item.createdAt || t,
+          updatedAt: t
+        }
+      };
     });
-    var removeChain = toRemove.reduce(function (p, s) {
-      return p.then(function () { return W.store.remove('spells', s.id); });
+
+    if (W.store && typeof W.store.putBatch === 'function') {
+      return W.store.putBatch('spells', items, toRemove);
+    }
+
+    var removeChain = toRemove.reduce(function (p, id) {
+      return p.then(function () { return W.store.remove('spells', id); });
     }, Promise.resolve());
 
     return removeChain.then(function () {
-      return list.reduce(function (p, item) {
+      return items.reduce(function (p, it) {
         return p.then(function () {
-          var body = {
-            v: 1,
-            name: item.name,
-            difficulty: item.difficulty || 'H',
-            class: item.class || '',
-            college: item.college || '',
-            timeToCast: item.timeToCast || '',
-            duration: item.duration || '',
-            initialCost: item.initialCost || '',
-            maintenanceCost: item.maintenanceCost || '',
-            prerequisites: item.prerequisites || '',
-            description: item.description || '',
-            page: item.page || '',
-            source: item.source || '',
-            visible: item.visible !== false,
-            sharedWith: item.sharedWith || [],
-            createdBy: me(),
-            createdAt: item.createdAt || t,
-            updatedAt: t
-          };
-          return W.store.put('spells', item.id || null, body);
+          return W.store.put('spells', it.id || null, it.data);
         });
       }, Promise.resolve());
     });

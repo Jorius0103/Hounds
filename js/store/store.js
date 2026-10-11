@@ -110,6 +110,13 @@ function LocalStore() {
     all: list,
     query: function (col, field, value) { return list(col).then(function (l) { return l.filter(function (d) { return d[field] === value; }); }); },
     put: function (col, id, body) { return write(col, id || uid(), body); },
+    putBatch: function (col, items, toRemove) {
+      return tx(['docs'], 'readwrite', function (t) {
+        var s = t.objectStore('docs');
+        (toRemove || []).forEach(function (id) { s.delete(col + '|' + id); });
+        (items || []).forEach(function (it) { s.put({ k: col + '|' + it.id, col: col, id: it.id, data: it.data }); });
+      }).then(function () { emit(col); });
+    },
     patch: function (col, id, p) {
       return tx(['docs'], 'readonly', function (t) { return req(t.objectStore('docs').get(col + '|' + id)); }).then(function (r) {
         if (!r) throw { code: 'invalid_argument' };
