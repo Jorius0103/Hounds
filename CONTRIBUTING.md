@@ -10,6 +10,7 @@
 | O menu lateral ou o tema | `js/menu.js` |
 | Ícones, categorias de marcador, funções pequenas (`esc`, `toast`…) | `js/utils.js` |
 | O explorer de mapas | `js/explorer.js` |
+| A imagem do mapa na página do mapa (marcadores, zoom, arrastar) | `js/mapa-previa.js` |
 | O editor de texto das anotações | `js/editor-texto.js` |
 | A escolha de usuário | `js/gate.js` |
 | Os dados da Mesa no banco | `js/mesa-sync.js` |

@@ -111,11 +111,12 @@ function renderEventPage() {
       return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
         (charSubtitle(c) ? '<span class="where">' + esc(charSubtitle(c)) + '</span>' : '') + '</div></a>';
     }).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem ligado a este evento.' + (can ? ' Use <b>Adicionar personagens</b>.' : '') + '</p>') + '</section>';
-  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Informações</h2><dl class="facts"><dt>Data</dt><dd>' + (ev.date ? esc(ev.date) : '<span class="none">Não informada</span>') + '</dd>' +
-    '<dt>Personagens</dt><dd>' + (chars.length || '<span class="none">Nenhum</span>') + '</dd></dl></div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Local</h2>' +
-    (l ? '<ul class="links"><li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (locMapId(l) ? esc(mapPathText(locMapId(l))) : 'Sem mapa') + '</span></span></a></li></ul>'
-      : '<p class="lede" style="font-size:13px">Nenhum local informado.' + (can ? ' Escolha um em <b>Editar evento</b>.' : '') + '</p>') + '</div>';
+  // The boxes beside the event start closed; a click on the title opens one (see foldBox).
+  var side = foldBox('info', 'Informações', null, '<dl class="facts"><dt>Data</dt><dd>' + (ev.date ? esc(ev.date) : '<span class="none">Não informada</span>') + '</dd>' +
+    '<dt>Personagens</dt><dd>' + (chars.length || '<span class="none">Nenhum</span>') + '</dd></dl>') +
+    foldBox('loc', 'Local', null,
+    l ? '<ul class="links"><li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (locMapId(l) ? esc(mapPathText(locMapId(l))) : 'Sem mapa') + '</span></span></a></li></ul>'
+      : '<p class="lede" style="font-size:13px">Nenhum local informado.' + (can ? ' Escolha um em <b>Editar evento</b>.' : '') + '</p>');
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   if (ev.image) W.store.imageUrl(ev.image.ref).then(function (u) {
     var h = $('eventHero'); if (!h || !u) return;
@@ -123,6 +124,7 @@ function renderEventPage() {
     h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, ev.name); };
   });
   fillImages(pageRoot);
+  wireFolds(pageRoot);
   var e = $('editEventBtn'); if (e) e.onclick = function () { openEventForm(ev); };
   var a = $('addEventCharBtn'); if (a) a.onclick = function () { openEventForm(ev, true); };
   var d = $('delEventBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderEventPage(); };

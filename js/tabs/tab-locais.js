@@ -65,21 +65,23 @@ function renderLocalPage() {
   var pics = [l.image, l.image2].filter(function (im) { return im && im.ref; });
   var main = (pics.length ? '<div class="loc-pics' + (pics.length > 1 ? ' two-pics' : '') + '">' + pics.map(function (im, i) { return '<div class="loc-hero" id="locHero' + i + '">' + svg(ICON.image, 32, 1.6) + '</div>'; }).join('') + '</div>' : '') +
     '<section><h2 class="sec-title">Descrição</h2>' + (l.description ? '<p class="long">' + esc(l.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>';
-  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Sublocais</h2>' +
+  // The boxes beside the location start closed; a click on the title opens one (see foldBox).
+  var side = foldBox('sub', 'Sublocais', kids.length,
     (kids.length ? '<ul class="links">' + kids.map(function (k) { var n = childLocs(k.id).length; return '<li><a class="row-link" href="' + locHref(k.id) + '">' + thumbSlot(k.image && k.image.ref, ICON.pin) + '<b>' + esc(k.name) + '</b>' + (n ? '<span class="meta">' + plural(n, 'sublocal', 'sublocais') + '</span>' : '') + '</a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local dentro deste.</p>') +
-    (can ? '<div><button class="btn" type="button" id="newSubLoc">' + svg(ICON.plus, 15, 2.4) + 'Novo local dentro deste</button></div>' : '') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Personagens</h2>' +
-    (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem ligado.</p>') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Organizações</h2>' +
-    (orgs.length ? '<ul class="links">' + orgs.map(function (o) { return '<li><a class="row-link" href="' + orgHref(o.id) + '">' + thumbSlot(o.image && o.image.ref, ICON.org) + '<b>' + esc(o.name) + '</b></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhuma organização ligada.' + (can ? ' Ligue pelo campo <b>Locais</b> da organização.' : '') + '</p>') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Eventos</h2>' +
-    (evs.length ? '<ul class="links">' + evs.map(eventLink).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum evento neste local.' + (can ? ' Escolha o local no cadastro do evento.' : '') + '</p>') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Mapa relacionado</h2>' +
-    (m ? '<ul class="links"><li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<b>' + esc(m.name) + '</b></a></li></ul><div class="btn-row" id="locMapActions"></div>' : '<p class="lede" style="font-size:13px">Este local não está em nenhum mapa.</p>') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Localização no mapa</h2>' + (m ? pathTree(mapChain(m.id), { leaf: l }) : '<p class="lede" style="font-size:13px">Escolha um mapa em <b>Editar local</b> para posicionar este local na hierarquia.</p>') + '</div>';
+    (can ? '<div><button class="btn" type="button" id="newSubLoc">' + svg(ICON.plus, 15, 2.4) + 'Novo local dentro deste</button></div>' : '')) +
+    foldBox('chars', 'Personagens', chars.length,
+    chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem ligado.</p>') +
+    foldBox('orgs', 'Organizações', orgs.length,
+    orgs.length ? '<ul class="links">' + orgs.map(function (o) { return '<li><a class="row-link" href="' + orgHref(o.id) + '">' + thumbSlot(o.image && o.image.ref, ICON.org) + '<b>' + esc(o.name) + '</b></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhuma organização ligada.' + (can ? ' Ligue pelo campo <b>Locais</b> da organização.' : '') + '</p>') +
+    foldBox('events', 'Eventos', evs.length,
+    evs.length ? '<ul class="links">' + evs.map(eventLink).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum evento neste local.' + (can ? ' Escolha o local no cadastro do evento.' : '') + '</p>') +
+    foldBox('map', 'Mapa relacionado', null,
+    m ? '<ul class="links"><li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<b>' + esc(m.name) + '</b></a></li></ul><div class="btn-row" id="locMapActions"></div>' : '<p class="lede" style="font-size:13px">Este local não está em nenhum mapa.</p>') +
+    foldBox('where', 'Localização no mapa', null, m ? pathTree(mapChain(m.id), { leaf: l }) : '<p class="lede" style="font-size:13px">Escolha um mapa em <b>Editar local</b> para posicionar este local na hierarquia.</p>');
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   pics.forEach(function (im, i) { W.store.imageUrl(im.ref).then(function (u) { var h = $('locHero' + i); if (h && u) h.innerHTML = '<img src="' + esc(u) + '" alt="' + esc(l.name) + (i ? ' (2ª imagem)' : '') + '">'; }); });
   fillImages(pageRoot);
+  wireFolds(pageRoot);
   // Is there a marker for this location on its map?
   if (m) W.store.query('maps/' + m.id + '/markers', 'locationId', l.id).then(function (list) {
     var box = $('locMapActions'); if (!box || S.route.locId !== l.id) return;

@@ -294,7 +294,8 @@ function renderSpellPage() {
     '</section>' +
     (s.prerequisites ? '<section><h2 class="sec-title">Pré-requisitos</h2><div class="box" style="margin:0"><p style="margin:0;font-size:14px;line-height:1.6">' + esc(s.prerequisites) + '</p></div></section>' : '');
 
-  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Parâmetros</h2><dl class="facts">' +
+  // Closed until its title is clicked (see foldBox).
+  var side = foldBox('params', 'Parâmetros', null, '<dl class="facts">' +
     '<dt>Escola / Colégio</dt><dd>' + (s.college ? esc(s.college) : '<span class="none">Não informado</span>') + '</dd>' +
     '<dt>Classe</dt><dd>' + (s.class ? esc(s.class) : '<span class="none">Não informado</span>') + '</dd>' +
     '<dt>Dificuldade</dt><dd>IQ/' + esc(s.difficulty || 'H') + '</dd>' +
@@ -304,9 +305,10 @@ function renderSpellPage() {
     '<dt>Custo Manutenção</dt><dd>' + (s.maintenanceCost ? esc(s.maintenanceCost) : '<span class="none">—</span>') + '</dd>' +
     '<dt>Página / Livro</dt><dd>' + (s.page ? esc(s.page) : '<span class="none">—</span>') + '</dd>' +
     '<dt>Fonte</dt><dd>' + (s.source ? esc(s.source) : '<span class="none">—</span>') + '</dd>' +
-    '</dl></div>';
+    '</dl>');
 
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
+  wireFolds(pageRoot);
 
   if (can) {
     var eb = $('editSpellBtn'); if (eb) eb.onclick = function () { openSpellForm(s); };

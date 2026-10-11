@@ -96,10 +96,12 @@ function renderSheetPage() {
     (can ? '<div class="btn-row"><button class="btn" type="button" id="editSheetBtn">' + svg(ICON.edit, 15) + 'Editar ficha</button><button class="btn danger" type="button" id="delSheetBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a ficha <b>' + esc(s.name) + '</b>?' + (chars.length ? ' ' + plural(chars.length, 'personagem fica', 'personagens ficam') + ' sem ficha; os personagens continuam cadastrados.' : '') + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSheetYes">Excluir ficha</button><button class="btn ghost" type="button" id="delSheetNo">Cancelar</button></div></div>' : '');
   var main = '<section><h2 class="sec-title">Observações</h2>' + (s.description ? '<p class="long">' + esc(s.description) + '</p>' : '<p class="long none">Sem observações.</p>') + '</section>';
-  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Personagens</h2>' +
-    (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem vinculado.' + (can ? ' Use <b>Vincular ficha</b> na página do personagem.' : '') + '</p>') + '</div>';
+  // Closed until its title is clicked (see foldBox).
+  var side = foldBox('chars', 'Personagens', chars.length,
+    chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem vinculado.' + (can ? ' Use <b>Vincular ficha</b> na página do personagem.' : '') + '</p>');
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   fillImages(pageRoot);
+  wireFolds(pageRoot);
   var e = $('editSheetBtn'); if (e) e.onclick = function () { openSheetForm(s); };
   var d = $('delSheetBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderSheetPage(); };
   var dn = $('delSheetNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderSheetPage(); };

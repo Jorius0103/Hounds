@@ -22,7 +22,11 @@ interface Doc {
 interface HMap extends Doc { name: string; parentId?: string | null; image?: ImageInfo | null }
 
 /** Coleção `maps/{id}/markers`. x e y vão de 0 a 1 sobre a imagem. */
-interface Marker extends Doc { x: number; y: number; title: string; description?: string; category?: string; locationId?: string | null }
+interface Marker extends Doc {
+  x: number; y: number; title: string; description?: string; category?: string; locationId?: string | null;
+  /** Outro mapa ao qual o marcador leva (a cidade num marcador do reino). */
+  linkedMapId?: string | null;
+}
 
 /** Coleção `locations`. */
 interface HLocation extends Doc {

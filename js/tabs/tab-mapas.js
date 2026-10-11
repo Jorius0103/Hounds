@@ -99,21 +99,22 @@ function renderMapPage() {
     '<p class="lede" style="margin-top:6px">' + (parent ? 'Faz parte de <a class="inline" href="' + mapHref(parent.id) + '">' + esc(parent.name) + '</a>.' : 'Mapa de nível superior.') + '</p></div>' +
     '<div class="btn-row">' + (kids.length ? '<button class="btn" type="button" id="mapTreeBtn">' + svg(ICON.tree, 15) + 'Árvore</button>' : '') +
     '<a class="btn primary" href="#map~' + encodeURIComponent(m.id) + '~explorar">' + svg(ICON.explore, 16) + 'Explorar mapa</a></div></div>';
-  var hier = '<div class="box"><h2 class="sec-title" style="margin:0">Hierarquia</h2>' + pathTree(mapChain(m.id), { markLast: true, kids: true }) + '</div>';
-  var locBox = '<div class="box"><h2 class="sec-title" style="margin:0">Locais neste mapa</h2>' +
+  // The boxes beside the map start closed; a click on the title opens one (see foldBox).
+  var hier = foldBox('hier', 'Hierarquia', null, pathTree(mapChain(m.id), { markLast: true, kids: true }));
+  var locBox = foldBox('locs', 'Locais neste mapa', locs.length,
     (locs.length ? '<ul class="links">' + locs.map(function (l) { return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<b>' + esc(l.name) + '</b></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local ligado a este mapa.</p>') +
-    (can ? '<div><button class="btn" type="button" id="newLocHere">' + svg(ICON.plus, 15, 2.4) + 'Novo local neste mapa</button></div>' : '') + '</div>';
+    (can ? '<div><button class="btn" type="button" id="newLocHere">' + svg(ICON.plus, 15, 2.4) + 'Novo local neste mapa</button></div>' : ''));
   var mchars = mapCharacters(m.id);
-  var charBox = '<div class="box"><h2 class="sec-title" style="margin:0">Personagens neste mapa</h2>' +
-    (mchars.length ? '<div class="people">' + mchars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem ligado a este mapa.' + (can ? ' Ligue pelo campo <b>Mapas relacionados</b> do personagem.' : '') + '</p>') + '</div>';
+  var charBox = foldBox('chars', 'Personagens neste mapa', mchars.length,
+    mchars.length ? '<div class="people">' + mchars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem ligado a este mapa.' + (can ? ' Ligue pelo campo <b>Mapas relacionados</b> do personagem.' : '') + '</p>');
   var morgs = mapOrgs(m.id);
-  var orgBox = '<div class="box"><h2 class="sec-title" style="margin:0">Organizações neste mapa</h2>' +
-    (morgs.length ? '<ul class="links">' + morgs.map(function (o) { return '<li><a class="row-link" href="' + orgHref(o.id) + '">' + thumbSlot(o.image && o.image.ref, ICON.org) + '<b>' + esc(o.name) + '</b></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhuma organização ligada a este mapa.' + (can ? ' Ligue pelo campo <b>Mapas</b> da organização.' : '') + '</p>') + '</div>';
-  var mkBox = '<div class="box"><h2 class="sec-title" style="margin:0">Marcadores</h2>' +
+  var orgBox = foldBox('orgs', 'Organizações neste mapa', morgs.length,
+    (morgs.length ? '<ul class="links">' + morgs.map(function (o) { return '<li><a class="row-link" href="' + orgHref(o.id) + '">' + thumbSlot(o.image && o.image.ref, ICON.org) + '<b>' + esc(o.name) + '</b></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhuma organização ligada a este mapa.' + (can ? ' Ligue pelo campo <b>Mapas</b> da organização.' : '') + '</p>'));
+  var mkBox = foldBox('markers', 'Marcadores', mk.length,
     (mk.length ? '<ul class="mk-list">' + mk.map(function (x) {
-      var c = cat(x.category), l = x.locationId && locById(x.locationId);
-      return '<li><a class="mk-item" href="#map~' + encodeURIComponent(m.id) + '~explorar" data-focus="' + esc(x.id) + '"><span class="dot" style="background:' + c.color + '">' + svg(c.icon, 14) + '</span><span class="t"><b>' + esc(x.title) + '</b><span>' + esc(l ? 'Local: ' + l.name : c.label) + '</span></span></a></li>';
-    }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum marcador ainda.' + (can ? ' Em <b>Explorar mapa</b>, use <b>Adicionar marcador</b> e clique no ponto do mapa.' : '') + '</p>') + '</div>';
+      var c = cat(x.category);
+      return '<li><a class="mk-item" href="#map~' + encodeURIComponent(m.id) + '~explorar" data-focus="' + esc(x.id) + '"><span class="dot" style="background:' + c.color + '">' + svg(c.icon, 14) + '</span><span class="t"><b>' + esc(x.title) + '</b><span>' + esc(markerSub(x)) + '</span></span></a></li>';
+    }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum marcador ainda.' + (can ? ' Em <b>Explorar mapa</b>, use <b>Adicionar marcador</b> e clique no ponto do mapa.' : '') + '</p>'));
   var opts = '';
   if (can) {
     var conseq = [];
@@ -122,14 +123,16 @@ function renderMapPage() {
     if (mapCharacters(m.id).length) conseq.push(plural(mapCharacters(m.id).length, 'personagem passa', 'personagens passam') + ' para ' + (parent ? '<b>' + esc(parent.name) + '</b>' : 'sem este mapa'));
     if (morgs.length) conseq.push(plural(morgs.length, 'organização passa', 'organizações passam') + ' para ' + (parent ? '<b>' + esc(parent.name) + '</b>' : 'sem este mapa'));
     if (mk.length) conseq.push(plural(mk.length, 'marcador é excluído', 'marcadores são excluídos'));
-    opts = '<div class="box"><h2 class="sec-title" style="margin:0">Opções do mapa</h2><div class="btn-row">' +
+    // Open while a deletion is being confirmed, so the question can't end up hidden.
+    opts = foldBox('opts', 'Opções do mapa', null, '<div class="btn-row">' +
       '<button class="btn" type="button" id="editMapBtn">' + svg(ICON.edit, 15) + 'Editar mapa</button>' +
       '<button class="btn danger" type="button" id="deleteMapBtn">' + svg(ICON.trash, 15) + 'Excluir mapa</button></div>' +
-      (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(m.name) + '</b>?' + (conseq.length ? ' ' + conseq.join('; ') + '.' : '') + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="deleteMapYes">Excluir mapa</button><button class="btn ghost" type="button" id="deleteMapNo">Cancelar</button></div></div>' : '') + '</div>';
+      (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(m.name) + '</b>?' + (conseq.length ? ' ' + conseq.join('; ') + '.' : '') + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="deleteMapYes">Excluir mapa</button><button class="btn ghost" type="button" id="deleteMapNo">Cancelar</button></div></div>' : ''), !!ui.confirmDelete);
   }
-  pageRoot.innerHTML = head + '<div class="map-layout"><div class="preview" id="mapPreview">' + svg(ICON.map, 32, 1.6) + '</div><div class="side">' + hier + locBox + charBox + orgBox + mkBox + opts + '</div></div>';
-  W.store.imageUrl(m.image && m.image.ref).then(function (u) { var p = $('mapPreview'); if (p && u) p.innerHTML = '<img src="' + esc(u) + '" alt="Mapa ' + esc(m.name) + '">'; });
+  pageRoot.innerHTML = head + '<div class="map-layout"><div class="preview mprev" id="mapPreview"></div><div class="side">' + opts + hier + locBox + charBox + orgBox + mkBox + '</div></div>';
+  mapPreview($('mapPreview'), m, mk);
   fillImages(pageRoot);
+  wireFolds(pageRoot);
   var tb = $('mapTreeBtn'); if (tb) tb.onclick = function () { openMapTree(m); };
   var e1 = $('editMapBtn'); if (e1) e1.onclick = function () { openMapForm(m); };
   var nl = $('newLocHere'); if (nl) nl.onclick = function () { openLocationForm(null, m.id); };

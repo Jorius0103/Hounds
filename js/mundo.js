@@ -242,6 +242,11 @@ var Ops = {
       if (up && ids.indexOf(up) < 0) ids.push(up);
       then(function () { return W.store.patch('organizations', o.id, { mapIds: ids, updatedAt: now() }); });
     });
+    // Markers on other maps that led to this one lose the link.
+    W.raw.maps.filter(function (o) { return o.id !== m.id; }).forEach(function (o) {
+      var oc = 'maps/' + o.id + '/markers';
+      then(function () { return W.store.query(oc, 'linkedMapId', m.id).then(function (l) { return l.reduce(function (p, mk) { return p.then(function () { return W.store.patch(oc, mk.id, { linkedMapId: null, updatedAt: now() }); }); }, Promise.resolve()); }).catch(function () {}); });
+    });
     then(function () { return W.store.remove('maps', m.id); });
     then(function () { return W.store.dropImage(m.image && m.image.ref); });
     return seq;

@@ -218,12 +218,13 @@ function renderOrgPage() {
       return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
         '<span class="where">' + (m.rank ? esc(m.rank) : 'Sem cargo') + '</span>' + (c.race ? '<span class="meta">' + esc(c.race) + '</span>' : '') + '</div></a>';
     }).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum membro ainda.' + (can ? ' Use <b>Adicionar membro</b> ou escolha a organização no cadastro do personagem.' : '') + '</p>') + '</section>';
-  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Informações</h2><dl class="facts"><dt>Reputação</dt><dd>' + (o.reputation ? esc(o.reputation) : '<span class="none">Não informada</span>') + '</dd>' +
-    '<dt>Membros</dt><dd>' + (members.length || '<span class="none">Nenhum</span>') + '</dd></dl></div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Locais</h2>' +
-    (locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local ligado.' + (can ? ' Use <b>Editar organização</b> para ligar locais.' : '') + '</p>') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Mapas</h2>' +
-    (maps.length ? '<ul class="links">' + maps.map(function (m) { var pth = mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › '); return '<li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<span class="mtext"><b>' + esc(m.name) + '</b><span class="where">' + (pth ? esc(pth) : 'Nível superior') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum mapa ligado.' + (can ? ' Use <b>Editar organização</b> para ligar mapas.' : '') + '</p>') + '</div>';
+  // The boxes beside the organization start closed; a click on the title opens one (see foldBox).
+  var side = foldBox('info', 'Informações', null, '<dl class="facts"><dt>Reputação</dt><dd>' + (o.reputation ? esc(o.reputation) : '<span class="none">Não informada</span>') + '</dd>' +
+    '<dt>Membros</dt><dd>' + (members.length || '<span class="none">Nenhum</span>') + '</dd></dl>') +
+    foldBox('locs', 'Locais', locs.length,
+    locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local ligado.' + (can ? ' Use <b>Editar organização</b> para ligar locais.' : '') + '</p>') +
+    foldBox('maps', 'Mapas', maps.length,
+    maps.length ? '<ul class="links">' + maps.map(function (m) { var pth = mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › '); return '<li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<span class="mtext"><b>' + esc(m.name) + '</b><span class="where">' + (pth ? esc(pth) : 'Nível superior') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum mapa ligado.' + (can ? ' Use <b>Editar organização</b> para ligar mapas.' : '') + '</p>');
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   if (o.image) W.store.imageUrl(o.image.ref).then(function (u) {
     var h = $('orgHero'); if (!h || !u) return;
@@ -231,6 +232,7 @@ function renderOrgPage() {
     h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, o.name); };
   });
   fillImages(pageRoot);
+  wireFolds(pageRoot);
   var e = $('editOrgBtn'); if (e) e.onclick = function () { openOrgForm(o); };
   var a = $('addMemberBtn'); if (a) a.onclick = function () { openOrgForm(o, true); };
   var d = $('delOrgBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderOrgPage(); };

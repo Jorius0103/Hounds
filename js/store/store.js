@@ -12,7 +12,7 @@
      Local:  IndexedDB in this browser (fallback)
    Collections
      maps                 { v, name, parentId, image{ref,w,h,type,size}, createdAt, updatedAt }
-     maps/{id}/markers    { x, y (0..1 of the image), title, description, category, locationId, createdAt, updatedAt }
+     maps/{id}/markers    { x, y (0..1 of the image), title, description, category, locationId, linkedMapId, createdAt, updatedAt }
      locations            { v, name, description, image{...}|null, characterIds[], mapId, parentId, position|null, createdAt, updatedAt }
      characters           { name, source, mesaId, createdAt, updatedAt }
      organizations        { v, name, description, reputation, members[{ charId, rank }], locationIds[], mapIds[], createdAt, updatedAt }

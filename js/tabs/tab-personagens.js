@@ -139,25 +139,28 @@ function renderCharPage() {
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(c.name) + '</b>?' + (locs.length || evs.length ? ' Ele sai de ' + [locs.length ? plural(locs.length, 'local', 'locais') : '', evs.length ? plural(evs.length, 'evento', 'eventos') : ''].filter(Boolean).join(' e ') + '; eles continuam cadastrados.' : '') + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delCharYes">Excluir personagem</button><button class="btn ghost" type="button" id="delCharNo">Cancelar</button></div></div>' : '');
   var main = (c.image ? '<div class="loc-hero" id="charHero">' + svg(ICON.user, 32, 1.6) + '</div>' : '') +
     '<section><h2 class="sec-title">Descrição</h2>' + (c.description ? '<p class="long">' + esc(c.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>';
-  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Informações</h2><dl class="facts"><dt>Raça</dt><dd>' + (c.race ? esc(c.race) : '<span class="none">Não informada</span>') + '</dd>' +
+  // The boxes beside the character start closed; a click on the title opens one (see foldBox).
+  var side = foldBox('info', 'Informações', null, '<dl class="facts"><dt>Raça</dt><dd>' + (c.race ? esc(c.race) : '<span class="none">Não informada</span>') + '</dd>' +
     '<dt>Organizações</dt><dd>' + (charOrgs(c.id).length ? charOrgs(c.id).map(function (x) { return '<a href="' + orgHref(x.o.id) + '">' + esc(x.o.name) + '</a>' + (x.rank ? ' · ' + esc(x.rank) : ''); }).join('<br>')
-      : c.organization ? esc(c.organization) : '<span class="none">Nenhuma</span>') + '</dd></dl></div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Ficha</h2>' +
+      : c.organization ? esc(c.organization) : '<span class="none">Nenhuma</span>') + '</dd></dl>') +
+    // Open while removing the link is being confirmed, so the question can't end up hidden.
+    foldBox('sheet', 'Ficha', null,
     (sh ? '<ul class="links">' + sheetLink(sh) + '</ul>' : '<p class="lede" style="font-size:13px">' + (shHidden ? 'Vinculado a uma ficha que você não pode ver.' : 'Nenhuma ficha vinculada.' + (can ? ' Cada personagem pode ter uma ficha.' : '')) + '</p>') +
     (can ? '<div class="btn-row"><button class="btn" type="button" id="charSheetBtn">' + svg(ICON.sheet, 15) + (c.sheetId ? 'Trocar ficha' : 'Vincular ficha') + '</button>' +
       (c.sheetId ? '<button class="btn ghost" type="button" id="charSheetRm">' + svg(ICON.x, 14, 2.4) + 'Remover vínculo</button>' : '') + '</div>' : '') +
-    (can && ui.confirmUnlink && c.sheetId ? '<div class="confirm" role="alert"><span>Remover o vínculo de <b>' + esc(c.name) + '</b> com ' + (sh ? 'a ficha <b>' + esc(sh.name) + '</b>' : 'a ficha') + '? A ficha continua cadastrada.</span><div class="btn-row"><button class="btn danger solid" type="button" id="charSheetRmYes">Remover vínculo</button><button class="btn ghost" type="button" id="charSheetRmNo">Cancelar</button></div></div>' : '') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Relacionamentos</h2>' +
-    (rels.length ? '<ul class="links">' + rels.map(function (r) {
+    (can && ui.confirmUnlink && c.sheetId ? '<div class="confirm" role="alert"><span>Remover o vínculo de <b>' + esc(c.name) + '</b> com ' + (sh ? 'a ficha <b>' + esc(sh.name) + '</b>' : 'a ficha') + '? A ficha continua cadastrada.</span><div class="btn-row"><button class="btn danger solid" type="button" id="charSheetRmYes">Remover vínculo</button><button class="btn ghost" type="button" id="charSheetRmNo">Cancelar</button></div></div>' : ''),
+    !!(can && ui.confirmUnlink && c.sheetId)) +
+    foldBox('rels', 'Relacionamentos', rels.length,
+    rels.length ? '<ul class="links">' + rels.map(function (r) {
       var how = r.back ? (r.type ? 'Vê ' + c.name + ' como ' + r.type : 'Cita ' + c.name) : (r.type || 'Relação sem tipo');
       return '<li><a class="row-link" href="' + charHref(r.c.id) + '">' + thumbSlot(r.c.image && r.c.image.ref, ICON.user) + '<span class="mtext"><b>' + esc(r.c.name) + '</b><span class="where">' + esc(how) + '</span></span></a></li>';
-    }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum relacionamento.' + (can ? ' Use <b>Editar personagem</b> para ligar outros personagens.' : '') + '</p>') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Eventos</h2>' +
-    (evs.length ? '<ul class="links">' + evs.map(eventLink).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Não participa de nenhum evento.' + (can ? ' Ligue pelo campo <b>Personagens</b> do evento.' : '') + '</p>') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Mapas relacionados</h2>' +
-    (charMaps(c).length ? '<ul class="links">' + charMaps(c).map(function (m) { var pth = mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › '); return '<li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<span class="mtext"><b>' + esc(m.name) + '</b><span class="where">' + (pth ? esc(pth) : 'Nível superior') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum mapa relacionado.' + (can ? ' Use <b>Editar personagem</b> para ligar mapas.' : '') + '</p>') + '</div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Locais relacionados</h2>' +
-    (locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local relacionado.' + (can ? ' Use <b>Editar personagem</b> para ligar locais.' : '') + '</p>') + '</div>';
+    }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum relacionamento.' + (can ? ' Use <b>Editar personagem</b> para ligar outros personagens.' : '') + '</p>') +
+    foldBox('events', 'Eventos', evs.length,
+    evs.length ? '<ul class="links">' + evs.map(eventLink).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Não participa de nenhum evento.' + (can ? ' Ligue pelo campo <b>Personagens</b> do evento.' : '') + '</p>') +
+    foldBox('maps', 'Mapas relacionados', charMaps(c).length,
+    charMaps(c).length ? '<ul class="links">' + charMaps(c).map(function (m) { var pth = mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › '); return '<li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<span class="mtext"><b>' + esc(m.name) + '</b><span class="where">' + (pth ? esc(pth) : 'Nível superior') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum mapa relacionado.' + (can ? ' Use <b>Editar personagem</b> para ligar mapas.' : '') + '</p>') +
+    foldBox('locs', 'Locais relacionados', locs.length,
+    locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local relacionado.' + (can ? ' Use <b>Editar personagem</b> para ligar locais.' : '') + '</p>');
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   if (c.image) W.store.imageUrl(c.image.ref).then(function (u) {
     var h = $('charHero'); if (!h || !u) return;
@@ -165,6 +168,7 @@ function renderCharPage() {
     h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, c.name); };
   });
   fillImages(pageRoot);
+  wireFolds(pageRoot);
   var e = $('editCharBtn'); if (e) e.onclick = function () { openCharForm(c); };
   var sb = $('charSheetBtn'); if (sb) sb.onclick = function () { openSheetLinkForm(c); };
   var sr = $('charSheetRm'); if (sr) sr.onclick = function () { ui.confirmUnlink = true; renderCharPage(); };

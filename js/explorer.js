@@ -146,7 +146,9 @@ var Explorer = (function () {
   function saveMarker(m) {
     var col = 'maps/' + st.map.id + '/markers', t = now();
     var lid = m.locationId && (locById(m.locationId) || rawHas('locations', m.locationId)) ? m.locationId : null;
-    return W.store.put(col, m.id || null, { x: m.x, y: m.y, title: m.title, description: m.description || '', category: m.category, locationId: lid, visible: m.visible !== false, createdBy: owner(m.id ? m : null), createdAt: m.createdAt || t, updatedAt: t });
+    // Another map this marker leads to (a city on the kingdom's map); never the map it is on.
+    var mid = m.linkedMapId && m.linkedMapId !== st.map.id && (mapById(m.linkedMapId) || rawHas('maps', m.linkedMapId)) ? m.linkedMapId : null;
+    return W.store.put(col, m.id || null, { x: m.x, y: m.y, title: m.title, description: m.description || '', category: m.category, locationId: lid, linkedMapId: mid, visible: m.visible !== false, createdBy: owner(m.id ? m : null), createdAt: m.createdAt || t, updatedAt: t });
   }
   function findMarker(id) { for (var i = 0; i < markers.length; i++) if (markers[i].id === id) return markers[i]; return null; }
   function pinHtml(m, extra) {
@@ -188,6 +190,12 @@ var Explorer = (function () {
         (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '') +
         '<div><a class="btn primary" href="' + locHref(l.id) + '">' + svg(ICON.arrow, 15) + 'Ver localização</a></div></div>';
     }
+    var lm = m.linkedMapId && m.linkedMapId !== st.map.id && mapById(m.linkedMapId);
+    if (lm) {
+      html += '<div class="loc-mini"><span class="badge">' + svg(ICON.map, 12, 2.4) + 'Mapa vinculado</span>' + (lm.image ? '<div id="mapMiniImg"></div>' : '') +
+        '<b style="font-size:15px">' + esc(lm.name) + '</b>' + (W.parent[lm.id] ? '<span class="meta">' + esc(mapPathText(W.parent[lm.id])) + '</span>' : '') +
+        '<div class="btn-row"><a class="btn primary" href="#map~' + encodeURIComponent(lm.id) + '~explorar">' + svg(ICON.explore, 15) + 'Explorar este mapa</a><a class="btn" href="' + mapHref(lm.id) + '">' + svg(ICON.arrow, 15) + 'Ver página</a></div></div>';
+    }
     html += (m.description ? '<p class="desc">' + esc(m.description) + '</p>' : (l ? '' : '<p class="desc none">Sem descrição.</p>')) +
       '<div class="coords">Posição na imagem: ' + Math.round(m.x * st.w) + ', ' + Math.round(m.y * st.h) + ' px</div>' +
       '<div class="btn-row"><button class="btn" type="button" data-a="center">' + svg(ICON.target, 15) + 'Centralizar</button>' +
@@ -196,6 +204,7 @@ var Explorer = (function () {
     openPanel(m.title, html, 'info');
     fillImages(pBody);
     if (l && l.image) W.store.imageUrl(l.image.ref).then(function (u) { var b = $('locMiniImg'); if (b && u) b.innerHTML = '<img src="' + esc(u) + '" alt="">'; });
+    if (lm && lm.image) W.store.imageUrl(lm.image.ref).then(function (u) { var b = $('mapMiniImg'); if (b && u) b.innerHTML = '<img src="' + esc(u) + '" alt="">'; });
     pBody.querySelector('[data-a=center]').onclick = function () { centerOn(m.x, m.y, st.fit * 2); };
     var ed = pBody.querySelector('[data-a=edit]'); if (ed) ed.onclick = function () { showForm(Object.assign({}, m)); };
     var mv = pBody.querySelector('[data-a=move]'); if (mv) mv.onclick = function () { setMode({ move: m.id }); if (window.innerWidth <= 760) panel.hidden = true; };
@@ -215,23 +224,44 @@ var Explorer = (function () {
     function opt(x) { return '<option value="' + esc(x.id) + '"' + (x.id === selectedId ? ' selected' : '') + '>' + esc(locPathText(x.id)) + '</option>'; }
     return '<option value="">Nenhum</option>' + (here.length ? '<optgroup label="Neste mapa">' + here.map(opt).join('') + '</optgroup>' : '') + (others.length ? '<optgroup label="Outros locais">' + others.map(opt).join('') + '</optgroup>' : '');
   }
+  // Every map in hierarchy order, this one shown but not selectable (so its submaps read as
+  // its own). Unlike mapOptions, the maps inside this one stay: a city inside the kingdom is the usual link.
+  function linkMapOptions(selectedId) {
+    var out = '<option value="">Nenhum</option>';
+    (function walk(pid, depth) {
+      childMaps(pid).forEach(function (x) {
+        var here = x.id === st.map.id;
+        out += '<option value="' + (here ? '' : esc(x.id)) + '"' + (here ? ' disabled' : x.id === selectedId ? ' selected' : '') + '>' + (depth ? '   '.repeat(depth - 1) + '└ ' : '') + esc(x.name) + (here ? ' (este mapa)' : '') + '</option>';
+        walk(x.id, depth + 1);
+      });
+    })(null, 0);
+    return out;
+  }
   function showForm(m) {
-    var isNew = !m.id, autoTitle = m.locationId && locById(m.locationId) ? locById(m.locationId).name : null;
+    var isNew = !m.id, autoTitle = m.locationId && locById(m.locationId) ? locById(m.locationId).name : m.linkedMapId && mapById(m.linkedMapId) ? mapById(m.linkedMapId).name : null;
+    var otherMaps = W.maps.some(function (x) { return x.id !== st.map.id; });
     var cats = CATEGORIES.map(function (c) { return '<label class="cat-opt"><input type="radio" name="mkCat" value="' + c.id + '"' + (cat(m.category).id === c.id ? ' checked' : '') + '><i style="background:' + c.color + '">' + svg(c.icon, 11, 2.4) + '</i><span>' + esc(c.label) + '</span></label>'; }).join('');
     var html = '<form id="mkForm" class="panel-body" style="padding:0" novalidate>' +
       (W.locations.length ? '<div class="field"><label for="mkLoc">Local vinculado</label><select id="mkLoc">' + locOptions(m.locationId) + '</select><span class="hint-text">Ao clicar no marcador, aparecem as informações do local.</span></div>' : '') +
+      (otherMaps ? '<div class="field"><label for="mkMap">Mapa vinculado</label><select id="mkMap">' + linkMapOptions(m.linkedMapId) + '</select><span class="hint-text">Ao clicar no marcador, aparece um atalho para esse mapa. Ex.: o mapa da cidade num marcador do reino.</span></div>' : '') +
       '<div class="field" id="fMkTitle"><label for="mkTitle">Nome</label><input type="text" id="mkTitle" maxlength="80" autocomplete="off" value="' + esc(m.title) + '" placeholder="Ex.: Portão norte"><div class="err" id="mkTitleErr"></div></div>' +
       '<div class="field"><label for="mkDesc">Descrição</label><textarea id="mkDesc" maxlength="4000" placeholder="Anotação sobre este ponto">' + esc(m.description) + '</textarea></div>' +
       '<fieldset class="field" style="border:0;padding:0;margin:0"><legend class="lab" style="margin-bottom:6px">Categoria</legend><div class="cat-grid">' + cats + '</div></fieldset>' +
       flagHtml('mkVis', isNew ? null : m) +
       '<div class="btn-row"><button class="btn primary" type="submit">' + (isNew ? 'Salvar marcador' : 'Salvar alterações') + '</button><button class="btn ghost" type="button" id="mkCancel">Cancelar</button></div></form>';
     openPanel(isNew ? 'Novo marcador' : 'Editar marcador', html, 'form');
-    var f = $('mkForm'), t = $('mkTitle'), ls = $('mkLoc');
+    var f = $('mkForm'), t = $('mkTitle'), ls = $('mkLoc'), ms = $('mkMap');
     setTimeout(function () { t.focus(); }, 30);
     if (ls) ls.addEventListener('change', function () {
       var lk = locById(ls.value);
       if (lk && (!t.value.trim() || t.value === autoTitle)) { t.value = lk.name; autoTitle = lk.name; }
       if (draft) { draft.locationId = ls.value || null; draft.title = t.value; renderPins(); }
+    });
+    // A map picked names the marker while its name is empty or still the automatic one.
+    if (ms) ms.addEventListener('change', function () {
+      var mp = mapById(ms.value);
+      if (mp && (!t.value.trim() || t.value === autoTitle)) { t.value = mp.name; autoTitle = mp.name; }
+      if (draft) { draft.linkedMapId = ms.value || null; draft.title = t.value; renderPins(); }
     });
     f.querySelectorAll('input[name=mkCat]').forEach(function (r) { r.addEventListener('change', function () { if (draft) { draft.category = r.value; renderPins(); } }); });
     t.addEventListener('input', function () { if (t.value.trim()) { $('fMkTitle').classList.remove('invalid'); $('mkTitleErr').textContent = ''; } if (draft) draft.title = t.value; });
@@ -241,7 +271,9 @@ var Explorer = (function () {
       var title = t.value.trim();
       if (!title) { $('fMkTitle').classList.add('invalid'); $('mkTitleErr').textContent = 'Dê um nome ao marcador.'; t.focus(); return; }
       var chosen = f.querySelector('input[name=mkCat]:checked');
-      var body = Object.assign({}, m, { title: title, description: $('mkDesc').value.trim(), category: chosen ? chosen.value : CATEGORIES[0].id, locationId: ls ? (ls.value || (m.locationId && !locById(m.locationId) && rawHas('locations', m.locationId) ? m.locationId : null)) : (m.locationId || null), visible: flagVal('mkVis', isNew ? null : m) });
+      var body = Object.assign({}, m, { title: title, description: $('mkDesc').value.trim(), category: chosen ? chosen.value : CATEGORIES[0].id, locationId: ls ? (ls.value || (m.locationId && !locById(m.locationId) && rawHas('locations', m.locationId) ? m.locationId : null)) : (m.locationId || null),
+        // A linked map this user can't see stays linked, the same way as a location.
+        linkedMapId: ms ? (ms.value || (m.linkedMapId && !mapById(m.linkedMapId) && rawHas('maps', m.linkedMapId) ? m.linkedMapId : null)) : (m.linkedMapId || null), visible: flagVal('mkVis', isNew ? null : m) });
       var btn = f.querySelector('[type=submit]'); btn.disabled = true;
       saveMarker(body).then(function (id) {
         body.id = id;
@@ -256,12 +288,12 @@ var Explorer = (function () {
     var counts = {}; markers.forEach(function (m) { var k = cat(m.category).id; counts[k] = (counts[k] || 0) + 1; });
     var chips = CATEGORIES.filter(function (c) { return counts[c.id]; }).map(function (c) { return '<button type="button" class="filter" data-cat="' + c.id + '" aria-pressed="' + (filter[c.id] !== false) + '"><i style="background:' + c.color + '"></i>' + esc(c.label) + ' <span class="meta">' + counts[c.id] + '</span></button>'; }).join('');
     var q = norm(query);
-    var list = markers.filter(function (m) { var l = m.locationId && locById(m.locationId); return filter[cat(m.category).id] !== false && (!q || norm(m.title + ' ' + (m.description || '') + ' ' + (l ? l.name : '')).indexOf(q) >= 0); });
-    var html = (markers.length ? '<label class="sec-title" for="mkSearch" style="margin:0">Buscar</label><input class="search" id="mkSearch" type="search" placeholder="Nome, descrição ou local" value="' + esc(query) + '" autocomplete="off">' +
+    var list = markers.filter(function (m) { var l = m.locationId && locById(m.locationId), lm = m.linkedMapId && mapById(m.linkedMapId); return filter[cat(m.category).id] !== false && (!q || norm(m.title + ' ' + (m.description || '') + ' ' + (l ? l.name : '') + ' ' + (lm ? lm.name : '')).indexOf(q) >= 0); });
+    var html = (markers.length ? '<label class="sec-title" for="mkSearch" style="margin:0">Buscar</label><input class="search" id="mkSearch" type="search" placeholder="Nome, descrição, local ou mapa" value="' + esc(query) + '" autocomplete="off">' +
       (chips ? '<div><div class="sec-title" style="margin-bottom:8px">Categorias</div><div class="filters">' + chips + '</div></div>' : '') : '') +
       (list.length ? '<ul class="mk-list" style="max-height:none">' + list.map(function (m) {
         var c = cat(m.category), l = m.locationId && locById(m.locationId);
-        return '<li><button type="button" class="mk-item' + (selected === m.id ? ' sel' : '') + '" data-go="' + esc(m.id) + '"><span class="dot" style="background:' + c.color + '">' + svg(c.icon, 14) + '</span><span class="t"><b>' + esc(m.title) + '</b><span>' + esc(l ? 'Local: ' + l.name : c.label) + '</span></span></button></li>';
+        return '<li><button type="button" class="mk-item' + (selected === m.id ? ' sel' : '') + '" data-go="' + esc(m.id) + '"><span class="dot" style="background:' + c.color + '">' + svg(c.icon, 14) + '</span><span class="t"><b>' + esc(m.title) + '</b><span>' + esc(markerSub(m)) + '</span></span></button></li>';
       }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">' + (markers.length ? 'Nenhum marcador com esses filtros.' : 'Este mapa ainda não tem marcadores.' + (canWrite() ? ' Use <b>Adicionar marcador</b> e clique no ponto do mapa.' : '')) + '</p>');
     openPanel('Marcadores (' + markers.length + ')', html, 'list');
     var s = $('mkSearch'); if (s) s.addEventListener('input', function () { query = s.value; var pos = s.selectionStart; showList(); var n = $('mkSearch'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} });
