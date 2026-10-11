@@ -63,7 +63,7 @@ interface Notebook extends Doc { name: string }
 /** Coleção `notes`. `format: 'html'` para texto formatado; sem ele, texto simples. */
 interface Note extends Doc { notebookId: string; title: string; body?: string; format?: string }
 
-type Role = 'mestre' | 'jogador' | 'visualizador';
+type Role = 'mestre' | 'jogador';
 
 /** Coleção `users`. */
 interface HubUser extends Doc { name: string; role: Role | string }

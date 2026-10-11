@@ -6,9 +6,9 @@
   var USERS_KEY = 'gurps_combat_master_users_v2';
   var DEFAULTS = [
     { id: 'user-leandro', name: 'Leandro', role: 'mestre' },
-    { id: 'user-espectador', name: 'Espectador', role: 'visualizador' }
+    { id: 'user-jogador', name: 'Jogador', role: 'jogador' }
   ];
-  var ROLE = { mestre: 'Mestre', jogador: 'Jogador', visualizador: 'Espectador' };
+  var ROLE = { mestre: 'Mestre', jogador: 'Jogador' };
   function el(id) { return /** @type {AnyEl} */ (document.getElementById(id)); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ini(n) { var p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0][1] || ''))).toUpperCase(); }
@@ -19,11 +19,14 @@
   var mesaFor = null;
   function syncMesa() {
     if (!window.hubUser || location.hash !== '#mesa') return;
-    if (mesaFor === window.hubUser.id) { try { var fw = el('mesaFrame').contentWindow; fw && fw.__mesaOpenPicker && fw.__mesaOpenPicker(); } catch (e) {} return; }
+    var frame = el('mesaFrame');
+    if (mesaFor === window.hubUser.id && frame && frame.srcdoc) {
+      return;
+    }
     var who = mesaFor = window.hubUser.id;
     var src = window.hubMesaSource();
     var go = function () {
-      src.then(function (html) { if (mesaFor === who) el('mesaFrame').srcdoc = html; }, function () {
+      src.then(function (html) { if (mesaFor === who && frame) frame.srcdoc = html; }, function () {
         if (mesaFor === who) mesaFor = null;
         toast('Não foi possível carregar a Mesa de Combate.', true);
       });
@@ -33,6 +36,7 @@
   window.addEventListener('hashchange', syncMesa);
   function apply(u) {
     window.hubUser = u;
+    try { localStorage.setItem('hounds_active_user', JSON.stringify({ id: u.id, name: u.name, role: u.role })); } catch (e) {}
     document.body.setAttribute('data-role', u.role || 'jogador');
     document.body.setAttribute('data-user', u.id || '');
     el('whoAv').textContent = ini(u.name);
@@ -78,5 +82,15 @@
     }
     if (!el('gate').hidden) openGate();
   });
-  openGate();
+
+  // Inicialização: se já houver usuário salvo na sessão/local, restaura sem abrir o modal
+  var savedUser = null;
+  try { savedUser = JSON.parse(localStorage.getItem('hounds_active_user') || 'null'); } catch (e) {}
+  if (savedUser && savedUser.id) {
+    var allUsers = (window.hubUsers && window.hubUsers()) || users();
+    var matchUser = allUsers.filter(function (x) { return x.id === savedUser.id; })[0];
+    choose(matchUser ? { id: matchUser.id, name: matchUser.name, role: matchUser.role } : savedUser);
+  } else {
+    openGate();
+  }
 })();

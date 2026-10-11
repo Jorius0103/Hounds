@@ -14,11 +14,10 @@
 var MESA_USERS_KEY = 'gurps_combat_master_users_v2';
 var ROLES = [
   { id: 'mestre', label: 'Mestre', help: 'Administrador de tudo' },
-  { id: 'jogador', label: 'Jogador', help: 'Visualiza' },
-  { id: 'visualizador', label: 'Espectador', help: 'Auxilia na Mesa de combate' }
+  { id: 'jogador', label: 'Jogador', help: 'Visualiza e joga' }
 ];
 function roleLabel(r) { for (var i = 0; i < ROLES.length; i++) if (ROLES[i].id === r) return ROLES[i].label; return 'Jogador'; }
-function roleId(r) { return roleLabel(r) === 'Jogador' && r !== 'jogador' ? 'jogador' : r; }
+function roleId(r) { return r === 'mestre' ? 'mestre' : 'jogador'; }
 function isMestre() { return !!(window.hubUser && window.hubUser.role === 'mestre'); }
 function mesaUsers() { try { var l = JSON.parse(localStorage.getItem(MESA_USERS_KEY) || 'null'); return Array.isArray(l) ? l : []; } catch (e) { return []; } }
 function mirrorUsers() {
@@ -34,7 +33,7 @@ function seedUsers() {
   if (seeded || W.users.length || !canWrite()) return;
   seeded = true;
   var src = mesaUsers().filter(function (u) { return u && u.id && u.name; });
-  if (!src.length) src = [{ id: 'user-leandro', name: 'Leandro', role: 'mestre' }, { id: 'user-espectador', name: 'Espectador', role: 'visualizador' }];
+  if (!src.length) src = [{ id: 'user-leandro', name: 'Leandro', role: 'mestre' }, { id: 'user-jogador', name: 'Jogador', role: 'jogador' }];
   var t = Date.now();
   src.forEach(function (u, i) { W.store.put('users', u.id, { name: String(u.name).slice(0, 60), role: roleId(u.role || 'jogador'), createdAt: t + i, updatedAt: t + i }).catch(function () {}); });
 }

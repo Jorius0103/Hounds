@@ -59,6 +59,7 @@ interface NpcDetailViewProps {
   onOpenWeaponModal: (weapon?: Weapon) => void;
   isPlayerUser?: boolean;
   currentUserRole?: UserRole;
+  hasEditPermission?: boolean;
 }
 
 export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
@@ -72,12 +73,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   onOpenWeaponModal,
   isPlayerUser = false,
   currentUserRole = 'mestre',
+  hasEditPermission = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'weapons' | 'spells' | 'armor' | 'traits'>('weapons');
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  const isViewer = currentUserRole === 'visualizador';
   const isMaster = currentUserRole === 'mestre';
+  const isViewer = !isMaster && !hasEditPermission;
   const isPlayerChar = npc.characterType === 'player';
   const canEdit = !isViewer && (isMaster || isPlayerChar);
 
@@ -473,9 +476,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <span>Lançar Dano / Fadiga</span>
                 </button>
               ) : (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/40 border border-cyan-800/60 rounded-xl text-cyan-300 text-xs font-semibold shrink-0">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
                   <Eye size={14} />
-                  <span>Visualizador</span>
+                  <span>Espectador</span>
                 </div>
               )}
             </div>
@@ -828,11 +831,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     </button>
 
                     <button
-                      onClick={() => {
-                        if (confirm(`Excluir ${npc.name || 'este personagem'}?`)) {
-                          onDeleteNpc(npc.id);
-                        }
-                      }}
+                      type="button"
+                      onClick={() => setDeleteConfirmOpen(true)}
                       title="Excluir este personagem"
                       className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-950/30 hover:bg-rose-900/40 rounded-lg border border-rose-800/40 transition-colors flex items-center justify-center"
                     >
@@ -842,9 +842,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/40 border border-cyan-800/60 rounded-xl text-cyan-300 text-xs font-semibold shrink-0">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
                 <Eye size={14} />
-                <span>Visualizador</span>
+                <span>Espectador</span>
               </div>
             )}
           </div>
@@ -2005,6 +2005,49 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         onSave={(updatedSpells) => updateField('spells', updatedSpells)}
         npcName={npc.name || 'NPC'}
       />
+
+      {/* Confirmação Segura de Exclusão de Personagem */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Excluir Personagem</h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Remover <strong>"{npc.name || 'este personagem'}"</strong> deste combate?
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 bg-slate-950/60 p-3 rounded-xl border border-slate-800 leading-relaxed">
+              {npc.characterType === 'player'
+                ? 'A ficha continuará salva globalmente e poderá ser adicionada novamente a qualquer combate.'
+                : 'O NPC e seus registros serão excluídos permanentemente deste combate.'}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="px-3 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteNpc(npc.id);
+                  setDeleteConfirmOpen(false);
+                }}
+                className="px-3.5 py-1.5 text-xs text-white bg-rose-600 hover:bg-rose-500 font-bold rounded-lg shadow-sm transition-colors"
+              >
+                Confirmar Exclusão
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

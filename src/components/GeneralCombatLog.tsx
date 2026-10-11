@@ -38,7 +38,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
 
     const list: any[] = [];
     for (const npc of combinedCharacters) {
-      if ((currentUserRole === 'jogador' || currentUserRole === 'visualizador') && npc.isVisibleToPlayer === false) {
+      if (currentUserRole === 'jogador' && npc.isVisibleToPlayer === false) {
         continue;
       }
 
@@ -231,7 +231,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                 onSelectNpc={onSelectNpc}
                 isCompact={true}
                 currentUserRole={currentUserRole}
-                isPlayer={currentUserRole === 'jogador' || currentUserRole === 'visualizador'}
+                isPlayer={currentUserRole === 'jogador'}
                 onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
               />
             </div>

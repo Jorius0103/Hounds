@@ -24,7 +24,13 @@ import {
   Upload,
   Eraser,
   Grid,
+  Users,
+  Check,
+  CheckCheck,
+  ShieldCheck,
+  X,
 } from 'lucide-react';
+import { UserAccount } from '../../types/rpg';
 
 export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog';
 
@@ -39,6 +45,12 @@ interface TacticalToolbarProps {
   onClearMarkers: () => void;
   onAutoPlaceTokens: () => void;
   currentUserRole: string;
+  onOpenPlayerPermissions?: () => void;
+  editorCount?: number;
+  users?: UserAccount[];
+  editorUserIds?: string[];
+  onTogglePlayerPermission?: (userId: string) => void;
+  onSetAllPlayerPermissions?: (allow: boolean) => void;
 }
 
 export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
@@ -52,12 +64,20 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onClearMarkers,
   onAutoPlaceTokens,
   currentUserRole,
+  onOpenPlayerPermissions,
+  editorCount = 0,
+  users = [],
+  editorUserIds = [],
+  onTogglePlayerPermission,
+  onSetAllPlayerPermissions,
 }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [playersPopoverOpen, setPlayersPopoverOpen] = useState(false);
   const [customUrlInput, setCustomUrlInput] = useState(tacticalState.customImageUrl || '');
 
   const isMaster = currentUserRole === 'mestre';
+  const playerUsers = users.filter((u) => u.role === 'jogador');
 
   const currentPreset =
     TACTICAL_MAP_PRESETS.find((p) => p.key === tacticalState.backgroundKey) ||
@@ -397,14 +417,226 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
           </button>
 
           {isMaster && (
-            <button
-              onClick={onAutoPlaceTokens}
-              className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
-              title="Posicionar todos os combatentes da cena na mesa tática"
-            >
-              <Compass size={13} />
-              <span className="hidden xl:inline">Posicionar Todos</span>
-            </button>
+            <>
+              {/* Botão e Popover de Permissões dos Jogadores na Mesa Tática */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlayersPopoverOpen(!playersPopoverOpen);
+                    setSettingsOpen(false);
+                    setMapPickerOpen(false);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all ${
+                    playersPopoverOpen
+                      ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-sm'
+                      : editorCount > 0
+                      ? 'bg-slate-950 border-emerald-500/40 text-emerald-300 hover:bg-slate-850'
+                      : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-850'
+                  }`}
+                  title="Gerenciar quais jogadores possuem permissão de edição na mesa"
+                >
+                  <Users
+                    size={14}
+                    className={editorCount > 0 ? 'text-emerald-400' : 'text-amber-400'}
+                  />
+                  <span className="hidden sm:inline font-medium">Jogadores</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold font-mono border ${
+                      editorCount > 0
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}
+                  >
+                    {editorCount}
+                  </span>
+                </button>
+
+                {playersPopoverOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setPlayersPopoverOpen(false)}
+                    />
+                    <div className="absolute top-full right-0 mt-2 w-84 sm:w-96 max-w-[calc(100vw-1.5rem)] bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl p-3.5 sm:p-4 z-50 text-xs space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                      {/* Header do Popover */}
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                            <Users size={16} />
+                          </div>
+                          <div>
+                            <div className="font-bold text-white text-xs flex items-center gap-1.5">
+                              <span>Jogadores da Campanha</span>
+                              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-slate-850 border border-slate-750 text-amber-300">
+                                {editorCount} de {playerUsers.length} editores
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              Permissão de edição e tokens
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPlayersPopoverOpen(false)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-850 transition-colors"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+
+                      {/* Ações Rápidas */}
+                      <div className="flex items-center justify-between gap-2 bg-slate-900/90 p-2 rounded-xl border border-slate-800/80">
+                        <span className="text-[11px] text-slate-400 font-medium pl-0.5">
+                          Acesso rápido:
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onSetAllPlayerPermissions?.(true)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/70 rounded-lg transition-all active:scale-95 shadow-xs"
+                            title="Conceder permissão de edição a todos os jogadores cadastrados"
+                          >
+                            <CheckCheck size={12} />
+                            <span>Liberar Todos</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onSetAllPlayerPermissions?.(false)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg transition-all active:scale-95 shadow-xs"
+                            title="Bloquear todos os jogadores (modo espectador)"
+                          >
+                            <EyeOff size={12} />
+                            <span>Bloquear Todos</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Lista de Jogadores */}
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        {playerUsers.length === 0 ? (
+                          <div className="py-6 text-center text-xs text-slate-400 bg-slate-900/40 rounded-xl border border-dashed border-slate-800 p-4 space-y-1.5">
+                            <Users size={20} className="mx-auto text-slate-500" />
+                            <div className="font-semibold text-slate-300">
+                              Nenhum jogador cadastrado
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              Cadastre jogadores na aba Usuários do Hub.
+                            </div>
+                          </div>
+                        ) : (
+                          playerUsers.map((u) => {
+                            const isAllowed =
+                              editorUserIds.includes(u.id) || editorUserIds.includes(u.name);
+                            const initials = (u.name || '?').slice(0, 2).toUpperCase();
+
+                            return (
+                              <div
+                                key={u.id}
+                                onClick={() => onTogglePlayerPermission?.(u.id)}
+                                className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 select-none ${
+                                  isAllowed
+                                    ? 'bg-emerald-950/25 border-emerald-500/40 hover:bg-emerald-950/35 shadow-xs'
+                                    : 'bg-slate-900/60 border-slate-800 hover:border-slate-750 hover:bg-slate-900/80'
+                                }`}
+                                title={
+                                  isAllowed
+                                    ? `Clique para revogar permissão de ${u.name}`
+                                    : `Clique para conceder permissão para ${u.name}`
+                                }
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${
+                                      isAllowed
+                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-inner'
+                                        : 'bg-slate-800 text-slate-400 border border-slate-750'
+                                    }`}
+                                  >
+                                    {initials}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-bold text-white truncate">
+                                      {u.name}
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      {isAllowed ? (
+                                        <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                                          <ShieldCheck size={11} className="shrink-0" />
+                                          <span>Editor liberado</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                                          <Eye size={11} className="shrink-0 text-slate-400" />
+                                          <span>Espectador</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Slider Switch */}
+                                <div
+                                  className={`w-11 h-6 rounded-full transition-all relative flex items-center px-0.5 shadow-inner shrink-0 cursor-pointer ${
+                                    isAllowed
+                                      ? 'bg-emerald-500'
+                                      : 'bg-slate-800 border border-slate-700'
+                                  }`}
+                                >
+                                  <div
+                                    className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 flex items-center justify-center ${
+                                      isAllowed
+                                        ? 'translate-x-5 text-emerald-600'
+                                        : 'translate-x-0.5 text-slate-400'
+                                    }`}
+                                  >
+                                    {isAllowed ? (
+                                      <Check size={11} strokeWidth={3} />
+                                    ) : (
+                                      <Eye size={10} strokeWidth={2.5} />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Footer do Popover */}
+                      <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Sincronizado em tempo real</span>
+                        </div>
+                        {onOpenPlayerPermissions && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPlayersPopoverOpen(false);
+                              onOpenPlayerPermissions();
+                            }}
+                            className="text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2 transition-colors"
+                          >
+                            Abrir em tela cheia
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={onAutoPlaceTokens}
+                className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                title="Posicionar todos os combatentes da cena na mesa tática"
+              >
+                <Compass size={13} />
+                <span className="hidden xl:inline">Posicionar Todos</span>
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { TacticalState } from './tactical';
 
-export type UserRole = 'mestre' | 'jogador' | 'visualizador';
+export type UserRole = 'mestre' | 'jogador';
 
 export interface UserAccount {
   id: string;
@@ -203,4 +203,7 @@ export interface Combat {
   sheetSyncUrl?: string; // URL da Planilha Google (publicada como CSV ou link direto)
   npcs: NPC[];
   tacticalState?: TacticalState;
+  editorUserIds?: string[]; // IDs dos jogadores que possuem permissão de edição
+  playerIds?: string[]; // IDs dos personagens de jogadores visíveis/ativos neste combate
+  isActive?: boolean; // Se false, inativo: não aparece na barra principal, apenas no CRUD
 }

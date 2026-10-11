@@ -94,9 +94,8 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
                   onChange={(e) => setRole(e.target.value as UserRole)}
                   className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
                 >
-                  <option value="jogador">Jogador (Vê só NPCs liberados)</option>
+                  <option value="jogador">Jogador (Padrão: modo espectador)</option>
                   <option value="mestre">Mestre (Acesso total)</option>
-                  <option value="visualizador">Visualizador (Somente visualização, não altera nada)</option>
                 </select>
               </div>
 
@@ -151,15 +150,11 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
                     className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                       u.role === 'mestre'
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                        : u.role === 'visualizador'
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
                         : 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
                     }`}
                   >
                     {u.role === 'mestre' ? (
                       <ShieldCheck size={16} />
-                    ) : u.role === 'visualizador' ? (
-                      <Eye size={16} />
                     ) : (
                       <UserCheck size={16} />
                     )}
@@ -172,8 +167,6 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
                         className={`text-[10px] font-bold px-1.5 py-0.2 rounded uppercase ${
                           u.role === 'mestre'
                             ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                            : u.role === 'visualizador'
-                            ? 'bg-cyan-950 text-cyan-300 border border-cyan-800'
                             : 'bg-blue-950 text-blue-300 border border-blue-800'
                         }`}
                       >

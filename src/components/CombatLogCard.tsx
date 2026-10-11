@@ -27,7 +27,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   const isHeal = entry.type === 'heal';
   const isRest = entry.type === 'rest';
 
-  const isPlayerView = isPlayer || currentUserRole === 'jogador' || currentUserRole === 'visualizador';
+  const isPlayerView = isPlayer || currentUserRole === 'jogador';
   const isNpcTarget = (entry as any).npcCharacterType !== 'player';
 
   // Sanitize description for players (never leak RD, armor, penetration or formulas)

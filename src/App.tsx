@@ -16,6 +16,8 @@ import { UserAccountsCrudModal } from './components/UserAccountsCrudModal';
 import { LoginModal } from './components/LoginModal';
 import { WeaponModal } from './components/WeaponModal';
 import { OnlineRoomModal } from './components/OnlineRoomModal';
+import { PlayerPermissionsModal } from './components/PlayerPermissionsModal';
+import { CombatPlayersModal } from './components/CombatPlayersModal';
 import { GeneralCombatLog } from './components/GeneralCombatLog';
 import { SystemLogModal } from './components/SystemLogModal';
 import { systemLogger } from './utils/systemLogger';
@@ -25,25 +27,31 @@ const STORAGE_KEY = 'gurps_combat_master_data_v2';
 const CONDITIONS_KEY = 'gurps_combat_master_conditions_v2';
 const USERS_STORAGE_KEY = 'gurps_combat_master_users_v2';
 const PLAYERS_STORAGE_KEY = 'gurps_fixed_personagens_v1';
+const ACTIVE_COMBAT_KEY = 'gurps_combat_master_active_combat_id_v1';
 const SYNC_CHANNEL_NAME = 'gurps_combat_realtime_sync_v2';
 
-// Função de fusão granular por personagem (CRDT LWW) livre de conflitos e sobrescritas
+// Função de fusão granular por personagem (CRDT LWW) com suporte a adições, edições e exclusões
 function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]; changed: boolean } {
   let changed = false;
-  const map = new Map<string, NPC>();
-  currentList.forEach((n) => map.set(n.id, n));
+  const currentMap = new Map<string, NPC>();
+  currentList.forEach((n) => currentMap.set(n.id, n));
+
+  const incomingMap = new Map<string, NPC>();
+  incomingList.forEach((n) => incomingMap.set(n.id, n));
+
+  const merged: NPC[] = [];
 
   for (const incoming of incomingList) {
-    const existing = map.get(incoming.id);
+    const existing = currentMap.get(incoming.id);
     if (!existing) {
-      map.set(incoming.id, incoming);
+      merged.push(incoming);
       changed = true;
     } else {
       const incomingTime = incoming.updatedAt || 0;
       const existingTime = existing.updatedAt || 0;
 
       if (incomingTime > existingTime) {
-        map.set(incoming.id, incoming);
+        merged.push(incoming);
         changed = true;
       } else if (incomingTime === existingTime) {
         // Se ambos possuem mesmo timestamp, preserva a versão que tiver contagem de ações de turno mais detalhada
@@ -52,41 +60,66 @@ function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]
         const incSum = (incActions.parryCount || 0) + (incActions.dodgeCount || 0) + (incActions.blockCount || 0);
         const extSum = (extActions.parryCount || 0) + (extActions.dodgeCount || 0) + (extActions.blockCount || 0);
         if (incSum > extSum) {
-          map.set(incoming.id, incoming);
+          merged.push(incoming);
           changed = true;
+        } else {
+          merged.push(existing);
         }
+      } else {
+        merged.push(existing);
       }
     }
   }
 
-  const merged = Array.from(map.values());
+  // Se havia personagens na lista local que foram excluídos na lista recebida
+  if (currentList.some((n) => !incomingMap.has(n.id))) {
+    changed = true;
+  }
+
   return { merged, changed };
 }
 
 function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { merged: Combat[]; changed: boolean } {
   let changed = false;
-  const map = new Map<string, Combat>();
-  currentCombats.forEach((c) => map.set(c.id, c));
+  const currentMap = new Map<string, Combat>();
+  currentCombats.forEach((c) => currentMap.set(c.id, c));
+
+  const incomingMap = new Map<string, Combat>();
+  incomingCombats.forEach((c) => incomingMap.set(c.id, c));
+
+  const merged: Combat[] = [];
 
   for (const incoming of incomingCombats) {
-    const existing = map.get(incoming.id);
+    const existing = currentMap.get(incoming.id);
     if (!existing) {
-      map.set(incoming.id, incoming);
+      merged.push(incoming);
       changed = true;
     } else {
       const { merged: mergedNpcs, changed: npcsChanged } = mergeNpcLists(existing.npcs || [], incoming.npcs || []);
-      if (npcsChanged) {
+      const playerIdsChanged = JSON.stringify(existing.playerIds || []) !== JSON.stringify(incoming.playerIds || []);
+      const editorIdsChanged = JSON.stringify(existing.editorUserIds || []) !== JSON.stringify(incoming.editorUserIds || []);
+      const nameChanged = existing.name !== incoming.name;
+      const isActiveChanged = existing.isActive !== incoming.isActive;
+
+      if (npcsChanged || playerIdsChanged || editorIdsChanged || nameChanged || isActiveChanged) {
         changed = true;
       }
-      map.set(incoming.id, {
+      merged.push({
         ...existing,
         ...incoming,
         npcs: mergedNpcs,
+        playerIds: incoming.playerIds !== undefined ? incoming.playerIds : existing.playerIds,
+        editorUserIds: incoming.editorUserIds !== undefined ? incoming.editorUserIds : existing.editorUserIds,
+        isActive: incoming.isActive !== undefined ? incoming.isActive : existing.isActive,
       });
     }
   }
 
-  const merged = Array.from(map.values());
+  // Se havia combates locais que foram excluídos remotamente
+  if (currentCombats.some((c) => !incomingMap.has(c.id))) {
+    changed = true;
+  }
+
   return { merged, changed };
 }
 
@@ -100,9 +133,9 @@ const DEFAULT_USERS: UserAccount[] = [
     createdAt: new Date().toLocaleDateString('pt-BR'),
   },
   {
-    id: 'user-espectador',
-    name: 'Espectador',
-    role: 'visualizador',
+    id: 'user-jogador',
+    name: 'Jogador',
+    role: 'jogador',
     password: '123',
     needsPasswordReset: false,
     createdAt: new Date().toLocaleDateString('pt-BR'),
@@ -217,27 +250,72 @@ export default function App() {
   }, [users]);
 
   // Current Logged-in User
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    try {
+      if (typeof window !== 'undefined' && window.parent && (window.parent as any).hubUser) {
+        return (window.parent as any).hubUser;
+      }
+      const saved = localStorage.getItem('hounds_active_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id) return parsed;
+      }
+    } catch (e) {}
+    return null;
+  });
 
   const [activeCombatId, setActiveCombatId] = useState<string>(() => {
-    return combats[0]?.id || 'combat-floresta-sombria';
+    try {
+      const saved = localStorage.getItem(ACTIVE_COMBAT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed === 'string' && combats.some((c) => c.id === parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return combats[0]?.id || 'combat-vazio';
   });
+
+  // Salva Combate Ativo no LocalStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(activeCombatId));
+    } catch (e) {}
+  }, [activeCombatId]);
 
   const activeCombat = combats.find((c) => c.id === activeCombatId) || combats[0];
 
-  // Lista unificada: Personagens Fixos + NPCs específicos do combate ativo
-  // Garante que todos os Personagens (player) em players ou em combates estejam sempre presentes
+  // IDs dos personagens de jogadores visíveis no combate ativo (por padrão, todos)
+  const activeCombatPlayerIds = useMemo(() => {
+    if (activeCombat && Array.isArray(activeCombat.playerIds)) {
+      return activeCombat.playerIds;
+    }
+    return players.map((p) => p.id);
+  }, [activeCombat, players]);
+
+  // Lista unificada: Personagens Visíveis no Combate + NPCs específicos do combate ativo
   const allCharacters = useMemo(() => {
-    const list: NPC[] = [...players];
-    const seen = new Set(players.map((p) => p.id));
+    const list: NPC[] = [];
+    const seen = new Set<string>();
+    const activePlayerSet = new Set(activeCombatPlayerIds);
+
+    // Personagens jogadores ativos
+    for (const p of players) {
+      if (activePlayerSet.has(p.id) && !seen.has(p.id)) {
+        seen.add(p.id);
+        list.push(p);
+      }
+    }
     for (const c of combats) {
       for (const n of c.npcs || []) {
-        if (n.characterType === 'player' && !seen.has(n.id)) {
+        if (n.characterType === 'player' && activePlayerSet.has(n.id) && !seen.has(n.id)) {
           seen.add(n.id);
           list.push({ ...n, isVisibleToPlayer: true });
         }
       }
     }
+    // NPCs específicos do combate ativo
     for (const n of activeCombat?.npcs || []) {
       if (n.characterType !== 'player' && !seen.has(n.id)) {
         seen.add(n.id);
@@ -245,7 +323,7 @@ export default function App() {
       }
     }
     return list;
-  }, [players, combats, activeCombat]);
+  }, [players, combats, activeCombat, activeCombatPlayerIds]);
 
   const [selectedNpcId, setSelectedNpcId] = useState<string>(() => {
     return allCharacters[0]?.id || '';
@@ -262,7 +340,19 @@ export default function App() {
   const [combatManagerOpen, setCombatManagerOpen] = useState(false);
   const [conditionsCrudOpen, setConditionsCrudOpen] = useState(false);
   const [userAccountsModalOpen, setUserAccountsModalOpen] = useState(false);
-  const [loginModalOpen, setLoginModalOpen] = useState(true);
+  const [loginModalOpen, setLoginModalOpen] = useState<boolean>(() => {
+    try {
+      if (typeof window !== 'undefined' && window.parent && (window.parent as any).hubUser) {
+        return false;
+      }
+      const saved = localStorage.getItem('hounds_active_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id) return false;
+      }
+    } catch (e) {}
+    return true;
+  });
   const [damageModalNpc, setDamageModalNpc] = useState<NPC | null>(null);
   const [avatarModalNpc, setAvatarModalNpc] = useState<NPC | null>(null);
   const [weaponModalState, setWeaponModalState] = useState<{ isOpen: boolean; weapon?: Weapon | null }>({
@@ -271,6 +361,18 @@ export default function App() {
   });
   const [systemLogModalOpen, setSystemLogModalOpen] = useState(false);
   const [systemLogsCount, setSystemLogsCount] = useState(0);
+  const [playerPermsModalOpen, setPlayerPermsModalOpen] = useState(false);
+  const [combatPlayersModalOpen, setCombatPlayersModalOpen] = useState(false);
+  const [editorUserIds, setEditorUserIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('gurps_combat_master_editors_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
 
   // View Mode: 'sheets' | 'tactical' | 'split'
   const [activeViewMode, setActiveViewMode] = useState<ViewMode>('tactical');
@@ -502,7 +604,7 @@ export default function App() {
           });
         }
         if (payload.activeCombatId && payload.activeCombatId !== stateRef.current.activeCombatId) {
-          if (msgTime > (lastLocalEditTimestampRef.current || 0)) {
+          if (currentUser?.role !== 'mestre' || msgTime > (lastLocalEditTimestampRef.current || 0)) {
             stateRef.current.activeCombatId = payload.activeCombatId;
             setActiveCombatId(payload.activeCombatId);
           }
@@ -670,6 +772,7 @@ export default function App() {
 
   // Combat Handlers
   const handleSelectCombat = (id: string) => {
+    if (currentUser && currentUser.role !== 'mestre') return;
     setActiveCombatId(id);
     const target = combats.find((c) => c.id === id);
     // Preserva o personagem selecionado se for um Personagem fixo; caso contrário ajusta
@@ -693,12 +796,72 @@ export default function App() {
       description,
       createdAt: new Date().toLocaleDateString('pt-BR'),
       npcs: [],
+      playerIds: players.map((p) => p.id), // Por padrão todos os personagens entram ativos
+      isActive: true,
     };
     const updated = [newCombat, ...combats];
     setCombats(updated);
     setActiveCombatId(id);
+    if (players.length > 0) {
+      setSelectedNpcId(players[0].id);
+    }
     broadcastSync(updated, undefined, undefined, id);
     setCombatManagerOpen(false);
+  };
+
+  const handleToggleCombatActive = (id: string) => {
+    const target = combats.find((c) => c.id === id);
+    if (!target) return;
+    const newActiveState = target.isActive === false ? true : false;
+    const updated = combats.map((c) => (c.id === id ? { ...c, isActive: newActiveState } : c));
+    setCombats(updated);
+
+    if (!newActiveState && activeCombatId === id) {
+      const remainingActive = updated.filter(
+        (c) => c.isActive !== false && c.id !== 'combat-vazio' && !c.name.toLowerCase().includes('vazio')
+      );
+      const nextId =
+        remainingActive.length > 0
+          ? remainingActive[0].id
+          : updated.find((c) => c.id === 'combat-vazio')?.id || 'combat-vazio';
+      setActiveCombatId(nextId);
+      broadcastSync(updated, undefined, undefined, nextId);
+    } else {
+      broadcastSync(updated);
+    }
+  };
+
+  const handleTogglePlayerInCombat = (playerId: string) => {
+    if (!activeCombat) return;
+    const current = activeCombatPlayerIds;
+    const isPresent = current.includes(playerId);
+    const updatedIds = isPresent ? current.filter((id) => id !== playerId) : [...current, playerId];
+    const targetPlayer = players.find((p) => p.id === playerId);
+    
+    const updatedCombats = combats.map((c) =>
+      c.id === activeCombat.id ? { ...c, playerIds: updatedIds } : c
+    );
+    setCombats(updatedCombats);
+    broadcastSync(updatedCombats);
+    if (!isPresent) {
+      setSelectedNpcId(playerId);
+    } else if (selectedNpcId === playerId) {
+      const rem = allCharacters.filter((c) => c.id !== playerId);
+      if (rem.length > 0) setSelectedNpcId(rem[0].id);
+    }
+  };
+
+  const handleSetAllPlayersInCombat = (show: boolean) => {
+    if (!activeCombat) return;
+    const updatedIds = show ? players.map((p) => p.id) : [];
+    const updatedCombats = combats.map((c) =>
+      c.id === activeCombat.id ? { ...c, playerIds: updatedIds } : c
+    );
+    setCombats(updatedCombats);
+    broadcastSync(updatedCombats);
+    if (show && players.length > 0) {
+      setSelectedNpcId(players[0].id);
+    }
   };
 
   const handleDeleteCombat = (id: string) => {
@@ -994,6 +1157,37 @@ export default function App() {
     setLoginModalOpen(true);
   };
 
+  const handleTogglePlayerPermission = (userId: string) => {
+    const next = editorUserIds.includes(userId)
+      ? editorUserIds.filter((id) => id !== userId)
+      : [...editorUserIds, userId];
+    setEditorUserIds(next);
+    try {
+      localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(next));
+    } catch {}
+    if (activeCombat) {
+      const updatedCombat = { ...activeCombat, editorUserIds: next };
+      const updatedCombats = combats.map((c) => (c.id === activeCombat.id ? updatedCombat : c));
+      setCombats(updatedCombats);
+      broadcastSync(updatedCombats);
+    }
+  };
+
+  const handleSetAllPlayerPermissions = (allow: boolean) => {
+    const playerUsers = users.filter((u) => u.role === 'jogador');
+    const next = allow ? playerUsers.map((u) => u.id) : [];
+    setEditorUserIds(next);
+    try {
+      localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(next));
+    } catch {}
+    if (activeCombat) {
+      const updatedCombat = { ...activeCombat, editorUserIds: next };
+      const updatedCombats = combats.map((c) => (c.id === activeCombat.id ? updatedCombat : c));
+      setCombats(updatedCombats);
+      broadcastSync(updatedCombats);
+    }
+  };
+
   // Log and Damage Handlers
   const handleApplyDamage = (
     npcId: string,
@@ -1265,7 +1459,10 @@ export default function App() {
     e.target.value = '';
   };
 
-  const isPlayerUser = currentUser?.role === 'jogador' || currentUser?.role === 'visualizador';
+  const isPlayerUser = currentUser?.role === 'jogador';
+  const isMaster = currentUser?.role === 'mestre';
+  const effectiveEditorIds = activeCombat?.editorUserIds || editorUserIds;
+  const canEditCurrent = isMaster || (currentUser?.role === 'jogador' && (effectiveEditorIds.includes(currentUser.id) || effectiveEditorIds.includes(currentUser.name)));
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
@@ -1295,6 +1492,9 @@ export default function App() {
         systemLogsCount={systemLogsCount}
         activeViewMode={activeViewMode}
         onSelectViewMode={setActiveViewMode}
+        onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
+        editorCount={effectiveEditorIds.length}
+        canEditCurrent={canEditCurrent}
       />
 
       {/* 2. BARRA DE PERSONAGENS & NPCS (Espalha até a direita, filtros na esquerda) */}
@@ -1303,7 +1503,7 @@ export default function App() {
         selectedNpcId={selectedNpcId}
         onSelectNpc={setSelectedNpcId}
         onAddNewNpc={handleAddNewNpc}
-        onAddNewPlayer={handleAddNewPlayer}
+        onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
         onUpdateNpc={handlePartialUpdateNpc}
         currentUserRole={currentUser?.role || 'mestre'}
       />
@@ -1325,6 +1525,13 @@ export default function App() {
                 setSelectedNpcId(npcId);
                 setActiveViewMode('split');
               }}
+              hasEditPermission={canEditCurrent}
+              onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
+              editorCount={effectiveEditorIds.length}
+              users={users}
+              editorUserIds={effectiveEditorIds}
+              onTogglePlayerPermission={handleTogglePlayerPermission}
+              onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
             />
           </div>
         ) : activeViewMode === 'split' ? (
@@ -1340,6 +1547,13 @@ export default function App() {
                 onUpdateNpc={handleUpdateNpc}
                 currentUserRole={currentUser?.role || 'mestre'}
                 onOpenFullNpcSheet={(npcId) => setSelectedNpcId(npcId)}
+                hasEditPermission={canEditCurrent}
+                onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
+                editorCount={effectiveEditorIds.length}
+                users={users}
+                editorUserIds={effectiveEditorIds}
+                onTogglePlayerPermission={handleTogglePlayerPermission}
+                onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
               />
             </div>
             <div className="w-full xl:w-5/12 shrink-0 xl:sticky xl:top-14">
@@ -1357,6 +1571,7 @@ export default function App() {
                   }
                   isPlayerUser={isPlayerUser}
                   currentUserRole={currentUser?.role || 'mestre'}
+                  hasEditPermission={canEditCurrent}
                 />
               ) : (
                 <div className="py-16 text-center text-xs text-slate-400 bg-slate-900/60 rounded-2xl border border-slate-800 p-8">
@@ -1422,6 +1637,7 @@ export default function App() {
                   }
                   isPlayerUser={isPlayerUser}
                   currentUserRole={currentUser?.role || 'mestre'}
+                  hasEditPermission={canEditCurrent}
                 />
               ) : (
                 <div className="py-12 text-center text-xs text-slate-400">
@@ -1493,6 +1709,27 @@ export default function App() {
         />
       )}
 
+      {/* Player Permissions Modal (Mestre concede permissão de edição) */}
+      <PlayerPermissionsModal
+        isOpen={playerPermsModalOpen}
+        onClose={() => setPlayerPermsModalOpen(false)}
+        users={users}
+        editorUserIds={effectiveEditorIds}
+        onTogglePermission={handleTogglePlayerPermission}
+        onSetAllPermissions={handleSetAllPlayerPermissions}
+      />
+
+      {/* Combat Players Modal (+ Personagens: Gerenciar personagens ativos no combate) */}
+      <CombatPlayersModal
+        isOpen={combatPlayersModalOpen}
+        onClose={() => setCombatPlayersModalOpen(false)}
+        players={players}
+        activePlayerIds={activeCombatPlayerIds}
+        onTogglePlayer={handleTogglePlayerInCombat}
+        onSetAllPlayers={handleSetAllPlayersInCombat}
+        onAddNewPlayer={handleAddNewPlayer}
+      />
+
       {/* Login & Redefinição de Senha Modal */}
       <LoginModal
         isOpen={loginModalOpen || !currentUser}
@@ -1559,6 +1796,7 @@ export default function App() {
         onCreateCombat={handleCreateCombat}
         onDeleteCombat={handleDeleteCombat}
         onRenameCombat={handleRenameCombat}
+        onToggleCombatActive={handleToggleCombatActive}
       />
 
       {/* System Debug / Sync Log Modal */}

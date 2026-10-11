@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Combat } from '../types/rpg';
-import { Swords, Plus, Trash2, Edit2, X, EyeOff } from 'lucide-react';
+import { Swords, Plus, Trash2, Edit2, X, Eye, EyeOff } from 'lucide-react';
 
 interface CombatManagerModalProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface CombatManagerModalProps {
   onCreateCombat: (name: string, description?: string) => void;
   onDeleteCombat: (id: string) => void;
   onRenameCombat: (id: string, name: string, description?: string) => void;
+  onToggleCombatActive?: (id: string) => void;
 }
 
 export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
@@ -22,14 +23,21 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   onCreateCombat,
   onDeleteCombat,
   onRenameCombat,
+  onToggleCombatActive,
 }) => {
   const [newCombatName, setNewCombatName] = useState('');
   const [newCombatDesc, setNewCombatDesc] = useState('');
   const [editingCombatId, setEditingCombatId] = useState<string | null>(null);
+  const [deletingCombatId, setDeletingCombatId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
 
   if (!isOpen) return null;
+
+  // Filtra "Combate Vazio": ele é apenas um modo de visualização sem combate, não deve aparecer no CRUD
+  const validCombats = combats.filter(
+    (c) => c.id !== 'combat-vazio' && !c.name?.toLowerCase().includes('vazio')
+  );
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,19 +97,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               className="bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
           </div>
-          <div className="flex items-center justify-between gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => {
-                onCreateCombat('Combate Vazio (Ocultar Tela)', 'Cena vazia e oculta para os jogadores.');
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-xs rounded-lg border border-slate-700 transition-colors"
-              title="Criar um combate sem nenhum NPC para ocultar a tela dos jogadores"
-            >
-              <EyeOff size={13} className="text-amber-400" />
-              <span>+ Combate Vazio (Oculto)</span>
-            </button>
-
+          <div className="flex items-center justify-end gap-2 pt-1">
             <button
               type="submit"
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors ml-auto shadow-sm active:scale-95"
@@ -115,22 +111,52 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
         {/* Existing Combats List */}
         <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Combates Cadastrados ({combats.length})
+            Combates Cadastrados ({validCombats.length})
           </div>
-          {combats.map((c) => {
-            const isActive = c.id === activeCombatId;
+          {validCombats.map((c) => {
+            const isCurrentlySelected = c.id === activeCombatId;
             const isEditing = editingCombatId === c.id;
+            const isDeleting = deletingCombatId === c.id;
+            const isInactive = c.isActive === false;
 
             return (
               <div
                 key={c.id}
                 className={`p-3 rounded-xl border transition-all ${
-                  isActive
+                  isCurrentlySelected
                     ? 'bg-slate-850 border-amber-500/60 ring-1 ring-amber-500/40 shadow-sm'
+                    : isInactive
+                    ? 'bg-slate-950/40 border-slate-800/80 opacity-75 hover:opacity-100'
                     : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
                 }`}
               >
-                {isEditing ? (
+                {isDeleting ? (
+                  /* Confirmação segura de exclusão inline: nunca fecha sozinho */
+                  <div className="flex items-center justify-between gap-3 p-1">
+                    <div className="text-xs text-rose-300 font-medium">
+                      Excluir <strong>"{c.name}"</strong> de vez? Esta ação não pode ser desfeita.
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setDeletingCombatId(null)}
+                        className="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg font-medium"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onDeleteCombat(c.id);
+                          setDeletingCombatId(null);
+                        }}
+                        className="px-3 py-1 text-xs text-white bg-rose-600 hover:bg-rose-500 font-bold rounded-lg shadow-sm"
+                      >
+                        Confirmar Exclusão
+                      </button>
+                    </div>
+                  </div>
+                ) : isEditing ? (
                   <div className="space-y-2">
                     <input
                       type="text"
@@ -147,12 +173,14 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                     />
                     <div className="flex justify-end gap-1.5">
                       <button
+                        type="button"
                         onClick={() => setEditingCombatId(null)}
                         className="px-2 py-1 text-xs text-slate-400 hover:text-white"
                       >
                         Cancelar
                       </button>
                       <button
+                        type="button"
                         onClick={() => saveEdit(c.id)}
                         className="px-2.5 py-1 text-xs bg-amber-500 text-slate-950 font-bold rounded"
                       >
@@ -163,12 +191,21 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                 ) : (
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white truncate">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs font-bold truncate ${isInactive ? 'text-slate-400 line-through' : 'text-white'}`}>
                           {c.name}
                         </span>
-                        {isActive && (
+                        {isCurrentlySelected && (
                           <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded font-medium">
+                            Na Mesa
+                          </span>
+                        )}
+                        {isInactive ? (
+                          <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded font-medium">
+                            Inativo
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-medium">
                             Ativo
                           </span>
                         )}
@@ -179,15 +216,17 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                         </div>
                       )}
                       <div className="flex items-center gap-3 text-[10px] text-slate-500 mt-1 font-mono">
-                        <span>{c.npcs.length} NPCs</span>
+                        <span>{c.npcs?.length || 0} NPCs</span>
                         <span>·</span>
                         <span>{c.createdAt}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      {!isActive && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Botão Selecionar para Mesa (apenas se combate estiver ativo) */}
+                      {!isCurrentlySelected && !isInactive && (
                         <button
+                          type="button"
                           onClick={() => {
                             onSelectCombat(c.id);
                             onClose();
@@ -197,20 +236,40 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                           Selecionar
                         </button>
                       )}
+
+                      {/* Botão Ativar / Inativar Combate */}
+                      {onToggleCombatActive && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleCombatActive(c.id)}
+                          className={`p-1.5 rounded-lg border transition-colors ${
+                            isInactive
+                              ? 'text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 border-emerald-800/50'
+                              : 'text-slate-400 hover:text-slate-200 bg-slate-800 border-slate-700'
+                          }`}
+                          title={isInactive ? 'Ativar combate (exibir na barra principal)' : 'Inativar combate (ocultar da barra principal)'}
+                        >
+                          {isInactive ? <Eye size={13} /> : <EyeOff size={13} />}
+                        </button>
+                      )}
+
+                      {/* Editar Nome e Descrição */}
                       <button
+                        type="button"
                         onClick={() => startEdit(c)}
-                        className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg"
+                        className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800"
+                        title="Renomear ou editar descrição"
                       >
                         <Edit2 size={13} />
                       </button>
-                      {combats.length > 1 && (
+
+                      {/* Excluir Combate (com confirmação inline segura) */}
+                      {validCombats.length > 1 && (
                         <button
-                          onClick={() => {
-                            if (confirm(`Tem certeza que deseja excluir o combate "${c.name}"?`)) {
-                              onDeleteCombat(c.id);
-                            }
-                          }}
-                          className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg"
+                          type="button"
+                          onClick={() => setDeletingCombatId(c.id)}
+                          className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg border border-rose-900/30"
+                          title="Excluir combate"
                         >
                           <Trash2 size={13} />
                         </button>

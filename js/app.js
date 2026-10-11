@@ -135,8 +135,12 @@ function onData(kind) {
    Start
    ===================================================================== */
 setCollapsed(lstore('hounds_rail_collapsed') === '1');
-renderMenu();
-if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+if (!location.hash) {
+  var savedRoute = lstore('hounds_route');
+  if (savedRoute) {
+    try { location.hash = savedRoute; } catch (e) {}
+  }
+}
 onRoute();
 
 function connect() {

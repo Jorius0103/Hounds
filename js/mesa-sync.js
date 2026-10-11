@@ -24,7 +24,7 @@
    deletedCombatIds lists deleted combats, so a Mesa still holding one
    drops it on merge instead of saving it back.
    ===================================================================== */
-var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1' };
+var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1' };
 var MesaSync = (function () {
   var CH = 60000, head = null, loadedRev = null, state = null, listeners = [], timer = null, pending = null, writing = false;
   var readyRes, ready = new Promise(function (r) { readyRes = r; }), gotHead = false, lastJson = null, askTimer = null;
@@ -81,8 +81,18 @@ var MesaSync = (function () {
   function onNpc(m) { if (m && m.npc && mesaOpen()) push({ type: 'SYNC_NPC', clientId: 'hub', timestamp: m.ts || Date.now(), npc: m.npc }); }
   function canSave() {
     var u = window.hubUser; if (!u || !W.store || !canWrite()) return false;
-    if (u.role === 'visualizador') return false;
-    return !!head || u.role === 'mestre';
+    if (u.role === 'mestre') return true;
+    // Jogador por padrão tem permissão de espectador (somente leitura)
+    // Só pode salvar no banco se tiver recebido permissão de edição do Mestre
+    try {
+      var editors = JSON.parse(localStorage.getItem('gurps_combat_master_editors_v1') || '[]');
+      if (Array.isArray(editors) && (editors.indexOf(u.id) !== -1 || editors.indexOf(u.name) !== -1)) return true;
+      var combats = JSON.parse(localStorage.getItem(MESA_LS.combats) || '[]');
+      var actId = JSON.parse(localStorage.getItem(MESA_LS.activeCombatId) || 'null');
+      var activeCb = combats.filter(function (c) { return c.id === actId; })[0] || combats[0];
+      if (activeCb && Array.isArray(activeCb.editorUserIds) && (activeCb.editorUserIds.indexOf(u.id) !== -1 || activeCb.editorUserIds.indexOf(u.name) !== -1)) return true;
+    } catch (e) {}
+    return false;
   }
   function save(p) {
     if (!canSave()) return Promise.resolve();

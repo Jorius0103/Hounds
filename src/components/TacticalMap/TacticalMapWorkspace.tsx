@@ -5,7 +5,7 @@ import {
   FacingDirection,
   TACTICAL_MAP_PRESETS,
 } from '../../types/tactical';
-import { NPC } from '../../types/rpg';
+import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
 import { TacticalTokenSidebar } from './TacticalTokenSidebar';
 import { TacticalQuickActionPopover } from './TacticalQuickActionPopover';
@@ -42,6 +42,13 @@ interface TacticalMapWorkspaceProps {
   onUpdateNpc: (updated: NPC) => void;
   currentUserRole: string;
   onOpenFullNpcSheet: (npcId: string) => void;
+  hasEditPermission?: boolean;
+  onOpenPlayerPermissions?: () => void;
+  editorCount?: number;
+  users?: UserAccount[];
+  editorUserIds?: string[];
+  onTogglePlayerPermission?: (userId: string) => void;
+  onSetAllPlayerPermissions?: (allow: boolean) => void;
 }
 
 export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
@@ -53,6 +60,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   onUpdateNpc,
   currentUserRole,
   onOpenFullNpcSheet,
+  hasEditPermission = false,
+  onOpenPlayerPermissions,
+  editorCount = 0,
+  users = [],
+  editorUserIds = [],
+  onTogglePlayerPermission,
+  onSetAllPlayerPermissions,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -345,6 +359,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Handle token drag start
   const handleTokenMouseDown = (e: React.MouseEvent, token: TacticalToken) => {
     if (e.button !== 0 || token.isPinned) return;
+    const tokenNpc = characterMap.get(token.npcId);
+    const canEditToken = isMaster || (tokenNpc?.characterType === 'player' && hasEditPermission);
+    if (!canEditToken) return;
     e.stopPropagation();
     setDraggedTokenId(token.id);
     setDragTokenOrigin({ col: token.gridX, row: token.gridY });
@@ -399,6 +416,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onClearMarkers={handleClearMarkers}
           onAutoPlaceTokens={handleAutoPlaceTokens}
           currentUserRole={currentUserRole}
+          onOpenPlayerPermissions={onOpenPlayerPermissions}
+          editorCount={editorCount}
+          users={users}
+          editorUserIds={editorUserIds}
+          onTogglePlayerPermission={onTogglePlayerPermission}
+          onSetAllPlayerPermissions={onSetAllPlayerPermissions}
         />
       </div>
 

@@ -24,9 +24,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs'>('all');
 
-  // Se jogador ou visualizador, exibe apenas os que estão visíveis (personagens são sempre visíveis)
+  // Se jogador, exibe apenas os que estão visíveis (personagens são sempre visíveis)
   const rawDisplayedNpcs =
-    currentUserRole === 'jogador' || currentUserRole === 'visualizador'
+    currentUserRole === 'jogador'
       ? npcs.filter((n) => n.characterType === 'player' || n.isVisibleToPlayer !== false)
       : npcs;
 
@@ -103,10 +103,10 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 <button
                   onClick={onAddNewPlayer}
                   className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-800 hover:bg-emerald-700 text-emerald-100 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap border border-emerald-600/50"
-                  title="Cadastrar Novo Personagem de Jogador"
+                  title="Gerenciar personagens no combate ativo ou cadastrar novo"
                 >
                   <UserPlus size={12} className="text-emerald-300" />
-                  <span>+ Personagem</span>
+                  <span>+ Personagens</span>
                 </button>
               )}
 
@@ -156,7 +156,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         npc.turnActions.usedFatigueThisTurn)
                   );
 
-                const isViewerOrPlayer = currentUserRole === 'jogador' || currentUserRole === 'visualizador';
+                const isViewerOrPlayer = currentUserRole === 'jogador';
                 const showNpcWoundedOrDead = !isViewerOrPlayer || isPlayerChar;
                 const showDeadMarker = showNpcWoundedOrDead && isDeadNpc;
                 const showAlertBorder = showNpcWoundedOrDead && hasAlerts;
