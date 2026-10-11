@@ -251,6 +251,7 @@ function errorText(e) {
     not_granted: 'Você não tem permissão para alterar este hub.',
     upstream_auth: 'Sua sessão expirou. Recarregue a página e tente de novo.',
     cycle: 'Esse mapa pai criaria um ciclo na hierarquia. Escolha outro.',
+    loc_cycle: 'Um local não pode ficar dentro dele mesmo nem de um local que está dentro dele. Escolha outro.',
     // Firebase
     'permission-denied': 'Você não tem permissão para alterar este hub. Recarregue a página e entre de novo.',
     'unauthenticated': 'Sua sessão expirou. Recarregue a página e tente de novo.',

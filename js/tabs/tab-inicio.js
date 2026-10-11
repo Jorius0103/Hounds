@@ -20,7 +20,7 @@ function renderHomePage() {
   var cards = [
     card('#mesa', ICON.mesa, 'Mesa de Combate', 'Combates, NPCs e o log de cada round', 'feature'),
     card('#maps', ICON.maps, 'Maps', count('maps', W.maps.length, 'mapa', 'mapas')),
-    card('#locais', ICON.pin, 'Localização', count('locations', W.locations.length, 'local', 'locais')),
+    card('#locais', ICON.pin, 'Locais', count('locations', W.locations.length, 'local', 'locais')),
     card('#personagens', ICON.user, 'Personagens', count('characters', W.characters.length, 'personagem', 'personagens')),
     card('#organizacoes', ICON.org, 'Organizações', count('organizations', W.organizations.length, 'organização', 'organizações')),
     card('#anotacoes', ICON.notes, 'Anotações', notesMeta)

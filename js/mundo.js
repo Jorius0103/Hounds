@@ -13,25 +13,32 @@
    ===================================================================== */
 /** @type {World} */
 var W = { store: null, maps: [], locations: [], characters: [], organizations: [], raw: { maps: [], locations: [], characters: [], organizations: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [], loaded: { maps: false, locations: false, characters: false, organizations: false, users: false, notebooks: false, notes: false },
-          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, parent: {}, kids: {} };
+          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
 
-function indexMaps() {
-  var idx = /** @type {Record<string, HMap>} */ ({}); W.maps.forEach(function (m) { idx[m.id] = m; }); W.mapIdx = idx;
-  // Effective parent: ignore missing parents, self references and anything that would loop.
+// Effective parent of each item of a tree (maps, locations): ignore missing parents,
+// self references and anything that would loop. Also the children of each id, by name.
+/** @template {{ id: string, name: string, parentId?: string | null }} T @param {T[]} list @param {Record<string, T>} idx */
+function treeOf(list, idx) {
   var parent = /** @type {Record<string, string | null>} */ ({});
-  W.maps.forEach(function (m) {
+  list.forEach(function (m) {
     var p = m.parentId;
     if (!p || !idx[p] || p === m.id) { parent[m.id] = null; return; }
     var seen = {}; seen[m.id] = true; var cur = p, loop = false;
     while (cur) { if (seen[cur]) { loop = true; break; } seen[cur] = true; cur = idx[cur] && idx[cur].parentId; if (cur && !idx[cur]) cur = null; }
     parent[m.id] = loop ? null : p;
   });
-  W.parent = parent;
-  var kids = /** @type {Record<string, HMap[]>} */ ({}); W.maps.forEach(function (m) { var p = parent[m.id] || ''; (kids[p] = kids[p] || []).push(m); });
+  var kids = /** @type {Record<string, T[]>} */ ({}); list.forEach(function (m) { var p = parent[m.id] || ''; (kids[p] = kids[p] || []).push(m); });
   Object.keys(kids).forEach(function (k) { kids[k].sort(byName); });
-  W.kids = kids;
+  return { parent: parent, kids: kids };
 }
-function indexLocations() { var idx = /** @type {Record<string, HLocation>} */ ({}); W.locations.forEach(function (l) { idx[l.id] = l; }); W.locIdx = idx; }
+function indexMaps() {
+  var idx = /** @type {Record<string, HMap>} */ ({}); W.maps.forEach(function (m) { idx[m.id] = m; }); W.mapIdx = idx;
+  var t = treeOf(W.maps, idx); W.parent = t.parent; W.kids = t.kids;
+}
+function indexLocations() {
+  var idx = /** @type {Record<string, HLocation>} */ ({}); W.locations.forEach(function (l) { idx[l.id] = l; }); W.locIdx = idx;
+  var t = treeOf(W.locations, idx); W.locParent = t.parent; W.locKids = t.kids;
+}
 function indexCharacters() { var idx = /** @type {Record<string, Character>} */ ({}); W.characters.forEach(function (c) { idx[c.id] = c; }); W.charIdx = idx; }
 function mapById(id) { return W.mapIdx[id] || null; }
 function locById(id) { return W.locIdx[id] || null; }
@@ -44,6 +51,24 @@ function locChars(l) { return ((l && l.characterIds) || []).map(function (id) { 
 function mapPathText(id) { return mapChain(id).map(function (m) { return m.name; }).join(' › '); }
 function validParents(id) { var bad = {}; if (id) { bad[id] = true; mapDescendants(id).forEach(function (d) { bad[d] = true; }); } return bad; }
 function depthOf(id) { return mapChain(id).length; }
+// Locations form a tree too: a location can sit inside another (a tavern inside a city).
+function childLocs(id) { return W.locKids[id || ''] || []; }
+function locChain(id) { var out = [], cur = id, guard = 0; while (cur && W.locIdx[cur] && guard++ < 500) { out.unshift(W.locIdx[cur]); cur = W.locParent[cur]; } return out; }
+function locDescendants(id) { var out = []; childLocs(id).forEach(function (c) { out.push(c.id); out = out.concat(locDescendants(c.id)); }); return out; }
+function locPathText(id) { return locChain(id).map(function (l) { return l.name; }).join(' › '); }
+function badLocParents(id) { var bad = {}; if (id) { bad[id] = true; locDescendants(id).forEach(function (d) { bad[d] = true; }); } return bad; }
+function locParentOptions(selected, exclude, noneLabel) {
+  var out = '<option value="">' + esc(noneLabel) + '</option>';
+  (function walk(pid, depth) {
+    childLocs(pid).forEach(function (l) {
+      if (exclude && exclude[l.id]) return;
+      var pre = depth ? '   '.repeat(depth - 1) + '└ ' : '';
+      out += '<option value="' + esc(l.id) + '"' + (l.id === selected ? ' selected' : '') + '>' + pre + esc(l.name) + '</option>';
+      walk(l.id, depth + 1);
+    });
+  })(null, 0);
+  return out;
+}
 
 // Hierarchical <option>s, reused by every map selector.
 function mapOptions(selected, exclude, noneLabel) {
@@ -168,6 +193,10 @@ var Ops = {
   // second = { file, dims, removed } for image2, like the arguments for image.
   saveLocation: function (loc, fields, newFile, newDims, removeImage, second) {
     second = second || {};
+    // A parent this user cannot see is kept; one inside this location would loop.
+    var pid = fields.parentId || null;
+    if (!pid && loc && loc.parentId && !W.locIdx[loc.parentId] && rawHas('locations', loc.parentId)) pid = loc.parentId;
+    if (loc && pid && badLocParents(loc.id)[pid]) return Promise.reject({ code: 'loc_cycle' });
     var old = [loc && loc.image, loc && loc.image2];
     function pick(cur, file, dims, removed) {
       if (file) return W.store.upload(file).then(function (u) { return { ref: u.ref, w: dims.w, h: dims.h, type: u.type, size: u.size }; });
@@ -179,7 +208,7 @@ var Ops = {
       var cids = (fields.characterIds || []).slice(), mid = fields.mapId || null;
       if (loc) (loc.characterIds || []).forEach(function (id) { if (!W.charIdx[id] && rawHas('characters', id) && cids.indexOf(id) < 0) cids.push(id); });
       if (!mid && loc && loc.mapId && !W.mapIdx[loc.mapId] && rawHas('maps', loc.mapId)) mid = loc.mapId;
-      var body = { v: 1, name: fields.name, description: fields.description, image: image, image2: image2, characterIds: cids, mapId: mid, visible: fields.visible !== false, sharedWith: fields.sharedWith || (loc && loc.sharedWith) || [],
+      var body = { v: 1, name: fields.name, description: fields.description, image: image, image2: image2, characterIds: cids, mapId: mid, parentId: pid, visible: fields.visible !== false, sharedWith: fields.sharedWith || (loc && loc.sharedWith) || [],
                    position: (loc && loc.position) || null, createdBy: owner(loc), createdAt: (loc && loc.createdAt) || t, updatedAt: t };
       return W.store.put('locations', loc ? loc.id : null, body).then(function (id) {
         old.forEach(function (o) { if (o && o.ref && o.ref !== (image && image.ref) && o.ref !== (image2 && image2.ref)) W.store.dropImage(o.ref); });
@@ -187,15 +216,19 @@ var Ops = {
       });
     });
   },
+  // Sub-locations move up to the deleted location's parent (or to the top level).
   deleteLocation: function (l) {
-    return W.raw.maps.reduce(function (p, m) {
+    var up = l.parentId && rawHas('locations', l.parentId) ? l.parentId : null;
+    return W.raw.locations.filter(function (c) { return c.parentId === l.id; }).reduce(function (p, c) {
+      return p.then(function () { return W.store.patch('locations', c.id, { parentId: up, updatedAt: now() }); });
+    }, Promise.resolve()).then(function () { return W.raw.maps.reduce(function (p, m) {
       return p.then(function () {
         var col = 'maps/' + m.id + '/markers';
         return W.store.query(col, 'locationId', l.id).then(function (list) {
           return list.reduce(function (q, mk) { return q.then(function () { return W.store.patch(col, mk.id, { locationId: null, updatedAt: now() }); }); }, Promise.resolve());
         });
       });
-    }, Promise.resolve()).then(function () { return W.store.remove('locations', l.id); })
+    }, Promise.resolve()); }).then(function () { return W.store.remove('locations', l.id); })
       .then(function () { return W.store.dropImage(l.image && l.image.ref); })
       .then(function () { return W.store.dropImage(l.image2 && l.image2.ref); });
   },

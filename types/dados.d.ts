@@ -32,6 +32,8 @@ interface HLocation extends Doc {
   image2?: ImageInfo | null;
   characterIds?: string[];
   mapId?: string | null;
+  /** Local onde este fica (uma taverna dentro de uma cidade). */
+  parentId?: string | null;
   /** Reservado para coordenadas dentro do mapa. */
   position?: unknown;
 }
@@ -113,6 +115,10 @@ interface World {
   parent: Record<string, string | null>;
   /** Filhos de cada mapa. */
   kids: Record<string, HMap[]>;
+  /** Pai efetivo de cada local. */
+  locParent: Record<string, string | null>;
+  /** Filhos de cada local. */
+  locKids: Record<string, HLocation[]>;
 }
 
 /** Rota atual, de parseRoute() (js/rotas.js). */

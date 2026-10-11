@@ -11,6 +11,8 @@
      group only: click toggles · page only: click opens, ancestors stay open
      page + group: click opens and expands; again while open collapses it;
      the arrow only toggles. Collapsing a node collapses all descendants.
+     hideKids: the children stay in the tree (crumbs, titles) but are not
+     drawn; on a child's page the parent row is the current one.
    ===================================================================== */
 function mapNodes(pid) {
   return childMaps(pid).map(function (m) {
@@ -18,24 +20,26 @@ function mapNodes(pid) {
     return { id: 'map:' + m.id, label: m.name, icon: ICON.map, route: true, secret: isSecret(m), children: k.length ? mapNodes(m.id) : null };
   });
 }
+function locNodes(pid) {
+  return childLocs(pid).map(function (l) {
+    var k = childLocs(l.id);
+    return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l), children: k.length ? locNodes(l.id) : null };
+  });
+}
 function buildMenu() {
   return [
     { id: 'mesa', label: 'Mesa de Combate', icon: ICON.mesa, route: true },
-    { id: 'info', label: 'Informações', icon: ICON.info, children: [
-      { id: 'mundo', label: 'Mundo', icon: ICON.mundo, children: [
-        { id: 'maps', label: 'Maps', icon: ICON.maps, route: true, emptyText: W.loaded.maps ? 'Nenhum mapa ainda' : 'Carregando…', children: mapNodes(null) },
-        { id: 'locais', label: 'Localização', icon: ICON.pin, route: true, emptyText: W.loaded.locations ? 'Nenhum local ainda' : 'Carregando…',
-          children: W.locations.slice().sort(byName).map(function (l) { return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l) }; }) },
-        { id: 'chars', label: 'Personagens', icon: ICON.user, route: true, emptyText: W.loaded.characters ? 'Nenhum personagem ainda' : 'Carregando…',
-          children: W.characters.slice().sort(byName).map(function (c) { return { id: 'char:' + c.id, label: c.name, icon: ICON.user, route: true, secret: isSecret(c) }; }) },
-        { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, emptyText: W.loaded.organizations ? 'Nenhuma organização ainda' : 'Carregando…',
-          children: W.organizations.slice().sort(byName).map(function (o) { return { id: 'org:' + o.id, label: o.name, icon: ICON.org, route: true, secret: isSecret(o) }; }) }
-      ] }
-    ] }
-    ,
-    { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, emptyText: W.loaded.notebooks ? 'Nenhum título ainda' : 'Carregando…',
+    { id: 'mundo', label: 'Mundo', icon: ICON.mundo, children: [
+      { id: 'maps', label: 'Maps', icon: ICON.maps, route: true, hideKids: true, children: mapNodes(null) },
+      { id: 'locais', label: 'Locais', icon: ICON.pin, route: true, hideKids: true, children: locNodes(null) },
+      { id: 'chars', label: 'Personagens', icon: ICON.user, route: true, hideKids: true,
+        children: W.characters.slice().sort(byName).map(function (c) { return { id: 'char:' + c.id, label: c.name, icon: ICON.user, route: true, secret: isSecret(c) }; }) },
+      { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, hideKids: true,
+        children: W.organizations.slice().sort(byName).map(function (o) { return { id: 'org:' + o.id, label: o.name, icon: ICON.org, route: true, secret: isSecret(o) }; }) }
+    ] },
+    { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, hideKids: true,
       children: W.notebooks.slice().sort(byName).map(function (nb) {
-        return { id: 'nb:' + nb.id, label: nb.name, icon: ICON.notes, route: true, secret: isSecret(nb), emptyText: 'Nenhuma anotação',
+        return { id: 'nb:' + nb.id, label: nb.name, icon: ICON.notes, route: true, secret: isSecret(nb),
           children: nbNotes(nb.id).map(function (n) { return { id: 'note:' + n.id, label: n.title, icon: ICON.note, route: true, secret: isSecret(n) }; }) };
       }) }
   ].concat(isMestre() ? [{ id: 'users', label: 'Usuários', icon: ICON.users, route: true }] : []);
@@ -48,7 +52,7 @@ function descendants(id) { var out = []; ((byId[id] && byId[id].children) || [])
 var CHEV = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
 function renderNodes(list, depth) {
   return list.map(function (n) {
-    var size = depth ? 16 : 20, isGroup = !!n.children, isPage = !!n.route;
+    var size = depth ? 16 : 20, isGroup = !!n.children && !n.hideKids, isPage = !!n.route;
     var label = '<span class="label">' + esc(n.label) + '</span>' + (n.secret ? '<span class="secret-ico" title="Não está visível para todos">' + svg(EYE_OFF, 13, 2.2) + '</span>' : ''), row;
     if (isPage && isGroup) {
       row = '<div class="row"><a class="node-row" href="' + hrefFor(n.id) + '" data-id="' + esc(n.id) + '" data-act="page-group" title="' + esc(n.label) + '">' + svg(n.icon, size) + label + '</a>' +
@@ -73,7 +77,9 @@ function renderMenu() {
 function nodeEl(id) { var all = menuEl.querySelectorAll('.node'); for (var i = 0; i < all.length; i++) if (all[i].getAttribute('data-node') === id) return all[i]; return null; }
 function isShown(id) { var p = parentOf[id]; while (p) { if (!expanded[p]) return false; p = parentOf[p]; } return true; }
 function paintMenu() {
-  var cur = S.route ? S.route.node : null, path = cur ? ancestors(cur) : [];
+  var cur = S.route ? S.route.node : null;
+  while (cur && !nodeEl(cur)) cur = parentOf[cur];
+  var path = cur ? ancestors(cur) : [];
   Object.keys(byId).forEach(function (id) {
     var el = nodeEl(id); if (!el) return;
     var shown = isShown(id);
