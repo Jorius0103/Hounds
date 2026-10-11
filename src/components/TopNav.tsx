@@ -163,6 +163,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                   ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60 shadow-sm'
                   : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
+              style={{ height: '28px', flexShrink: 0 }}
               title={
                 canEditCurrent
                   ? 'Permissão de edição concedida pelo Mestre (você pode alterar sua ficha e movimentar seus tokens)'
@@ -171,13 +172,13 @@ export const TopNav: React.FC<TopNavProps> = ({
             >
               {canEditCurrent ? (
                 <>
-                  <ShieldCheck size={13} className="text-emerald-400" />
-                  <span className="text-[11px] font-bold">Modo Jogador (Edição Liberada)</span>
+                  <ShieldCheck size={13} className="text-emerald-400 shrink-0" />
+                  <span className="text-[11px] font-bold whitespace-nowrap">Modo Jogador (Edição Liberada)</span>
                 </>
               ) : (
                 <>
-                  <Eye size={13} className="text-slate-400" />
-                  <span className="text-[11px]">Modo Espectador (Leitura)</span>
+                  <Eye size={13} className="text-slate-400 shrink-0" />
+                  <span className="text-[11px] whitespace-nowrap">Modo Espectador (Leitura)</span>
                 </>
               )}
             </div>

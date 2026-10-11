@@ -1517,7 +1517,10 @@ export default function App() {
     const s = String(x).toLowerCase().trim();
     const cid = String(currentUser?.id || '').toLowerCase().trim();
     const cnm = String(currentUser?.name || '').toLowerCase().trim();
-    return s === cid || s === cnm || s === cid.replace(/^user-/, '') || cid === `user-${s}`;
+    const sC = s.replace(/^user-/, '');
+    const cidC = cid.replace(/^user-/, '');
+    const cnmC = cnm.replace(/^user-/, '');
+    return s === cid || s === cnm || sC === cidC || sC === cnmC || s === `user-${cnmC}` || cid === `user-${sC}`;
   });
   const canEditCurrent = isMaster || (currentUser?.role === 'jogador' && isEditor);
 

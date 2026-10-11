@@ -26,7 +26,7 @@
    Images the Mesa embeds as text (avatars) are sent once to the image
    storage and the state carries their address (see hostImgs).
    ===================================================================== */
-var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1' };
+var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1', editors: 'gurps_combat_master_editors_v1' };
 var MesaSync = (function () {
   var CH = 60000, head = null, loadedRev = null, state = null, listeners = [], timer = null, pending = null, writing = false;
   var readyRes, ready = new Promise(function (r) { readyRes = r; }), gotHead = false, lastJson = null, askTimer = null;
@@ -64,7 +64,7 @@ var MesaSync = (function () {
   }
   function fetchRev(h) {
     // A head written with the state inline (no pieces) is read as is.
-    if (Array.isArray(h.combats)) return Promise.resolve({ combats: h.combats, conditions: h.conditions, players: h.players, activeCombatId: h.activeCombatId || null, deletedCombatIds: h.deletedCombatIds });
+    if (Array.isArray(h.combats)) return Promise.resolve({ combats: h.combats, conditions: h.conditions, players: h.players, activeCombatId: h.activeCombatId || null, deletedCombatIds: h.deletedCombatIds, editors: h.editors || null });
     if (!(h.n > 0)) return Promise.resolve(null);
     return W.store.query('mesa_chunks', 'rev', h.rev).then(function (rows) {
       if (rows.length < h.n) return null;
@@ -153,12 +153,22 @@ var MesaSync = (function () {
     // Jogador por padrão tem permissão de espectador (somente leitura)
     // Só pode salvar no banco se tiver recebido permissão de edição do Mestre
     try {
+      var uid = String(u.id || '').toLowerCase().trim();
+      var unm = String(u.name || '').toLowerCase().trim();
+      var uidC = uid.replace(/^user-/, '');
+      var unmC = unm.replace(/^user-/, '');
+      var matchUser = function (x) {
+        if (!x) return false;
+        var s = String(x).toLowerCase().trim();
+        var sC = s.replace(/^user-/, '');
+        return s === uid || s === unm || sC === uidC || sC === unmC || s === 'user-' + unmC || uid === 'user-' + sC;
+      };
       var editors = JSON.parse(localStorage.getItem('gurps_combat_master_editors_v1') || '[]');
-      if (Array.isArray(editors) && (editors.indexOf(u.id) !== -1 || editors.indexOf(u.name) !== -1)) return true;
+      if (Array.isArray(editors) && editors.some(matchUser)) return true;
       var combats = JSON.parse(localStorage.getItem(MESA_LS.combats) || '[]');
       var actId = JSON.parse(localStorage.getItem(MESA_LS.activeCombatId) || 'null');
       var activeCb = combats.filter(function (c) { return c.id === actId; })[0] || combats[0];
-      if (activeCb && Array.isArray(activeCb.editorUserIds) && (activeCb.editorUserIds.indexOf(u.id) !== -1 || activeCb.editorUserIds.indexOf(u.name) !== -1)) return true;
+      if (activeCb && Array.isArray(activeCb.editorUserIds) && activeCb.editorUserIds.some(matchUser)) return true;
     } catch (e) {}
     return false;
   }
@@ -195,7 +205,16 @@ var MesaSync = (function () {
   return {
     start: function () {
       W.store.watch('mesa', onHead, function () { if (!gotHead) { gotHead = true; readyRes(); } });
-      if (rt()) { rt().on('mesa', onBroadcast); rt().on('mesa-npc', onNpc); }
+      if (rt()) {
+        rt().on('mesa', onBroadcast);
+        rt().on('mesa-npc', onNpc);
+        rt().on('mesa-editors', function (m) {
+          if (m && Array.isArray(m.editorUserIds)) {
+            try { localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(m.editorUserIds)); } catch (e) {}
+            if (mesaOpen()) push({ type: 'SYNC_EDITORS', editorUserIds: m.editorUserIds, timestamp: m.ts || Date.now() });
+          }
+        });
+      }
     },
     // Runs before the Mesa iframe loads: put the saved state where the Mesa reads it.
     prepare: function () {
@@ -210,13 +229,26 @@ var MesaSync = (function () {
     publish: function (str) {
       var m; try { m = JSON.parse(str); } catch (e) { return; }
       if (!m) return;
+      if (m.type === 'SYNC_EDITORS' && Array.isArray(m.editorUserIds)) {
+        try { localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(m.editorUserIds)); } catch (e) {}
+        if (rt() && canSave()) rt().send('mesa-editors', { editorUserIds: m.editorUserIds, ts: Date.now() });
+        var curSt = state || localState() || {};
+        curSt.editors = m.editorUserIds;
+        var r0 = newRev();
+        pending = { st: curSt, rev: r0 };
+        if (!timer) timer = setTimeout(flush, delay());
+        return;
+      }
       // One character changed: straight to the other browsers (the full state follows).
       if (m.type === 'SYNC_NPC') { if (m.npc && rt() && canSave()) { hostImgs(m.npc); rt().send('mesa-npc', { npc: swapImgs(m.npc), ts: m.timestamp }); } return; }
       if (m.type !== 'SYNC_FULL') return;
       // The Mesa's answer to REQUEST_SYNC has no deletedCombatIds: keep the ones known.
       var del = (m.deletedCombatIds || []).concat((state && state.deletedCombatIds) || []).filter(function (x, i, a) { return a.indexOf(x) === i; });
-      // Images already sent are swapped for their addresses here, so the message below stays small.
-      var st = swapImgs({ combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del });
+      var eds = Array.isArray(m.editors) ? m.editors : (Array.isArray(m.editorUserIds) ? m.editorUserIds : (state && state.editors));
+      if (!eds) {
+        try { eds = JSON.parse(localStorage.getItem('gurps_combat_master_editors_v1') || '[]'); } catch (e) {}
+      }
+      var st = swapImgs({ combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del, editors: eds || [] });
       var json = JSON.stringify(st);
       if (json === lastJson) return;
       lastJson = json;
