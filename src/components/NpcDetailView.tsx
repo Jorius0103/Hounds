@@ -92,17 +92,41 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     currentNpcRef.current = npc;
   }, [npc]);
 
+  // Lista de campos com valores totais/atributos base que apenas o Mestre pode alterar
+  const masterOnlyFields: (keyof NPC)[] = [
+    'hpMax',
+    'fpMax',
+    'dodge',
+    'dodgeNotes',
+    'block',
+    'blockNotes',
+    'parries',
+    'st',
+    'dx',
+    'iq',
+    'ht',
+    'per',
+    'will',
+    'basicSpeed',
+    'basicMove',
+    'naturalDr',
+  ];
+
   // Quick field updates helper (bloqueado para visualizador e protegido contra inconsistências)
   const updateField = <K extends keyof NPC>(field: K, value: NPC[K]) => {
     if (isViewer) return;
+    if (!isMaster && masterOnlyFields.includes(field)) return;
     if (!isMaster && !isPlayerChar) {
-      // Quando for NPC visualizado por jogador, apenas campos de interação permitidos
+      // Quando for NPC visualizado por jogador editor, apenas campos de combate/interação permitidos
       const allowedNpcFields: (keyof NPC)[] = [
         'assistantNotes',
         'turnActions',
         'extraItems',
         'statusConditions',
         'combatManeuver',
+        'hpCurrent',
+        'fpCurrent',
+        'isDead',
       ];
       if (!allowedNpcFields.includes(field)) return;
     }
@@ -124,6 +148,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     : [{ id: 'parry-default', weaponName: '', parryType: '', value: 0, notes: '' }];
 
   const handleAddParry = () => {
+    if (!isMaster) return;
     const newParry: ParryEntry = {
       id: `parry-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       weaponName: '',
@@ -135,13 +160,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   };
 
   const handleUpdateParry = (index: number, updated: ParryEntry) => {
+    if (!isMaster) return;
     const copy = [...parriesList];
     copy[index] = updated;
     updateField('parries', copy);
   };
 
   const handleRemoveParry = (index: number) => {
-    if (parriesList.length <= 1) return;
+    if (!isMaster || parriesList.length <= 1) return;
     const copy = parriesList.filter((_, i) => i !== index);
     updateField('parries', copy);
   };
@@ -202,12 +228,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const renderUnifiedAlerts = (isPlayer: boolean) => {
     const alerts: { id: string; badgeClass: string; text: string; icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
 
-    // 1. Mortalidade (Apenas para NPCs)
-    if (npc.characterType !== 'player' && npc.isDead) {
+    // 1. Mortalidade
+    if (npc.isDead) {
       alerts.push({
         id: 'dead',
         badgeClass: 'bg-red-950/90 border-red-600 text-red-200 font-black',
-        text: 'NPC Morto / Abatido',
+        text: npc.characterType === 'player' ? 'Personagem Morto' : 'NPC Morto / Abatido',
         icon: Skull,
       });
     }
@@ -346,6 +372,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   // Gerenciamento de Itens Extras (Flechas, Pedras de Mana, Escudos, etc.)
   const handleAddExtraItem = (preset?: { name: string; max: number }) => {
+    if (!isMaster) return;
     const newItem: ExtraItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       name: preset?.name || 'Novo Recurso',
@@ -363,12 +390,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   };
 
   const handleUpdateExtraItem = (itemId: string, updates: Partial<ExtraItem>) => {
+    if (isViewer) return;
+    if (!isMaster && ('max' in updates || 'name' in updates)) return;
     const currentList = currentNpcRef.current.extraItems || [];
     const items = currentList.map((it) => (it.id === itemId ? { ...it, ...updates } : it));
     updateField('extraItems', items);
   };
 
   const handleAdjustExtraItem = (itemId: string, delta: number) => {
+    if (isViewer) return;
     const currentExtra = currentNpcRef.current.extraItems || [];
     const items = currentExtra.map((it) => {
       if (it.id === itemId) {
@@ -381,6 +411,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   };
 
   const handleRemoveExtraItem = (itemId: string) => {
+    if (!isMaster) return;
     const currentList = currentNpcRef.current.extraItems || [];
     const targetItem = currentList.find((it) => it.id === itemId);
     const items = currentList.filter((it) => it.id !== itemId);
@@ -647,7 +678,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   readOnly={isViewer}
                   onChange={(e) => updateField('name', e.target.value)}
                   className={`bg-transparent text-xl font-bold border-b border-transparent hover:border-slate-700 focus:border-amber-500 focus:outline-none transition-colors px-1 max-w-[220px] sm:max-w-xs ${
-                    npc.characterType !== 'player' && npc.isDead ? 'text-red-300 line-through' : 'text-white'
+                    npc.isDead ? 'text-red-300 line-through' : 'text-white'
                   } ${isViewer ? 'cursor-default' : ''}`}
                   placeholder="Nome do Personagem..."
                 />
@@ -699,39 +730,38 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   </div>
                 )}
 
-                {/* Controles exclusivos de NPCs (Ocultos para Personagens Fixos) */}
+                {/* Visibilidade exclusiva para NPCs (Apenas Mestre) */}
                 {isMaster && npc.characterType !== 'player' && (
-                  <>
-                    {/* Toggle Visível */}
-                    <button
-                      type="button"
-                      onClick={() => updateField('isVisibleToPlayer', !npc.isVisibleToPlayer)}
-                      className={`flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold rounded-lg border transition-all ${
-                        npc.isVisibleToPlayer
-                          ? 'bg-blue-950/80 border-blue-600 text-blue-300 hover:bg-blue-900'
-                          : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
-                      }`}
-                      title={npc.isVisibleToPlayer ? 'Visível para os jogadores' : 'Oculto para os jogadores'}
-                    >
-                      {npc.isVisibleToPlayer ? <Eye size={12} className="text-blue-400" /> : <EyeOff size={12} />}
-                      <span>{npc.isVisibleToPlayer ? 'Visível' : 'Oculto'}</span>
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => updateField('isVisibleToPlayer', !npc.isVisibleToPlayer)}
+                    className={`flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold rounded-lg border transition-all ${
+                      npc.isVisibleToPlayer
+                        ? 'bg-blue-950/80 border-blue-600 text-blue-300 hover:bg-blue-900'
+                        : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
+                    }`}
+                    title={npc.isVisibleToPlayer ? 'Visível para os jogadores' : 'Oculto para os jogadores'}
+                  >
+                    {npc.isVisibleToPlayer ? <Eye size={12} className="text-blue-400" /> : <EyeOff size={12} />}
+                    <span>{npc.isVisibleToPlayer ? 'Visível' : 'Oculto'}</span>
+                  </button>
+                )}
 
-                    {/* Toggle Vivo / Morto */}
-                    <button
-                      type="button"
-                      onClick={() => updateField('isDead', !npc.isDead)}
-                      className={`flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all ${
-                        npc.isDead
-                          ? 'bg-red-950 border-red-600 text-red-300 ring-1 ring-red-600/50 hover:bg-red-900'
-                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                      title={npc.isDead ? 'Marcado como Morto' : 'Marcar como Morto'}
-                    >
-                      <Skull size={12} className={npc.isDead ? 'text-red-400' : 'text-slate-500'} />
-                      <span>{npc.isDead ? 'Morto' : 'Vivo'}</span>
-                    </button>
-                  </>
+                {/* Toggle Vivo / Morto (Disponível para qualquer combatente, Personagem ou NPC) */}
+                {!isViewer && (
+                  <button
+                    type="button"
+                    onClick={() => updateField('isDead', !npc.isDead)}
+                    className={`flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all ${
+                      npc.isDead
+                        ? 'bg-red-950 border-red-600 text-red-300 ring-1 ring-red-600/50 hover:bg-red-900'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                    title={npc.isDead ? 'Marcado como Morto' : 'Marcar como Morto'}
+                  >
+                    <Skull size={12} className={npc.isDead ? 'text-red-400' : 'text-slate-500'} />
+                    <span>{npc.isDead ? 'Morto' : 'Vivo'}</span>
+                  </button>
                 )}
               </div>
 
@@ -923,12 +953,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <span className="text-slate-500 font-semibold text-sm">/</span>
                   <input
                     type="number"
-                    disabled={isViewer}
+                    disabled={!isMaster}
                     value={npc.hpMax ?? ''}
                     onChange={(e) => updateField('hpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
                     placeholder="Máx"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
-                    title="Vida Máxima"
+                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title={isMaster ? "Vida Máxima" : "Vida Máxima (apenas Mestre pode editar)"}
                   />
                 </div>
 
@@ -1003,12 +1033,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <span className="text-slate-500 font-semibold text-sm">/</span>
                   <input
                     type="number"
-                    disabled={isViewer}
+                    disabled={!isMaster}
                     value={npc.fpMax ?? ''}
                     onChange={(e) => updateField('fpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
                     placeholder="Máx"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
-                    title="Fadiga Máxima"
+                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title={isMaster ? "Fadiga Máxima" : "Fadiga Máxima (apenas Mestre pode editar)"}
                   />
                 </div>
 
@@ -1057,7 +1087,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   Defesas Ativas
                 </h3>
               </div>
-              {!isViewer && (
+              {isMaster && (
                 <button
                   onClick={handleAddParry}
                   className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
@@ -1077,7 +1107,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <div className="text-[11px] font-bold text-cyan-300 leading-tight">Esquiva</div>
                   <input
                     type="text"
-                    disabled={isViewer}
+                    disabled={!isMaster}
                     value={npc.dodgeNotes ?? ''}
                     placeholder="Comentário..."
                     onChange={(e) => updateField('dodgeNotes', e.target.value)}
@@ -1087,11 +1117,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 </div>
                 <input
                   type="number"
-                  disabled={isViewer}
+                  disabled={!isMaster}
                   value={npc.dodge ?? ''}
                   placeholder="-"
                   onChange={(e) => updateField('dodge', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                  className={`w-11 bg-slate-900 border border-cyan-800/50 rounded-md text-center font-mono font-black text-xs text-cyan-300 py-0.5 focus:outline-none shrink-0 ${isViewer ? 'opacity-90' : ''}`}
+                  className={`w-11 bg-slate-900 border border-cyan-800/50 rounded-md text-center font-mono font-black text-xs text-cyan-300 py-0.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                   title="Valor da Esquiva"
                 />
               </div>
@@ -1102,7 +1132,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <div className="text-[11px] font-bold text-emerald-300 leading-tight">Bloqueio</div>
                   <input
                     type="text"
-                    disabled={isViewer}
+                    disabled={!isMaster}
                     value={npc.blockNotes ?? ''}
                     placeholder="Comentário..."
                     onChange={(e) => updateField('blockNotes', e.target.value)}
@@ -1112,11 +1142,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 </div>
                 <input
                   type="number"
-                  disabled={isViewer}
+                  disabled={!isMaster}
                   value={npc.block ?? ''}
                   placeholder="-"
                   onChange={(e) => updateField('block', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                  className={`w-11 bg-slate-900 border border-emerald-800/50 rounded-md text-center font-mono font-black text-xs text-emerald-300 py-0.5 focus:outline-none shrink-0 ${isViewer ? 'opacity-90' : ''}`}
+                  className={`w-11 bg-slate-900 border border-emerald-800/50 rounded-md text-center font-mono font-black text-xs text-emerald-300 py-0.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                   title="Valor do Bloqueio"
                 />
               </div>
@@ -1132,7 +1162,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       <span className="text-[10px] font-bold text-amber-400 shrink-0">Aparar:</span>
                       <input
                         type="text"
-                        disabled={isViewer}
+                        disabled={!isMaster}
                         value={parry.weaponName}
                         onChange={(e) => handleUpdateParry(idx, { ...parry, weaponName: e.target.value })}
                         placeholder="Nome da arma..."
@@ -1142,7 +1172,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     </div>
                     <input
                       type="text"
-                      disabled={isViewer}
+                      disabled={!isMaster}
                       value={parry.notes ?? ''}
                       placeholder="Comentário..."
                       onChange={(e) => handleUpdateParry(idx, { ...parry, notes: e.target.value })}
@@ -1154,7 +1184,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <div className="flex items-center gap-1 shrink-0">
                     <input
                       type="number"
-                      disabled={isViewer}
+                      disabled={!isMaster}
                       value={parry.value ?? ''}
                       placeholder="-"
                       onChange={(e) =>
@@ -1163,10 +1193,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           value: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
                         })
                       }
-                      className={`w-11 bg-slate-900 border border-amber-500/40 rounded-md text-center font-mono font-black text-xs text-amber-300 py-0.5 focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
+                      className={`w-11 bg-slate-900 border border-amber-500/40 rounded-md text-center font-mono font-black text-xs text-amber-300 py-0.5 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                       title="Valor do Aparar"
                     />
-                    {!isViewer && parriesList.length > 1 && (
+                    {isMaster && parriesList.length > 1 && (
                       <button
                         onClick={() => handleRemoveParry(idx)}
                         className="text-slate-500 hover:text-rose-400 font-bold text-xs p-0.5 transition-colors"
@@ -1192,7 +1222,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               </div>
 
               {/* Botões de Adição Rápida */}
-              {!isViewer && (
+              {isMaster && (
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
@@ -1247,10 +1277,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       {getItemIcon(item.name)}
                       <input
                         type="text"
-                        disabled={isViewer}
+                        disabled={!isMaster}
                         value={item.name}
                         onChange={(e) => handleUpdateExtraItem(item.id, { name: e.target.value })}
-                        className={`w-full bg-transparent text-xs font-bold text-white focus:outline-none focus:border-b focus:border-amber-500 ${isViewer ? 'cursor-default' : ''}`}
+                        className={`w-full bg-transparent text-xs font-bold text-white focus:outline-none focus:border-b focus:border-amber-500 ${!isMaster ? 'cursor-default' : ''}`}
                         placeholder="Nome do Item..."
                       />
                     </div>
@@ -1274,15 +1304,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       <input
                         type="number"
                         min="0"
-                        disabled={isViewer}
+                        disabled={!isMaster}
                         value={item.max ?? ''}
                         onChange={(e) =>
                           handleUpdateExtraItem(item.id, {
                             max: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
                           })
                         }
-                        className={`w-12 bg-slate-900 border border-slate-750 rounded-lg text-center py-0.5 text-slate-400 focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
-                        title="Quantidade Total / Máxima"
+                        className={`w-12 bg-slate-900 border border-slate-750 rounded-lg text-center py-0.5 text-slate-400 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                        title={isMaster ? "Quantidade Total / Máxima" : "Quantidade Total (apenas Mestre pode editar)"}
                       />
                     </div>
 
@@ -1305,14 +1335,16 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         >
                           +
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExtraItem(item.id)}
-                          className="text-slate-500 hover:text-rose-400 font-bold px-1 text-sm ml-0.5"
-                          title="Excluir item"
-                        >
-                          ×
-                        </button>
+                        {isMaster && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExtraItem(item.id)}
+                            className="text-slate-500 hover:text-rose-400 font-bold px-1 text-sm ml-0.5"
+                            title="Excluir item"
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1394,13 +1426,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <div className="text-[10px] font-bold text-slate-400 mb-0.5 text-center w-full">{label}</div>
                     <input
                       type="number"
-                      disabled={isViewer}
+                      disabled={!isMaster}
                       value={val ?? ''}
                       placeholder="-"
                       onChange={(e) =>
                         updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                       }
-                      className={`w-full bg-transparent text-center font-mono font-black text-sm text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90' : ''}`}
+                      className={`w-full bg-transparent text-center font-mono font-black text-sm text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
                     />
                   </div>
                 ))}
@@ -1425,7 +1458,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <input
                       type="number"
                       step={step}
-                      disabled={isViewer}
+                      disabled={!isMaster}
                       value={val ?? ''}
                       placeholder="-"
                       onChange={(e) =>
@@ -1438,7 +1471,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                             : parseInt(e.target.value, 10)
                         )
                       }
-                      className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90' : ''}`}
+                      className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
                     />
                   </div>
                 ))}
@@ -1448,12 +1482,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <div className="text-[9px] font-bold text-slate-400 text-center w-full">Move</div>
                   <input
                     type="text"
-                    disabled={isViewer}
+                    disabled={!isMaster}
                     value={npc.basicMove ?? ''}
                     placeholder="Ex: 6 (-1)"
                     onChange={(e) => updateField('basicMove', e.target.value)}
-                    className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
-                    title="Deslocamento / Move (aceita texto como '6 (-1 Peso)')"
+                    className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title={isMaster ? "Deslocamento / Move (aceita texto como '6 (-1 Peso)')" : "Move (apenas Mestre pode editar)"}
                   />
                 </div>
 
@@ -1463,13 +1497,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <input
                     type="number"
                     step="1"
-                    disabled={isViewer}
+                    disabled={!isMaster}
                     value={npc.naturalDr ?? ''}
                     placeholder="-"
                     onChange={(e) =>
                       updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                     }
-                    className={`w-full bg-transparent text-center font-mono font-black text-xs text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90' : ''}`}
+                    className={`w-full bg-transparent text-center font-mono font-black text-xs text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title={isMaster ? "RD Natural" : "RD Natural (apenas Mestre pode editar)"}
                   />
                 </div>
               </div>

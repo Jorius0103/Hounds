@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NPC, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { getHpStatus, getFpStatus, getCombatManeuver } from '../utils/gurps';
-import { Eye, EyeOff, Skull, Plus, Users, Shield, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, Skull, Plus, Users, Shield, UserPlus, Heart, X } from 'lucide-react';
 
 interface NpcListBarProps {
   npcs: NPC[];
@@ -22,7 +22,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   onAddNewPlayer,
   currentUserRole = 'mestre',
 }) => {
-  const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs' | 'alive' | 'dead'>('all');
 
   // Se jogador, exibe apenas os que estão visíveis (personagens são sempre visíveis)
   const rawDisplayedNpcs =
@@ -32,10 +32,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
   const playersCount = rawDisplayedNpcs.filter((n) => n.characterType === 'player').length;
   const npcsCount = rawDisplayedNpcs.filter((n) => n.characterType !== 'player').length;
+  const aliveCount = rawDisplayedNpcs.filter((n) => !n.isDead).length;
+  const deadCount = rawDisplayedNpcs.filter((n) => Boolean(n.isDead)).length;
 
   const filteredNpcs = rawDisplayedNpcs.filter((n) => {
     if (filterType === 'players') return n.characterType === 'player';
     if (filterType === 'npcs') return n.characterType !== 'player';
+    if (filterType === 'alive') return !n.isDead;
+    if (filterType === 'dead') return Boolean(n.isDead);
     return true;
   });
 
@@ -56,7 +60,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
         {/* PAINEL DA ESQUERDA: Filtros em cima e Criação embaixo (economizando espaço horizontal) */}
         <div className="flex flex-col items-start gap-1.5 shrink-0 md:border-r border-slate-800/80 md:pr-3">
           {/* EM CIMA: FILTROS DE VISUALIZAÇÃO */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner">
+          <div className="flex items-center flex-wrap bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner">
             <button
               type="button"
               onClick={() => setFilterType('all')}
@@ -94,6 +98,34 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             >
               <span>NPCs ({npcsCount})</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setFilterType('alive')}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                filterType === 'alive'
+                  ? 'bg-teal-950 text-teal-300 shadow-sm border border-teal-600/70'
+                  : 'text-slate-400 hover:text-teal-300 hover:bg-slate-900'
+              }`}
+              title="Filtrar apenas Vivos"
+            >
+              <Heart size={11} className="text-teal-400" />
+              <span>Vivos ({aliveCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFilterType('dead')}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                filterType === 'dead'
+                  ? 'bg-red-950 text-red-300 shadow-sm border border-red-600/70'
+                  : 'text-slate-400 hover:text-red-300 hover:bg-slate-900'
+              }`}
+              title="Filtrar apenas Mortos"
+            >
+              <Skull size={11} className="text-red-400" />
+              <span>Mortos ({deadCount})</span>
+            </button>
           </div>
 
           {/* EMBAIXO: BOTÕES DE ADIÇÃO / CADASTRO */}
@@ -129,7 +161,13 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               {currentUserRole === 'jogador'
                 ? 'Nenhum personagem ou NPC visível no momento.'
                 : filterType === 'players'
-                ? 'Nenhum Personagem cadastrado. Clique em "+ Personagem" à esquerda.'
+                ? 'Nenhum Personagem cadastrado. Clique em "+ Personagens" à esquerda.'
+                : filterType === 'npcs'
+                ? 'Nenhum NPC cadastrado. Clique em "+ NPC" à esquerda.'
+                : filterType === 'alive'
+                ? 'Nenhum combatente vivo no momento.'
+                : filterType === 'dead'
+                ? 'Nenhum combatente morto no momento.'
                 : 'Nenhum registro encontrado neste filtro.'}
             </div>
           ) : (
@@ -139,11 +177,11 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const hpStat = getHpStatus(npc.hpCurrent, npc.hpMax);
                 const fpStat = getFpStatus(npc.fpCurrent, npc.fpMax);
                 const isPlayerChar = npc.characterType === 'player';
-                const isDeadNpc = !isPlayerChar && Boolean(npc.isDead);
+                const isDeadChar = Boolean(npc.isDead);
                 const activeManeuver = getCombatManeuver(npc.combatManeuver);
 
                 const hasAlerts =
-                  isDeadNpc ||
+                  isDeadChar ||
                   Boolean(hpStat.warningText) ||
                   Boolean(fpStat.warningText) ||
                   Boolean(npc.statusConditions && npc.statusConditions.length > 0) ||
@@ -159,7 +197,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
                 const isViewerOrPlayer = currentUserRole === 'jogador';
                 const showNpcWoundedOrDead = !isViewerOrPlayer || isPlayerChar;
-                const showDeadMarker = showNpcWoundedOrDead && isDeadNpc;
+                const showDeadMarker = isDeadChar;
                 const showAlertBorder = showNpcWoundedOrDead && hasAlerts;
 
                 return (
@@ -168,9 +206,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                     onClick={() => onSelectNpc(npc.id)}
                     className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all border shrink-0 w-[195px] sm:w-[215px] ${
                       isSelected
-                        ? isPlayerChar
-                          ? 'bg-slate-800 border-emerald-400 ring-2 ring-emerald-400/90 shadow-md'
-                          : 'bg-slate-800 border-amber-400 ring-2 ring-amber-400/90 shadow-md'
+                        ? 'bg-slate-800 border-amber-400 ring-2 ring-amber-400/90 shadow-md'
                         : showAlertBorder
                         ? 'bg-rose-950/20 border-rose-500 ring-1 ring-rose-500/70 hover:bg-rose-950/30 shadow-[0_0_8px_rgba(244,63,94,0.25)]'
                         : isPlayerChar
@@ -179,7 +215,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         ? 'bg-red-950/20 border-red-900/60 hover:bg-red-950/30'
                         : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 hover:bg-slate-850'
                     }`}
-                    title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'} | Speed: ${npc.basicSpeed ?? 0})`}
+                    title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'} | Speed: ${npc.basicSpeed ?? 0}${isDeadChar ? ' | MORTO' : ''})`}
                   >
                     {/* Avatar */}
                     <div className="relative shrink-0">
@@ -190,7 +226,15 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         size="sm"
                       />
                       {showDeadMarker && (
-                        <div className="absolute -bottom-1 -right-1 bg-red-950 border border-red-600 rounded-full p-0.5 text-red-400">
+                        <div
+                          className="absolute inset-0 bg-red-950/75 rounded-full flex items-center justify-center border border-red-600/90 shadow-inner z-10"
+                          title="Morto"
+                        >
+                          <X size={18} className="text-red-400 stroke-[3.5]" />
+                        </div>
+                      )}
+                      {showDeadMarker && (
+                        <div className="absolute -bottom-1 -right-1 bg-red-950 border border-red-600 rounded-full p-0.5 text-red-400 z-20 shadow-xs">
                           <Skull size={10} />
                         </div>
                       )}
@@ -216,25 +260,34 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                           {npc.name || '(Sem Nome)'}
                         </span>
 
-                        {isPlayerChar ? (
-                          <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter shrink-0 bg-emerald-950/80 px-1 rounded border border-emerald-800/60">
-                            {npc.playerName || 'PC'}
-                          </span>
-                        ) : (
-                          <div className="flex items-center gap-1 shrink-0">
-                            {currentUserRole === 'mestre' && (
-                              <span
-                                title={npc.isVisibleToPlayer ? 'Visível para Jogadores' : 'Oculto para Jogadores'}
-                                className={npc.isVisibleToPlayer ? 'text-blue-400' : 'text-slate-500'}
-                              >
-                                {npc.isVisibleToPlayer ? <Eye size={11} /> : <EyeOff size={11} />}
-                              </span>
-                            )}
-                            <span className="text-[9px] font-bold text-purple-400 uppercase tracking-tighter bg-purple-950/80 px-1 rounded border border-purple-800/60">
-                              NPC
+                        <div className="flex items-center gap-1 shrink-0">
+                          {showDeadMarker && (
+                            <span className="text-[9px] font-black text-red-300 bg-red-950/90 px-1 py-0.5 rounded border border-red-700/80 flex items-center gap-0.5 shadow-xs">
+                              <X size={9} className="stroke-[3.5] text-red-400" />
+                              <span>MORTO</span>
                             </span>
-                          </div>
-                        )}
+                          )}
+
+                          {isPlayerChar ? (
+                            <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter bg-emerald-950/80 px-1 rounded border border-emerald-800/60">
+                              {npc.playerName || 'PC'}
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              {currentUserRole === 'mestre' && (
+                                <span
+                                  title={npc.isVisibleToPlayer ? 'Visível para Jogadores' : 'Oculto para Jogadores'}
+                                  className={npc.isVisibleToPlayer ? 'text-blue-400' : 'text-slate-500'}
+                                >
+                                  {npc.isVisibleToPlayer ? <Eye size={11} /> : <EyeOff size={11} />}
+                                </span>
+                              )}
+                              <span className="text-[9px] font-bold text-purple-400 uppercase tracking-tighter bg-purple-950/80 px-1 rounded border border-purple-800/60">
+                                NPC
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Linha 2 & 3: PV e FP com barras (visíveis apenas para Personagens ou para o Mestre) */}
