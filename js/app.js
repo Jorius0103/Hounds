@@ -44,6 +44,9 @@ renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'char
 var _rOrg = renderOrgPage;
 // @ts-expect-error -- idem, tab-organizacoes.js
 renderOrgPage = function () { _rOrg(); tagPage(orgById(S.route.orgId), 'organizations'); };
+var _rSpell = renderSpellPage;
+// @ts-expect-error -- idem, tab-magias.js
+renderSpellPage = function () { _rSpell(); tagPage(spellById(S.route.spellId), 'spells'); };
 
 // One-time: items created before the visibility flag existed become Mestre-only.
 var migratedVis = false;
@@ -82,6 +85,8 @@ function renderPage() {
   else if (r.page === 'char') renderCharPage();
   else if (r.page === 'orgs') renderOrgsPage();
   else if (r.page === 'org') renderOrgPage();
+  else if (r.page === 'spells') renderSpellsPage();
+  else if (r.page === 'spell') renderSpellPage();
   else if (r.page === 'users') renderUsersPage();
   else if (r.page === 'notes') renderNotesPage();
   else if (r.page === 'nb') renderNotebookPage();
@@ -98,10 +103,10 @@ function onRoute() {
   if (isMesa) setCollapsed(true, true);
   else if (wasMesa) setCollapsed(lstore('hounds_rail_collapsed') === '1', true);
   document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : 'view-page'); });
-  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'orgs' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
+  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'orgs' || r.page === 'spells' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
   paintMenu();
   topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
-  if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : hrefFor(r.node));
+  if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : r.page === 'spell' ? spellHref(r.spellId) : hrefFor(r.node));
   if (!(r.page === 'map' && r.explore)) Explorer.close();
   if (prev && prev.node !== r.node) { var pg = $('view-page'); if (pg) pg.scrollTop = 0; }
   renderPage();
@@ -114,6 +119,7 @@ function onData(kind) {
   if (kind === 'locations') indexLocations();
   if (kind === 'characters') indexCharacters();
   if (kind === 'organizations') indexOrgs();
+  if (kind === 'spells') indexSpells();
   migrateOrganizations();
   renderMenu();
   if (!S.route) return;
@@ -128,6 +134,7 @@ function onData(kind) {
   if (S.route.page === 'locais' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'locSearch') { renderLocList(); return; }
   if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
   if (S.route.page === 'orgs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'orgSearch') { renderOrgList(); return; }
+  if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }
   renderPage();
 }
 
@@ -154,8 +161,19 @@ function connect() {
     try { return window.indexedDB ? LocalStore() : null; } catch (e) { return null; }
   });
 }
+function checkAutoSeedSpells(list) {
+  if (list && list.length === 0 && isMestre() && !W._seedingSpells) {
+    W._seedingSpells = true;
+    if (typeof seedSpellsFromLocal === 'function') {
+      seedSpellsFromLocal().then(function () {
+        toast('668 magias importadas com sucesso.');
+      }).catch(function () {});
+    }
+  }
+}
+
 connect().then(function (s) {
-  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
+  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
   W.store = s;
   return s.init().then(function () {
     var fail = function () { toast('Não foi possível carregar os dados.', true); };
@@ -167,5 +185,6 @@ connect().then(function (s) {
     MesaSync.start();
     s.watch('notebooks', function (l) { W.raw.notebooks = l; filterNotes(); W.loaded.notebooks = true; onData('notes'); }, fail);
     s.watch('notes', function (l) { W.raw.notes = l; filterNotes(); W.loaded.notes = true; onData('notes'); }, fail);
+    s.watch('spells', function (l) { W.raw.spells = l; W.spells = pub(l); W.loaded.spells = true; onData('spells'); checkAutoSeedSpells(l); }, fail);
   });
 }).catch(function () { toast('Não foi possível carregar os dados.', true); });

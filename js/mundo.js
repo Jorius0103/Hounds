@@ -12,8 +12,8 @@
    stored documents, so a change anywhere shows up everywhere.
    ===================================================================== */
 /** @type {World} */
-var W = { store: null, maps: [], locations: [], characters: [], organizations: [], raw: { maps: [], locations: [], characters: [], organizations: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [], loaded: { maps: false, locations: false, characters: false, organizations: false, users: false, notebooks: false, notes: false },
-          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
+var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [], loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, users: false, notebooks: false, notes: false },
+          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
 
 // Effective parent of each item of a tree (maps, locations): ignore missing parents,
 // self references and anything that would loop. Also the children of each id, by name.
@@ -40,6 +40,8 @@ function indexLocations() {
   var t = treeOf(W.locations, idx); W.locParent = t.parent; W.locKids = t.kids;
 }
 function indexCharacters() { var idx = /** @type {Record<string, Character>} */ ({}); W.characters.forEach(function (c) { idx[c.id] = c; }); W.charIdx = idx; }
+function indexSpells() { var idx = /** @type {Record<string, Spell>} */ ({}); (W.spells || []).forEach(function (s) { idx[s.id] = s; }); W.spellIdx = idx; }
+function spellById(id) { return (W.spellIdx && W.spellIdx[id]) || null; }
 function mapById(id) { return W.mapIdx[id] || null; }
 function locById(id) { return W.locIdx[id] || null; }
 function childMaps(id) { return W.kids[id || ''] || []; }
@@ -152,7 +154,8 @@ document.addEventListener('change', function (e) {
 function secretTag(item) { return '<span class="secret-tag" title="Não está visível para todos">' + svg(EYE_OFF, 12, 2.4) + esc('Só ' + seenBy(item)) + '</span>'; }
 function refilter() {
   W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters); W.organizations = pub(W.raw.organizations);
-  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); filterNotes();
+  W.spells = pub(W.raw.spells || []);
+  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); filterNotes();
   S.markers = pub(S.rawMarkers || []);
   if (Explorer.isOpen() && S.route && S.route.explore) Explorer.setMarkers(S.markers);
 }
@@ -243,6 +246,64 @@ var Ops = {
         return W.store.put('characters', null, { name: s.name, source: s.source || 'manual', mesaId: s.mesaId || null, visible: visible !== false, sharedWith: shared || [], createdBy: me(), createdAt: t, updatedAt: t }).then(function (id) { return ids.concat([id]); });
       });
     }, Promise.resolve([])).then(function (ids) { return ids.filter(function (v, i) { return ids.indexOf(v) === i; }); });
+  },
+  saveSpell: function (spell, fields) {
+    if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode criar ou editar magias.' });
+    var t = now();
+    var body = {
+      v: 1,
+      name: (fields.name || '').trim(),
+      difficulty: (fields.difficulty || 'H').trim(),
+      class: (fields.class || '').trim(),
+      college: (fields.college || '').trim(),
+      timeToCast: (fields.timeToCast || '').trim(),
+      duration: (fields.duration || '').trim(),
+      initialCost: (fields.initialCost || '').trim(),
+      maintenanceCost: (fields.maintenanceCost || '').trim(),
+      prerequisites: (fields.prerequisites || '').trim(),
+      description: (fields.description || '').trim(),
+      page: (fields.page || '').trim(),
+      source: (fields.source || (spell ? spell.source : 'Manual')).trim(),
+      visible: fields.visible !== false,
+      sharedWith: fields.sharedWith || (spell && spell.sharedWith) || [],
+      createdBy: owner(spell),
+      createdAt: (spell && spell.createdAt) || t,
+      updatedAt: t
+    };
+    return W.store.put('spells', spell ? spell.id : null, body);
+  },
+  deleteSpell: function (spell) {
+    if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode excluir magias.' });
+    return W.store.remove('spells', spell.id);
+  },
+  importSpells: function (list) {
+    if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode importar magias.' });
+    var t = now();
+    return list.reduce(function (p, item) {
+      return p.then(function () {
+        var body = {
+          v: 1,
+          name: item.name,
+          difficulty: item.difficulty || 'H',
+          class: item.class || '',
+          college: item.college || '',
+          timeToCast: item.timeToCast || '',
+          duration: item.duration || '',
+          initialCost: item.initialCost || '',
+          maintenanceCost: item.maintenanceCost || '',
+          prerequisites: item.prerequisites || '',
+          description: item.description || '',
+          page: item.page || '',
+          source: item.source || '',
+          visible: item.visible !== false,
+          sharedWith: item.sharedWith || [],
+          createdBy: me(),
+          createdAt: item.createdAt || t,
+          updatedAt: t
+        };
+        return W.store.put('spells', item.id || null, body);
+      });
+    }, Promise.resolve());
   }
 };
 

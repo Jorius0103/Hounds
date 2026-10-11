@@ -59,6 +59,22 @@ interface Member { charId: string; rank: string }
 /** Coleção `organizations`. */
 interface Organization extends Doc { name: string; description?: string; reputation?: string; members?: Member[]; locationIds?: string[]; image?: ImageInfo | null }
 
+/** Coleção `spells` (GURPS). */
+interface Spell extends Doc {
+  name: string;
+  difficulty?: string;
+  class?: string;
+  college?: string;
+  timeToCast?: string;
+  duration?: string;
+  initialCost?: string;
+  maintenanceCost?: string;
+  prerequisites?: string;
+  description?: string;
+  page?: string;
+  source?: string;
+}
+
 /** Coleção `notebooks` (títulos). */
 interface Notebook extends Doc { name: string }
 
@@ -101,16 +117,18 @@ interface World {
   locations: HLocation[];
   characters: Character[];
   organizations: Organization[];
+  spells: Spell[];
   notebooks: Notebook[];
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; notebooks: Notebook[]; notes: Note[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; users: boolean; notebooks: boolean; notes: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; notebooks: Notebook[]; notes: Note[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; users: boolean; notebooks: boolean; notes: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
   orgIdx: Record<string, Organization>;
+  spellIdx: Record<string, Spell>;
   /** Pai efetivo de cada mapa. */
   parent: Record<string, string | null>;
   /** Filhos de cada mapa. */
@@ -130,6 +148,7 @@ interface Route {
   locId?: string;
   charId?: string;
   orgId?: string;
+  spellId?: string;
   nbId?: string;
   noteId?: string;
 }

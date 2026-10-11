@@ -25,7 +25,8 @@ var ICON = {
   target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
   image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
-  arrow: '<path d="M5 12h14M12 5l7 7-7 7"/>'
+  arrow: '<path d="M5 12h14M12 5l7 7-7 7"/>',
+  spell: '<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4M3 5h4M19 17v4M17 19h4"/>'
 };
 // Marker categories are data: add one here and it shows up in forms, pins, lists and filters.
 var CATEGORIES = [

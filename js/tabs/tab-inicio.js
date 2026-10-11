@@ -23,6 +23,7 @@ function renderHomePage() {
     card('#locais', ICON.pin, 'Locais', count('locations', W.locations.length, 'local', 'locais')),
     card('#personagens', ICON.user, 'Personagens', count('characters', W.characters.length, 'personagem', 'personagens')),
     card('#organizacoes', ICON.org, 'Organizações', count('organizations', W.organizations.length, 'organização', 'organizações')),
+    card('#magias', ICON.spell, 'Magias', count('spells', (W.spells || []).length, 'magia', 'magias')),
     card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
   ];
   if (isMestre()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));
@@ -33,6 +34,7 @@ function renderHomePage() {
     W.locations.map(function (l) { return { t: l.updatedAt || l.createdAt, href: locHref(l.id), icon: ICON.pin, name: l.name, kind: 'Local', item: l }; }),
     W.characters.map(function (c) { return { t: c.updatedAt || c.createdAt, href: charHref(c.id), icon: ICON.user, name: c.name, kind: 'Personagem', item: c }; }),
     W.organizations.map(function (o) { return { t: o.updatedAt || o.createdAt, href: orgHref(o.id), icon: ICON.org, name: o.name, kind: 'Organização', item: o }; }),
+    (W.spells || []).map(function (s) { return { t: s.updatedAt || s.createdAt, href: spellHref(s.id), icon: ICON.spell, name: s.name, kind: 'Magia', item: s }; }),
     W.notes.map(function (n) { return { t: n.updatedAt || n.createdAt, href: hrefFor('note:' + n.id), icon: ICON.note, name: n.title, kind: 'Anotação', item: n }; })
   ).sort(function (a, b) { return (b.t || 0) - (a.t || 0); }).slice(0, 6);
   var allLoaded = W.loaded.maps && W.loaded.locations && W.loaded.characters && W.loaded.notes;

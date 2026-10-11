@@ -35,7 +35,9 @@ function buildMenu() {
       { id: 'chars', label: 'Personagens', icon: ICON.user, route: true, hideKids: true,
         children: W.characters.slice().sort(byName).map(function (c) { return { id: 'char:' + c.id, label: c.name, icon: ICON.user, route: true, secret: isSecret(c) }; }) },
       { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, hideKids: true,
-        children: W.organizations.slice().sort(byName).map(function (o) { return { id: 'org:' + o.id, label: o.name, icon: ICON.org, route: true, secret: isSecret(o) }; }) }
+        children: W.organizations.slice().sort(byName).map(function (o) { return { id: 'org:' + o.id, label: o.name, icon: ICON.org, route: true, secret: isSecret(o) }; }) },
+      { id: 'spells', label: 'Magias', icon: ICON.spell, route: true, hideKids: true,
+        children: (W.spells || []).slice().sort(byName).map(function (s) { return { id: 'spell:' + s.id, label: s.name, icon: ICON.spell, route: true, secret: isSecret(s) }; }) }
     ] },
     { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, hideKids: true,
       children: W.notebooks.slice().sort(byName).map(function (nb) {
