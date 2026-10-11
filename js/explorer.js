@@ -8,8 +8,8 @@
 
 /* =====================================================================
    Explorer: pan / zoom / markers (markers can be linked to locations)
-   The stage is the image at natural size; one transform moves it.
-   Markers sit at x·100% / y·100% of the stage, counter-scaled.
+   The stage is sized to image·zoom; one translate moves it.
+   Markers sit at x·100% / y·100% of the stage, always at natural size.
    ===================================================================== */
 var Explorer = (function () {
   var ex = $('explorer'), vp = $('viewport'), stage = $('stage'), img = $('stageImg'), pinsEl = $('pins');
@@ -26,9 +26,11 @@ var Explorer = (function () {
     st.tx = Math.min(v.w - mx, Math.max(mx - sw, st.tx));
     st.ty = Math.min(v.h - my, Math.max(my - sh, st.ty));
   }
+  // The stage is resized (not CSS-scaled): a scale() transform rasterizes the
+  // layer once and stretches the bitmap, blurring the map and the markers.
   function apply() {
-    stage.style.transform = 'translate(' + st.tx + 'px,' + st.ty + 'px) scale(' + st.s + ')';
-    stage.style.setProperty('--inv', String(1 / st.s));
+    stage.style.width = st.w * st.s + 'px'; stage.style.height = st.h * st.s + 'px';
+    stage.style.transform = 'translate3d(' + Math.round(st.tx) + 'px,' + Math.round(st.ty) + 'px,0)';
     $('zVal').textContent = Math.round(st.s * 100) + '%';
   }
   function fitView() {
@@ -313,12 +315,11 @@ var Explorer = (function () {
     setMode(null); draft = null; selected = null; panel.hidden = true; panelView = null; query = ''; linkPreset = null;
     markers = S.markersFor === map.id ? S.markers.slice() : [];
     st.w = (map.image && map.image.w) || 1000; st.h = (map.image && map.image.h) || 1000;
-    stage.style.width = st.w + 'px'; stage.style.height = st.h + 'px';
     st.ready = false; img.removeAttribute('src');
     fitView(); renderPins();
     W.store.imageUrl(map.image && map.image.ref).then(function (u) {
       img.onload = function () {
-        if (img.naturalWidth && (img.naturalWidth !== st.w || img.naturalHeight !== st.h)) { st.w = img.naturalWidth; st.h = img.naturalHeight; stage.style.width = st.w + 'px'; stage.style.height = st.h + 'px'; }
+        if (img.naturalWidth && (img.naturalWidth !== st.w || img.naturalHeight !== st.h)) { st.w = img.naturalWidth; st.h = img.naturalHeight; }
         st.ready = true; fitView(); runPending();
       };
       img.src = u;

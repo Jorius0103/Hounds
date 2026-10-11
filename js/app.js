@@ -162,28 +162,21 @@ function connect() {
   });
 }
 var SPELLS_DATA_VERSION = '2026-10-11-v3';
+// Brings the shared spell list up to dados/magias.json: only the Mestre, only when
+// SPELLS_DATA_VERSION changes, and at most once per page load. Every write redraws
+// the menu and the page (here and in every open browser), so a sync that ran for
+// everyone, or retried after a failure, kept the site redrawing and unclickable.
+var spellsSyncTried = false;
 function checkAutoSeedSpells(list) {
-  var storedVersion = lstore('hounds_spells_version');
-  var createAir = (list || []).filter(function (s) { return s.name === 'Create Air'; })[0];
-  var needsUpdate = !list || list.length === 0 || storedVersion !== SPELLS_DATA_VERSION;
-
-  if (createAir && (!createAir.description || createAir.description.indexOf('breathable air in a vacuum') < 0)) {
-    needsUpdate = true;
-  }
-
-  if (needsUpdate && !W._seedingSpells) {
-    W._seedingSpells = true;
-    if (typeof seedSpellsFromLocal === 'function') {
-      seedSpellsFromLocal(true).then(function (count) {
-        lstore('hounds_spells_version', SPELLS_DATA_VERSION);
-        W._seedingSpells = false;
-        toast((count || 647) + ' magias atualizadas com sucesso.');
-      }).catch(function (err) {
-        W._seedingSpells = false;
-        console.warn('Falha na sincronização de magias:', err);
-      });
-    }
-  }
+  if (spellsSyncTried || !isMestre() || !canWrite() || typeof seedSpellsFromLocal !== 'function') return;
+  if (list && list.length && lstore('hounds_spells_version') === SPELLS_DATA_VERSION) return;
+  spellsSyncTried = true;
+  seedSpellsFromLocal(true).then(function (count) {
+    lstore('hounds_spells_version', SPELLS_DATA_VERSION);
+    if (count) toast(count + ' magias atualizadas com sucesso.');
+  }).catch(function (err) {
+    console.warn('Falha na sincronização de magias:', err);
+  });
 }
 
 connect().then(function (s) {

@@ -332,6 +332,16 @@ var Ops = {
         }
       };
     });
+    // Only what changed is written: a sync with the same data writes nothing, so the
+    // open browsers don't redraw once per spell.
+    var cur = {};
+    (W.raw.spells || []).forEach(function (s) { if (s.id) cur[s.id] = s; });
+    var SAME = ['name', 'difficulty', 'class', 'college', 'timeToCast', 'duration', 'initialCost', 'maintenanceCost', 'prerequisites', 'description', 'page', 'source', 'visible'];
+    items = items.filter(function (it) {
+      var o = cur[it.id];
+      return !o || SAME.some(function (k) { return o[k] !== it.data[k]; });
+    });
+    if (!items.length && !toRemove.length) return Promise.resolve(0);
 
     if (W.store && typeof W.store.putBatch === 'function') {
       return W.store.putBatch('spells', items, toRemove);
