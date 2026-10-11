@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NPC, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { getHpStatus, getCombatManeuver } from '../utils/gurps';
+import { getHpStatus, getFpStatus, getCombatManeuver } from '../utils/gurps';
 import { Eye, EyeOff, Skull, Plus, Users, Shield, UserPlus } from 'lucide-react';
 
 interface NpcListBarProps {
@@ -137,15 +137,16 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               {displayedNpcs.map((npc) => {
                 const isSelected = npc.id === selectedNpcId;
                 const hpStat = getHpStatus(npc.hpCurrent, npc.hpMax);
+                const fpStat = getFpStatus(npc.fpCurrent, npc.fpMax);
                 const isPlayerChar = npc.characterType === 'player';
                 const isDeadNpc = !isPlayerChar && Boolean(npc.isDead);
                 const activeManeuver = getCombatManeuver(npc.combatManeuver);
 
                 const hasAlerts =
                   isDeadNpc ||
-                  (npc.hpMax > 0 && npc.hpCurrent < npc.hpMax) ||
-                  (npc.fpMax > 0 && npc.fpCurrent < npc.fpMax) ||
-                  (npc.statusConditions && npc.statusConditions.length > 0) ||
+                  Boolean(hpStat.warningText) ||
+                  Boolean(fpStat.warningText) ||
+                  Boolean(npc.statusConditions && npc.statusConditions.length > 0) ||
                   Boolean(
                     npc.turnActions &&
                       (npc.turnActions.shock > 0 ||

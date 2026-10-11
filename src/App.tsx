@@ -50,7 +50,15 @@ function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]
       const incomingTime = incoming.updatedAt || 0;
       const existingTime = existing.updatedAt || 0;
 
-      if (incomingTime > existingTime) {
+      const hasContentDiff =
+        incoming.hpCurrent !== existing.hpCurrent ||
+        incoming.fpCurrent !== existing.fpCurrent ||
+        (incoming.history && incoming.history.length > (existing.history ? existing.history.length : 0)) ||
+        JSON.stringify(incoming.statusConditions || []) !== JSON.stringify(existing.statusConditions || []) ||
+        JSON.stringify(incoming.extraItems || []) !== JSON.stringify(existing.extraItems || []) ||
+        JSON.stringify(incoming.turnActions || {}) !== JSON.stringify(existing.turnActions || {});
+
+      if (incomingTime > existingTime || (incomingTime === existingTime && hasContentDiff)) {
         merged.push(incoming);
         changed = true;
       } else if (incomingTime === existingTime) {
@@ -1249,21 +1257,25 @@ export default function App() {
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
 
+    const now = Date.now();
+    let updatedNpc: NPC | undefined;
     const isPlayer = players.some((p) => p.id === npcId);
     if (isPlayer) {
       const updatedPlayers = players.map((p) => {
         if (p.id !== npcId) return p;
         const newHp = Math.max(-p.hpMax * 5, p.hpCurrent - finalDamage);
         const isDead = newHp <= -p.hpMax;
-        return {
+        updatedNpc = {
           ...p,
           hpCurrent: newHp,
           isDead: isDead || p.isDead,
           history: [entryWithId, ...p.history],
+          updatedAt: now,
         };
+        return updatedNpc;
       });
       setPlayers(updatedPlayers);
-      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
+      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers, updatedNpc);
     } else if (activeCombat) {
       const updated = combats.map((c) => {
         if (c.id !== activeCombat.id) return c;
@@ -1273,17 +1285,19 @@ export default function App() {
             if (n.id !== npcId) return n;
             const newHp = Math.max(-n.hpMax * 5, n.hpCurrent - finalDamage);
             const isDead = newHp <= -n.hpMax;
-            return {
+            updatedNpc = {
               ...n,
               hpCurrent: newHp,
               isDead: isDead || n.isDead,
               history: [entryWithId, ...n.history],
+              updatedAt: now,
             };
+            return updatedNpc;
           }),
         };
       });
       setCombats(updated);
-      broadcastSync(updated);
+      broadcastSync(updated, undefined, undefined, undefined, undefined, updatedNpc);
     }
   };
 
@@ -1297,19 +1311,23 @@ export default function App() {
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
 
+    const now = Date.now();
+    let updatedNpc: NPC | undefined;
     const isPlayer = players.some((p) => p.id === npcId);
     if (isPlayer) {
       const updatedPlayers = players.map((p) => {
         if (p.id !== npcId) return p;
         const newFp = Math.max(-p.fpMax, Math.min(p.fpMax, p.fpCurrent + fpDelta));
-        return {
+        updatedNpc = {
           ...p,
           fpCurrent: newFp,
           history: [entryWithId, ...p.history],
+          updatedAt: now,
         };
+        return updatedNpc;
       });
       setPlayers(updatedPlayers);
-      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
+      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers, updatedNpc);
     } else if (activeCombat) {
       const updated = combats.map((c) => {
         if (c.id !== activeCombat.id) return c;
@@ -1318,16 +1336,18 @@ export default function App() {
           npcs: c.npcs.map((n) => {
             if (n.id !== npcId) return n;
             const newFp = Math.max(-n.fpMax, Math.min(n.fpMax, n.fpCurrent + fpDelta));
-            return {
+            updatedNpc = {
               ...n,
               fpCurrent: newFp,
               history: [entryWithId, ...n.history],
+              updatedAt: now,
             };
+            return updatedNpc;
           }),
         };
       });
       setCombats(updated);
-      broadcastSync(updated);
+      broadcastSync(updated, undefined, undefined, undefined, undefined, updatedNpc);
     }
   };
 
@@ -1342,6 +1362,8 @@ export default function App() {
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
 
+    const now = Date.now();
+    let updatedNpc: NPC | undefined;
     const isPlayer = players.some((p) => p.id === npcId);
     if (isPlayer) {
       const updatedPlayers = players.map((p) => {
@@ -1354,14 +1376,16 @@ export default function App() {
           }
           return it;
         });
-        return {
+        updatedNpc = {
           ...p,
           extraItems: updatedItems,
           history: [entryWithId, ...p.history],
+          updatedAt: now,
         };
+        return updatedNpc;
       });
       setPlayers(updatedPlayers);
-      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
+      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers, updatedNpc);
     } else if (activeCombat) {
       const updated = combats.map((c) => {
         if (c.id !== activeCombat.id) return c;
@@ -1377,16 +1401,18 @@ export default function App() {
               }
               return it;
             });
-            return {
+            updatedNpc = {
               ...n,
               extraItems: updatedItems,
               history: [entryWithId, ...n.history],
+              updatedAt: now,
             };
+            return updatedNpc;
           }),
         };
       });
       setCombats(updated);
-      broadcastSync(updated);
+      broadcastSync(updated, undefined, undefined, undefined, undefined, updatedNpc);
     }
   };
 

@@ -240,7 +240,32 @@ var MesaSync = (function () {
         return;
       }
       // One character changed: straight to the other browsers (the full state follows).
-      if (m.type === 'SYNC_NPC') { if (m.npc && rt() && canSave()) { hostImgs(m.npc); rt().send('mesa-npc', { npc: swapImgs(m.npc), ts: m.timestamp }); } return; }
+      if (m.type === 'SYNC_NPC') {
+        if (m.npc && canSave()) {
+          var npcObj = swapImgs(m.npc);
+          if (rt()) {
+            hostImgs(m.npc);
+            rt().send('mesa-npc', { npc: npcObj, ts: m.timestamp });
+          }
+          var curSt = state || localState();
+          if (curSt) {
+            var nId = npcObj.id;
+            var updatedP = (curSt.players || []).map(function (p) { return p.id === nId ? Object.assign({}, p, npcObj) : p; });
+            var updatedC = (curSt.combats || []).map(function (cb) {
+              return Object.assign({}, cb, {
+                npcs: (cb.npcs || []).map(function (n) { return n.id === nId ? Object.assign({}, n, npcObj) : n; })
+              });
+            });
+            curSt.players = updatedP;
+            curSt.combats = updatedC;
+            state = curSt;
+            var r0 = newRev();
+            pending = { st: curSt, rev: r0 };
+            if (!timer) timer = setTimeout(flush, delay());
+          }
+        }
+        return;
+      }
       if (m.type !== 'SYNC_FULL') return;
       // The Mesa's answer to REQUEST_SYNC has no deletedCombatIds: keep the ones known.
       var del = (m.deletedCombatIds || []).concat((state && state.deletedCombatIds) || []).filter(function (x, i, a) { return a.indexOf(x) === i; });
