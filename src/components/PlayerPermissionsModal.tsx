@@ -58,14 +58,22 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-150"
+      style={{ overflowY: 'auto' }}
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-750 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+      <div
+        className="relative w-full max-w-lg bg-slate-900 border border-slate-750 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 flex flex-col"
+        style={{
+          margin: 'auto',
+          maxHeight: 'calc(100vh - 32px)',
+          overflow: 'hidden',
+        }}
+      >
         {/* Cabeçalho */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
