@@ -233,29 +233,49 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Switch deslizante moderno de Permissão */}
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    <div
-                      className={`w-12 h-6 rounded-full transition-all relative flex items-center px-0.5 shadow-inner cursor-pointer ${
-                        isAllowed
-                          ? 'bg-emerald-500'
-                          : 'bg-slate-800 border border-slate-700'
+                  {/* Controle Segmentado: Espectador vs Editor */}
+                  <div
+                    style={{ minHeight: '36px' }}
+                    className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800 shrink-0 self-end sm:self-auto"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isAllowed) onTogglePermission(u.id);
+                      }}
+                      style={{
+                        padding: '6px 14px',
+                        minHeight: '30px',
+                        cursor: 'pointer',
+                      }}
+                      className={`rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                        !isAllowed
+                          ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 flex items-center justify-center ${
-                          isAllowed
-                            ? 'translate-x-6 text-emerald-600'
-                            : 'translate-x-0.5 text-slate-400'
-                        }`}
-                      >
-                        {isAllowed ? (
-                          <Check size={11} strokeWidth={3} />
-                        ) : (
-                          <Eye size={10} strokeWidth={2.5} />
-                        )}
-                      </div>
-                    </div>
+                      <Eye size={14} />
+                      <span>Espectador</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isAllowed) onTogglePermission(u.id);
+                      }}
+                      style={{
+                        padding: '6px 14px',
+                        minHeight: '30px',
+                        cursor: 'pointer',
+                      }}
+                      className={`rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                        isAllowed
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-md border border-emerald-400'
+                          : 'text-slate-400 hover:text-emerald-400'
+                      }`}
+                    >
+                      <Check size={14} strokeWidth={2.5} />
+                      <span>Editor</span>
+                    </button>
                   </div>
                 </div>
               );

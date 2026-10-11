@@ -490,6 +490,11 @@ export default function App() {
     });
 
     const unsubMsg = onlineSyncService.onSyncMessage((payload: RemoteSyncPayload) => {
+      if ((payload as any).type === 'SYNC_EDITORS' && Array.isArray((payload as any).editorUserIds)) {
+        setEditorUserIds((payload as any).editorUserIds);
+        return;
+      }
+
       // 1. Mensagem de NPC individual em tempo real (hiper-rápida, 0 debounce)
       if (payload.type === 'SYNC_NPC' && payload.npc) {
         const incomingNpc = payload.npc;
@@ -638,6 +643,11 @@ export default function App() {
 
       channel.onmessage = (event) => {
         if (event.data?.sourceId === onlineSyncService.getClientId()) return;
+
+        if (event.data?.type === 'SYNC_EDITORS' && Array.isArray(event.data.editorUserIds)) {
+          setEditorUserIds(event.data.editorUserIds);
+          return;
+        }
 
         // Atualização individual de NPC entre abas locais
         if (event.data?.type === 'SYNC_NPC' && event.data.npc) {
@@ -1158,12 +1168,39 @@ export default function App() {
   };
 
   const handleTogglePlayerPermission = (userId: string) => {
-    const next = editorUserIds.includes(userId)
-      ? editorUserIds.filter((id) => id !== userId)
-      : [...editorUserIds, userId];
+    const targetUser = users.find((u) => u.id === userId || u.name === userId);
+    const targetId = targetUser ? targetUser.id : userId;
+    const targetName = targetUser ? targetUser.name : null;
+
+    const exists = editorUserIds.some((x) => {
+      const s = String(x || '').toLowerCase().trim();
+      const qid = String(targetId || '').toLowerCase().trim();
+      const qnm = String(targetName || '').toLowerCase().trim();
+      return s === qid || (qnm && s === qnm) || s === qid.replace(/^user-/, '') || qid === `user-${s}`;
+    });
+
+    const next = exists
+      ? editorUserIds.filter((x) => {
+          const s = String(x || '').toLowerCase().trim();
+          const qid = String(targetId || '').toLowerCase().trim();
+          const qnm = String(targetName || '').toLowerCase().trim();
+          return !(s === qid || (qnm && s === qnm) || s === qid.replace(/^user-/, '') || qid === `user-${s}`);
+        })
+      : [...editorUserIds, targetId];
+
     setEditorUserIds(next);
     try {
       localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(next));
+      broadcastChannelRef.current?.postMessage({
+        type: 'SYNC_EDITORS',
+        editorUserIds: next,
+        sourceId: onlineSyncService.getClientId(),
+      });
+      onlineSyncService.sendPayloadImmediate({
+        type: 'SYNC_EDITORS',
+        editorUserIds: next,
+        timestamp: Date.now(),
+      });
     } catch {}
     if (activeCombat) {
       const updatedCombat = { ...activeCombat, editorUserIds: next };
@@ -1179,6 +1216,16 @@ export default function App() {
     setEditorUserIds(next);
     try {
       localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(next));
+      broadcastChannelRef.current?.postMessage({
+        type: 'SYNC_EDITORS',
+        editorUserIds: next,
+        sourceId: onlineSyncService.getClientId(),
+      });
+      onlineSyncService.sendPayloadImmediate({
+        type: 'SYNC_EDITORS',
+        editorUserIds: next,
+        timestamp: Date.now(),
+      });
     } catch {}
     if (activeCombat) {
       const updatedCombat = { ...activeCombat, editorUserIds: next };
@@ -1462,7 +1509,14 @@ export default function App() {
   const isPlayerUser = currentUser?.role === 'jogador';
   const isMaster = currentUser?.role === 'mestre';
   const effectiveEditorIds = activeCombat?.editorUserIds || editorUserIds;
-  const canEditCurrent = isMaster || (currentUser?.role === 'jogador' && (effectiveEditorIds.includes(currentUser.id) || effectiveEditorIds.includes(currentUser.name)));
+  const isEditor = effectiveEditorIds.some((x) => {
+    if (!x) return false;
+    const s = String(x).toLowerCase().trim();
+    const cid = String(currentUser?.id || '').toLowerCase().trim();
+    const cnm = String(currentUser?.name || '').toLowerCase().trim();
+    return s === cid || s === cnm || s === cid.replace(/^user-/, '') || cid === `user-${s}`;
+  });
+  const canEditCurrent = isMaster || (currentUser?.role === 'jogador' && isEditor);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
@@ -1570,7 +1624,7 @@ export default function App() {
                     setWeaponModalState({ isOpen: true, weapon: weapon || null })
                   }
                   isPlayerUser={isPlayerUser}
-                  currentUserRole={currentUser?.role || 'mestre'}
+                  currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
                   hasEditPermission={canEditCurrent}
                 />
               ) : (
@@ -1636,7 +1690,7 @@ export default function App() {
                     setWeaponModalState({ isOpen: true, weapon: weapon || null })
                   }
                   isPlayerUser={isPlayerUser}
-                  currentUserRole={currentUser?.role || 'mestre'}
+                  currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
                   hasEditPermission={canEditCurrent}
                 />
               ) : (

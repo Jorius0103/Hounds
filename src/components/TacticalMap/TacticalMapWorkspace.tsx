@@ -360,7 +360,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleTokenMouseDown = (e: React.MouseEvent, token: TacticalToken) => {
     if (e.button !== 0 || token.isPinned) return;
     const tokenNpc = characterMap.get(token.npcId);
-    const canEditToken = isMaster || (tokenNpc?.characterType === 'player' && hasEditPermission);
+    const canEditToken = isMaster || hasEditPermission;
     if (!canEditToken) return;
     e.stopPropagation();
     setDraggedTokenId(token.id);

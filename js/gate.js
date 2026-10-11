@@ -13,7 +13,14 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ini(n) { var p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0][1] || ''))).toUpperCase(); }
   function users() {
-    try { var l = JSON.parse(localStorage.getItem(USERS_KEY) || 'null'); if (Array.isArray(l) && l.length) return l; } catch (e) {}
+    try {
+      var l = JSON.parse(localStorage.getItem(USERS_KEY) || 'null');
+      if (Array.isArray(l) && l.length) {
+        return l.map(function(u) {
+          return { id: u.id, name: u.name, role: u.role === 'mestre' ? 'mestre' : 'jogador' };
+        });
+      }
+    } catch (e) {}
     return DEFAULTS;
   }
   var mesaFor = null;
@@ -35,15 +42,17 @@
   }
   window.addEventListener('hashchange', syncMesa);
   function apply(u) {
-    window.hubUser = u;
-    try { localStorage.setItem('hounds_active_user', JSON.stringify({ id: u.id, name: u.name, role: u.role })); } catch (e) {}
-    document.body.setAttribute('data-role', u.role || 'jogador');
-    document.body.setAttribute('data-user', u.id || '');
-    el('whoAv').textContent = ini(u.name);
-    el('whoName').textContent = u.name;
-    el('whoRole').textContent = ROLE[u.role] || u.role || '';
+    var cleanRole = u.role === 'mestre' ? 'mestre' : 'jogador';
+    var cleanUser = { id: u.id, name: u.name, role: cleanRole };
+    window.hubUser = cleanUser;
+    try { localStorage.setItem('hounds_active_user', JSON.stringify(cleanUser)); } catch (e) {}
+    document.body.setAttribute('data-role', cleanRole);
+    document.body.setAttribute('data-user', cleanUser.id || '');
+    el('whoAv').textContent = ini(cleanUser.name);
+    el('whoName').textContent = cleanUser.name;
+    el('whoRole').textContent = ROLE[cleanRole] || 'Jogador';
     el('whoBtn').hidden = false;
-    try { window.dispatchEvent(new CustomEvent('hub:user', { detail: u })); } catch (e) {}
+    try { window.dispatchEvent(new CustomEvent('hub:user', { detail: cleanUser })); } catch (e) {}
   }
   function choose(u) {
     var changed = !window.hubUser || window.hubUser.id !== u.id;
