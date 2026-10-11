@@ -279,31 +279,42 @@ var Ops = {
   importSpells: function (list) {
     if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode importar magias.' });
     var t = now();
-    return list.reduce(function (p, item) {
-      return p.then(function () {
-        var body = {
-          v: 1,
-          name: item.name,
-          difficulty: item.difficulty || 'H',
-          class: item.class || '',
-          college: item.college || '',
-          timeToCast: item.timeToCast || '',
-          duration: item.duration || '',
-          initialCost: item.initialCost || '',
-          maintenanceCost: item.maintenanceCost || '',
-          prerequisites: item.prerequisites || '',
-          description: item.description || '',
-          page: item.page || '',
-          source: item.source || '',
-          visible: item.visible !== false,
-          sharedWith: item.sharedWith || [],
-          createdBy: me(),
-          createdAt: item.createdAt || t,
-          updatedAt: t
-        };
-        return W.store.put('spells', item.id || null, body);
-      });
+    var newIds = {};
+    list.forEach(function (x) { if (x.id) newIds[x.id] = true; });
+    var toRemove = (W.raw.spells || []).filter(function (s) {
+      return s.id && s.id.indexOf('spell_') === 0 && !newIds[s.id];
+    });
+    var removeChain = toRemove.reduce(function (p, s) {
+      return p.then(function () { return W.store.remove('spells', s.id); });
     }, Promise.resolve());
+
+    return removeChain.then(function () {
+      return list.reduce(function (p, item) {
+        return p.then(function () {
+          var body = {
+            v: 1,
+            name: item.name,
+            difficulty: item.difficulty || 'H',
+            class: item.class || '',
+            college: item.college || '',
+            timeToCast: item.timeToCast || '',
+            duration: item.duration || '',
+            initialCost: item.initialCost || '',
+            maintenanceCost: item.maintenanceCost || '',
+            prerequisites: item.prerequisites || '',
+            description: item.description || '',
+            page: item.page || '',
+            source: item.source || '',
+            visible: item.visible !== false,
+            sharedWith: item.sharedWith || [],
+            createdBy: me(),
+            createdAt: item.createdAt || t,
+            updatedAt: t
+          };
+          return W.store.put('spells', item.id || null, body);
+        });
+      }, Promise.resolve());
+    });
   }
 };
 

@@ -165,8 +165,8 @@ function checkAutoSeedSpells(list) {
   if (list && list.length === 0 && isMestre() && !W._seedingSpells) {
     W._seedingSpells = true;
     if (typeof seedSpellsFromLocal === 'function') {
-      seedSpellsFromLocal().then(function () {
-        toast('668 magias importadas com sucesso.');
+      seedSpellsFromLocal().then(function (count) {
+        toast((count || 647) + ' magias importadas com sucesso.');
       }).catch(function () {});
     }
   }

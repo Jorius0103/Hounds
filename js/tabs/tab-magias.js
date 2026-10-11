@@ -66,7 +66,10 @@ function renderSpellsPage() {
     '<h1>' + svg(ICON.spell, 24, 2) + ' Magias</h1>' +
     '<p class="lede">Grimório de magias e encantamentos para GURPS 4ª Edição.</p>' +
     '</div>' +
-    (can ? '<div class="btn-row"><button class="btn primary" type="button" id="newSpellBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova magia</button></div>' : '') +
+    (can ? '<div class="btn-row">' +
+      '<button class="btn" type="button" id="syncSpellsBtn" title="Atualizar grimório a partir de dados/magias.json">' + svg(ICON.spell, 16) + ' Sincronizar magias</button>' +
+      '<button class="btn primary" type="button" id="newSpellBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova magia</button>' +
+    '</div>' : '') +
     '</div>';
 
   var toolbar = '<div class="toolbar" style="margin-bottom:16px">' +
@@ -131,6 +134,25 @@ function renderSpellsPage() {
     nb.onclick = function () { openSpellForm(null); };
   }
 
+  var sb = $('syncSpellsBtn');
+  if (sb) {
+    sb.onclick = function () {
+      if (!confirm('Deseja sincronizar o grimório com a base do arquivo dados/magias.json? Todas as 647 magias serão atualizadas com as descrições mais recentes.')) return;
+      sb.disabled = true;
+      sb.textContent = 'Sincronizando…';
+      seedSpellsFromLocal().then(function (count) {
+        sb.disabled = false;
+        sb.innerHTML = svg(ICON.spell, 16) + ' Sincronizar magias';
+        toast((count || 647) + ' magias sincronizadas com sucesso!');
+        renderSpellList();
+      }, function (err) {
+        sb.disabled = false;
+        sb.innerHTML = svg(ICON.spell, 16) + ' Sincronizar magias';
+        toast(errorText(err), true);
+      });
+    };
+  }
+
   renderSpellList();
 }
 
@@ -164,7 +186,7 @@ function renderSpellList() {
   if (!all.length) {
     if (!(W.spells || []).length && W.loaded.spells) {
       var seedHtml = isMestre()
-        ? '<div style="margin-top:14px"><button class="btn primary" type="button" id="seedSpellsBtn">' + svg(ICON.spell, 16) + ' Importar 668 magias padrão do GURPS</button></div>'
+        ? '<div style="margin-top:14px"><button class="btn primary" type="button" id="seedSpellsBtn">' + svg(ICON.spell, 16) + ' Importar 647 magias padrão do GURPS</button></div>'
         : '';
       container.innerHTML = '<div class="empty-box" style="padding:48px 24px;text-align:center;background:var(--surface);border-radius:14px;border:1px solid var(--line);margin-top:16px">' +
         svg(ICON.spell, 48, 1.2) +
@@ -178,11 +200,11 @@ function renderSpellList() {
         sBtn.onclick = function () {
           sBtn.disabled = true;
           sBtn.textContent = 'Importando magias…';
-          seedSpellsFromLocal().then(function () {
-            toast('668 magias importadas com sucesso!');
+          seedSpellsFromLocal().then(function (count) {
+            toast((count || 647) + ' magias importadas com sucesso!');
           }, function (err) {
             sBtn.disabled = false;
-            sBtn.textContent = 'Importar 668 magias padrão do GURPS';
+            sBtn.textContent = 'Importar 647 magias padrão do GURPS';
             toast(errorText(err), true);
           });
         };
@@ -441,7 +463,9 @@ function seedSpellsFromLocal() {
     })
     .then(function (list) {
       if (!Array.isArray(list) || !list.length) throw new Error('Arquivo de magias vazio.');
-      return Ops.importSpells(list);
+      return Ops.importSpells(list).then(function () {
+        return list.length;
+      });
     });
 }
 
