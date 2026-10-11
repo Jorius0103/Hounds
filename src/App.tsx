@@ -150,8 +150,9 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const hasEmpty = parsed.some((c: Combat) => c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio'));
-          return hasEmpty ? parsed : [...parsed, EMPTY_COMBAT_PRESET];
+          const empty = parsed.find((c: Combat) => c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio')) || EMPTY_COMBAT_PRESET;
+          const others = parsed.filter((c: Combat) => c.id !== empty.id && !c.name.toLowerCase().includes('vazio'));
+          return [{ ...empty, name: 'Sem combate' }, ...others];
         }
       }
     } catch (e) {
@@ -300,16 +301,16 @@ export default function App() {
     const seen = new Set<string>();
     const activePlayerSet = new Set(activeCombatPlayerIds);
 
-    // Personagens jogadores ativos
+    // Todos os personagens criados no sistema sempre entram nos combates
     for (const p of players) {
-      if (activePlayerSet.has(p.id) && !seen.has(p.id)) {
+      if (!seen.has(p.id)) {
         seen.add(p.id);
         list.push(p);
       }
     }
     for (const c of combats) {
       for (const n of c.npcs || []) {
-        if (n.characterType === 'player' && activePlayerSet.has(n.id) && !seen.has(n.id)) {
+        if (n.characterType === 'player' && !seen.has(n.id)) {
           seen.add(n.id);
           list.push({ ...n, isVisibleToPlayer: true });
         }
@@ -803,20 +804,18 @@ export default function App() {
     const newCombat: Combat = {
       id,
       name,
-      description,
+      description: description || '',
       createdAt: new Date().toLocaleDateString('pt-BR'),
       npcs: [],
-      playerIds: players.map((p) => p.id), // Por padrão todos os personagens entram ativos
+      playerIds: players.map((p) => p.id), // Todos os personagens criados sempre entram nos combates
       isActive: true,
     };
-    const updated = [newCombat, ...combats];
+    const empty = combats.find((c) => c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio')) || EMPTY_COMBAT_PRESET;
+    const others = combats.filter((c) => c.id !== empty.id && !c.name.toLowerCase().includes('vazio'));
+    const updated = [{ ...empty, name: 'Sem combate' }, newCombat, ...others];
     setCombats(updated);
-    setActiveCombatId(id);
-    if (players.length > 0) {
-      setSelectedNpcId(players[0].id);
-    }
-    broadcastSync(updated, undefined, undefined, id);
-    setCombatManagerOpen(false);
+    // Cria o combate sem mudar de tela e sem fechar o modal
+    broadcastSync(updated, undefined, undefined, activeCombatId);
   };
 
   const handleToggleCombatActive = (id: string) => {
@@ -875,13 +874,17 @@ export default function App() {
   };
 
   const handleDeleteCombat = (id: string) => {
+    if (id === 'combat-vazio') return;
     const remaining = combats.filter((c) => c.id !== id);
-    setCombats(remaining);
-    const nextActiveId = activeCombatId === id && remaining.length > 0 ? remaining[0].id : activeCombatId;
+    const empty = remaining.find((c) => c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio')) || EMPTY_COMBAT_PRESET;
+    const others = remaining.filter((c) => c.id !== empty.id && !c.name.toLowerCase().includes('vazio'));
+    const nextCombats = [{ ...empty, name: 'Sem combate' }, ...others];
+    setCombats(nextCombats);
+    const nextActiveId = activeCombatId === id ? nextCombats[0].id : activeCombatId;
     if (activeCombatId === id && remaining.length > 0) {
       setActiveCombatId(nextActiveId);
     }
-    broadcastSync(remaining, undefined, undefined, nextActiveId);
+    broadcastSync(nextCombats, undefined, undefined, nextActiveId);
   };
 
   const handleRenameCombat = (id: string, name: string, description?: string) => {

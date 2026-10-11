@@ -91,9 +91,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                 >
                   {activeCombats.map((c) => (
                     <option key={c.id} value={c.id} className="bg-slate-900 text-white">
-                      {c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio')
-                        ? 'Sem combate (Apenas personagens)'
-                        : `${c.name} (${c.npcs?.length || 0} NPCs)`}
+                      {c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio') || c.name.toLowerCase().trim() === 'sem combate' ? 'Sem combate' : `${c.name} (${c.npcs?.length || 0} NPCs)`}
                     </option>
                   ))}
                 </select>
@@ -118,20 +116,6 @@ export const TopNav: React.FC<TopNavProps> = ({
                 <Plus size={13} className="text-amber-400" />
                 <span className="text-[11px]">Gerenciar Combates</span>
               </button>
-
-              {/* Botão direto: Sem Combate (Apenas Personagens) */}
-              <button
-                onClick={handleSelectVazio}
-                className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border ${
-                  isVazio
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
-                    : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white'
-                }`}
-                title="Exibir apenas a lista de personagens, sem nenhum NPC de combate"
-              >
-                <EyeOff size={13} className="text-amber-400" />
-                <span className="text-[11px]">Sem Combate (Apenas Personagens)</span>
-              </button>
             </>
           ) : (
             /* Jogador: Indicador fixo somente leitura do combate definido pelo Mestre */
@@ -141,7 +125,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             >
               <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">Combate:</span>
               <span className="text-[11px] font-bold text-amber-300 max-w-[160px] sm:max-w-[220px] truncate">
-                {combats.find((c) => c.id === activeCombatId)?.name || 'Sem combate'}
+                {activeCombats.find((c) => c.id === activeCombatId)?.name || 'Sem combate'}
               </span>
             </div>
           )}

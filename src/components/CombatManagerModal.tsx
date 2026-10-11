@@ -36,7 +36,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
 
   // Filtra "Combate Vazio": ele é apenas um modo de visualização sem combate, não deve aparecer no CRUD
   const validCombats = combats.filter(
-    (c) => c.id !== 'combat-vazio' && !c.name?.toLowerCase().includes('vazio')
+    (c) => c.id !== 'combat-vazio' && !c.name?.toLowerCase().includes('vazio') && c.name?.toLowerCase().trim() !== 'sem combate'
   );
 
   const handleCreate = (e: React.FormEvent) => {
@@ -103,7 +103,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors ml-auto shadow-sm active:scale-95"
             >
               <Plus size={14} />
-              <span>Criar e Abrir Combate</span>
+              <span>Criar</span>
             </button>
           </div>
         </form>
@@ -249,7 +249,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                           }`}
                           title={isInactive ? 'Ativar combate (exibir na barra principal)' : 'Inativar combate (ocultar da barra principal)'}
                         >
-                          {isInactive ? <Eye size={13} /> : <EyeOff size={13} />}
+                          {isInactive ? <Eye size={13} /> : <EyeOff size={13} />}<span className="text-[11px]">{isInactive ? 'Ativar' : 'Inativar'}</span>
                         </button>
                       )}
 

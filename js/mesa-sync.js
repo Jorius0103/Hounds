@@ -38,10 +38,26 @@ var MesaSync = (function () {
     Object.keys(MESA_LS).forEach(function (k) { try { var v = JSON.parse(localStorage.getItem(MESA_LS[k]) || 'null'); if (v != null) { out[k] = v; any = true; } } catch (e) {} });
     return any ? out : null;
   }
+  function ensureSemCombateFirst(combats) {
+    if (!Array.isArray(combats) || combats.length === 0) return combats;
+    var empty = null, others = [];
+    for (var i = 0; i < combats.length; i++) {
+      var c = combats[i];
+      if (!c) continue;
+      if (!empty && (c.id === 'combat-vazio' || (c.name && c.name.toLowerCase().indexOf('vazio') !== -1) || (c.name && c.name.toLowerCase().trim() === 'sem combate'))) {
+        empty = Object.assign({}, c, { name: 'Sem combate' });
+      } else {
+        others.push(c);
+      }
+    }
+    if (!empty) empty = { id: 'combat-vazio', name: 'Sem combate', description: 'Nenhum NPC neste combate. Exibe apenas os personagens.', createdAt: '29/09/2026', npcs: [], isActive: true };
+    return [empty].concat(others);
+  }
   function toLocal(st) {
     try {
       if (!localStorage.getItem('hounds_mesa_backup_v1')) { var b = localState(); if (b) localStorage.setItem('hounds_mesa_backup_v1', JSON.stringify({ at: Date.now(), data: b })); }
     } catch (e) {}
+    if (st.combats) st.combats = ensureSemCombateFirst(st.combats);
     Object.keys(MESA_LS).forEach(function (k) { if (st[k] != null) { try { localStorage.setItem(MESA_LS[k], JSON.stringify(st[k])); } catch (e) {} } });
   }
   function fetchRev(h) {
@@ -143,7 +159,7 @@ var MesaSync = (function () {
       if (m.type !== 'SYNC_FULL') return;
       // The Mesa's answer to REQUEST_SYNC has no deletedCombatIds: keep the ones known.
       var del = (m.deletedCombatIds || []).concat((state && state.deletedCombatIds) || []).filter(function (x, i, a) { return a.indexOf(x) === i; });
-      var st = { combats: m.combats, conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del };
+      var st = { combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del };
       var json = JSON.stringify(st);
       if (json === lastJson) return;
       lastJson = json;

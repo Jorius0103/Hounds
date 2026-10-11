@@ -1,7 +1,17 @@
 import { Combat, NPC } from '../types/rpg';
 import { DEFAULT_TURN_ACTIONS } from './gurps';
 
+export const EMPTY_COMBAT_PRESET: Combat = {
+  id: 'combat-vazio',
+  name: 'Sem combate',
+  description: 'Nenhum NPC neste combate. Exibe apenas os personagens da campanha.',
+  createdAt: '29/09/2026',
+  npcs: [],
+  isActive: true,
+};
+
 export const INITIAL_COMBATS: Combat[] = [
+  EMPTY_COMBAT_PRESET,
   {
     id: 'combat-floresta-sombria',
     name: 'Emboscada na Floresta Sombria',
@@ -980,11 +990,3 @@ export const HOUNDS_PLAYERS: NPC[] = [
     history: []
   }
 ];
-
-export const EMPTY_COMBAT_PRESET: Combat = {
-  id: 'combat-vazio',
-  name: 'Sem combate (Apenas personagens)',
-  description: 'Nenhum NPC neste combate. Exibe apenas os personagens da campanha.',
-  createdAt: '29/09/2026',
-  npcs: [],
-};
