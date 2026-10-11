@@ -19,7 +19,10 @@ CREATE INDEX IF NOT EXISTS idx_hounds_docs_col ON public.hounds_docs (col);
 CREATE INDEX IF NOT EXISTS idx_hounds_docs_updated ON public.hounds_docs (updated_at DESC);
 
 -- 3. Habilita Realtime para que todos os jogadores vejam alterações instantaneamente
-ALTER TABLE public.hounds_docs REPLICA IDENTITY FULL;
+-- REPLICA IDENTITY DEFAULT: cada aviso de alteração leva só a linha nova (numa exclusão,
+-- só col e id), e não também a linha antiga inteira, como no FULL. O site não usa a
+-- linha antiga, e o tráfego do Realtime cai pela metade.
+ALTER TABLE public.hounds_docs REPLICA IDENTITY DEFAULT;
 
 DO $$
 BEGIN

@@ -41,11 +41,11 @@ function charOrgs(id) {
 }
 // Names for subtitles and search; the old free-text field until it is migrated.
 function charOrgText(c) { var l = charOrgs(c.id); return l.length ? l.map(function (x) { return x.o.name; }).join(', ') : (c.organization || '').trim(); }
-function orgLocations(o) {
-  var seen = {}, out = [];
-  orgMembers(o).forEach(function (m) { charLocations(m.c.id).forEach(function (l) { if (!seen[l.id]) { seen[l.id] = true; out.push(l); } }); });
-  return out.sort(byName);
-}
+// The locations and maps an organization is linked to (organization.locationIds / mapIds), and the reverse.
+function orgLocs(o) { return uniqIds(o && o.locationIds).map(function (id) { return W.locIdx[id]; }).filter(Boolean).sort(byName); }
+function orgMaps(o) { return uniqIds(o && o.mapIds).map(function (id) { return W.mapIdx[id]; }).filter(Boolean).sort(byName); }
+function locOrgs(locId) { return W.organizations.filter(function (o) { return (o.locationIds || []).indexOf(locId) >= 0; }).sort(byName); }
+function mapOrgs(mapId) { return W.organizations.filter(function (o) { return (o.mapIds || []).indexOf(mapId) >= 0; }).sort(byName); }
 
 Ops.saveOrganization = function (o, fields, newFile, newDims, removeImage) {
   var oldRef = o && o.image && o.image.ref;
@@ -54,10 +54,12 @@ Ops.saveOrganization = function (o, fields, newFile, newDims, removeImage) {
   else if (removeImage) p = Promise.resolve(null);
   return p.then(function (image) {
     var t = now();
-    // Keep members this user can't see, the same way as a character's relations.
-    var members = (fields.members || []).slice();
-    if (o) (o.members || []).forEach(function (m) { if (!W.charIdx[m.charId] && rawHas('characters', m.charId) && !members.some(function (x) { return x.charId === m.charId; })) members.push(m); });
-    var body = { v: 1, name: fields.name, description: fields.description, reputation: fields.reputation, members: members, image: image, visible: fields.visible !== false, sharedWith: fields.sharedWith || (o && o.sharedWith) || [],
+    // One entry per character; keep members this user can't see, the same way as a character's relations.
+    var seen = {}, members = (fields.members || []).filter(function (m) { if (!m.charId || seen[m.charId]) return false; seen[m.charId] = true; return true; });
+    if (o) (o.members || []).forEach(function (m) { if (!W.charIdx[m.charId] && rawHas('characters', m.charId) && !seen[m.charId]) { seen[m.charId] = true; members.push(m); } });
+    var locIds = keepHidden((fields.locationIds || []).filter(function (id) { return rawHas('locations', id); }), o && o.locationIds, 'locations', W.locIdx);
+    var mapIds = keepHidden((fields.mapIds || []).filter(function (id) { return rawHas('maps', id); }), o && o.mapIds, 'maps', W.mapIdx);
+    var body = { v: 1, name: fields.name, description: fields.description, reputation: fields.reputation, members: members, locationIds: locIds, mapIds: mapIds, image: image, visible: fields.visible !== false, sharedWith: fields.sharedWith || (o && o.sharedWith) || [],
                  createdBy: owner(o), createdAt: (o && o.createdAt) || t, updatedAt: t };
     return W.store.put('organizations', o ? o.id : null, body);
   }).then(function (id) {
@@ -72,13 +74,19 @@ Ops.deleteOrganization = function (o) {
 // organizations left out lose the character; picks without an id are new organizations.
 Ops.setCharOrgs = function (charId, picks, visible, shared) {
   var t = now(), q = /** @type {Promise<any>} */ (Promise.resolve());
+  // The same organization once: picked twice, or typed twice as a new name, counts as one link.
+  var seenPick = {};
+  picks = picks.filter(function (p) { var k = p.id ? 'id:' + p.id : 'new:' + norm((p.name || '').trim()); if (seenPick[k]) return false; seenPick[k] = true; return true; });
   W.organizations.forEach(function (o) {
-    var cur = o.members || [], had = cur.filter(function (m) { return m.charId === charId; })[0], want = picks.filter(function (p) { return p.id === o.id; })[0];
+    var cur = o.members || [], mine = cur.filter(function (m) { return m.charId === charId; }), had = mine[0], want = picks.filter(function (p) { return p.id === o.id; })[0];
     if (!had && !want) return;
     var rank = want ? want.text.trim() : '';
-    if (had && want && (had.rank || '') === rank) return;
+    if (had && want && mine.length === 1 && (had.rank || '') === rank) return;
+    // A character is in each organization once; extra entries from before are dropped.
+    var once = false;
     var next = !want ? cur.filter(function (m) { return m.charId !== charId; })
-      : had ? cur.map(function (m) { return m.charId === charId ? { charId: charId, rank: rank } : m; }) : cur.concat([{ charId: charId, rank: rank }]);
+      : had ? cur.filter(function (m) { if (m.charId !== charId) return true; if (once) return false; once = true; return true; }).map(function (m) { return m.charId === charId ? { charId: charId, rank: rank } : m; })
+      : cur.concat([{ charId: charId, rank: rank }]);
     q = q.then(function () { return W.store.patch('organizations', o.id, { members: next, updatedAt: t }); });
   });
   picks.filter(function (p) { return !p.id && p.name.trim(); }).forEach(function (p) {
@@ -162,9 +170,9 @@ function textPicker(o) {
 function renderOrgsPage() {
   var can = canWrite();
   pageRoot.innerHTML =
-    '<div class="head-row"><div>' + crumbsHtml('orgs') + '<h1>Organizações</h1><p class="lede">Guildas, ordens, casas e bandos do mundo. Cada organização tem reputação e membros, e cada membro pode ter um cargo, como Líder ou General.</p></div>' +
+    '<div class="head-row"><div>' + crumbsHtml('orgs') + '<h1>Organizações</h1><p class="lede">Guildas, ordens, casas e bandos do mundo. Cada organização tem reputação e membros, e cada membro pode ter um cargo, como Líder ou General. Também pode ser ligada aos locais e mapas onde atua.</p></div>' +
     (can ? '<button class="btn primary" type="button" id="newOrgBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova organização</button>' : '') + '</div>' + notice() +
-    (W.organizations.length ? '<div class="toolbar"><label for="orgSearch" style="position:absolute;left:-9999px">Buscar organizações</label><input class="search" id="orgSearch" type="search" placeholder="Buscar por nome, reputação ou membro" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="orgCount"></span></div>' : '') +
+    (W.organizations.length ? '<div class="toolbar"><label for="orgSearch" style="position:absolute;left:-9999px">Buscar organizações</label><input class="search" id="orgSearch" type="search" placeholder="Buscar por nome, reputação, membro, local ou mapa" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="orgCount"></span></div>' : '') +
     '<div id="orgList"></div>';
   var b = $('newOrgBtn'); if (b) b.onclick = function () { openOrgForm(null); };
   var s = $('orgSearch'); if (s) s.addEventListener('input', function () { S.ui.q = s.value; renderOrgList(); });
@@ -179,13 +187,14 @@ function renderOrgList() {
   }
   var q = norm(S.ui.q);
   var list = W.organizations.slice().sort(byName).filter(function (o) {
-    return !q || norm(o.name + ' ' + (o.reputation || '') + ' ' + (o.description || '') + ' ' + orgMembers(o).map(function (m) { return m.c.name + ' ' + m.rank; }).join(' ')).indexOf(q) >= 0;
+    return !q || norm(o.name + ' ' + (o.reputation || '') + ' ' + (o.description || '') + ' ' + orgMembers(o).map(function (m) { return m.c.name + ' ' + m.rank; }).join(' ') + ' ' +
+      orgLocs(o).map(function (l) { return l.name; }).join(' ') + ' ' + orgMaps(o).map(function (m) { return m.name; }).join(' ')).indexOf(q) >= 0;
   });
   var cnt = $('orgCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.organizations.length : plural(W.organizations.length, 'organização', 'organizações');
   el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (o) {
-    var n = orgMembers(o).length;
+    var n = orgMembers(o).length, L = orgLocs(o).length, M = orgMaps(o).length;
     return '<a class="loc-card" href="' + orgHref(o.id) + '"><div class="thumb"' + (o.image ? ' data-img="' + esc(o.image.ref) + '"' : '') + '>' + svg(ICON.org, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(o.name) + '</strong>' +
-      '<span class="where">' + (o.reputation ? 'Reputação: ' + esc(o.reputation) : 'Reputação não informada') + '</span><span class="meta">' + (n ? plural(n, 'membro', 'membros') : 'Sem membros') + '</span></div></a>';
+      '<span class="where">' + (o.reputation ? 'Reputação: ' + esc(o.reputation) : 'Reputação não informada') + '</span><span class="meta">' + [n ? plural(n, 'membro', 'membros') : 'Sem membros', L ? plural(L, 'local', 'locais') : '', M ? plural(M, 'mapa', 'mapas') : ''].filter(Boolean).join(' · ') + '</span></div></a>';
   }).join('') + '</div>' : '<p class="lede">Nenhuma organização encontrada para essa busca.</p>';
   fillImages(el);
 }
@@ -196,11 +205,11 @@ function renderOrgPage() {
     pageRoot.innerHTML = crumbsHtml('orgs') + (W.loaded.organizations ? '<h1>Organização não encontrada</h1><p class="lede">Essa organização foi excluída ou o link está incompleto.</p><div><a class="btn" href="#organizacoes">Voltar para Organizações</a></div>' : '<p class="lede">Carregando organização…</p>');
     return;
   }
-  var can = canWrite(), members = orgMembers(o), locs = orgLocations(o);
+  var can = canWrite(), members = orgMembers(o), locs = orgLocs(o), maps = orgMaps(o);
   var head = crumbsHtml('org:' + o.id) + '<div class="head-row"><div><span class="badge">' + svg(ICON.org, 12, 2.4) + 'Organização</span><h1>' + esc(o.name) + '</h1>' +
     '<p class="lede">' + (members.length ? plural(members.length, 'membro', 'membros') : 'Sem membros') + (o.reputation ? ' · Reputação: ' + esc(o.reputation) : '') + '</p></div>' +
     (can ? '<div class="btn-row"><button class="btn" type="button" id="editOrgBtn">' + svg(ICON.edit, 15) + 'Editar organização</button><button class="btn danger" type="button" id="delOrgBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
-    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(o.name) + '</b>? Os personagens continuam cadastrados, só deixam de ser membros. Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delOrgYes">Excluir organização</button><button class="btn ghost" type="button" id="delOrgNo">Cancelar</button></div></div>' : '');
+    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(o.name) + '</b>? Os personagens, locais e mapas continuam cadastrados, só deixam de estar ligados a ela. Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delOrgYes">Excluir organização</button><button class="btn ghost" type="button" id="delOrgNo">Cancelar</button></div></div>' : '');
   var main = (o.image ? '<div class="loc-hero" id="orgHero">' + svg(ICON.org, 32, 1.6) + '</div>' : '') +
     '<section><h2 class="sec-title">Descrição</h2>' + (o.description ? '<p class="long">' + esc(o.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>' +
     '<section><div class="head-row" style="align-items:center"><h2 class="sec-title" style="margin:0">Membros</h2>' + (can ? '<button class="btn" type="button" id="addMemberBtn">' + svg(ICON.plus, 15, 2.4) + 'Adicionar membro</button>' : '') + '</div>' +
@@ -209,10 +218,12 @@ function renderOrgPage() {
       return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
         '<span class="where">' + (m.rank ? esc(m.rank) : 'Sem cargo') + '</span>' + (c.race ? '<span class="meta">' + esc(c.race) + '</span>' : '') + '</div></a>';
     }).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum membro ainda.' + (can ? ' Use <b>Adicionar membro</b> ou escolha a organização no cadastro do personagem.' : '') + '</p>') + '</section>';
-  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Ficha</h2><dl class="facts"><dt>Reputação</dt><dd>' + (o.reputation ? esc(o.reputation) : '<span class="none">Não informada</span>') + '</dd>' +
+  var side = '<div class="box"><h2 class="sec-title" style="margin:0">Informações</h2><dl class="facts"><dt>Reputação</dt><dd>' + (o.reputation ? esc(o.reputation) : '<span class="none">Não informada</span>') + '</dd>' +
     '<dt>Membros</dt><dd>' + (members.length || '<span class="none">Nenhum</span>') + '</dd></dl></div>' +
-    '<div class="box"><h2 class="sec-title" style="margin:0">Locais dos membros</h2>' +
-    (locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum membro está ligado a um local.</p>') + '</div>';
+    '<div class="box"><h2 class="sec-title" style="margin:0">Locais</h2>' +
+    (locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local ligado.' + (can ? ' Use <b>Editar organização</b> para ligar locais.' : '') + '</p>') + '</div>' +
+    '<div class="box"><h2 class="sec-title" style="margin:0">Mapas</h2>' +
+    (maps.length ? '<ul class="links">' + maps.map(function (m) { var pth = mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › '); return '<li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<span class="mtext"><b>' + esc(m.name) + '</b><span class="where">' + (pth ? esc(pth) : 'Nível superior') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum mapa ligado.' + (can ? ' Use <b>Editar organização</b> para ligar mapas.' : '') + '</p>') + '</div>';
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   if (o.image) W.store.imageUrl(o.image.ref).then(function (u) {
     var h = $('orgHero'); if (!h || !u) return;
@@ -241,6 +252,8 @@ function openOrgForm(o, focusMembers) {
     '<input type="text" id="omem" autocomplete="off" placeholder="' + (W.characters.length ? 'Buscar personagem' : 'Nenhum personagem cadastrado ainda') + '"' + (W.characters.length ? '' : ' disabled') + ' role="combobox" aria-expanded="false" aria-controls="oMemList" aria-autocomplete="list">' +
     '<div class="suggest" id="oMemList" role="listbox" hidden></div></div>' + datalistHtml('rankList', rankTypes()) +
     '<span class="hint-text">Opcional. Ao lado de cada membro, o cargo dele. Ex.: Líder, General, Recruta. Dá para mudar o cargo quando quiser.</span></div>' +
+    idPickerHtml('oloc', 'Locais', 'Buscar local', W.locations.length ? '' : 'Nenhum local cadastrado ainda', 'Opcional. Onde a organização fica ou atua. Ex.: a sede, um porto, uma fortaleza.') +
+    idPickerHtml('omap', 'Mapas', 'Buscar mapa', W.maps.length ? '' : 'Nenhum mapa cadastrado ainda', 'Opcional. As regiões onde a organização atua.') +
     flagHtml('ovis', o, true) +
     '<div class="form-err" id="ofErr" role="alert"></div>' +
     '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="ofCancel">Cancelar</button><button class="btn primary" type="submit" id="ofSave">' + (editing ? 'Salvar organização' : 'Criar organização') + '</button></div></form>';
@@ -261,6 +274,15 @@ function openOrgForm(o, focusMembers) {
     } });
   if (focusMembers && W.characters.length) setTimeout(function () { $('omem').focus(); }, 30);
 
+  var locSel = editing ? orgLocs(o).map(function (l) { return l.id; }) : [];
+  idPicker({ input: 'oloc', list: 'olocList', box: 'olocSel', sel: locSel,
+    chip: function (id) { var l = locById(id); return l && { name: l.name, icon: ICON.pin }; },
+    find: function (q) { return locPickOptions(q); } });
+  var mapSel = editing ? orgMaps(o).map(function (m) { return m.id; }) : [];
+  idPicker({ input: 'omap', list: 'omapList', box: 'omapSel', sel: mapSel,
+    chip: function (id) { var m = mapById(id); return m && { name: m.name, icon: ICON.map }; },
+    find: function (q) { return mapPickOptions(q); } });
+
   $('ofCancel').onclick = function () { closeModal(); };
   $('orgForm').onsubmit = function (e) {
     e.preventDefault();
@@ -274,7 +296,8 @@ function openOrgForm(o, focusMembers) {
     modalOpen.busy = true;
     var btn = $('ofSave'); btn.disabled = true; btn.textContent = img && img.file ? 'Enviando imagem…' : 'Salvando…'; $('ofCancel').disabled = true; $('ofErr').textContent = '';
     Ops.saveOrganization(o, { name: n, description: $('odesc').value.trim(), reputation: $('orep').value.trim(),
-      members: sel.filter(function (s) { return charById(s.id); }).map(function (s) { return { charId: s.id, rank: s.text.trim() }; }), visible: flagVal('ovis', o), sharedWith: shareVal('ovis', o) },
+      members: sel.filter(function (s) { return charById(s.id); }).map(function (s) { return { charId: s.id, rank: s.text.trim() }; }),
+      locationIds: locSel.filter(function (id) { return locById(id); }), mapIds: mapSel.filter(function (id) { return mapById(id); }), visible: flagVal('ovis', o), sharedWith: shareVal('ovis', o) },
       img && img.file, img && img.dims, img && img.removed)
       .then(function (id) {
         closeModal(true);

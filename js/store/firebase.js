@@ -107,7 +107,7 @@ function FirebaseStore(db) {
 
 // Shown once per browser; Firebase keeps the session afterwards.
 function askPassword(auth, email) {
-  return new Promise(function (done) {
+  return /** @type {Promise<void>} */ (new Promise(function (done) {
     var g = document.createElement('div');
     g.className = 'gate'; g.style.zIndex = '95';
     g.innerHTML = '<form class="gate-card" role="dialog" aria-modal="true" aria-labelledby="authTitle" novalidate>' +
@@ -127,7 +127,7 @@ function askPassword(auth, email) {
       });
     };
     inp.focus();
-  });
+  }));
 }
 
 function connectFirebase(cfg) {

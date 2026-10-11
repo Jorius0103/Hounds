@@ -53,8 +53,9 @@ function renderLocalPage() {
     pageRoot.innerHTML = crumbsHtml('locais') + (W.loaded.locations ? '<h1>Local não encontrado</h1><p class="lede">Esse local foi excluído ou o link está incompleto.</p><div><a class="btn" href="#locais">Voltar para Locais</a></div>' : '<p class="lede">Carregando local…</p>');
     return;
   }
-  var can = canWrite(), mid = locMapId(l), m = mapById(mid), chars = locChars(l), up = locById(W.locParent[l.id]), kids = childLocs(l.id);
-  var gone = (kids.length ? plural(kids.length, 'sublocal passa', 'sublocais passam') + ' para ' + (up ? '<b>' + esc(up.name) + '</b>' : 'o nível superior') + '. ' : '') + 'Marcadores ligados a ele continuam no mapa, sem o vínculo.';
+  var can = canWrite(), mid = locMapId(l), m = mapById(mid), chars = locChars(l), up = locById(W.locParent[l.id]), kids = childLocs(l.id), orgs = locOrgs(l.id), evs = locEvents(l.id);
+  var gone = (kids.length ? plural(kids.length, 'sublocal passa', 'sublocais passam') + ' para ' + (up ? '<b>' + esc(up.name) + '</b>' : 'o nível superior') + '. ' : '') + 'Marcadores ligados a ele continuam no mapa, sem o vínculo.' +
+    (orgs.length || evs.length ? ' ' + [orgs.length ? plural(orgs.length, 'organização', 'organizações') : '', evs.length ? plural(evs.length, 'evento', 'eventos') : ''].filter(Boolean).join(' e ') + ' perdem o vínculo com ele.' : '');
   var head = crumbsHtml('loc:' + l.id) + '<div class="head-row"><div><span class="badge">' + svg(ICON.pin, 12, 2.4) + 'Local</span><h1>' + esc(l.name) + '</h1>' +
     (up ? '<p class="lede">Dentro de <a class="inline" href="' + locHref(up.id) + '">' + esc(locPathText(up.id)) + '</a></p>' : '') +
     (m ? '<p class="lede">No mapa <a class="inline" href="' + mapHref(m.id) + '">' + esc(mapPathText(m.id)) + '</a></p>' : '') + '</div>' +
@@ -69,6 +70,10 @@ function renderLocalPage() {
     (can ? '<div><button class="btn" type="button" id="newSubLoc">' + svg(ICON.plus, 15, 2.4) + 'Novo local dentro deste</button></div>' : '') + '</div>' +
     '<div class="box"><h2 class="sec-title" style="margin:0">Personagens</h2>' +
     (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem ligado.</p>') + '</div>' +
+    '<div class="box"><h2 class="sec-title" style="margin:0">Organizações</h2>' +
+    (orgs.length ? '<ul class="links">' + orgs.map(function (o) { return '<li><a class="row-link" href="' + orgHref(o.id) + '">' + thumbSlot(o.image && o.image.ref, ICON.org) + '<b>' + esc(o.name) + '</b></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhuma organização ligada.' + (can ? ' Ligue pelo campo <b>Locais</b> da organização.' : '') + '</p>') + '</div>' +
+    '<div class="box"><h2 class="sec-title" style="margin:0">Eventos</h2>' +
+    (evs.length ? '<ul class="links">' + evs.map(eventLink).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum evento neste local.' + (can ? ' Escolha o local no cadastro do evento.' : '') + '</p>') + '</div>' +
     '<div class="box"><h2 class="sec-title" style="margin:0">Mapa relacionado</h2>' +
     (m ? '<ul class="links"><li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<b>' + esc(m.name) + '</b></a></li></ul><div class="btn-row" id="locMapActions"></div>' : '<p class="lede" style="font-size:13px">Este local não está em nenhum mapa.</p>') + '</div>' +
     '<div class="box"><h2 class="sec-title" style="margin:0">Localização no mapa</h2>' + (m ? pathTree(mapChain(m.id), { leaf: l }) : '<p class="lede" style="font-size:13px">Escolha um mapa em <b>Editar local</b> para posicionar este local na hierarquia.</p>') + '</div>';

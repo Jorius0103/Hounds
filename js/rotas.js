@@ -9,6 +9,7 @@
 /* =====================================================================
    Routing
      #mesa · #maps · #map~<id> · #map~<id>~explorar · #locais · #local~<id>
+     #fichas · #ficha~<id> · #eventos · #evento~<id>
    ===================================================================== */
 function parseRoute() {
   var h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
@@ -19,6 +20,10 @@ function parseRoute() {
   if (p[0] === 'local' && p[1]) return { page: 'local', locId: p[1], node: 'loc:' + p[1] };
   if (p[0] === 'personagens') return { page: 'chars', node: 'chars' };
   if (p[0] === 'personagem' && p[1]) return { page: 'char', charId: p[1], node: 'char:' + p[1] };
+  if (p[0] === 'fichas') return { page: 'sheets', node: 'sheets' };
+  if (p[0] === 'ficha' && p[1]) return { page: 'sheet', sheetId: p[1], node: 'sheet:' + p[1] };
+  if (p[0] === 'eventos') return { page: 'events', node: 'events' };
+  if (p[0] === 'evento' && p[1]) return { page: 'event', eventId: p[1], node: 'event:' + p[1] };
   if (p[0] === 'organizacoes') return { page: 'orgs', node: 'orgs' };
   if (p[0] === 'organizacao' && p[1]) return { page: 'org', orgId: p[1], node: 'org:' + p[1] };
   if (p[0] === 'magias') return { page: 'spells', node: 'spells' };
@@ -43,6 +48,10 @@ function hrefFor(node) {
   if (node.indexOf('char:') === 0) return '#personagem~' + encodeURIComponent(node.slice(5));
   if (node === 'orgs') return '#organizacoes';
   if (node.indexOf('org:') === 0) return '#organizacao~' + encodeURIComponent(node.slice(4));
+  if (node === 'sheets') return '#fichas';
+  if (node.indexOf('sheet:') === 0) return '#ficha~' + encodeURIComponent(node.slice(6));
+  if (node === 'events') return '#eventos';
+  if (node.indexOf('event:') === 0) return '#evento~' + encodeURIComponent(node.slice(6));
   if (node === 'spells') return '#magias';
   if (node.indexOf('spell:') === 0) return '#magia~' + encodeURIComponent(node.slice(6));
   return '#';

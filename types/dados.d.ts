@@ -49,6 +49,8 @@ interface Character extends Doc {
   organization?: string;
   mapIds?: string[];
   relations?: Relation[];
+  /** A ficha do personagem (coleção `sheets`): no máximo uma. */
+  sheetId?: string | null;
   image?: ImageInfo | null;
   source?: string;
   mesaId?: string | null;
@@ -57,7 +59,32 @@ interface Character extends Doc {
 interface Member { charId: string; rank: string }
 
 /** Coleção `organizations`. */
-interface Organization extends Doc { name: string; description?: string; reputation?: string; members?: Member[]; locationIds?: string[]; image?: ImageInfo | null }
+interface Organization extends Doc {
+  name: string;
+  description?: string;
+  reputation?: string;
+  members?: Member[];
+  /** Locais onde a organização fica ou atua. */
+  locationIds?: string[];
+  /** Mapas onde a organização atua. */
+  mapIds?: string[];
+  image?: ImageInfo | null;
+}
+
+/** Coleção `sheets` (fichas). Estrutura inicial: os campos da ficha entram depois. Ligada a personagens por `Character.sheetId`. */
+interface Sheet extends Doc { name: string; description?: string }
+
+/** Coleção `events`. `date` é texto livre, no calendário da campanha. */
+interface HEvent extends Doc {
+  name: string;
+  date?: string;
+  description?: string;
+  /** Onde o evento aconteceu. */
+  locationId?: string | null;
+  /** Personagens que participaram, cada um uma vez. */
+  characterIds?: string[];
+  image?: ImageInfo | null;
+}
 
 /** Coleção `spells` (GURPS). */
 interface Spell extends Doc {
@@ -102,6 +129,8 @@ interface Store {
   upload(file: Blob): Promise<{ ref: string; type: string; size: number }>;
   imageUrl(ref: string): Promise<string>;
   dropImage(ref: string): Promise<unknown>;
+  /** Só o IndexedDB local: grava e apaga vários documentos de uma coleção numa transação só. */
+  putBatch?(col: string, items: { id: string; data: object }[], toRemove?: string[]): Promise<unknown>;
   /** Supabase: atraso para salvar a Mesa (ms). */
   saveDelay?: number;
   /** Supabase: tamanho máximo do estado da Mesa salvo numa linha só. */
@@ -118,17 +147,21 @@ interface World {
   characters: Character[];
   organizations: Organization[];
   spells: Spell[];
+  sheets: Sheet[];
+  events: HEvent[];
   notebooks: Notebook[];
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; notebooks: Notebook[]; notes: Note[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; users: boolean; notebooks: boolean; notes: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
   orgIdx: Record<string, Organization>;
   spellIdx: Record<string, Spell>;
+  sheetIdx: Record<string, Sheet>;
+  eventIdx: Record<string, HEvent>;
   /** Pai efetivo de cada mapa. */
   parent: Record<string, string | null>;
   /** Filhos de cada mapa. */
@@ -149,6 +182,8 @@ interface Route {
   charId?: string;
   orgId?: string;
   spellId?: string;
+  sheetId?: string;
+  eventId?: string;
   nbId?: string;
   noteId?: string;
 }

@@ -12,8 +12,18 @@
    stored documents, so a change anywhere shows up everywhere.
    ===================================================================== */
 /** @type {World} */
-var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [], loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, users: false, notebooks: false, notes: false },
-          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
+var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], sheets: [], events: [],
+          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], sheets: [], events: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [],
+          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
+          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
+// The same ids once each, in order: links are lists of ids and must never repeat one.
+function uniqIds(ids) { var seen = {}; return (ids || []).filter(function (id) { if (!id || seen[id]) return false; seen[id] = true; return true; }); }
+// Ids picked in a form plus the ones this user can't see (and so couldn't pick), which are kept.
+function keepHidden(picked, prev, col, idx) {
+  var out = uniqIds(picked);
+  (prev || []).forEach(function (id) { if (!idx[id] && rawHas(col, id) && out.indexOf(id) < 0) out.push(id); });
+  return out;
+}
 
 // Effective parent of each item of a tree (maps, locations): ignore missing parents,
 // self references and anything that would loop. Also the children of each id, by name.
@@ -176,8 +186,8 @@ document.addEventListener('change', function (e) {
 function secretTag(item) { return '<span class="secret-tag" title="Não está visível para todos">' + svg(EYE_OFF, 12, 2.4) + esc('Só ' + seenBy(item)) + '</span>'; }
 function refilter() {
   W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters); W.organizations = pub(W.raw.organizations);
-  W.spells = pub(W.raw.spells || []);
-  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); filterNotes();
+  W.spells = pub(W.raw.spells || []); W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events);
+  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexSheets(); indexEvents(); filterNotes();
   S.markers = pub(S.rawMarkers || []);
   if (Explorer.isOpen() && S.route && S.route.explore) Explorer.setMarkers(S.markers);
 }
@@ -198,6 +208,23 @@ var Ops = {
     if (parentId && validParents(id)[parentId]) return Promise.reject({ code: 'cycle' });
     return W.store.patch('maps', id, { name: name, parentId: parentId, visible: visible !== false, sharedWith: shared || (orig && orig.sharedWith) || [], updatedAt: now() });
   },
+  // A new image for a map. Marker positions belong to the old image, so every marker of the map
+  // (hidden ones too) is deleted; with markers there this needs confirmed === true, the form asks first.
+  // Resolves with how many markers were deleted.
+  replaceMapImage: function (id, file, dims, confirmed) {
+    var orig = rawGet('maps', id), col = 'maps/' + id + '/markers';
+    if (!orig) return Promise.reject({ message: 'Esse mapa não existe mais.' });
+    if (!file || !dims) return Promise.reject({ message: 'Selecione a nova imagem do mapa.' });
+    return W.store.all(col).then(function (list) {
+      if (list.length && confirmed !== true) throw { code: 'markers_exist', count: list.length, message: 'Este mapa tem ' + plural(list.length, 'marcador', 'marcadores') + '. Confirme a troca da imagem, que exclui todos eles.' };
+      return W.store.upload(file).then(function (up) {
+        return list.reduce(function (p, mk) { return p.then(function () { return W.store.remove(col, mk.id); }); }, Promise.resolve())
+          .then(function () { return W.store.patch('maps', id, { image: { ref: up.ref, w: dims.w, h: dims.h, type: up.type, size: up.size }, updatedAt: now() }); })
+          .then(function () { if (orig.image && orig.image.ref && orig.image.ref !== up.ref) W.store.dropImage(orig.image.ref); return list.length; },
+            function (e) { W.store.dropImage(up.ref); throw e; });
+      });
+    });
+  },
   deleteMap: function (m) {
     var up = W.parent[m.id] || null, col = 'maps/' + m.id + '/markers';
     var seq = Promise.resolve();
@@ -209,6 +236,11 @@ var Ops = {
       var ids = (c.mapIds || []).filter(function (x) { return x !== m.id; });
       if (up && ids.indexOf(up) < 0) ids.push(up);
       then(function () { return W.store.patch('characters', c.id, { mapIds: ids, updatedAt: now() }); });
+    });
+    W.raw.organizations.filter(function (o) { return (o.mapIds || []).indexOf(m.id) >= 0; }).forEach(function (o) {
+      var ids = (o.mapIds || []).filter(function (x) { return x !== m.id; });
+      if (up && ids.indexOf(up) < 0) ids.push(up);
+      then(function () { return W.store.patch('organizations', o.id, { mapIds: ids, updatedAt: now() }); });
     });
     then(function () { return W.store.remove('maps', m.id); });
     then(function () { return W.store.dropImage(m.image && m.image.ref); });
@@ -253,7 +285,16 @@ var Ops = {
           return list.reduce(function (q, mk) { return q.then(function () { return W.store.patch(col, mk.id, { locationId: null, updatedAt: now() }); }); }, Promise.resolve());
         });
       });
-    }, Promise.resolve()); }).then(function () { return W.store.remove('locations', l.id); })
+    }, Promise.resolve()); }).then(function () {
+      // Organizations and events linked to it lose the link.
+      return W.raw.organizations.filter(function (o) { return (o.locationIds || []).indexOf(l.id) >= 0; }).reduce(function (p, o) {
+        return p.then(function () { return W.store.patch('organizations', o.id, { locationIds: o.locationIds.filter(function (x) { return x !== l.id; }), updatedAt: now() }); });
+      }, Promise.resolve());
+    }).then(function () {
+      return W.raw.events.filter(function (ev) { return ev.locationId === l.id; }).reduce(function (p, ev) {
+        return p.then(function () { return W.store.patch('events', ev.id, { locationId: null, updatedAt: now() }); });
+      }, Promise.resolve());
+    }).then(function () { return W.store.remove('locations', l.id); })
       .then(function () { return W.store.dropImage(l.image && l.image.ref); })
       .then(function () { return W.store.dropImage(l.image2 && l.image2.ref); });
   },

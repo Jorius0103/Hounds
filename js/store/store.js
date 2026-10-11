@@ -15,7 +15,9 @@
      maps/{id}/markers    { x, y (0..1 of the image), title, description, category, locationId, createdAt, updatedAt }
      locations            { v, name, description, image{...}|null, characterIds[], mapId, parentId, position|null, createdAt, updatedAt }
      characters           { name, source, mesaId, createdAt, updatedAt }
-     organizations        { v, name, description, reputation, members[{ charId, rank }], createdAt, updatedAt }
+     organizations        { v, name, description, reputation, members[{ charId, rank }], locationIds[], mapIds[], createdAt, updatedAt }
+     sheets               { v, name, description, createdAt, updatedAt }   (characters[].sheetId points here)
+     events               { v, name, date, description, locationId, characterIds[], image{...}|null, createdAt, updatedAt }
    `position` on a location is reserved for coordinates inside its map.
    ===================================================================== */
 function SharedStore(db, assets, user) {
@@ -77,7 +79,7 @@ function LocalStore() {
       if (done) return;
       return indexedDB.databases().then(function (dbs) {
         if (!dbs.some(function (x) { return x.name === 'hounds-maps'; })) return;
-        return new Promise(function (res) {
+        return /** @type {Promise<void>} */ (new Promise(function (res) {
           var o = indexedDB.open('hounds-maps');
           o.onerror = function () { res(); };
           o.onsuccess = function () {
@@ -95,9 +97,9 @@ function LocalStore() {
                   tw.objectStore('docs').put({ k: 'meta|migrated', col: 'meta', id: 'migrated', data: { at: Date.now() } });
                 });
               });
-            }).then(res, function () { res(); });
+            }).then(function () { res(); }, function () { res(); });
           };
-        });
+        }));
       });
     }).catch(function () {});
   }

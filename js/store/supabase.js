@@ -17,12 +17,22 @@
                          of the database (the Mesa uses it; see MesaSync).
      Writes show on this screen at once; the database's echo of them is
      recognized and a failed write reloads the collection. Watched
-     collections are reloaded after every (re)connection, when the tab
-     comes back and every 60 s, to catch anything missed.
+     collections are checked again after every (re)connection, when the
+     tab comes back and every 60 s, to catch anything missed. The first
+     load of a collection reads every row; the checks after it read only
+     each row's id and updated_at, then download just the rows that
+     changed and drop the ones that are gone (see check()).
    ===================================================================== */
 function SupabaseStore(client, bucket) {
-  var bName = bucket || 'hounds-images', T = 'hounds_docs';
+  var bName = bucket || 'hounds-images', T = 'hounds_docs', BATCH = 100;
   var cols = {}, channel = null, live = false, bcast = {};
+  // updated_at in one format, whether it came from a select or from realtime ("T" or " ",
+  // with or without the time zone; the column is timestamptz, always UTC here). A format
+  // that still differs only costs one extra download of that row.
+  function ts(v) {
+    var m = /^(\d{4}-\d\d-\d\d)[T ](\d\d:\d\d:\d\d)(?:\.(\d+))?/.exec(String(v || ''));
+    return m ? m[1] + ' ' + m[2] + '.' + ((m[3] || '') + '000000').slice(0, 6) : '';
+  }
 
   // Same JSON whatever the key order (Postgres jsonb reorders keys).
   function stable(v) {
@@ -39,18 +49,27 @@ function SupabaseStore(client, bucket) {
     Promise.resolve().then(function () { c.queued = false; if (cols[c.col] !== c || !c.ready) return; var l = list(c); c.subs.slice().forEach(function (cb) { cb(l.slice()); }); });
   }
   function fetchRows(col) {
-    return client.from(T).select('id, data').eq('col', col).then(function (res) { if (res.error) throw res.error; return res.data || []; });
+    return client.from(T).select('id, data, updated_at').eq('col', col).then(function (res) { if (res.error) throw res.error; return res.data || []; });
+  }
+  // Only the rows asked for, BATCH ids per request so the URL stays short.
+  function fetchSome(col, ids) {
+    var parts = [];
+    for (var i = 0; i < ids.length; i += BATCH) parts.push(ids.slice(i, i + BATCH));
+    return Promise.all(parts.map(function (p) {
+      return client.from(T).select('id, data, updated_at').eq('col', col).in('id', p).then(function (res) { if (res.error) throw res.error; return res.data || []; });
+    })).then(function (l) { return [].concat.apply([], l); });
   }
 
-  // Full reload of one collection; changes that arrive meanwhile are replayed on top.
+  // Full load of one collection (the first time, and after a failed write); changes that
+  // arrive meanwhile are replayed on top.
   function load(c) {
     var gen = ++c.gen;
     c.buffer = [];
     return fetchRows(c.col).then(function (data) {
       if (cols[c.col] !== c || gen !== c.gen) return;
-      var before = c.ready ? stable(list(c)) : null, rows = {};
-      data.forEach(function (r) { rows[r.id] = doc(r); });
-      var buf = c.buffer; c.buffer = null; c.rows = rows; c.ready = true;
+      var before = c.ready ? stable(list(c)) : null, rows = {}, stamp = {};
+      data.forEach(function (r) { rows[r.id] = doc(r); stamp[r.id] = ts(r.updated_at); });
+      var buf = c.buffer; c.buffer = null; c.rows = rows; c.stamp = stamp; c.ready = true;
       buf.forEach(function (p) { apply(c, p, true); });
       if (before === null || stable(list(c)) !== before) emit(c);
     }, function (e) {
@@ -59,7 +78,39 @@ function SupabaseStore(client, bucket) {
       c.errs.slice().forEach(function (f) { f(e); });
     });
   }
-  function resync() { Object.keys(cols).forEach(function (k) { load(cols[k]); }); }
+  // Light check of a loaded collection: ids and updated_at only (a few dozen bytes a row),
+  // then the rows whose updated_at differs from the one known here, or that this browser
+  // doesn't have, and the removal of rows the database no longer has. Rows with a write of
+  // this browser still on the way are left alone. A failed check changes nothing; the next
+  // one tries again.
+  function check(c) {
+    if (!c.ready) return load(c);
+    var gen = ++c.gen;
+    c.buffer = [];
+    return client.from(T).select('id, updated_at').eq('col', c.col).then(function (res) {
+      if (res.error) throw res.error;
+      if (cols[c.col] !== c || gen !== c.gen) return;
+      var there = {}, stale = [];
+      (res.data || []).forEach(function (r) { var t = ts(r.updated_at); there[r.id] = true; if (!(r.id in c.rows) || c.stamp[r.id] !== t) stale.push(r.id); });
+      var gone = Object.keys(c.rows).filter(function (id) { return !there[id] && !pending(c, id); });
+      stale = stale.filter(function (id) { return !pending(c, id); });
+      return (stale.length ? fetchSome(c.col, stale) : Promise.resolve([])).then(function (data) {
+        if (cols[c.col] !== c || gen !== c.gen) return;
+        var buf = c.buffer; c.buffer = null;
+        if (!data.length && !gone.length && !buf.length) return;
+        var before = stable(list(c)), got = {};
+        data.forEach(function (r) { got[r.id] = true; c.rows[r.id] = doc(r); c.stamp[r.id] = ts(r.updated_at); });
+        // Asked for but not returned: deleted in between.
+        gone.concat(stale.filter(function (id) { return !got[id]; })).forEach(function (id) { delete c.rows[id]; delete c.stamp[id]; });
+        buf.forEach(function (p) { apply(c, p, true); });
+        if (stable(list(c)) !== before) emit(c);
+      });
+    }).catch(function (e) {
+      if (cols[c.col] === c && gen === c.gen) c.buffer = null;
+      console.warn('Hounds: não foi possível conferir ' + c.col + ' com o banco.', e);
+    });
+  }
+  function resync() { Object.keys(cols).forEach(function (k) { check(cols[k]); }); }
 
   // This browser's writes not yet echoed back by the database, per document.
   function expect(c, id, e) { e.at = Date.now(); (c.echo[id] = c.echo[id] || []).push(e); }
@@ -70,7 +121,9 @@ function SupabaseStore(client, bucket) {
     if (e.keys) return e.keys.every(function (k) { return stable(d[k]) === e.vals[k]; });
     return stable(d) === e.val;
   }
-  function failed(col, id) { var c = cols[col]; if (c) { delete c.echo[id]; load(c); } }
+  // A write of this browser to the row is still on the way (its echo is at most 15 s old).
+  function pending(c, id) { var q = c.echo[id], t = Date.now(); return !!q && q.some(function (e) { return t - e.at < 15000; }); }
+  function failed(col, id) { var c = cols[col]; if (c) { delete c.echo[id]; delete c.stamp[id]; load(c); } }
 
   function apply(c, p, replay) {
     var del = p.eventType === 'DELETE', row = del ? p.old : p.new;
@@ -86,11 +139,13 @@ function SupabaseStore(client, bucket) {
     }
     c.ver[id] = (c.ver[id] || 0) + 1;
     if (del) {
+      delete c.stamp[id];
       if (!(id in c.rows)) return;
       delete c.rows[id];
-    } else if (row.data === undefined) {
-      refetch(c, id); return; // row over the 1 MB realtime limit arrives without its data
+    } else if (!row.data || typeof row.data !== 'object') {
+      refetch(c, id); return; // row over the 1 MB realtime limit (or a column left out of the event) arrives without its data
     } else {
+      if (row.updated_at) c.stamp[id] = ts(row.updated_at);
       var d = doc(row);
       if (c.rows[id] && stable(c.rows[id]) === stable(d)) return;
       c.rows[id] = d;
@@ -99,10 +154,10 @@ function SupabaseStore(client, bucket) {
   }
   function refetch(c, id) {
     var v = c.ver[id];
-    client.from(T).select('id, data').eq('col', c.col).eq('id', id).then(function (res) {
+    client.from(T).select('id, data, updated_at').eq('col', c.col).eq('id', id).then(function (res) {
       if (res.error || cols[c.col] !== c || c.ver[id] !== v) return;
       var r = res.data && res.data[0];
-      if (r) c.rows[id] = doc(r); else delete c.rows[id];
+      if (r) { c.rows[id] = doc(r); c.stamp[id] = ts(r.updated_at); } else { delete c.rows[id]; delete c.stamp[id]; }
       emit(c);
     });
   }
@@ -129,7 +184,7 @@ function SupabaseStore(client, bucket) {
 
   function watch(col, cb, err) {
     ensureChannel();
-    var c = cols[col] || (cols[col] = { col: col, rows: {}, ready: false, buffer: null, subs: [], errs: [], echo: {}, ver: {}, gen: 0 });
+    var c = cols[col] || (cols[col] = { col: col, rows: {}, stamp: {}, ready: false, buffer: null, subs: [], errs: [], echo: {}, ver: {}, gen: 0 });
     c.subs.push(cb);
     if (err) c.errs.push(err);
     if (c.ready) emit(c);

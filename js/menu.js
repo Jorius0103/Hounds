@@ -34,8 +34,12 @@ function buildMenu() {
       { id: 'locais', label: 'Locais', icon: ICON.pin, route: true, hideKids: true, children: locNodes(null) },
       { id: 'chars', label: 'Personagens', icon: ICON.user, route: true, hideKids: true,
         children: W.characters.slice().sort(byName).map(function (c) { return { id: 'char:' + c.id, label: c.name, icon: ICON.user, route: true, secret: isSecret(c) }; }) },
+      { id: 'sheets', label: 'Fichas', icon: ICON.sheet, route: true, hideKids: true,
+        children: W.sheets.slice().sort(byName).map(function (s) { return { id: 'sheet:' + s.id, label: s.name, icon: ICON.sheet, route: true, secret: isSecret(s) }; }) },
       { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, hideKids: true,
         children: W.organizations.slice().sort(byName).map(function (o) { return { id: 'org:' + o.id, label: o.name, icon: ICON.org, route: true, secret: isSecret(o) }; }) },
+      { id: 'events', label: 'Eventos', icon: ICON.event, route: true, hideKids: true,
+        children: W.events.slice().sort(byName).map(function (ev) { return { id: 'event:' + ev.id, label: ev.name, icon: ICON.event, route: true, secret: isSecret(ev) }; }) },
       { id: 'spells', label: 'Magias', icon: ICON.spell, route: true, hideKids: true,
         children: (W.spells || []).slice().sort(byName).map(function (s) { return { id: 'spell:' + s.id, label: s.name, icon: ICON.spell, route: true, secret: isSecret(s) }; }) }
     ] },

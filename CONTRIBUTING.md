@@ -4,7 +4,7 @@
 
 | Quero mexer em… | Arquivo |
 |---|---|
-| Uma aba (Mapas, Locais, Personagens, Organizações, Anotações, Usuários, Início) | `js/tabs/tab-<aba>.js` |
+| Uma aba (Mapas, Locais, Personagens, Fichas, Organizações, Eventos, Magias, Anotações, Usuários, Início) | `js/tabs/tab-<aba>.js` |
 | Como os dados são salvos, ou regras de visibilidade | `js/mundo.js` (operações `Ops.*` e visibilidade) e `js/store/` (bancos) |
 | Uma rota nova (`#algo`) | `js/rotas.js` (`parseRoute`, `hrefFor`) e `js/app.js` (`renderPage`) |
 | O menu lateral ou o tema | `js/menu.js` |

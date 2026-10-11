@@ -59,3 +59,25 @@ function pathTree(chain, opts) {
   var html = level(0);
   return '<div class="mtree path-tree">' + html.replace(/^<ul>/, '').replace(/<\/ul>$/, '') + '</div>';
 }
+// Options for idPicker: maps and locations in hierarchy order, with the path above each one as the subtitle.
+function mapPickOptions(q) {
+  var out = [];
+  (function walk(pid, d) {
+    childMaps(pid).forEach(function (m) {
+      if (!q || norm(m.name).indexOf(q) >= 0) out.push({ id: m.id, label: m.name, sub: mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › ') || 'Nível superior', depth: d });
+      walk(m.id, d + 1);
+    });
+  })(null, 0);
+  return out;
+}
+function locPickOptions(q) {
+  var out = [];
+  (function walk(pid, d) {
+    childLocs(pid).forEach(function (l) {
+      var mid = locMapId(l), up = locChain(l.id).slice(0, -1).map(function (x) { return x.name; }).join(' › ');
+      if (!q || norm(l.name + ' ' + up).indexOf(q) >= 0) out.push({ id: l.id, label: l.name, sub: up || (mid ? mapById(mid).name : 'Sem mapa'), depth: d });
+      walk(l.id, d + 1);
+    });
+  })(null, 0);
+  return out;
+}

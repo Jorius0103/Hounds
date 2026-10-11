@@ -44,6 +44,11 @@ renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'char
 var _rOrg = renderOrgPage;
 // @ts-expect-error -- idem, tab-organizacoes.js
 renderOrgPage = function () { _rOrg(); tagPage(orgById(S.route.orgId), 'organizations'); };
+var _rSheet = renderSheetPage, _rEvent = renderEventPage;
+// @ts-expect-error -- idem, tab-fichas.js
+renderSheetPage = function () { _rSheet(); tagPage(sheetById(S.route.sheetId), 'sheets'); };
+// @ts-expect-error -- idem, tab-eventos.js
+renderEventPage = function () { _rEvent(); tagPage(eventById(S.route.eventId), 'events'); };
 var _rSpell = renderSpellPage;
 // @ts-expect-error -- idem, tab-magias.js
 renderSpellPage = function () { _rSpell(); tagPage(spellById(S.route.spellId), 'spells'); };
@@ -83,6 +88,10 @@ function renderPage() {
   else if (r.page === 'local') renderLocalPage();
   else if (r.page === 'chars') renderCharsPage();
   else if (r.page === 'char') renderCharPage();
+  else if (r.page === 'sheets') renderSheetsPage();
+  else if (r.page === 'sheet') renderSheetPage();
+  else if (r.page === 'events') renderEventsPage();
+  else if (r.page === 'event') renderEventPage();
   else if (r.page === 'orgs') renderOrgsPage();
   else if (r.page === 'org') renderOrgPage();
   else if (r.page === 'spells') renderSpellsPage();
@@ -103,7 +112,7 @@ function onRoute() {
   if (isMesa) setCollapsed(true, true);
   else if (wasMesa) setCollapsed(lstore('hounds_rail_collapsed') === '1', true);
   document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : 'view-page'); });
-  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'orgs' || r.page === 'spells' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
+  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
   paintMenu();
   topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
   if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : r.page === 'spell' ? spellHref(r.spellId) : hrefFor(r.node));
@@ -120,6 +129,8 @@ function onData(kind) {
   if (kind === 'characters') indexCharacters();
   if (kind === 'organizations') indexOrgs();
   if (kind === 'spells') indexSpells();
+  if (kind === 'sheets') indexSheets();
+  if (kind === 'events') indexEvents();
   migrateOrganizations();
   renderMenu();
   if (!S.route) return;
@@ -131,9 +142,12 @@ function onData(kind) {
   }
   if (modalOpen) return; // keep forms stable while open; pages refresh when they close
   if (S.route.page === 'note' && S.ui.editing) return;
+  if (S.route.page === 'maps' && document.activeElement && document.activeElement.id === 'mapSearch') { renderMapList(); return; }
   if (S.route.page === 'locais' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'locSearch') { renderLocList(); return; }
   if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
   if (S.route.page === 'orgs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'orgSearch') { renderOrgList(); return; }
+  if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
+  if (S.route.page === 'events' && document.activeElement && document.activeElement.id === 'eventSearch') { renderEventList(); return; }
   if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }
   renderPage();
 }
@@ -180,7 +194,7 @@ function checkAutoSeedSpells(list) {
 }
 
 connect().then(function (s) {
-  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
+  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, sheets: true, events: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
   W.store = s;
   return s.init().then(function () {
     var fail = function () { toast('Não foi possível carregar os dados.', true); };
@@ -188,6 +202,8 @@ connect().then(function (s) {
     s.watch('locations', function (l) { W.raw.locations = l; W.locations = pub(l); W.loaded.locations = true; onData('locations'); }, fail);
     s.watch('characters', function (l) { W.raw.characters = l; W.characters = pub(l); W.loaded.characters = true; onData('characters'); }, fail);
     s.watch('organizations', function (l) { W.raw.organizations = l; W.organizations = pub(l); W.loaded.organizations = true; onData('organizations'); }, fail);
+    s.watch('sheets', function (l) { W.raw.sheets = l; W.sheets = pub(l); W.loaded.sheets = true; onData('sheets'); }, fail);
+    s.watch('events', function (l) { W.raw.events = l; W.events = pub(l); W.loaded.events = true; onData('events'); }, fail);
     s.watch('users', onUsers, fail);
     MesaSync.start();
     s.watch('notebooks', function (l) { W.raw.notebooks = l; filterNotes(); W.loaded.notebooks = true; onData('notes'); }, fail);

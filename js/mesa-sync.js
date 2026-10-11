@@ -23,6 +23,8 @@
    (REQUEST_SYNC), so the save carries both.
    deletedCombatIds lists deleted combats, so a Mesa still holding one
    drops it on merge instead of saving it back.
+   Images the Mesa embeds as text (avatars) are sent once to the image
+   storage and the state carries their address (see hostImgs).
    ===================================================================== */
 var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1' };
 var MesaSync = (function () {
@@ -70,6 +72,56 @@ var MesaSync = (function () {
       try { return JSON.parse(rows.slice(0, h.n).map(function (r) { return r.part; }).join('')); } catch (e) { return null; }
     });
   }
+  /* Images embedded in the state as text (data:image/...;base64): the avatars and the copies the
+     Mesa keeps of them (npcAvatar in the log, snapshots of edits). A few avatars made the state
+     hundreds of KB, carried by every save and every message. Before the state leaves this
+     browser, each one goes once to the store's image storage and the state keeps its address
+     (the Mesa shows an address in the same <img>). Only with permanent http(s) addresses
+     (Supabase); elsewhere the images stay as they are. Nothing is changed in the Mesa itself. */
+  // An image can also sit inside a longer text (the Mesa keeps "image|preset" in edit snapshots):
+  // only the image part is swapped.
+  var DATA_IMG = /data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+\/]+=*/gi, IMG_KEY = 'hounds_mesa_imgs_v1';
+  var imgUrls = {}, imgJobs = {}, imgFailed = {};
+  try { imgUrls = JSON.parse(localStorage.getItem(IMG_KEY) || '{}') || {}; } catch (e) {}
+  function hasImg(v) { return typeof v === 'string' && v.length > 200 && v.indexOf('data:image/') >= 0; }
+  // Short fingerprint of an image's text (53-bit hash plus the length).
+  function imgKey(s) {
+    var h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (var i = 0, c; i < s.length; i++) { c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return s.length.toString(36) + '-' + (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36);
+  }
+  function findImgs(v, out) {
+    if (hasImg(v)) v.replace(DATA_IMG, function (m) { if (m.length > 200) out[imgKey(m)] = m; return m; });
+    else if (Array.isArray(v)) v.forEach(function (x) { findImgs(x, out); });
+    else if (v && typeof v === 'object') Object.keys(v).forEach(function (k) { findImgs(v[k], out); });
+    return out;
+  }
+  // A copy of v with each embedded image that already has an address replaced by it.
+  function swapImgs(v) {
+    if (hasImg(v)) return v.replace(DATA_IMG, function (m) { return (m.length > 200 && imgUrls[imgKey(m)]) || m; });
+    if (Array.isArray(v)) return v.map(swapImgs);
+    if (v && typeof v === 'object') { var o = {}; Object.keys(v).forEach(function (k) { o[k] = swapImgs(v[k]); }); return o; }
+    return v;
+  }
+  function hostImg(dataUrl) {
+    return fetch(dataUrl).then(function (r) { return r.blob(); }).then(function (b) { return W.store.upload(b); }).then(function (up) {
+      return W.store.imageUrl(up.ref).then(function (u) { if (/^https?:\/\//.test(u || '')) return u; W.store.dropImage(up.ref); return null; });
+    });
+  }
+  // Sends the images of st that have no address yet; resolves when they are done. A failed upload
+  // leaves that image as text; it is tried again on a save at least 60 s later.
+  function hostImgs(st) {
+    if (!W.store || !W.store.canUpload || !canSave()) return Promise.resolve();
+    var found = findImgs(st, {});
+    return Promise.all(Object.keys(found).filter(function (k) { return !(k in imgUrls) && !(Date.now() - (imgFailed[k] || 0) < 60000); }).map(function (k) {
+      return imgJobs[k] || (imgJobs[k] = hostImg(found[k]).then(function (u) {
+        imgUrls[k] = u;
+        if (u) { try { var keep = {}; Object.keys(imgUrls).filter(function (x) { return imgUrls[x]; }).slice(-200).forEach(function (x) { keep[x] = imgUrls[x]; }); localStorage.setItem(IMG_KEY, JSON.stringify(keep)); } catch (e) {} }
+      }, function (e) { imgFailed[k] = Date.now(); console.warn('Hounds: não foi possível enviar uma imagem da Mesa.', e); }).then(function () { delete imgJobs[k]; }));
+    }));
+  }
   function mesaOpen() { return location.hash === '#mesa' && listeners.length > 0; }
   function push(obj) { var msg = JSON.stringify(obj); listeners.slice().forEach(function (fn) { try { fn(msg); } catch (e) {} }); }
   // Someone else's state: into the open Mesa, or loaded fresh when it opens.
@@ -112,19 +164,23 @@ var MesaSync = (function () {
   }
   function save(p) {
     if (!canSave()) return Promise.resolve();
-    var st = p.st, rev = p.rev, prev = head && head.n > 0 ? head.rev : null, t = now();
+    // The embedded images go to the image storage first; the state saved carries their addresses.
+    return hostImgs(p.st).then(function () { return write(swapImgs(p.st), p.rev); });
+  }
+  function write(st, rev) {
+    var json = JSON.stringify(st), prev = head && head.n > 0 ? head.rev : null, t = now();
     var meta = { rev: rev, by: (window.hubUser && window.hubUser.id) || null, createdAt: (head && head.createdAt) || t, updatedAt: t };
-    var write;
-    if (p.json.length <= (W.store.inlineMax || 0)) {
-      write = W.store.put('mesa', 'state', Object.assign({ n: 0 }, meta, st));
+    var w;
+    if (json.length <= (W.store.inlineMax || 0)) {
+      w = W.store.put('mesa', 'state', Object.assign({ n: 0 }, meta, st));
     } else {
       var parts = [];
-      for (var i = 0; i < p.json.length; i += CH) parts.push(p.json.slice(i, i + CH));
-      write = Promise.resolve();
-      parts.forEach(function (part, i) { write = write.then(function () { return W.store.put('mesa_chunks', rev + '_' + i, { rev: rev, i: i, part: part, createdAt: t }); }); });
-      write = write.then(function () { return W.store.put('mesa', 'state', Object.assign({ n: parts.length }, meta)); });
+      for (var i = 0; i < json.length; i += CH) parts.push(json.slice(i, i + CH));
+      w = Promise.resolve();
+      parts.forEach(function (part, i) { w = w.then(function () { return W.store.put('mesa_chunks', rev + '_' + i, { rev: rev, i: i, part: part, createdAt: t }); }); });
+      w = w.then(function () { return W.store.put('mesa', 'state', Object.assign({ n: parts.length }, meta)); });
     }
-    return write.then(function () {
+    return w.then(function () {
       loadedRev = rev; state = st;
       if (prev && prev !== rev) W.store.query('mesa_chunks', 'rev', prev).then(function (old) { old.forEach(function (o) { W.store.remove('mesa_chunks', o.id).catch(function () {}); }); }).catch(function () {});
     });
@@ -148,24 +204,26 @@ var MesaSync = (function () {
         if (state) { toLocal(state); return; }
         if (head) return;
         var loc = localState();
-        if (loc && window.hubUser && window.hubUser.role === 'mestre') return save({ st: loc, rev: newRev(), json: JSON.stringify(loc) }).catch(function () {});
+        if (loc && window.hubUser && window.hubUser.role === 'mestre') return save({ st: loc, rev: newRev() }).catch(function () {});
       });
     },
     publish: function (str) {
       var m; try { m = JSON.parse(str); } catch (e) { return; }
       if (!m) return;
       // One character changed: straight to the other browsers (the full state follows).
-      if (m.type === 'SYNC_NPC') { if (m.npc && rt() && canSave()) rt().send('mesa-npc', { npc: m.npc, ts: m.timestamp }); return; }
+      if (m.type === 'SYNC_NPC') { if (m.npc && rt() && canSave()) { hostImgs(m.npc); rt().send('mesa-npc', { npc: swapImgs(m.npc), ts: m.timestamp }); } return; }
       if (m.type !== 'SYNC_FULL') return;
       // The Mesa's answer to REQUEST_SYNC has no deletedCombatIds: keep the ones known.
       var del = (m.deletedCombatIds || []).concat((state && state.deletedCombatIds) || []).filter(function (x, i, a) { return a.indexOf(x) === i; });
-      var st = { combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del };
+      // Images already sent are swapped for their addresses here, so the message below stays small.
+      var st = swapImgs({ combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del });
       var json = JSON.stringify(st);
       if (json === lastJson) return;
       lastJson = json;
       var rev = newRev();
       if (rt() && canSave() && json.length < 240000) rt().send('mesa', { rev: rev, state: st });
-      pending = { st: st, rev: rev, json: json };
+      hostImgs(st); // new images start going now; the save waits for them
+      pending = { st: st, rev: rev };
       if (!timer) timer = setTimeout(flush, delay());
     },
     // Save now (used by the Mesa's "Sair" button) and confirm to the person.
