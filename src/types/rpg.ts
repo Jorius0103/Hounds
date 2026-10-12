@@ -79,6 +79,7 @@ export interface ExtraItem {
   category?: ExtraItemCategory; // Categoria do recurso
   current: number; // Atual
   max: number; // Total
+  isFavorite?: boolean; // Favoritado (para listar no modal de Lançar Dano / Fadiga / Itens)
   notes?: string;
 }
 

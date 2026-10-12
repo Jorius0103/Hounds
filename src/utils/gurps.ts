@@ -36,6 +36,16 @@ export const DEFAULT_CONDITIONS: ConditionDefinition[] = [
   { id: 'cond-disarmed', label: 'Desarmado', description: 'Arma foi derrubada ou arrancada das mãos.' },
 ];
 
+export function getConditionDescription(conditionNameOrId: string, customConditions?: ConditionDefinition[]): string {
+  if (!conditionNameOrId) return '';
+  const term = conditionNameOrId.trim().toLowerCase();
+  const allConditions = [...(customConditions || []), ...DEFAULT_CONDITIONS];
+  const found = allConditions.find(
+    (c) => c.label.toLowerCase() === term || c.id.toLowerCase() === term || term.includes(c.label.toLowerCase()) || c.label.toLowerCase().includes(term)
+  );
+  return found?.description || 'Condição crítica de combate ativa.';
+}
+
 export const DEFAULT_TURN_ACTIONS: TurnActionsTracker = {
   parryCount: 0,
   dodgeCount: 0,

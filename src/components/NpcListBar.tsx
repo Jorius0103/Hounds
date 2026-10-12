@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NPC, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { getHpStatus, getFpStatus, getCombatManeuver } from '../utils/gurps';
+import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription } from '../utils/gurps';
 import { Eye, EyeOff, Skull, Plus, Users, Shield, UserPlus, Heart, X } from 'lucide-react';
 
 interface NpcListBarProps {
@@ -206,7 +206,11 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         ? 'bg-red-950/20 border-red-900/60 hover:bg-red-950/30'
                         : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 hover:bg-slate-850'
                     }`}
-                    title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'} | Speed: ${npc.basicSpeed ?? 0}${isDeadChar ? ' | MORTO' : ''})`}
+                    title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'} | Speed: ${npc.basicSpeed ?? 0}${isDeadChar ? ' | MORTO' : ''}${
+                      npc.statusConditions && npc.statusConditions.length > 0
+                        ? `\nCondições: ${npc.statusConditions.map((c) => `${c} (${getConditionDescription(c)})`).join('; ')}`
+                        : ''
+                    })`}
                   >
                     {/* Avatar */}
                     <div className="relative shrink-0">

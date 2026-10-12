@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { getHpStatus, getFpStatus, DEFAULT_TURN_ACTIONS, COMBAT_MANEUVERS, getCombatManeuver } from '../utils/gurps';
+import { getHpStatus, getFpStatus, DEFAULT_TURN_ACTIONS, COMBAT_MANEUVERS, getCombatManeuver, getConditionDescription } from '../utils/gurps';
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { SpellsModal } from './SpellsModal';
 import { CombatLogCard } from './CombatLogCard';
@@ -101,6 +101,77 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   useEffect(() => {
     currentNpcRef.current = npc;
   }, [npc]);
+
+  // Estados para lançamento manual rápido de Magias Ativas
+  const [isAddingActiveSpell, setIsAddingActiveSpell] = useState(false);
+  const [manualActiveSpellName, setManualActiveSpellName] = useState('');
+  const [manualActiveSpellCost, setManualActiveSpellCost] = useState<number | ''>('');
+  const [manualActiveSpellRound, setManualActiveSpellRound] = useState<number>(1);
+  const [manualActiveSpellIsArea, setManualActiveSpellIsArea] = useState(false);
+  const [manualActiveSpellTargetName, setManualActiveSpellTargetName] = useState('');
+
+  // Estados para inclusão manual de Magias Sob Efeito
+  const [isAddingAffectedSpell, setIsAddingAffectedSpell] = useState(false);
+  const [manualAffectedSpellName, setManualAffectedSpellName] = useState('');
+  const [manualAffectedSpellCaster, setManualAffectedSpellCaster] = useState('');
+  const [manualAffectedSpellRound, setManualAffectedSpellRound] = useState<number>(1);
+
+  // Helper para favoritar / desfavoritar Itens Extras & Recursos
+  const handleToggleFavoriteExtraItem = (itemId: string) => {
+    if (isViewer) return;
+    const currentList = currentNpcRef.current.extraItems || [];
+    const items = currentList.map((it) =>
+      it.id === itemId ? { ...it, isFavorite: !it.isFavorite } : it
+    );
+    updateField('extraItems', items);
+  };
+
+  const handleConfirmManualActiveSpell = () => {
+    if (!manualActiveSpellName.trim()) return;
+    const targetName = manualActiveSpellIsArea
+      ? 'Área / Ambiente'
+      : (manualActiveSpellTargetName.trim() || npc.name);
+    const newEntry = {
+      id: `spell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      spellName: manualActiveSpellName.trim(),
+      targetId: manualActiveSpellIsArea ? 'area' : npc.id,
+      targetName: targetName,
+      round: Number(manualActiveSpellRound) || 1,
+      cost: typeof manualActiveSpellCost === 'number' ? manualActiveSpellCost : 0,
+      createdAt: new Date().toISOString(),
+    };
+    const nextList = [...(npc.activeSpells || []), newEntry];
+    updateField('activeSpells', nextList);
+
+    // Se houver custo de fadiga e o usuário informou, atualiza fpCurrent
+    if (typeof manualActiveSpellCost === 'number' && manualActiveSpellCost > 0) {
+      updateField('fpCurrent', Math.max(-npc.fpMax, (npc.fpCurrent || 0) - manualActiveSpellCost));
+    }
+
+    setManualActiveSpellName('');
+    setManualActiveSpellCost('');
+    setManualActiveSpellRound(1);
+    setManualActiveSpellIsArea(false);
+    setManualActiveSpellTargetName('');
+    setIsAddingActiveSpell(false);
+  };
+
+  const handleConfirmManualAffectedSpell = () => {
+    if (!manualAffectedSpellName.trim()) return;
+    const newEntry = {
+      id: `effect-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      spellName: manualAffectedSpellName.trim(),
+      casterName: manualAffectedSpellCaster.trim() || 'Desconhecido',
+      round: Number(manualAffectedSpellRound) || 1,
+      createdAt: new Date().toISOString(),
+    };
+    const nextList = [...(npc.affectedSpells || []), newEntry];
+    updateField('affectedSpells', nextList);
+    setManualAffectedSpellName('');
+    setManualAffectedSpellCaster('');
+    setManualAffectedSpellRound(1);
+    setIsAddingAffectedSpell(false);
+  };
 
   // Lista de campos com valores totais/atributos base que apenas o Mestre pode alterar
   const masterOnlyFields: (keyof NPC)[] = [
@@ -285,8 +356,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       npc.statusConditions.forEach((cond) => {
         alerts.push({
           id: `cond-${cond}`,
-          badgeClass: 'bg-purple-950/80 border-purple-500 text-purple-200 font-semibold',
+          badgeClass: 'bg-purple-950/80 border-purple-500 text-purple-200 font-semibold cursor-help',
           text: cond,
+          tooltip: `${cond}: ${getConditionDescription(cond)}`,
         });
       });
     }
@@ -303,6 +375,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           return (
             <span
               key={al.id}
+              title={(al as any).tooltip || al.text}
               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs border ${al.badgeClass}`}
             >
               {Icon && <Icon size={12} className="shrink-0" />}
@@ -506,10 +579,133 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 <Sparkles size={13} className="text-purple-400" />
                 <span>Magias Ativas (Sustentadas)</span>
               </div>
-              <span className="text-[10px] text-slate-500 font-medium">
-                {(npc.activeSpells || []).length} ativa{(npc.activeSpells || []).length === 1 ? '' : 's'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {(npc.activeSpells || []).length} ativa{(npc.activeSpells || []).length === 1 ? '' : 's'}
+                </span>
+                {!isViewer && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingActiveSpell(!isAddingActiveSpell)}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-[10px] font-bold border border-purple-700/60 transition-all active:scale-95"
+                    title="Lançar ou sustentar uma magia manualmente"
+                  >
+                    <Plus size={11} />
+                    <span>{isAddingActiveSpell ? 'Cancelar' : 'Lançar'}</span>
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Formulário Inline para Lançar Magia Ativa Manualmente */}
+            {!isViewer && isAddingActiveSpell && (
+              <div className="bg-slate-900 border border-purple-700/60 rounded-lg p-2 space-y-2 text-xs shadow-md">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-purple-300 text-[11px]">Nova Magia Ativa / Sustentada</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingActiveSpell(false)}
+                    className="text-slate-400 hover:text-white text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-0.5">Nome da Magia:</label>
+                  <input
+                    type="text"
+                    value={manualActiveSpellName}
+                    onChange={(e) => setManualActiveSpellName(e.target.value)}
+                    placeholder="Ex: Escudo Mágico, Luz, Criar Fogo..."
+                    className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    autoFocus
+                  />
+                  {npc.spells && npc.spells.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                      <span className="text-[9px] text-slate-500">Do grimório:</span>
+                      {npc.spells.map((sp) => (
+                        <button
+                          key={sp.id}
+                          type="button"
+                          onClick={() => setManualActiveSpellName(sp.name)}
+                          className="text-[9px] px-1 py-0.2 rounded bg-purple-950/70 border border-purple-800/80 text-purple-300 hover:text-white hover:bg-purple-900"
+                        >
+                          {sp.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Custo FP (opcional):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={manualActiveSpellCost}
+                      onChange={(e) => setManualActiveSpellCost(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      placeholder="0"
+                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Rodada (R):</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={manualActiveSpellRound}
+                      onChange={(e) => setManualActiveSpellRound(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-0.5">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-amber-300 font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={manualActiveSpellIsArea}
+                      onChange={(e) => setManualActiveSpellIsArea(e.target.checked)}
+                      className="rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span>🌐 Magia em área (sem alvo específico)</span>
+                  </label>
+                </div>
+
+                {!manualActiveSpellIsArea && (
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Alvo da Magia:</label>
+                    <input
+                      type="text"
+                      value={manualActiveSpellTargetName}
+                      onChange={(e) => setManualActiveSpellTargetName(e.target.value)}
+                      placeholder={`Ex: ${npc.name} (Próprio Conjurador)`}
+                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingActiveSpell(false)}
+                    className="px-2 py-1 text-[11px] font-semibold text-slate-400 hover:text-white"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmManualActiveSpell}
+                    disabled={!manualActiveSpellName.trim()}
+                    className="px-2.5 py-1 text-[11px] font-bold bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white rounded-md shadow transition-colors"
+                  >
+                    Confirmar Lançamento
+                  </button>
+                </div>
+              </div>
+            )}
 
             {(!npc.activeSpells || npc.activeSpells.length === 0) ? (
               <div className="text-[11px] text-slate-600 italic py-3 text-center">
@@ -563,16 +759,98 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           </div>
 
           {/* Seção 2: Sob Efeito (Magias que estão afetando este personagem) */}
-          <div className="bg-slate-950/80 border border-cyan-900/40 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between border-b border-cyan-950/80 pb-1.5">
+          <div className="bg-slate-950/80 border border-cyan-900/40 rounded-xl p-2.5 space-y-1.5">
+            <div className="flex items-center justify-between border-b border-cyan-950/80 pb-1">
               <div className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
                 <Zap size={13} className="text-cyan-400" />
                 <span>Sob Efeito (Afetando este Alvo)</span>
               </div>
-              <span className="text-[10px] text-slate-500 font-medium">
-                {(npc.affectedSpells || []).length} efeito{(npc.affectedSpells || []).length === 1 ? '' : 's'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {(npc.affectedSpells || []).length} efeito{(npc.affectedSpells || []).length === 1 ? '' : 's'}
+                </span>
+                {!isViewer && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingAffectedSpell(!isAddingAffectedSpell)}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-900/60 hover:bg-cyan-800 text-cyan-200 text-[10px] font-bold border border-cyan-700/60 transition-all active:scale-95"
+                    title="Adicionar efeito de magia neste alvo manualmente"
+                  >
+                    <Plus size={11} />
+                    <span>{isAddingAffectedSpell ? 'Cancelar' : 'Adicionar'}</span>
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Formulário Inline para Adicionar Sob Efeito Manualmente */}
+            {!isViewer && isAddingAffectedSpell && (
+              <div className="bg-slate-900 border border-cyan-700/60 rounded-lg p-2 space-y-2 text-xs shadow-md">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-cyan-300 text-[11px]">Novo Efeito de Magia Ativo</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingAffectedSpell(false)}
+                    className="text-slate-400 hover:text-white text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-0.5">Nome da Magia:</label>
+                  <input
+                    type="text"
+                    value={manualAffectedSpellName}
+                    onChange={(e) => setManualAffectedSpellName(e.target.value)}
+                    placeholder="Ex: Armadura Mágica, Força, Lentidão..."
+                    className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Conjurador:</label>
+                    <input
+                      type="text"
+                      value={manualAffectedSpellCaster}
+                      onChange={(e) => setManualAffectedSpellCaster(e.target.value)}
+                      placeholder="Nome do conjurador..."
+                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Rodada (R):</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={manualAffectedSpellRound}
+                      onChange={(e) => setManualAffectedSpellRound(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingAffectedSpell(false)}
+                    className="px-2 py-1 text-[11px] font-semibold text-slate-400 hover:text-white"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmManualAffectedSpell}
+                    disabled={!manualAffectedSpellName.trim()}
+                    className="px-2.5 py-1 text-[11px] font-bold bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-slate-950 rounded-md shadow transition-colors"
+                  >
+                    Adicionar Efeito
+                  </button>
+                </div>
+              </div>
+            )}
 
             {(!npc.affectedSpells || npc.affectedSpells.length === 0) ? (
               <div className="text-[11px] text-slate-600 italic py-3 text-center">
@@ -782,6 +1060,18 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
+                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
+                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                            item.isFavorite
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                          }`}
+                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
+                        >
+                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleAdjustExtraItem(item.id, -1)}
                           className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold text-xs flex items-center justify-center active:scale-95"
                           title="-1 item"
@@ -829,7 +1119,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 npc.statusConditions.map((cond) => (
                   <span
                     key={cond}
-                    className="inline-flex items-center gap-1 bg-red-950/70 border border-red-800 text-red-200 text-[11px] px-2 py-0.5 rounded-lg font-medium"
+                    className="inline-flex items-center gap-1 bg-red-950/70 border border-red-800 text-red-200 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help"
+                    title={`${cond}: ${getConditionDescription(cond)}`}
                   >
                     <span>{cond}</span>
                     {!isViewer && (
@@ -1579,6 +1870,18 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
+                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
+                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                            item.isFavorite
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                          }`}
+                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
+                        >
+                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleAdjustExtraItem(item.id, -1)}
                           className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold text-xs flex items-center justify-center active:scale-95"
                           title="-1 item"
@@ -1641,7 +1944,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 npc.statusConditions.map((cond) => (
                   <span
                     key={cond}
-                    className="inline-flex items-center gap-1 bg-red-950/70 border border-red-800 text-red-200 text-[11px] px-2 py-0.5 rounded-lg font-medium"
+                    className="inline-flex items-center gap-1 bg-red-950/70 border border-red-800 text-red-200 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help"
+                    title={`${cond}: ${getConditionDescription(cond)}`}
                   >
                     <span>{cond}</span>
                     {!isViewer && (

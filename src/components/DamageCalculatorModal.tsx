@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NPC, ActionLogEntry, ExtraItem } from '../types/rpg';
-import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus } from 'lucide-react';
+import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star } from 'lucide-react';
 
 interface DamageCalculatorModalProps {
   npc: NPC;
@@ -64,8 +64,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   // Pedras de mana para a aba Fadiga (ligadas à energia de magias)
   const manaStones = (npc.extraItems || []).filter(isManaStoneItem);
 
-  // Itens Extras disponíveis na aba Item (exclui Pedras de Mana conforme solicitado)
-  const availableItems = (npc.extraItems || []).filter((it) => !isManaStoneItem(it));
+  // Itens Extras disponíveis na aba Item (exclui Pedras de Mana e lista apenas FAVORITADOS)
+  const availableItems = (npc.extraItems || [])
+    .filter((it) => !isManaStoneItem(it))
+    .filter((it) => Boolean(it.isFavorite));
 
   // Fatigue state (Padrão 0)
   const [fatigueDelta, setFatigueDelta] = useState<number | ''>(0);
@@ -962,10 +964,16 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         {/* MODO ITEM EXTRA: Flechas, Pedras de Mana, Escudos, etc. */}
         {mode === 'item' && (
           availableItems.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400 italic space-y-1 bg-slate-950/40 rounded-xl border border-slate-800 p-4">
-              <p className="font-medium text-slate-300">Nenhum item extra cadastrado neste personagem.</p>
-              <p className="text-[11px] text-slate-500">
-                Adicione itens (como Flechas, Mana ou Escudo) na seção &quot;Itens Extras &amp; Recursos&quot; da ficha para lançar gastos ou recargas.
+            <div className="py-8 text-center text-xs text-slate-400 italic space-y-1.5 bg-slate-950/40 rounded-xl border border-slate-800 p-4">
+              <p className="font-bold text-amber-300 flex items-center justify-center gap-1.5 not-italic">
+                <Star size={15} className="fill-amber-400 text-amber-400" />
+                <span>Nenhum item extra favoritado</span>
+              </p>
+              <p className="text-[11px] text-slate-300 not-italic">
+                Apenas os itens marcados como favoritos aparecem nesta tela de ações rápidas.
+              </p>
+              <p className="text-[10px] text-slate-500">
+                Favorite itens clicando na estrela ⭐ na seção &quot;Itens Extras &amp; Recursos&quot; da ficha para usá-los aqui.
               </p>
             </div>
           ) : (
