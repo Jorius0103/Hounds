@@ -61,8 +61,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     return lower.includes('mana') || lower.includes('pedra');
   };
 
-  // Pedras de mana para a aba Fadiga (ligadas à energia de magias)
-  const manaStones = (npc.extraItems || []).filter(isManaStoneItem);
+  // Pedras de mana para a aba Fadiga (ligadas à energia de magias - apenas FAVORITADAS)
+  const manaStones = (npc.extraItems || [])
+    .filter(isManaStoneItem)
+    .filter((it) => Boolean(it.isFavorite));
 
   // Itens Extras disponíveis na aba Item (exclui Pedras de Mana e lista apenas FAVORITADOS)
   const availableItems = (npc.extraItems || [])

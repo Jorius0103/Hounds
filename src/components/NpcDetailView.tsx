@@ -774,10 +774,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     type="button"
                     onClick={() => setIsAddingAffectedSpell(!isAddingAffectedSpell)}
                     className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-900/60 hover:bg-cyan-800 text-cyan-200 text-[10px] font-bold border border-cyan-700/60 transition-all active:scale-95"
-                    title="Adicionar efeito de magia neste alvo manualmente"
+                    title="Lançar/Adicionar efeito de magia neste alvo manualmente"
                   >
                     <Plus size={11} />
-                    <span>{isAddingAffectedSpell ? 'Cancelar' : 'Adicionar'}</span>
+                    <span>{isAddingAffectedSpell ? 'Cancelar' : 'Lançar'}</span>
                   </button>
                 )}
               </div>
@@ -1029,6 +1029,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     className="bg-slate-900/80 border border-slate-750 rounded-xl p-2.5 flex items-center justify-between gap-2"
                   >
                     <div className="min-w-0 flex-1 flex items-center gap-2">
+                      {!isViewer && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
+                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors shrink-0 ${
+                            item.isFavorite
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                          }`}
+                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
+                        >
+                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
+                        </button>
+                      )}
                       {getItemIcon(item.name, item.category)}
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
@@ -1058,18 +1072,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     </div>
                     {!isViewer && (
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
-                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-                            item.isFavorite
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-                          }`}
-                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
-                        >
-                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
-                        </button>
                         <button
                           type="button"
                           onClick={() => handleAdjustExtraItem(item.id, -1)}
@@ -1788,6 +1790,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   >
                     {/* Nome do Item com Ícone */}
                     <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                      {!isViewer && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
+                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors shrink-0 ${
+                            item.isFavorite
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                          }`}
+                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
+                        >
+                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
+                        </button>
+                      )}
                       {getItemIcon(item.name, item.category)}
                       <input
                         type="text"
@@ -1868,18 +1884,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     {/* Botões Rápidos - e + */}
                     {!isViewer && (
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
-                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-                            item.isFavorite
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-                          }`}
-                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
-                        >
-                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
-                        </button>
                         <button
                           type="button"
                           onClick={() => handleAdjustExtraItem(item.id, -1)}
