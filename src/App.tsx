@@ -56,6 +56,8 @@ function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]
         (incoming.history && incoming.history.length > (existing.history ? existing.history.length : 0)) ||
         JSON.stringify(incoming.statusConditions || []) !== JSON.stringify(existing.statusConditions || []) ||
         JSON.stringify(incoming.extraItems || []) !== JSON.stringify(existing.extraItems || []) ||
+        JSON.stringify(incoming.activeSpells || []) !== JSON.stringify(existing.activeSpells || []) ||
+        JSON.stringify(incoming.affectedSpells || []) !== JSON.stringify(existing.affectedSpells || []) ||
         JSON.stringify(incoming.turnActions || {}) !== JSON.stringify(existing.turnActions || {});
 
       if (incomingTime > existingTime || (incomingTime === existingTime && hasContentDiff)) {
@@ -1304,7 +1306,14 @@ export default function App() {
   const handleApplyFatigue = (
     npcId: string,
     fpDelta: number,
-    logEntry: Omit<ActionLogEntry, 'id'>
+    logEntry: Omit<ActionLogEntry, 'id'>,
+    spellData?: {
+      spellName: string;
+      isActiveSpell: boolean;
+      targetId: string;
+      targetName: string;
+      round: number;
+    }
   ) => {
     const entryWithId: ActionLogEntry = {
       ...logEntry,
@@ -1312,43 +1321,185 @@ export default function App() {
     };
 
     const now = Date.now();
-    let updatedNpc: NPC | undefined;
-    const isPlayer = players.some((p) => p.id === npcId);
-    if (isPlayer) {
-      const updatedPlayers = players.map((p) => {
-        if (p.id !== npcId) return p;
-        const newFp = Math.max(-p.fpMax, Math.min(p.fpMax, p.fpCurrent + fpDelta));
-        updatedNpc = {
-          ...p,
+    const spellInstanceId = `spell-${now}-${Math.random().toString(36).slice(2, 6)}`;
+
+    // Busca o conjurador
+    const caster = allCharacters.find((c: NPC) => c.id === npcId);
+    const casterName = caster?.name || 'Conjurador';
+
+    let nextPlayers = [...players];
+    let nextCombats = [...combats];
+    let playersChanged = false;
+    let combatsChanged = false;
+
+    // 1. Atualizar Conjurador (FP + Log + activeSpells se isActiveSpell)
+    const updateCasterInList = (list: NPC[]): { list: NPC[]; updated?: NPC } => {
+      let updated: NPC | undefined;
+      const newList = list.map((n) => {
+        if (n.id !== npcId) return n;
+        const newFp = Math.max(-n.fpMax, Math.min(n.fpMax, n.fpCurrent + fpDelta));
+        let nextActiveSpells = n.activeSpells || [];
+        if (spellData && spellData.isActiveSpell) {
+          nextActiveSpells = [
+            ...nextActiveSpells,
+            {
+              id: spellInstanceId,
+              spellName: spellData.spellName,
+              targetId: spellData.targetId,
+              targetName: spellData.targetName,
+              round: spellData.round,
+              cost: Math.abs(fpDelta),
+              casterId: n.id,
+              casterName: n.name,
+              createdAt: new Date().toISOString(),
+            },
+          ];
+        }
+        updated = {
+          ...n,
           fpCurrent: newFp,
-          history: [entryWithId, ...p.history],
+          activeSpells: nextActiveSpells,
+          history: [entryWithId, ...n.history],
           updatedAt: now,
         };
-        return updatedNpc;
+        return updated;
       });
-      setPlayers(updatedPlayers);
-      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers, updatedNpc);
+      return { list: newList, updated };
+    };
+
+    const isCasterPlayer = nextPlayers.some((p) => p.id === npcId);
+    let updatedCasterNpc: NPC | undefined;
+    if (isCasterPlayer) {
+      const res = updateCasterInList(nextPlayers);
+      nextPlayers = res.list;
+      updatedCasterNpc = res.updated;
+      playersChanged = true;
     } else if (activeCombat) {
-      const updated = combats.map((c) => {
+      nextCombats = nextCombats.map((c) => {
         if (c.id !== activeCombat.id) return c;
-        return {
-          ...c,
-          npcs: c.npcs.map((n) => {
-            if (n.id !== npcId) return n;
-            const newFp = Math.max(-n.fpMax, Math.min(n.fpMax, n.fpCurrent + fpDelta));
-            updatedNpc = {
-              ...n,
-              fpCurrent: newFp,
-              history: [entryWithId, ...n.history],
-              updatedAt: now,
-            };
-            return updatedNpc;
-          }),
-        };
+        const res = updateCasterInList(c.npcs);
+        updatedCasterNpc = res.updated;
+        return { ...c, npcs: res.list };
       });
-      setCombats(updated);
-      broadcastSync(updated, undefined, undefined, undefined, undefined, updatedNpc);
+      combatsChanged = true;
     }
+
+    // 2. Se for Magia Ativa, atualizar o Alvo (affectedSpells)
+    if (spellData && spellData.isActiveSpell) {
+      const targetId = spellData.targetId;
+
+      const updateTargetInList = (list: NPC[]) => {
+        return list.map((n) => {
+          if (n.id !== targetId) return n;
+          const nextAffected = [
+            ...(n.affectedSpells || []),
+            {
+              id: spellInstanceId,
+              spellName: spellData.spellName,
+              casterId: npcId,
+              casterName: casterName,
+              round: spellData.round,
+              createdAt: new Date().toISOString(),
+            },
+          ];
+          return {
+            ...n,
+            affectedSpells: nextAffected,
+            updatedAt: now,
+          };
+        });
+      };
+
+      if (nextPlayers.some((p) => p.id === targetId)) {
+        nextPlayers = updateTargetInList(nextPlayers);
+        playersChanged = true;
+      }
+      if (activeCombat && nextCombats.some((c) => c.id === activeCombat.id && c.npcs.some((n) => n.id === targetId))) {
+        nextCombats = nextCombats.map((c) => {
+          if (c.id !== activeCombat.id) return c;
+          return { ...c, npcs: updateTargetInList(c.npcs) };
+        });
+        combatsChanged = true;
+      }
+    }
+
+    if (playersChanged) setPlayers(nextPlayers);
+    if (combatsChanged) setCombats(nextCombats);
+
+    broadcastSync(
+      combatsChanged ? nextCombats : undefined,
+      undefined,
+      undefined,
+      undefined,
+      playersChanged ? nextPlayers : undefined,
+      updatedCasterNpc
+    );
+  };
+
+  // Remove Magia Ativa (remove do conjurador e do respectivo alvo)
+  const handleRemoveActiveSpell = (casterId: string, spellId: string) => {
+    const now = Date.now();
+    let nextPlayers = [...players];
+    let nextCombats = [...combats];
+    let playersChanged = false;
+    let combatsChanged = false;
+
+    // Remove do conjurador (activeSpells) e do alvo (affectedSpells)
+    const cleanSpellsFromList = (list: NPC[]): NPC[] => {
+      return list.map((n) => {
+        let changed = false;
+        let newActive = n.activeSpells;
+        let newAffected = n.affectedSpells;
+
+        if (n.activeSpells?.some((s) => s.id === spellId)) {
+          newActive = n.activeSpells.filter((s) => s.id !== spellId);
+          changed = true;
+        }
+        if (n.affectedSpells?.some((s) => s.id === spellId)) {
+          newAffected = n.affectedSpells.filter((s) => s.id !== spellId);
+          changed = true;
+        }
+
+        if (changed) {
+          return {
+            ...n,
+            activeSpells: newActive,
+            affectedSpells: newAffected,
+            updatedAt: now,
+          };
+        }
+        return n;
+      });
+    };
+
+    if (nextPlayers.some((p) => p.activeSpells?.some((s) => s.id === spellId) || p.affectedSpells?.some((s) => s.id === spellId))) {
+      nextPlayers = cleanSpellsFromList(nextPlayers);
+      playersChanged = true;
+    }
+
+    if (activeCombat) {
+      nextCombats = nextCombats.map((c) => {
+        if (c.id !== activeCombat.id) return c;
+        return { ...c, npcs: cleanSpellsFromList(c.npcs) };
+      });
+      combatsChanged = true;
+    }
+
+    if (playersChanged) setPlayers(nextPlayers);
+    if (combatsChanged) setCombats(nextCombats);
+
+    broadcastSync(
+      combatsChanged ? nextCombats : undefined,
+      undefined,
+      undefined,
+      undefined,
+      playersChanged ? nextPlayers : undefined
+    );
+  };
+
+  // Remove Magia de Sob Efeito (remove do alvo e do respectivo conjurador)
+  const handleRemoveAffectedSpell = (targetId: string, spellId: string) => {
+    handleRemoveActiveSpell(targetId, spellId);
   };
 
   const handleApplyItemChange = (
@@ -1721,6 +1872,8 @@ export default function App() {
                   onOpenWeaponModal={(weapon) =>
                     setWeaponModalState({ isOpen: true, weapon: weapon || null })
                   }
+                  onRemoveActiveSpell={handleRemoveActiveSpell}
+                  onRemoveAffectedSpell={handleRemoveAffectedSpell}
                   isPlayerUser={isPlayerUser}
                   currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
                   hasEditPermission={canEditCurrent}
@@ -1851,6 +2004,8 @@ export default function App() {
             }
           }}
           isPlayerView={isPlayerUser}
+          combatants={allCharacters}
+          currentRound={activeCombat?.currentRound || 1}
         />
       )}
 

@@ -120,6 +120,27 @@ export interface ActionLogEntry {
   fpAfter?: number;
 }
 
+export interface ActiveSpell {
+  id: string; // ID único da instância da magia lançada
+  spellName: string;
+  targetId: string;
+  targetName: string;
+  round: number;
+  cost?: number;
+  casterId?: string;
+  casterName?: string;
+  createdAt?: string;
+}
+
+export interface AffectedSpell {
+  id: string; // Mesmo ID da instância lançada pelo conjurador
+  spellName: string;
+  casterId: string;
+  casterName: string;
+  round: number;
+  createdAt?: string;
+}
+
 export interface NPC {
   id: string;
   name: string;
@@ -143,6 +164,10 @@ export interface NPC {
   fpCurrent: number;
   fpMax: number;
   statusConditions: string[];
+
+  // Magias Ativas e Sob Efeito
+  activeSpells?: ActiveSpell[];
+  affectedSpells?: AffectedSpell[];
 
   // Itens Extras / Recursos Consumíveis (Flechas, Pedras de Mana, Escudo, etc.)
   extraItems?: ExtraItem[];
@@ -203,6 +228,7 @@ export interface Combat {
   sheetSyncUrl?: string; // URL da Planilha Google (publicada como CSV ou link direto)
   npcs: NPC[];
   tacticalState?: TacticalState;
+  currentRound?: number;
   editorUserIds?: string[]; // IDs dos jogadores que possuem permissão de edição
   playerIds?: string[]; // IDs dos personagens de jogadores visíveis/ativos neste combate
   isActive?: boolean; // Se false, inativo: não aparece na barra principal, apenas no CRUD

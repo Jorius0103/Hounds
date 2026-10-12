@@ -57,6 +57,8 @@ interface NpcDetailViewProps {
   onOpenConditionsCrud: () => void;
   onOpenDamageCalculator: (npc: NPC) => void;
   onOpenWeaponModal: (weapon?: Weapon) => void;
+  onRemoveActiveSpell?: (casterId: string, spellId: string) => void;
+  onRemoveAffectedSpell?: (targetId: string, spellId: string) => void;
   isPlayerUser?: boolean;
   currentUserRole?: UserRole;
   hasEditPermission?: boolean;
@@ -71,6 +73,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   onOpenConditionsCrud,
   onOpenDamageCalculator,
   onOpenWeaponModal,
+  onRemoveActiveSpell,
+  onRemoveAffectedSpell,
   isPlayerUser = false,
   currentUserRole = 'mestre',
   hasEditPermission = false,
@@ -1075,6 +1079,147 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   />
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Card: Magias (Magias Ativas & Sob Efeito) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+              <div className="flex items-center gap-2">
+                <Sparkles size={15} className="text-purple-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Magias
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                <span className="flex items-center gap-1 font-semibold text-purple-300">
+                  <span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
+                  Ativas: {(npc.activeSpells || []).length}
+                </span>
+                <span className="text-slate-600">|</span>
+                <span className="flex items-center gap-1 font-semibold text-cyan-300">
+                  <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                  Sob Efeito: {(npc.affectedSpells || []).length}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Seção 1: Magias Ativas (Sustentadas por este conjurador) */}
+              <div className="bg-slate-950/70 border border-purple-900/30 rounded-lg p-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
+                    <Sparkles size={12} className="text-purple-400" />
+                    <span>Magias Ativas</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500">
+                    Sustentadas: {(npc.activeSpells || []).length}
+                  </span>
+                </div>
+
+                {(!npc.activeSpells || npc.activeSpells.length === 0) ? (
+                  <div className="text-[10px] text-slate-600 italic py-2 text-center">
+                    Nenhuma magia ativa sustentada
+                  </div>
+                ) : (
+                  <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5 custom-scrollbar">
+                    {npc.activeSpells.map((sp) => (
+                      <div
+                        key={sp.id}
+                        className="bg-slate-900/90 border border-purple-800/40 rounded-md p-1.5 flex items-center justify-between gap-1 text-[11px]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-purple-200 truncate flex items-center gap-1">
+                            <span>{sp.spellName}</span>
+                            <span className="text-[9px] px-1 py-0.2 bg-purple-950 border border-purple-800 text-purple-300 rounded font-mono">
+                              R{sp.round}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            Alvo: <span className="text-slate-200 font-semibold">{sp.targetName || 'Desconhecido'}</span>
+                          </div>
+                        </div>
+
+                        {!isViewer && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onRemoveActiveSpell) {
+                                onRemoveActiveSpell(npc.id, sp.id);
+                              } else {
+                                const remaining = (npc.activeSpells || []).filter((s) => s.id !== sp.id);
+                                updateField('activeSpells', remaining);
+                              }
+                            }}
+                            className="text-slate-500 hover:text-rose-400 p-1 hover:bg-rose-950/40 rounded transition-colors shrink-0"
+                            title="Encerrar / Cancelar esta magia ativa"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Seção 2: Sob Efeito (Magias que estão afetando este personagem) */}
+              <div className="bg-slate-950/70 border border-cyan-900/30 rounded-lg p-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] font-bold text-cyan-300 flex items-center gap-1">
+                    <Zap size={12} className="text-cyan-400" />
+                    <span>Sob Efeito</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500">
+                    Afetando: {(npc.affectedSpells || []).length}
+                  </span>
+                </div>
+
+                {(!npc.affectedSpells || npc.affectedSpells.length === 0) ? (
+                  <div className="text-[10px] text-slate-600 italic py-2 text-center">
+                    Nenhum efeito de magia ativo no alvo
+                  </div>
+                ) : (
+                  <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5 custom-scrollbar">
+                    {npc.affectedSpells.map((sp) => (
+                      <div
+                        key={sp.id}
+                        className="bg-slate-900/90 border border-cyan-800/40 rounded-md p-1.5 flex items-center justify-between gap-1 text-[11px]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-cyan-200 truncate flex items-center gap-1">
+                            <span>{sp.spellName}</span>
+                            <span className="text-[9px] px-1 py-0.2 bg-cyan-950 border border-cyan-800 text-cyan-300 rounded font-mono">
+                              R{sp.round}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            Conjurador: <span className="text-slate-200 font-semibold">{sp.casterName || 'Desconhecido'}</span>
+                          </div>
+                        </div>
+
+                        {!isViewer && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onRemoveAffectedSpell) {
+                                onRemoveAffectedSpell(npc.id, sp.id);
+                              } else {
+                                const remaining = (npc.affectedSpells || []).filter((s) => s.id !== sp.id);
+                                updateField('affectedSpells', remaining);
+                              }
+                            }}
+                            className="text-slate-500 hover:text-rose-400 p-1 hover:bg-rose-950/40 rounded transition-colors shrink-0"
+                            title="Remover este efeito de magia"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
