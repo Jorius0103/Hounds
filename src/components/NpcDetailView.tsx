@@ -1,7 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, UserRole } from '../types/rpg';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, UserRole, ArmorKit } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { getHpStatus, getFpStatus, DEFAULT_TURN_ACTIONS, COMBAT_MANEUVERS, getCombatManeuver, getConditionDescription } from '../utils/gurps';
+import {
+  getHpStatus,
+  getFpStatus,
+  DEFAULT_TURN_ACTIONS,
+  COMBAT_MANEUVERS,
+  getCombatManeuver,
+  getConditionDescription,
+  createDefaultArmorLocations,
+  createDefaultArmorKit,
+  calculateLocationHp,
+  isSameLocation,
+} from '../utils/gurps';
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { SpellsModal } from './SpellsModal';
 import { CombatLogCard } from './CombatLogCard';
@@ -32,6 +43,8 @@ import {
   Package,
   UserCheck,
   Target,
+  Check,
+  Layers,
 } from 'lucide-react';
 
 const getItemIcon = (name: string, category?: string) => {
@@ -260,28 +273,140 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     updateField('weapons', copy);
   };
 
-  // Armor Location helpers
-  const handleAddArmorLocation = () => {
-    const newLoc: BodyArmorLocation = {
-      id: `armor-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      location: 'Nova Localização',
-      penalty: '0',
-      armorName: '',
-      dr: 0,
-      notes: '',
+  // Armor Kits & Locations helpers
+  const kits: ArmorKit[] = useMemo(() => {
+    if (npc.armorKits && npc.armorKits.length > 0) {
+      return npc.armorKits;
+    }
+    const locs = npc.armorLocations && npc.armorLocations.length > 0
+      ? npc.armorLocations
+      : createDefaultArmorLocations(npc.id);
+    return [
+      {
+        id: npc.activeArmorKitId || `kit-${npc.id}-1`,
+        name: 'Kit Principal',
+        isActive: true,
+        locations: locs,
+      },
+    ];
+  }, [npc.armorKits, npc.activeArmorKitId, npc.armorLocations, npc.id]);
+
+  const [selectedKitId, setSelectedKitId] = useState<string>(
+    npc.activeArmorKitId || kits[0]?.id || 'kit-principal'
+  );
+
+  useEffect(() => {
+    if (!kits.some((k) => k.id === selectedKitId) && kits[0]) {
+      setSelectedKitId(kits[0].id);
+    }
+  }, [kits, selectedKitId]);
+
+  const currentKit = useMemo(() => {
+    return kits.find((k) => k.id === selectedKitId) || kits[0];
+  }, [kits, selectedKitId]);
+
+  const currentLocations = currentKit?.locations || npc.armorLocations;
+
+  const handleAddArmorKit = () => {
+    if (isViewer) return;
+    const newKitId = `kit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newKit: ArmorKit = {
+      id: newKitId,
+      name: `Kit de Armadura ${kits.length + 1}`,
+      isActive: false,
+      locations: createDefaultArmorLocations(npc.id),
     };
-    updateField('armorLocations', [...npc.armorLocations, newLoc]);
+    const nextKits = [...kits, newKit];
+    updateField('armorKits', nextKits);
+    setSelectedKitId(newKitId);
+  };
+
+  const handleEquipArmorKit = (kitId: string) => {
+    if (isViewer) return;
+    const targetKit = kits.find((k) => k.id === kitId);
+    if (!targetKit) return;
+    const nextKits = kits.map((k) => ({
+      ...k,
+      isActive: k.id === kitId,
+    }));
+    updateField('armorKits', nextKits);
+    updateField('activeArmorKitId', kitId);
+    updateField('armorLocations', targetKit.locations);
+  };
+
+  const handleRemoveArmorKit = (kitId: string) => {
+    if (isViewer || kits.length <= 1) return;
+    const nextKits = kits.filter((k) => k.id !== kitId);
+    let nextActiveId = npc.activeArmorKitId;
+    if (kitId === npc.activeArmorKitId || !nextKits.some((k) => k.id === nextActiveId)) {
+      nextKits[0].isActive = true;
+      nextActiveId = nextKits[0].id;
+      updateField('armorLocations', nextKits[0].locations);
+    }
+    updateField('armorKits', nextKits);
+    updateField('activeArmorKitId', nextActiveId);
+    if (selectedKitId === kitId) {
+      setSelectedKitId(nextKits[0].id);
+    }
+  };
+
+  const [editingKitId, setEditingKitId] = useState<string | null>(null);
+  const [editingKitNameDraft, setEditingKitNameDraft] = useState<string>('');
+
+  const handleStartRenameKit = (kit: ArmorKit) => {
+    if (isViewer) return;
+    setEditingKitId(kit.id);
+    setEditingKitNameDraft(kit.name);
+  };
+
+  const handleSaveRenameKit = () => {
+    if (!editingKitId || !editingKitNameDraft.trim()) {
+      setEditingKitId(null);
+      return;
+    }
+    const nextKits = kits.map((k) =>
+      k.id === editingKitId ? { ...k, name: editingKitNameDraft.trim() } : k
+    );
+    updateField('armorKits', nextKits);
+    setEditingKitId(null);
   };
 
   const handleUpdateArmorLocation = (index: number, updated: BodyArmorLocation) => {
-    const copy = [...npc.armorLocations];
-    copy[index] = updated;
-    updateField('armorLocations', copy);
+    if (isViewer) return;
+    const nextLocations = [...currentLocations];
+    nextLocations[index] = updated;
+
+    const nextKits = kits.map((k) =>
+      k.id === currentKit.id ? { ...k, locations: nextLocations } : k
+    );
+    updateField('armorKits', nextKits);
+
+    // Se o kit editado for o ativo, mantém npc.armorLocations sincronizado!
+    if (currentKit.isActive || currentKit.id === npc.activeArmorKitId) {
+      updateField('armorLocations', nextLocations);
+    }
   };
 
-  const handleRemoveArmorLocation = (locationId: string) => {
-    const copy = npc.armorLocations.filter((l) => l.id !== locationId);
-    updateField('armorLocations', copy);
+  // Estado para cadastro / edição de Regra Adicional
+  const [editingRuleIndex, setEditingRuleIndex] = useState<number | null>(null);
+  const [ruleDraft, setRuleDraft] = useState<string>('');
+
+  const handleOpenEditRule = (index: number, currentRuleText: string) => {
+    if (isViewer) return;
+    setEditingRuleIndex(index);
+    setRuleDraft(currentRuleText || '');
+  };
+
+  const handleSaveRule = () => {
+    if (editingRuleIndex === null) return;
+    const targetLoc = currentLocations[editingRuleIndex];
+    if (targetLoc) {
+      handleUpdateArmorLocation(editingRuleIndex, {
+        ...targetLoc,
+        additionalRule: ruleDraft.trim(),
+      });
+    }
+    setEditingRuleIndex(null);
   };
 
   // Sorted spells: Favorites always at the top
@@ -2375,163 +2500,408 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         </div>
       )}
 
-      {/* 10. TAB CONTENT: ARMADURA POR LOCALIZAÇÃO */}
+      {/* 10. TAB CONTENT: ARMADURA POR LOCALIZAÇÃO (MODELO EXCEL + KITS + REGRAS) */}
       {activeTab === 'armor' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <Shield size={18} className="text-amber-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Armadura por Localização
-                </h3>
-              </div>
+          {/* Header com Kits de Armadura */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <Shield size={18} className="text-amber-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Armadura por Localização
+              </h3>
             </div>
 
+            {/* Ações e Botão de + Kit de Armadura */}
             {!isViewer && (
-              <button
-                onClick={handleAddArmorLocation}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors"
-              >
-                <Plus size={14} />
-                <span>+ Adicionar Localização</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddArmorKit}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm"
+                  title="Adicionar uma nova lista de partes do corpo (novo kit de armadura)"
+                >
+                  <Plus size={14} />
+                  <span>+ Kit de Armadura</span>
+                </button>
+              </div>
             )}
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          {/* Abas dos Kits de Armadura */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 pr-1">
+                <Layers size={13} className="text-amber-400" />
+                <span>Kits:</span>
+              </span>
+              {kits.map((kit) => {
+                const isSelected = kit.id === currentKit.id;
+                const isEquipped = kit.isActive || kit.id === npc.activeArmorKitId;
+
+                return (
+                  <div
+                    key={kit.id}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border ${
+                      isSelected
+                        ? 'bg-slate-800 border-amber-500/80 text-white shadow-sm'
+                        : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                    }`}
+                  >
+                    {editingKitId === kit.id ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={editingKitNameDraft}
+                          onChange={(e) => setEditingKitNameDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveRenameKit();
+                            if (e.key === 'Escape') setEditingKitId(null);
+                          }}
+                          className="bg-slate-900 border border-amber-500 text-white text-xs px-1.5 py-0.5 rounded w-28 focus:outline-none"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSaveRenameKit}
+                          className="text-emerald-400 hover:text-emerald-300 p-0.5"
+                          title="Salvar nome"
+                        >
+                          <Check size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedKitId(kit.id)}
+                          className="flex items-center gap-1.5"
+                        >
+                          <span>{kit.name}</span>
+                          {isEquipped && (
+                            <span className="flex items-center gap-0.5 text-[9px] font-bold px-1 py-0.2 bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 rounded">
+                              <ShieldCheck size={10} />
+                              Equipado
+                            </span>
+                          )}
+                        </button>
+
+                        {!isViewer && (
+                          <div className="flex items-center gap-0.5 pl-1 border-l border-slate-700/60 ml-1">
+                            {!isEquipped && (
+                              <button
+                                type="button"
+                                onClick={() => handleEquipArmorKit(kit.id)}
+                                className="text-[10px] text-slate-400 hover:text-emerald-400 px-1 py-0.5 hover:bg-slate-700/50 rounded transition-colors"
+                                title="Equipar este kit no personagem"
+                              >
+                                Equipar
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleStartRenameKit(kit)}
+                              className="text-slate-500 hover:text-amber-400 p-0.5 rounded"
+                              title="Renomear este kit"
+                            >
+                              <Edit2 size={11} />
+                            </button>
+                            {kits.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveArmorKit(kit.id)}
+                                className="text-slate-500 hover:text-rose-400 p-0.5 rounded"
+                                title="Excluir este kit"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tabela de Localizações no Modelo do Excel */}
+          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+            <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px]">
-                  <th className="pb-2 w-40 pl-2">Local do Corpo</th>
-                  <th className="pb-2 min-w-[140px]">Peça de Armadura</th>
-                  <th className="pb-2 w-24">RD Base</th>
-                  <th className="pb-2 w-24">Modif. RD</th>
-                  <th className="pb-2 min-w-[160px]">Dano que Interfere</th>
-                  {!isViewer && <th className="pb-2 w-12 text-center">Ações</th>}
+                <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px] bg-slate-950/80">
+                  <th className="py-2.5 px-3 w-16 text-center">Roll</th>
+                  <th className="py-2.5 px-3 w-28">Parte do Corpo</th>
+                  <th className="py-2.5 px-3 min-w-[150px]">Armadura</th>
+                  <th className="py-2.5 px-3 w-20 text-center">RD Base</th>
+                  <th className="py-2.5 px-3 w-20 text-center">Modif. RD</th>
+                  <th className="py-2.5 px-3 min-w-[140px]">Dano que Interfere</th>
+                  <th className="py-2.5 px-3 w-24 text-center">Vida Total</th>
+                  <th className="py-2.5 px-3 w-24 text-center">Dano Tomado</th>
+                  <th className="py-2.5 px-3 min-w-[220px]">Regra Adicional</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
-                {npc.armorLocations.map((loc, idx) => (
-                  <tr key={loc.id} className="hover:bg-slate-850/50">
-                    <td className="py-2.5 pl-2 font-semibold text-slate-200 text-xs">
-                      <input
-                        type="text"
-                        disabled={isViewer}
-                        value={loc.location}
-                        onChange={(e) =>
-                          handleUpdateArmorLocation(idx, { ...loc, location: e.target.value })
-                        }
-                        className={`w-full max-w-[170px] bg-transparent border-b border-transparent hover:border-slate-700 focus:border-amber-500 focus:outline-none text-slate-200 text-xs px-1 ${isViewer ? 'cursor-default' : ''}`}
-                        placeholder="Local..."
-                      />
-                    </td>
+                {currentLocations.map((loc, idx) => {
+                  const hpInfo = calculateLocationHp(loc.location, npc.hpMax);
 
-                    <td className="py-2.5">
-                      <input
-                        type="text"
-                        disabled={isViewer}
-                        value={loc.armorName}
-                        onChange={(e) =>
-                          handleUpdateArmorLocation(idx, { ...loc, armorName: e.target.value })
-                        }
-                        className={`w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs ${isViewer ? 'cursor-default opacity-90' : ''}`}
-                      />
-                    </td>
+                  // Dano tomado calculado se não tiver sido editado manualmente
+                  const calculatedDmg = typeof loc.damageTaken === 'number'
+                    ? loc.damageTaken
+                    : (npc.history || [])
+                        .filter((h) => h.type === 'damage' && isSameLocation(h.hitLocation || '', loc.location))
+                        .reduce((sum, h) => sum + (h.finalDamage || h.amount || 0), 0);
 
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-1 font-mono">
-                        <input
-                          type="number"
-                          min="0"
-                          disabled={isViewer}
-                          value={loc.dr || ''}
-                          placeholder="0"
-                          onChange={(e) =>
-                            handleUpdateArmorLocation(idx, {
-                              ...loc,
-                              dr: e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10)),
-                            })
-                          }
-                          className={`w-14 bg-slate-950 border border-amber-600/60 rounded px-1 py-1 text-center font-bold text-amber-300 ${isViewer ? 'opacity-90' : ''}`}
-                        />
-                        {npc.naturalDr > 0 && (
-                          <span className="text-[10px] text-slate-500" title={`RD Natural: +${npc.naturalDr}`}>
-                            (+{npc.naturalDr})
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                  const isCrippled = hpInfo.value !== null && calculatedDmg >= hpInfo.value && hpInfo.value > 0;
 
-                    {/* Modificador RD (ex: -2, +1) */}
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-1 font-mono">
-                        <input
-                          type="number"
-                          disabled={isViewer}
-                          value={loc.drModifier !== undefined && loc.drModifier !== 0 ? loc.drModifier : ''}
-                          placeholder="0"
-                          onChange={(e) =>
-                            handleUpdateArmorLocation(idx, {
-                              ...loc,
-                              drModifier: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
-                            })
-                          }
-                          className={`w-14 bg-slate-950 border rounded px-1 py-1 text-center font-bold text-xs focus:outline-none ${
-                            (loc.drModifier || 0) < 0
-                              ? 'text-rose-400 border-rose-800/80 bg-rose-950/20'
-                              : (loc.drModifier || 0) > 0
-                              ? 'text-emerald-400 border-emerald-800/80 bg-emerald-950/20'
-                              : 'text-slate-400 border-slate-800'
-                          } ${isViewer ? 'opacity-90' : ''}`}
-                          title="Modificador de RD (ex: -2 para -2 RD, +1 para +1 RD)"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Tipo de Dano que Interfere */}
-                    <td className="py-2.5">
-                      <select
-                        disabled={isViewer}
-                        value={loc.modifierDamageType || ''}
-                        onChange={(e) =>
-                          handleUpdateArmorLocation(idx, {
-                            ...loc,
-                            modifierDamageType: e.target.value,
-                          })
-                        }
-                        className={`w-full bg-slate-950 border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 ${
-                          loc.modifierDamageType
-                            ? 'text-amber-300 border-amber-600/70 font-semibold'
-                            : 'text-slate-500 border-slate-800'
-                        } ${isViewer ? 'cursor-default opacity-90' : ''}`}
-                      >
-                        <option value="" className="bg-slate-900 text-slate-400">-- Nenhum --</option>
-                        <option value="contusao" className="bg-slate-900 text-amber-200">Contusão (crushing)</option>
-                        <option value="corte" className="bg-slate-900 text-amber-200">Corte (cutting)</option>
-                        <option value="empalamento" className="bg-slate-900 text-amber-200">Empalamento (impaling)</option>
-                        <option value="perfurante" className="bg-slate-900 text-amber-200">Perfurante (piercing)</option>
-                        <option value="queima" className="bg-slate-900 text-amber-200">Queimadura (burning)</option>
-                      </select>
-                    </td>
-
-                    {!isViewer && (
-                      <td className="py-2.5 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveArmorLocation(loc.id)}
-                          className="p-1 text-slate-500 hover:text-rose-400 rounded transition-colors"
-                          title="Remover esta localização de armadura"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                  return (
+                    <tr key={loc.id || `${loc.location}-${idx}`} className="hover:bg-slate-850/50 transition-colors">
+                      {/* 1. Roll (Fixa, não edita) */}
+                      <td className="py-2.5 px-3 text-center font-mono font-bold text-amber-400 text-xs bg-slate-950/30">
+                        {loc.rollTarget || '—'}
                       </td>
-                    )}
-                  </tr>
-                ))}
+
+                      {/* 2. Parte do Corpo (Fixa, não edita) */}
+                      <td className="py-2.5 px-3 font-bold text-slate-100 text-xs whitespace-nowrap">
+                        {loc.location}
+                      </td>
+
+                      {/* 3. Armadura (Editável) */}
+                      <td className="py-2.5 px-3">
+                        <input
+                          type="text"
+                          disabled={isViewer}
+                          value={loc.armorName || ''}
+                          placeholder="Peça de armadura..."
+                          onChange={(e) =>
+                            handleUpdateArmorLocation(idx, { ...loc, armorName: e.target.value })
+                          }
+                          className={`w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs ${
+                            isViewer ? 'cursor-default opacity-90' : ''
+                          }`}
+                        />
+                      </td>
+
+                      {/* 4. RD Base (Editável) */}
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1 font-mono">
+                          <input
+                            type="number"
+                            min="0"
+                            disabled={isViewer}
+                            value={loc.dr || ''}
+                            placeholder="0"
+                            onChange={(e) =>
+                              handleUpdateArmorLocation(idx, {
+                                ...loc,
+                                dr: e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10)),
+                              })
+                            }
+                            className={`w-14 bg-slate-950 border border-amber-600/60 rounded px-1 py-1 text-center font-bold text-amber-300 text-xs focus:outline-none ${
+                              isViewer ? 'opacity-90' : ''
+                            }`}
+                          />
+                          {npc.naturalDr > 0 && (
+                            <span className="text-[10px] text-slate-500" title={`RD Natural: +${npc.naturalDr}`}>
+                              (+{npc.naturalDr})
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 5. Modif. RD (Editável) */}
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1 font-mono">
+                          <input
+                            type="number"
+                            disabled={isViewer}
+                            value={loc.drModifier !== undefined && loc.drModifier !== 0 ? loc.drModifier : ''}
+                            placeholder="0"
+                            onChange={(e) =>
+                              handleUpdateArmorLocation(idx, {
+                                ...loc,
+                                drModifier: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
+                              })
+                            }
+                            className={`w-14 bg-slate-950 border rounded px-1 py-1 text-center font-bold text-xs focus:outline-none ${
+                              (loc.drModifier || 0) < 0
+                                ? 'text-rose-400 border-rose-800/80 bg-rose-950/20'
+                                : (loc.drModifier || 0) > 0
+                                ? 'text-emerald-400 border-emerald-800/80 bg-emerald-950/20'
+                                : 'text-slate-400 border-slate-800'
+                            } ${isViewer ? 'opacity-90' : ''}`}
+                            title="Modificador de RD (ex: -2 para -2 RD, +1 para +1 RD)"
+                          />
+                        </div>
+                      </td>
+
+                      {/* 6. Dano que Interfere (Editável) */}
+                      <td className="py-2.5 px-3">
+                        <select
+                          disabled={isViewer}
+                          value={loc.modifierDamageType || ''}
+                          onChange={(e) =>
+                            handleUpdateArmorLocation(idx, {
+                              ...loc,
+                              modifierDamageType: e.target.value,
+                            })
+                          }
+                          className={`w-full bg-slate-950 border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+                            loc.modifierDamageType
+                              ? 'text-amber-300 border-amber-600/70 font-semibold'
+                              : 'text-slate-500 border-slate-800'
+                          } ${isViewer ? 'cursor-default opacity-90' : ''}`}
+                        >
+                          <option value="" className="bg-slate-900 text-slate-400">-- Nenhum --</option>
+                          <option value="contusao" className="bg-slate-900 text-amber-200">Contusão (crushing)</option>
+                          <option value="corte" className="bg-slate-900 text-amber-200">Corte (cutting)</option>
+                          <option value="empalamento" className="bg-slate-900 text-amber-200">Empalamento (impaling)</option>
+                          <option value="perfurante" className="bg-slate-900 text-amber-200">Perfurante (piercing)</option>
+                          <option value="queima" className="bg-slate-900 text-amber-200">Queimadura (burning)</option>
+                        </select>
+                      </td>
+
+                      {/* 7. Vida Total (Calculada, olha PV Máximo e fórmula do Excel) */}
+                      <td className="py-2.5 px-3 text-center font-mono">
+                        {hpInfo.value !== null ? (
+                          <div className="flex flex-col items-center" title={`Vida Total desta parte: ${hpInfo.formulaLabel} (${hpInfo.display} PV)`}>
+                            <span className="font-bold text-emerald-400 text-xs">
+                              {hpInfo.display}
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-sans tracking-tight">
+                              {hpInfo.formulaLabel}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 text-xs font-mono">---</span>
+                        )}
+                      </td>
+
+                      {/* 8. Dano Tomado (Calcula soma dos danos deste combate, editável pelo usuário) */}
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          <input
+                            type="number"
+                            min="0"
+                            disabled={isViewer}
+                            value={calculatedDmg || ''}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10));
+                              handleUpdateArmorLocation(idx, { ...loc, damageTaken: val });
+                            }}
+                            className={`w-14 bg-slate-950 border rounded px-1 py-1 text-center font-bold text-xs font-mono focus:outline-none ${
+                              calculatedDmg > 0
+                                ? 'text-rose-400 border-rose-800/80 bg-rose-950/30'
+                                : 'text-slate-400 border-slate-800'
+                            } ${isViewer ? 'opacity-90' : ''}`}
+                            title="Dano tomado nesta parte do corpo neste combate (editável)"
+                          />
+                          {isCrippled && (
+                            <span
+                              className="text-[9px] font-bold text-rose-400 tracking-tight animate-pulse"
+                              title={`Dano tomado (${calculatedDmg}) igual ou superior à Vida Total (${hpInfo.value})! Possível membro aleijado/inutilizado.`}
+                            >
+                              ⚠️ Aleijado
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 9. Regra Adicional (Tooltip e cadastro/edição) */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-1.5 group">
+                          {loc.additionalRule ? (
+                            <div
+                              className="flex-1 flex items-center gap-1.5 bg-slate-950/70 border border-slate-800 hover:border-slate-700 rounded-lg px-2.5 py-1 cursor-help transition-colors"
+                              title={loc.additionalRule}
+                            >
+                              <Info size={13} className="text-amber-400 shrink-0" />
+                              <span className="text-[11px] text-slate-300 truncate max-w-[220px]">
+                                {loc.additionalRule}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-600 italic text-[11px] px-1 flex-1">
+                              ---
+                            </span>
+                          )}
+
+                          {!isViewer && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditRule(idx, loc.additionalRule || '')}
+                              className="p-1 text-slate-500 hover:text-amber-400 hover:bg-slate-800 rounded transition-colors shrink-0"
+                              title="Cadastrar ou editar regra adicional para esta parte do corpo"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+
+          {/* Modal / Diálogo para Cadastrar / Editar Regra Adicional */}
+          {editingRuleIndex !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Shield size={18} className="text-amber-400" />
+                    <h3 className="text-sm font-bold text-white">
+                      Regra Adicional: {currentLocations[editingRuleIndex]?.location}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingRuleIndex(null)}
+                    className="text-slate-400 hover:text-white transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-300 block">
+                    Cadastrar Regra Específica
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={ruleDraft}
+                    onChange={(e) => setRuleDraft(e.target.value)}
+                    placeholder="Ex: Perfurante, perfurante grande e empalamento vira x1..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none placeholder-slate-600"
+                  />
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Esta regra é exibida no tooltip da tabela e considerada pelo calculador de dano em combate.
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingRuleIndex(null)}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveRule}
+                    className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-colors shadow-md"
+                  >
+                    Salvar Regra
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

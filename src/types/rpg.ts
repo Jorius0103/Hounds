@@ -40,15 +40,24 @@ export interface Spell {
 
 export interface BodyArmorLocation {
   id: string;
-  location: string; // Eye, Skull, Face, Torso, etc.
-  rollTarget?: string; // 3-4, 5, 9-10, 11, etc.
+  location: string; // Eye, Head, Face, Right Leg, Right Arm, Torso, Groin, Left Arm, Left Leg, Hand, Foot, Neck, Vitals
+  rollTarget?: string; // -, 3-4, 5, 6-7, 8, 9-10, 11, 12, 13-14, 15, 16, 17-18, -
   penalty?: string; // -9, -7, -5, 0, etc.
   armorName: string; // Peça de armadura
   dr: number; // Resistência a Dano (RD)
   drModifier?: number; // Modificador de RD (ex: -2, +1) contra tipo de dano específico
   modifierDamageType?: string; // Qual o tipo de dano afetado pelo modificador (ex: contusao, corte)
+  damageTaken?: number; // Dano tomado nesta parte do corpo
+  additionalRule?: string; // Regra adicional específica da parte do corpo
   notes?: string; // Observações legadas opcionais
   gurpsNotesRef?: string; // [1, 2], [1, 3], etc. da imagem
+}
+
+export interface ArmorKit {
+  id: string;
+  name: string;
+  isActive: boolean;
+  locations: BodyArmorLocation[];
 }
 
 export interface ParryEntry {
@@ -209,6 +218,8 @@ export interface NPC {
 
   // Armadura por partes do corpo
   armorLocations: BodyArmorLocation[];
+  armorKits?: ArmorKit[];
+  activeArmorKitId?: string;
 
   // Traços e Equipamentos
   advantages: string;

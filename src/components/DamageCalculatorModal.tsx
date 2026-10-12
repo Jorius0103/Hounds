@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NPC, ActionLogEntry, ExtraItem } from '../types/rpg';
-import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star } from 'lucide-react';
+import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info } from 'lucide-react';
+import { calculateLocationDamage } from '../utils/gurps';
 
 interface DamageCalculatorModalProps {
   npc: NPC;
@@ -98,6 +99,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [itemAction, setItemAction] = useState<'lose' | 'gain'>('lose');
   const [itemDelta, setItemDelta] = useState<number | ''>(0);
 
+  const [eyeConfirmed, setEyeConfirmed] = useState<boolean>(false);
+
   if (!isOpen) return null;
 
   const isNoLocation = selectedLocationId === 'sem-parte';
@@ -121,34 +124,38 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     )
   );
 
-  const armorDrMod = appliesArmorModifier ? (selectedLoc?.drModifier || 0) : 0;
-  const armorDr = isNoLocation ? 0 : Math.max(0, baseArmorDr + armorDrMod);
-  const naturalDr = isNoLocation ? 0 : (npc.naturalDr || 0);
-  const locationDr = isNoLocation ? 0 : (bypassDr ? 0 : (armorDr + naturalDr));
-
-  // GURPS damage multipliers after penetrating DR:
-  const getMultiplier = (type: string) => {
-    switch (type) {
-      case 'corte': return 1.5;
-      case 'empalamento': return 2.0;
-      case 'perfurante_grande': return 1.5;
-      case 'perfurante_pequeno': return 0.5;
-      case 'contusao': return 1.0;
-      case 'perfurante': return 1.0;
-      case 'queima': return 1.0;
-      default: return 1.0;
-    }
-  };
-
   const numericRawDamage = typeof rawDamage === 'number' ? rawDamage : 0;
-  const penetratingDamage = Math.max(0, numericRawDamage - locationDr);
-  const multiplier = damageType ? getMultiplier(damageType) : 1.0;
-  const finalDamage = Math.floor(penetratingDamage * multiplier);
+
+  const damageCalc = calculateLocationDamage({
+    locationName: selectedLoc ? selectedLoc.location : '',
+    damageType,
+    rawDamage: numericRawDamage,
+    baseArmorDr,
+    armorDrModifier: selectedLoc?.drModifier || 0,
+    naturalDr: npc.naturalDr || 0,
+    appliesArmorModifier,
+    bypassDr,
+    isNoLocation,
+  });
+
+  const {
+    armorDr,
+    naturalDr,
+    locationBonusDr,
+    totalDr: locationDr,
+    penetratingDamage,
+    woundMultiplier: multiplier,
+    finalDamage,
+    appliedRules,
+    requiresEyeConfirmation,
+    eyeWarningMessage,
+  } = damageCalc;
 
   const isDamageFormReady = Boolean(
     selectedLocationId &&
     rawDamage !== '' &&
-    (damageType || isNoLocation)
+    (damageType || isNoLocation) &&
+    (!requiresEyeConfirmation || eyeConfirmed)
   );
 
   const handleConfirmDamage = () => {
@@ -159,13 +166,14 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     const armorNotes = isNoLocation
       ? 'Sem armadura (RD 0)'
       : appliesArmorModifier
-      ? `${armorDr} arm (${baseArmorDr}${armorDrMod >= 0 ? `+${armorDrMod}` : armorDrMod} vs ${selectedLoc?.modifierDamageType})`
+      ? `${armorDr} arm (${baseArmorDr}${selectedLoc?.drModifier && selectedLoc.drModifier >= 0 ? `+${selectedLoc.drModifier}` : selectedLoc?.drModifier} vs ${selectedLoc?.modifierDamageType})`
       : `${armorDr} arm`;
     const effectiveTypeLabel = damageType || (isNoLocation ? 'Direto' : '');
+    const bonusDrText = locationBonusDr > 0 ? ` + ${locationBonusDr} bônus Cabeça` : '';
     const desc = customDescription.trim() ||
       (isNoLocation
         ? `Dano Direto (Sem parte do corpo) | Dano: ${numericRawDamage}${damageType ? ` (${damageType} x${multiplier})` : ''} | RD: 0 | Final: -${finalDamage} PV`
-        : `Local: ${locName} | Dano: ${numericRawDamage} (${damageType}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Final: -${finalDamage} PV`);
+        : `Local: ${locName} | Dano: ${numericRawDamage} (${damageType}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Final: -${finalDamage} PV`);
 
     onApplyDamage(npc.id, finalDamage, {
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -466,6 +474,36 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               </div>
             </div>
 
+            {/* Regra Adicional da Parte do Corpo (se houver) */}
+            {selectedLoc?.additionalRule && (
+              <div className="flex items-start gap-2 p-2.5 bg-blue-950/40 border border-blue-800/60 rounded-xl text-blue-200 text-xs">
+                <Info size={15} className="text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-blue-300">Regra de {selectedLoc.location}:</span>{' '}
+                  <span>{selectedLoc.additionalRule}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Alerta de Confirmação para Dano no Olho (Regra do Eye) */}
+            {requiresEyeConfirmation && (
+              <div className="p-3 bg-amber-950/70 border border-amber-600/80 rounded-xl space-y-2">
+                <div className="flex items-start gap-2 text-amber-300 text-xs font-semibold">
+                  <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                  <span>{eyeWarningMessage}</span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-amber-200 font-medium pl-6">
+                  <input
+                    type="checkbox"
+                    checked={eyeConfirmed}
+                    onChange={(e) => setEyeConfirmed(e.target.checked)}
+                    className="rounded bg-slate-900 border-amber-500 text-amber-500 focus:ring-0"
+                  />
+                  <span>Confirmar e permitir registro deste dano no Olho</span>
+                </label>
+              </div>
+            )}
+
             {/* Bypass DR option (Apenas Mestre) */}
             {!isPlayerView && !isNoLocation && (
               <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
@@ -502,11 +540,11 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                         <span className="text-amber-400">{armorDr}</span>
                         {appliesArmorModifier && (
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal border ${
-                            armorDrMod < 0
+                            (selectedLoc?.drModifier || 0) < 0
                               ? 'bg-rose-950/70 border-rose-800 text-rose-300'
                               : 'bg-emerald-950/70 border-emerald-800 text-emerald-300'
                           }`}>
-                            ({baseArmorDr} {armorDrMod >= 0 ? `+${armorDrMod}` : armorDrMod} vs {selectedLoc?.modifierDamageType})
+                            ({baseArmorDr} {(selectedLoc?.drModifier || 0) >= 0 ? `+${selectedLoc?.drModifier}` : selectedLoc?.drModifier} vs {selectedLoc?.modifierDamageType})
                           </span>
                         )}
                       </>
@@ -515,8 +553,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 </div>
                 {!isNoLocation && (
                   <div className="flex justify-between text-slate-400">
-                    <span>RD Natural do NPC:</span>
-                    <span className="text-amber-400 font-bold">{naturalDr}</span>
+                    <span>RD Natural + Bônus:</span>
+                    <span className="text-amber-400 font-bold">
+                      {naturalDr}{locationBonusDr > 0 ? ` (+${locationBonusDr} Crânio)` : ''}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between text-slate-400">
@@ -533,6 +573,17 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   <span>Modificador de Ferimento:</span>
                   <span className="text-white">x{multiplier} {damageType ? `(${damageType})` : '(Direto)'}</span>
                 </div>
+
+                {appliedRules.length > 0 && (
+                  <div className="pt-1 flex flex-wrap gap-1 font-sans">
+                    {appliedRules.map((rule, idx) => (
+                      <span key={idx} className="px-2 py-0.5 bg-amber-950/60 border border-amber-700/60 text-amber-300 rounded text-[10px] font-semibold">
+                        ⚡ {rule}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <div className="border-t border-slate-800 pt-2 flex justify-between text-sm font-bold text-rose-400">
                   <span>Dano Final nos PV:</span>
                   <span className="text-base font-black">-{finalDamage} PV</span>
@@ -560,6 +611,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   ? 'Selecione o Local do Corpo (ou "Sem parte do Corpo") e informe o Dano Bruto.'
                   : !rawDamage && rawDamage !== 0
                   ? 'Informe o Dano Bruto rolado.'
+                  : requiresEyeConfirmation && !eyeConfirmed
+                  ? 'Confirme o alerta do Olho acima para permitir o registro.'
                   : 'Selecione o Tipo de Dano.'}
               </p>
             )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, Weapon, ExtraItem } from './types/rpg';
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
-import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName } from './utils/gurps';
+import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';
 import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
@@ -1256,16 +1256,42 @@ export default function App() {
 
     const now = Date.now();
     let updatedNpc: NPC | undefined;
+
+    const applyDamageToLocations = (locs: NPC['armorLocations'] = []) => {
+      if (!entryWithId.hitLocation || entryWithId.hitLocation.toLowerCase().includes('sem parte')) {
+        return locs;
+      }
+      return locs.map((loc) => {
+        if (isSameLocation(loc.location, entryWithId.hitLocation || '')) {
+          return {
+            ...loc,
+            damageTaken: (loc.damageTaken || 0) + finalDamage,
+          };
+        }
+        return loc;
+      });
+    };
+
     const isPlayer = players.some((p) => p.id === npcId);
     if (isPlayer) {
       const updatedPlayers = players.map((p) => {
         if (p.id !== npcId) return p;
         const newHp = Math.max(-p.hpMax * 5, p.hpCurrent - finalDamage);
         const isDead = newHp <= -p.hpMax;
+        const updatedLocations = applyDamageToLocations(p.armorLocations);
+        const updatedKits = p.armorKits?.map((kit) => {
+          if (kit.id === p.activeArmorKitId || kit.isActive) {
+            return { ...kit, locations: applyDamageToLocations(kit.locations) };
+          }
+          return kit;
+        });
+
         updatedNpc = {
           ...p,
           hpCurrent: newHp,
           isDead: isDead || p.isDead,
+          armorLocations: updatedLocations,
+          armorKits: updatedKits,
           history: [entryWithId, ...p.history],
           updatedAt: now,
         };
@@ -1282,10 +1308,20 @@ export default function App() {
             if (n.id !== npcId) return n;
             const newHp = Math.max(-n.hpMax * 5, n.hpCurrent - finalDamage);
             const isDead = newHp <= -n.hpMax;
+            const updatedLocations = applyDamageToLocations(n.armorLocations);
+            const updatedKits = n.armorKits?.map((kit) => {
+              if (kit.id === n.activeArmorKitId || kit.isActive) {
+                return { ...kit, locations: applyDamageToLocations(kit.locations) };
+              }
+              return kit;
+            });
+
             updatedNpc = {
               ...n,
               hpCurrent: newHp,
               isDead: isDead || n.isDead,
+              armorLocations: updatedLocations,
+              armorKits: updatedKits,
               history: [entryWithId, ...n.history],
               updatedAt: now,
             };

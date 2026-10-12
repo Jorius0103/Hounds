@@ -1,25 +1,377 @@
-import { BodyArmorLocation, ConditionDefinition, NPC, ParryEntry, TurnActionsTracker } from '../types/rpg';
+import { ArmorKit, BodyArmorLocation, ConditionDefinition, NPC, ParryEntry, TurnActionsTracker } from '../types/rpg';
+
+export interface HitLocationTemplate {
+  rollTarget: string;
+  location: string;
+  penalty?: string;
+  additionalRule: string;
+  hpFormulaLabel: string;
+  hpDivisor?: number;
+}
 
 /**
- * Human and Humanoid Hit Location Table (GURPS 4th Edition - Basic Set Campaigns p. 552)
- * As shown in the user's provided reference image:
- * Roll | Location (Penalty) | Notes
+ * Tabela de Armadura por Localização conforme modelo do Excel:
+ * Roll | Parte do corpo | Vida total | Regra adicional
  */
-export const GURPS_IMAGE_HIT_LOCATIONS: Omit<BodyArmorLocation, 'id'>[] = [
-  { location: 'Eye', rollTarget: '—', penalty: '-9', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[1, 2]' },
-  { location: 'Skull', rollTarget: '3-4', penalty: '-7', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[1, 3]' },
-  { location: 'Face', rollTarget: '5', penalty: '-5', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[1, 4]' },
-  { location: 'Right Leg', rollTarget: '6-7', penalty: '-2', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[5]' },
-  { location: 'Right Arm', rollTarget: '8', penalty: '-2', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[5, 6]' },
-  { location: 'Torso', rollTarget: '9-10', penalty: '0', armorName: '', dr: 0, notes: '', gurpsNotesRef: '' },
-  { location: 'Groin', rollTarget: '11', penalty: '-3', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[1, 7]' },
-  { location: 'Left Arm', rollTarget: '12', penalty: '-2', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[5, 6]' },
-  { location: 'Left Leg', rollTarget: '13-14', penalty: '-2', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[5]' },
-  { location: 'Hand', rollTarget: '15', penalty: '-4', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[6, 8, 9]' },
-  { location: 'Foot', rollTarget: '16', penalty: '-4', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[8, 9]' },
-  { location: 'Neck', rollTarget: '17-18', penalty: '-5', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[1, 10]' },
-  { location: 'Vitals', rollTarget: '—', penalty: '-3', armorName: '', dr: 0, notes: '', gurpsNotesRef: '[1, 11]' },
+export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
+  {
+    rollTarget: '-',
+    location: 'Eye',
+    penalty: '-9',
+    additionalRule: 'Só consegue acertar o olho danos de impaling, piercing ou magia, se for outro alertar antes de registrar mas permitir registro com confirmação',
+    hpFormulaLabel: '=Pontos de Vida / 10',
+    hpDivisor: 10,
+  },
+  {
+    rollTarget: '3-4',
+    location: 'Head',
+    penalty: '-7',
+    additionalRule: 'Tem +2 de RD / Qualquer dano vira 4X',
+    hpFormulaLabel: '---',
+  },
+  {
+    rollTarget: '5',
+    location: 'Face',
+    penalty: '-5',
+    additionalRule: '',
+    hpFormulaLabel: '---',
+  },
+  {
+    rollTarget: '6-7',
+    location: 'Right Leg',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '8',
+    location: 'Right Arm',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '9-10',
+    location: 'Torso',
+    penalty: '0',
+    additionalRule: '',
+    hpFormulaLabel: '---',
+  },
+  {
+    rollTarget: '11',
+    location: 'Groin',
+    penalty: '-3',
+    additionalRule: '',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+  },
+  {
+    rollTarget: '12',
+    location: 'Left Arm',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '13-14',
+    location: 'Left Leg',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '15',
+    location: 'Hand',
+    penalty: '-4',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+  },
+  {
+    rollTarget: '16',
+    location: 'Foot',
+    penalty: '-4',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+  },
+  {
+    rollTarget: '17-18',
+    location: 'Neck',
+    penalty: '-5',
+    additionalRule: 'Contusão vira 1,5, corte vai de 1,5 para 2.0',
+    hpFormulaLabel: '---',
+  },
+  {
+    rollTarget: '-',
+    location: 'Vitals',
+    penalty: '-3',
+    additionalRule: 'Empalamento e perfuração vira x3',
+    hpFormulaLabel: '---',
+  },
 ];
+
+// Alias para compatibilidade reversa
+export const GURPS_IMAGE_HIT_LOCATIONS = GURPS_EXCEL_HIT_LOCATIONS.map((loc) => ({
+  location: loc.location,
+  rollTarget: loc.rollTarget,
+  penalty: loc.penalty || '0',
+  armorName: '',
+  dr: 0,
+  notes: '',
+  additionalRule: loc.additionalRule,
+}));
+
+export function normalizeLocationKey(name: string): string {
+  if (!name) return '';
+  const lower = name.trim().toLowerCase();
+  if (lower === 'eye' || lower === 'olho' || lower === 'olhos') return 'eye';
+  if (lower === 'head' || lower === 'cabeça' || lower === 'cabeca' || lower === 'skull' || lower === 'crânio' || lower === 'cranio') return 'head';
+  if (lower === 'face' || lower === 'rosto') return 'face';
+  if (lower.includes('right leg') || lower.includes('perna d') || lower.includes('perna direita')) return 'right_leg';
+  if (lower.includes('left leg') || lower.includes('perna e') || lower.includes('perna esquerda')) return 'left_leg';
+  if (lower.includes('right arm') || lower.includes('braço d') || lower.includes('braço direito') || lower.includes('braco d') || lower.includes('braco direito')) return 'right_arm';
+  if (lower.includes('left arm') || lower.includes('braço e') || lower.includes('braço esquerdo') || lower.includes('braco e') || lower.includes('braco esquerdo')) return 'left_arm';
+  if (lower === 'torso' || lower === 'tronco') return 'torso';
+  if (lower === 'groin' || lower === 'virilha') return 'groin';
+  if (lower === 'hand' || lower === 'mão' || lower === 'mãos' || lower === 'mao' || lower === 'maos') return 'hand';
+  if (lower === 'foot' || lower === 'feet' || lower === 'pé' || lower === 'pés' || lower === 'pe' || lower === 'pes') return 'foot';
+  if (lower === 'neck' || lower === 'pescoço' || lower === 'pescoco') return 'neck';
+  if (lower === 'vitals' || lower === 'vitais' || lower.includes('vital') || lower.includes('órgãos vitais') || lower.includes('orgaos vitais')) return 'vitals';
+  return lower;
+}
+
+export function isSameLocation(loc1: string, loc2: string): boolean {
+  if (!loc1 || !loc2) return false;
+  return normalizeLocationKey(loc1) === normalizeLocationKey(loc2);
+}
+
+export function createDefaultArmorLocations(ownerId: string = ''): BodyArmorLocation[] {
+  const prefix = ownerId ? `armor-${ownerId}` : `armor-${Date.now()}`;
+  return GURPS_EXCEL_HIT_LOCATIONS.map((loc, i) => ({
+    id: `${prefix}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+    location: loc.location,
+    rollTarget: loc.rollTarget,
+    penalty: loc.penalty,
+    armorName: '',
+    dr: 0,
+    drModifier: 0,
+    modifierDamageType: '',
+    damageTaken: 0,
+    additionalRule: loc.additionalRule,
+    notes: '',
+  }));
+}
+
+export function createDefaultArmorKit(name: string = 'Kit Padrão', ownerId: string = '', isActive: boolean = true): ArmorKit {
+  return {
+    id: `kit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name,
+    isActive,
+    locations: createDefaultArmorLocations(ownerId),
+  };
+}
+
+export function calculateLocationHp(locationName: string, hpMax: number): { value: number | null; display: string; formulaLabel: string } {
+  const norm = normalizeLocationKey(locationName);
+  const found = GURPS_EXCEL_HIT_LOCATIONS.find((t) => normalizeLocationKey(t.location) === norm);
+
+  if (!found || !found.hpDivisor || !hpMax || hpMax <= 0) {
+    return {
+      value: null,
+      display: '---',
+      formulaLabel: found?.hpFormulaLabel || '---',
+    };
+  }
+
+  const val = Math.floor(hpMax / found.hpDivisor);
+  return {
+    value: val,
+    display: String(val),
+    formulaLabel: found.hpFormulaLabel,
+  };
+}
+
+export function getBaseDamageMultiplier(type: string): number {
+  switch (type) {
+    case 'corte':
+    case 'cutting':
+      return 1.5;
+    case 'empalamento':
+    case 'impaling':
+      return 2.0;
+    case 'perfurante_grande':
+    case 'large_piercing':
+      return 1.5;
+    case 'perfurante_pequeno':
+    case 'small_piercing':
+      return 0.5;
+    case 'contusao':
+    case 'crushing':
+    case 'perfurante':
+    case 'piercing':
+    case 'queima':
+    case 'burning':
+    default:
+      return 1.0;
+  }
+}
+
+export interface DamageCalculationResult {
+  armorDr: number;
+  naturalDr: number;
+  locationBonusDr: number;
+  totalDr: number;
+  penetratingDamage: number;
+  woundMultiplier: number;
+  finalDamage: number;
+  appliedRules: string[];
+  requiresEyeConfirmation?: boolean;
+  eyeWarningMessage?: string;
+}
+
+export function calculateLocationDamage(params: {
+  locationName: string;
+  damageType: string;
+  rawDamage: number;
+  baseArmorDr: number;
+  armorDrModifier: number;
+  naturalDr: number;
+  appliesArmorModifier: boolean;
+  bypassDr: boolean;
+  isNoLocation?: boolean;
+}): DamageCalculationResult {
+  const {
+    locationName,
+    damageType,
+    rawDamage,
+    baseArmorDr,
+    armorDrModifier,
+    naturalDr,
+    appliesArmorModifier,
+    bypassDr,
+    isNoLocation,
+  } = params;
+
+  if (isNoLocation) {
+    const defaultMult = getBaseDamageMultiplier(damageType);
+    const finalDamage = Math.floor(rawDamage * defaultMult);
+    return {
+      armorDr: 0,
+      naturalDr: 0,
+      locationBonusDr: 0,
+      totalDr: 0,
+      penetratingDamage: rawDamage,
+      woundMultiplier: defaultMult,
+      finalDamage,
+      appliedRules: [],
+    };
+  }
+
+  const normKey = normalizeLocationKey(locationName);
+  const appliedRules: string[] = [];
+
+  // Regra Head: "Tem +2 de RD"
+  let locationBonusDr = 0;
+  if (normKey === 'head') {
+    locationBonusDr = 2;
+    appliedRules.push('Cabeça: +2 RD de Crânio');
+  }
+
+  const effectiveArmorDr = Math.max(0, baseArmorDr + (appliesArmorModifier ? armorDrModifier : 0));
+  const effectiveNaturalDr = naturalDr || 0;
+  const totalDr = bypassDr ? 0 : Math.max(0, effectiveArmorDr + effectiveNaturalDr + locationBonusDr);
+  const penetratingDamage = Math.max(0, rawDamage - totalDr);
+
+  // Multiplicador padrão
+  let woundMultiplier = getBaseDamageMultiplier(damageType);
+
+  let requiresEyeConfirmation = false;
+  let eyeWarningMessage: string | undefined = undefined;
+
+  if (normKey === 'head') {
+    // Regra Head: "Qualquer dano vira 4X"
+    woundMultiplier = 4.0;
+    appliedRules.push('Cabeça: Qualquer dano vira x4');
+  } else if (normKey === 'neck') {
+    // Regra Neck: "Contusão vira 1,5, corte vai de 1,5 para 2.0"
+    if (damageType === 'contusao' || damageType === 'crushing') {
+      woundMultiplier = 1.5;
+      appliedRules.push('Pescoço: Contusão vira x1.5');
+    } else if (damageType === 'corte' || damageType === 'cutting') {
+      woundMultiplier = 2.0;
+      appliedRules.push('Pescoço: Corte vai de 1.5 para x2.0');
+    }
+  } else if (normKey === 'vitals') {
+    // Regra Vitals: "Empalamento e perfuração vira x3"
+    if (
+      damageType === 'empalamento' ||
+      damageType === 'impaling' ||
+      damageType.startsWith('perfurante') ||
+      damageType.startsWith('piercing')
+    ) {
+      woundMultiplier = 3.0;
+      appliedRules.push('Órgãos Vitais: Empalamento e perfuração vira x3');
+    }
+  } else if (
+    normKey === 'right_leg' ||
+    normKey === 'left_leg' ||
+    normKey === 'right_arm' ||
+    normKey === 'left_arm' ||
+    normKey === 'hand' ||
+    normKey === 'foot'
+  ) {
+    // Regra Membros/Extremidades: "Perfurante, perfurante grande e empalamento vira x1"
+    if (
+      damageType === 'empalamento' ||
+      damageType === 'impaling' ||
+      damageType === 'perfurante' ||
+      damageType === 'perfurante_grande' ||
+      damageType === 'piercing' ||
+      damageType === 'large_piercing'
+    ) {
+      woundMultiplier = 1.0;
+      appliedRules.push('Membro/Extremidade: Empalamento / Perfuração vira x1');
+    }
+  } else if (normKey === 'eye') {
+    // Regra Eye: "Só consegue acertar o olho danos de impaling, piercing ou magia, se for outro alertar antes de registrar mas permitir registro com confirmação"
+    const isImpalingOrPiercing =
+      damageType === 'empalamento' ||
+      damageType === 'impaling' ||
+      damageType.startsWith('perfurante') ||
+      damageType.startsWith('piercing') ||
+      damageType === 'magia' ||
+      damageType === 'queima' ||
+      damageType === 'burning';
+
+    if (!isImpalingOrPiercing && damageType) {
+      requiresEyeConfirmation = true;
+      eyeWarningMessage = 'Só consegue acertar o olho danos de impaling, piercing ou magia. Se for outro, confirme antes de registrar.';
+    }
+    // No cérebro através do olho o multiplicador é x4
+    woundMultiplier = 4.0;
+    appliedRules.push('Olho: Dano atinge o cérebro (x4)');
+  }
+
+  const finalDamage = Math.floor(penetratingDamage * woundMultiplier);
+
+  return {
+    armorDr: effectiveArmorDr,
+    naturalDr: effectiveNaturalDr,
+    locationBonusDr,
+    totalDr,
+    penetratingDamage,
+    woundMultiplier,
+    finalDamage,
+    appliedRules,
+    requiresEyeConfirmation,
+    eyeWarningMessage,
+  };
+}
 
 export const DEFAULT_CONDITIONS: ConditionDefinition[] = [
   { id: 'cond-stunned', label: 'Atordoado', description: 'Não pode agir, defesas ativas com -4, requer teste de HT por turno para recuperar.' },
@@ -61,14 +413,14 @@ export const DEFAULT_TURN_ACTIONS: TurnActionsTracker = {
 export function createNewNpc(name: string = 'NOVO NPC'): NPC {
   const id = `npc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   
-  // All 13 hit locations from the image, completely empty waiting for input
-  const defaultLocations: BodyArmorLocation[] = GURPS_IMAGE_HIT_LOCATIONS.map((loc, i) => ({
-    ...loc,
-    id: `armor-${id}-${i}`,
-    armorName: '',
-    dr: 0,
-    notes: '',
-  }));
+  const defaultLocations = createDefaultArmorLocations(id);
+  const defaultKitId = `kit-${id}-1`;
+  const defaultKit: ArmorKit = {
+    id: defaultKitId,
+    name: 'Kit Principal',
+    isActive: true,
+    locations: defaultLocations,
+  };
 
   // Default 1 Parry entry
   const defaultParries: ParryEntry[] = [
@@ -120,6 +472,8 @@ export function createNewNpc(name: string = 'NOVO NPC'): NPC {
     spells: [],
 
     armorLocations: defaultLocations,
+    armorKits: [defaultKit],
+    activeArmorKitId: defaultKitId,
 
     advantages: '',
     disadvantages: '',
