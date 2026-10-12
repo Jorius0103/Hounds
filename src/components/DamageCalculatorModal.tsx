@@ -566,37 +566,36 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         )}
 
         {mode === 'fatigue' && (
-          <div className="space-y-4">
-            {/* Seleção de Fonte: Fadiga Própria vs Pedras de Mana */}
+          <div className="space-y-3">
+            {/* Seleção de Fonte: Fadiga Própria vs Pedras de Mana (layout compacto com scroll) */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-2">
-                Fonte de Energia / Fadiga para o Gasto:
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold text-slate-300">
+                  Fonte de Energia / Fadiga para o Gasto:
+                </label>
+                {manaStones.length > 0 && (
+                  <span className="text-[10px] text-cyan-400 font-mono">
+                    {manaStones.length + 1} opções disponíveis
+                  </span>
+                )}
+              </div>
+              <div className="max-h-36 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-1.5 custom-scrollbar">
                 {/* Opção 1: Fadiga Própria */}
                 <button
                   type="button"
                   onClick={() => setSelectedFatigueSource('fp')}
-                  className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                  className={`py-1.5 px-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
                     selectedFatigueSource === 'fp'
                       ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                      : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`p-2 rounded-lg ${selectedFatigueSource === 'fp' ? 'bg-cyan-900/60 text-cyan-300' : 'bg-slate-900 text-slate-400'}`}>
-                      <Zap size={16} />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold block">Fadiga Própria (FP)</span>
-                      <span className="text-[10px] text-slate-400">Energia vital do personagem</span>
-                    </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Zap size={14} className={selectedFatigueSource === 'fp' ? 'text-cyan-400' : 'text-slate-500'} />
+                    <span className="text-xs font-bold truncate">Fadiga Própria (FP)</span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs font-mono font-bold text-cyan-300">
-                      {npc.fpCurrent} <span className="text-[10px] text-slate-400 font-normal">/ {npc.fpMax}</span>
-                    </span>
-                    <span className="text-[9px] text-slate-500 block uppercase font-mono">FP Atual</span>
+                  <div className="text-right shrink-0 font-mono text-xs font-bold text-cyan-300">
+                    {npc.fpCurrent} <span className="text-[10px] text-slate-400 font-normal">/ {npc.fpMax}</span>
                   </div>
                 </button>
 
@@ -609,30 +608,23 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                       key={stone.id}
                       type="button"
                       onClick={() => setSelectedFatigueSource(stone.id)}
-                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                      className={`py-1.5 px-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
                         isSelected
                           ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
-                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                          : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-cyan-900/60 text-cyan-300' : 'bg-slate-900 text-slate-400'}`}>
-                          <Sparkles size={16} />
-                        </div>
-                        <div className="overflow-hidden">
-                          <span className="text-xs font-bold block truncate max-w-[130px]" title={stone.name}>
-                            💎 {stone.name}
-                          </span>
-                          <span className="text-[10px] text-slate-400">Pedra de Mana</span>
-                        </div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs">💎</span>
+                        <span className="text-xs font-bold truncate" title={stone.name}>
+                          {stone.name}
+                        </span>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className={`text-xs font-mono font-bold ${isEmpty ? 'text-rose-400' : 'text-cyan-300'}`}>
-                          {stone.current ?? 0} <span className="text-[10px] text-slate-400 font-normal">/ {stone.max}</span>
-                        </span>
-                        <span className="text-[9px] text-slate-500 block uppercase font-mono">
-                          {isEmpty ? 'Sem Cargas' : 'Mana'}
-                        </span>
+                      <div className="text-right shrink-0 font-mono text-xs font-bold">
+                        <span className={isEmpty ? 'text-rose-400' : 'text-cyan-300'}>
+                          {stone.current ?? 0}
+                        </span>{' '}
+                        <span className="text-[10px] text-slate-400 font-normal">/ {stone.max}</span>
                       </div>
                     </button>
                   );
@@ -640,32 +632,30 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               </div>
             </div>
 
-            {/* Quantidade a Gastar */}
-            <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300">
-                  {selectedStone ? `Quantidade de Mana a gastar da ${selectedStone.name}` : 'Quantidade de Fadiga (FP) a Gastar'}
+            {/* Quantidade a Gastar (linha compacta) */}
+            <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <label className="text-xs font-semibold text-slate-300 block truncate">
+                  {selectedStone ? `Gastar da ${selectedStone.name}:` : 'Quantidade de Fadiga (FP):'}
                 </label>
                 {selectedStone && (
-                  <span className="text-[11px] font-mono text-cyan-400">
+                  <span className="text-[10px] font-mono text-cyan-400 block">
                     Disponível na pedra: {selectedStone.current ?? 0}
                   </span>
                 )}
               </div>
-              <div>
-                <input
-                  type="number"
-                  min="0"
-                  max={selectedStone ? selectedStone.current : undefined}
-                  value={fatigueDelta}
-                  onChange={(e) => setFatigueDelta(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="w-32 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-lg font-mono font-bold text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                />
-              </div>
+              <input
+                type="number"
+                min="0"
+                max={selectedStone ? selectedStone.current : undefined}
+                value={fatigueDelta}
+                onChange={(e) => setFatigueDelta(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-base text-center font-mono font-bold text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              />
             </div>
 
-            {/* Checkbox: É Magia? */}
-            <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-2.5">
+            {/* Checkbox: É Magia? (linha compacta) */}
+            <div className="flex items-center justify-between px-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -673,159 +663,148 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   onChange={(e) => setIsSpellExpenditure(e.target.checked)}
                   className="w-4 h-4 rounded bg-slate-900 border-purple-700 text-purple-600 focus:ring-purple-500"
                 />
-                <div className="text-xs">
-                  <span className="font-bold text-purple-300 flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-purple-400" />
-                    É Magia / Conjurando Magia
-                  </span>
-                  <span className="text-slate-500 text-[11px] block">
-                    Marque para informar nome da magia e gerenciar magias ativas
-                  </span>
-                </div>
+                <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-purple-400" />
+                  É Magia / Conjurando Magia
+                </span>
               </label>
+              <span className="text-[10px] text-slate-500">
+                {isSpellExpenditure ? 'Preencha os dados abaixo' : 'Gasto comum de fadiga'}
+              </span>
             </div>
 
             {/* Magia informada (visível somente se 'É Magia' estiver marcado) */}
             {isSpellExpenditure && (
-              <div className="bg-slate-950/70 border border-purple-900/40 rounded-xl p-3 space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-purple-300 flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-purple-400" />
-                    Magia que está gastando a Fadiga (opcional)
-                  </span>
-                  {npc.spells && npc.spells.length > 0 && (
-                    <span className="text-[10px] text-slate-500 font-normal">
-                      Clique em uma magia cadastrada abaixo ou digite
+              <div className="bg-slate-950/70 border border-purple-900/40 rounded-xl p-2.5 space-y-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
+                      <Sparkles size={12} className="text-purple-400" />
+                      Nome da Magia:
                     </span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nome da magia (ex: Escudo, Criar Ar, Luz...)"
-                  value={fatigueSpellName}
-                  onChange={(e) => setFatigueSpellName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                />
+                    {npc.spells && npc.spells.length > 0 && (
+                      <span className="text-[9px] text-slate-500">Ou escolha da ficha:</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Ex: Escudo, Criar Ar, Luz..."
+                    value={fatigueSpellName}
+                    onChange={(e) => setFatigueSpellName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
 
-                {/* Chips de magias da ficha do conjurador */}
-                {npc.spells && npc.spells.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {npc.spells.map((sp) => (
-                      <button
-                        key={sp.id}
-                        type="button"
-                        onClick={() => setFatigueSpellName(sp.name)}
-                        className={`text-[10px] px-2 py-0.5 rounded-md border transition-all ${
-                          fatigueSpellName === sp.name
-                            ? 'bg-purple-900/60 border-purple-500 text-purple-200 font-bold'
-                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                        }`}
-                      >
-                        {sp.name} (NH {sp.nh})
-                      </button>
-                    ))}
+                  {/* Chips de magias da ficha do conjurador */}
+                  {npc.spells && npc.spells.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {npc.spells.map((sp) => (
+                        <button
+                          key={sp.id}
+                          type="button"
+                          onClick={() => setFatigueSpellName(sp.name)}
+                          className={`text-[9px] px-1.5 py-0.5 rounded border transition-all ${
+                            fatigueSpellName === sp.name
+                              ? 'bg-purple-900/60 border-purple-500 text-purple-200 font-bold'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                          }`}
+                        >
+                          {sp.name} (NH {sp.nh})
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Checkbox: Magia Ativa */}
+                <div className="pt-1 border-t border-slate-800/60">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isSpellActive}
+                      onChange={(e) => setIsSpellActive(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-purple-500"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-purple-300">Magia Ativa / Sustentada</span>
+                      <span className="text-slate-500 text-[10px] ml-1.5">
+                        (registra em "Magias Ativas" e "Sob Efeito")
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Configuração de Alvo e Rodada se Magia Ativa marcada */}
+                {isSpellActive && (
+                  <div className="space-y-1.5 pt-1.5 border-t border-purple-900/40 bg-purple-950/20 p-2 rounded-lg">
+                    <div className="flex items-center justify-between gap-1 text-[10px]">
+                      <span className="font-bold text-purple-300">Alvo da Magia:</span>
+                      <div className="flex items-center gap-0.5 bg-slate-900 p-0.5 rounded border border-slate-800">
+                        <button
+                          type="button"
+                          onClick={() => setSpellTargetFilter('all')}
+                          className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          Todos
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSpellTargetFilter('player')}
+                          className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'player' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          Jogadores
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSpellTargetFilter('npc')}
+                          className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'npc' ? 'bg-purple-700 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          NPCs
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 items-center">
+                      <div className="sm:col-span-2">
+                        <select
+                          value={spellTargetId}
+                          onChange={(e) => setSpellTargetId(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        >
+                          <option value={npc.id}>★ {npc.name} (Próprio Conjurador)</option>
+                          {combatants
+                            .filter((c) => c.id !== npc.id)
+                            .filter((c) => {
+                              if (spellTargetFilter === 'player') return c.characterType === 'player';
+                              if (spellTargetFilter === 'npc') return c.characterType !== 'player';
+                              return true;
+                            })
+                            .map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.characterType === 'player' ? '👤 ' : '👾 '}
+                                {c.name} {c.isDead ? '(Morto)' : ''}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400 shrink-0">Rodada:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={spellRound}
+                          onChange={(e) => setSpellRound(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="w-full bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-
-              {/* Checkbox: Magia Ativa */}
-              <div className="pt-1 border-t border-slate-850">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isSpellActive}
-                    onChange={(e) => setIsSpellActive(e.target.checked)}
-                    className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-purple-500 focus:ring-offset-0 focus:ring-1"
-                  />
-                  <div className="text-xs">
-                    <span className="font-bold text-purple-300">Magia Ativa / Sustentada</span>
-                    <span className="text-slate-500 text-[11px] block">
-                      Registra em "Magias Ativas" do conjurador e "Sob Efeito" do alvo
-                    </span>
-                  </div>
-                </label>
-              </div>
-
-              {/* Configuração de Alvo e Rodada se Magia Ativa marcada */}
-              {isSpellActive && (
-                <div className="space-y-2.5 pt-2 border-t border-slate-800/80 bg-purple-950/20 p-2.5 rounded-lg border border-purple-900/40">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-[11px] font-bold text-purple-300">
-                      Alvo da Magia:
-                    </label>
-                    {/* Filtros de Alvo: Todos, Personagens, NPCs */}
-                    <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-md border border-slate-800 text-[10px]">
-                      <button
-                        type="button"
-                        onClick={() => setSpellTargetFilter('all')}
-                        className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
-                      >
-                        Todos
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSpellTargetFilter('player')}
-                        className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'player' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
-                      >
-                        Personagens
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSpellTargetFilter('npc')}
-                        className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'npc' ? 'bg-purple-700 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
-                      >
-                        NPCs
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                    <div className="sm:col-span-2">
-                      <select
-                        value={spellTargetId}
-                        onChange={(e) => setSpellTargetId(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                      >
-                        {/* Inclui o próprio conjurador sempre visível */}
-                        <option value={npc.id}>
-                          ★ {npc.name} (Próprio Conjurador)
-                        </option>
-                        {combatants
-                          .filter((c) => c.id !== npc.id)
-                          .filter((c) => {
-                            if (spellTargetFilter === 'player') return c.characterType === 'player';
-                            if (spellTargetFilter === 'npc') return c.characterType !== 'player';
-                            return true;
-                          })
-                          .map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.characterType === 'player' ? '👤 ' : '👾 '}
-                              {c.name} {c.isDead ? '(Morto)' : ''}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-[10px] text-slate-400 shrink-0 font-medium">Rodada:</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={spellRound}
-                        onChange={(e) => setSpellRound(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                        className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-center font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                        title="Rodada em que a magia foi lançada"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
             )}
 
             <div>
-              <label className="text-xs font-semibold text-slate-400 block mb-1">
+              <label className="text-[11px] font-semibold text-slate-400 block mb-1">
                 Motivo do Gasto (opcional)
               </label>
               <input
@@ -833,7 +812,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 placeholder="Ex: Magia, Esforço Extra, Corrida..."
                 value={customDescription}
                 onChange={(e) => setCustomDescription(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
             </div>
 
@@ -842,9 +821,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               return (
                 <button
                   onClick={handleConfirmFatigue}
-                  className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
                 >
-                  <Zap size={16} />
+                  <Zap size={14} />
                   <span>
                     {selectedStone
                       ? `Gastar ${totalVal} Mana de ${selectedStone.name}`
