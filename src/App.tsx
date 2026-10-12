@@ -1388,8 +1388,8 @@ export default function App() {
       combatsChanged = true;
     }
 
-    // 2. Se for Magia Ativa (e não for em área), atualizar o Alvo (affectedSpells)
-    if (spellData && spellData.isActiveSpell && spellData.targetId && spellData.targetId !== 'area' && !(spellData as any).isAreaSpell) {
+    // 2. Se for Magia Ativa, atualizar o Alvo (affectedSpells)
+    if (spellData && spellData.isActiveSpell) {
       const targetId = spellData.targetId;
 
       const updateTargetInList = (list: NPC[]) => {
