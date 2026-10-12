@@ -30,21 +30,16 @@ const PLAYERS_STORAGE_KEY = 'gurps_fixed_personagens_v1';
 const ACTIVE_COMBAT_KEY = 'gurps_combat_master_active_combat_id_v1';
 const SYNC_CHANNEL_NAME = 'gurps_combat_realtime_sync_v2';
 
-// Função de fusão granular por personagem (CRDT LWW) com suporte a adições, edições e exclusões
+// Função de fusão granular por personagem (CRDT LWW) com suporte a adições e edições sem perda de registros
 function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]; changed: boolean } {
   let changed = false;
   const currentMap = new Map<string, NPC>();
   currentList.forEach((n) => currentMap.set(n.id, n));
 
-  const incomingMap = new Map<string, NPC>();
-  incomingList.forEach((n) => incomingMap.set(n.id, n));
-
-  const merged: NPC[] = [];
-
   for (const incoming of incomingList) {
     const existing = currentMap.get(incoming.id);
     if (!existing) {
-      merged.push(incoming);
+      currentMap.set(incoming.id, incoming);
       changed = true;
     } else {
       const incomingTime = incoming.updatedAt || 0;
@@ -61,32 +56,22 @@ function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]
         JSON.stringify(incoming.turnActions || {}) !== JSON.stringify(existing.turnActions || {});
 
       if (incomingTime > existingTime || (incomingTime === existingTime && hasContentDiff)) {
-        merged.push(incoming);
+        currentMap.set(incoming.id, incoming);
         changed = true;
       } else if (incomingTime === existingTime) {
-        // Se ambos possuem mesmo timestamp, preserva a versão que tiver contagem de ações de turno mais detalhada
         const incActions = incoming.turnActions || { parryCount: 0, dodgeCount: 0, blockCount: 0 };
         const extActions = existing.turnActions || { parryCount: 0, dodgeCount: 0, blockCount: 0 };
         const incSum = (incActions.parryCount || 0) + (incActions.dodgeCount || 0) + (incActions.blockCount || 0);
         const extSum = (extActions.parryCount || 0) + (extActions.dodgeCount || 0) + (extActions.blockCount || 0);
         if (incSum > extSum) {
-          merged.push(incoming);
+          currentMap.set(incoming.id, incoming);
           changed = true;
-        } else {
-          merged.push(existing);
         }
-      } else {
-        merged.push(existing);
       }
     }
   }
 
-  // Se havia personagens na lista local que foram excluídos na lista recebida
-  if (currentList.some((n) => !incomingMap.has(n.id))) {
-    changed = true;
-  }
-
-  return { merged, changed };
+  return { merged: Array.from(currentMap.values()), changed };
 }
 
 function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { merged: Combat[]; changed: boolean } {
@@ -1445,14 +1430,36 @@ export default function App() {
     if (playersChanged) setPlayers(nextPlayers);
     if (combatsChanged) setCombats(nextCombats);
 
+    // Conjurador com o estado final (contendo activeSpells e affectedSpells se ele próprio for o alvo)
+    const finalCaster = nextPlayers.find((p) => p.id === npcId) || (nextCombats.find((c) => c.id === activeCombat?.id)?.npcs || []).find((n) => n.id === npcId);
+    const finalTarget = (spellData && spellData.isActiveSpell && spellData.targetId !== npcId)
+      ? (nextPlayers.find((p) => p.id === spellData.targetId) || (nextCombats.find((c) => c.id === activeCombat?.id)?.npcs || []).find((n) => n.id === spellData.targetId))
+      : undefined;
+
     broadcastSync(
       combatsChanged ? nextCombats : undefined,
       undefined,
       undefined,
       undefined,
       playersChanged ? nextPlayers : undefined,
-      updatedCasterNpc
+      finalCaster
     );
+
+    if (finalTarget) {
+      try {
+        broadcastChannelRef.current?.postMessage({
+          type: 'SYNC_NPC',
+          sourceId: onlineSyncService.getClientId(),
+          timestamp: now,
+          npc: finalTarget,
+        });
+      } catch (e) {}
+      onlineSyncService.sendPayloadImmediate({
+        type: 'SYNC_NPC',
+        timestamp: now,
+        npc: finalTarget,
+      });
+    }
   };
 
   // Remove Magia Ativa (remove do conjurador e do respectivo alvo)

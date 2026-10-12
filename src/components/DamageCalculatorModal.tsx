@@ -69,6 +69,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
   // Fatigue state (Padrão 0)
   const [fatigueDelta, setFatigueDelta] = useState<number | ''>(0);
+  const [isSpellExpenditure, setIsSpellExpenditure] = useState<boolean>(false);
   const [fatigueSpellName, setFatigueSpellName] = useState<string>('');
   const [isSpellActive, setIsSpellActive] = useState<boolean>(false);
   const [spellTargetId, setSpellTargetId] = useState<string>(npc.id);
@@ -189,7 +190,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const handleConfirmFatigue = () => {
     const numFatigue = typeof fatigueDelta === 'number' ? fatigueDelta : 0;
     const targetChar = combatants.find((c) => c.id === spellTargetId) || npc;
-    const spellNameTrimmed = fatigueSpellName.trim();
+    const spellNameTrimmed = isSpellExpenditure ? fatigueSpellName.trim() : '';
 
     const targetStone = selectedFatigueSource !== 'fp'
       ? manaStones.find((s) => s.id === selectedFatigueSource)
@@ -651,42 +652,42 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div>
                 <input
                   type="number"
                   min="0"
                   max={selectedStone ? selectedStone.current : undefined}
                   value={fatigueDelta}
                   onChange={(e) => setFatigueDelta(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-lg font-mono font-bold text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                  className="w-32 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-lg font-mono font-bold text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                 />
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {[1, 2, 3, 4, 5].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setFatigueDelta(val)}
-                      className="text-xs font-mono bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-750 px-2 py-1.5 rounded-lg font-medium"
-                    >
-                      {val}
-                    </button>
-                  ))}
-                  {selectedStone && (
-                    <button
-                      type="button"
-                      onClick={() => setFatigueDelta(selectedStone.current ?? 0)}
-                      className="text-xs font-bold bg-cyan-900/60 hover:bg-cyan-800/80 text-cyan-200 border border-cyan-700 px-2 py-1.5 rounded-lg"
-                      title="Usar toda a mana restante desta pedra"
-                    >
-                      Máx ({selectedStone.current ?? 0})
-                    </button>
-                  )}
-                </div>
               </div>
             </div>
 
-            {/* Magia informada */}
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-3">
+            {/* Checkbox: É Magia? */}
+            <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-2.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isSpellExpenditure}
+                  onChange={(e) => setIsSpellExpenditure(e.target.checked)}
+                  className="w-4 h-4 rounded bg-slate-900 border-purple-700 text-purple-600 focus:ring-purple-500"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-purple-300 flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-purple-400" />
+                    É Magia / Conjurando Magia
+                  </span>
+                  <span className="text-slate-500 text-[11px] block">
+                    Marque para informar nome da magia e gerenciar magias ativas
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            {/* Magia informada (visível somente se 'É Magia' estiver marcado) */}
+            {isSpellExpenditure && (
+              <div className="bg-slate-950/70 border border-purple-900/40 rounded-xl p-3 space-y-3">
               <div>
                 <label className="text-xs font-semibold text-purple-300 flex items-center justify-between mb-1">
                   <span className="flex items-center gap-1.5">
@@ -821,6 +822,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 </div>
               )}
             </div>
+            )}
 
             <div>
               <label className="text-xs font-semibold text-slate-400 block mb-1">
