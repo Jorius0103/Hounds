@@ -2631,7 +2631,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px] bg-slate-950/80">
-                  <th className="py-2.5 px-3 w-16 text-center">Roll</th>
+                  <th className="py-2.5 px-2 min-w-[140px] text-center whitespace-nowrap">Roll</th>
                   <th className="py-2.5 px-3 w-28">Parte do Corpo</th>
                   <th className="py-2.5 px-3 min-w-[150px]">Armadura</th>
                   <th className="py-2.5 px-3 w-20 text-center">RD Base</th>
@@ -2653,12 +2653,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         .filter((h) => h.type === 'damage' && isSameLocation(h.hitLocation || '', loc.location))
                         .reduce((sum, h) => sum + (h.finalDamage || h.amount || 0), 0);
 
-                  const isCrippled = hpInfo.value !== null && calculatedDmg >= hpInfo.value && hpInfo.value > 0;
-
                   return (
                     <tr key={loc.id || `${loc.location}-${idx}`} className="hover:bg-slate-850/50 transition-colors">
-                      {/* 1. Roll (Fixa, não edita) */}
-                      <td className="py-2.5 px-3 text-center font-mono font-bold text-amber-400 text-xs bg-slate-950/30">
+                      {/* 1. Roll (Fixa, não edita - espaço ampliado e fonte ajustada para linha única) */}
+                      <td className="py-2.5 px-2 text-center font-mono font-bold text-amber-400 text-[10px] leading-tight whitespace-nowrap bg-slate-950/30">
                         {loc.rollTarget || '—'}
                       </td>
 
@@ -2683,7 +2681,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         />
                       </td>
 
-                      {/* 4. RD Base (Editável) */}
+                      {/* 4. RD Base (Editável - sem acréscimo de RD natural) */}
                       <td className="py-2.5 px-3 text-center">
                         <div className="flex items-center justify-center gap-1 font-mono">
                           <input
@@ -2702,11 +2700,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                               isViewer ? 'opacity-90' : ''
                             }`}
                           />
-                          {npc.naturalDr > 0 && (
-                            <span className="text-[10px] text-slate-500" title={`RD Natural: +${npc.naturalDr}`}>
-                              (+{npc.naturalDr})
-                            </span>
-                          )}
                         </div>
                       </td>
 
@@ -2780,7 +2773,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                       {/* 8. Dano Tomado (Calcula soma dos danos deste combate, editável pelo usuário) */}
                       <td className="py-2.5 px-3 text-center">
-                        <div className="flex flex-col items-center justify-center gap-0.5">
+                        <div className="flex flex-col items-center justify-center">
                           <input
                             type="number"
                             min="0"
@@ -2798,14 +2791,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                             } ${isViewer ? 'opacity-90' : ''}`}
                             title="Dano tomado nesta parte do corpo neste combate (editável)"
                           />
-                          {isCrippled && (
-                            <span
-                              className="text-[9px] font-bold text-rose-400 tracking-tight animate-pulse"
-                              title={`Dano tomado (${calculatedDmg}) igual ou superior à Vida Total (${hpInfo.value})! Possível membro aleijado/inutilizado.`}
-                            >
-                              ⚠️ Aleijado
-                            </span>
-                          )}
                         </div>
                       </td>
 
