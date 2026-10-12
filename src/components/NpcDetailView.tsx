@@ -233,11 +233,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   };
 
   // =========================================================================
-  // CAMPO DE ALERTAS UNIFICADO (PV, FADIGA, MORTALIDADE, ESTADOS, DEFESAS != 0, SHOCK)
+  // =========================================================================
+  // ALERTAS SEPARADOS: 1) CONDIÇÕES, ESTADOS, PV E FADIGA / 2) DEFESAS & AÇÕES DO TURNO
   // =========================================================================
   const turn = npc.turnActions || DEFAULT_TURN_ACTIONS;
 
-  const renderUnifiedAlerts = (isPlayer: boolean) => {
+  // Div 1: Alertas Críticos (Condições & Estados Críticos, Pontos de Vida e Pontos de Fadiga)
+  const renderCriticalAlertsBox = (isPlayer: boolean = false) => {
     const alerts: { id: string; badgeClass: string; text: string; icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
 
     // 1. Mortalidade
@@ -250,29 +252,35 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 2. Pontos de Vida (apenas avisos críticos de regras)
-    if (!isPlayer) {
-      if (hpStat.warningText) {
-        alerts.push({
-          id: 'hp-warn',
-          badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
-          text: `PV: ${hpStat.warningText}`,
-          icon: AlertTriangle,
-        });
-      }
+    // 2. Pontos de Vida (alertas acumulativos e sobrepostos - até 3 alertas)
+    const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
+      ? hpStat.warningTexts
+      : (hpStat.warningText ? [hpStat.warningText] : []);
 
-      // 3. Fadiga (apenas avisos críticos de regras)
-      if (fpStat.warningText) {
-        alerts.push({
-          id: 'fp-warn',
-          badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-          text: `Fadiga: ${fpStat.warningText}`,
-          icon: Zap,
-        });
-      }
-    }
+    hpWarnings.forEach((warn, idx) => {
+      alerts.push({
+        id: `hp-warn-${idx}`,
+        badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
+        text: `PV: ${warn}`,
+        icon: AlertTriangle,
+      });
+    });
 
-    // 4. Lista todas as Condições & Estados
+    // 3. Pontos de Fadiga (alertas acumulativos e sobrepostos - até 3 alertas)
+    const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
+      ? fpStat.warningTexts
+      : (fpStat.warningText ? [fpStat.warningText] : []);
+
+    fpWarnings.forEach((warn, idx) => {
+      alerts.push({
+        id: `fp-warn-${idx}`,
+        badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
+        text: `Fadiga: ${warn}`,
+        icon: Zap,
+      });
+    });
+
+    // 4. Lista todas as Condições & Estados Críticos
     if (npc.statusConditions && npc.statusConditions.length > 0) {
       npc.statusConditions.forEach((cond) => {
         alerts.push({
@@ -283,7 +291,34 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 5. Defesas & Ações do Turno (sempre que algum valor for diferente de 0)
+    if (alerts.length === 0) return null;
+
+    return (
+      <div
+        className="flex flex-wrap items-center justify-end gap-1.5 p-2 bg-slate-950/90 border border-rose-900/40 rounded-xl max-w-2xl shadow-sm"
+        title="Condições & Estados Críticos, Pontos de Vida e Fadiga"
+      >
+        {alerts.map((al) => {
+          const Icon = al.icon;
+          return (
+            <span
+              key={al.id}
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs border ${al.badgeClass}`}
+            >
+              {Icon && <Icon size={12} className="shrink-0" />}
+              <span>{al.text}</span>
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Div 2: Defesas & Ações do Turno
+  const renderTurnActionsBox = () => {
+    const alerts: { id: string; badgeClass: string; text: string; icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
+
+    // Defesas & Ações do Turno
     if (turn.parryCount > 0) {
       alerts.push({
         id: 'parry',
@@ -323,7 +358,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 6. Shock com a quantidade
+    // Shock com a quantidade
     if (turn.shock > 0) {
       alerts.push({
         id: 'shock',
@@ -336,7 +371,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     if (alerts.length === 0) return null;
 
     return (
-      <div className="flex flex-wrap items-center justify-end gap-1.5 p-2 bg-slate-950/90 border border-slate-800 rounded-xl max-w-2xl shadow-sm">
+      <div
+        className="flex flex-wrap items-center justify-end gap-1.5 p-2 bg-slate-950/90 border border-slate-800 rounded-xl max-w-2xl shadow-sm"
+        title="Defesas & Ações do Turno"
+      >
         {alerts.map((al) => {
           const Icon = al.icon;
           return (
@@ -655,11 +693,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               </div>
             </div>
 
-            {/* Ações do Jogador: Alerta Geral ao lado do Lançar Dano */}
-            <div className="flex items-center justify-end gap-2.5 w-full sm:w-auto min-w-0">
-              <div className="min-w-0 flex justify-end">
-                {renderUnifiedAlerts(true)}
-              </div>
+            {/* Ações do Jogador: Alertas separados em divs diferentes ao lado do Lançar Dano */}
+            <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto min-w-0">
+              {renderTurnActionsBox()}
+              {renderCriticalAlertsBox(true)}
 
               {!isViewer ? (
                 <button
@@ -1017,12 +1054,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
           </div>
 
-          {/* Direita: Alertas Unificados ao lado de Botão Dano + Ações */}
-          <div className="flex items-center justify-end gap-2.5 self-start lg:self-center w-full lg:w-auto min-w-0">
-            {/* Alertas Unificados (sempre ao lado, com quebra limpa interna se houver muitos) */}
-            <div className="min-w-0 flex justify-end">
-              {renderUnifiedAlerts(false)}
-            </div>
+          {/* Direita: Alertas separados em divs diferentes ao lado de Botão Dano + Ações */}
+          <div className="flex flex-wrap items-center justify-end gap-2.5 self-start lg:self-center w-full lg:w-auto min-w-0">
+            {renderTurnActionsBox()}
+            {renderCriticalAlertsBox(false)}
 
             {/* Bloco de Ações Fixo (shrink-0 para NUNCA cair para baixo dos alertas) */}
             {!isViewer ? (

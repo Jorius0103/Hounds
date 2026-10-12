@@ -165,39 +165,83 @@ function escapeRegex(string: string) {
   return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
 }
 
-export function getHpStatus(current: number, max: number): { label: string; color: string; badgeBg: string; warningText?: string } {
-  if (current <= -5 * max) {
-    return { label: 'Morto (-5x Máx)', color: 'text-red-500', badgeBg: 'bg-red-950/80 border-red-800 text-red-300', warningText: 'Morte instantânea' };
-  }
-  if (current <= -1 * max) {
-    return { label: 'Risco de Morte (-1x Máx)', color: 'text-rose-500', badgeBg: 'bg-rose-950/80 border-rose-800 text-rose-300', warningText: 'Requer teste de HT para não morrer a cada múltiplo' };
-  }
-  if (current <= 0) {
-    return { label: 'Colapso (<= 0)', color: 'text-amber-500', badgeBg: 'bg-amber-950/80 border-amber-800 text-amber-300', warningText: 'Teste de HT a cada turno para não desmaiar' };
-  }
+export function getHpWarnings(current: number, max: number): string[] {
+  if (max <= 0) return [];
+  const warnings: string[] = [];
+
+  // Patamar 1: < 1/3 PV
   if (current < Math.ceil(max / 3)) {
-    return { label: 'Gravemente Ferido (< 1/3)', color: 'text-yellow-400', badgeBg: 'bg-yellow-950/80 border-yellow-800 text-yellow-300', warningText: 'Movimento e Esquiva reduzidos pela metade!' };
+    warnings.push('Movimento e Esquiva reduzidos pela metade!');
   }
-  if (current < max) {
-    return { label: 'Ferido', color: 'text-emerald-400', badgeBg: 'bg-emerald-950/60 border-emerald-800 text-emerald-300' };
+  // Patamar 2: <= 0 PV
+  if (current <= 0) {
+    warnings.push('Teste de HT a cada turno para não desmaiar');
   }
-  return { label: 'Saudável (100%)', color: 'text-emerald-400', badgeBg: 'bg-emerald-950/40 border-emerald-900/50 text-emerald-300' };
+  // Patamar 3: <= -1x PV
+  if (current <= -1 * max) {
+    warnings.push('Requer teste de HT para não morrer a cada múltiplo');
+  }
+  // Morte instantânea
+  if (current <= -5 * max) {
+    warnings.push('Morte instantânea (-5x Máx)');
+  }
+  return warnings;
 }
 
-export function getFpStatus(current: number, max: number): { label: string; color: string; warningText?: string } {
+export function getFpWarnings(current: number, max: number): string[] {
+  if (max <= 0) return [];
+  const warnings: string[] = [];
+
+  // Patamar 1: < 1/3 FP
+  if (current < Math.ceil(max / 3)) {
+    warnings.push('Esquiva, Move e ST caem pela metade!');
+  }
+  // Patamar 2: <= 0 FP
+  if (current <= 0) {
+    warnings.push('Perde 1 PV para cada FP adicional gasto');
+  }
+  // Patamar 3: <= -1x FP
   if (current <= -1 * max) {
-    return { label: 'Inconsciente (Exaustão)', color: 'text-red-400', warningText: 'Incapacitado por estafa extrema' };
+    warnings.push('Incapacitado por estafa extrema');
+  }
+  return warnings;
+}
+
+export function getHpStatus(current: number, max: number): { label: string; color: string; badgeBg: string; warningText?: string; warningTexts: string[] } {
+  const warningTexts = getHpWarnings(current, max);
+  if (current <= -5 * max) {
+    return { label: 'Morto (-5x Máx)', color: 'text-red-500', badgeBg: 'bg-red-950/80 border-red-800 text-red-300', warningText: 'Morte instantânea', warningTexts };
+  }
+  if (current <= -1 * max) {
+    return { label: 'Risco de Morte (-1x Máx)', color: 'text-rose-500', badgeBg: 'bg-rose-950/80 border-rose-800 text-rose-300', warningText: 'Requer teste de HT para não morrer a cada múltiplo', warningTexts };
   }
   if (current <= 0) {
-    return { label: 'Colapsando (0)', color: 'text-amber-400', warningText: 'Perde 1 PV para cada FP adicional gasto' };
+    return { label: 'Colapso (<= 0)', color: 'text-amber-500', badgeBg: 'bg-amber-950/80 border-amber-800 text-amber-300', warningText: 'Teste de HT a cada turno para não desmaiar', warningTexts };
   }
   if (current < Math.ceil(max / 3)) {
-    return { label: 'Muito Exausto (< 1/3)', color: 'text-yellow-400', warningText: 'Esquiva, Move e ST caem pela metade!' };
+    return { label: 'Gravemente Ferido (< 1/3)', color: 'text-yellow-400', badgeBg: 'bg-yellow-950/80 border-yellow-800 text-yellow-300', warningText: 'Movimento e Esquiva reduzidos pela metade!', warningTexts };
   }
   if (current < max) {
-    return { label: 'Cansado', color: 'text-cyan-400' };
+    return { label: 'Ferido', color: 'text-emerald-400', badgeBg: 'bg-emerald-950/60 border-emerald-800 text-emerald-300', warningTexts };
   }
-  return { label: 'Descansado', color: 'text-cyan-400' };
+  return { label: 'Saudável (100%)', color: 'text-emerald-400', badgeBg: 'bg-emerald-950/40 border-emerald-900/50 text-emerald-300', warningTexts };
+}
+
+export function getFpStatus(current: number, max: number): { label: string; color: string; warningText?: string; warningTexts: string[] } {
+  const warningTexts = getFpWarnings(current, max);
+  if (current <= -1 * max) {
+    return { label: 'Inconsciente (Exaustão)', color: 'text-red-400', warningText: 'Incapacitado por estafa extrema', warningTexts };
+  }
+  if (current <= 0) {
+    return { label: 'Colapsando (0)', color: 'text-amber-400', warningText: 'Perde 1 PV para cada FP adicional gasto', warningTexts };
+  }
+  if (current < Math.ceil(max / 3)) {
+    return { label: 'Muito Exausto (< 1/3)', color: 'text-yellow-400', warningText: 'Esquiva, Move e ST caem pela metade!', warningTexts };
+  }
+  if (current < max) {
+    return { label: 'Cansado', color: 'text-cyan-400', warningTexts };
+  }
+  return { label: 'Descansado', color: 'text-cyan-400', warningTexts };
 }
 
 /**

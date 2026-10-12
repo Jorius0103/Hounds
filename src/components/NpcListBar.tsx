@@ -182,18 +182,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
                 const hasAlerts =
                   isDeadChar ||
-                  Boolean(hpStat.warningText) ||
-                  Boolean(fpStat.warningText) ||
-                  Boolean(npc.statusConditions && npc.statusConditions.length > 0) ||
-                  Boolean(
-                    npc.turnActions &&
-                      (npc.turnActions.shock > 0 ||
-                        npc.turnActions.parryCount > 0 ||
-                        npc.turnActions.dodgeCount > 0 ||
-                        npc.turnActions.blockCount > 0 ||
-                        npc.turnActions.usedRetreat ||
-                        npc.turnActions.usedFatigueThisTurn)
-                  );
+                  Boolean(hpStat.warningTexts && hpStat.warningTexts.length > 0) ||
+                  Boolean(fpStat.warningTexts && fpStat.warningTexts.length > 0) ||
+                  Boolean(npc.statusConditions && npc.statusConditions.length > 0);
 
                 const isViewerOrPlayer = currentUserRole === 'jogador';
                 const showNpcWoundedOrDead = !isViewerOrPlayer || isPlayerChar;
