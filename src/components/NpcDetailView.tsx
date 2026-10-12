@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, UserRole } from '../types/rpg';
+import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, UserRole, ActionLogEntry } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { getHpStatus, getFpStatus, DEFAULT_TURN_ACTIONS, COMBAT_MANEUVERS, getCombatManeuver } from '../utils/gurps';
 import { TurnActionsTracker } from './TurnActionsTracker';
@@ -32,6 +32,7 @@ import {
   Package,
   UserCheck,
   Target,
+  ScrollText,
 } from 'lucide-react';
 
 const getItemIcon = (name: string, category?: string) => {
@@ -237,8 +238,224 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   const turn = npc.turnActions || DEFAULT_TURN_ACTIONS;
 
-  const renderUnifiedAlerts = (isPlayer: boolean) => {
-    const alerts: { id: string; badgeClass: string; text: string; icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
+  // Finalizar Ação / Turno do personagem
+  const handleFinalizeAction = () => {
+    if (isViewer) return;
+    const now = Date.now();
+    const activeManeuver = getCombatManeuver(npc.combatManeuver);
+    const maneuverText = activeManeuver ? ` · Manobra: ${activeManeuver.name}` : '';
+    const logDesc = `Ação de ${npc.name} finalizada${maneuverText}`;
+
+    const resetTurnActions = {
+      ...DEFAULT_TURN_ACTIONS,
+      notes: '',
+    };
+
+    const newHistoryEntry: ActionLogEntry = {
+      id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      author: currentUserRole === 'mestre' ? 'mestre' : 'assistente',
+      type: 'turn',
+      description: logDesc,
+      npcId: npc.id,
+      npcName: npc.name,
+      npcAvatar: npc.avatar,
+      npcPreset: npc.avatarPreset,
+    };
+
+    const updatedNpc: NPC = {
+      ...currentNpcRef.current,
+      turnActions: resetTurnActions,
+      history: [newHistoryEntry, ...(currentNpcRef.current.history || [])],
+      updatedAt: now,
+    };
+
+    currentNpcRef.current = updatedNpc;
+    onUpdateNpc(updatedNpc);
+    systemLogger.addLog('LOCAL_EDIT', logDesc, { npcId: npc.id, npcName: npc.name });
+  };
+
+  // Bloco 2: Magias Ativas & Sob Efeito no Cabeçalho
+  const renderHeaderSpellsBox = () => {
+    const activeList = npc.activeSpells || [];
+    const affectedList = npc.affectedSpells || [];
+
+    return (
+      <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 min-w-[210px] 2xl:w-[240px] shrink-0 space-y-1.5 shadow-sm">
+        {/* Magias Ativas (Sustentadas) */}
+        <div>
+          <div className="flex items-center justify-between text-[10px] font-bold pb-1 border-b border-purple-950/80">
+            <span className="text-purple-300 flex items-center gap-1">
+              <Sparkles size={11} className="text-purple-400" />
+              Magias Ativas (Sustentadas)
+            </span>
+            <span className="text-[9px] text-purple-400/80 font-mono">
+              {activeList.length} ativa{activeList.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          {activeList.length === 0 ? (
+            <div className="text-[10px] text-slate-600 italic py-1 text-center">Nenhuma ativa</div>
+          ) : (
+            <div className="space-y-1 max-h-20 overflow-y-auto pr-0.5 custom-scrollbar mt-1">
+              {activeList.map((sp) => (
+                <div
+                  key={sp.id}
+                  className="flex items-center justify-between gap-1 text-[11px] bg-slate-900/90 border border-purple-900/40 rounded px-1.5 py-0.5"
+                >
+                  <div className="min-w-0 flex-1 truncate flex items-center gap-1">
+                    <span className="font-bold text-purple-200 truncate">{sp.spellName}</span>
+                    <span className="text-[9px] px-1 bg-purple-950 border border-purple-800 text-purple-300 rounded font-mono font-bold shrink-0">
+                      R{sp.round}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate">
+                      Alvo: <strong className="text-slate-200">{sp.targetId === 'area' || sp.targetName === 'Em Área' ? '🌐 Em Área' : sp.targetName}</strong>
+                    </span>
+                  </div>
+                  {!isViewer && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onRemoveActiveSpell) onRemoveActiveSpell(npc.id, sp.id);
+                        else {
+                          const remaining = activeList.filter((s) => s.id !== sp.id);
+                          updateField('activeSpells', remaining);
+                        }
+                      }}
+                      className="text-slate-500 hover:text-rose-400 p-0.5 transition-colors shrink-0"
+                      title="Encerrar magia ativa"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sob Efeito (Afetando este Alvo) */}
+        <div className="pt-1 border-t border-slate-800/60">
+          <div className="flex items-center justify-between text-[10px] font-bold pb-1 border-b border-cyan-950/80">
+            <span className="text-cyan-300 flex items-center gap-1">
+              <Zap size={11} className="text-cyan-400" />
+              Sob Efeito (Afetando este Alvo)
+            </span>
+            <span className="text-[9px] text-cyan-400/80 font-mono">
+              {affectedList.length} efeito{affectedList.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          {affectedList.length === 0 ? (
+            <div className="text-[10px] text-slate-600 italic py-1 text-center">Nenhum efeito</div>
+          ) : (
+            <div className="space-y-1 max-h-20 overflow-y-auto pr-0.5 custom-scrollbar mt-1">
+              {affectedList.map((sp) => (
+                <div
+                  key={sp.id}
+                  className="flex items-center justify-between gap-1 text-[11px] bg-slate-900/90 border border-cyan-900/40 rounded px-1.5 py-0.5"
+                >
+                  <div className="min-w-0 flex-1 truncate flex items-center gap-1">
+                    <span className="font-bold text-cyan-200 truncate">{sp.spellName}</span>
+                    <span className="text-[9px] px-1 bg-cyan-950 border border-cyan-800 text-cyan-300 rounded font-mono font-bold shrink-0">
+                      R{sp.round}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate">
+                      Conjurador: <strong className="text-slate-200">{sp.casterName || 'Desconhecido'}</strong>
+                    </span>
+                  </div>
+                  {!isViewer && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onRemoveAffectedSpell) onRemoveAffectedSpell(npc.id, sp.id);
+                        else {
+                          const remaining = affectedList.filter((s) => s.id !== sp.id);
+                          updateField('affectedSpells', remaining);
+                        }
+                      }}
+                      className="text-slate-500 hover:text-rose-400 p-0.5 transition-colors shrink-0"
+                      title="Remover efeito de magia"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Bloco 3: Defesas & Ações do Turno
+  const renderTurnActionsBox = () => {
+    const hasAnyAction =
+      turn.parryCount > 0 ||
+      turn.dodgeCount > 0 ||
+      turn.blockCount > 0 ||
+      turn.usedRetreat ||
+      turn.usedFatigueThisTurn ||
+      (turn.shock || 0) > 0;
+
+    return (
+      <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 min-w-[200px] shrink-0 shadow-sm flex flex-col justify-center">
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+          <span className="flex items-center gap-1 text-slate-300">
+            <Shield size={11} className="text-amber-400" />
+            Defesas &amp; Ações do Turno
+          </span>
+        </div>
+
+        {!hasAnyAction ? (
+          <div className="text-[10px] text-slate-600 italic py-2 text-center">
+            Nenhuma defesa/ação usada
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-1.5">
+            {turn.blockCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs border bg-emerald-950/80 border-emerald-500 text-emerald-300 font-semibold">
+                <Shield size={11} className="shrink-0" />
+                <span>Bloqueou: {turn.blockCount}x</span>
+              </span>
+            )}
+            {turn.usedFatigueThisTurn && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs border bg-orange-950/80 border-orange-500 text-orange-300 font-semibold">
+                <Zap size={11} className="shrink-0" />
+                <span>Usou Fadiga</span>
+              </span>
+            )}
+            {turn.parryCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs border bg-amber-950/80 border-amber-500 text-amber-300 font-semibold">
+                <Shield size={11} className="shrink-0" />
+                <span>Aparou: {turn.parryCount}x</span>
+              </span>
+            )}
+            {turn.shock > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs border bg-rose-950 border-rose-500 text-rose-300 font-black animate-pulse">
+                <AlertTriangle size={11} className="shrink-0" />
+                <span>Shock: -{turn.shock}</span>
+              </span>
+            )}
+            {turn.usedRetreat && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs border bg-blue-950/80 border-blue-500 text-blue-300 font-semibold">
+                <span>Recuou</span>
+              </span>
+            )}
+            {turn.dodgeCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs border bg-cyan-950/80 border-cyan-500 text-cyan-300 font-semibold">
+                <Footprints size={11} className="shrink-0" />
+                <span>Esquivou: {turn.dodgeCount}x</span>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Bloco 4: Alertas de PV, Fadiga e Condições & Estados Críticos
+  const renderAlertsAndConditionsBox = (isPlayerOnlyNpc: boolean) => {
+    const alerts: { id: string; badgeClass: string; text: string; icon?: React.ComponentType<{ size?: number; className?: string }>; onRemove?: () => void }[] = [];
 
     // 1. Mortalidade
     if (npc.isDead) {
@@ -251,25 +468,23 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     }
 
     // 2. Pontos de Vida (apenas avisos críticos de regras)
-    if (!isPlayer) {
-      if (hpStat.warningText) {
-        alerts.push({
-          id: 'hp-warn',
-          badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
-          text: `PV: ${hpStat.warningText}`,
-          icon: AlertTriangle,
-        });
-      }
+    if (!isPlayerOnlyNpc && hpStat.warningText) {
+      alerts.push({
+        id: 'hp-warn',
+        badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
+        text: `PV: ${hpStat.warningText}`,
+        icon: AlertTriangle,
+      });
+    }
 
-      // 3. Fadiga (apenas avisos críticos de regras)
-      if (fpStat.warningText) {
-        alerts.push({
-          id: 'fp-warn',
-          badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-          text: `Fadiga: ${fpStat.warningText}`,
-          icon: Zap,
-        });
-      }
+    // 3. Fadiga (apenas avisos críticos de regras)
+    if (!isPlayerOnlyNpc && fpStat.warningText) {
+      alerts.push({
+        id: 'fp-warn',
+        badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
+        text: `Fadiga: ${fpStat.warningText}`,
+        icon: Zap,
+      });
     }
 
     // 4. Lista todas as Condições & Estados
@@ -279,76 +494,61 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           id: `cond-${cond}`,
           badgeClass: 'bg-purple-950/80 border-purple-500 text-purple-200 font-semibold',
           text: cond,
+          onRemove: !isViewer ? () => removeCondition(cond) : undefined,
         });
       });
     }
 
-    // 5. Defesas & Ações do Turno (sempre que algum valor for diferente de 0)
-    if (turn.parryCount > 0) {
-      alerts.push({
-        id: 'parry',
-        badgeClass: 'bg-amber-950/80 border-amber-500 text-amber-300 font-semibold',
-        text: `Aparou: ${turn.parryCount}x`,
-        icon: Shield,
-      });
-    }
-    if (turn.dodgeCount > 0) {
-      alerts.push({
-        id: 'dodge',
-        badgeClass: 'bg-cyan-950/80 border-cyan-500 text-cyan-300 font-semibold',
-        text: `Esquivou: ${turn.dodgeCount}x`,
-        icon: Footprints,
-      });
-    }
-    if (turn.blockCount > 0) {
-      alerts.push({
-        id: 'block',
-        badgeClass: 'bg-emerald-950/80 border-emerald-500 text-emerald-300 font-semibold',
-        text: `Bloqueou: ${turn.blockCount}x`,
-        icon: Shield,
-      });
-    }
-    if (turn.usedRetreat) {
-      alerts.push({
-        id: 'retreat',
-        badgeClass: 'bg-blue-950/80 border-blue-500 text-blue-300 font-semibold',
-        text: 'Recuou',
-      });
-    }
-    if (turn.usedFatigueThisTurn) {
-      alerts.push({
-        id: 'used-fp',
-        badgeClass: 'bg-orange-950/80 border-orange-500 text-orange-300 font-semibold',
-        text: 'Usou Fadiga',
-      });
-    }
-
-    // 6. Shock com a quantidade
-    if (turn.shock > 0) {
-      alerts.push({
-        id: 'shock',
-        badgeClass: 'bg-rose-950 border-rose-500 text-rose-300 font-black animate-pulse',
-        text: `Shock: -${turn.shock}`,
-        icon: AlertTriangle,
-      });
-    }
-
-    if (alerts.length === 0) return null;
-
     return (
-      <div className="flex flex-wrap items-center justify-end gap-1.5 p-2 bg-slate-950/90 border border-slate-800 rounded-xl max-w-2xl shadow-sm">
-        {alerts.map((al) => {
-          const Icon = al.icon;
-          return (
-            <span
-              key={al.id}
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs border ${al.badgeClass}`}
+      <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 flex-1 min-w-[210px] shadow-sm flex flex-col justify-center">
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+          <span className="flex items-center gap-1 text-slate-300">
+            <AlertTriangle size={11} className="text-rose-400" />
+            Condições &amp; Alertas Críticos
+          </span>
+          {!isViewer && (
+            <button
+              type="button"
+              onClick={onOpenConditionsCrud}
+              className="text-[9px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-0.5"
+              title="Alterar Condições & Estados"
             >
-              {Icon && <Icon size={12} className="shrink-0" />}
-              <span>{al.text}</span>
-            </span>
-          );
-        })}
+              <Plus size={10} />
+              <span>Editar</span>
+            </button>
+          )}
+        </div>
+
+        {alerts.length === 0 ? (
+          <div className="text-[10px] text-slate-600 italic py-2 text-center">
+            Sem condições ou alertas críticos
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-1 max-h-24 overflow-y-auto pr-0.5 custom-scrollbar">
+            {alerts.map((al) => {
+              const Icon = al.icon;
+              return (
+                <span
+                  key={al.id}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs border ${al.badgeClass}`}
+                >
+                  {Icon && <Icon size={11} className="shrink-0" />}
+                  <span>{al.text}</span>
+                  {al.onRemove && (
+                    <button
+                      type="button"
+                      onClick={al.onRemove}
+                      className="ml-0.5 hover:text-white font-bold opacity-75 hover:opacity-100"
+                      title="Remover condição"
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   };
@@ -497,7 +697,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         )}
                       </div>
                       <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                        Alvo: <span className="text-slate-100 font-semibold">{sp.targetName || 'Desconhecido'}</span>
+                        Alvo: <span className="text-slate-100 font-semibold">{sp.targetId === 'area' || sp.targetName === 'Em Área' ? '🌐 Em Área' : (sp.targetName || 'Desconhecido')}</span>
                       </div>
                     </div>
 
@@ -593,10 +793,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   if (isPlayerUser && !isPlayerChar) {
     return (
       <div className="space-y-4">
-        {/* Identidade do NPC + Botão Lançar Dano */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 transition-all">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
-            <div className="flex items-center gap-3.5">
+        {/* Identidade do NPC + Magias + Defesas + Condições + Ações Rápidas */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm transition-all">
+          <div className="flex flex-col 2xl:flex-row items-stretch 2xl:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <NpcAvatar
                 avatar={npc.avatar}
                 preset={npc.avatarPreset}
@@ -604,13 +804,31 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 size="lg"
               />
 
-              <div>
+              <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-lg sm:text-xl font-bold text-white">
                     {npc.name || '(Sem Nome)'}
                   </h2>
+                  {npc.title && (
+                    <div className="text-xs text-amber-400 font-medium">{npc.title}</div>
+                  )}
+                </div>
 
-                  {/* Manobra de Combate do NPC */}
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  <div
+                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded-lg border bg-purple-950/80 border-purple-700/60 text-purple-300 shadow-sm"
+                  >
+                    <Users size={12} className="text-purple-400" />
+                    <span>NPC</span>
+                  </div>
+
+                  {npc.isDead && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded-lg border bg-red-950 border-red-600 text-red-300">
+                      <Skull size={12} className="text-red-400" />
+                      <span>Morto</span>
+                    </div>
+                  )}
+
                   {(() => {
                     const activeManeuver = getCombatManeuver(npc.combatManeuver);
                     return (
@@ -649,26 +867,40 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     );
                   })()}
                 </div>
-                {npc.title && (
-                  <div className="text-xs text-amber-400 font-medium mt-0.5">{npc.title}</div>
-                )}
               </div>
             </div>
 
-            {/* Ações do Jogador: Alerta Geral ao lado do Lançar Dano */}
-            <div className="flex items-center justify-end gap-2.5 w-full sm:w-auto min-w-0">
-              <div className="min-w-0 flex justify-end">
-                {renderUnifiedAlerts(true)}
-              </div>
+            {/* BLOCO 2: Magias */}
+            {renderHeaderSpellsBox()}
 
+            {/* BLOCO 3: Defesas & Ações */}
+            {renderTurnActionsBox()}
+
+            {/* BLOCO 4: Condições */}
+            {renderAlertsAndConditionsBox(true)}
+
+            {/* BLOCO 5: Ações Rápidas */}
+            <div className="flex flex-col gap-1.5 shrink-0 justify-center">
               {!isViewer ? (
-                <button
-                  onClick={() => onOpenDamageCalculator(npc)}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-colors active:scale-95 whitespace-nowrap shrink-0"
-                >
-                  <Heart size={15} />
-                  <span>Lançar Dano / Fadiga</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => onOpenDamageCalculator(npc)}
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-colors active:scale-95 whitespace-nowrap"
+                  >
+                    <Heart size={14} />
+                    <span>Lançar Dano / Fadiga</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleFinalizeAction}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 hover:text-amber-300 text-slate-300 rounded-xl border border-slate-700 shadow-sm transition-all active:scale-95 whitespace-nowrap"
+                    title="Finaliza o turno/ação deste personagem"
+                  >
+                    <ScrollText size={13} className="text-amber-400" />
+                    <span>Finalizar Ação</span>
+                  </button>
+                </>
               ) : (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
                   <Eye size={14} />
@@ -677,6 +909,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
           </div>
+        </div>
 
           {/* Campo de Anotações Compartilhado (Jogador e Mestre podem editar) */}
           <div className="bg-slate-950/70 border border-blue-900/40 rounded-xl p-3.5 space-y-1.5">
@@ -827,13 +1060,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   return (
     <div className="space-y-4">
-      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas */}
-      <div className={`bg-slate-900 border rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 transition-all ${
+      {/* 1. CABEÇALHO DO NPC: Identidade, Magias, Defesas/Ações, Alertas & Ações Rápidas */}
+      <div className={`bg-slate-900 border rounded-2xl p-3 sm:p-4 shadow-sm transition-all ${
         npc.isDead ? 'border-red-900/60 bg-slate-950/90' : 'border-slate-800'
       }`}>
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          {/* Esquerda: Avatar + Identidade */}
-          <div className="flex items-center gap-3.5 w-full lg:w-auto min-w-0">
+        <div className="flex flex-col 2xl:flex-row items-stretch 2xl:items-center justify-between gap-3">
+          {/* BLOCO 1: Identidade do Combatente */}
+          <div className="flex items-center gap-3 min-w-0">
             {/* Avatar */}
             <div className="relative group shrink-0">
               <NpcAvatar
@@ -854,15 +1087,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
 
-            {/* Identidade */}
-            <div className="space-y-1.5 min-w-0 flex-1">
+            {/* Dados do Personagem */}
+            <div className="space-y-1.5 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <input
                   type="text"
                   value={npc.name}
                   readOnly={isViewer}
                   onChange={(e) => updateField('name', e.target.value)}
-                  className={`bg-transparent text-xl font-bold border-b border-transparent hover:border-slate-700 focus:border-amber-500 focus:outline-none transition-colors px-1 max-w-[220px] sm:max-w-xs ${
+                  className={`bg-transparent text-lg sm:text-xl font-bold border-b border-transparent hover:border-slate-700 focus:border-amber-500 focus:outline-none transition-colors px-1 max-w-[200px] sm:max-w-xs ${
                     npc.isDead ? 'text-red-300 line-through' : 'text-white'
                   } ${isViewer ? 'cursor-default' : ''}`}
                   placeholder="Nome do Personagem..."
@@ -874,18 +1107,17 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     value={npc.title}
                     readOnly={isViewer}
                     onChange={(e) => updateField('title', e.target.value)}
-                    className={`bg-transparent text-xs text-amber-400 font-medium border-b border-transparent hover:border-slate-700 focus:border-amber-500 focus:outline-none transition-colors px-1 max-w-[180px] truncate ${isViewer ? 'cursor-default' : ''}`}
+                    className={`bg-transparent text-xs text-amber-400 font-medium border-b border-transparent hover:border-slate-700 focus:border-amber-500 focus:outline-none transition-colors px-1 max-w-[160px] truncate ${isViewer ? 'cursor-default' : ''}`}
                     placeholder="Título / Cargo..."
                   />
                 )}
               </div>
 
-              {/* Linha 2: Status, Tipo e Toggles de Visibilidade / Vida */}
-              <div className="flex items-center gap-2 flex-wrap text-xs">
-                {/* Status de Perfil Fixo: Personagem vs NPC */}
+              {/* Badges de Tipo, Player, Visibilidade e Mortalidade */}
+              <div className="flex items-center gap-1.5 flex-wrap text-xs">
                 {npc.characterType === 'player' ? (
                   <div
-                    className="flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border bg-emerald-950/80 border-emerald-600/70 text-emerald-300 shadow-sm"
+                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded-lg border bg-emerald-950/80 border-emerald-600/70 text-emerald-300 shadow-sm"
                     title="Perfil Fixo: Personagem (não editável)"
                   >
                     <Shield size={12} className="text-emerald-400" />
@@ -893,7 +1125,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   </div>
                 ) : (
                   <div
-                    className="flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border bg-purple-950/80 border-purple-700/60 text-purple-300 shadow-sm"
+                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded-lg border bg-purple-950/80 border-purple-700/60 text-purple-300 shadow-sm"
                     title="Perfil Fixo: NPC (não editável)"
                   >
                     <Users size={12} className="text-purple-400" />
@@ -910,12 +1142,27 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       readOnly={isViewer}
                       onChange={(e) => updateField('playerName', e.target.value)}
                       placeholder="Nome real..."
-                      className={`bg-transparent text-emerald-300 font-semibold w-20 focus:outline-none placeholder-slate-600 ${isViewer ? 'cursor-default' : ''}`}
+                      className={`bg-transparent text-emerald-300 font-semibold w-16 focus:outline-none placeholder-slate-600 ${isViewer ? 'cursor-default' : ''}`}
                     />
                   </div>
                 )}
 
-                {/* Visibilidade exclusiva para NPCs (Apenas Mestre) */}
+                {!isViewer && (
+                  <button
+                    type="button"
+                    onClick={() => updateField('isDead', !npc.isDead)}
+                    className={`flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded-lg border transition-all ${
+                      npc.isDead
+                        ? 'bg-red-950 border-red-600 text-red-300 ring-1 ring-red-600/50 hover:bg-red-900'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                    title={npc.isDead ? 'Marcado como Morto' : 'Marcar como Morto'}
+                  >
+                    <Skull size={12} className={npc.isDead ? 'text-red-400' : 'text-slate-500'} />
+                    <span>{npc.isDead ? 'Morto' : 'Vivo'}</span>
+                  </button>
+                )}
+
                 {isMaster && npc.characterType !== 'player' && (
                   <button
                     type="button"
@@ -931,32 +1178,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <span>{npc.isVisibleToPlayer ? 'Visível' : 'Oculto'}</span>
                   </button>
                 )}
-
-                {/* Toggle Vivo / Morto (Disponível para qualquer combatente, Personagem ou NPC) */}
-                {!isViewer && (
-                  <button
-                    type="button"
-                    onClick={() => updateField('isDead', !npc.isDead)}
-                    className={`flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all ${
-                      npc.isDead
-                        ? 'bg-red-950 border-red-600 text-red-300 ring-1 ring-red-600/50 hover:bg-red-900'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                    title={npc.isDead ? 'Marcado como Morto' : 'Marcar como Morto'}
-                  >
-                    <Skull size={12} className={npc.isDead ? 'text-red-400' : 'text-slate-500'} />
-                    <span>{npc.isDead ? 'Morto' : 'Vivo'}</span>
-                  </button>
-                )}
               </div>
 
-              {/* Linha 3: Manobra de Combate e Biometria (Peso & Altura) organizados lado a lado sem quebra */}
-              <div className="flex items-center gap-2.5 flex-wrap text-xs pt-0.5">
-                {/* Seleção de Manobra de Combate (sem nome da cor, apenas o nome da manobra com sua cor de fundo) */}
+              {/* Manobra de Combate + Biometria + Ações Duplicar/Excluir */}
+              <div className="flex items-center gap-2 flex-wrap text-xs pt-0.5">
                 {(() => {
                   const activeManeuver = getCombatManeuver(npc.combatManeuver);
                   return (
-                    <div className="flex items-center gap-1.5 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800 shrink-0">
+                    <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 shrink-0">
                       <span className="text-[10px] text-slate-400 font-semibold">Manobra:</span>
                       <select
                         disabled={isViewer}
@@ -971,7 +1200,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                               }
                             : undefined
                         }
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-all border outline-none truncate max-w-[130px] ${
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-all border outline-none truncate max-w-[125px] ${
                           activeManeuver
                             ? 'shadow-sm font-bold'
                             : 'text-slate-400 bg-slate-900 border-slate-750 hover:border-slate-600'
@@ -991,15 +1220,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   );
                 })()}
 
-                {/* Peso & Altura - Agrupamento estável shrink-0 */}
-                <div className="flex items-center gap-1 text-[11px] text-slate-400 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800 shrink-0">
+                {/* Peso & Altura */}
+                <div className="flex items-center gap-1 text-[11px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 shrink-0">
                   <span>Peso:</span>
                   <input
                     type="text"
                     value={npc.weight}
                     readOnly={isViewer}
                     onChange={(e) => updateField('weight', e.target.value)}
-                    className={`bg-transparent text-slate-200 w-14 text-center focus:outline-none ${isViewer ? 'cursor-default' : ''}`}
+                    className={`bg-transparent text-slate-200 w-10 text-center focus:outline-none ${isViewer ? 'cursor-default' : ''}`}
                     placeholder="-"
                   />
                   <span className="text-slate-600">|</span>
@@ -1009,53 +1238,68 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     value={npc.height}
                     readOnly={isViewer}
                     onChange={(e) => updateField('height', e.target.value)}
-                    className={`bg-transparent text-slate-200 w-14 text-center focus:outline-none ${isViewer ? 'cursor-default' : ''}`}
+                    className={`bg-transparent text-slate-200 w-10 text-center focus:outline-none ${isViewer ? 'cursor-default' : ''}`}
                     placeholder="-"
                   />
                 </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Direita: Alertas Unificados ao lado de Botão Dano + Ações */}
-          <div className="flex items-center justify-end gap-2.5 self-start lg:self-center w-full lg:w-auto min-w-0">
-            {/* Alertas Unificados (sempre ao lado, com quebra limpa interna se houver muitos) */}
-            <div className="min-w-0 flex justify-end">
-              {renderUnifiedAlerts(false)}
-            </div>
-
-            {/* Bloco de Ações Fixo (shrink-0 para NUNCA cair para baixo dos alertas) */}
-            {!isViewer ? (
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => onOpenDamageCalculator(npc)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
-                >
-                  <Heart size={15} />
-                  <span>Lançar Dano / Fadiga</span>
-                </button>
-
+                {/* Botões Duplicar e Excluir integrados na linha de identidade */}
                 {isMaster && (
-                  <div className="flex flex-col gap-1 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
+                      type="button"
                       onClick={() => onDuplicateNpc(npc)}
                       title="Duplicar este personagem com numeração incremental"
-                      className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 rounded-lg border border-slate-700 transition-colors flex items-center justify-center"
+                      className="p-1 text-slate-400 hover:text-white bg-slate-950 hover:bg-slate-800 rounded-lg border border-slate-800 transition-colors flex items-center justify-center"
                     >
-                      <Copy size={13} />
+                      <Copy size={12} />
                     </button>
-
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmOpen(true)}
                       title="Excluir este personagem"
-                      className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-950/30 hover:bg-rose-900/40 rounded-lg border border-rose-800/40 transition-colors flex items-center justify-center"
+                      className="p-1 text-rose-400 hover:text-rose-300 bg-slate-950 hover:bg-rose-950/40 rounded-lg border border-slate-800 hover:border-rose-800/40 transition-colors flex items-center justify-center"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* BLOCO 2: Magias Ativas (Sustentadas) & Sob Efeito */}
+          {renderHeaderSpellsBox()}
+
+          {/* BLOCO 3: Defesas & Ações do Turno */}
+          {renderTurnActionsBox()}
+
+          {/* BLOCO 4: Alertas de PV, Fadiga e Condições & Estados Críticos */}
+          {renderAlertsAndConditionsBox(false)}
+
+          {/* BLOCO 5: Ações Rápidas (Lançar Dano/Fadiga e Finalizar Ação) */}
+          <div className="flex flex-col gap-1.5 shrink-0 justify-center">
+            {!isViewer ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onOpenDamageCalculator(npc)}
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-all active:scale-95 whitespace-nowrap"
+                >
+                  <Heart size={14} />
+                  <span>Lançar Dano / Fadiga</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleFinalizeAction}
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 hover:text-amber-300 text-slate-300 rounded-xl border border-slate-700 shadow-sm transition-all active:scale-95 whitespace-nowrap"
+                  title="Finaliza o turno/ação deste personagem (reseta defesas e choque do turno e gera log no combate)"
+                >
+                  <ScrollText size={13} className="text-amber-400" />
+                  <span>Finalizar Ação</span>
+                </button>
+              </>
             ) : (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
                 <Eye size={14} />
