@@ -868,6 +868,16 @@ export default function App() {
     }
   };
 
+  const handleUpdateCombatRound = (newRound: number) => {
+    if (!activeCombat) return;
+    const roundVal = Math.max(0, newRound);
+    const updatedCombats = combats.map((c) =>
+      c.id === activeCombat.id ? { ...c, currentRound: roundVal, round: roundVal } : c
+    );
+    setCombats(updatedCombats);
+    broadcastSync(updatedCombats);
+  };
+
   const handleDeleteCombat = (id: string) => {
     if (id === 'combat-vazio') return;
     const remaining = combats.filter((c) => c.id !== id);
@@ -1769,6 +1779,8 @@ export default function App() {
         onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
         onUpdateNpc={handlePartialUpdateNpc}
         currentUserRole={currentUser?.role || 'mestre'}
+        currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+        onUpdateRound={handleUpdateCombatRound}
       />
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}

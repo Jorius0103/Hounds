@@ -577,7 +577,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             <div className="flex items-center justify-between border-b border-purple-950/80 pb-1">
               <div className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
                 <Sparkles size={13} className="text-purple-400" />
-                <span>Magias Ativas (Sustentadas)</span>
+                <span>Magias Ativas</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-500 font-medium">
@@ -763,7 +763,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             <div className="flex items-center justify-between border-b border-cyan-950/80 pb-1">
               <div className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
                 <Zap size={13} className="text-cyan-400" />
-                <span>Sob Efeito (Afetando este Alvo)</span>
+                <span>Sob Efeito</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-500 font-medium">
