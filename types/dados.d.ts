@@ -16,6 +16,10 @@ interface Doc {
   visible?: boolean;
   /** Ids de usuários que veem o item oculto. */
   sharedWith?: string[];
+  /** Magia ou vantagem que vem dos livros (dados/*.json), não do banco. Não é gravado. */
+  catalog?: boolean;
+  /** Entrada dos livros que o Mestre excluiu (documento com o id dela no banco). */
+  deleted?: boolean;
 }
 
 /** Coleção `maps`. */
@@ -75,8 +79,19 @@ interface Organization extends Doc {
   image?: ImageInfo | null;
 }
 
-/** Coleção `sheets` (fichas). Estrutura inicial: os campos da ficha entram depois. Ligada a personagens por `Character.sheetId`. */
-interface Sheet extends Doc { name: string; description?: string }
+/**
+ * Atributos GURPS de uma ficha. `st`, `dx`, `iq` e `ht` são valores; `per`, `will`, `hp`, `fp`,
+ * `speed` e `move` são ajustes sobre a base (HP = ST + `hp`). `enc` (Peso, nível de carga 0–4),
+ * `metal` e `spellPenalty` não custam pontos.
+ */
+interface SheetAttrs {
+  st: number; dx: number; iq: number; ht: number;
+  per: number; will: number; hp: number; fp: number; speed: number; move: number;
+  enc: number; metal: number; spellPenalty: number;
+}
+
+/** Coleção `sheets` (fichas) de GURPS. Ligada a personagens por `Character.sheetId`. */
+interface Sheet extends Doc { name: string; description?: string; attrs?: SheetAttrs }
 
 /** Coleção `events`. `date` é texto livre, no calendário da campanha. */
 interface HEvent extends Doc {
@@ -102,8 +117,20 @@ interface Spell extends Doc {
   maintenanceCost?: string;
   prerequisites?: string;
   description?: string;
+  /** Como a magia é encantada em itens (GURPS Magic). */
+  item?: string;
   page?: string;
   source?: string;
+}
+
+/** Coleção `advantages` (vantagens, talentos e perks de GURPS). Ids `adv_*` vêm de dados/vantagens.json. */
+interface Advantage extends Doc {
+  name: string;
+  cost?: string;
+  type?: string;
+  book?: string;
+  page?: string;
+  description?: string;
 }
 
 /** Coleção `notebooks` (títulos). */
@@ -135,6 +162,8 @@ interface Store {
   dropImage(ref: string): Promise<unknown>;
   /** Só o IndexedDB local: grava e apaga vários documentos de uma coleção numa transação só. */
   putBatch?(col: string, items: { id: string; data: object }[], toRemove?: string[]): Promise<unknown>;
+  /** Remove vários documentos de uma vez (Supabase). */
+  removeMany?(col: string, ids: string[]): Promise<unknown>;
   /** Supabase: atraso para salvar a Mesa (ms). */
   saveDelay?: number;
   /** Supabase: tamanho máximo do estado da Mesa salvo numa linha só. */
@@ -151,19 +180,21 @@ interface World {
   characters: Character[];
   organizations: Organization[];
   spells: Spell[];
+  advantages: Advantage[];
   sheets: Sheet[];
   events: HEvent[];
   notebooks: Notebook[];
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
   orgIdx: Record<string, Organization>;
   spellIdx: Record<string, Spell>;
+  advIdx: Record<string, Advantage>;
   sheetIdx: Record<string, Sheet>;
   eventIdx: Record<string, HEvent>;
   /** Pai efetivo de cada mapa. */
@@ -186,6 +217,7 @@ interface Route {
   charId?: string;
   orgId?: string;
   spellId?: string;
+  advId?: string;
   sheetId?: string;
   eventId?: string;
   nbId?: string;

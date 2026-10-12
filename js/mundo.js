@@ -12,10 +12,10 @@
    stored documents, so a change anywhere shows up everywhere.
    ===================================================================== */
 /** @type {World} */
-var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], sheets: [], events: [],
-          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], sheets: [], events: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [],
-          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
-          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
+var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], sheets: [], events: [],
+          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], sheets: [], events: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [],
+          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, advantages: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
+          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, advIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
 // The same ids once each, in order: links are lists of ids and must never repeat one.
 function uniqIds(ids) { var seen = {}; return (ids || []).filter(function (id) { if (!id || seen[id]) return false; seen[id] = true; return true; }); }
 // Ids picked in a form plus the ones this user can't see (and so couldn't pick), which are kept.
@@ -73,6 +73,86 @@ function spellById(id) {
     if (cleanId.indexOf(norm(spells[i].name)) >= 0) return spells[i];
   }
   return null;
+}
+/* =====================================================================
+   Catálogos de GURPS (magias e vantagens dos livros)
+   The book entries live in dados/magias.json and dados/vantagens.json, fetched only when
+   someone opens their tab and then cached by the browser. The database keeps just the
+   Mestre's own work: entries he created (random ids), and for a book entry, a document
+   with the same id (spell_*, adv_*) holding his edits, his visibility choice, or
+   deleted: true. W.spells / W.advantages are the book list with those documents on top.
+   ===================================================================== */
+var CATALOG_VERSION = '2026-10-12-v5';
+// fields: what an entry holds besides visibility; over: the documents of book entries by id;
+// deleted: the book entries the Mestre deleted (for him to see and restore).
+var CATALOG = {
+  spells: { file: 'dados/magias.json', prefix: 'spell_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
+    fields: ['name', 'difficulty', 'class', 'college', 'timeToCast', 'duration', 'initialCost', 'maintenanceCost', 'prerequisites', 'description', 'item', 'page', 'source'] },
+  advantages: { file: 'dados/vantagens.json', prefix: 'adv_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
+    fields: ['name', 'cost', 'type', 'book', 'page', 'description'] }
+};
+function isCatalogId(col, id) { return String(id || '').indexOf(CATALOG[col].prefix) === 0; }
+function loadCatalog(col) {
+  var c = CATALOG[col];
+  if (c.list || c.failed) return Promise.resolve();
+  if (c.loading) return c.loading;
+  c.loading = fetch(c.file + '?v=' + CATALOG_VERSION).then(function (res) {
+    if (!res.ok) throw new Error('Não foi possível carregar ' + c.file);
+    return res.json();
+  }).then(function (list) {
+    var idx = {};
+    list.forEach(function (x) { x.catalog = true; idx[x.id] = x; });
+    c.list = list; c.idx = idx; c.loading = null;
+    mergeCatalog(col); onData(col);
+  }, function (er) {
+    c.loading = null; c.failed = true;
+    mergeCatalog(col); onData(col);
+    toast(errorText(er), true);
+  });
+  return c.loading;
+}
+// The database documents of a catalog collection arrived (or the user changed): rebuild the list.
+function mergeCatalog(col) {
+  var c = CATALOG[col], raw = W.raw[col] || [], over = {}, out = [], deleted = [];
+  raw.forEach(function (d) { if (isCatalogId(col, d.id)) over[d.id] = d; });
+  (c.list || []).forEach(function (x) {
+    var o = over[x.id];
+    if (!o) out.push(x); else if (!o.deleted) out.push(Object.assign({}, x, o, { catalog: true })); else deleted.push(x);
+  });
+  c.over = over;
+  c.deleted = isMestre() ? deleted.sort(byName) : [];
+  // Without the book list (not opened yet), the documents of book entries mean nothing on their own.
+  raw.forEach(function (d) { if (!isCatalogId(col, d.id) && !d.deleted) out.push(d); });
+  // Sorted here, once per change, so the lists and searches can keep this order.
+  W[col] = pub(out).sort(byName);
+  W.loaded[col] = c.dbReady && (!!c.list || c.failed);
+}
+// What the Mestre did to an entry: 'created' (his own), 'edited' (a book entry with other
+// text), 'hidden' (a book entry he hid, text unchanged), 'deleted', or '' (as in the book).
+function catalogChange(col, x) {
+  if (!x) return '';
+  if (!x.catalog) return 'created';
+  var c = CATALOG[col], d = c.over[x.id], orig = c.idx && c.idx[x.id];
+  if (!d) return '';
+  if (d.deleted) return 'deleted';
+  if (orig && c.fields.some(function (k) { return k in d && (d[k] || '') !== (orig[k] || ''); })) return 'edited';
+  // Same text as the book: a change only while hidden (shown again, it is back to the book's state).
+  return d.visible === false || (d.sharedWith || []).length ? 'hidden' : '';
+}
+// A change to a book entry: the first one creates its document, later ones update it.
+function patchCatalogItem(col, item, p) {
+  if (rawHas(col, item.id)) return W.store.patch(col, item.id, p);
+  var t = now();
+  return W.store.put(col, item.id, Object.assign({ v: 1, createdBy: null, createdAt: t, updatedAt: t }, p));
+}
+// Search text of an entry, normalized once (the descriptions are long).
+var searchCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+function searchText(x, fields) {
+  var hit = searchCache && searchCache.get(x);
+  if (hit != null) return hit;
+  var t = norm(fields.map(function (k) { return x[k] || ''; }).join(' '));
+  if (searchCache) searchCache.set(x, t);
+  return t;
 }
 function mapById(id) { return W.mapIdx[id] || null; }
 function locById(id) { return W.locIdx[id] || null; }
@@ -186,8 +266,8 @@ document.addEventListener('change', function (e) {
 function secretTag(item) { return '<span class="secret-tag" title="Não está visível para todos">' + svg(EYE_OFF, 12, 2.4) + esc('Só ' + seenBy(item)) + '</span>'; }
 function refilter() {
   W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters); W.organizations = pub(W.raw.organizations);
-  W.spells = pub(W.raw.spells || []); W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events);
-  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexSheets(); indexEvents(); filterNotes();
+  mergeCatalog('spells'); mergeCatalog('advantages'); W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events);
+  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexAdvantages(); indexSheets(); indexEvents(); filterNotes();
   S.markers = pub(S.rawMarkers || []);
   if (Explorer.isOpen() && S.route && S.route.explore) Explorer.setMarkers(S.markers);
 }
@@ -330,6 +410,7 @@ var Ops = {
       maintenanceCost: (fields.maintenanceCost || '').trim(),
       prerequisites: (fields.prerequisites || '').trim(),
       description: (fields.description || '').trim(),
+      item: (fields.item || '').trim(),
       page: (fields.page || '').trim(),
       source: (fields.source || (spell ? spell.source : 'Manual')).trim(),
       visible: fields.visible !== false,
@@ -340,70 +421,32 @@ var Ops = {
     };
     return W.store.put('spells', spell ? spell.id : null, body);
   },
+  // A book spell is not removed from the file: its document says deleted: true.
   deleteSpell: function (spell) {
     if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode excluir magias.' });
+    if (spell.catalog) return patchCatalogItem('spells', spell, { deleted: true, updatedAt: now() });
     return W.store.remove('spells', spell.id);
   },
-  importSpells: function (list, force) {
-    if (!force && !isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode importar magias.' });
-    var t = now();
-    var newIds = {};
-    list.forEach(function (x) { if (x.id) newIds[x.id] = true; });
-    var toRemove = (W.raw.spells || []).filter(function (s) {
-      return s.id && s.id.indexOf('spell_') === 0 && !newIds[s.id];
-    }).map(function (s) { return s.id; });
-
-    var items = list.map(function (item) {
-      return {
-        id: item.id,
-        data: {
-          v: 1,
-          name: item.name,
-          difficulty: item.difficulty || 'H',
-          class: item.class || '',
-          college: item.college || '',
-          timeToCast: item.timeToCast || '',
-          duration: item.duration || '',
-          initialCost: item.initialCost || '',
-          maintenanceCost: item.maintenanceCost || '',
-          prerequisites: item.prerequisites || '',
-          description: item.description || '',
-          page: item.page || '',
-          source: item.source || '',
-          visible: item.visible !== false,
-          sharedWith: item.sharedWith || [],
-          createdBy: me(),
-          createdAt: item.createdAt || t,
-          updatedAt: t
-        }
-      };
-    });
-    // Only what changed is written: a sync with the same data writes nothing, so the
-    // open browsers don't redraw once per spell.
-    var cur = {};
-    (W.raw.spells || []).forEach(function (s) { if (s.id) cur[s.id] = s; });
-    var SAME = ['name', 'difficulty', 'class', 'college', 'timeToCast', 'duration', 'initialCost', 'maintenanceCost', 'prerequisites', 'description', 'page', 'source', 'visible'];
-    items = items.filter(function (it) {
-      var o = cur[it.id];
-      return !o || SAME.some(function (k) { return o[k] !== it.data[k]; });
-    });
-    if (!items.length && !toRemove.length) return Promise.resolve(0);
-
-    if (W.store && typeof W.store.putBatch === 'function') {
-      return W.store.putBatch('spells', items, toRemove);
-    }
-
-    var removeChain = toRemove.reduce(function (p, id) {
-      return p.then(function () { return W.store.remove('spells', id); });
-    }, Promise.resolve());
-
-    return removeChain.then(function () {
-      return items.reduce(function (p, it) {
-        return p.then(function () {
-          return W.store.put('spells', it.id || null, it.data);
-        });
-      }, Promise.resolve());
-    });
+  // Drops the Mestre's changes to a book entry; it shows again as in the book.
+  restoreCatalogItem: function (col, item) {
+    if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode restaurar o original.' });
+    return rawHas(col, item.id) ? W.store.remove(col, item.id) : Promise.resolve();
+  },
+  // The book lists used to be copied whole into the database. Once, by the Mestre, those
+  // copies go away: documents of book entries equal to the book (and visible to all), and
+  // those of entries no longer in the files. His edits and hidden entries stay.
+  cleanCatalogCopies: function (col, fields) {
+    var c = CATALOG[col];
+    var gone = (W.raw[col] || []).filter(function (d) {
+      if (!isCatalogId(col, d.id)) return false;
+      var x = c.idx[d.id];
+      if (!x) return true;
+      if (d.deleted || d.visible === false || (d.sharedWith || []).length) return false;
+      return fields.every(function (k) { return k === 'id' || !(k in d) || (d[k] || '') === (x[k] || ''); });
+    }).map(function (d) { return d.id; });
+    if (!gone.length) return Promise.resolve(0);
+    if (typeof W.store.removeMany === 'function') return W.store.removeMany(col, gone).then(function () { return gone.length; });
+    return gone.reduce(function (p, id) { return p.then(function () { return W.store.remove(col, id); }); }, Promise.resolve()).then(function () { return gone.length; });
   }
 };
 

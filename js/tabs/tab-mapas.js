@@ -44,8 +44,15 @@ function renderMapList() {
   if (!q && !ui.level) {
     if (cnt) cnt.textContent = within ? plural(mapDescendants(within).length, 'mapa dentro', 'mapas dentro') : plural(W.maps.length, 'mapa', 'mapas');
     el.innerHTML = within ? '<h2 class="sec-title">Dentro de ' + esc(mapById(within).name) + '</h2><div class="mtree">' + mapRow(mapById(within), true) + fullTree(within) + '</div>'
-      : '<h2 class="sec-title">Hierarquia · ' + plural(W.maps.length, 'mapa', 'mapas') + '</h2><div class="mtree">' + fullTree(null).replace(/^<ul>/, '').replace(/<\/ul>$/, '') + '</div>';
+      : mapRootsHtml();
     fillImages(el);
+    // A click on a top-level map with submaps opens or closes its hierarchy (kept in S.ui.openMaps).
+    el.onclick = function (e) {
+      var b = e.target.closest('[data-root]'); if (!b) return;
+      var id = b.getAttribute('data-root'); ui.openMaps = ui.openMaps || {}; ui.openMaps[id] = !ui.openMaps[id];
+      renderMapList();
+      var again = el.querySelector('[data-root="' + id + '"]'); if (again) again.focus();
+    };
     return;
   }
   var pool = within ? mapDescendants(within).map(mapById).filter(Boolean) : W.maps.slice();
@@ -58,6 +65,21 @@ function renderMapList() {
   if (cnt) cnt.textContent = list.length + ' de ' + (within ? pool.length : W.maps.length);
   el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(mapCard).join('') + '</div>' : '<p class="lede">Nenhum mapa encontrado para esses filtros.</p>';
   fillImages(el);
+}
+// Without filters: only the top-level maps. One with submaps opens its whole hierarchy below
+// it when clicked; "Abrir" goes to its page. One without submaps is a plain link.
+function mapRootsHtml() {
+  var roots = childMaps(null), open = S.ui.openMaps || {};
+  return '<h2 class="sec-title">Mapas principais · ' + roots.length + ' de ' + plural(W.maps.length, 'mapa', 'mapas') + '</h2><div class="mtree mroots">' + roots.map(function (m) {
+    var k = childMaps(m.id).length, L = mapLocations(m.id).length, isOpen = !!open[m.id] && k > 0;
+    if (!k) return '<div class="mroot">' + mapRow(m) + '</div>';
+    var meta = [plural(mapDescendants(m.id).length, 'submapa', 'submapas'), L ? plural(L, 'local', 'locais') : ''].filter(Boolean).join(' · ');
+    return '<div class="mroot' + (isOpen ? ' open' : '') + '"><div class="mroot-row">' +
+      '<button type="button" class="mrow mroot-toggle" data-root="' + esc(m.id) + '" aria-expanded="' + isOpen + '" title="' + (isOpen ? 'Fechar' : 'Abrir') + ' a hierarquia de ' + esc(m.name) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) +
+      '<span class="mtext"><b>' + esc(m.name) + '</b><span class="meta">' + meta + '</span></span><span class="fold-chev">' + svg('<path d="m9 18 6-6-6-6"/>', 14, 2.4) + '</span></button>' +
+      '<a class="btn ghost mroot-open" href="' + mapHref(m.id) + '" title="Abrir a página de ' + esc(m.name) + '">' + svg(ICON.arrow, 14) + 'Abrir</a></div>' +
+      (isOpen ? fullTree(m.id) : '') + '</div>';
+  }).join('') + '</div>';
 }
 function mapCard(m) {
   var up = W.parent[m.id], k = childMaps(m.id).length, L = mapLocations(m.id).length;

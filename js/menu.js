@@ -26,6 +26,14 @@ function locNodes(pid) {
     return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l), children: k.length ? locNodes(l.id) : null };
   });
 }
+// Spells and advantages are too many for the menu (their pages list them): it keeps only the
+// one open, so the breadcrumbs and the title still find it.
+function openLeaf(prefix, icon, find) {
+  var node = S.route && S.route.node;
+  if (!node || node.indexOf(prefix) !== 0) return [];
+  var x = find(node.slice(prefix.length));
+  return [{ id: node, label: x ? x.name : prefix === 'spell:' ? 'Magia' : 'Vantagem', icon: icon, route: true, secret: isSecret(x) }];
+}
 function buildMenu() {
   return [
     { id: 'mesa', label: 'Mesa de Combate', icon: ICON.mesa, route: true },
@@ -41,7 +49,9 @@ function buildMenu() {
       { id: 'events', label: 'Eventos', icon: ICON.event, route: true, hideKids: true,
         children: W.events.slice().sort(byName).map(function (ev) { return { id: 'event:' + ev.id, label: ev.name, icon: ICON.event, route: true, secret: isSecret(ev) }; }) },
       { id: 'spells', label: 'Magias', icon: ICON.spell, route: true, hideKids: true,
-        children: (W.spells || []).slice().sort(byName).map(function (s) { return { id: 'spell:' + s.id, label: s.name, icon: ICON.spell, route: true, secret: isSecret(s) }; }) }
+        children: openLeaf('spell:', ICON.spell, spellById) },
+      { id: 'advs', label: 'Vantagens', icon: ICON.advantage, route: true, hideKids: true,
+        children: openLeaf('adv:', ICON.advantage, advById) }
     ] },
     { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, hideKids: true,
       children: W.notebooks.slice().sort(byName).map(function (nb) {
@@ -80,14 +90,16 @@ function renderMenu() {
   if (S.route && byId[S.route.node]) revealPath(S.route.node);
   paintMenu();
 }
-function nodeEl(id) { var all = menuEl.querySelectorAll('.node'); for (var i = 0; i < all.length; i++) if (all[i].getAttribute('data-node') === id) return all[i]; return null; }
+// The drawn nodes by id, looked up once per paint.
+function nodeEls() { var m = {}; menuEl.querySelectorAll('.node').forEach(function (el) { m[el.getAttribute('data-node')] = el; }); return m; }
 function isShown(id) { var p = parentOf[id]; while (p) { if (!expanded[p]) return false; p = parentOf[p]; } return true; }
 function paintMenu() {
   var cur = S.route ? S.route.node : null;
-  while (cur && !nodeEl(cur)) cur = parentOf[cur];
+  var els = nodeEls();
+  while (cur && !els[cur]) cur = parentOf[cur];
   var path = cur ? ancestors(cur) : [];
   Object.keys(byId).forEach(function (id) {
-    var el = nodeEl(id); if (!el) return;
+    var el = els[id]; if (!el) return;
     var shown = isShown(id);
     el.querySelectorAll(':scope > .row > .node-row, :scope > .row > .chev-btn').forEach(function (r) { r.tabIndex = shown ? 0 : -1; });
     var link = el.querySelector(':scope > .row > a.node-row');

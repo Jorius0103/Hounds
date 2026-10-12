@@ -44,18 +44,38 @@ function spellClasses() {
   var set = {};
   GURPS_CLASSES.forEach(function (c) { set[c] = true; });
   (W.spells || []).forEach(function (s) {
-    if (s.class) set[s.class.trim()] = true;
+    // "Regular; Resisted by HT": the class is each part that is not the resistance.
+    (s.class || '').split(/[;,]/).forEach(function (part) { var p = part.trim(); if (p && !/resist|\//i.test(p)) set[p] = true; });
   });
   return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'pt'); });
 }
 
+// Typing in the search waits a moment before redrawing the list.
+var spellSearchTimer = 0;
+var SPELL_SEARCH_FIELDS = ['name', 'college', 'class', 'description', 'prerequisites'];
+// Search, filters and page of the list: kept while the site is open, so opening a spell
+// and coming back returns to the same page.
+var spellView = { q: '', college: '', spellClass: '', difficulty: '', book: '', change: '', page: 1 };
+// The "Alterações do Mestre" filter. 'any' is every kind of change.
+var SPELL_CHANGE_FILTERS = [['any', 'Alteradas pelo Mestre'], ['created', 'Criadas pelo Mestre'], ['edited', 'Editadas dos livros'], ['hidden', 'Ocultas dos jogadores'], ['deleted', 'Excluídas']];
+// Books of the list, with how many spells each one has.
+function spellBooks() {
+  var n = {};
+  (W.spells || []).forEach(function (s) { var b = s.source || 'Sem livro'; n[b] = (n[b] || 0) + 1; });
+  return Object.keys(n).sort(function (a, b) { return n[b] - n[a] || a.localeCompare(b, 'pt'); }).map(function (b) { return [b, n[b]]; });
+}
+// A spell the Mestre only showed or hid looks like the book's to the players.
+function spellChange(s) { var k = catalogChange('spells', s); return k === 'hidden' && !isMestre() ? '' : k; }
+// Tag on a card for what the Mestre changed.
+function spellChangeTag(s) {
+  var k = spellChange(s);
+  var label = { created: 'Criada pelo Mestre', edited: 'Editada pelo Mestre', hidden: 'Oculta' }[k];
+  return label ? '<span class="spell-tag mestre">' + label + '</span>' : '';
+}
+
 function renderSpellsPage() {
-  var ui = S.ui;
-  ui.q = ui.q || '';
-  ui.college = ui.college || '';
-  ui.spellClass = ui.spellClass || '';
-  ui.difficulty = ui.difficulty || '';
-  ui.limit = ui.limit || 60;
+  var ui = spellView;
+  loadCatalog('spells');
 
   var can = isMestre();
   var colleges = spellColleges();
@@ -67,13 +87,16 @@ function renderSpellsPage() {
     '<p class="lede">Grimório de magias e encantamentos para GURPS 4ª Edição.</p>' +
     '</div>' +
     (can ? '<div class="btn-row">' +
-      '<button class="btn" type="button" id="syncSpellsBtn" title="Atualizar grimório a partir de dados/magias.json">' + svg(ICON.spell, 16) + ' Sincronizar magias</button>' +
       '<button class="btn primary" type="button" id="newSpellBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova magia</button>' +
     '</div>' : '') +
     '</div>';
 
   var toolbar = '<div class="toolbar" style="margin-bottom:16px">' +
-    '<div class="field search" style="min-width:240px;flex:1"><input type="search" id="spellSearch" placeholder="Buscar por nome, efeito ou pré-requisito…" value="' + esc(ui.q) + '" autocomplete="off" aria-label="Buscar magias"></div>' +
+    '<input class="search list-search" type="search" id="spellSearch" placeholder="Buscar por nome, efeito ou pré-requisito…" value="' + esc(ui.q) + '" autocomplete="off" aria-label="Buscar magias">' +
+    '<div class="field" style="margin:0"><select id="spellBookFilter" aria-label="Filtrar por livro">' +
+    '<option value="">Todos os livros</option>' +
+    spellBooks().map(function (b) { return '<option value="' + esc(b[0]) + '"' + (ui.book === b[0] ? ' selected' : '') + '>' + esc(b[0]) + ' (' + b[1] + ')</option>'; }).join('') +
+    '</select></div>' +
     '<div class="field" style="margin:0"><select id="spellCollegeFilter" aria-label="Filtrar por escola">' +
     '<option value="">Todas as escolas (' + colleges.length + ')</option>' +
     colleges.map(function (c) { return '<option value="' + esc(c) + '"' + (ui.college === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') +
@@ -87,6 +110,11 @@ function renderSpellsPage() {
     '<option value="H"' + (ui.difficulty === 'H' ? ' selected' : '') + '>Hard (H)</option>' +
     '<option value="VH"' + (ui.difficulty === 'VH' ? ' selected' : '') + '>Very Hard (VH)</option>' +
     '</select></div>' +
+    '<div class="field" style="margin:0"><select id="spellChangeFilter" aria-label="Filtrar por alterações do Mestre">' +
+    '<option value="">Livros e Mestre</option>' +
+    SPELL_CHANGE_FILTERS.filter(function (f) { return isMestre() || (f[0] !== 'hidden' && f[0] !== 'deleted'); })
+      .map(function (f) { return '<option value="' + f[0] + '"' + (ui.change === f[0] ? ' selected' : '') + '>' + f[1] + '</option>'; }).join('') +
+    '</select></div>' +
     '</div>';
 
   var body = notice() + '<div id="spellResults"></div>';
@@ -97,8 +125,9 @@ function renderSpellsPage() {
   if (qInput) {
     qInput.oninput = function () {
       ui.q = qInput.value;
-      ui.limit = 60;
-      renderSpellList();
+      ui.page = 1;
+      clearTimeout(spellSearchTimer);
+      spellSearchTimer = setTimeout(renderSpellList, 150);
     };
   }
 
@@ -106,7 +135,7 @@ function renderSpellsPage() {
   if (cFilter) {
     cFilter.onchange = function () {
       ui.college = cFilter.value;
-      ui.limit = 60;
+      ui.page = 1;
       renderSpellList();
     };
   }
@@ -115,7 +144,7 @@ function renderSpellsPage() {
   if (clFilter) {
     clFilter.onchange = function () {
       ui.spellClass = clFilter.value;
-      ui.limit = 60;
+      ui.page = 1;
       renderSpellList();
     };
   }
@@ -124,103 +153,72 @@ function renderSpellsPage() {
   if (dFilter) {
     dFilter.onchange = function () {
       ui.difficulty = dFilter.value;
-      ui.limit = 60;
+      ui.page = 1;
       renderSpellList();
     };
   }
+
+  var bFilter = $('spellBookFilter');
+  if (bFilter) bFilter.onchange = function () { ui.book = bFilter.value; ui.page = 1; renderSpellList(); };
+  var chFilter = $('spellChangeFilter');
+  if (chFilter) chFilter.onchange = function () { ui.change = chFilter.value; ui.page = 1; renderSpellList(); };
 
   var nb = $('newSpellBtn');
   if (nb) {
     nb.onclick = function () { openSpellForm(null); };
   }
 
-  var sb = $('syncSpellsBtn');
-  if (sb) {
-    sb.onclick = function () {
-      if (!confirm('Deseja sincronizar o grimório com a base do arquivo dados/magias.json? Todas as 647 magias serão atualizadas com as descrições mais recentes.')) return;
-      sb.disabled = true;
-      sb.textContent = 'Sincronizando…';
-      seedSpellsFromLocal().then(function (count) {
-        sb.disabled = false;
-        sb.innerHTML = svg(ICON.spell, 16) + ' Sincronizar magias';
-        toast((count || 647) + ' magias sincronizadas com sucesso!');
-        renderSpellList();
-      }, function (err) {
-        sb.disabled = false;
-        sb.innerHTML = svg(ICON.spell, 16) + ' Sincronizar magias';
-        toast(errorText(err), true);
-      });
-    };
-  }
-
   renderSpellList();
 }
 
 function filterSpellsList() {
-  var ui = S.ui || {};
+  var ui = spellView;
   var q = norm(ui.q || '').trim();
   var college = (ui.college || '').toLowerCase();
   var sClass = (ui.spellClass || '').toLowerCase();
   var diff = (ui.difficulty || '').toUpperCase();
+  // Deleted entries are not in W.spells: only that filter lists them.
+  var source = ui.change === 'deleted' ? CATALOG.spells.deleted : (W.spells || []);
 
-  return (W.spells || []).filter(function (s) {
+  return source.filter(function (s) {
+    if (ui.change && ui.change !== 'deleted') {
+      var k = spellChange(s);
+      if (ui.change === 'any' ? !k : k !== ui.change) return false;
+    }
+    if (ui.book && (s.source || 'Sem livro') !== ui.book) return false;
     if (diff && (s.difficulty || '').toUpperCase() !== diff) return false;
     if (college && (s.college || '').toLowerCase().indexOf(college) < 0) return false;
     if (sClass && (s.class || '').toLowerCase().indexOf(sClass) < 0) return false;
     if (!q) return true;
-
-    var hay = norm((s.name || '') + ' ' + (s.college || '') + ' ' + (s.class || '') + ' ' + (s.description || '') + ' ' + (s.prerequisites || ''));
-    return hay.indexOf(q) >= 0;
-  }).sort(byName);
+    return searchText(s, SPELL_SEARCH_FIELDS).indexOf(q) >= 0;
+  }); // W.spells is already in name order (mergeCatalog)
 }
 
 function renderSpellList() {
   var container = $('spellResults');
   if (!container) return;
+  if (!W.loaded.spells) { container.innerHTML = '<p class="lede">Carregando magias…</p>'; return; }
 
   var all = filterSpellsList();
-  var ui = S.ui || {};
-  var limit = ui.limit || 60;
-  var visible = all.slice(0, limit);
+  var ui = spellView;
+  var pg = pageOf(all, ui.page);
+  ui.page = pg.page;
+  var visible = pg.items;
 
   if (!all.length) {
-    if (!(W.spells || []).length && W.loaded.spells) {
-      var seedHtml = isMestre()
-        ? '<div style="margin-top:14px"><button class="btn primary" type="button" id="seedSpellsBtn">' + svg(ICON.spell, 16) + ' Importar 647 magias padrão do GURPS</button></div>'
-        : '';
-      container.innerHTML = '<div class="empty-box" style="padding:48px 24px;text-align:center;background:var(--surface);border-radius:14px;border:1px solid var(--line);margin-top:16px">' +
-        svg(ICON.spell, 48, 1.2) +
-        '<h3 style="margin:12px 0 4px">Nenhuma magia encontrada</h3>' +
-        '<p class="lede" style="margin:0">A base de dados de magias ainda está vazia.</p>' +
-        seedHtml +
-        '</div>';
-
-      var sBtn = $('seedSpellsBtn');
-      if (sBtn) {
-        sBtn.onclick = function () {
-          sBtn.disabled = true;
-          sBtn.textContent = 'Importando magias…';
-          seedSpellsFromLocal().then(function (count) {
-            toast((count || 647) + ' magias importadas com sucesso!');
-          }, function (err) {
-            sBtn.disabled = false;
-            sBtn.textContent = 'Importar 647 magias padrão do GURPS';
-            toast(errorText(err), true);
-          });
-        };
-      }
+    if (!(W.spells || []).length && !ui.change) {
+      container.innerHTML = '<div class="empty-state">' + svg(ICON.spell, 34, 1.6) + '<strong>Nenhuma magia cadastrada</strong>' +
+        '<span>' + (CATALOG.spells.failed ? 'Não foi possível carregar o grimório dos livros.' : isMestre() ? 'Crie uma com <b>Nova magia</b>.' : 'As magias vão aparecer aqui.') + '</span></div>';
       return;
     }
 
-    container.innerHTML = '<p class="lede" style="padding:24px 0">Nenhuma magia corresponde aos filtros aplicados.</p>';
+    container.innerHTML = '<p class="lede" style="padding:24px 0">' + (ui.change && !ui.q && !ui.book && !ui.college && !ui.spellClass && !ui.difficulty ? 'O Mestre ainda não fez alterações desse tipo.' : 'Nenhuma magia corresponde aos filtros aplicados.') + '</p>';
     return;
   }
 
-  var countMeta = '<div style="font-size:13px;color:var(--muted);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">' +
-    '<span>Mostrando <b>' + visible.length + '</b> de <b>' + all.length + '</b> magias</span>' +
-    '</div>';
+  var countMeta = '<div class="list-bar"><span class="meta">' + pageCountText(pg, all.length, 'magia', 'magias') + '</span>' + pagerHtml(pg) + '</div>';
 
-  var cards = '<div class="spell-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">' +
+  var cards = '<div class="spell-grid">' +
     visible.map(function (s) {
       var isVH = (s.difficulty || '').toUpperCase() === 'VH';
       var diffBadge = '<span class="spell-badge ' + (isVH ? 'diff-vh' : 'diff-h') + '">' + esc(s.difficulty || 'H') + '</span>';
@@ -229,14 +227,20 @@ function renderSpellList() {
 
       var quickStats = [];
       if (s.timeToCast) quickStats.push('Tempo: ' + esc(s.timeToCast));
-      if (s.initialCost) quickStats.push('Custo: ' + esc(s.initialCost));
+      // Some costs are a whole paragraph; the card shows the start.
+      if (s.initialCost) quickStats.push('Custo: ' + esc(s.initialCost.length > 60 ? s.initialCost.slice(0, 57).trim() + '…' : s.initialCost));
 
+      if (ui.change === 'deleted') {
+        return '<div class="spell-card is-deleted"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><strong style="font-size:15px;line-height:1.3">' + esc(s.name) + '</strong>' + diffBadge + '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:4px">' + collegeTag + '<span class="spell-tag mestre">Excluída pelo Mestre</span></div>' +
+          '<div style="margin-top:auto"><button class="btn" type="button" data-restore="' + esc(s.id) + '">Restaurar</button></div></div>';
+      }
       return '<a class="spell-card" href="' + spellHref(s.id) + '" style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,transform .15s">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">' +
         '<strong style="font-size:15px;line-height:1.3;color:var(--text)">' + esc(s.name) + '</strong>' +
         diffBadge +
         '</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:4px">' + collegeTag + classTag + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px">' + collegeTag + classTag + spellChangeTag(s) + '</div>' +
         (quickStats.length ? '<div style="font-size:12px;color:var(--muted)">' + quickStats.join(' · ') + '</div>' : '') +
         (s.description ? '<div style="font-size:13px;line-height:1.4;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + esc(s.description) + '</div>' : '') +
         (s.page ? '<div style="font-size:11px;color:var(--faint);margin-top:auto">Pág. ' + esc(s.page) + '</div>' : '') +
@@ -244,22 +248,19 @@ function renderSpellList() {
     }).join('') +
     '</div>';
 
-  var moreBtn = (visible.length < all.length)
-    ? '<div style="text-align:center;margin-top:20px"><button class="btn" type="button" id="loadMoreSpellsBtn">Carregar mais (' + (all.length - visible.length) + ' restantes)</button></div>'
-    : '';
-
-  container.innerHTML = countMeta + cards + moreBtn;
-
-  var lm = $('loadMoreSpellsBtn');
-  if (lm) {
-    lm.onclick = function () {
-      ui.limit = (ui.limit || 60) + 60;
-      renderSpellList();
-    };
-  }
+  container.innerHTML = countMeta + cards + (pg.pages > 1 ? '<div class="list-bar end">' + pagerHtml(pg) + '</div>' : '');
+  wirePager(container, function (p) { ui.page = p; renderSpellList(); });
+  container.querySelectorAll('[data-restore]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var x = CATALOG.spells.idx && CATALOG.spells.idx[b.getAttribute('data-restore')]; if (!x) return;
+      b.disabled = true;
+      Ops.restoreCatalogItem('spells', x).then(function () { toast('Magia restaurada: ' + x.name + '.'); }, function (er) { b.disabled = false; toast(errorText(er), true); });
+    });
+  });
 }
 
 function renderSpellPage() {
+  loadCatalog('spells');
   var s = spellById(S.route.spellId), ui = S.ui;
   if (s && s.id && s.id !== S.route.spellId) {
     go(spellHref(s.id), true);
@@ -285,13 +286,14 @@ function renderSpellPage() {
     '<h1>' + esc(s.name) + '</h1>' +
     '<p class="lede">' + (s.college ? esc(s.college) : 'Sem escola') + (s.class ? ' · ' + esc(s.class) : '') + '</p>' +
     '</div>' +
-    (can ? '<div class="btn-row"><button class="btn" type="button" id="editSpellBtn">' + svg(ICON.edit, 15) + 'Editar magia</button><button class="btn danger" type="button" id="delSpellBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
+    (can ? '<div class="btn-row">' + (s.catalog && rawHas('spells', s.id) ? '<button class="btn" type="button" id="restoreSpellBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editSpellBtn">' + svg(ICON.edit, 15) + 'Editar magia</button><button class="btn danger" type="button" id="delSpellBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a magia <b>' + esc(s.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSpellYes">Excluir magia</button><button class="btn ghost" type="button" id="delSpellNo">Cancelar</button></div></div>' : '');
 
   var main = '<section><h2 class="sec-title">Efeito e Descrição</h2>' +
     (s.description ? '<p class="long">' + esc(s.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') +
     '</section>' +
+    (s.item ? '<section><h2 class="sec-title">Item Mágico</h2><div class="box" style="margin:0"><p style="margin:0;font-size:14px;line-height:1.6">' + esc(s.item) + '</p></div></section>' : '') +
     (s.prerequisites ? '<section><h2 class="sec-title">Pré-requisitos</h2><div class="box" style="margin:0"><p style="margin:0;font-size:14px;line-height:1.6">' + esc(s.prerequisites) + '</p></div></section>' : '');
 
   // Closed until its title is clicked (see foldBox).
@@ -301,9 +303,10 @@ function renderSpellPage() {
     '<dt>Dificuldade</dt><dd>IQ/' + esc(s.difficulty || 'H') + '</dd>' +
     '<dt>Tempo de Conjuração</dt><dd>' + (s.timeToCast ? esc(s.timeToCast) : '<span class="none">—</span>') + '</dd>' +
     '<dt>Duração</dt><dd>' + (s.duration ? esc(s.duration) : '<span class="none">—</span>') + '</dd>' +
-    '<dt>Custo Inicial</dt><dd>' + (s.initialCost ? esc(s.initialCost) : '<span class="none">—</span>') + '</dd>' +
-    '<dt>Custo Manutenção</dt><dd>' + (s.maintenanceCost ? esc(s.maintenanceCost) : '<span class="none">—</span>') + '</dd>' +
-    '<dt>Página / Livro</dt><dd>' + (s.page ? esc(s.page) : '<span class="none">—</span>') + '</dd>' +
+    // The books give casting and maintenance in one text; a separate maintenance cost appears only when filled in.
+    '<dt>' + (s.maintenanceCost ? 'Custo Inicial' : 'Custo') + '</dt><dd>' + (s.initialCost ? esc(s.initialCost) : '<span class="none">—</span>') + '</dd>' +
+    (s.maintenanceCost ? '<dt>Custo Manutenção</dt><dd>' + esc(s.maintenanceCost) + '</dd>' : '') +
+    '<dt>Página</dt><dd>' + (s.page ? esc(s.page) : '<span class="none">—</span>') + '</dd>' +
     '<dt>Fonte</dt><dd>' + (s.source ? esc(s.source) : '<span class="none">—</span>') + '</dd>' +
     '</dl>');
 
@@ -323,6 +326,10 @@ function renderSpellPage() {
         dy.disabled = false;
         toast(errorText(er), true);
       });
+    };
+    var rb = $('restoreSpellBtn'); if (rb) rb.onclick = function () {
+      rb.disabled = true;
+      Ops.restoreCatalogItem('spells', s).then(function () { toast('Magia restaurada como no livro.'); }, function (er) { rb.disabled = false; toast(errorText(er), true); });
     };
   }
 }
@@ -368,19 +375,22 @@ function openSpellForm(s) {
     '<input type="text" id="sdur" maxlength="50" placeholder="Ex.: 1 min., Instantaneous" value="' + esc(editing ? s.duration || '' : '') + '"></div>' +
 
     '<div class="field"><label for="scost">Custo inicial</label>' +
-    '<input type="text" id="scost" maxlength="50" placeholder="Ex.: 2 Base, 1 to 3" value="' + esc(editing ? s.initialCost || '' : '') + '"></div>' +
+    '<input type="text" id="scost" maxlength="2000" placeholder="Ex.: 2 to cast; 1 to maintain" value="' + esc(editing ? s.initialCost || '' : '') + '"></div>' +
     '</div>' +
 
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
     '<div class="field"><label for="smaint">Custo de manutenção</label>' +
-    '<input type="text" id="smaint" maxlength="50" placeholder="Ex.: 1, Half, Same, –" value="' + esc(editing ? s.maintenanceCost || '' : '') + '"></div>' +
+    '<input type="text" id="smaint" maxlength="500" placeholder="Ex.: 1, Half, Same, –" value="' + esc(editing ? s.maintenanceCost || '' : '') + '"></div>' +
 
     '<div class="field"><label for="spage">Página / Livro</label>' +
     '<input type="text" id="spage" maxlength="50" placeholder="Ex.: B246, M45" value="' + esc(editing ? s.page || '' : '') + '"></div>' +
     '</div>' +
 
     '<div class="field"><label for="sprereq">Pré-requisitos</label>' +
-    '<input type="text" id="sprereq" maxlength="250" placeholder="Ex.: Magery 1, Ignite Fire" value="' + esc(editing ? s.prerequisites || '' : '') + '"></div>' +
+    '<input type="text" id="sprereq" maxlength="5000" placeholder="Ex.: Magery 1, Ignite Fire" value="' + esc(editing ? s.prerequisites || '' : '') + '"></div>' +
+
+    '<div class="field"><label for="sitem">Item mágico</label>' +
+    '<textarea id="sitem" rows="3" maxlength="5000" placeholder="Em que objetos a magia pode ser encantada e o custo de energia.">' + esc(editing ? s.item || '' : '') + '</textarea></div>' +
 
     '<div class="field"><label for="sdesc">Descrição / Efeito</label>' +
     '<textarea id="sdesc" rows="6" maxlength="20000" placeholder="Descreva o efeito mágico, dados de dano, testes resistidos…">' + esc(editing ? s.description || '' : '') + '</textarea></div>' +
@@ -438,6 +448,7 @@ function openSpellForm(s) {
       initialCost: $('scost').value.trim(),
       maintenanceCost: $('smaint').value.trim(),
       prerequisites: $('sprereq').value.trim(),
+      item: $('sitem').value.trim(),
       description: $('sdesc').value.trim(),
       page: $('spage').value.trim(),
       source: $('ssource').value.trim(),
@@ -458,20 +469,5 @@ function openSpellForm(s) {
       $('sfErr').textContent = errorText(er);
     });
   };
-}
-
-function seedSpellsFromLocal(force) {
-  if (!W.store) return Promise.reject({ message: 'Armazenamento indisponível.' });
-  return fetch('dados/magias.json')
-    .then(function (res) {
-      if (!res.ok) throw new Error('Não foi possível carregar dados/magias.json');
-      return res.json();
-    })
-    .then(function (list) {
-      if (!Array.isArray(list) || !list.length) throw new Error('Arquivo de magias vazio.');
-      return Ops.importSpells(list, !!force).then(function () {
-        return list.length;
-      });
-    });
 }
 

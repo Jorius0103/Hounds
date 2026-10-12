@@ -230,13 +230,111 @@ details.box.fold { display: block; padding: 0; }
 .mprev-vp:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .mprev-stage { position: absolute; left: 0; top: 0; }
 .preview .mprev-stage img { display: block; width: 100%; height: 100%; max-width: none; max-height: none; pointer-events: none; -webkit-user-drag: none; }
-.mprev-bar { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; align-items: center; gap: 6px; }
-.mprev-bar > .btn, .mprev-bar > .icon-btn { background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
-.mprev-bar .ex-zoom { box-shadow: 0 2px 8px rgba(0,0,0,.25); }
-.mprev-bar > .mprev-labels[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-.mprev-card { position: absolute; left: 10px; bottom: 10px; z-index: 2; width: min(300px, calc(100% - 20px)); max-height: calc(100% - 64px); overflow: auto; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.mprev-card { position: absolute; left: 10px; bottom: 10px; z-index: 2; width: min(300px, calc(100% - 20px)); max-height: calc(100% - 20px); overflow: auto; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .mprev-card[hidden] { display: none; }
 .mprev-card-head { display: flex; align-items: center; gap: 8px; }
 .mprev-card-head b { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
 .mprev-card-head .dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #0b1222; }
 .mprev-card p { margin: 0; color: var(--text); line-height: 1.5; white-space: pre-wrap; }
+
+/* Maps page without filters: top-level maps, each opening its hierarchy (tab-mapas.js) */
+.mroots { display: flex; flex-direction: column; gap: 2px; }
+.mroot-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mroot-toggle { flex: 1; min-width: 0; width: 100%; background: none; font: inherit; text-align: left; cursor: pointer; }
+.mroot-toggle .mtext { flex: 1; }
+.mroot-toggle .fold-chev { margin-left: auto; }
+.mroot-toggle[aria-expanded="true"] .fold-chev { transform: rotate(90deg); }
+.mroot.open > .mroot-row .mroot-toggle { background: var(--surface); border-color: var(--line); }
+.mroot-open { flex: none; }
+
+/* Ficha GURPS: atributos e características secundárias */
+.gurps { display: flex; flex-direction: column; gap: 12px; }
+.gurps-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gurps-head .sec-title { margin: 0; }
+.gurps-head .btn-row { margin-left: auto; }
+.gurps-total { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
+.gurps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; align-items: start; }
+.gtab { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 14px; }
+.gtab th { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; text-align: right; padding: 9px 12px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.gtab td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; font-variant-numeric: tabular-nums; }
+.gtab th:first-child, .gtab td:first-child { text-align: left; }
+.gtab tbody tr:last-child td { border-bottom: 0; }
+.gtab td small { display: block; font-size: 11px; color: var(--faint); }
+.gtab .gval { font-weight: 700; font-size: 15px; white-space: nowrap; }
+.gtab .gpts { width: 64px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.gtab .gpts.none { color: var(--faint); }
+.gtab tfoot td { border-top: 1px solid var(--line-2); border-bottom: 0; background: var(--accent-soft); font-weight: 700; }
+.gtab tfoot .gpts { color: var(--accent); font-size: 14px; font-weight: 700; }
+.gnote { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
+.attr-in { width: 78px; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 8px; color: var(--text); font: inherit; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.attr-in:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.gurps-derived { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.gstat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gstat span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.gstat strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.gstat small { font-size: 11px; color: var(--faint); }
+
+/* Vantagens: mesmos cartões e selos das magias */
+.spell-grid, .adv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.adv-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 8px; min-width: 0; transition: border-color .15s, transform .15s; }
+.adv-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.adv-card-top strong { font-size: 15px; line-height: 1.3; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.adv-card-top .spell-badge { flex: none; }
+.adv-cost { font-size: 12px; font-weight: 600; color: var(--accent); }
+.adv-desc { font-size: 13px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.adv-src { font-size: 11px; color: var(--faint); margin-top: auto; }
+.spell-badge.adv-adv { background: rgba(245, 158, 11, .14); color: var(--accent); border: 1px solid rgba(245, 158, 11, .3); }
+.spell-badge.adv-talent { background: rgba(168, 85, 247, .12); color: #a855f7; border: 1px solid rgba(168, 85, 247, .25); }
+.spell-badge.adv-perk { background: rgba(34, 197, 94, .12); color: #16a34a; border: 1px solid rgba(34, 197, 94, .3); }
+.spell-badge.adv-exp { background: rgba(59, 130, 246, .15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, .3); }
+.spell-badge.adv-ref { background: var(--well); color: var(--muted); border: 1px solid var(--line-2); }
+
+/* Ficha GURPS: perícias */
+#skills { margin-top: 22px; }
+.gtab .gnh { width: 74px; font-weight: 700; white-space: nowrap; }
+.gtab .gnh small { display: inline; margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--faint); }
+.gtab .gnh.bonus, .sk-nh.bonus { background: rgba(34, 197, 94, .14); color: #16a34a; }
+.gtab .gnone { text-align: left; color: var(--faint); font-style: italic; font-size: 13px; }
+.sk-edit { gap: 8px; }
+.sk-row { display: grid; grid-template-columns: minmax(0, 1fr) 76px 72px 70px 70px 132px 32px; gap: 8px; align-items: center; }
+.sk-row.cult { grid-template-columns: minmax(0, 1fr) 70px 32px; }
+.sk-labels { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.sk-row input, .sk-row select { min-width: 0; width: 100%; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 14px; }
+.sk-row input[type=number] { text-align: right; font-variant-numeric: tabular-nums; }
+.sk-row input:focus, .sk-row select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.sk-nh { font-weight: 700; font-size: 14px; padding: 6px 8px; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sk-nh small { font-weight: 500; font-size: 11px; color: var(--faint); }
+#skRows, #cuRows { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 760px) {
+  .sk-labels { display: none; }
+  .sk-row { grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .sk-row .sk-name { grid-column: 1 / -1; }
+  .sk-row .sk-nh { grid-column: 1 / 4; }
+  .sk-row .icon-btn { justify-self: end; }
+  .sk-row.cult { grid-template-columns: minmax(0, 1fr) 70px 32px; }
+  .sk-row.cult .sk-name { grid-column: auto; }
+}
+
+/* Paginação das listas longas (magias, vantagens) */
+.list-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.list-bar.end { justify-content: center; margin: 20px 0 0; }
+.pager { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.pager-btn, .pager-cur { min-width: 34px; height: 34px; padding: 0 8px; border-radius: 9px; display: inline-grid; place-items: center; font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pager-btn { border: 1px solid var(--line-2); background: var(--surface); color: var(--text); cursor: pointer; }
+.pager-btn:hover:not(:disabled) { background: var(--surface-2); }
+.pager-btn:focus-visible, .pager-cur:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pager-btn:disabled { opacity: .4; cursor: default; }
+.pager-cur { background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); }
+.pager-cur:focus { outline: none; }
+.pager-gap { min-width: 18px; text-align: center; color: var(--faint); }
+@media (max-width: 760px) { .list-bar { justify-content: center; } .list-bar .meta { width: 100%; text-align: center; } }
+
+/* Busca das listas e marcas das alterações do Mestre */
+.toolbar .list-search { flex: 1 1 240px; min-width: 0; max-width: none; }
+.spell-tag.mestre { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(245, 158, 11, .3); }
+.spell-card.is-deleted { background: var(--surface); border: 1px dashed var(--line-2); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); }
+.spell-card.is-deleted:hover { transform: none !important; }
+
+/* Páginas de listas longas (magias, vantagens): usam a largura da tela; os cartões se distribuem
+   pela grade conforme o espaço (4 a 6 por linha em telas largas). */
+.page-inner.wide { max-width: 1680px; }

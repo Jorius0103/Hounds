@@ -25,7 +25,8 @@ function renderHomePage() {
     card('#fichas', ICON.sheet, 'Fichas', count('sheets', W.sheets.length, 'ficha', 'fichas')),
     card('#organizacoes', ICON.org, 'Organizações', count('organizations', W.organizations.length, 'organização', 'organizações')),
     card('#eventos', ICON.event, 'Eventos', count('events', W.events.length, 'evento', 'eventos')),
-    card('#magias', ICON.spell, 'Magias', count('spells', (W.spells || []).length, 'magia', 'magias')),
+    card('#magias', ICON.spell, 'Magias', (W.loaded.spells ? plural(W.spells.length, 'magia', 'magias') : 'Grimório de GURPS')),
+    card('#vantagens', ICON.advantage, 'Vantagens', (W.loaded.advantages ? plural(W.advantages.length, 'vantagem', 'vantagens') : 'Vantagens, talentos e perks')),
     card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
   ];
   if (isMestre()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));
@@ -38,7 +39,7 @@ function renderHomePage() {
     W.organizations.map(function (o) { return { t: o.updatedAt || o.createdAt, href: orgHref(o.id), icon: ICON.org, name: o.name, kind: 'Organização', item: o }; }),
     W.sheets.map(function (s) { return { t: s.updatedAt || s.createdAt, href: sheetHref(s.id), icon: ICON.sheet, name: s.name, kind: 'Ficha', item: s }; }),
     W.events.map(function (ev) { return { t: ev.updatedAt || ev.createdAt, href: eventHref(ev.id), icon: ICON.event, name: ev.name, kind: 'Evento', item: ev }; }),
-    (W.spells || []).map(function (s) { return { t: s.updatedAt || s.createdAt, href: spellHref(s.id), icon: ICON.spell, name: s.name, kind: 'Magia', item: s }; }),
+    (W.spells || []).filter(function (s) { return !s.catalog || s.updatedAt; }).map(function (s) { return { t: s.updatedAt || s.createdAt, href: spellHref(s.id), icon: ICON.spell, name: s.name, kind: 'Magia', item: s }; }),
     W.notes.map(function (n) { return { t: n.updatedAt || n.createdAt, href: hrefFor('note:' + n.id), icon: ICON.note, name: n.title, kind: 'Anotação', item: n }; })
   ).sort(function (a, b) { return (b.t || 0) - (a.t || 0); }).slice(0, 6);
   var allLoaded = W.loaded.maps && W.loaded.locations && W.loaded.characters && W.loaded.notes;

@@ -45,7 +45,9 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function
 /** @returns {AnyEl} */
 function $(id) { return /** @type {AnyEl} */ (document.getElementById(id)); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
-function byName(a, b) { return String(a.name || '').localeCompare(String(b.name || ''), 'pt', { sensitivity: 'base', numeric: true }); }
+// One collator for every sort: localeCompare with options builds a new one on each call.
+var nameCollator = typeof Intl !== 'undefined' && Intl.Collator ? new Intl.Collator('pt', { sensitivity: 'base', numeric: true }) : null;
+function byName(a, b) { var x = String(a.name || ''), y = String(b.name || ''); return nameCollator ? nameCollator.compare(x, y) : x.localeCompare(y); }
 function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 function initials(n) { var p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0][1] || ''))).toUpperCase(); }
 function clip(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s; }

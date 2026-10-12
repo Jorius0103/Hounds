@@ -1,2 +1,5 @@
 node_modules/
 dist/
+
+# Livros de GURPS em PDF (fonte das planilhas em Gurps/*.csv; não vão para o repositório)
+Gurps/*.pdf

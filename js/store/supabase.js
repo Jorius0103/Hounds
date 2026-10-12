@@ -241,6 +241,15 @@ function SupabaseStore(client, bucket) {
       .then(function (res) { if (res.error) throw res.error; })
       .catch(function (e) { failed(col, id); throw e; });
   }
+  // Many rows at once: one redraw here and BATCH ids per request, instead of one of each per row.
+  function removeMany(col, ids) {
+    var c = cols[col], parts = [];
+    if (c && c.ready) { ids.forEach(function (id) { if (c.rows[id]) { expect(c, id, { del: true }); delete c.rows[id]; } }); emit(c); }
+    for (var i = 0; i < ids.length; i += BATCH) parts.push(ids.slice(i, i + BATCH));
+    return parts.reduce(function (p, part) {
+      return p.then(function () { return client.from(T).delete().eq('col', col).in('id', part).then(function (res) { if (res.error) throw res.error; }); });
+    }, Promise.resolve()).catch(function (e) { if (c) load(c); throw e; });
+  }
 
   function upload(file) {
     var ext = file.name ? file.name.slice(file.name.lastIndexOf('.')) : '';
@@ -270,7 +279,7 @@ function SupabaseStore(client, bucket) {
     canUpload: true,
     canWrite: function () { return true; },
     init: function () { return Promise.resolve(); },
-    watch: watch, all: all, query: query, put: put, patch: patch, remove: remove,
+    watch: watch, all: all, query: query, put: put, patch: patch, remove: remove, removeMany: removeMany,
     upload: upload, imageUrl: imageUrl, dropImage: dropImage,
     // For MesaSync: save soon and in one row, and reach the others directly.
     saveDelay: 300,

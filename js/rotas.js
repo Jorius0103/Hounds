@@ -28,6 +28,8 @@ function parseRoute() {
   if (p[0] === 'organizacao' && p[1]) return { page: 'org', orgId: p[1], node: 'org:' + p[1] };
   if (p[0] === 'magias') return { page: 'spells', node: 'spells' };
   if (p[0] === 'magia' && p[1]) return { page: 'spell', spellId: p[1], node: 'spell:' + p[1] };
+  if (p[0] === 'vantagens') return { page: 'advs', node: 'advs' };
+  if (p[0] === 'vantagem' && p[1]) return { page: 'adv', advId: p[1], node: 'adv:' + p[1] };
   if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
   if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
   if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
@@ -54,6 +56,8 @@ function hrefFor(node) {
   if (node.indexOf('event:') === 0) return '#evento~' + encodeURIComponent(node.slice(6));
   if (node === 'spells') return '#magias';
   if (node.indexOf('spell:') === 0) return '#magia~' + encodeURIComponent(node.slice(6));
+  if (node === 'advs') return '#vantagens';
+  if (node.indexOf('adv:') === 0) return '#vantagem~' + encodeURIComponent(node.slice(4));
   return '#';
 }
 function mapHref(id) { return hrefFor('map:' + id); }

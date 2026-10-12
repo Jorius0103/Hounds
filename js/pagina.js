@@ -95,6 +95,43 @@ function wireFolds(root) {
     d.addEventListener('toggle', function () { S.ui.open = S.ui.open || {}; S.ui.open[d.getAttribute('data-fold')] = d.open; });
   });
 }
+/* =====================================================================
+   Pages of a long list (spells, advantages)
+   ===================================================================== */
+var PAGE_SIZE = 30;
+// The slice of the list for page `page` (1-based, kept within the pages that exist).
+function pageOf(list, page) {
+  var pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE)), p = Math.min(Math.max(1, page || 1), pages);
+  return { page: p, pages: pages, from: (p - 1) * PAGE_SIZE, items: list.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE) };
+}
+// "31–60 de 1.161 magias"
+function pageCountText(pg, total, one, many) {
+  return total ? '<b>' + (pg.from + 1) + '–' + (pg.from + pg.items.length) + '</b> de <b>' + total.toLocaleString('pt-BR') + '</b> ' + (total === 1 ? one : many) : '';
+}
+// Previous, next, the first and last pages and two on each side of the current one.
+function pagerHtml(pg) {
+  if (pg.pages <= 1) return '';
+  function btn(n, label, aria, off) { return '<button type="button" class="pager-btn" data-page="' + n + '" aria-label="' + aria + '"' + (off ? ' disabled' : '') + '>' + label + '</button>'; }
+  var out = [btn(pg.page - 1, '‹', 'Página anterior', pg.page === 1)], last = 0;
+  for (var i = 1; i <= pg.pages; i++) {
+    if (i !== 1 && i !== pg.pages && Math.abs(i - pg.page) > 2) continue;
+    if (last && i - last > 1) out.push('<span class="pager-gap" aria-hidden="true">…</span>');
+    out.push(i === pg.page ? '<span class="pager-cur" aria-current="page">' + i + '</span>' : btn(i, String(i), 'Página ' + i, false));
+    last = i;
+  }
+  out.push(btn(pg.page + 1, '›', 'Próxima página', pg.page === pg.pages));
+  return '<nav class="pager" aria-label="Páginas">' + out.join('') + '</nav>';
+}
+// A page button was clicked: go(page), then bring the top of the list into view.
+function wirePager(root, go) {
+  root.querySelectorAll('.pager [data-page]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      go(+b.getAttribute('data-page'));
+      root.scrollIntoView({ block: 'start' });
+      var cur = root.querySelector('.pager-cur'); if (cur instanceof HTMLElement) { cur.tabIndex = -1; cur.focus({ preventScroll: true }); }
+    });
+  });
+}
 // What a marker points to, for lists: its location, else the map it leads to, else its category.
 function markerSub(mk) {
   var l = mk.locationId && locById(mk.locationId), lm = mk.linkedMapId && mapById(mk.linkedMapId);

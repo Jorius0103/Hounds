@@ -31,7 +31,7 @@ function tagPage(item, col) {
   h1.insertAdjacentHTML('beforeend', '<button class="btn vis-toggle" type="button" id="visToggle">' + (secret ? 'Revelar a todos' : who === 'o Mestre' ? 'Ocultar dos jogadores' : 'Ocultar dos outros') + '</button>');
   $('visToggle').onclick = function () {
     var b = /** @type {AnyEl} */ (this); b.disabled = true;
-    W.store.patch(col, item.id, { visible: secret, updatedAt: now() }).then(function () { toast(secret ? 'Agora todos podem ver.' : 'Agora só ' + who + ' ' + seenVerb(item) + '.'); }, function (er) { b.disabled = false; toast(errorText(er), true); });
+    (item.catalog ? patchCatalogItem(col, item, { visible: secret, updatedAt: now() }) : W.store.patch(col, item.id, { visible: secret, updatedAt: now() })).then(function () { toast(secret ? 'Agora todos podem ver.' : 'Agora só ' + who + ' ' + seenVerb(item) + '.'); }, function (er) { b.disabled = false; toast(errorText(er), true); });
   };
 }
 var _rMap = renderMapPage, _rLoc = renderLocalPage, _rChar = renderCharPage;
@@ -52,6 +52,9 @@ renderEventPage = function () { _rEvent(); tagPage(eventById(S.route.eventId), '
 var _rSpell = renderSpellPage;
 // @ts-expect-error -- idem, tab-magias.js
 renderSpellPage = function () { _rSpell(); tagPage(spellById(S.route.spellId), 'spells'); };
+var _rAdv = renderAdvantagePage;
+// @ts-expect-error -- idem, tab-vantagens.js
+renderAdvantagePage = function () { _rAdv(); tagPage(advById(S.route.advId), 'advantages'); };
 
 // One-time: items created before the visibility flag existed become Mestre-only.
 var migratedVis = false;
@@ -80,6 +83,8 @@ window.addEventListener('hub:user', function () {
 function renderPage() {
   var r = S.route; if (!r) return;
   if (r.page === 'mesa') return;
+  // The long card lists use the width of the screen; the other pages keep a reading width.
+  pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
   else if (r.page === 'maps') renderMapsPage();
@@ -96,6 +101,8 @@ function renderPage() {
   else if (r.page === 'org') renderOrgPage();
   else if (r.page === 'spells') renderSpellsPage();
   else if (r.page === 'spell') renderSpellPage();
+  else if (r.page === 'advs') renderAdvantagesPage();
+  else if (r.page === 'adv') renderAdvantagePage();
   else if (r.page === 'users') renderUsersPage();
   else if (r.page === 'notes') renderNotesPage();
   else if (r.page === 'nb') renderNotebookPage();
@@ -107,12 +114,13 @@ function onRoute() {
   var prev = S.route;
   if (!prev || prev.node !== r.node) S.ui = { q: prev && prev.page === r.page ? S.ui.q : '' };
   S.route = r;
+  if (r.node && !byId[r.node] && /^(spell|adv):/.test(r.node)) renderMenu(); // the menu lists only the open one
   var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa';
   app.classList.toggle('on-mesa', isMesa);
   if (isMesa) setCollapsed(true, true);
   else if (wasMesa) setCollapsed(lstore('hounds_rail_collapsed') === '1', true);
   document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : 'view-page'); });
-  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
+  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
   paintMenu();
   topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
   if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : r.page === 'spell' ? spellHref(r.spellId) : hrefFor(r.node));
@@ -129,6 +137,7 @@ function onData(kind) {
   if (kind === 'characters') indexCharacters();
   if (kind === 'organizations') indexOrgs();
   if (kind === 'spells') indexSpells();
+  if (kind === 'advantages') indexAdvantages();
   if (kind === 'sheets') indexSheets();
   if (kind === 'events') indexEvents();
   migrateOrganizations();
@@ -142,6 +151,7 @@ function onData(kind) {
   }
   if (modalOpen) return; // keep forms stable while open; pages refresh when they close
   if (S.route.page === 'note' && S.ui.editing) return;
+  if (S.route.page === 'sheet' && (S.ui.attrDraft || S.ui.skillDraft)) return; // attributes or skills being edited; the page redraws on save or cancel
   if (S.route.page === 'maps' && document.activeElement && document.activeElement.id === 'mapSearch') { renderMapList(); return; }
   if (S.route.page === 'locais' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'locSearch') { renderLocList(); return; }
   if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
@@ -149,6 +159,7 @@ function onData(kind) {
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
   if (S.route.page === 'events' && document.activeElement && document.activeElement.id === 'eventSearch') { renderEventList(); return; }
   if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }
+  if (S.route.page === 'advs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'advSearch') { renderAdvList(); return; }
   renderPage();
 }
 
@@ -175,26 +186,38 @@ function connect() {
     try { return window.indexedDB ? LocalStore() : null; } catch (e) { return null; }
   });
 }
-var SPELLS_DATA_VERSION = '2026-10-11-v3';
-// Brings the shared spell list up to dados/magias.json: only the Mestre, only when
-// SPELLS_DATA_VERSION changes, and at most once per page load. Every write redraws
-// the menu and the page (here and in every open browser), so a sync that ran for
-// everyone, or retried after a failure, kept the site redrawing and unclickable.
-var spellsSyncTried = false;
-function checkAutoSeedSpells(list) {
-  if (spellsSyncTried || !isMestre() || !canWrite() || typeof seedSpellsFromLocal !== 'function') return;
-  if (list && list.length && lstore('hounds_spells_version') === SPELLS_DATA_VERSION) return;
-  spellsSyncTried = true;
-  seedSpellsFromLocal(true).then(function (count) {
-    lstore('hounds_spells_version', SPELLS_DATA_VERSION);
-    if (count) toast(count + ' magias atualizadas com sucesso.');
-  }).catch(function (err) {
-    console.warn('Falha na sincronização de magias:', err);
-  });
+// The spells and advantages of the books are files, not database documents (see
+// "Catálogos de GURPS" in mundo.js). Their documents change in bursts (a cleanup removes
+// hundreds at once), so their redraws wait a moment and happen once per burst.
+var catalogTimers = {};
+function onCatalogDocs(col, list) {
+  W.raw[col] = list; CATALOG[col].dbReady = true;
+  if (catalogTimers[col]) return;
+  catalogTimers[col] = setTimeout(function () {
+    catalogTimers[col] = 0;
+    mergeCatalog(col); onData(col); cleanCatalogCopies(col);
+  }, 80);
 }
+// Older versions of the site copied the books into the database. Once per browser, the
+// Mestre's copy removes those copies, keeping his own changes; it needs the book list.
+var catalogCleanTried = {};
+function cleanCatalogCopies(col) {
+  if (catalogCleanTried[col] || !CATALOG[col].dbReady || !isMestre() || !canWrite() || lstore('hounds_catalog_clean_' + col) === CATALOG_VERSION) return;
+  if (!(W.raw[col] || []).some(function (d) { return isCatalogId(col, d.id); })) { lstore('hounds_catalog_clean_' + col, CATALOG_VERSION); return; }
+  catalogCleanTried[col] = true;
+  loadCatalog(col).then(function () {
+    if (!CATALOG[col].list) return;
+    return Ops.cleanCatalogCopies(col, CATALOG[col].fields).then(function (n) {
+      lstore('hounds_catalog_clean_' + col, CATALOG_VERSION);
+      if (n) console.info('Hounds: ' + n + ' cópias de ' + col + ' removidas do banco.');
+    });
+  }).catch(function (err) { console.warn('Falha ao limpar ' + col + ':', err); });
+}
+// The account (and whether it is the Mestre's) may arrive after the documents.
+window.addEventListener('hub:user', function () { cleanCatalogCopies('spells'); cleanCatalogCopies('advantages'); });
 
 connect().then(function (s) {
-  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, sheets: true, events: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
+  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, advantages: true, sheets: true, events: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
   W.store = s;
   return s.init().then(function () {
     var fail = function () { toast('Não foi possível carregar os dados.', true); };
@@ -208,6 +231,7 @@ connect().then(function (s) {
     MesaSync.start();
     s.watch('notebooks', function (l) { W.raw.notebooks = l; filterNotes(); W.loaded.notebooks = true; onData('notes'); }, fail);
     s.watch('notes', function (l) { W.raw.notes = l; filterNotes(); W.loaded.notes = true; onData('notes'); }, fail);
-    s.watch('spells', function (l) { W.raw.spells = l; W.spells = pub(l); W.loaded.spells = true; onData('spells'); checkAutoSeedSpells(l); }, fail);
+    s.watch('spells', function (l) { onCatalogDocs('spells', l); }, fail);
+    s.watch('advantages', function (l) { onCatalogDocs('advantages', l); }, fail);
   });
 }).catch(function () { toast('Não foi possível carregar os dados.', true); });

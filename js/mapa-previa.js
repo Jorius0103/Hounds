@@ -9,7 +9,8 @@
 
 /* =====================================================================
    The map on its page: drag to move; wheel, pinch, double click or the
-   buttons to zoom; a click on a marker shows what it is. Read only: the
+   keys + - 0 to zoom (no buttons over the map); a click on a marker shows
+   what it is. Read only: the
    markers are added and edited in the explorer.
    The view (zoom, center, open marker) is kept in S.ui.view, relative to
    the image, so a redraw of the page (a marker arriving) or a resize
@@ -21,17 +22,13 @@
    ===================================================================== */
 function mapPreview(box, m, markers) {
   var iw = (m.image && m.image.w) || 1000, ih = (m.image && m.image.h) || 750;
-  var ui = S.ui, view = ui.view && ui.view.id === m.id ? ui.view : (ui.view = { id: m.id, k: 1, cx: 0.5, cy: 0.5, pin: null, labels: lstore('hounds_prev_labels') === '1' });
+  var ui = S.ui, view = ui.view && ui.view.id === m.id ? ui.view : (ui.view = { id: m.id, k: 1, cx: 0.5, cy: 0.5, pin: null });
   box.style.aspectRatio = iw + ' / ' + ih;
-  box.innerHTML = '<div class="mprev-vp' + (view.labels ? ' show-labels' : '') + '" tabindex="0" aria-label="Mapa ' + esc(m.name) + '. Arraste para mover. Roda do mouse, dois dedos, duplo clique ou os botões dão zoom.">' +
+  box.innerHTML = '<div class="mprev-vp" tabindex="0" aria-label="Mapa ' + esc(m.name) + '. Arraste para mover. Roda do mouse, dois dedos ou duplo clique dão zoom; a tecla 0 volta ao mapa inteiro.">' +
     '<div class="mprev-stage"><img alt="Mapa ' + esc(m.name) + '"><div class="mprev-pins"></div></div></div>' +
-    '<div class="mprev-bar"><button class="btn mprev-labels" type="button" aria-pressed="' + view.labels + '" title="Mostrar o nome de todos os marcadores">Nomes</button>' +
-    '<div class="ex-zoom" role="group" aria-label="Zoom"><button type="button" data-z="out" aria-label="Afastar">' + svg('<path d="M5 12h14"/>', 16, 2.4) + '</button>' +
-    '<output aria-live="polite"></output><button type="button" data-z="in" aria-label="Aproximar">' + svg(ICON.plus, 16, 2.4) + '</button></div>' +
-    '<button class="icon-btn" type="button" data-z="fit" title="Ajustar à área" aria-label="Ajustar à área">' + svg(ICON.explore, 16) + '</button></div>' +
     '<div class="mprev-card" role="dialog" aria-label="Marcador" hidden></div>';
   var vp = box.querySelector('.mprev-vp'), stage = box.querySelector('.mprev-stage'), img = stage.querySelector('img'), pinsEl = box.querySelector('.mprev-pins');
-  var card = box.querySelector('.mprev-card'), out = box.querySelector('output');
+  var card = box.querySelector('.mprev-card');
   var st = { s: 1, tx: 0, ty: 0, fit: 1 };
   W.store.imageUrl(m.image && m.image.ref).then(function (u) { if (u && img.isConnected) img.src = u; });
 
@@ -47,7 +44,6 @@ function mapPreview(box, m, markers) {
     var v = size();
     stage.style.width = iw * st.s + 'px'; stage.style.height = ih * st.s + 'px';
     stage.style.transform = 'translate3d(' + Math.round(st.tx) + 'px,' + Math.round(st.ty) + 'px,0)';
-    out.textContent = Math.round(st.s / st.fit * 100) + '%';
     view.k = st.s / st.fit; view.cx = (v.w / 2 - st.tx) / (iw * st.s); view.cy = (v.h / 2 - st.ty) / (ih * st.s);
     vp.style.touchAction = st.s > st.fit * 1.001 ? 'none' : 'pan-y';
   }
@@ -152,13 +148,6 @@ function mapPreview(box, m, markers) {
     else if (k === 'Escape' && view.pin) select(null);
     else return;
     e.preventDefault();
-  });
-  box.querySelector('.mprev-bar').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-z]');
-    if (b) { var z = b.getAttribute('data-z'); if (z === 'in') zoomCenter(1.4); else if (z === 'out') zoomCenter(1 / 1.4); else fit(); return; }
-    var lb = e.target.closest('.mprev-labels'); if (!lb) return;
-    view.labels = !view.labels; lstore('hounds_prev_labels', view.labels ? '1' : '0');
-    vp.classList.toggle('show-labels', view.labels); lb.setAttribute('aria-pressed', String(view.labels));
   });
 
   // Follows the box's size (window resized, menu collapsed); stops when the page is redrawn.
