@@ -37,16 +37,32 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
     hpFormulaLabel: '---',
   },
   {
-    rollTarget: '6-7',
-    location: 'Right Leg',
+    rollTarget: '6-7 (R) 13-14 (L)',
+    location: 'Leg',
     penalty: '-2',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 2',
     hpDivisor: 2,
   },
   {
-    rollTarget: '8',
-    location: 'Right Arm',
+    rollTarget: '6-7 (R) 13-14 (L)',
+    location: 'Shins',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '8 (R) 12 (L)',
+    location: 'Arm',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '8 (R) 12 (L)',
+    location: 'Forearms',
     penalty: '-2',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 2',
@@ -68,22 +84,6 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
     hpDivisor: 3,
   },
   {
-    rollTarget: '12',
-    location: 'Left Arm',
-    penalty: '-2',
-    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    hpFormulaLabel: '=Pontos de Vida / 2',
-    hpDivisor: 2,
-  },
-  {
-    rollTarget: '13-14',
-    location: 'Left Leg',
-    penalty: '-2',
-    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    hpFormulaLabel: '=Pontos de Vida / 2',
-    hpDivisor: 2,
-  },
-  {
     rollTarget: '15',
     location: 'Hand',
     penalty: '-4',
@@ -93,7 +93,7 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
   },
   {
     rollTarget: '16',
-    location: 'Foot',
+    location: 'Feet',
     penalty: '-4',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 3',
@@ -132,14 +132,14 @@ export function normalizeLocationKey(name: string): string {
   if (lower === 'eye' || lower === 'olho' || lower === 'olhos') return 'eye';
   if (lower === 'head' || lower === 'cabeça' || lower === 'cabeca' || lower === 'skull' || lower === 'crânio' || lower === 'cranio') return 'head';
   if (lower === 'face' || lower === 'rosto') return 'face';
-  if (lower.includes('right leg') || lower.includes('perna d') || lower.includes('perna direita')) return 'right_leg';
-  if (lower.includes('left leg') || lower.includes('perna e') || lower.includes('perna esquerda')) return 'left_leg';
-  if (lower.includes('right arm') || lower.includes('braço d') || lower.includes('braço direito') || lower.includes('braco d') || lower.includes('braco direito')) return 'right_arm';
-  if (lower.includes('left arm') || lower.includes('braço e') || lower.includes('braço esquerdo') || lower.includes('braco e') || lower.includes('braco esquerdo')) return 'left_arm';
+  if (lower.includes('forearm') || lower.includes('antebraço') || lower.includes('antebraco')) return 'forearms';
+  if (lower.includes('shin') || lower.includes('canela')) return 'shins';
+  if (lower.includes('arm') || lower.includes('braço') || lower.includes('braco')) return 'arm';
+  if (lower.includes('leg') || lower.includes('perna')) return 'leg';
   if (lower === 'torso' || lower === 'tronco') return 'torso';
   if (lower === 'groin' || lower === 'virilha') return 'groin';
   if (lower === 'hand' || lower === 'mão' || lower === 'mãos' || lower === 'mao' || lower === 'maos') return 'hand';
-  if (lower === 'foot' || lower === 'feet' || lower === 'pé' || lower === 'pés' || lower === 'pe' || lower === 'pes') return 'foot';
+  if (lower === 'foot' || lower === 'feet' || lower === 'pé' || lower === 'pés' || lower === 'pe' || lower === 'pes') return 'feet';
   if (lower === 'neck' || lower === 'pescoço' || lower === 'pescoco') return 'neck';
   if (lower === 'vitals' || lower === 'vitais' || lower.includes('vital') || lower.includes('órgãos vitais') || lower.includes('orgaos vitais')) return 'vitals';
   return lower;
@@ -188,10 +188,11 @@ export function calculateLocationHp(locationName: string, hpMax: number): { valu
     };
   }
 
-  const val = Math.floor(hpMax / found.hpDivisor);
+  const rawVal = hpMax / found.hpDivisor;
+  const display = rawVal.toFixed(1);
   return {
-    value: val,
-    display: String(val),
+    value: Number(display),
+    display,
     formulaLabel: found.hpFormulaLabel,
   };
 }
@@ -318,11 +319,16 @@ export function calculateLocationDamage(params: {
       appliedRules.push('Órgãos Vitais: Empalamento e perfuração vira x3');
     }
   } else if (
+    normKey === 'arm' ||
+    normKey === 'forearms' ||
+    normKey === 'leg' ||
+    normKey === 'shins' ||
+    normKey === 'hand' ||
+    normKey === 'feet' ||
     normKey === 'right_leg' ||
     normKey === 'left_leg' ||
     normKey === 'right_arm' ||
     normKey === 'left_arm' ||
-    normKey === 'hand' ||
     normKey === 'foot'
   ) {
     // Regra Membros/Extremidades: "Perfurante, perfurante grande e empalamento vira x1"
