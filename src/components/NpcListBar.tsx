@@ -47,14 +47,27 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
     return true;
   });
 
-  // Ordenar primeiro por Speed decrescente (iniciativa GURPS),
-  // e em caso de empate, por ordem alfabética de Nome
+  // Ordenação: Personagens primeiro (por Speed decrescente e desempate por nome),
+  // seguidos por todos os NPCs (por ordem alfabética de Nome)
   const displayedNpcs = [...filteredNpcs].sort((a, b) => {
-    const speedA = a.basicSpeed ?? 0;
-    const speedB = b.basicSpeed ?? 0;
-    if (speedB !== speedA) {
-      return speedB - speedA;
+    const isPlayerA = a.characterType === 'player';
+    const isPlayerB = b.characterType === 'player';
+
+    // Personagens vêm primeiro, NPCs depois
+    if (isPlayerA && !isPlayerB) return -1;
+    if (!isPlayerA && isPlayerB) return 1;
+
+    // Se ambos forem Personagens: manter ordem por Speed decrescente (e desempate por nome)
+    if (isPlayerA && isPlayerB) {
+      const speedA = a.basicSpeed ?? 0;
+      const speedB = b.basicSpeed ?? 0;
+      if (speedB !== speedA) {
+        return speedB - speedA;
+      }
+      return (a.name || '').localeCompare(b.name || '', 'pt-BR');
     }
+
+    // Se ambos forem NPCs: listar por ordem alfabética de Nome
     return (a.name || '').localeCompare(b.name || '', 'pt-BR');
   });
 
@@ -216,16 +229,20 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const isDeadChar = Boolean(npc.isDead);
                 const activeManeuver = getCombatManeuver(npc.combatManeuver);
 
+                // Jogadores não visualizam alertas de PV e Fadiga
                 const hasAlerts =
                   isDeadChar ||
-                  Boolean(hpStat.warningTexts && hpStat.warningTexts.length > 0) ||
-                  Boolean(fpStat.warningTexts && fpStat.warningTexts.length > 0) ||
+                  (currentUserRole === 'mestre' && (
+                    Boolean(hpStat.warningTexts && hpStat.warningTexts.length > 0) ||
+                    Boolean(fpStat.warningTexts && fpStat.warningTexts.length > 0)
+                  )) ||
                   Boolean(npc.statusConditions && npc.statusConditions.length > 0);
 
                 const isViewerOrPlayer = currentUserRole === 'jogador';
                 const showNpcWoundedOrDead = !isViewerOrPlayer || isPlayerChar;
                 const showDeadMarker = isDeadChar;
                 const showAlertBorder = showNpcWoundedOrDead && hasAlerts;
+                const showSpeed = isPlayerChar || currentUserRole === 'mestre';
 
                 return (
                   <button
@@ -242,7 +259,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         ? 'bg-red-950/20 border-red-900/60 hover:bg-red-950/30'
                         : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 hover:bg-slate-850'
                     }`}
-                    title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'} | Speed: ${npc.basicSpeed ?? 0}${isDeadChar ? ' | MORTO' : ''}${
+                    title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'}${
+                      showSpeed ? ` | Speed: ${npc.basicSpeed ?? 0}` : ''
+                    }${isDeadChar ? ' | MORTO' : ''}${
                       npc.statusConditions && npc.statusConditions.length > 0
                         ? `\nCondições: ${npc.statusConditions.map((c) => `${c} (${getConditionDescription(c)})`).join('; ')}`
                         : ''
@@ -356,7 +375,11 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                       {/* Linha 4: Speed à esquerda, Manobra de Combate estática à direita (sem contador de condições e sem dropdown) */}
                       <div className="flex items-center justify-between text-[9px] text-slate-400 mt-1 min-h-[18px]">
                         <div className="flex items-center gap-1 font-mono">
-                          <span title="Basic Speed">Spd {npc.basicSpeed ?? 0}</span>
+                          {showSpeed ? (
+                            <span title="Basic Speed">Spd {npc.basicSpeed ?? 0}</span>
+                          ) : (
+                            <span className="text-[8px] text-slate-600 select-none">NPC</span>
+                          )}
                         </div>
 
                         {/* Manobra de Combate estática (apenas o nome da manobra e sua cor cadastrada) */}

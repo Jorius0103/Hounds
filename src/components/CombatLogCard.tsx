@@ -30,10 +30,10 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   const isPlayerView = isPlayer || currentUserRole === 'jogador';
   const isNpcTarget = (entry as any).npcCharacterType !== 'player';
 
-  // Sanitize description for players (never leak RD, armor, penetration or formulas)
+  // Sanitize description for players on NPCs (never leak RD, armor, penetration or formulas)
   const displayDescription = useMemo(() => {
     if (!entry.description) return '';
-    if (!isPlayerView) return entry.description;
+    if (!isPlayerView || !isNpcTarget) return entry.description;
     
     // If it's an auto-generated formula with RD / Penetrante / Mod, omit it because the player card already shows local and damage
     if (
@@ -175,8 +175,8 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       {/* Detailed GURPS Damage Breakdown */}
       {isDamage && (
         <div className="bg-slate-900/90 border border-slate-800/90 rounded-lg p-2 space-y-1.5">
-          {/* VISÃO DO MESTRE: Tabela completa com Local, Dano Rolado, RD Total e Penetrante/Mod */}
-          {!isPlayerView ? (
+          {/* VISÃO COMPLETA (Mestre ou alvo Personagem): Tabela completa com Local, Dano Rolado, RD Total e Penetrante/Mod */}
+          {(!isPlayerView || !isNpcTarget) ? (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] font-mono">
                 {/* Local Atingido */}

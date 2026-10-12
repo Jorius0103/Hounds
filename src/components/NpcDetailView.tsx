@@ -132,6 +132,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // Helper para favoritar / desfavoritar Itens Extras & Recursos
   const handleToggleFavoriteExtraItem = (itemId: string) => {
     if (isViewer) return;
+    if (!isMaster && !isPlayerChar) return;
     const currentList = currentNpcRef.current.extraItems || [];
     const items = currentList.map((it) =>
       it.id === itemId ? { ...it, isFavorite: !it.isFavorite } : it
@@ -448,33 +449,34 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 2. Pontos de Vida (alertas acumulativos e sobrepostos - até 3 alertas)
-    const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
-      ? hpStat.warningTexts
-      : (hpStat.warningText ? [hpStat.warningText] : []);
+    // 2. Pontos de Vida & 3. Pontos de Fadiga (Exclusivos para o Mestre: jogadores não veem alertas de PV e Fadiga)
+    if (isMaster) {
+      const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
+        ? hpStat.warningTexts
+        : (hpStat.warningText ? [hpStat.warningText] : []);
 
-    hpWarnings.forEach((warn, idx) => {
-      alerts.push({
-        id: `hp-warn-${idx}`,
-        badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
-        text: `PV: ${warn}`,
-        icon: AlertTriangle,
+      hpWarnings.forEach((warn, idx) => {
+        alerts.push({
+          id: `hp-warn-${idx}`,
+          badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
+          text: `PV: ${warn}`,
+          icon: AlertTriangle,
+        });
       });
-    });
 
-    // 3. Pontos de Fadiga (alertas acumulativos e sobrepostos - até 3 alertas)
-    const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
-      ? fpStat.warningTexts
-      : (fpStat.warningText ? [fpStat.warningText] : []);
+      const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
+        ? fpStat.warningTexts
+        : (fpStat.warningText ? [fpStat.warningText] : []);
 
-    fpWarnings.forEach((warn, idx) => {
-      alerts.push({
-        id: `fp-warn-${idx}`,
-        badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-        text: `Fadiga: ${warn}`,
-        icon: Zap,
+      fpWarnings.forEach((warn, idx) => {
+        alerts.push({
+          id: `fp-warn-${idx}`,
+          badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
+          text: `Fadiga: ${warn}`,
+          icon: Zap,
+        });
       });
-    });
+    }
 
     // 4. Lista todas as Condições & Estados Críticos
     if (npc.statusConditions && npc.statusConditions.length > 0) {
@@ -640,6 +642,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const handleUpdateExtraItem = (itemId: string, updates: Partial<ExtraItem>) => {
     if (isViewer) return;
+    if (!isMaster && !isPlayerChar) return;
     if (!isMaster && ('max' in updates || 'name' in updates)) return;
     const currentList = currentNpcRef.current.extraItems || [];
     const items = currentList.map((it) => (it.id === itemId ? { ...it, ...updates } : it));
@@ -648,6 +651,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const handleAdjustExtraItem = (itemId: string, delta: number) => {
     if (isViewer) return;
+    if (!isMaster && !isPlayerChar) return;
     const currentExtra = currentNpcRef.current.extraItems || [];
     const items = currentExtra.map((it) => {
       if (it.id === itemId) {
@@ -674,6 +678,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   // Renderizador unificado da div Magias (Magias Ativas & Sob Efeito)
   const renderMagiasSection = () => {
+    // Jogadores não podem ver magias (Magias Ativas e Sob Efeito) dos NPCs, apenas dos jogadores
+    if (!isMaster && !isPlayerChar) {
+      return null;
+    }
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2.5 shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
@@ -1133,93 +1141,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               className="w-full bg-slate-900 border border-slate-750 rounded-lg p-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
-
-          {/* Div Magias: Ativas e Sob Efeito (visível e gerenciável por Jogador Editor) */}
-          {renderMagiasSection()}
-
-          {/* ITENS EXTRAS & RECURSOS (Visão do Jogador) */}
-          {npc.extraItems && npc.extraItems.length > 0 && (
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-                  <Package size={14} />
-                  <span>Itens Extras &amp; Recursos (Flechas, Mana, Escudo...)</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {npc.extraItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-slate-900/80 border border-slate-750 rounded-xl p-2.5 flex items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0 flex-1 flex items-center gap-2">
-                      {!isViewer && (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
-                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors shrink-0 ${
-                            item.isFavorite
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-                          }`}
-                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
-                        >
-                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
-                        </button>
-                      )}
-                      {getItemIcon(item.name, item.category)}
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                          <span>{item.name}</span>
-                          <span className={`text-[9px] px-1 py-0.2 rounded font-normal border ${
-                            item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
-                              ? 'bg-cyan-950/80 border-cyan-800 text-cyan-300'
-                              : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
-                              ? 'bg-emerald-950/80 border-emerald-800 text-emerald-300'
-                              : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
-                              ? 'bg-amber-950/80 border-amber-800 text-amber-300'
-                              : 'bg-slate-900 border-slate-800 text-slate-400'
-                          }`}>
-                            {item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
-                              ? 'Mana'
-                              : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
-                              ? 'Escudo'
-                              : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
-                              ? 'Flechas'
-                              : 'Outro'}
-                          </span>
-                        </div>
-                        <div className="text-[11px] font-mono text-amber-300">
-                          {item.current} <span className="text-slate-500 font-normal">/ {item.max}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {!isViewer && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleAdjustExtraItem(item.id, -1)}
-                          className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold text-xs flex items-center justify-center active:scale-95"
-                          title="-1 item"
-                        >
-                          -
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAdjustExtraItem(item.id, 1)}
-                          className="w-6 h-6 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center active:scale-95"
-                          title="+1 item"
-                        >
-                          +
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Condições & Estados */}
           <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-2">
