@@ -34,7 +34,13 @@ import {
   Target,
 } from 'lucide-react';
 
-const getItemIcon = (name: string) => {
+const getItemIcon = (name: string, category?: string) => {
+  const cat = category || '';
+  if (cat === 'mana') return <Sparkles size={14} className="text-cyan-400 shrink-0" />;
+  if (cat === 'shield') return <Shield size={14} className="text-emerald-400 shrink-0" />;
+  if (cat === 'arrows') return <Target size={14} className="text-amber-400 shrink-0" />;
+  if (cat === 'other') return <Package size={14} className="text-slate-400 shrink-0" />;
+
   const lower = (name || '').toLowerCase();
   if (lower.includes('mana') || lower.includes('pedra')) {
     return <Sparkles size={14} className="text-cyan-400 shrink-0" />;
@@ -130,6 +136,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         'combatManeuver',
         'hpCurrent',
         'fpCurrent',
+        'activeSpells',
+        'affectedSpells',
         'isDead',
       ];
       if (!allowedNpcFields.includes(field)) return;
@@ -375,11 +383,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   };
 
   // Gerenciamento de Itens Extras (Flechas, Pedras de Mana, Escudos, etc.)
-  const handleAddExtraItem = (preset?: { name: string; max: number }) => {
+  const handleAddExtraItem = (preset?: { name: string; max: number; category?: 'mana' | 'shield' | 'arrows' | 'other' }) => {
     if (!isMaster) return;
     const newItem: ExtraItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       name: preset?.name || 'Novo Recurso',
+      category: preset?.category || 'other',
       current: preset?.max || 10,
       max: preset?.max || 10,
     };
@@ -425,6 +434,156 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       { itemId, item: targetItem, remainingItemsCount: items.length }
     );
     updateField('extraItems', items);
+  };
+
+  // Renderizador unificado da div Magias (Magias Ativas & Sob Efeito)
+  const renderMagiasSection = () => {
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-3 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-purple-400" />
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+              Magias
+            </h3>
+          </div>
+          <div className="flex items-center gap-2.5 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5 font-bold text-purple-300 bg-purple-950/70 border border-purple-800/60 px-2.5 py-0.5 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-purple-500 inline-block animate-pulse"></span>
+              Ativas: {(npc.activeSpells || []).length}
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="flex items-center gap-1.5 font-bold text-cyan-300 bg-cyan-950/70 border border-cyan-800/60 px-2.5 py-0.5 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block animate-pulse"></span>
+              Sob Efeito: {(npc.affectedSpells || []).length}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Seção 1: Magias Ativas (Sustentadas por este conjurador) */}
+          <div className="bg-slate-950/80 border border-purple-900/40 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between border-b border-purple-950/80 pb-1.5">
+              <div className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <Sparkles size={13} className="text-purple-400" />
+                <span>Magias Ativas (Sustentadas)</span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-medium">
+                {(npc.activeSpells || []).length} ativa{(npc.activeSpells || []).length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            {(!npc.activeSpells || npc.activeSpells.length === 0) ? (
+              <div className="text-[11px] text-slate-600 italic py-3 text-center">
+                Nenhuma magia ativa sustentada no momento
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                {npc.activeSpells.map((sp) => (
+                  <div
+                    key={sp.id}
+                    className="bg-slate-900/90 border border-purple-800/50 hover:border-purple-600/70 rounded-lg p-2 flex items-center justify-between gap-2 text-xs transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-purple-200 truncate flex items-center gap-1.5">
+                        <span className="text-sm font-black text-purple-100">{sp.spellName}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-purple-950 border border-purple-700 text-purple-300 rounded font-mono font-bold">
+                          R{sp.round}
+                        </span>
+                        {sp.cost !== undefined && sp.cost > 0 && (
+                          <span className="text-[10px] text-cyan-400 font-mono">
+                            (-{sp.cost} FP)
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                        Alvo: <span className="text-slate-100 font-semibold">{sp.targetName || 'Desconhecido'}</span>
+                      </div>
+                    </div>
+
+                    {!isViewer && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onRemoveActiveSpell) {
+                            onRemoveActiveSpell(npc.id, sp.id);
+                          } else {
+                            const remaining = (npc.activeSpells || []).filter((s) => s.id !== sp.id);
+                            updateField('activeSpells', remaining);
+                          }
+                        }}
+                        className="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-rose-950/50 rounded-lg transition-colors shrink-0"
+                        title="Encerrar / Cancelar esta magia ativa"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Seção 2: Sob Efeito (Magias que estão afetando este personagem) */}
+          <div className="bg-slate-950/80 border border-cyan-900/40 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between border-b border-cyan-950/80 pb-1.5">
+              <div className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                <Zap size={13} className="text-cyan-400" />
+                <span>Sob Efeito (Afetando este Alvo)</span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-medium">
+                {(npc.affectedSpells || []).length} efeito{(npc.affectedSpells || []).length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            {(!npc.affectedSpells || npc.affectedSpells.length === 0) ? (
+              <div className="text-[11px] text-slate-600 italic py-3 text-center">
+                Nenhum efeito de magia ativo no alvo
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                {npc.affectedSpells.map((sp) => (
+                  <div
+                    key={sp.id}
+                    className="bg-slate-900/90 border border-cyan-800/50 hover:border-cyan-600/70 rounded-lg p-2 flex items-center justify-between gap-2 text-xs transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-cyan-200 truncate flex items-center gap-1.5">
+                        <span className="text-sm font-black text-cyan-100">{sp.spellName}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-cyan-950 border border-cyan-700 text-cyan-300 rounded font-mono font-bold">
+                          R{sp.round}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                        Conjurador: <span className="text-slate-100 font-semibold">{sp.casterName || 'Desconhecido'}</span>
+                      </div>
+                    </div>
+
+                    {!isViewer && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onRemoveAffectedSpell) {
+                            onRemoveAffectedSpell(npc.id, sp.id);
+                          } else {
+                            const remaining = (npc.affectedSpells || []).filter((s) => s.id !== sp.id);
+                            updateField('affectedSpells', remaining);
+                          }
+                        }}
+                        className="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-rose-950/50 rounded-lg transition-colors shrink-0"
+                        title="Remover este efeito de magia"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // =========================================================================
@@ -535,6 +694,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             />
           </div>
 
+          {/* Div Magias: Ativas e Sob Efeito (visível e gerenciável por Jogador Editor) */}
+          {renderMagiasSection()}
+
           {/* ITENS EXTRAS & RECURSOS (Visão do Jogador) */}
           {npc.extraItems && npc.extraItems.length > 0 && (
             <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
@@ -552,9 +714,28 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     className="bg-slate-900/80 border border-slate-750 rounded-xl p-2.5 flex items-center justify-between gap-2"
                   >
                     <div className="min-w-0 flex-1 flex items-center gap-2">
-                      {getItemIcon(item.name)}
+                      {getItemIcon(item.name, item.category)}
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold text-white truncate">{item.name}</div>
+                        <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                          <span>{item.name}</span>
+                          <span className={`text-[9px] px-1 py-0.2 rounded font-normal border ${
+                            item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
+                              ? 'bg-cyan-950/80 border-cyan-800 text-cyan-300'
+                              : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
+                              ? 'bg-emerald-950/80 border-emerald-800 text-emerald-300'
+                              : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
+                              ? 'bg-amber-950/80 border-amber-800 text-amber-300'
+                              : 'bg-slate-900 border-slate-800 text-slate-400'
+                          }`}>
+                            {item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
+                              ? 'Mana'
+                              : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
+                              ? 'Escudo'
+                              : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
+                              ? 'Flechas'
+                              : 'Outro'}
+                          </span>
+                        </div>
                         <div className="text-[11px] font-mono text-amber-300">
                           {item.current} <span className="text-slate-500 font-normal">/ {item.max}</span>
                         </div>
@@ -921,6 +1102,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         </div>
       </div>
 
+      {/* Card: Magias (Magias Ativas & Sob Efeito) - Largura total destacada */}
+      {renderMagiasSection()}
+
       {/* 3. GRID PRINCIPAL: Coluna 1 (Vitals & Defesas) | Coluna 2 (Condições & Atributos) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* COLUNA DA ESQUERDA (6 cols): PV & FP, Defesas Ativas, Ações do Turno e Itens Extras */}
@@ -1082,147 +1266,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
           </div>
 
-          {/* Card: Magias (Magias Ativas & Sob Efeito) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
-              <div className="flex items-center gap-2">
-                <Sparkles size={15} className="text-purple-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                  Magias
-                </h3>
-              </div>
-              <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                <span className="flex items-center gap-1 font-semibold text-purple-300">
-                  <span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
-                  Ativas: {(npc.activeSpells || []).length}
-                </span>
-                <span className="text-slate-600">|</span>
-                <span className="flex items-center gap-1 font-semibold text-cyan-300">
-                  <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
-                  Sob Efeito: {(npc.affectedSpells || []).length}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Seção 1: Magias Ativas (Sustentadas por este conjurador) */}
-              <div className="bg-slate-950/70 border border-purple-900/30 rounded-lg p-2 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
-                    <Sparkles size={12} className="text-purple-400" />
-                    <span>Magias Ativas</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500">
-                    Sustentadas: {(npc.activeSpells || []).length}
-                  </span>
-                </div>
-
-                {(!npc.activeSpells || npc.activeSpells.length === 0) ? (
-                  <div className="text-[10px] text-slate-600 italic py-2 text-center">
-                    Nenhuma magia ativa sustentada
-                  </div>
-                ) : (
-                  <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5 custom-scrollbar">
-                    {npc.activeSpells.map((sp) => (
-                      <div
-                        key={sp.id}
-                        className="bg-slate-900/90 border border-purple-800/40 rounded-md p-1.5 flex items-center justify-between gap-1 text-[11px]"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="font-bold text-purple-200 truncate flex items-center gap-1">
-                            <span>{sp.spellName}</span>
-                            <span className="text-[9px] px-1 py-0.2 bg-purple-950 border border-purple-800 text-purple-300 rounded font-mono">
-                              R{sp.round}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-400 truncate">
-                            Alvo: <span className="text-slate-200 font-semibold">{sp.targetName || 'Desconhecido'}</span>
-                          </div>
-                        </div>
-
-                        {!isViewer && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (onRemoveActiveSpell) {
-                                onRemoveActiveSpell(npc.id, sp.id);
-                              } else {
-                                const remaining = (npc.activeSpells || []).filter((s) => s.id !== sp.id);
-                                updateField('activeSpells', remaining);
-                              }
-                            }}
-                            className="text-slate-500 hover:text-rose-400 p-1 hover:bg-rose-950/40 rounded transition-colors shrink-0"
-                            title="Encerrar / Cancelar esta magia ativa"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Seção 2: Sob Efeito (Magias que estão afetando este personagem) */}
-              <div className="bg-slate-950/70 border border-cyan-900/30 rounded-lg p-2 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="text-[11px] font-bold text-cyan-300 flex items-center gap-1">
-                    <Zap size={12} className="text-cyan-400" />
-                    <span>Sob Efeito</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500">
-                    Afetando: {(npc.affectedSpells || []).length}
-                  </span>
-                </div>
-
-                {(!npc.affectedSpells || npc.affectedSpells.length === 0) ? (
-                  <div className="text-[10px] text-slate-600 italic py-2 text-center">
-                    Nenhum efeito de magia ativo no alvo
-                  </div>
-                ) : (
-                  <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5 custom-scrollbar">
-                    {npc.affectedSpells.map((sp) => (
-                      <div
-                        key={sp.id}
-                        className="bg-slate-900/90 border border-cyan-800/40 rounded-md p-1.5 flex items-center justify-between gap-1 text-[11px]"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="font-bold text-cyan-200 truncate flex items-center gap-1">
-                            <span>{sp.spellName}</span>
-                            <span className="text-[9px] px-1 py-0.2 bg-cyan-950 border border-cyan-800 text-cyan-300 rounded font-mono">
-                              R{sp.round}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-400 truncate">
-                            Conjurador: <span className="text-slate-200 font-semibold">{sp.casterName || 'Desconhecido'}</span>
-                          </div>
-                        </div>
-
-                        {!isViewer && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (onRemoveAffectedSpell) {
-                                onRemoveAffectedSpell(npc.id, sp.id);
-                              } else {
-                                const remaining = (npc.affectedSpells || []).filter((s) => s.id !== sp.id);
-                                updateField('affectedSpells', remaining);
-                              }
-                            }}
-                            className="text-slate-500 hover:text-rose-400 p-1 hover:bg-rose-950/40 rounded transition-colors shrink-0"
-                            title="Remover este efeito de magia"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
           {/* Card: Defesas Ativas (Trocado para a coluna da esquerda) */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
@@ -1371,7 +1414,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => handleAddExtraItem({ name: 'Flechas', max: 20 })}
+                    onClick={() => handleAddExtraItem({ name: 'Flechas', max: 20, category: 'arrows' })}
                     className="text-[10px] font-bold text-amber-300 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800/60 px-2 py-0.5 rounded-lg transition-colors"
                     title="Cadastrar Flechas (Total: 20)"
                   >
@@ -1379,7 +1422,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleAddExtraItem({ name: 'Pedras de Mana', max: 5 })}
+                    onClick={() => handleAddExtraItem({ name: 'Pedras de Mana', max: 5, category: 'mana' })}
                     className="text-[10px] font-bold text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/60 px-2 py-0.5 rounded-lg transition-colors"
                     title="Cadastrar Pedras de Mana (Total: 5)"
                   >
@@ -1387,7 +1430,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleAddExtraItem({ name: 'Escudo', max: 30 })}
+                    onClick={() => handleAddExtraItem({ name: 'Escudo', max: 30, category: 'shield' })}
                     className="text-[10px] font-bold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 px-2 py-0.5 rounded-lg transition-colors"
                     title="Cadastrar Escudo (Durabilidade: 30)"
                   >
@@ -1419,7 +1462,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   >
                     {/* Nome do Item com Ícone */}
                     <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                      {getItemIcon(item.name)}
+                      {getItemIcon(item.name, item.category)}
                       <input
                         type="text"
                         disabled={!isMaster}
@@ -1428,6 +1471,41 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         className={`w-full bg-transparent text-xs font-bold text-white focus:outline-none focus:border-b focus:border-amber-500 ${!isMaster ? 'cursor-default' : ''}`}
                         placeholder="Nome do Item..."
                       />
+                    </div>
+
+                    {/* Coluna de Categoria do Recurso */}
+                    <div className="shrink-0">
+                      {isMaster ? (
+                        <select
+                          value={item.category || (item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra') ? 'mana' : item.name.toLowerCase().includes('escudo') ? 'shield' : item.name.toLowerCase().includes('flecha') ? 'arrows' : 'other')}
+                          onChange={(e) => handleUpdateExtraItem(item.id, { category: e.target.value as any })}
+                          className="bg-slate-900 border border-slate-750 text-[10px] text-slate-300 font-semibold rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          title="Categoria do recurso"
+                        >
+                          <option value="mana">Pedra de Mana</option>
+                          <option value="shield">Escudo</option>
+                          <option value="arrows">Flechas</option>
+                          <option value="other">Outros</option>
+                        </select>
+                      ) : (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border ${
+                          item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
+                            ? 'bg-cyan-950/80 border-cyan-800 text-cyan-300'
+                            : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
+                            ? 'bg-emerald-950/80 border-emerald-800 text-emerald-300'
+                            : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
+                            ? 'bg-amber-950/80 border-amber-800 text-amber-300'
+                            : 'bg-slate-900 border-slate-800 text-slate-400'
+                        }`}>
+                          {item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
+                            ? 'Pedra de Mana'
+                            : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
+                            ? 'Escudo'
+                            : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
+                            ? 'Flechas'
+                            : 'Outros'}
+                        </span>
+                      )}
                     </div>
 
                     {/* Inputs Atual / Total */}

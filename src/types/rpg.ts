@@ -71,9 +71,12 @@ export interface TurnActionsTracker {
   notes?: string;
 }
 
+export type ExtraItemCategory = 'mana' | 'shield' | 'arrows' | 'other';
+
 export interface ExtraItem {
   id: string;
   name: string; // Ex: Flechas, Pedras de Mana, Escudo...
+  category?: ExtraItemCategory; // Categoria do recurso
   current: number; // Atual
   max: number; // Total
   notes?: string;

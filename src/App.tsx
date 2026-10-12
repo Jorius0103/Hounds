@@ -1313,6 +1313,10 @@ export default function App() {
       targetId: string;
       targetName: string;
       round: number;
+    },
+    manaStoneUsage?: {
+      itemId: string;
+      amount: number;
     }
   ) => {
     const entryWithId: ActionLogEntry = {
@@ -1332,12 +1336,26 @@ export default function App() {
     let playersChanged = false;
     let combatsChanged = false;
 
-    // 1. Atualizar Conjurador (FP + Log + activeSpells se isActiveSpell)
+    // 1. Atualizar Conjurador (FP + Itens Extras se Pedra de Mana + Log + activeSpells se isActiveSpell)
     const updateCasterInList = (list: NPC[]): { list: NPC[]; updated?: NPC } => {
       let updated: NPC | undefined;
       const newList = list.map((n) => {
         if (n.id !== npcId) return n;
         const newFp = Math.max(-n.fpMax, Math.min(n.fpMax, n.fpCurrent + fpDelta));
+
+        let nextExtraItems = n.extraItems || [];
+        if (manaStoneUsage && manaStoneUsage.amount > 0) {
+          nextExtraItems = nextExtraItems.map((it) => {
+            if (it.id === manaStoneUsage.itemId) {
+              return {
+                ...it,
+                current: Math.max(0, (it.current ?? 0) - manaStoneUsage.amount),
+              };
+            }
+            return it;
+          });
+        }
+
         let nextActiveSpells = n.activeSpells || [];
         if (spellData && spellData.isActiveSpell) {
           nextActiveSpells = [
@@ -1348,7 +1366,7 @@ export default function App() {
               targetId: spellData.targetId,
               targetName: spellData.targetName,
               round: spellData.round,
-              cost: Math.abs(fpDelta),
+              cost: Math.abs(fpDelta) + (manaStoneUsage?.amount || 0),
               casterId: n.id,
               casterName: n.name,
               createdAt: new Date().toISOString(),
@@ -1358,6 +1376,7 @@ export default function App() {
         updated = {
           ...n,
           fpCurrent: newFp,
+          extraItems: nextExtraItems,
           activeSpells: nextActiveSpells,
           history: [entryWithId, ...n.history],
           updatedAt: now,
@@ -1806,6 +1825,8 @@ export default function App() {
                   onOpenWeaponModal={(weapon) =>
                     setWeaponModalState({ isOpen: true, weapon: weapon || null })
                   }
+                  onRemoveActiveSpell={handleRemoveActiveSpell}
+                  onRemoveAffectedSpell={handleRemoveAffectedSpell}
                   isPlayerUser={isPlayerUser}
                   currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
                   hasEditPermission={canEditCurrent}
