@@ -62,7 +62,7 @@
   // Promise of the Mesa's HTML, fetched once.
   window.hubMesaSource = function () {
     if (!mesaHtml) {
-      mesaHtml = fetch('mesa.html').then(function (r) {
+      mesaHtml = fetch('mesa.html?v=' + Date.now()).then(function (r) {
         if (!r.ok) throw new Error('mesa.html ' + r.status);
         return r.text();
       }).then(function (html) {
