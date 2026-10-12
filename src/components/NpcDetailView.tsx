@@ -439,31 +439,31 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // Renderizador unificado da div Magias (Magias Ativas & Sob Efeito)
   const renderMagiasSection = () => {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-3 shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2.5 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-purple-400" />
+            <Sparkles size={15} className="text-purple-400" />
             <h3 className="text-xs font-bold text-white uppercase tracking-wider">
               Magias
             </h3>
           </div>
-          <div className="flex items-center gap-2.5 text-[11px] text-slate-400">
-            <span className="flex items-center gap-1.5 font-bold text-purple-300 bg-purple-950/70 border border-purple-800/60 px-2.5 py-0.5 rounded-lg">
+          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+            <span className="flex items-center gap-1 font-semibold text-purple-300">
               <span className="w-2 h-2 rounded-full bg-purple-500 inline-block animate-pulse"></span>
               Ativas: {(npc.activeSpells || []).length}
             </span>
             <span className="text-slate-600">|</span>
-            <span className="flex items-center gap-1.5 font-bold text-cyan-300 bg-cyan-950/70 border border-cyan-800/60 px-2.5 py-0.5 rounded-lg">
+            <span className="flex items-center gap-1 font-semibold text-cyan-300">
               <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block animate-pulse"></span>
               Sob Efeito: {(npc.affectedSpells || []).length}
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {/* Seção 1: Magias Ativas (Sustentadas por este conjurador) */}
-          <div className="bg-slate-950/80 border border-purple-900/40 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between border-b border-purple-950/80 pb-1.5">
+          <div className="bg-slate-950/80 border border-purple-900/40 rounded-xl p-2.5 space-y-1.5">
+            <div className="flex items-center justify-between border-b border-purple-950/80 pb-1">
               <div className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
                 <Sparkles size={13} className="text-purple-400" />
                 <span>Magias Ativas (Sustentadas)</span>
@@ -1102,9 +1102,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         </div>
       </div>
 
-      {/* Card: Magias (Magias Ativas & Sob Efeito) - Largura total destacada */}
-      {renderMagiasSection()}
-
       {/* 3. GRID PRINCIPAL: Coluna 1 (Vitals & Defesas) | Coluna 2 (Condições & Atributos) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* COLUNA DA ESQUERDA (6 cols): PV & FP, Defesas Ativas, Ações do Turno e Itens Extras */}
@@ -1265,6 +1262,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
           </div>
+
+          {/* Card: Magias (Magias Ativas & Sob Efeito) - Posicionamento de Meia Largura */}
+          {renderMagiasSection()}
 
           {/* Card: Defesas Ativas (Trocado para a coluna da esquerda) */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">

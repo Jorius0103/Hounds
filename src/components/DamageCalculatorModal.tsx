@@ -75,12 +75,11 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [spellTargetFilter, setSpellTargetFilter] = useState<'all' | 'player' | 'npc'>('all');
   const [spellRound, setSpellRound] = useState<number>(currentRound || 1);
 
-  // Gasto com Pedra de Mana na aba de Fadiga
-  const [useManaStone, setUseManaStone] = useState<boolean>(false);
-  const [selectedManaStoneId, setSelectedManaStoneId] = useState<string>(
-    manaStones[0]?.id || ''
-  );
-  const [manaStoneDeductAmount, setManaStoneDeductAmount] = useState<number | ''>(0);
+  // Seleção de recurso a gastar na aba de Fadiga: 'fp' para Fadiga Própria ou o ID de uma Pedra de Mana
+  const [selectedFatigueSource, setSelectedFatigueSource] = useState<string>('fp');
+  const selectedStone = selectedFatigueSource !== 'fp'
+    ? manaStones.find((s) => s.id === selectedFatigueSource)
+    : undefined;
 
   // Heal state (Agora pode curar PV ou curar Fadiga!)
   const [healTarget, setHealTarget] = useState<'hp' | 'fp'>('hp');
@@ -188,25 +187,25 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   };
 
   const handleConfirmFatigue = () => {
-    const totalFatigue = typeof fatigueDelta === 'number' ? fatigueDelta : 0;
+    const numFatigue = typeof fatigueDelta === 'number' ? fatigueDelta : 0;
     const targetChar = combatants.find((c) => c.id === spellTargetId) || npc;
     const spellNameTrimmed = fatigueSpellName.trim();
 
-    const activeStone = useManaStone
-      ? (manaStones.find((s) => s.id === selectedManaStoneId) || manaStones[0])
+    const targetStone = selectedFatigueSource !== 'fp'
+      ? manaStones.find((s) => s.id === selectedFatigueSource)
       : undefined;
-    const stoneSpend = (activeStone && useManaStone)
-      ? Math.max(0, Math.min(activeStone.current ?? 0, typeof manaStoneDeductAmount === 'number' ? manaStoneDeductAmount : 0))
-      : 0;
-    const personalFpSpend = Math.max(0, totalFatigue - stoneSpend);
 
     let costLabel = '';
-    if (stoneSpend > 0 && personalFpSpend > 0) {
-      costLabel = `-${stoneSpend} Mana [${activeStone?.name || 'Pedra'}] e -${personalFpSpend} FP Pessoal`;
-    } else if (stoneSpend > 0) {
-      costLabel = `-${stoneSpend} Mana da Pedra [${activeStone?.name || 'Pedra'}]`;
+    let personalFpSpend = 0;
+    let manaStoneUsage: { itemId: string; amount: number } | undefined = undefined;
+
+    if (targetStone) {
+      personalFpSpend = 0;
+      manaStoneUsage = { itemId: targetStone.id, amount: numFatigue };
+      costLabel = `-${numFatigue} Mana [${targetStone.name}]`;
     } else {
-      costLabel = `-${personalFpSpend} FP`;
+      personalFpSpend = numFatigue;
+      costLabel = `-${numFatigue} FP`;
     }
 
     let autoDesc = `Gasto de fadiga: ${costLabel}.`;
@@ -229,13 +228,6 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         }
       : undefined;
 
-    const manaStoneUsage = (activeStone && stoneSpend > 0)
-      ? {
-          itemId: activeStone.id,
-          amount: stoneSpend,
-        }
-      : undefined;
-
     onApplyFatigue(
       npc.id,
       -personalFpSpend,
@@ -243,7 +235,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         author: isPlayerView ? 'assistente' : 'mestre',
         type: 'fatigue',
-        amount: totalFatigue,
+        amount: numFatigue,
         description: desc,
         npcId: npc.id,
         npcName: npc.name,
@@ -574,17 +566,123 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
         {mode === 'fatigue' && (
           <div className="space-y-4">
+            {/* Seleção de Fonte: Fadiga Própria vs Pedras de Mana */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
-                Quantidade de Fadiga (FP) a Gastar
+              <label className="text-xs font-semibold text-slate-300 block mb-2">
+                Fonte de Energia / Fadiga para o Gasto:
               </label>
-              <input
-                type="number"
-                min="0"
-                value={fatigueDelta}
-                onChange={(e) => setFatigueDelta(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
-                className="w-32 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-lg font-mono font-bold text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Opção 1: Fadiga Própria */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedFatigueSource('fp')}
+                  className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                    selectedFatigueSource === 'fp'
+                      ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-2 rounded-lg ${selectedFatigueSource === 'fp' ? 'bg-cyan-900/60 text-cyan-300' : 'bg-slate-900 text-slate-400'}`}>
+                      <Zap size={16} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold block">Fadiga Própria (FP)</span>
+                      <span className="text-[10px] text-slate-400">Energia vital do personagem</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-mono font-bold text-cyan-300">
+                      {npc.fpCurrent} <span className="text-[10px] text-slate-400 font-normal">/ {npc.fpMax}</span>
+                    </span>
+                    <span className="text-[9px] text-slate-500 block uppercase font-mono">FP Atual</span>
+                  </div>
+                </button>
+
+                {/* Opções Pedras de Mana (se existirem na ficha) */}
+                {manaStones.map((stone) => {
+                  const isSelected = selectedFatigueSource === stone.id;
+                  const isEmpty = (stone.current ?? 0) <= 0;
+                  return (
+                    <button
+                      key={stone.id}
+                      type="button"
+                      onClick={() => setSelectedFatigueSource(stone.id)}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-cyan-900/60 text-cyan-300' : 'bg-slate-900 text-slate-400'}`}>
+                          <Sparkles size={16} />
+                        </div>
+                        <div className="overflow-hidden">
+                          <span className="text-xs font-bold block truncate max-w-[130px]" title={stone.name}>
+                            💎 {stone.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400">Pedra de Mana</span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`text-xs font-mono font-bold ${isEmpty ? 'text-rose-400' : 'text-cyan-300'}`}>
+                          {stone.current ?? 0} <span className="text-[10px] text-slate-400 font-normal">/ {stone.max}</span>
+                        </span>
+                        <span className="text-[9px] text-slate-500 block uppercase font-mono">
+                          {isEmpty ? 'Sem Cargas' : 'Mana'}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quantidade a Gastar */}
+            <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300">
+                  {selectedStone ? `Quantidade de Mana a gastar da ${selectedStone.name}` : 'Quantidade de Fadiga (FP) a Gastar'}
+                </label>
+                {selectedStone && (
+                  <span className="text-[11px] font-mono text-cyan-400">
+                    Disponível na pedra: {selectedStone.current ?? 0}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max={selectedStone ? selectedStone.current : undefined}
+                  value={fatigueDelta}
+                  onChange={(e) => setFatigueDelta(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-lg font-mono font-bold text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[1, 2, 3, 4, 5].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setFatigueDelta(val)}
+                      className="text-xs font-mono bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-750 px-2 py-1.5 rounded-lg font-medium"
+                    >
+                      {val}
+                    </button>
+                  ))}
+                  {selectedStone && (
+                    <button
+                      type="button"
+                      onClick={() => setFatigueDelta(selectedStone.current ?? 0)}
+                      className="text-xs font-bold bg-cyan-900/60 hover:bg-cyan-800/80 text-cyan-200 border border-cyan-700 px-2 py-1.5 rounded-lg"
+                      title="Usar toda a mana restante desta pedra"
+                    >
+                      Máx ({selectedStone.current ?? 0})
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Magia informada */}
@@ -724,123 +822,13 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               )}
             </div>
 
-            {/* Se houver Pedras de Mana cadastradas, opção de abater gastos da pedra */}
-            {manaStones.length > 0 && (() => {
-              const activeStone = manaStones.find((s) => s.id === (selectedManaStoneId || manaStones[0]?.id)) || manaStones[0];
-              const totalVal = typeof fatigueDelta === 'number' ? fatigueDelta : 0;
-              const stoneSpendVal = useManaStone
-                ? Math.max(0, Math.min(activeStone?.current ?? 0, typeof manaStoneDeductAmount === 'number' ? manaStoneDeductAmount : 0))
-                : 0;
-              const personalFpVal = Math.max(0, totalVal - stoneSpendVal);
-
-              return (
-                <div className="bg-cyan-950/30 border border-cyan-800/60 rounded-xl p-3 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={useManaStone}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setUseManaStone(checked);
-                          if (checked) {
-                            setManaStoneDeductAmount(Math.min(totalVal, activeStone?.current ?? 0));
-                          } else {
-                            setManaStoneDeductAmount(0);
-                          }
-                        }}
-                        className="w-4 h-4 rounded bg-slate-900 border-cyan-700 text-cyan-600 focus:ring-cyan-500"
-                      />
-                      <div>
-                        <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-                          <Sparkles size={13} className="text-cyan-400" />
-                          Gastar de Pedra de Mana
-                        </span>
-                        <span className="text-slate-400 text-[10px] block">
-                          Usa as cargas de mana da pedra para pagar o custo
-                        </span>
-                      </div>
-                    </label>
-                    <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">
-                      {manaStones.length} pedra{manaStones.length > 1 ? 's' : ''} disponível
-                    </span>
-                  </div>
-
-                  {useManaStone && (
-                    <div className="space-y-2 pt-2 border-t border-cyan-900/50">
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                          Pedra de Mana Selecionada:
-                        </label>
-                        <select
-                          value={activeStone.id}
-                          onChange={(e) => {
-                            setSelectedManaStoneId(e.target.value);
-                            const st = manaStones.find((s) => s.id === e.target.value);
-                            setManaStoneDeductAmount(Math.min(totalVal, st?.current ?? 0));
-                          }}
-                          className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                        >
-                          {manaStones.map((st) => (
-                            <option key={st.id} value={st.id}>
-                              💎 {st.name} ({st.current} / {st.max} de Mana)
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 bg-slate-900/90 p-2 rounded-lg border border-slate-800">
-                        <div className="text-xs">
-                          <span className="text-slate-200 font-medium">Quantidade da Pedra:</span>
-                          <span className="text-[10px] text-cyan-400 font-mono block">
-                            Disponível na pedra: {activeStone.current} de Mana
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            min="0"
-                            max={activeStone.current}
-                            value={manaStoneDeductAmount}
-                            onChange={(e) => {
-                              const val = e.target.value === '' ? '' : Math.max(0, Math.min(activeStone.current, parseInt(e.target.value, 10) || 0));
-                              setManaStoneDeductAmount(val);
-                            }}
-                            className="w-16 bg-slate-950 border border-cyan-800 rounded-lg px-2 py-1 text-center font-mono font-bold text-cyan-300 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setManaStoneDeductAmount(Math.min(totalVal, activeStone.current))}
-                            className="text-[10px] bg-cyan-900/60 hover:bg-cyan-800/80 text-cyan-200 px-1.5 py-1 rounded border border-cyan-700 font-bold"
-                            title="Usar o máximo possível da pedra para cobrir o gasto"
-                          >
-                            Máx
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Resumo do Pagamento */}
-                      <div className="flex items-center justify-between text-[11px] bg-slate-950/70 p-2 rounded-lg border border-slate-850">
-                        <span className="text-slate-400">
-                          💎 Da Pedra: <strong className="text-cyan-300 font-mono">-{stoneSpendVal} Mana</strong>
-                        </span>
-                        <span className="text-slate-400">
-                          👤 Do FP Pessoal: <strong className="text-amber-300 font-mono">-{personalFpVal} FP</strong>
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
             <div>
               <label className="text-xs font-semibold text-slate-400 block mb-1">
-                Motivo do Gasto (Magia, Esforço Extra, Corrida)
+                Motivo do Gasto (opcional)
               </label>
               <input
                 type="text"
-                placeholder="Motivo do gasto..."
+                placeholder="Ex: Magia, Esforço Extra, Corrida..."
                 value={customDescription}
                 onChange={(e) => setCustomDescription(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
@@ -848,15 +836,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
             </div>
 
             {(() => {
-              const activeStone = useManaStone
-                ? (manaStones.find((s) => s.id === selectedManaStoneId) || manaStones[0])
-                : undefined;
-              const stoneSpendVal = (activeStone && useManaStone)
-                ? Math.max(0, Math.min(activeStone.current ?? 0, typeof manaStoneDeductAmount === 'number' ? manaStoneDeductAmount : 0))
-                : 0;
               const totalVal = typeof fatigueDelta === 'number' ? fatigueDelta : 0;
-              const personalFpVal = Math.max(0, totalVal - stoneSpendVal);
-
               return (
                 <button
                   onClick={handleConfirmFatigue}
@@ -864,11 +844,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 >
                   <Zap size={16} />
                   <span>
-                    {stoneSpendVal > 0 && personalFpVal > 0
-                      ? `Gastar ${stoneSpendVal} da Pedra + ${personalFpVal} FP`
-                      : stoneSpendVal > 0
-                      ? `Gastar ${stoneSpendVal} Mana da Pedra`
-                      : `Gastar ${totalVal} FP`}
+                    {selectedStone
+                      ? `Gastar ${totalVal} Mana de ${selectedStone.name}`
+                      : `Gastar ${totalVal} FP de Fadiga`}
                   </span>
                 </button>
               );
