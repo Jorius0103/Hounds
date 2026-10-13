@@ -138,6 +138,12 @@ export interface ActionLogEntry {
   hpAfter?: number;
   fpBefore?: number;
   fpAfter?: number;
+
+  // Metadados para agrupamento inteligente de cliques consecutivos na mesma variável
+  variableKey?: string;
+  initialValue?: any;
+  initialValues?: Record<string, any>;
+  timestampMs?: number;
 }
 
 export interface ActiveSpell {

@@ -1108,21 +1108,84 @@ export default function App() {
         A[k] !== B[k] && /^(hpCurrent|hpMax|fpCurrent|fpMax|cond|combatManeuver|isDead|ta\..*|item\..*|actSpell\..*|affSpell\..*)$/.test(k)
       ).sort();
       if (!keys.length) return neu;
+
+      const now = Date.now();
+      const author = currentUser?.role === 'mestre' ? 'mestre' : 'assistente';
+      const authorName = (currentUser && currentUser.name) || (currentUser && currentUser.role === 'mestre' ? 'Mestre' : 'Assistente');
+      const currentRound = activeCombat ? (activeCombat.currentRound ?? (activeCombat as any).round ?? 0) : 0;
+      const combatId = activeCombat ? activeCombat.id : undefined;
+
+      const variableKey = keys.join(',');
+      const lastEntry = ho[0];
+
+      // Se o último registro do histórico for na mesma variável, mesma rodada e mesmo autor (dentro da janela de 90s)
+      const lastTime = lastEntry ? (lastEntry.timestampMs || parseInt(lastEntry.id.split('-')[1] || '0', 10)) : 0;
+      const isRecent = !lastTime || (now - lastTime < 90000);
+
+      const isSameVariable =
+        lastEntry &&
+        (lastEntry.type === 'edit' || (lastEntry as any).auto === 1) &&
+        (lastEntry.variableKey === variableKey || (lastEntry as any).keys === variableKey) &&
+        lastEntry.round === currentRound &&
+        lastEntry.author === author &&
+        isRecent;
+
+      if (isSameVariable) {
+        // Constrói o estado inicial A a partir do valor inicial guardado neste registro
+        const startA = { ...A };
+        if (keys.length === 1) {
+          if (lastEntry.initialValue !== undefined) {
+            startA[keys[0]] = lastEntry.initialValue;
+          }
+        } else if (lastEntry.initialValues) {
+          Object.assign(startA, lastEntry.initialValues);
+        }
+
+        // Se voltou exatamente ao valor inicial de quando começou a editar esta variável (ex: -1 e depois +1),
+        // remove o registro para não poluir o histórico
+        const returnedToInitial = keys.every((k) => startA[k] === B[k]);
+        if (returnedToInitial) {
+          return {
+            ...neu,
+            history: ho.slice(1),
+          };
+        }
+
+        const d = hubDescribe(startA, B, keys, conditions);
+        if (!d) return neu;
+
+        const updatedEntry: ActionLogEntry = {
+          ...lastEntry,
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          timestampMs: now,
+          description: d + (authorName ? ' — por ' + authorName : ''),
+        };
+
+        return {
+          ...neu,
+          history: [updatedEntry, ...ho.slice(1)],
+        };
+      }
+
+      // Se trocou a variável (ou primeiro clique nesta variável), abre um NOVO registro
       const d = hubDescribe(A, B, keys, conditions);
       if (!d) return neu;
-      const now = Date.now();
-      const ks = keys.join(',');
+
       const newEntry: ActionLogEntry = {
         id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: currentUser?.role === 'mestre' ? 'mestre' : 'assistente',
-        authorName: (currentUser && currentUser.name) || (currentUser && currentUser.role === 'mestre' ? 'Mestre' : 'Assistente'),
+        timestampMs: now,
+        author: author,
+        authorName: authorName,
         type: 'edit',
-        description: d + (currentUser && currentUser.name ? ' — por ' + currentUser.name : ''),
-        combatId: activeCombat ? activeCombat.id : undefined,
-        round: activeCombat ? (activeCombat.currentRound ?? (activeCombat as any).round ?? 0) : 0,
+        variableKey: variableKey,
+        initialValue: keys.length === 1 ? A[keys[0]] : undefined,
+        initialValues: keys.length > 1 ? Object.fromEntries(keys.map((k) => [k, A[k]])) : undefined,
+        description: d + (authorName ? ' — por ' + authorName : ''),
+        combatId: combatId,
+        round: currentRound,
       };
-      // Mantém todo o histórico anterior e adiciona o novo registro
+
       return {
         ...neu,
         history: [newEntry, ...hn],

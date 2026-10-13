@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActionLogEntry, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2 } from 'lucide-react';
+import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 
 interface CombatLogCardProps {
@@ -60,7 +60,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       .trim();
   }, [entry.description, isPlayerView]);
 
-  // Badge styles based on type
+  // Badge styles based on type and variableKey
   const getTypeBadge = () => {
     switch (entry.type) {
       case 'damage': {
@@ -99,25 +99,100 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           bg: 'bg-amber-950/70 border-amber-800/80 text-amber-300',
         };
       }
-      default:
+      default: {
+        const vk = entry.variableKey || (entry as any).keys || '';
+        const desc = entry.description || '';
+        if (vk === 'hpCurrent' || vk === 'hpMax' || desc.startsWith('PV:') || desc.startsWith('PV máx.:')) {
+          return {
+            icon: <Heart size={12} className="text-rose-400" />,
+            label: 'PV',
+            bg: 'bg-rose-950/70 border-rose-800/80 text-rose-300',
+          };
+        }
+        if (vk === 'fpCurrent' || vk === 'fpMax' || desc.startsWith('FP:') || desc.startsWith('FP máx.:')) {
+          return {
+            icon: <Zap size={12} className="text-cyan-400" />,
+            label: 'Fadiga',
+            bg: 'bg-cyan-950/70 border-cyan-800/80 text-cyan-300',
+          };
+        }
+        if (
+          vk.startsWith('ta.parry') ||
+          vk.startsWith('ta.dodge') ||
+          vk.startsWith('ta.block') ||
+          vk === 'ta.usedRetreat' ||
+          desc.includes('Aparar') ||
+          desc.includes('Esquiva') ||
+          desc.includes('Bloqueio') ||
+          desc.includes('Recuo')
+        ) {
+          return {
+            icon: <Shield size={12} className="text-amber-400" />,
+            label: 'Defesa',
+            bg: 'bg-amber-950/70 border-amber-800/80 text-amber-300',
+          };
+        }
+        if (vk === 'ta.shock' || desc.startsWith('Choque:')) {
+          return {
+            icon: <AlertTriangle size={12} className="text-amber-400" />,
+            label: 'Choque',
+            bg: 'bg-amber-950/70 border-amber-800/80 text-amber-300',
+          };
+        }
+        if (vk.startsWith('item.')) {
+          return {
+            icon: <Package size={12} className="text-amber-400" />,
+            label: 'Item',
+            bg: 'bg-amber-950/70 border-amber-800/80 text-amber-300',
+          };
+        }
+        if (entry.type === 'spell' || vk.startsWith('actSpell.') || vk.startsWith('affSpell.')) {
+          return {
+            icon: <Sparkles size={12} className="text-purple-400" />,
+            label: 'Magia',
+            bg: 'bg-purple-950/70 border-purple-800/80 text-purple-300',
+          };
+        }
+        if (entry.type === 'turn' || desc.startsWith('Turno de')) {
+          return {
+            icon: <RotateCcw size={12} className="text-blue-400" />,
+            label: 'Turno',
+            bg: 'bg-blue-950/70 border-blue-800/80 text-blue-300',
+          };
+        }
+        if (entry.type === 'condition' || vk === 'cond' || desc.startsWith('Condição')) {
+          return {
+            icon: <AlertTriangle size={12} className="text-purple-400" />,
+            label: 'Condição',
+            bg: 'bg-purple-950/70 border-purple-800/80 text-purple-300',
+          };
+        }
         return {
           icon: <FileText size={12} className="text-slate-400" />,
-          label: 'Nota',
+          label: entry.type === 'edit' ? 'Ajuste' : 'Nota',
           bg: 'bg-slate-800 border-slate-700 text-slate-300',
         };
+      }
     }
   };
 
   const badge = getTypeBadge();
+  const vk = entry.variableKey || (entry as any).keys || '';
+  const desc = entry.description || '';
+  const isHp = isDamage || vk === 'hpCurrent' || desc.startsWith('PV:');
+  const isFp = isFatigue || vk === 'fpCurrent' || desc.startsWith('FP:');
+  const isDef = vk.startsWith('ta.parry') || vk.startsWith('ta.dodge') || vk.startsWith('ta.block') || vk === 'ta.shock';
 
   return (
     <div
       onClick={() => entry.npcId && onSelectNpc?.(entry.npcId)}
       className={`bg-slate-950/80 border rounded-xl transition-all shadow-sm ${
-        isDamage
+        isHp
           ? 'border-rose-950/60 hover:border-rose-800/80'
-          : isFatigue
+          : isFp
           ? 'border-cyan-950/60 hover:border-cyan-800/80'
+          : isDef
+          ? 'border-amber-950/60 hover:border-amber-800/80'
           : 'border-slate-800/80 hover:border-slate-750'
       } ${entry.npcId && onSelectNpc ? 'cursor-pointer hover:bg-slate-900/90' : ''} ${
         isCompact ? 'p-2 space-y-1.5' : 'p-3 space-y-2'
