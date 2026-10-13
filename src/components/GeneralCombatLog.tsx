@@ -9,6 +9,7 @@ interface GeneralCombatLogProps {
   onSelectNpc: (npcId: string) => void;
   selectedNpcId: string;
   currentUserRole: UserRole;
+  currentUserName?: string;
   onClearHistory?: () => void;
   onDeleteEntry?: (entryId: string, npcId?: string) => void;
 }
@@ -19,13 +20,17 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   onSelectNpc,
   selectedNpcId,
   currentUserRole,
+  currentUserName,
   onClearHistory,
   onDeleteEntry,
 }) => {
-  // Filtro 1: Tipo de Personagem (Todos | Jogadores | NPCs)
+  // Filtro 1: Rodada ('all' ou número da rodada)
+  const [selectedRoundFilter, setSelectedRoundFilter] = useState<number | 'all'>('all');
+
+  // Filtro 2: Tipo de Personagem (Todos | Jogadores | NPCs)
   const [characterFilter, setCharacterFilter] = useState<'all' | 'players' | 'npcs'>('all');
 
-  // Filtro 2: Busca Livre
+  // Filtro 3: Busca Livre
   const [searchTerm, setSearchTerm] = useState('');
 
   // Collect and sort all logs across all active combat NPCs and Personagens
@@ -38,11 +43,21 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
 
     const list: any[] = [];
     for (const npc of combinedCharacters) {
-      if (currentUserRole === 'jogador' && npc.isVisibleToPlayer === false) {
+      const isPlayerChar = npc.characterType === 'player';
+
+      // 1. Visibilidade do combatente:
+      // Personagens são SEMPRE visíveis para jogadores (podem ver completo).
+      // NPCs respeitam a visibilidade isVisibleToPlayer.
+      if (currentUserRole === 'jogador' && !isPlayerChar && npc.isVisibleToPlayer === false) {
         continue;
       }
 
       for (const entry of npc.history || []) {
+        // 2. As alterações feitas pelo mestre nos NPCs não devem refletir para os jogadores
+        if (currentUserRole === 'jogador' && !isPlayerChar && entry.author === 'mestre') {
+          continue;
+        }
+
         list.push({
           ...entry,
           npcId: npc.id,
@@ -64,10 +79,35 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
     });
   }, [activeCombat, additionalCharacters, currentUserRole]);
 
-  // Apply filters
+  // Lista de rodadas disponíveis no combate e no histórico
+  const availableRounds = useMemo(() => {
+    const roundsSet = new Set<number>();
+    if (activeCombat?.currentRound !== undefined) {
+      roundsSet.add(activeCombat.currentRound);
+    }
+    for (const entry of allLogs) {
+      if (entry.round !== undefined) {
+        roundsSet.add(entry.round);
+      }
+    }
+    if (roundsSet.size === 0) {
+      roundsSet.add(0);
+    }
+    return Array.from(roundsSet).sort((a, b) => a - b);
+  }, [allLogs, activeCombat?.currentRound]);
+
+  // Apply filters: Rodada, Tipo de Personagem e Busca Livre funcionam em conjunto
   const filteredLogs = useMemo(() => {
     return allLogs.filter((entry) => {
-      // 1. Filtro de Tipo de Personagem
+      // 1. Filtro de Rodada
+      if (selectedRoundFilter !== 'all') {
+        const entryRound = entry.round !== undefined ? entry.round : 0;
+        if (entryRound !== selectedRoundFilter) {
+          return false;
+        }
+      }
+
+      // 2. Filtro de Tipo de Personagem
       if (characterFilter === 'players' && entry.npcCharacterType !== 'player') {
         return false;
       }
@@ -75,7 +115,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         return false;
       }
 
-      // 2. Campo de busca livre
+      // 3. Campo de busca livre
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
         const matchesNpc = entry.npcName?.toLowerCase().includes(query);
@@ -84,14 +124,25 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         const matchesLoc = entry.hitLocation?.toLowerCase().includes(query);
         const matchesItem = entry.itemName?.toLowerCase().includes(query);
         const matchesDmgType = entry.damageType?.toLowerCase().includes(query);
-        if (!matchesNpc && !matchesPlayer && !matchesDesc && !matchesLoc && !matchesItem && !matchesDmgType) {
+        const matchesAuthor =
+          entry.authorName?.toLowerCase().includes(query) ||
+          entry.author?.toLowerCase().includes(query);
+        if (
+          !matchesNpc &&
+          !matchesPlayer &&
+          !matchesDesc &&
+          !matchesLoc &&
+          !matchesItem &&
+          !matchesDmgType &&
+          !matchesAuthor
+        ) {
           return false;
         }
       }
 
       return true;
     });
-  }, [allLogs, characterFilter, searchTerm]);
+  }, [allLogs, selectedRoundFilter, characterFilter, searchTerm]);
 
   return (
     <div className="bg-slate-900/95 border border-slate-800 rounded-2xl shadow-xl flex flex-col h-[calc(100vh-140px)] min-h-[500px] overflow-hidden">
@@ -170,6 +221,40 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
           </div>
         </div>
 
+        {/* Filtro por Rodada */}
+        <div className="flex items-center justify-between gap-1 text-[10px]">
+          <span className="text-slate-500 font-semibold px-1 shrink-0">Rodada:</span>
+          <div className="flex-1 flex items-center gap-1.5">
+            <select
+              value={selectedRoundFilter}
+              onChange={(e) =>
+                setSelectedRoundFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))
+              }
+              className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              <option value="all">Todas as Rodadas</option>
+              {availableRounds.map((r) => {
+                const count = allLogs.filter((l) => (l.round ?? 0) === r).length;
+                return (
+                  <option key={r} value={r}>
+                    Rodada {r} ({count} {count === 1 ? 'evento' : 'eventos'})
+                  </option>
+                );
+              })}
+            </select>
+            {selectedRoundFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setSelectedRoundFilter('all')}
+                className="px-2 py-1 text-[10px] text-amber-400 hover:text-white bg-slate-800 border border-slate-700 rounded-lg font-medium whitespace-nowrap transition-colors"
+                title="Ver todas as rodadas"
+              >
+                Todas
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* 3. Campo de Busca Livre */}
         <div className="relative">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -207,11 +292,12 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                 ? 'Os lançamentos de dano, fadiga, curas e condições aparecerão aqui em tempo real.'
                 : 'Tente ajustar os filtros acima ou limpar a busca de texto.'}
             </p>
-            {searchTerm && (
+            {(searchTerm || characterFilter !== 'all' || selectedRoundFilter !== 'all') && (
               <button
                 onClick={() => {
                   setSearchTerm('');
                   setCharacterFilter('all');
+                  setSelectedRoundFilter('all');
                 }}
                 className="mt-1 text-xs text-amber-400 hover:underline font-semibold"
               >
@@ -231,6 +317,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                 onSelectNpc={onSelectNpc}
                 isCompact={true}
                 currentUserRole={currentUserRole}
+                currentUserName={currentUserName}
                 isPlayer={currentUserRole === 'jogador'}
                 onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
               />

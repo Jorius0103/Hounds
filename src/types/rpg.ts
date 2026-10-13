@@ -102,7 +102,9 @@ export interface ConditionDefinition {
 export interface ActionLogEntry {
   id: string;
   timestamp: string;
-  author: 'mestre' | 'assistente';
+  round?: number;
+  author: 'mestre' | 'assistente' | string;
+  authorName?: string;
   type: 'damage' | 'fatigue' | 'heal' | 'rest' | 'note' | 'defense' | 'condition' | 'item';
   description: string;
   amount?: number;

@@ -34,6 +34,7 @@ interface DamageCalculatorModalProps {
   isPlayerView?: boolean;
   combatants?: NPC[];
   currentRound?: number;
+  currentUserName?: string;
 }
 
 export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
@@ -47,6 +48,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   isPlayerView = false,
   combatants = [],
   currentRound = 1,
+  currentUserName,
 }) => {
   const [mode, setMode] = useState<'damage' | 'fatigue' | 'heal' | 'item'>('damage');
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
@@ -54,6 +56,12 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [damageType, setDamageType] = useState<string>('');
   const [bypassDr, setBypassDr] = useState<boolean>(false);
   const [customDescription, setCustomDescription] = useState<string>('');
+
+  // Distinção de visão:
+  // De Personagens o jogador pode ver tudo.
+  // De NPC o jogador tem visão restrita para não saber os dados dos NPCs.
+  const isNpcTarget = npc.characterType !== 'player';
+  const isRestrictedNpcView = isPlayerView && isNpcTarget;
 
   // Identifica pedras de mana entre os itens extras
   const isManaStoneItem = (it: ExtraItem) => {
@@ -63,14 +71,20 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   };
 
   // Pedras de mana para a aba Fadiga (ligadas à energia de magias - apenas FAVORITADAS)
-  const manaStones = (npc.extraItems || [])
-    .filter(isManaStoneItem)
-    .filter((it) => Boolean(it.isFavorite));
+  // Jogadores só podem tirar fadiga de NPCs da fadiga real, não podem visualizar pedras de mana de NPCs
+  const manaStones = isRestrictedNpcView
+    ? []
+    : (npc.extraItems || [])
+        .filter(isManaStoneItem)
+        .filter((it) => Boolean(it.isFavorite));
 
   // Itens Extras disponíveis na aba Item (exclui Pedras de Mana e lista apenas FAVORITADOS)
-  const availableItems = (npc.extraItems || [])
-    .filter((it) => !isManaStoneItem(it))
-    .filter((it) => Boolean(it.isFavorite));
+  // Controle de itens extras de NPCs fica apenas com o Mestre
+  const availableItems = isRestrictedNpcView
+    ? []
+    : (npc.extraItems || [])
+        .filter((it) => !isManaStoneItem(it))
+        .filter((it) => Boolean(it.isFavorite));
 
   // Fatigue state (Padrão 0)
   const [fatigueDelta, setFatigueDelta] = useState<number | ''>(0);
@@ -84,8 +98,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
   // Seleção de recurso a gastar na aba de Fadiga: 'fp' para Fadiga Própria ou o ID de uma Pedra de Mana
   const [selectedFatigueSource, setSelectedFatigueSource] = useState<string>('fp');
-  const selectedStone = selectedFatigueSource !== 'fp'
-    ? manaStones.find((s) => s.id === selectedFatigueSource)
+  const effectiveFatigueSource = isRestrictedNpcView ? 'fp' : selectedFatigueSource;
+  const selectedStone = effectiveFatigueSource !== 'fp'
+    ? manaStones.find((s) => s.id === effectiveFatigueSource)
     : undefined;
 
   // Heal state (Agora pode curar PV ou curar Fadiga!)
@@ -177,7 +192,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
     onApplyDamage(npc.id, finalDamage, {
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      author: isPlayerView ? 'assistente' : 'mestre',
+      round: currentRound ?? 0,
+      author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+      authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
       type: 'damage',
       amount: finalDamage,
       description: desc,
@@ -185,6 +202,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       npcName: npc.name,
       npcAvatar: npc.avatar,
       npcPreset: npc.avatarPreset,
+      npcCharacterType: npc.characterType,
       hitLocation: locName,
       rawDamage: numericRawDamage,
       damageType: effectiveTypeLabel,
@@ -252,7 +270,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       -personalFpSpend,
       {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: isPlayerView ? 'assistente' : 'mestre',
+        round: currentRound ?? 0,
+        author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+        authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'fatigue',
         amount: numFatigue,
         description: desc,
@@ -260,6 +280,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcName: npc.name,
         npcAvatar: npc.avatar,
         npcPreset: npc.avatarPreset,
+        npcCharacterType: npc.characterType,
         fpBefore: npc.fpCurrent,
         fpAfter: npc.fpCurrent - personalFpSpend,
       },
@@ -274,7 +295,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       const desc = customDescription.trim() || `Recuperação de PV: +${healAmount} PV.`;
       onApplyDamage(npc.id, -healAmount, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: isPlayerView ? 'assistente' : 'mestre',
+        round: currentRound ?? 0,
+        author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+        authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'heal',
         amount: healAmount,
         description: desc,
@@ -282,6 +305,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcName: npc.name,
         npcAvatar: npc.avatar,
         npcPreset: npc.avatarPreset,
+        npcCharacterType: npc.characterType,
         hpBefore: npc.hpCurrent,
         hpAfter: Math.min(npc.hpMax, npc.hpCurrent + healAmount),
       });
@@ -289,7 +313,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       const desc = customDescription.trim() || `Descanso / Recuperação de Fadiga: +${healAmount} FP.`;
       onApplyFatigue(npc.id, healAmount, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: isPlayerView ? 'assistente' : 'mestre',
+        round: currentRound ?? 0,
+        author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+        authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'rest',
         amount: healAmount,
         description: desc,
@@ -297,6 +323,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcName: npc.name,
         npcAvatar: npc.avatar,
         npcPreset: npc.avatarPreset,
+        npcCharacterType: npc.characterType,
         fpBefore: npc.fpCurrent,
         fpAfter: Math.min(npc.fpMax, npc.fpCurrent + healAmount),
       });
@@ -327,7 +354,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     if (onApplyItemChange) {
       onApplyItemChange(npc.id, targetItem.id, delta, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: isPlayerView ? 'assistente' : 'mestre',
+        round: currentRound ?? 0,
+        author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+        authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'item',
         amount: delta,
         description: desc,
@@ -335,6 +364,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcName: npc.name,
         npcAvatar: npc.avatar,
         npcPreset: npc.avatarPreset,
+        npcCharacterType: npc.characterType,
         itemId: targetItem.id,
         itemName: targetItem.name,
         itemBefore: currentVal,
@@ -344,6 +374,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     onClose();
   };
 
+  const effectiveMode = isRestrictedNpcView && (mode === 'item' || mode === 'heal') ? 'damage' : mode;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
       <div className="relative w-full max-w-lg bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-5">
@@ -351,7 +383,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
           <div className="flex items-center gap-2">
             <Heart className="text-rose-400" size={20} />
             <h3 className="text-base font-bold text-white">
-              Lançar Dano / Fadiga / Itens: <span className="text-amber-400">{npc.name || 'NPC'}</span>
+              Lançar Dano / Fadiga{isRestrictedNpcView ? '' : ' / Itens'}: <span className="text-amber-400">{npc.name || 'NPC'}</span>
             </h3>
           </div>
           <button
@@ -367,7 +399,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
           <button
             onClick={() => setMode('damage')}
             className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
-              mode === 'damage' ? 'bg-rose-900/60 text-rose-200 border border-rose-700/50' : 'text-slate-400 hover:text-white'
+              effectiveMode === 'damage' ? 'bg-rose-900/60 text-rose-200 border border-rose-700/50' : 'text-slate-400 hover:text-white'
             }`}
           >
             <Shield size={13} />
@@ -376,26 +408,28 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
           <button
             onClick={() => setMode('fatigue')}
             className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
-              mode === 'fatigue' ? 'bg-cyan-900/60 text-cyan-200 border border-cyan-700/50' : 'text-slate-400 hover:text-white'
+              effectiveMode === 'fatigue' ? 'bg-cyan-900/60 text-cyan-200 border border-cyan-700/50' : 'text-slate-400 hover:text-white'
             }`}
           >
             <Zap size={13} />
             <span>Fadiga (FP)</span>
           </button>
-          <button
-            onClick={() => setMode('item')}
-            className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
-              mode === 'item' ? 'bg-amber-900/60 text-amber-200 border border-amber-700/50' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Package size={13} />
-            <span>Itens Extras</span>
-          </button>
-          {!isPlayerView && (
+          {!isRestrictedNpcView && (
+            <button
+              onClick={() => setMode('item')}
+              className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                effectiveMode === 'item' ? 'bg-amber-900/60 text-amber-200 border border-amber-700/50' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Package size={13} />
+              <span>Itens Extras</span>
+            </button>
+          )}
+          {!isRestrictedNpcView && (
             <button
               onClick={() => setMode('heal')}
               className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                mode === 'heal' ? 'bg-emerald-900/60 text-emerald-200 border border-emerald-700/50' : 'text-slate-400 hover:text-white'
+                effectiveMode === 'heal' ? 'bg-emerald-900/60 text-emerald-200 border border-emerald-700/50' : 'text-slate-400 hover:text-white'
               }`}
             >
               <Sparkles size={13} />
@@ -404,9 +438,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
           )}
         </div>
 
-        {mode === 'damage' && (
+        {effectiveMode === 'damage' && (
           <div className="space-y-4">
-            {/* Hit Location Selector: Para o jogador mostra APENAS o local, sem armadura nem RD! */}
+            {/* Hit Location Selector: Para o jogador atacando NPC mostra APENAS o local, sem armadura nem RD! */}
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1">
                 Local do Corpo Atingido
@@ -426,7 +460,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                     : '';
                   return (
                     <option key={loc.id} value={loc.id}>
-                      {isPlayerView
+                      {isRestrictedNpcView
                         ? loc.location
                         : `${loc.location} — ${loc.armorName || 'Sem armadura'} (RD ${loc.dr}${modText}${
                             npc.naturalDr > 0 ? ` + ${npc.naturalDr} Natural` : ''
@@ -504,8 +538,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               </div>
             )}
 
-            {/* Bypass DR option (Apenas Mestre) */}
-            {!isPlayerView && !isNoLocation && (
+            {/* Bypass DR option (Apenas Mestre ou para Personagens) */}
+            {!isRestrictedNpcView && !isNoLocation && (
               <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
                 <input
                   type="checkbox"
@@ -517,8 +551,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               </label>
             )}
 
-            {/* Resumo do Cálculo: Oculto para o jogador! Apenas o Mestre pode ver o resumo */}
-            {!isPlayerView && (
+            {/* Resumo do Cálculo: Oculto para o jogador ao atacar NPC! De Personagens o jogador pode ver tudo */}
+            {!isRestrictedNpcView && (
               <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-1 font-mono text-xs">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center justify-between">
                   <span>Resumo do Cálculo GURPS:</span>
@@ -623,83 +657,95 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
             >
               <Heart size={16} />
-              <span>{isPlayerView ? 'Lançar Dano' : `Aplicar -${finalDamage} PV de Dano`}</span>
+              <span>{isRestrictedNpcView ? 'Lançar Dano' : `Aplicar -${finalDamage} PV de Dano`}</span>
             </button>
           </div>
         )}
 
-        {mode === 'fatigue' && (
+        {effectiveMode === 'fatigue' && (
           <div className="space-y-3">
-            {/* Seleção de Fonte: Fadiga Própria vs Pedras de Mana (layout compacto com scroll) */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-semibold text-slate-300">
-                  Fonte de Energia / Fadiga para o Gasto:
-                </label>
-                {manaStones.length > 0 && (
-                  <span className="text-[10px] text-cyan-400 font-mono">
-                    {manaStones.length + 1} opções disponíveis
-                  </span>
-                )}
+            {/* Seleção de Fonte: Fadiga Real vs Pedras de Mana */}
+            {isRestrictedNpcView ? (
+              <div className="bg-slate-950/70 border border-cyan-800/60 rounded-xl p-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap size={14} className="text-cyan-400" />
+                  <span className="text-xs font-bold text-white">Fadiga Real (FP)</span>
+                </div>
+                <span className="text-[10px] text-slate-400 italic">
+                  Gasto debitado da fadiga do NPC
+                </span>
               </div>
-              <div className="max-h-36 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-1.5 custom-scrollbar">
-                {/* Opção 1: Fadiga Própria */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedFatigueSource('fp')}
-                  className={`py-1.5 px-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
-                    selectedFatigueSource === 'fp'
-                      ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
-                      : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Zap size={14} className={selectedFatigueSource === 'fp' ? 'text-cyan-400' : 'text-slate-500'} />
-                    <span className="text-xs font-bold truncate">Fadiga Própria (FP)</span>
-                  </div>
-                  <div className="text-right shrink-0 font-mono text-xs font-bold text-cyan-300">
-                    {npc.fpCurrent} <span className="text-[10px] text-slate-400 font-normal">/ {npc.fpMax}</span>
-                  </div>
-                </button>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Fonte de Energia / Fadiga para o Gasto:
+                  </label>
+                  {manaStones.length > 0 && (
+                    <span className="text-[10px] text-cyan-400 font-mono">
+                      {manaStones.length + 1} opções disponíveis
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-36 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-1.5 custom-scrollbar">
+                  {/* Opção 1: Fadiga Própria */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFatigueSource('fp')}
+                    className={`py-1.5 px-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
+                      selectedFatigueSource === 'fp'
+                        ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
+                        : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Zap size={14} className={selectedFatigueSource === 'fp' ? 'text-cyan-400' : 'text-slate-500'} />
+                      <span className="text-xs font-bold truncate">Fadiga Própria (FP)</span>
+                    </div>
+                    <div className="text-right shrink-0 font-mono text-xs font-bold text-cyan-300">
+                      {npc.fpCurrent} <span className="text-[10px] text-slate-400 font-normal">/ {npc.fpMax}</span>
+                    </div>
+                  </button>
 
-                {/* Opções Pedras de Mana (se existirem na ficha) */}
-                {manaStones.map((stone) => {
-                  const isSelected = selectedFatigueSource === stone.id;
-                  const isEmpty = (stone.current ?? 0) <= 0;
-                  return (
-                    <button
-                      key={stone.id}
-                      type="button"
-                      onClick={() => setSelectedFatigueSource(stone.id)}
-                      className={`py-1.5 px-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
-                        isSelected
-                          ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
-                          : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs">💎</span>
-                        <span className="text-xs font-bold truncate" title={stone.name}>
-                          {stone.name}
-                        </span>
-                      </div>
-                      <div className="text-right shrink-0 font-mono text-xs font-bold">
-                        <span className={isEmpty ? 'text-rose-400' : 'text-cyan-300'}>
-                          {stone.current ?? 0}
-                        </span>{' '}
-                        <span className="text-[10px] text-slate-400 font-normal">/ {stone.max}</span>
-                      </div>
-                    </button>
-                  );
-                })}
+                  {/* Opções Pedras de Mana (se existirem na ficha) */}
+                  {manaStones.map((stone) => {
+                    const isSelected = selectedFatigueSource === stone.id;
+                    const isEmpty = (stone.current ?? 0) <= 0;
+                    return (
+                      <button
+                        key={stone.id}
+                        type="button"
+                        onClick={() => setSelectedFatigueSource(stone.id)}
+                        className={`py-1.5 px-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
+                            : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs">💎</span>
+                          <span className="text-xs font-bold truncate" title={stone.name}>
+                            {stone.name}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0 font-mono text-xs font-bold">
+                          <span className={isEmpty ? 'text-rose-400' : 'text-cyan-300'}>
+                            {stone.current ?? 0}
+                          </span>{' '}
+                          <span className="text-[10px] text-slate-400 font-normal">/ {stone.max}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quantidade a Gastar (linha compacta) */}
             <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <label className="text-xs font-semibold text-slate-300 block truncate">
-                  {selectedStone ? `Gastar da ${selectedStone.name}:` : 'Quantidade de Fadiga (FP):'}
+                  {selectedStone ? `Gastar da ${selectedStone.name}:` : isRestrictedNpcView ? 'Quantidade de Fadiga Real (FP):' : 'Quantidade de Fadiga (FP):'}
                 </label>
                 {selectedStone && (
                   <span className="text-[10px] font-mono text-cyan-400 block">
@@ -745,7 +791,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                       <Sparkles size={12} className="text-purple-400" />
                       Nome da Magia:
                     </span>
-                    {npc.spells && npc.spells.length > 0 && (
+                    {!isRestrictedNpcView && npc.spells && npc.spells.length > 0 && (
                       <span className="text-[9px] text-slate-500">Ou escolha da ficha:</span>
                     )}
                   </div>
@@ -757,8 +803,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                     className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
 
-                  {/* Chips de magias da ficha do conjurador */}
-                  {npc.spells && npc.spells.length > 0 && (
+                  {/* Chips de magias da ficha do conjurador (apenas para Personagens ou Mestre; oculto para jogador vendo NPC) */}
+                  {!isRestrictedNpcView && npc.spells && npc.spells.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {npc.spells.map((sp) => (
                         <button
@@ -926,7 +972,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 >
                   <Zap size={14} />
                   <span>
-                    {selectedStone
+                    {isRestrictedNpcView
+                      ? `Gastar ${totalVal} FP da Fadiga Real`
+                      : selectedStone
                       ? `Gastar ${totalVal} Mana de ${selectedStone.name}`
                       : `Gastar ${totalVal} FP de Fadiga`}
                   </span>
@@ -936,7 +984,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
           </div>
         )}
 
-        {mode === 'heal' && (
+        {!isRestrictedNpcView && effectiveMode === 'heal' && (
           <div className="space-y-4">
             {/* Escolha entre curar PV ou curar Fadiga */}
             <div>
@@ -1016,8 +1064,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
           </div>
         )}
 
-        {/* MODO ITEM EXTRA: Flechas, Pedras de Mana, Escudos, etc. */}
-        {mode === 'item' && (
+        {/* MODO ITEM EXTRA: Flechas, Pedras de Mana, Escudos, etc. (Apenas Personagens ou Mestre) */}
+        {!isRestrictedNpcView && effectiveMode === 'item' && (
           availableItems.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400 italic space-y-1.5 bg-slate-950/40 rounded-xl border border-slate-800 p-4">
               <p className="font-bold text-amber-300 flex items-center justify-center gap-1.5 not-italic">

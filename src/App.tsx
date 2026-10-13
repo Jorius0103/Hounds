@@ -906,6 +906,7 @@ export default function App() {
       characterType: 'player',
       playerName: `Jogador ${count}`,
       title: 'Membro de The Hounds',
+      isVisibleToPlayer: true,
       extraItems: [
         { id: `it-arr-${Date.now()}`, name: 'Flechas', current: 20, max: 20 },
         { id: `it-mana-${Date.now()}`, name: 'Pedras de Mana', current: 5, max: 5 },
@@ -1249,8 +1250,13 @@ export default function App() {
     finalDamage: number,
     logEntry: Omit<ActionLogEntry, 'id'>
   ) => {
+    const roundNumber = logEntry.round !== undefined 
+      ? logEntry.round 
+      : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
     const entryWithId: ActionLogEntry = {
       ...logEntry,
+      round: roundNumber,
+      authorName: logEntry.authorName || currentUser?.name,
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
 
@@ -1350,8 +1356,13 @@ export default function App() {
       amount: number;
     }
   ) => {
+    const roundNumber = logEntry.round !== undefined 
+      ? logEntry.round 
+      : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
     const entryWithId: ActionLogEntry = {
       ...logEntry,
+      round: roundNumber,
+      authorName: logEntry.authorName || currentUser?.name,
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
 
@@ -1580,8 +1591,13 @@ export default function App() {
     delta: number,
     logEntry: Omit<ActionLogEntry, 'id'>
   ) => {
+    const roundNumber = logEntry.round !== undefined 
+      ? logEntry.round 
+      : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
     const entryWithId: ActionLogEntry = {
       ...logEntry,
+      round: roundNumber,
+      authorName: logEntry.authorName || currentUser?.name,
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
 
@@ -1817,6 +1833,7 @@ export default function App() {
         currentUserRole={currentUser?.role || 'mestre'}
         currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
         onUpdateRound={handleUpdateCombatRound}
+        canControlRound={canEditCurrent}
       />
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}
@@ -1965,10 +1982,11 @@ export default function App() {
             <div className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky xl:top-14">
               <GeneralCombatLog
                 activeCombat={activeCombat}
-                additionalCharacters={players}
+                additionalCharacters={allCharacters}
                 onSelectNpc={(npcId) => setSelectedNpcId(npcId)}
                 selectedNpcId={selectedNpcId}
                 currentUserRole={currentUser?.role || 'mestre'}
+                currentUserName={currentUser?.name}
                 onClearHistory={handleClearActiveCombatHistory}
                 onDeleteEntry={handleDeleteLogEntry}
               />
@@ -2081,7 +2099,8 @@ export default function App() {
           }}
           isPlayerView={isPlayerUser}
           combatants={allCharacters}
-          currentRound={activeCombat?.currentRound || 1}
+          currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+          currentUserName={currentUser?.name}
         />
       )}
 
