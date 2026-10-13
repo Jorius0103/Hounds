@@ -355,7 +355,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
       <ConfirmModal
         isOpen={clearConfirmOpen}
         title="Limpar Histórico de Combate"
-        message="Deseja limpar todo o histórico de combate de todos os NPCs desta cena? Esta ação não pode ser desfeita."
+        message="Deseja limpar todo o histórico de combate de todos os NPCs e Personagens? Esta ação não pode ser desfeita."
         confirmText="Limpar Histórico"
         cancelText="Cancelar"
         isDanger={true}

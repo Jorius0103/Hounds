@@ -473,8 +473,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 2. Pontos de Vida & 3. Pontos de Fadiga (Exclusivos para o Mestre: jogadores não veem alertas de PV e Fadiga)
-    if (isMaster) {
+    // 2. Pontos de Vida & 3. Pontos de Fadiga (visíveis para o Mestre e para jogadores quando for Personagem)
+    if (isMaster || npc.characterType === 'player') {
       const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
         ? hpStat.warningTexts
         : (hpStat.warningText ? [hpStat.warningText] : []);
@@ -1139,11 +1139,37 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 size="lg"
               />
 
-              <div>
+              <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg sm:text-xl font-bold text-white">
+                  <h2 className={`text-lg sm:text-xl font-bold ${npc.isDead ? 'text-red-300 line-through' : 'text-white'}`}>
                     {npc.name || '(Sem Nome)'}
                   </h2>
+
+                  {/* Tag NPC */}
+                  <div
+                    className="flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border bg-purple-950/80 border-purple-700/60 text-purple-300 shadow-sm"
+                    title="Perfil Fixo: NPC"
+                  >
+                    <Users size={12} className="text-purple-400" />
+                    <span>NPC</span>
+                  </div>
+
+                  {/* Toggle Vivo / Morto (Posicionado junto da identidade no mesmo local que fica o de Personagens) */}
+                  {!isViewer && (
+                    <button
+                      type="button"
+                      onClick={() => updateField('isDead', !npc.isDead)}
+                      className={`flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all ${
+                        npc.isDead
+                          ? 'bg-red-950 border-red-600 text-red-300 ring-1 ring-red-600/50 hover:bg-red-900'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                      title={npc.isDead ? 'Marcado como Morto' : 'Marcar como Morto'}
+                    >
+                      <Skull size={12} className={npc.isDead ? 'text-red-400' : 'text-slate-500'} />
+                      <span>{npc.isDead ? 'Morto' : 'Vivo'}</span>
+                    </button>
+                  )}
 
                   {/* Manobra de Combate do NPC */}
                   {(() => {
@@ -1196,29 +1222,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               {renderCriticalAlertsBox(true)}
 
               {!isViewer ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => updateField('isDead', !npc.isDead)}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition-all shrink-0 ${
-                      npc.isDead
-                        ? 'bg-red-950 border-red-600 text-red-300 ring-1 ring-red-600/50 hover:bg-red-900'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                    title={npc.isDead ? 'Marcado como Morto' : 'Marcar como Morto'}
-                  >
-                    <Skull size={14} className={npc.isDead ? 'text-red-400' : 'text-slate-500'} />
-                    <span>{npc.isDead ? 'Morto' : 'Vivo'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => onOpenDamageCalculator(npc)}
-                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-colors active:scale-95 whitespace-nowrap shrink-0"
-                  >
-                    <Heart size={15} />
-                    <span>Lançar Dano / Fadiga</span>
-                  </button>
-                </>
+                <button
+                  onClick={() => onOpenDamageCalculator(npc)}
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-colors active:scale-95 whitespace-nowrap shrink-0"
+                >
+                  <Heart size={15} />
+                  <span>Lançar Dano / Fadiga</span>
+                </button>
               ) : (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
                   <Eye size={14} />

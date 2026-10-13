@@ -1344,7 +1344,7 @@ export default function App() {
     if (isPlayer) {
       const updatedPlayers = players.map((p) => {
         if (p.id !== npcId) return p;
-        const newHp = Math.max(-p.hpMax * 5, p.hpCurrent - finalDamage);
+        const newHp = p.hpCurrent - finalDamage;
         // A morte é 100% manual e definida apenas pelo Mestre e Jogador Editor
         const updatedLocations = applyDamageToLocations(p.armorLocations);
         const updatedKits = p.armorKits?.map((kit) => {
@@ -1374,7 +1374,7 @@ export default function App() {
           ...c,
           npcs: c.npcs.map((n) => {
             if (n.id !== npcId) return n;
-            const newHp = Math.max(-n.hpMax * 5, n.hpCurrent - finalDamage);
+            const newHp = n.hpCurrent - finalDamage;
             // A morte é 100% manual e definida apenas pelo Mestre e Jogador Editor
             const updatedLocations = applyDamageToLocations(n.armorLocations);
             const updatedKits = n.armorKits?.map((kit) => {
@@ -1720,18 +1720,22 @@ export default function App() {
   };
 
   const handleClearActiveCombatHistory = () => {
-    if (!activeCombat) return;
     const now = Date.now();
-    const updated = combats.map((c) => {
-      if (c.id !== activeCombat.id) return c;
-      return {
-        ...c,
-        npcs: c.npcs.map((n) => ({ ...n, history: [], updatedAt: now })),
-      };
-    });
-    stateRef.current.combats = updated;
-    setCombats(updated);
-    broadcastSync(updated);
+    const updatedCombats = combats.map((c) => ({
+      ...c,
+      events: [],
+      npcs: c.npcs.map((n) => ({ ...n, history: [], updatedAt: now })),
+    }));
+    const updatedPlayers = players.map((p) => ({
+      ...p,
+      history: [],
+      updatedAt: now,
+    }));
+    stateRef.current.combats = updatedCombats;
+    stateRef.current.players = updatedPlayers;
+    setCombats(updatedCombats);
+    setPlayers(updatedPlayers);
+    broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
   };
 
   const handleDeleteLogEntry = (entryId: string, npcId?: string) => {

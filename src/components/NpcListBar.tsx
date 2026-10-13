@@ -253,12 +253,12 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
                 const hasConditions = Boolean(npc.statusConditions && npc.statusConditions.length > 0);
                 const hasCriticalHpFp =
-                  currentUserRole === 'mestre'
+                  (isPlayerChar || currentUserRole === 'mestre')
                     ? Boolean(
                         (hpStat.warningTexts && hpStat.warningTexts.length > 0) ||
                         (fpStat.warningTexts && fpStat.warningTexts.length > 0)
                       )
-                    : Boolean(npc.hpCurrent <= npc.hpMax * 0.33 || npc.fpCurrent <= 0);
+                    : false;
 
                 const hasAlerts = hasConditions || hasCriticalHpFp;
                 const showDeadMarker = isDeadChar;
