@@ -1345,7 +1345,7 @@ export default function App() {
       const updatedPlayers = players.map((p) => {
         if (p.id !== npcId) return p;
         const newHp = Math.max(-p.hpMax * 5, p.hpCurrent - finalDamage);
-        const isDead = newHp <= -p.hpMax;
+        // A morte é 100% manual e definida apenas pelo Mestre e Jogador Editor
         const updatedLocations = applyDamageToLocations(p.armorLocations);
         const updatedKits = p.armorKits?.map((kit) => {
           if (kit.id === p.activeArmorKitId || kit.isActive) {
@@ -1357,7 +1357,7 @@ export default function App() {
         updatedNpc = {
           ...p,
           hpCurrent: newHp,
-          isDead: isDead || p.isDead,
+          isDead: p.isDead,
           armorLocations: updatedLocations,
           armorKits: updatedKits,
           history: [entryWithId, ...p.history],
@@ -1375,7 +1375,7 @@ export default function App() {
           npcs: c.npcs.map((n) => {
             if (n.id !== npcId) return n;
             const newHp = Math.max(-n.hpMax * 5, n.hpCurrent - finalDamage);
-            const isDead = newHp <= -n.hpMax;
+            // A morte é 100% manual e definida apenas pelo Mestre e Jogador Editor
             const updatedLocations = applyDamageToLocations(n.armorLocations);
             const updatedKits = n.armorKits?.map((kit) => {
               if (kit.id === n.activeArmorKitId || kit.isActive) {
@@ -1387,7 +1387,7 @@ export default function App() {
             updatedNpc = {
               ...n,
               hpCurrent: newHp,
-              isDead: isDead || n.isDead,
+              isDead: n.isDead,
               armorLocations: updatedLocations,
               armorKits: updatedKits,
               history: [entryWithId, ...n.history],

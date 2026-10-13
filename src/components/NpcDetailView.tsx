@@ -1196,13 +1196,29 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               {renderCriticalAlertsBox(true)}
 
               {!isViewer ? (
-                <button
-                  onClick={() => onOpenDamageCalculator(npc)}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-colors active:scale-95 whitespace-nowrap shrink-0"
-                >
-                  <Heart size={15} />
-                  <span>Lançar Dano / Fadiga</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => updateField('isDead', !npc.isDead)}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition-all shrink-0 ${
+                      npc.isDead
+                        ? 'bg-red-950 border-red-600 text-red-300 ring-1 ring-red-600/50 hover:bg-red-900'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                    title={npc.isDead ? 'Marcado como Morto' : 'Marcar como Morto'}
+                  >
+                    <Skull size={14} className={npc.isDead ? 'text-red-400' : 'text-slate-500'} />
+                    <span>{npc.isDead ? 'Morto' : 'Vivo'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => onOpenDamageCalculator(npc)}
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-colors active:scale-95 whitespace-nowrap shrink-0"
+                  >
+                    <Heart size={15} />
+                    <span>Lançar Dano / Fadiga</span>
+                  </button>
+                </>
               ) : (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
                   <Eye size={14} />

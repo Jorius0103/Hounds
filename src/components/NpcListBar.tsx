@@ -264,7 +264,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const showDeadMarker = isDeadChar;
                 const showSpeed = isPlayerChar || currentUserRole === 'mestre';
 
-                // Esquema de cores:
+                // Esquema de cores (Borda única e limpa de 2px, sem rings ou bordas duplas):
                 // Selecionado = Azul
                 // Morto = Vermelho
                 // Alerta de Condições & Estados Críticos = Amarelo
@@ -275,23 +275,23 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
                 if (isSelected) {
                   cardColorClasses =
-                    'bg-blue-950/40 border-blue-500 ring-2 ring-blue-500 shadow-md shadow-blue-950/60 hover:bg-blue-950/50';
+                    'bg-blue-950/40 border-blue-500 text-blue-200 hover:bg-blue-950/50 shadow-md shadow-blue-950/50';
                   nameColor = 'text-white';
                 } else if (isDeadChar) {
                   cardColorClasses =
-                    'bg-red-950/35 border-red-600 ring-1 ring-red-500/70 hover:bg-red-950/45 shadow-[0_0_8px_rgba(239,68,68,0.25)]';
+                    'bg-red-950/35 border-red-600 hover:bg-red-950/45 text-red-200';
                   nameColor = 'text-red-400 line-through';
                 } else if (hasAlerts) {
                   cardColorClasses =
-                    'bg-amber-950/25 border-amber-500 ring-1 ring-amber-400/80 hover:bg-amber-950/35 shadow-[0_0_8px_rgba(245,158,11,0.25)]';
+                    'bg-amber-950/25 border-amber-400 hover:bg-amber-950/35 text-amber-200';
                   nameColor = 'text-amber-200';
                 } else if (isPlayerChar) {
                   cardColorClasses =
-                    'bg-emerald-950/30 border-emerald-600/70 hover:border-emerald-500 hover:bg-emerald-950/40 shadow-xs';
+                    'bg-emerald-950/30 border-emerald-500 hover:border-emerald-400 hover:bg-emerald-950/40 text-emerald-200';
                   nameColor = 'text-emerald-200';
                 } else {
                   cardColorClasses =
-                    'bg-slate-950/70 border-slate-750 hover:border-slate-600 hover:bg-slate-850 shadow-xs';
+                    'bg-slate-950/70 border-slate-700 hover:border-slate-600 hover:bg-slate-850 text-slate-200';
                   nameColor = 'text-slate-200';
                 }
 
@@ -299,7 +299,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                   <button
                     key={npc.id}
                     onClick={() => onSelectNpc(npc.id)}
-                    className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all border shrink-0 w-[195px] sm:w-[215px] ${cardColorClasses}`}
+                    className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all border-2 shrink-0 w-[195px] sm:w-[215px] ${cardColorClasses}`}
                     title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'}${
                       showSpeed ? ` | Speed: ${npc.basicSpeed ?? 0}` : ''
                     }${isDeadChar ? ' | MORTO' : ''}${

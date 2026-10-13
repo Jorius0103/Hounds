@@ -19,6 +19,7 @@ import {
   X,
   Footprints,
   Crosshair,
+  Skull,
 } from 'lucide-react';
 import { ConfirmModal } from '../ConfirmModal';
 
@@ -118,12 +119,28 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          <X size={15} />
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          {(isMaster || currentUserRole === 'jogador') && (
+            <button
+              onClick={() => onUpdateNpc({ isDead: !npc.isDead })}
+              className={`p-1 rounded-lg border transition-colors ${
+                npc.isDead
+                  ? 'bg-red-950 border-red-700 text-red-300 hover:bg-red-900'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+              }`}
+              title={npc.isDead ? 'Reviver (Marcar como Vivo)' : 'Marcar como Morto'}
+            >
+              <Skull size={14} className={npc.isDead ? 'text-red-400' : 'text-slate-400'} />
+            </button>
+          )}
+
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <X size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Orientação & Frente (Facing GURPS) */}
