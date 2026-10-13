@@ -66,9 +66,9 @@ export const TopNav: React.FC<TopNavProps> = ({
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
           <button
             type="button"
-            onClick={() => onSelectViewMode?.('home')}
+            onClick={() => onSelectViewMode?.('sheets')}
             className="flex items-center gap-2 text-left hover:opacity-90 transition-opacity"
-            title="Ir para a Tela Inicial"
+            title="Ir para a Mesa de Combate"
           >
             <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
               <Swords size={16} />
@@ -213,10 +213,11 @@ export const TopNav: React.FC<TopNavProps> = ({
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
-              title="Visualização em Fichas, Lista de NPCs e Log de Combate"
+              title="Mesa de Combate: Fichas completas, lista de NPCs e Log de Combate"
             >
-              <FileText size={13} />
-              <span className="hidden sm:inline">Fichas & Log</span>
+              <Swords size={13} />
+              <span className="hidden sm:inline">Mesa de Combate</span>
+              <span className="sm:hidden">Mesa</span>
             </button>
 
             <button

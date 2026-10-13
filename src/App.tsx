@@ -380,7 +380,22 @@ export default function App() {
   });
 
   // View Mode: 'home' | 'sheets' | 'tactical' | 'split'
-  const [activeViewMode, setActiveViewMode] = useState<ViewMode>('home');
+  const [activeViewMode, setActiveViewMode] = useState<ViewMode>(() => {
+    try {
+      const saved = localStorage.getItem('hounds_mesa_view_mode') as ViewMode;
+      if (saved && ['home', 'sheets', 'tactical', 'split'].includes(saved)) {
+        return saved;
+      }
+    } catch {}
+    return 'home';
+  });
+
+  const handleSelectViewMode = (mode: ViewMode) => {
+    setActiveViewMode(mode);
+    try {
+      localStorage.setItem('hounds_mesa_view_mode', mode);
+    } catch {}
+  };
 
   useEffect(() => {
     return systemLogger.subscribe((logs) => {
@@ -1894,7 +1909,7 @@ export default function App() {
         onOpenSystemLog={() => setSystemLogModalOpen(true)}
         systemLogsCount={systemLogsCount}
         activeViewMode={activeViewMode}
-        onSelectViewMode={setActiveViewMode}
+        onSelectViewMode={handleSelectViewMode}
         onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
         editorCount={effectiveEditorIds.length}
         canEditCurrent={canEditCurrent}
@@ -1907,7 +1922,7 @@ export default function App() {
         onSelectNpc={(npcId) => {
           setSelectedNpcId(npcId);
           if (activeViewMode === 'home') {
-            setActiveViewMode('sheets');
+            handleSelectViewMode('sheets');
           }
         }}
         onAddNewNpc={handleAddNewNpc}
@@ -1928,7 +1943,7 @@ export default function App() {
             characters={allCharacters}
             onSelectCharacter={(npcId) => {
               setSelectedNpcId(npcId);
-              setActiveViewMode('sheets');
+              handleSelectViewMode('sheets');
             }}
             onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
             onAddNewNpc={handleAddNewNpc}
