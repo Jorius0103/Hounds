@@ -148,7 +148,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
         <div className="flex items-center gap-1.5 shrink-0">
           <span
             className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-900 border border-slate-750 text-amber-300 shrink-0"
-            title={`Rodada ${entry.round ?? 0}`}
+            title={entry.round === 0 ? 'Rodada 0 (Preparação)' : `Rodada ${entry.round ?? 0}`}
           >
             R{entry.round !== undefined ? entry.round : 0}
           </span>
@@ -179,6 +179,14 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Attacker / Damage Dealer Info */}
+      {entry.attackerName && (
+        <div className="flex items-center gap-1.5 text-[11px] bg-amber-950/30 border border-amber-900/40 px-2 py-0.5 rounded-md text-amber-200">
+          <span className="text-amber-400/80 font-sans text-[10px] font-semibold">Atacante:</span>
+          <span className="font-bold font-sans flex items-center gap-1">⚔️ {entry.attackerName}</span>
+        </div>
+      )}
 
       {/* Detailed GURPS Damage Breakdown */}
       {isDamage && (

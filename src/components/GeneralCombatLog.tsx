@@ -124,6 +124,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         const matchesLoc = entry.hitLocation?.toLowerCase().includes(query);
         const matchesItem = entry.itemName?.toLowerCase().includes(query);
         const matchesDmgType = entry.damageType?.toLowerCase().includes(query);
+        const matchesAttacker = entry.attackerName?.toLowerCase().includes(query);
         const matchesAuthor =
           entry.authorName?.toLowerCase().includes(query) ||
           entry.author?.toLowerCase().includes(query);
@@ -134,7 +135,8 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
           !matchesLoc &&
           !matchesItem &&
           !matchesDmgType &&
-          !matchesAuthor
+          !matchesAuthor &&
+          !matchesAttacker
         ) {
           return false;
         }
@@ -237,7 +239,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                 const count = allLogs.filter((l) => (l.round ?? 0) === r).length;
                 return (
                   <option key={r} value={r}>
-                    Rodada {r} ({count} {count === 1 ? 'evento' : 'eventos'})
+                    {r === 0 ? 'Rodada 0 (Preparação)' : `Rodada ${r}`} ({count} {count === 1 ? 'evento' : 'eventos'})
                   </option>
                 );
               })}
@@ -306,23 +308,42 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
             )}
           </div>
         ) : (
-          filteredLogs.map((entry) => (
-            <div
-              key={entry.id}
-              className={entry.npcId === selectedNpcId ? 'ring-1 ring-amber-400/60 rounded-xl' : ''}
-            >
-              <CombatLogCard
-                entry={entry}
-                showNpcInfo={true}
-                onSelectNpc={onSelectNpc}
-                isCompact={true}
-                currentUserRole={currentUserRole}
-                currentUserName={currentUserName}
-                isPlayer={currentUserRole === 'jogador'}
-                onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
-              />
-            </div>
-          ))
+          filteredLogs.map((entry, ix) => {
+            const prevRound = ix > 0 ? (filteredLogs[ix - 1].round ?? 0) : null;
+            const currentEntryRound = entry.round ?? 0;
+            const isNewRound = ix === 0 || prevRound !== currentEntryRound;
+            const curRound = activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0;
+            const isCurrent = currentEntryRound === curRound;
+            const roundTitle = currentEntryRound === 0
+              ? (isCurrent ? 'Rodada 0 (Preparação) · em andamento' : 'Rodada 0 (Preparação)')
+              : (isCurrent ? `Rodada ${currentEntryRound} · em andamento` : `Rodada ${currentEntryRound}`);
+
+            return (
+              <React.Fragment key={entry.id}>
+                {isNewRound && (
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-400 pt-1">
+                    <span className="flex-1 h-px bg-slate-800" />
+                    <span>{roundTitle}</span>
+                    <span className="flex-1 h-px bg-slate-800" />
+                  </div>
+                )}
+                <div
+                  className={entry.npcId === selectedNpcId ? 'ring-1 ring-amber-400/60 rounded-xl' : ''}
+                >
+                  <CombatLogCard
+                    entry={entry}
+                    showNpcInfo={true}
+                    onSelectNpc={onSelectNpc}
+                    isCompact={true}
+                    currentUserRole={currentUserRole}
+                    currentUserName={currentUserName}
+                    isPlayer={currentUserRole === 'jogador'}
+                    onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
+                  />
+                </div>
+              </React.Fragment>
+            );
+          })
         )}
       </div>
 

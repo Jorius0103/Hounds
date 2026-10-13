@@ -55,6 +55,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [rawDamage, setRawDamage] = useState<number | ''>('');
   const [damageType, setDamageType] = useState<string>('');
   const [bypassDr, setBypassDr] = useState<boolean>(false);
+  const [selectedAttackerId, setSelectedAttackerId] = useState<string>('');
   const [customDescription, setCustomDescription] = useState<string>('');
 
   // Distinção de visão:
@@ -185,10 +186,13 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       : `${armorDr} arm`;
     const effectiveTypeLabel = damageType || (isNoLocation ? 'Direto' : '');
     const bonusDrText = locationBonusDr > 0 ? ` + ${locationBonusDr} bônus Cabeça` : '';
-    const desc = customDescription.trim() ||
-      (isNoLocation
-        ? `Dano Direto (Sem parte do corpo) | Dano: ${numericRawDamage}${damageType ? ` (${damageType} x${multiplier})` : ''} | RD: 0 | Final: -${finalDamage} PV`
-        : `Local: ${locName} | Dano: ${numericRawDamage} (${damageType}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Final: -${finalDamage} PV`);
+    const attacker = combatants.find((c) => c.id === selectedAttackerId);
+    const attackerPrefix = attacker ? `[Atacante: ${attacker.name}] ` : '';
+    const desc = customDescription.trim()
+      ? `${attackerPrefix}${customDescription.trim()}`
+      : (isNoLocation
+        ? `${attackerPrefix}Dano Direto (Sem parte do corpo) | Dano: ${numericRawDamage}${damageType ? ` (${damageType} x${multiplier})` : ''} | RD: 0 | Final: -${finalDamage} PV`
+        : `${attackerPrefix}Local: ${locName} | Dano: ${numericRawDamage} (${damageType}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Final: -${finalDamage} PV`);
 
     onApplyDamage(npc.id, finalDamage, {
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -203,6 +207,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       npcAvatar: npc.avatar,
       npcPreset: npc.avatarPreset,
       npcCharacterType: npc.characterType,
+      attackerId: attacker?.id,
+      attackerName: attacker?.name,
       hitLocation: locName,
       rawDamage: numericRawDamage,
       damageType: effectiveTypeLabel,
@@ -624,6 +630,46 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Causador do Dano / Atacante (Opcional) */}
+            <div>
+              <label className="text-xs font-semibold text-slate-400 block mb-1">
+                Quem deu o dano? / Atacante (opcional)
+              </label>
+              <select
+                value={selectedAttackerId}
+                onChange={(e) => setSelectedAttackerId(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                <option value="">Nenhum / Não especificado</option>
+                {combatants.length > 0 && (
+                  <>
+                    {combatants.filter((c) => c.characterType === 'player').length > 0 && (
+                      <optgroup label="Personagens (Jogadores)">
+                        {combatants
+                          .filter((c) => c.characterType === 'player')
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              👤 {c.name}
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+                    {combatants.filter((c) => c.characterType !== 'player').length > 0 && (
+                      <optgroup label="NPCs">
+                        {combatants
+                          .filter((c) => c.characterType !== 'player')
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              👾 {c.name}
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+                  </>
+                )}
+              </select>
+            </div>
 
             {/* Description/Notes */}
             <div>

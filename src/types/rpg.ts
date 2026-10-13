@@ -119,6 +119,10 @@ export interface ActionLogEntry {
   itemBefore?: number;
   itemAfter?: number;
 
+  // Causador do Dano / Atacante
+  attackerId?: string;
+  attackerName?: string;
+
   // Detalhes aprofundados do dano
   hitLocation?: string; // Ex: Tronco, Crânio, Braço D.
   rawDamage?: number; // Dano bruto rolado
