@@ -26,13 +26,13 @@ function locNodes(pid) {
     return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l), children: k.length ? locNodes(l.id) : null };
   });
 }
-// Spells and advantages are too many for the menu (their pages list them): it keeps only the
+// Spells, advantages, skills, techniques and styles are too many for the menu (their pages list them): it keeps only the
 // one open, so the breadcrumbs and the title still find it.
-function openLeaf(prefix, icon, find) {
+function openLeaf(prefix, icon, find, label) {
   var node = S.route && S.route.node;
   if (!node || node.indexOf(prefix) !== 0) return [];
   var x = find(node.slice(prefix.length));
-  return [{ id: node, label: x ? x.name : prefix === 'spell:' ? 'Magia' : 'Vantagem', icon: icon, route: true, secret: isSecret(x) }];
+  return [{ id: node, label: x ? x.name : label, icon: icon, route: true, secret: isSecret(x) }];
 }
 function buildMenu() {
   return [
@@ -49,9 +49,13 @@ function buildMenu() {
       { id: 'events', label: 'Eventos', icon: ICON.event, route: true, hideKids: true,
         children: W.events.slice().sort(byName).map(function (ev) { return { id: 'event:' + ev.id, label: ev.name, icon: ICON.event, route: true, secret: isSecret(ev) }; }) },
       { id: 'spells', label: 'Magias', icon: ICON.spell, route: true, hideKids: true,
-        children: openLeaf('spell:', ICON.spell, spellById) },
+        children: openLeaf('spell:', ICON.spell, spellById, 'Magia') },
       { id: 'advs', label: 'Vantagens', icon: ICON.advantage, route: true, hideKids: true,
-        children: openLeaf('adv:', ICON.advantage, advById) }
+        children: openLeaf('adv:', ICON.advantage, advById, 'Vantagem') },
+      { id: 'skills', label: 'Perícias', icon: ICON.skill, route: true, hideKids: true,
+        children: openLeaf('skill:', ICON.skill, skillById, 'Perícia') },
+      { id: 'combat', label: 'Combate', icon: ICON.combat, route: true, hideKids: true,
+        children: openLeaf('tech:', ICON.combat, techById, 'Técnica').concat(openLeaf('style:', ICON.combat, styleById, 'Estilo')) }
     ] },
     { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, hideKids: true,
       children: W.notebooks.slice().sort(byName).map(function (nb) {

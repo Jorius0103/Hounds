@@ -1,5 +1,6 @@
-// Converte as planilhas de GURPS (Gurps/magias.csv e Gurps/advantages.csv) nos arquivos
-// que o site sincroniza: dados/magias.json e dados/vantagens.json.
+// Converte as planilhas de GURPS (Gurps/magias.csv, Gurps/advantages.csv, Gurps/pericias.csv e
+// Gurps/tecnicas.csv e Gurps/estilos.csv) nos arquivos que o site sincroniza: dados/magias.json,
+// dados/vantagens.json, dados/pericias.json, dados/tecnicas.json e dados/estilos.json.
 //
 //   node tools/gurps-csv-para-json.mjs
 //
@@ -14,6 +15,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { revisarItem } from './gurps-texto.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -58,9 +60,10 @@ function bookCode(codes, book, file) {
   if (!c) throw new Error(`${file}: livro sem sigla em BOOKS: "${book}"`);
   return c;
 }
-// Compact: no indentation and no empty fields; the site downloads these files whole.
+// Compact: no indentation and no empty fields; the site downloads these files whole. The texts
+// go through the revision of tools/gurps-texto.mjs (punctuation, hyphens, lists, paragraphs).
 function write(file, list) {
-  const clean = list.map((x) => Object.fromEntries(Object.entries(x).filter(([, v]) => v !== '')));
+  const clean = list.map(revisarItem).map((x) => Object.fromEntries(Object.entries(x).filter(([, v]) => v !== '')));
   writeFileSync(path.join(ROOT, 'dados', file), JSON.stringify(clean) + '\n', 'utf8');
   console.log(`dados/${file}: ${list.length} itens`);
 }
@@ -101,3 +104,54 @@ const advantages = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'adv
     book: r.livro, page: code + r.pagina, description: r.descricao };
 }));
 write('vantagens.json', advantages);
+
+// ---------- perícias ----------
+const SKILL_BOOKS = {
+  'GURPS Basic Set': 'B', 'GURPS Martial Arts': 'MA', 'GURPS Fantasy': 'F', 'GURPS Low-Tech': 'LT',
+  'GURPS Low-Tech Companion 3: Daily Life And Economics': 'LTC3', 'GURPS Social Engineering': 'SE',
+  'GURPS 4th: Power Ups 1: Imbuements': 'PU1', 'GURPS: Dungeon Fantasy 14: Psi': 'DF14',
+  'GURPS: Dungeon Fantasy 19: Incantation Magic': 'DF19', 'GURPS: Dungeon Fantasy 20: Slayers': 'DF20',
+  'Martial Arts: Yrth Fighting Styles': 'MAY'
+};
+// Same abbreviations the spells use (H, VH).
+const DIFFICULTY = { Easy: 'E', Average: 'A', Hard: 'H', 'Very Hard': 'VH' };
+const skills = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'pericias.csv'), 'utf8')).map((r) => {
+  const code = bookCode(SKILL_BOOKS, r.livro, 'pericias.csv');
+  return {
+    id: 'skill_' + slug(r.pericia) + '_' + code.toLowerCase() + r.pagina,
+    name: r.pericia, type: r.tipo, attribute: r.atributo, difficulty: DIFFICULTY[r.dificuldade] || '',
+    specialty: r.especializacao === 'sim' || '', cinematic: r.cinematica === 'sim' || '',
+    defaults: r.defaults, prerequisites: r.pre_requisitos, description: r.descricao, modifiers: r.modificadores,
+    book: r.livro, page: code + r.pagina
+  };
+}));
+write('pericias.json', skills);
+
+// ---------- técnicas ----------
+// Same books (and codes) as the skills; a book that only has techniques goes here.
+const TECH_BOOKS = { ...SKILL_BOOKS, 'GURPS Low-Tech Companion 1: Philosophers and Kings': 'LTC1',
+  'GURPS Low-Tech Companion 2: Weapons and Warriors': 'LTC2' };
+const techniques = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'tecnicas.csv'), 'utf8')).map((r) => {
+  const code = bookCode(TECH_BOOKS, r.livro, 'tecnicas.csv');
+  return {
+    id: 'tech_' + slug(r.tecnica) + '_' + code.toLowerCase() + r.pagina,
+    name: r.tecnica, difficulty: DIFFICULTY[r.dificuldade] || '', cinematic: r.cinematica === 'sim' || '',
+    defaults: r.defaults, prerequisites: r.pre_requisitos, description: r.descricao, modifiers: r.modificadores,
+    book: r.livro, page: code + r.pagina
+  };
+}));
+write('tecnicas.json', techniques);
+
+// ---------- estilos ----------
+const STYLE_BOOKS = { ...TECH_BOOKS };
+const styles = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'estilos.csv'), 'utf8')).map((r) => {
+  const code = bookCode(STYLE_BOOKS, r.livro, 'estilos.csv');
+  return {
+    id: 'style_' + slug(r.estilo) + '_' + code.toLowerCase() + r.pagina,
+    name: r.estilo, cost: r.custo, description: r.descricao,
+    skills: r.pericias, techniques: r.tecnicas, cinematicSkills: r.pericias_cinematicas, cinematicTechniques: r.tecnicas_cinematicas,
+    perks: r.perks, optAdvantages: r.opc_vantagens, optDisadvantages: r.opc_desvantagens, optSkills: r.opc_pericias,
+    optTechniques: r.opc_tecnicas, optPerks: r.opc_perks, book: r.livro, page: code + r.pagina
+  };
+}));
+write('estilos.json', styles);

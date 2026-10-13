@@ -27,6 +27,8 @@ function renderHomePage() {
     card('#eventos', ICON.event, 'Eventos', count('events', W.events.length, 'evento', 'eventos')),
     card('#magias', ICON.spell, 'Magias', (W.loaded.spells ? plural(W.spells.length, 'magia', 'magias') : 'Grimório de GURPS')),
     card('#vantagens', ICON.advantage, 'Vantagens', (W.loaded.advantages ? plural(W.advantages.length, 'vantagem', 'vantagens') : 'Vantagens, talentos e perks')),
+    card('#pericias', ICON.skill, 'Perícias', (W.loaded.skills ? plural(W.skills.length, 'perícia', 'perícias') : 'Perícias dos livros')),
+    card('#combate', ICON.combat, 'Combate', (W.loaded.techniques ? plural(W.techniques.length, 'técnica', 'técnicas') + ' e perícias de combate' : 'Perícias, técnicas e estilos')),
     card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
   ];
   if (isMestre()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));

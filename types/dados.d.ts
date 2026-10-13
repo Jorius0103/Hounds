@@ -81,17 +81,39 @@ interface Organization extends Doc {
 
 /**
  * Atributos GURPS de uma ficha. `st`, `dx`, `iq` e `ht` são valores; `per`, `will`, `hp`, `fp`,
- * `speed` e `move` são ajustes sobre a base (HP = ST + `hp`). `enc` (Peso, nível de carga 0–4),
+ * `speed` e `move` são ajustes sobre a base (HP = ST + `hp`; Percepção = `perBase` + `per`,
+ * Vontade = `willBase` + `will`, com bases 10 se não mudadas). `enc` (Peso, nível de carga 0–4),
  * `metal` e `spellPenalty` não custam pontos.
  */
 interface SheetAttrs {
   st: number; dx: number; iq: number; ht: number;
-  per: number; will: number; hp: number; fp: number; speed: number; move: number;
+  per: number; will: number; perBase: number; willBase: number; hp: number; fp: number; speed: number; move: number;
   enc: number; metal: number; spellPenalty: number;
 }
 
 /** Coleção `sheets` (fichas) de GURPS. Ligada a personagens por `Character.sheetId`. */
-interface Sheet extends Doc { name: string; description?: string; attrs?: SheetAttrs }
+interface Sheet extends Doc { name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[] }
+/** Linha da seção Vantagens da ficha (veja js/tabs/ficha-vantagens.js): custo por nível, níveis (0: sem níveis), modificador em %. */
+interface SheetAdv {
+  name: string; advId?: string; cost: number; levels: number; mod: number; notes: string;
+  /** Só talentos: tamanho (S 5 pts/nível, M 10, L 15) e as perícias da ficha que recebem +1 por nível. */
+  size?: 'S' | 'M' | 'L'; skills?: string[];
+}
+
+/** Item da seção Combate da ficha: perícia, técnica ou perk/vantagem (veja js/tabs/ficha-combate.js). */
+interface CombatItem {
+  kind: 'skill' | 'tech' | 'trait'; name: string; pts: number; bonus?: number;
+  attr?: string; diff?: string; skillId?: string;
+  /** Técnica: perícia-base, padrão e limite em relação a ela (null: sem limite). */
+  base?: string; def?: number; max?: number | null; techId?: string;
+}
+/** Seção Combate da ficha: estilos (grupos), perícias fora de estilo, tabela de danos e defesas. */
+interface SheetCombat {
+  styles: { name: string; styleId?: string; items: CombatItem[] }[];
+  general: CombatItem[];
+  weapons: { name: string; mode: 'sw' | 'thr' | 'fixed'; mod: string; type: string }[];
+  def: { parry: string; parryBonus: number; block: string; blockBonus: number; dodgeBonus: number; db: number };
+}
 
 /** Coleção `events`. `date` é texto livre, no calendário da campanha. */
 interface HEvent extends Doc {
@@ -131,6 +153,63 @@ interface Advantage extends Doc {
   book?: string;
   page?: string;
   description?: string;
+}
+
+/** Coleção `skills` (perícias de GURPS). Ids `skill_*` vêm de dados/pericias.json. */
+interface Skill extends Doc {
+  name: string;
+  /** A linha de tipo do livro: "IQ/Average", "Melee; DX/Very Hard" ou uma remissão ("see Crewman, p. 185"). */
+  type?: string;
+  /** ST, DX, IQ, HT, Will ou Per; vazio nas remissões. */
+  attribute?: string;
+  /** E, A, H ou VH. */
+  difficulty?: string;
+  /** Exige especialização (marcada com † nos livros). */
+  specialty?: boolean;
+  /** Perícia cinemática (marcada com * nos livros). */
+  cinematic?: boolean;
+  defaults?: string;
+  prerequisites?: string;
+  description?: string;
+  modifiers?: string;
+  book?: string;
+  page?: string;
+}
+
+/** Coleção `techniques` (técnicas de GURPS). Ids `tech_*` vêm de dados/tecnicas.json. */
+interface Technique extends Doc {
+  name: string;
+  /** A (Average) ou H (Hard). */
+  difficulty?: string;
+  /** Técnica cinemática (marcada com * nos livros). */
+  cinematic?: boolean;
+  defaults?: string;
+  prerequisites?: string;
+  description?: string;
+  modifiers?: string;
+  book?: string;
+  page?: string;
+}
+
+/** Coleção `styles` (estilos de luta de GURPS Martial Arts). Ids `style_*` vêm de dados/estilos.json.
+ * As listas ficam como no livro, com os itens separados por "; ". */
+interface FightingStyle extends Doc {
+  name: string;
+  /** Pontos de Style Familiarity e perks obrigatórios. */
+  cost?: string;
+  description?: string;
+  skills?: string;
+  techniques?: string;
+  cinematicSkills?: string;
+  cinematicTechniques?: string;
+  perks?: string;
+  optAdvantages?: string;
+  optDisadvantages?: string;
+  optSkills?: string;
+  optTechniques?: string;
+  optPerks?: string;
+  book?: string;
+  page?: string;
 }
 
 /** Coleção `notebooks` (títulos). */
@@ -181,20 +260,26 @@ interface World {
   organizations: Organization[];
   spells: Spell[];
   advantages: Advantage[];
+  skills: Skill[];
+  techniques: Technique[];
+  styles: FightingStyle[];
   sheets: Sheet[];
   events: HEvent[];
   notebooks: Notebook[];
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; skills: boolean; techniques: boolean; styles: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
   orgIdx: Record<string, Organization>;
   spellIdx: Record<string, Spell>;
   advIdx: Record<string, Advantage>;
+  skillIdx: Record<string, Skill>;
+  techIdx: Record<string, Technique>;
+  styleIdx: Record<string, FightingStyle>;
   sheetIdx: Record<string, Sheet>;
   eventIdx: Record<string, HEvent>;
   /** Pai efetivo de cada mapa. */
@@ -218,6 +303,9 @@ interface Route {
   orgId?: string;
   spellId?: string;
   advId?: string;
+  skillId?: string;
+  techId?: string;
+  styleId?: string;
   sheetId?: string;
   eventId?: string;
   nbId?: string;

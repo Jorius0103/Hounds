@@ -12,10 +12,10 @@
    stored documents, so a change anywhere shows up everywhere.
    ===================================================================== */
 /** @type {World} */
-var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], sheets: [], events: [],
-          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], sheets: [], events: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [],
-          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, advantages: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
-          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, advIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
+var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], skills: [], techniques: [], styles: [], sheets: [], events: [],
+          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], skills: [], techniques: [], styles: [], sheets: [], events: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [],
+          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, advantages: false, skills: false, techniques: false, styles: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
+          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, advIdx: {}, skillIdx: {}, techIdx: {}, styleIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
 // The same ids once each, in order: links are lists of ids and must never repeat one.
 function uniqIds(ids) { var seen = {}; return (ids || []).filter(function (id) { if (!id || seen[id]) return false; seen[id] = true; return true; }); }
 // Ids picked in a form plus the ones this user can't see (and so couldn't pick), which are kept.
@@ -75,21 +75,30 @@ function spellById(id) {
   return null;
 }
 /* =====================================================================
-   Catálogos de GURPS (magias e vantagens dos livros)
-   The book entries live in dados/magias.json and dados/vantagens.json, fetched only when
+   Catálogos de GURPS (magias, vantagens, perícias, técnicas e estilos dos livros)
+   The book entries live in dados/magias.json, dados/vantagens.json, dados/pericias.json,
+   dados/tecnicas.json and dados/estilos.json, fetched only when
    someone opens their tab and then cached by the browser. The database keeps just the
    Mestre's own work: entries he created (random ids), and for a book entry, a document
-   with the same id (spell_*, adv_*) holding his edits, his visibility choice, or
-   deleted: true. W.spells / W.advantages are the book list with those documents on top.
+   with the same id (spell_*, adv_*, skill_*, tech_*, style_*) holding his edits, his visibility
+   choice, or deleted: true. W.spells / W.advantages / W.skills / W.techniques / W.styles are the
+   book list with those documents on top.
    ===================================================================== */
-var CATALOG_VERSION = '2026-10-12-v5';
+var CATALOG_VERSION = '2026-10-13-v1';
 // fields: what an entry holds besides visibility; over: the documents of book entries by id;
 // deleted: the book entries the Mestre deleted (for him to see and restore).
 var CATALOG = {
   spells: { file: 'dados/magias.json', prefix: 'spell_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
     fields: ['name', 'difficulty', 'class', 'college', 'timeToCast', 'duration', 'initialCost', 'maintenanceCost', 'prerequisites', 'description', 'item', 'page', 'source'] },
   advantages: { file: 'dados/vantagens.json', prefix: 'adv_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
-    fields: ['name', 'cost', 'type', 'book', 'page', 'description'] }
+    fields: ['name', 'cost', 'type', 'book', 'page', 'description'] },
+  skills: { file: 'dados/pericias.json', prefix: 'skill_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
+    fields: ['name', 'type', 'attribute', 'difficulty', 'specialty', 'cinematic', 'defaults', 'prerequisites', 'description', 'modifiers', 'book', 'page'] },
+  techniques: { file: 'dados/tecnicas.json', prefix: 'tech_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
+    fields: ['name', 'difficulty', 'cinematic', 'defaults', 'prerequisites', 'description', 'modifiers', 'book', 'page'] },
+  styles: { file: 'dados/estilos.json', prefix: 'style_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
+    fields: ['name', 'cost', 'description', 'skills', 'techniques', 'cinematicSkills', 'cinematicTechniques', 'perks',
+      'optAdvantages', 'optDisadvantages', 'optSkills', 'optTechniques', 'optPerks', 'book', 'page'] }
 };
 function isCatalogId(col, id) { return String(id || '').indexOf(CATALOG[col].prefix) === 0; }
 function loadCatalog(col) {
@@ -266,8 +275,8 @@ document.addEventListener('change', function (e) {
 function secretTag(item) { return '<span class="secret-tag" title="Não está visível para todos">' + svg(EYE_OFF, 12, 2.4) + esc('Só ' + seenBy(item)) + '</span>'; }
 function refilter() {
   W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters); W.organizations = pub(W.raw.organizations);
-  mergeCatalog('spells'); mergeCatalog('advantages'); W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events);
-  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexAdvantages(); indexSheets(); indexEvents(); filterNotes();
+  mergeCatalog('spells'); mergeCatalog('advantages'); mergeCatalog('skills'); mergeCatalog('techniques'); mergeCatalog('styles'); W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events);
+  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexAdvantages(); indexSkills(); indexTechniques(); indexStyles(); indexSheets(); indexEvents(); filterNotes();
   S.markers = pub(S.rawMarkers || []);
   if (Explorer.isOpen() && S.route && S.route.explore) Explorer.setMarkers(S.markers);
 }

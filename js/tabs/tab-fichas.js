@@ -19,9 +19,15 @@ function sheetById(id) { return (id && W.sheetIdx[id]) || null; }
 function sheetHref(id) { return hrefFor('sheet:' + id); }
 // Characters whose sheet this is.
 function sheetChars(id) { return W.characters.filter(function (c) { return c.sheetId === id; }).sort(byName); }
+// The sheet's picture is its character's: the first linked character (by name) that has
+// an image. Not copied into the sheet, so a new portrait of the character shows here too.
+function sheetPortrait(s) {
+  var c = sheetChars(s.id).filter(function (x) { return x.image && x.image.ref; })[0];
+  return c ? { ref: c.image.ref, name: c.name } : null;
+}
 function sheetLink(s) {
-  var n = sheetChars(s.id).length;
-  return '<li><a class="row-link" href="' + sheetHref(s.id) + '">' + thumbSlot(null, ICON.sheet) + '<span class="mtext"><b>' + esc(s.name) + '</b>' +
+  var n = sheetChars(s.id).length, p = sheetPortrait(s);
+  return '<li><a class="row-link" href="' + sheetHref(s.id) + '">' + thumbSlot(p && p.ref, ICON.sheet) + '<span class="mtext"><b>' + esc(s.name) + '</b>' +
     '<span class="where">' + (n ? plural(n, 'personagem', 'personagens') : 'Nenhum personagem') + '</span></span></a></li>';
 }
 
@@ -32,7 +38,7 @@ Ops.saveSheet = function (s, fields) {
   var body = { v: 1, name: name, description: (fields.description || '').trim(), visible: fields.visible !== false, sharedWith: fields.sharedWith || (s && s.sharedWith) || [],
     createdBy: owner(s), createdAt: (s && s.createdAt) || t, updatedAt: t };
   // put replaces the whole document: attributes and skills are edited apart and must survive a rename.
-  ['attrs', 'skills', 'cultures'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  ['attrs', 'skills', 'cultures', 'combat', 'advs'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
   return W.store.put('sheets', s ? s.id : null, body);
 };
 Ops.saveSheetAttrs = function (s, a) {
@@ -49,23 +55,29 @@ Ops.deleteSheet = function (s) {
 };
 // The one sheet of a character (null removes the link). A single field holds it, so linking
 // another sheet replaces the current one; a list or a sheet that no longer exists is refused.
-// justCreated: the sheet was saved a moment ago and may not have reached W.raw yet.
+// A sheet belongs to one character too: any other character on it (hidden ones included) loses
+// the link first. justCreated: the sheet was saved a moment ago and may not have reached W.raw yet.
 Ops.setCharSheet = function (charId, sheetId, justCreated) {
   if (!rawHas('characters', charId)) return Promise.reject({ message: 'Esse personagem não existe mais.' });
   if (sheetId != null && typeof sheetId !== 'string') return Promise.reject({ message: 'Um personagem só pode ter uma ficha.' });
   if (sheetId && !justCreated && !rawHas('sheets', sheetId)) return Promise.reject({ message: 'Essa ficha não existe mais. Escolha outra.' });
-  return W.store.patch('characters', charId, { sheetId: sheetId || null, updatedAt: now() });
+  var others = sheetId ? W.raw.characters.filter(function (c) { return c.sheetId === sheetId && c.id !== charId; }) : [];
+  return others.reduce(function (p, c) {
+    return p.then(function () { return W.store.patch('characters', c.id, { sheetId: null, updatedAt: now() }); });
+  }, Promise.resolve()).then(function () { return W.store.patch('characters', charId, { sheetId: sheetId || null, updatedAt: now() }); });
 };
 
 /* =====================================================================
    GURPS 4ª ed.: atributos básicos e características secundárias.
    sheet.attrs keeps ST, DX, IQ and HT as values and the secondary ones
    as an adjustment over their base (hp: 1 is HP = ST + 1), so buying ST
-   also raises HP, as in the book. enc (Peso, the encumbrance level),
+   also raises HP, as in the book. Percepção and Vontade start from a base
+   of their own (perBase, willBase; 10 unless changed), not from IQ: each
+   level above it costs 5 points. enc (Peso, the encumbrance level),
    metal and spellPenalty belong to the table and cost no points.
    ===================================================================== */
-var SHEET_ATTRS0 = { st: 10, dx: 10, iq: 10, ht: 10, per: 0, will: 0, hp: 0, fp: 0, speed: 0, move: 0, enc: 0, metal: 0, spellPenalty: 0 };
-var ATTR_LIMITS = { st: [1, 200], dx: [1, 50], iq: [1, 50], ht: [1, 50], per: [-50, 50], will: [-50, 50], hp: [-200, 200], fp: [-50, 50],
+var SHEET_ATTRS0 = { st: 10, dx: 10, iq: 10, ht: 10, per: 0, will: 0, perBase: 10, willBase: 10, hp: 0, fp: 0, speed: 0, move: 0, enc: 0, metal: 0, spellPenalty: 0 };
+var ATTR_LIMITS = { st: [1, 200], dx: [1, 50], iq: [1, 50], ht: [1, 50], per: [-50, 50], will: [-50, 50], perBase: [1, 50], willBase: [1, 50], hp: [-200, 200], fp: [-50, 50],
   speed: [-20, 20], move: [-20, 20], enc: [0, 4], metal: [0, 9999], spellPenalty: [-99, 99] };
 // Speed is bought in steps of 0.25; the weight in metal takes decimals; the rest are whole numbers.
 function cleanAttr(k, v) {
@@ -77,11 +89,18 @@ function cleanAttr(k, v) {
 function sheetAttrs(s) {
   var a = (s && s.attrs) || {}, out = /** @type {SheetAttrs} */ ({});
   Object.keys(SHEET_ATTRS0).forEach(function (k) { out[k] = k in a ? cleanAttr(k, a[k]) : SHEET_ATTRS0[k]; });
+  // Sheets saved before the bases existed counted Percepção and Vontade from IQ: they keep the
+  // value they showed, now over a base of 10.
+  ['per', 'will'].forEach(function (k) {
+    if (k + 'Base' in a || !(k in a)) return;
+    out[k] = cleanAttr(k, out.iq + out[k] - out[k + 'Base']);
+  });
   return out;
 }
 // What a secondary value starts from before its own adjustment.
 function attrBase(k, a) {
-  if (k === 'per' || k === 'will') return a.iq;
+  if (k === 'per') return a.perBase;
+  if (k === 'will') return a.willBase;
   if (k === 'hp') return a.st;
   if (k === 'fp') return a.ht;
   if (k === 'speed') return (a.ht + a.dx) / 4;
@@ -106,7 +125,7 @@ function gurpsStats(a) {
     hp: a.hp * 2, fp: a.fp * 3, speed: a.speed * 20, move: a.move * 5 };
   var attrPts = cost.st + cost.dx + cost.iq + cost.ht + cost.per + cost.will, secPts = cost.hp + cost.fp + cost.speed + cost.move;
   return {
-    per: a.iq + a.per, will: a.iq + a.will, hp: a.st + a.hp, fp: a.ht + a.fp, speed: speed, move: move,
+    per: a.perBase + a.per, will: a.willBase + a.will, hp: a.st + a.hp, fp: a.ht + a.fp, speed: speed, move: move,
     // The table's rule: each level of Peso takes 1 from Move and from Dodge.
     moveNow: Math.max(0, move - a.enc), dodge: Math.floor(speed) + 3 - a.enc,
     lift: bl >= 10 ? Math.round(bl) : Math.round(bl * 10) / 10, dmg: gurpsDamage(a.st),
@@ -115,7 +134,15 @@ function gurpsStats(a) {
 }
 function fmtDec(n, places) { return n.toFixed(places).replace('.', ','); }
 // [key, name, what it is]. Points of the first group add up as "atributos", of the second as "secundárias".
-var ATTR_ROWS = [['st', 'ST', 'Força'], ['dx', 'DX', 'Destreza'], ['iq', 'IQ', 'Inteligência'], ['ht', 'HT', 'Vitalidade'], ['per', 'Percepção', 'base IQ'], ['will', 'Vontade', 'base IQ']];
+var ATTR_ROWS = [['st', 'ST', 'Força'], ['dx', 'DX', 'Destreza'], ['iq', 'IQ', 'Inteligência'], ['ht', 'HT', 'Vitalidade'], ['per', 'Percepção', ''], ['will', 'Vontade', '']];
+// Percepção and Vontade show their base under the name; while editing, it is a field (see wireSheetAttrs).
+var ATTR_BASES = { per: 'perBase', will: 'willBase' };
+function attrBaseHtml(k, a, editing) {
+  var b = ATTR_BASES[k];
+  if (!editing) return 'base ' + a[b] + ' · 5 pts/nível';
+  return '<label class="attr-base">base <input type="number" inputmode="numeric" min="1" max="50" step="1" data-b="' + b + '" data-for="' + k + '" value="' + a[b] + '"' +
+    ' aria-label="Valor base de ' + (k === 'per' ? 'Percepção' : 'Vontade') + '"></label>';
+}
 var SEC_ROWS = [['fp', 'Fadiga', 'base HT'], ['hp', 'HP', 'base ST'], ['speed', 'VB', '(HT + DX) ÷ 4'], ['move', 'Deslocamento', 'base VB'],
   ['metal', 'Peso em Metal', ''], ['spellPenalty', 'Penalidade em Magias', ''], ['enc', 'Peso', 'nível de carga, 0 a 4']];
 // The value a row shows (and its input holds while editing).
@@ -137,7 +164,8 @@ function attrInput(k, label, a, r) {
 function attrRowsHtml(rows, a, r, editing) {
   return rows.map(function (row) {
     var k = row[0], pts = r.cost[k];
-    return '<tr><td><b>' + esc(row[1]) + '</b>' + (row[2] ? '<small>' + esc(row[2]) + '</small>' : '') + '</td>' +
+    var sub = ATTR_BASES[k] ? attrBaseHtml(k, a, editing) : row[2] ? esc(row[2]) : '';
+    return '<tr><td><b>' + esc(row[1]) + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</td>' +
       '<td class="gval">' + (editing ? attrInput(k, row[1], a, r) : attrValueText(k, a, r)) + '</td>' +
       '<td class="gpts' + (pts == null ? ' none' : '') + '" data-pts="' + k + '">' + (pts == null ? '—' : pts) + '</td></tr>';
   }).join('');
@@ -188,6 +216,18 @@ function wireSheetAttrs(s) {
     });
     inp.addEventListener('blur', function () { refresh(null); });
   });
+  // A new base keeps the value of Percepção or Vontade and changes what it costs.
+  box.querySelectorAll('[data-b]').forEach(function (inp) {
+    inp.addEventListener('input', function () {
+      var b = inp.getAttribute('data-b'), k = inp.getAttribute('data-for'), v = inp.value;
+      if (v === '' || !isFinite(Number(v))) return;
+      var value = d[b] + d[k];
+      d[b] = cleanAttr(b, Number(v));
+      d[k] = cleanAttr(k, value - d[b]);
+      refresh(inp);
+    });
+    inp.addEventListener('blur', function () { if (inp.value === '') inp.value = String(d[inp.getAttribute('data-b')]); });
+  });
   $('attrCancel').onclick = function () { ui.attrDraft = null; renderSheetPage(); };
   $('attrSave').onclick = function () {
     var btn = $('attrSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('attrCancel').disabled = true;
@@ -200,10 +240,11 @@ function wireSheetAttrs(s) {
 
 /* =====================================================================
    GURPS 4ª ed.: perícias.
-   sheet.skills is a list of { name, attr, diff, pts, bonus }: the level
+   sheet.skills is a list of { name, attr, diff, pts, bonus, skillId? }: the level
    comes from the points spent (Basic Set, p. 170), bonus is what an
-   advantage or talent adds on top. sheet.cultures is the Cultural
-   Familiarity list { name, pts }, kept out of the skills total.
+   advantage or talent adds on top, skillId the entry of Mundo › Perícias
+   it was picked from (the name may add a specialty). sheet.cultures is the Cultural
+   Familiarity list { name, pts }, shown with the Easy skills (set apart) and counted in their total.
    ===================================================================== */
 var SKILL_ATTRS = ['ST', 'DX', 'IQ', 'HT', 'Per', 'Will'];
 // [name, level with 1 point relative to the attribute, default relative to the attribute (null: none)]
@@ -211,8 +252,11 @@ var SKILL_DIFFS = { E: ['Fácil', 0, -4], A: ['Média', -1, -5], H: ['Difícil',
 var SKILL_DIFF_KEYS = ['E', 'A', 'H', 'VH'];
 function cleanInt(v, lo, hi, dflt) { var n = Math.round(Number(v)); return isFinite(n) && v !== '' && v != null ? Math.min(hi, Math.max(lo, n)) : dflt; }
 function cleanSkill(k) {
-  return { name: String((k && k.name) || '').trim().slice(0, 100), attr: SKILL_ATTRS.indexOf(k && k.attr) >= 0 ? k.attr : 'IQ',
+  // A specialty left blank after picking from the list ("Animal Handling ()") is dropped.
+  var out = { name: String((k && k.name) || '').replace(/\s*\(\s*\)\s*$/, '').trim().slice(0, 100), attr: SKILL_ATTRS.indexOf(k && k.attr) >= 0 ? k.attr : 'IQ',
     diff: SKILL_DIFFS[k && k.diff] ? k.diff : 'A', pts: cleanInt(k && k.pts, 0, 999, 1), bonus: cleanInt(k && k.bonus, -20, 20, 0) };
+  if (k && typeof k.skillId === 'string' && k.skillId) out.skillId = k.skillId.slice(0, 200);
+  return out;
 }
 function cleanCulture(c) { return { name: String((c && c.name) || '').trim().slice(0, 200), pts: cleanInt(c && c.pts, 0, 99, 1) }; }
 function sheetSkills(s) { return (Array.isArray(s && s.skills) ? s.skills : []).map(cleanSkill).filter(function (k) { return k.name; }); }
@@ -220,10 +264,18 @@ function sheetCultures(s) { return (Array.isArray(s && s.cultures) ? s.cultures 
 // 1, 2, 4 points buy the first three levels; every 4 points after that buy one more.
 function skillStep(pts) { return pts < 2 ? 0 : pts < 4 ? 1 : 2 + Math.floor((pts - 4) / 4); }
 function skillStepCost(i) { return i === 0 ? 1 : i === 1 ? 2 : 4 * (i - 1); }
-// Level relative to the attribute, bonus included; null when there is no default to fall back on.
+// Level relative to the attribute, bonus included (the typed one and the talents', k.tbonus, set by
+// applyTalents and never saved); null when there is no default to fall back on.
 function skillRel(k) {
   var d = SKILL_DIFFS[k.diff], rel = k.pts > 0 ? d[1] + skillStep(k.pts) : d[2];
-  return rel == null ? null : rel + k.bonus;
+  return rel == null ? null : rel + (k.bonus || 0) + (k.tbonus || 0);
+}
+// Hover text of a level with bonuses: "Inclui +1 de bônus e +2 de Talent (Soldier) 2".
+function skillBonusTitle(k) {
+  var p = [];
+  if (k.bonus) p.push((k.bonus > 0 ? '+' : '') + k.bonus + ' de bônus');
+  if (k.tbonus) p.push(k.tfrom || '+' + k.tbonus + ' das vantagens');
+  return p.length ? 'Inclui ' + p.join(' e ') : '';
 }
 function attrValues(a) { var r = gurpsStats(a); return { ST: a.st, DX: a.dx, IQ: a.iq, HT: a.ht, Per: r.per, Will: r.will }; }
 function skillNh(k, av) {
@@ -234,6 +286,9 @@ function skillNh(k, av) {
 // Points that buy nothing: 3 points in a skill get the level of 2.
 function skillWaste(k) { return k.pts > 0 ? k.pts - skillStepCost(skillStep(k.pts)) : 0; }
 function sumPts(list) { return list.reduce(function (n, x) { return n + x.pts; }, 0); }
+// Cultural Familiarity goes with the Easy skills: its points count in their total and in the
+// skills total.
+function skillsTotal(skills, cultures) { return sumPts(skills) + sumPts(cultures || []); }
 
 Ops.saveSheetSkills = function (s, skills, cultures) {
   if (!rawHas('sheets', s.id)) return Promise.reject({ message: 'Essa ficha não existe mais.' });
@@ -243,25 +298,70 @@ Ops.saveSheetSkills = function (s, skills, cultures) {
 
 function skillNhCell(k, av) {
   var nh = skillNh(k, av);
-  return '<td class="gnh' + (k.bonus ? ' bonus' : '') + '"' + (k.bonus ? ' title="Inclui ' + (k.bonus > 0 ? '+' : '') + k.bonus + ' de bônus"' : '') + '>' + esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small></td>';
+  var t = skillBonusTitle(k);
+  return '<td class="gnh' + (t ? ' bonus' : '') + '"' + (k.i != null ? ' data-gnh="' + k.i + '"' : '') + (t ? ' title="' + esc(t) + '"' : '') + '>' + esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small></td>';
 }
-function skillGroupHtml(diff, list, av) {
+// can: the points are a field, changed right in the table (see wireQuickPts); k.i is the
+// position of the skill in sheet.skills. cultures: the Cultural Familiarity rows, after the
+// skills of the Easy table and set apart from them.
+function skillGroupHtml(diff, list, av, can, cultures) {
   var name = SKILL_DIFFS[diff][0];
+  cultures = cultures || [];
+  var cultRows = cultures.map(function (c, j) {
+    return '<tr class="gcult"><td><b>' + esc(c.name) + '</b><small>Familiaridade cultural</small></td><td class="gpts">' +
+      (can ? '<input class="gpts-in" type="number" min="0" max="99" step="1" inputmode="numeric" data-c="' + j + '" value="' + c.pts + '" aria-label="Pontos em ' + esc(c.name) + '">' : c.pts) + '</td><td class="gnh none" title="Familiaridade cultural não tem NH">—</td></tr>';
+  }).join('');
   return '<table class="gtab"><thead><tr><th>' + name + '</th><th>Pontos</th><th>NH</th></tr></thead><tbody>' +
-    (list.length ? list.map(function (k) {
-      return '<tr><td><b>' + esc(k.name) + '</b><small>' + k.attr + '/' + diff + '</small></td><td class="gpts">' + k.pts + '</td>' + skillNhCell(k, av) + '</tr>';
-    }).join('') : '<tr><td colspan="3" class="gnone">Nenhuma perícia ' + name.toLowerCase() + '.</td></tr>') + '</tbody>' +
-    '<tfoot><tr><td colspan="2">Total perícias ' + name + '</td><td class="gpts">' + sumPts(list) + '</td></tr></tfoot></table>';
+    (list.length || cultures.length ? list.map(function (k) {
+      var name = k.skillId ? '<a href="' + skillHref(k.skillId) + '" data-skill-modal="' + esc(k.skillId) + '" title="Ver as regras da perícia">' + esc(k.name) + '</a>' : esc(k.name);
+      return '<tr><td><b>' + name + '</b><small>' + k.attr + '/' + diff + '</small></td><td class="gpts">' +
+        (can ? '<input class="gpts-in" type="number" min="0" max="999" step="1" inputmode="numeric" data-k="' + k.i + '" value="' + k.pts + '" aria-label="Pontos em ' + esc(k.name) + '">' : k.pts) + '</td>' + skillNhCell(k, av) + '</tr>';
+    }).join('') + cultRows : '<tr><td colspan="3" class="gnone">Nenhuma perícia ' + name.toLowerCase() + '.</td></tr>') + '</tbody>' +
+    '<tfoot><tr><td colspan="2">Total perícias ' + name + '</td><td class="gpts" data-gtot="' + diff + '">' + skillsTotal(list, cultures) + '</td></tr></tfoot></table>';
+}
+// NH of a row being edited; the points that buy nothing go on a line of their own.
+function skillEditNhHtml(k, av) {
+  var nh = skillNh(k, av), w = skillWaste(k);
+  return esc(nh.rel) + ' <small>' + esc(nh.lvl) + '</small>' + (w ? '<small class="sk-waste">' + w + ' pt sem efeito</small>' : '');
+}
+// The entry of Mundo › Perícias a sheet skill was picked from, while its name still starts with
+// that entry's (a specialty may follow: "Animal Handling (Dogs)").
+function skillLink(k) {
+  var c = k && k.skillId ? skillById(k.skillId) : null;
+  return c && norm(k.name).indexOf(norm(c.name)) === 0 ? c : null;
+}
+// Under the name of a linked row: the page of the entry and its rules in short.
+function skillRulesHtml(k) {
+  var c = skillLink(k); if (!c) return '';
+  var rules = [c.defaults ? 'Padrão: ' + c.defaults : '', c.specialty ? 'exige especialização, entre parênteses' : '',
+    c.prerequisites ? 'Pré-requisitos: ' + c.prerequisites : ''].filter(Boolean).join(' · ');
+  return '<a href="' + skillHref(c.id) + '" data-skill-modal="' + esc(c.id) + '" title="Ver as regras desta perícia">' + svg(ICON.skill, 12, 2.2) + esc(c.page || 'Regras') + '</a>' +
+    (rules ? ' <span title="' + esc(rules) + '">' + esc(rules) + '</span>' : '');
+}
+// Book entries with attribute and difficulty (not the cross-references) whose name has q;
+// the ones starting with it first. W.skills is already in name order.
+function skillSuggestions(q) {
+  q = norm(q || '').trim(); if (!q) return [];
+  var starts = [], has = [];
+  (W.skills || []).forEach(function (c) {
+    if (!c.attribute || !SKILL_DIFFS[c.difficulty]) return;
+    var at = norm(c.name).indexOf(q);
+    if (at === 0) starts.push(c); else if (at > 0) has.push(c);
+  });
+  return starts.concat(has).slice(0, 8);
 }
 function skillEditRow(k, i, av) {
-  var nh = skillNh(k, av), w = skillWaste(k);
   return '<div class="sk-row" data-i="' + i + '">' +
-    '<input class="sk-name" type="text" data-f="name" maxlength="100" placeholder="Ex.: Savoir-Faire (Military)" aria-label="Perícia" value="' + esc(k.name) + '">' +
+    '<div class="sk-namecell"><div class="sk-pick">' +
+    '<input class="sk-name" type="text" data-f="name" maxlength="100" placeholder="Digite para buscar. Ex.: Savoir-Faire (Military)" aria-label="Perícia" value="' + esc(k.name) + '"' +
+    ' autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="skSug' + i + '">' +
+    '<div class="suggest" id="skSug' + i + '" role="listbox" hidden></div></div>' +
+    '<div class="sk-rules" data-rules="' + i + '">' + skillRulesHtml(k) + '</div></div>' +
     '<select data-f="attr" aria-label="Atributo">' + SKILL_ATTRS.map(function (x) { return '<option' + (x === k.attr ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>' +
     '<select data-f="diff" aria-label="Dificuldade">' + SKILL_DIFF_KEYS.map(function (x) { return '<option value="' + x + '"' + (x === k.diff ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>' +
     '<input type="number" data-f="pts" min="0" max="999" step="1" inputmode="numeric" aria-label="Pontos" value="' + k.pts + '">' +
     '<input type="number" data-f="bonus" min="-20" max="20" step="1" inputmode="numeric" aria-label="Bônus" value="' + k.bonus + '">' +
-    '<span class="sk-nh' + (k.bonus ? ' bonus' : '') + '" data-nh="' + i + '">' + esc(nh.rel) + ' <small>' + esc(nh.lvl) + (w ? ' · ' + w + ' pt sem efeito' : '') + '</small></span>' +
+    '<span class="sk-nh' + (k.bonus || k.tbonus ? ' bonus' : '') + '" data-nh="' + i + '"' + (skillBonusTitle(k) ? ' title="' + esc(skillBonusTitle(k)) + '"' : '') + '>' + skillEditNhHtml(k, av) + '</span>' +
     '<button class="icon-btn" type="button" data-del="' + i + '" aria-label="Remover perícia" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
 }
 function cultureEditRow(c, i) {
@@ -273,29 +373,86 @@ function cultureEditRow(c, i) {
 function sheetSkillsHtml(s, editing) {
   var d = S.ui.skillDraft, skills = editing ? d.skills : sheetSkills(s), cultures = editing ? d.cultures : sheetCultures(s);
   var av = attrValues(S.ui.attrDraft || sheetAttrs(s)), can = canWrite();
-  var head = '<div class="gurps-head"><h2 class="sec-title">Perícias</h2><span class="gurps-total" id="skTotal">' + sumPts(skills) + ' pts</span>' +
+  var head = '<div class="gurps-head"><h2 class="sec-title">Perícias</h2><span class="gurps-total" id="skTotal">' + skillsTotal(skills, cultures) + ' pts</span>' +
     (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="skCancel">Cancelar</button><button class="btn primary" type="button" id="skSave">Salvar perícias</button></div>'
-      : can ? '<div class="btn-row"><button class="btn" type="button" id="skEdit">' + svg(ICON.edit, 15) + 'Editar perícias</button></div>' : '') + '</div>';
+      : can && !S.ui.combatDraft && !S.ui.advDraft ? '<div class="btn-row"><button class="btn" type="button" id="skEdit">' + svg(ICON.edit, 15) + 'Editar perícias</button></div>' : '') + '</div>';
   if (editing) {
     return '<section class="gurps" id="skills">' + head +
       '<div class="box sk-edit"><div class="sk-row sk-labels" aria-hidden="true"><span>Perícia</span><span>Atributo</span><span>Dif.</span><span>Pontos</span><span>Bônus</span><span>NH</span><span></span></div>' +
-      '<div id="skRows">' + skills.map(function (k, i) { return skillEditRow(k, i, av); }).join('') + '</div>' +
+      '<div id="skRows">' + applyTalents(skills, s).map(function (k, i) { return skillEditRow(k, i, av); }).join('') + '</div>' +
       '<div><button class="btn" type="button" id="skAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar perícia</button></div>' +
       '<p class="hint-text">Dificuldade: E fácil, A média, H difícil, VH muito difícil. Bônus é o que vantagens ou talentos somam ao NH. Com 0 pontos vale o nível padrão.</p></div>' +
       '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Familiaridade Cultural</h3>' +
+      '<p class="hint-text" style="margin:0">Aparece junto com as perícias fáceis, destacada, e os pontos entram no total delas.</p>' +
       '<div id="cuRows">' + cultures.map(cultureEditRow).join('') + '</div>' +
       '<div><button class="btn" type="button" id="cuAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar cultura</button></div></div>' +
       '<div class="form-err" id="skErr" role="alert"></div></section>';
   }
   var groups = SKILL_DIFF_KEYS.filter(function (x) { return x !== 'VH' || skills.some(function (k) { return k.diff === 'VH'; }); });
+  skills.forEach(function (k, i) { k.i = i; });
+  applyTalents(skills, s);
   return '<section class="gurps" id="skills">' + head +
     (skills.length || cultures.length ? '<div class="gurps-grid">' + groups.map(function (x) {
-      return skillGroupHtml(x, skills.filter(function (k) { return k.diff === x; }), av);
-    }).join('') +
-    '<table class="gtab"><thead><tr><th>Familiaridade Cultural</th><th>Pontos</th></tr></thead><tbody>' +
-    (cultures.length ? cultures.map(function (c) { return '<tr><td>' + esc(c.name) + '</td><td class="gpts">' + c.pts + '</td></tr>'; }).join('') : '<tr><td colspan="2" class="gnone">Nenhuma.</td></tr>') +
-    '</tbody></table></div>'
+      return skillGroupHtml(x, skills.filter(function (k) { return k.diff === x; }), av, can, x === 'E' ? cultures : null);
+    }).join('') + '</div>'
       : '<p class="long none">Nenhuma perícia cadastrada.' + (can ? ' Use <b>Editar perícias</b> para adicionar.' : '') + '</p>') + '</section>';
+}
+// Out of the editor, the points of each skill change right in the table: the NH and totals follow
+// as you type, and the sheet is saved a moment after the last change or when the field is left.
+// While a points field has focus, data that arrives does not redraw the page (see onData in app.js);
+// leaving it redraws the page if something arrived meanwhile.
+function wireQuickPts(s, box) {
+  var ui = S.ui, av = attrValues(ui.attrDraft || sheetAttrs(s)), list = applyTalents(sheetSkills(s), s), cultures = sheetCultures(s), edits = {}, timer = 0;
+  if (!box.querySelector('.gpts-in')) return;
+  function paintTotals() {
+    $('skTotal').textContent = skillsTotal(list, cultures) + ' pts';
+    SKILL_DIFF_KEYS.forEach(function (x) {
+      var t = box.querySelector('[data-gtot="' + x + '"]');
+      if (t) t.textContent = String(skillsTotal(list.filter(function (k) { return k.diff === x; }), x === 'E' ? cultures : null));
+    });
+  }
+  // edits: 'k<i>' for a skill, 'c<j>' for a Cultural Familiarity row, with the new points.
+  function save() {
+    clearTimeout(timer); timer = 0;
+    var keys = Object.keys(edits); if (!keys.length) return;
+    var changed = edits; edits = {};
+    // The sheet as it is now in the database, with these points on top (matched by name, and
+    // attribute and difficulty for skills, in case someone else changed the lists meanwhile).
+    var cur = sheetById(s.id) || s, fresh = sheetSkills(cur), freshC = sheetCultures(cur);
+    keys.forEach(function (key) {
+      var n = +key.slice(1), hit;
+      if (key[0] === 'k') { var k = list[n]; hit = fresh.filter(function (x) { return x.name === k.name && x.attr === k.attr && x.diff === k.diff; })[0]; }
+      else { var c = cultures[n]; hit = freshC.filter(function (x) { return x.name === c.name; })[0]; }
+      if (hit) hit.pts = changed[key];
+    });
+    Ops.saveSheetSkills(cur, fresh, freshC).catch(function (er) { toast(errorText(er), true); ui.ptsStale = false; renderSheetPage(); });
+  }
+  function field(e) { var t = /** @type {AnyEl} */ (e.target); return t && t.classList && t.classList.contains('gpts-in') ? t : null; }
+  // The skill or culture of a points field.
+  function itemOf(t) { return t.hasAttribute('data-c') ? cultures[+t.getAttribute('data-c')] : list[+t.getAttribute('data-k')]; }
+  box.addEventListener('input', function (e) {
+    var t = field(e); if (!t || t.value === '') return;
+    var item = itemOf(t); if (!item) return;
+    if (t.hasAttribute('data-c')) { item.pts = cleanInt(t.value, 0, 99, item.pts); edits['c' + t.getAttribute('data-c')] = item.pts; }
+    else {
+      var i = +t.getAttribute('data-k');
+      item.pts = cleanInt(t.value, 0, 999, item.pts); edits['k' + i] = item.pts;
+      var nh = skillNh(item, av), cell = box.querySelector('[data-gnh="' + i + '"]');
+      if (cell) cell.innerHTML = esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small>';
+    }
+    paintTotals();
+    clearTimeout(timer); timer = setTimeout(save, 700);
+  });
+  box.addEventListener('keydown', function (e) { var t = field(e); if (t && e.key === 'Enter') t.blur(); });
+  box.addEventListener('focusout', function (e) {
+    var t = field(e); if (!t) return;
+    if (t.value === '') t.value = String(itemOf(t).pts);
+    save();
+    setTimeout(function () {
+      var a = document.activeElement;
+      if (ui.ptsStale && !(a && a.classList && a.classList.contains('gpts-in'))) { ui.ptsStale = false; renderSheetPage(); }
+    }, 250);
+  });
 }
 // While editing, S.ui.skillDraft holds { skills, cultures }; typing updates it and the NH and
 // totals beside it, adding or removing a row redraws the page from it.
@@ -307,21 +464,79 @@ function wireSheetSkills(s) {
     if (!ui.skillDraft.skills.length) ui.skillDraft.skills.push(cleanSkill({ name: '', attr: 'IQ', diff: 'A', pts: 1 }));
     renderSheetPage(); focusLast('#skRows .sk-name');
   };
+  if (!ui.skillDraft && $('skills')) wireQuickPts(s, $('skills'));
   var d = ui.skillDraft, box = $('skills'); if (!d || !box || !$('skSave')) return;
   var av = attrValues(ui.attrDraft || sheetAttrs(s));
   box.addEventListener('input', onEdit); box.addEventListener('change', onEdit);
+  function paintRow(i) {
+    var k = applyTalents([cleanSkill(d.skills[i])], s)[0], cell = box.querySelector('[data-nh="' + i + '"]'), rules = box.querySelector('[data-rules="' + i + '"]');
+    if (cell) { cell.className = 'sk-nh' + (k.bonus || k.tbonus ? ' bonus' : ''); cell.title = skillBonusTitle(k); cell.innerHTML = skillEditNhHtml(k, av); }
+    if (rules) rules.innerHTML = skillRulesHtml(k);
+  }
   function onEdit(e) {
     var el = e.target, f = el.dataset && el.dataset.f, row = el.closest && el.closest('[data-i], [data-c]'); if (!f || !row) return;
     var isSkill = row.hasAttribute('data-i'), i = +row.getAttribute(isSkill ? 'data-i' : 'data-c'), item = (isSkill ? d.skills : d.cultures)[i];
     if (f === 'name' || f === 'attr' || f === 'diff') item[f] = el.value;
     else if (el.value !== '') item[f] = f === 'bonus' ? cleanInt(el.value, -20, 20, 0) : cleanInt(el.value, 0, 999, 0);
     if (isSkill) {
-      var k = cleanSkill(item), nh = skillNh(k, av), w = skillWaste(k), cell = box.querySelector('[data-nh="' + i + '"]');
-      cell.className = 'sk-nh' + (k.bonus ? ' bonus' : '');
-      cell.innerHTML = esc(nh.rel) + ' <small>' + esc(nh.lvl) + (w ? ' · ' + w + ' pt sem efeito' : '') + '</small>';
+      // Another name than the entry picked from the list: the link goes.
+      if (f === 'name' && item.skillId && skillById(item.skillId) && !skillLink(item)) delete item.skillId;
+      paintRow(i);
     }
-    $('skTotal').textContent = sumPts(d.skills.map(cleanSkill)) + ' pts';
+    $('skTotal').textContent = skillsTotal(d.skills.map(cleanSkill), d.cultures.map(cleanCulture)) + ' pts';
   }
+  // Suggestions from Mundo › Perícias under the name being typed; picking one fills the name,
+  // attribute and difficulty and links the row to the entry.
+  loadCatalog('skills').then(function () { if (ui.skillDraft === d) d.skills.forEach(function (k, i) { paintRow(i); }); });
+  var sug = { i: -1, list: null, input: null, options: [], active: 0 };
+  function hideSug() {
+    if (sug.list) { sug.list.hidden = true; sug.input.setAttribute('aria-expanded', 'false'); sug.input.removeAttribute('aria-activedescendant'); }
+    sug.i = -1; sug.list = null; sug.input = null; sug.options = [];
+  }
+  function paintSug(input) {
+    var row = input.closest('[data-i]'), i = row ? +row.getAttribute('data-i') : -1, list = row && row.querySelector('.suggest');
+    if (!list) return;
+    if (sug.list && sug.list !== list) hideSug();
+    var options = skillSuggestions(input.value);
+    // Nothing to offer, or exactly the entry already linked.
+    if (!options.length || (options.length === 1 && options[0].id === d.skills[i].skillId && skillLink(d.skills[i]))) { sug.list = list; sug.input = input; hideSug(); return; }
+    sug.i = i; sug.list = list; sug.input = input; sug.options = options; sug.active = Math.min(sug.active, options.length - 1);
+    list.innerHTML = options.map(function (c, n) {
+      return '<button type="button" role="option" id="skSug' + i + 'o' + n + '" data-o="' + n + '" class="' + (n === sug.active ? 'act' : '') + '" aria-selected="' + (n === sug.active) + '">' +
+        '<span>' + esc(c.name) + '</span><small>' + esc(c.attribute + '/' + c.difficulty + (c.page ? ' · ' + c.page : '')) + '</small></button>';
+    }).join('');
+    list.hidden = false; input.setAttribute('aria-expanded', 'true'); input.setAttribute('aria-activedescendant', 'skSug' + i + 'o' + sug.active);
+  }
+  function pickSug(n) {
+    var c = sug.options[n], i = sug.i, input = sug.input; if (!c || i < 0) return;
+    var item = d.skills[i], row = input.closest('[data-i]');
+    // A skill that needs a specialty gets "()" with the cursor inside, to type it.
+    item.name = c.name + (c.specialty ? ' ()' : ''); item.attr = c.attribute; item.diff = c.difficulty; item.skillId = c.id;
+    input.value = item.name;
+    row.querySelector('[data-f="attr"]').value = item.attr;
+    row.querySelector('[data-f="diff"]').value = item.diff;
+    hideSug(); paintRow(i);
+    if (c.specialty) { input.focus(); input.setSelectionRange(item.name.length - 1, item.name.length - 1); }
+    else { var pts = row.querySelector('[data-f="pts"]'); pts.focus(); pts.select(); }
+  }
+  var rows = $('skRows');
+  function nameInput(e) { var t = /** @type {AnyEl} */ (e.target); return t && t.classList && t.classList.contains('sk-name') ? t : null; }
+  rows.addEventListener('input', function (e) { var t = nameInput(e); if (t) { sug.active = 0; paintSug(t); } });
+  rows.addEventListener('focusin', function (e) { var t = nameInput(e); if (t) { sug.active = 0; paintSug(t); } });
+  rows.addEventListener('focusout', function (e) {
+    var input = nameInput(e); if (!input) return;
+    setTimeout(function () { if (sug.input === input && document.activeElement !== input) hideSug(); }, 150);
+  });
+  rows.addEventListener('keydown', function (e) {
+    var t = nameInput(e);
+    if (!t || sug.input !== t || !sug.options.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); sug.active = Math.min(sug.options.length - 1, sug.active + 1); paintSug(t); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sug.active = Math.max(0, sug.active - 1); paintSug(t); }
+    else if (e.key === 'Enter') { e.preventDefault(); pickSug(sug.active); }
+    else if (e.key === 'Escape') { e.stopPropagation(); hideSug(); }
+  });
+  rows.addEventListener('mousedown', function (e) { if (e.target.closest('.suggest')) e.preventDefault(); });
+  rows.addEventListener('click', function (e) { var b = e.target.closest('.suggest [data-o]'); if (b) pickSug(+b.getAttribute('data-o')); });
   box.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-del], [data-cdel]'); if (!b) return;
     if (b.hasAttribute('data-del')) d.skills.splice(+b.getAttribute('data-del'), 1); else d.cultures.splice(+b.getAttribute('data-cdel'), 1);
@@ -366,11 +581,12 @@ function renderSheetList() {
   });
   var cnt = $('sheetCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.sheets.length : plural(W.sheets.length, 'ficha', 'fichas');
   el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (s) {
-    var chars = sheetChars(s.id);
-    return '<a class="loc-card" href="' + sheetHref(s.id) + '"><div class="thumb">' + svg(ICON.sheet, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(s.name) + '</strong>' +
+    var chars = sheetChars(s.id), p = sheetPortrait(s);
+    return '<a class="loc-card" href="' + sheetHref(s.id) + '"><div class="thumb sheet-thumb"' + (p ? ' data-img="' + esc(p.ref) + '"' : '') + '>' + svg(ICON.sheet, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(s.name) + '</strong>' +
       '<span class="where">' + (chars.length ? esc(chars.map(function (c) { return c.name; }).join(', ')) : 'Sem personagem vinculado') + '</span>' +
       (s.attrs ? '<span class="meta">' + gurpsStats(sheetAttrs(s)).total + ' pts</span>' : '') + '</div></a>';
   }).join('') + '</div>' : '<p class="lede">Nenhuma ficha encontrada para essa busca.</p>';
+  fillImages(el);
 }
 
 /* =====================================================================
@@ -382,21 +598,33 @@ function renderSheetPage() {
     pageRoot.innerHTML = crumbsHtml('sheets') + (W.loaded.sheets ? '<h1>Ficha não encontrada</h1><p class="lede">Essa ficha foi excluída ou o link está incompleto.</p><div><a class="btn" href="#fichas">Voltar para Fichas</a></div>' : '<p class="lede">Carregando ficha…</p>');
     return;
   }
-  var can = canWrite(), chars = sheetChars(s.id);
-  var head = crumbsHtml('sheet:' + s.id) + '<div class="head-row"><div><span class="badge">' + svg(ICON.sheet, 12, 2.4) + 'Ficha</span><h1>' + esc(s.name) + '</h1>' +
-    '<p class="lede">' + (chars.length ? 'Ficha de ' + esc(chars.map(function (c) { return c.name; }).join(', ')) : 'Nenhum personagem vinculado') + '</p></div>' +
+  var can = canWrite(), chars = sheetChars(s.id), portrait = sheetPortrait(s);
+  var head = crumbsHtml('sheet:' + s.id) + '<div class="head-row"><div class="sheet-title">' +
+    (portrait ? '<div class="sheet-portrait" id="sheetPortrait">' + svg(ICON.user, 28, 1.6) + '</div>' : '') +
+    '<div><span class="badge">' + svg(ICON.sheet, 12, 2.4) + 'Ficha</span><h1>' + esc(s.name) + '</h1>' +
+    '<p class="lede">' + (chars.length ? 'Ficha de ' + esc(chars.map(function (c) { return c.name; }).join(', ')) : 'Nenhum personagem vinculado') + '</p></div></div>' +
     (can ? '<div class="btn-row"><button class="btn" type="button" id="editSheetBtn">' + svg(ICON.edit, 15) + 'Editar ficha</button><button class="btn danger" type="button" id="delSheetBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a ficha <b>' + esc(s.name) + '</b>?' + (chars.length ? ' ' + plural(chars.length, 'personagem fica', 'personagens ficam') + ' sem ficha; os personagens continuam cadastrados.' : '') + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSheetYes">Excluir ficha</button><button class="btn ghost" type="button" id="delSheetNo">Cancelar</button></div></div>' : '');
   var main = '<section><h2 class="sec-title">Observações</h2>' + (s.description ? '<p class="long">' + esc(s.description) + '</p>' : '<p class="long none">Sem observações.</p>') + '</section>';
-  // Closed until its title is clicked (see foldBox).
+  // Closed until its title is clicked (see foldBox). At the top, above the attributes.
   var side = foldBox('chars', 'Personagens', chars.length,
-    chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum personagem vinculado.' + (can ? ' Use <b>Vincular ficha</b> na página do personagem.' : '') + '</p>');
-  pageRoot.innerHTML = head + sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
-    '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
+    (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px;margin:0">Nenhum personagem vinculado.</p>') +
+    (can ? '<div style="margin-top:10px"><button class="btn" type="button" id="sheetCharsBtn">' + svg(ICON.user, 15) + (chars.length ? 'Trocar personagem' : 'Vincular personagem') + '</button></div>' : ''));
+  pageRoot.innerHTML = head + '<div class="sheet-chars">' + side + '</div>' +
+    sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
+    sheetCombatHtml(s, !!ui.combatDraft && can) + sheetAdvsHtml(s, !!ui.advDraft && can) + main;
   fillImages(pageRoot);
+  if (portrait) W.store.imageUrl(portrait.ref).then(function (u) {
+    var h = $('sheetPortrait'); if (!h || !u) return;
+    h.innerHTML = '<button class="hero-zoom" type="button" aria-label="Ampliar a imagem de ' + esc(portrait.name) + '" title="' + esc(portrait.name) + ' · clique para ampliar"><img src="' + esc(u) + '" alt="' + esc(portrait.name) + '"></button>';
+    h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, portrait.name); };
+  });
   wireFolds(pageRoot);
   wireSheetAttrs(s);
   wireSheetSkills(s);
+  wireSheetCombat(s);
+  wireSheetAdvs(s);
+  var cb = $('sheetCharsBtn'); if (cb) cb.onclick = function () { openSheetCharsForm(s); };
   var e = $('editSheetBtn'); if (e) e.onclick = function () { openSheetForm(s); };
   var d = $('delSheetBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderSheetPage(); };
   var dn = $('delSheetNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderSheetPage(); };
@@ -445,16 +673,59 @@ function openSheetForm(s, then) {
 }
 
 /* =====================================================================
+   Form: the character of a sheet, from the sheet's page. A sheet has one
+   character and a character one sheet: picking one that has another sheet
+   moves it here, and the one that was here is left without a sheet.
+   ===================================================================== */
+function openSheetCharsForm(s) {
+  var cur = sheetChars(s.id), curId = cur.length ? cur[0].id : '', list = W.characters.slice().sort(byName);
+  var opts = '<option value="">Nenhum personagem</option>' + list.map(function (c) {
+    var other = c.sheetId && c.sheetId !== s.id ? sheetById(c.sheetId) : null;
+    return '<option value="' + esc(c.id) + '"' + (c.id === curId ? ' selected' : '') + '>' + esc(c.name) + (other ? ' (já vinculado a “' + esc(other.name) + '”)' : '') + '</option>';
+  }).join('');
+  var html = '<form id="sheetCharsForm" novalidate><h2 id="scTitle">Personagem de ' + esc(s.name) + '</h2>' +
+    '<p class="lede" style="margin:0">Cada ficha fica vinculada a um personagem só, e cada personagem a uma ficha. Escolher outro substitui o atual.</p>' +
+    (list.length ? '<div class="field"><label for="scChar">Personagem</label><select id="scChar">' + opts + '</select></div>'
+      : '<p class="notice">Nenhum personagem cadastrado ainda.</p>') +
+    '<div class="form-err" id="scErr" role="alert"></div>' +
+    '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="scCancel">Cancelar</button>' + (list.length ? '<button class="btn primary" type="submit" id="scSave">Salvar</button>' : '') + '</div></form>';
+  showModal(html);
+  modal.setAttribute('aria-labelledby', 'scTitle');
+  $('scCancel').onclick = function () { closeModal(); };
+  $('sheetCharsForm').onsubmit = function (e) {
+    e.preventDefault();
+    if (modalOpen.busy || !$('scChar')) return;
+    var id = $('scChar').value || null;
+    // Sheets from before this rule may have more than one: saving leaves only the one chosen.
+    if (id === (curId || null) && cur.length <= 1) { closeModal(); return; }
+    if (!sheetById(s.id)) { $('scErr').textContent = 'Essa ficha não existe mais.'; return; }
+    if (id && !charById(id)) { $('scErr').textContent = 'Esse personagem não existe mais. Escolha outro.'; return; }
+    modalOpen.busy = true;
+    var btn = $('scSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('scCancel').disabled = true; $('scErr').textContent = '';
+    // With a character, setCharSheet also unlinks whoever else had the sheet; with none, each one goes.
+    var done = id ? Ops.setCharSheet(id, s.id) : cur.reduce(function (p, c) { return p.then(function () { return Ops.setCharSheet(c.id, null); }); }, Promise.resolve());
+    done.then(function () {
+      closeModal(true);
+      toast(id ? 'Ficha vinculada a ' + charById(id).name + '.' : 'Vínculo com o personagem removido.');
+    }, function (er) {
+      if (!modalOpen) return;
+      modalOpen.busy = false; btn.disabled = false; btn.textContent = 'Salvar'; $('scCancel').disabled = false;
+      $('scErr').textContent = errorText(er);
+    });
+  };
+}
+
+/* =====================================================================
    Form: the sheet of a character (one at most; picking another replaces it)
    ===================================================================== */
 function openSheetLinkForm(c) {
   var cur = c.sheetId || '', list = W.sheets.slice().sort(byName);
   var opts = '<option value="">Nenhuma ficha</option>' + list.map(function (s) {
     var others = sheetChars(s.id).filter(function (x) { return x.id !== c.id; });
-    return '<option value="' + esc(s.id) + '"' + (s.id === cur ? ' selected' : '') + '>' + esc(s.name) + (others.length ? ' (também de ' + esc(others.map(function (x) { return x.name; }).join(', ')) + ')' : '') + '</option>';
+    return '<option value="' + esc(s.id) + '"' + (s.id === cur ? ' selected' : '') + '>' + esc(s.name) + (others.length ? ' (hoje de ' + esc(others.map(function (x) { return x.name; }).join(', ')) + ', que fica sem ficha)' : '') + '</option>';
   }).join('');
   var html = '<form id="sheetLinkForm" novalidate><h2 id="slTitle">Ficha de ' + esc(c.name) + '</h2>' +
-    '<p class="lede" style="margin:0">Cada personagem fica vinculado a uma ficha só. Escolher outra substitui a atual.</p>' +
+    '<p class="lede" style="margin:0">Cada personagem fica vinculado a uma ficha só, e cada ficha a um personagem. Escolher outra substitui a atual.</p>' +
     (list.length ? '<div class="field"><label for="slSheet">Ficha</label><select id="slSheet">' + opts + '</select></div>'
       : '<p class="notice">Nenhuma ficha cadastrada ainda.</p>') +
     (canWrite() ? '<div><button class="btn" type="button" id="slNew">' + svg(ICON.plus, 15, 2.4) + 'Criar uma ficha nova</button></div>' : '') +

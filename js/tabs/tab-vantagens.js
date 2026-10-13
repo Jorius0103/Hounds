@@ -217,3 +217,28 @@ function openAdvantageForm(a) {
     });
   };
 }
+
+/* ---------- An advantage or perk in a modal (from a sheet, like the skills' openSkillModal) ---------- */
+function openAdvModal(id) {
+  showModal('<div class="skill-modal" id="advModal"><p class="lede">Carregando vantagem…</p></div>');
+  function paint() {
+    var box = $('advModal'); if (!box) return;
+    var a = advById(id);
+    if (!a) { box.innerHTML = '<h2>Vantagem não encontrada</h2><p class="lede">Essa vantagem pode ter sido excluída ou ocultada.</p>'; return; }
+    var away = S.ui && (S.ui.skillDraft || S.ui.combatDraft || S.ui.advDraft) ? ' target="_blank" rel="noopener"' : '';
+    box.innerHTML = '<div class="skill-modal-head"><div style="display:flex;align-items:center;gap:8px"><span class="badge">' + svg(ICON.advantage, 12, 2.4) + ' ' + esc(advTypeLabel(a.type)) + '</span>' +
+      '<span class="spell-badge ' + advTypeClass(a.type) + '">' + esc(advTypeLabel(a.type)) + '</span></div>' +
+      '<h2 id="advModalTitle">' + esc(a.name) + '</h2><p class="lede">' + (a.cost ? esc(a.cost) : 'Custo não informado') + '</p></div>' +
+      '<h3 class="sec-title">Descrição</h3>' + (a.description ? '<p class="long">' + esc(a.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') +
+      '<p class="hint-text">' + esc([a.book, a.page ? 'p. ' + a.page : ''].filter(Boolean).join(' · ')) + '</p>' +
+      '<div class="btn-row" style="justify-content:flex-end"><a class="btn" href="' + advHref(a.id) + '"' + away + ' id="advModalPage">Abrir página da vantagem</a></div>';
+    modal.setAttribute('aria-labelledby', 'advModalTitle');
+    var pg = $('advModalPage'); if (pg && !away) pg.onclick = function () { closeModal(); };
+  }
+  loadCatalog('advantages').then(paint, paint);
+}
+document.addEventListener('click', function (e) {
+  if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  var t = /** @type {AnyEl} */ (e.target), a = t && t.closest && t.closest('[data-adv-modal]'); if (!a) return;
+  e.preventDefault(); openAdvModal(a.getAttribute('data-adv-modal'));
+});

@@ -30,6 +30,11 @@ function parseRoute() {
   if (p[0] === 'magia' && p[1]) return { page: 'spell', spellId: p[1], node: 'spell:' + p[1] };
   if (p[0] === 'vantagens') return { page: 'advs', node: 'advs' };
   if (p[0] === 'vantagem' && p[1]) return { page: 'adv', advId: p[1], node: 'adv:' + p[1] };
+  if (p[0] === 'pericias') return { page: 'skills', node: 'skills' };
+  if (p[0] === 'pericia' && p[1]) return { page: 'skill', skillId: p[1], node: 'skill:' + p[1] };
+  if (p[0] === 'combate') return { page: 'combat', node: 'combat' };
+  if (p[0] === 'tecnica' && p[1]) return { page: 'tech', techId: p[1], node: 'tech:' + p[1] };
+  if (p[0] === 'estilo' && p[1]) return { page: 'style', styleId: p[1], node: 'style:' + p[1] };
   if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
   if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
   if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
@@ -58,6 +63,11 @@ function hrefFor(node) {
   if (node.indexOf('spell:') === 0) return '#magia~' + encodeURIComponent(node.slice(6));
   if (node === 'advs') return '#vantagens';
   if (node.indexOf('adv:') === 0) return '#vantagem~' + encodeURIComponent(node.slice(4));
+  if (node === 'skills') return '#pericias';
+  if (node.indexOf('skill:') === 0) return '#pericia~' + encodeURIComponent(node.slice(6));
+  if (node === 'combat') return '#combate';
+  if (node.indexOf('tech:') === 0) return '#tecnica~' + encodeURIComponent(node.slice(5));
+  if (node.indexOf('style:') === 0) return '#estilo~' + encodeURIComponent(node.slice(6));
   return '#';
 }
 function mapHref(id) { return hrefFor('map:' + id); }

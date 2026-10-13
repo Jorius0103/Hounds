@@ -263,11 +263,24 @@ details.box.fold { display: block; padding: 0; }
 .gtab .gval { font-weight: 700; font-size: 15px; white-space: nowrap; }
 .gtab .gpts { width: 64px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
 .gtab .gpts.none { color: var(--faint); }
+/* Familiaridade Cultural: na tabela das perícias fáceis, destacada */
+.gtab tr.gcult td { background: rgba(168, 85, 247, .08); }
+.gtab tr.gcult td:first-child { box-shadow: inset 3px 0 0 #a855f7; }
+.gtab tr.gcult td small { color: #a855f7; font-weight: 600; }
+.gtab tr.gcult .gnh.none { color: var(--faint); }
+/* Pontos de perícia editáveis direto na tabela da ficha */
+.gtab .gpts-in { width: 56px; box-sizing: border-box; padding: 4px 6px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--well); color: var(--text); font: inherit; text-align: right; font-variant-numeric: tabular-nums; }
+.gtab .gpts-in:hover { border-color: var(--muted); }
+.gtab .gpts-in:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; background: var(--well); }
 .gtab tfoot td { border-top: 1px solid var(--line-2); border-bottom: 0; background: var(--accent-soft); font-weight: 700; }
 .gtab tfoot .gpts { color: var(--accent); font-size: 14px; font-weight: 700; }
 .gnote { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
 .attr-in { width: 78px; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 8px; color: var(--text); font: inherit; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .attr-in:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+/* Base de Percepção e Vontade, editável embaixo do nome */
+.attr-base { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; }
+.attr-base input { width: 56px; box-sizing: border-box; background: var(--well); border: 1px solid var(--line-2); border-radius: 6px; padding: 3px 6px; color: var(--text); font: inherit; font-size: 12px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.attr-base input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
 .gurps-derived { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .gstat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .gstat span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -299,21 +312,59 @@ details.box.fold { display: block; padding: 0; }
 .sk-row { display: grid; grid-template-columns: minmax(0, 1fr) 76px 72px 70px 70px 132px 32px; gap: 8px; align-items: center; }
 .sk-row.cult { grid-template-columns: minmax(0, 1fr) 70px 32px; }
 .sk-labels { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.sk-row input, .sk-row select { min-width: 0; width: 100%; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 14px; }
+/* Os títulos ficam centrados sobre as caixas curtas; o de NH, alinhado com o texto da célula. */
+.sk-labels span:nth-child(n+2):nth-child(-n+5) { text-align: center; }
+.sk-labels span:nth-child(6) { padding-left: 8px; }
+.sk-row input, .sk-row select { min-width: 0; width: 100%; box-sizing: border-box; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 14px; }
 .sk-row input[type=number] { text-align: right; font-variant-numeric: tabular-nums; }
 .sk-row input:focus, .sk-row select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
-.sk-nh { font-weight: 700; font-size: 14px; padding: 6px 8px; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sk-nh { font-weight: 700; font-size: 14px; padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
 .sk-nh small { font-weight: 500; font-size: 11px; color: var(--faint); }
+.sk-nh .sk-waste { display: block; white-space: normal; line-height: 1.3; color: var(--accent); }
+/* Nome da perícia: a busca em Mundo › Perícias abre embaixo do campo; a perícia vinculada mostra
+   a página e as regras em uma linha curta. Com essa linha, os campos da linha ficam no topo. */
+#skRows .sk-row { align-items: start; }
+.sk-namecell { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sk-pick { position: relative; }
+.sk-pick .suggest { z-index: 6; }
+.sk-rules:empty { display: none; }
+.sk-rules { font-size: 11.5px; line-height: 1.35; color: var(--faint); padding: 0 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sk-rules a { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 600; text-decoration: none; }
+.sk-rules a:hover { text-decoration: underline; }
+.gtab td b a { color: inherit; text-decoration: none; }
+.gtab td b a:hover { color: var(--accent); text-decoration: underline; }
+/* Regras de uma perícia em modal (links das fichas) */
+.skill-modal { display: flex; flex-direction: column; gap: 18px; }
+.skill-modal-head { display: flex; flex-direction: column; gap: 6px; }
+.skill-modal-head .lede { margin: 0; }
+.skill-modal .sec-title { margin-bottom: 8px; }
 #skRows, #cuRows { display: flex; flex-direction: column; gap: 8px; }
 @media (max-width: 760px) {
   .sk-labels { display: none; }
   .sk-row { grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 10px; border-bottom: 1px solid var(--line); }
-  .sk-row .sk-name { grid-column: 1 / -1; }
+  .sk-row .sk-name, .sk-row .sk-namecell { grid-column: 1 / -1; }
   .sk-row .sk-nh { grid-column: 1 / 4; }
   .sk-row .icon-btn { justify-self: end; }
   .sk-row.cult { grid-template-columns: minmax(0, 1fr) 70px 32px; }
   .sk-row.cult .sk-name { grid-column: auto; }
 }
+
+/* Combate: estilos de luta, listas em chips (os que estão nos catálogos abrem as regras) */
+.style-box { gap: 14px; }
+.style-box .sec-title { margin: 0; }
+.style-list h3 { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.style-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.style-chip { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--well); font-size: 12.5px; color: var(--text); text-decoration: none; line-height: 1.4; }
+a.style-chip.linked { border-color: rgba(245, 158, 11, .4); color: var(--accent); }
+a.style-chip.linked:hover { background: var(--accent-soft); }
+@media (min-width: 761px) { .style-layout { grid-template-columns: minmax(0, 1fr) 380px; } }
+
+/* Combate: troca entre Perícias de combate, Técnicas e Estilos */
+.seg { display: inline-flex; align-self: flex-start; gap: 4px; padding: 4px; margin-bottom: 14px; background: var(--well); border: 1px solid var(--line); border-radius: 12px; max-width: 100%; }
+.seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; padding: 7px 14px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px var(--shadow); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Paginação das listas longas (magias, vantagens) */
 .list-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -338,3 +389,121 @@ details.box.fold { display: block; padding: 0; }
 /* Páginas de listas longas (magias, vantagens): usam a largura da tela; os cartões se distribuem
    pela grade conforme o espaço (4 a 6 por linha em telas largas). */
 .page-inner.wide { max-width: 1680px; }
+
+/* Ficha: a caixa de personagens vinculados fica no alto, à direita, acima dos atributos */
+.sheet-chars { display: flex; justify-content: flex-end; }
+.sheet-chars > .fold { width: 320px; max-width: 100%; }
+@media (max-width: 760px) { .sheet-chars > .fold { width: 100%; } }
+
+/* Ficha: retrato do personagem vinculado */
+.sheet-title { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.sheet-title > div:last-child { min-width: 0; }
+.sheet-portrait { flex: none; width: 92px; height: 92px; border-radius: 16px; overflow: hidden; background: var(--well); border: 1px solid var(--line-2); display: grid; place-items: center; color: var(--faint); }
+.sheet-portrait .hero-zoom, .sheet-portrait img { width: 100%; height: 100%; }
+.sheet-portrait img { object-fit: cover; object-position: 50% 25%; display: block; }
+.sheet-thumb img { object-position: 50% 25%; }
+@media (max-width: 760px) { .sheet-portrait { width: 64px; height: 64px; border-radius: 12px; } .sheet-title { gap: 12px; } }
+
+/* Ficha › Combate: estilos lado a lado, danos e defesas embaixo, como na planilha */
+#combat { margin-top: 22px; }
+.sc-tab th a { color: inherit; text-decoration: none; }
+.sc-tab th a:hover { color: var(--accent); }
+.sc-bottom { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 14px; align-items: start; }
+.sc-bottom > :only-child { grid-column: 1 / -1; }
+.sc-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sc-dmg td, .sc-dmg th { text-align: center; }
+.sc-dmg td[rowspan], .sc-dmg th:first-child { text-align: left; }
+.sc-def td:first-child small { display: block; font-size: 11px; color: var(--faint); font-weight: 400; }
+@media (max-width: 900px) { .sc-bottom { grid-template-columns: 1fr; } .sc-dmg { display: block; overflow-x: auto; } }
+/* editor */
+.sc-edit { gap: 10px; }
+.sc-ghead { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.sc-ghead .btn { margin-left: auto; }
+.sc-catlink { font-size: 12px; font-weight: 600; color: var(--accent); text-decoration: none; padding-bottom: 9px; }
+.sc-rows { display: flex; flex-direction: column; gap: 8px; }
+.sc-row { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.sc-rows .sc-row:last-child { border-bottom: 0; }
+.sc-f { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sc-f > span { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.sc-f input, .sc-f select { background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 14px; min-width: 0; }
+.sc-f input[type=number] { width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
+.sc-f input:focus, .sc-f select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.sc-f.sc-name { flex: 1 1 220px; }
+.sc-f.sc-base input { width: 150px; }
+.sc-nh { min-width: 92px; font-weight: 700; font-size: 14px; padding: 7px 8px; border-radius: 8px; display: flex; flex-direction: column; }
+.sc-nh small { font-weight: 500; font-size: 11px; color: var(--faint); }
+.sc-nh.bonus { background: rgba(34, 197, 94, .14); color: #16a34a; }
+.sc-row .icon-btn { margin-bottom: 2px; }
+@media (max-width: 760px) { .sc-f.sc-name, .sc-f.sc-base, .sc-f.sc-base input { flex-basis: 100%; width: 100%; } }
+.sc-def small.sc-alt { color: var(--muted); }
+.sc-def .gnote { display: inline; margin-left: 4px; }
+
+/* Ficha › Combate: tabelas em colunas (sem buracos entre tabelas de alturas diferentes), arrastáveis */
+.sc-masonry { columns: 280px; column-gap: 14px; }
+.sc-card { break-inside: avoid; margin-bottom: 14px; }
+.sc-card .gtab { margin: 0; }
+.sc-tab th:first-child { display: flex; align-items: center; gap: 6px; }
+.sc-grip { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; margin: -4px 0 -4px -6px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); cursor: grab; touch-action: none; }
+.sc-grip:hover { color: var(--text); background: var(--surface); }
+.sc-grip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--accent); }
+.sc-card.dragging { position: fixed; z-index: 60; pointer-events: none; margin: 0; box-shadow: 0 16px 40px var(--shadow); transform: rotate(.6deg); }
+.sc-card.dragging .sc-grip { cursor: grabbing; }
+.sc-ph { break-inside: avoid; margin-bottom: 14px; border: 2px dashed var(--accent); border-radius: 14px; background: var(--accent-soft); }
+@media (prefers-reduced-motion: reduce) { .sc-card.dragging { transform: none; } }
+
+/* Ficha › Combate: pontos por estilo em grade, 3 por linha; cada célula com o nome e uma coluna Pts.
+   A grade passa 1px da borda da caixa (que corta o que sobra), escondendo as linhas da última coluna
+   e da última linha sem regras por posição; assim só o número de colunas muda em telas menores. */
+.sc-tot { display: block; }
+.sc-tot-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-right: -1px; }
+.sc-tot-grid:last-child { margin-bottom: -1px; }
+.sc-tot-item { display: grid; grid-template-columns: minmax(0, 1fr) 64px; align-items: center; min-width: 0; font-size: 14px; border-right: 1px solid var(--line-2); border-bottom: 1px solid var(--line); }
+.sc-tot-item > span { padding: 8px 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-tot .sc-tot-item > b { width: auto; min-width: 0; box-sizing: border-box; align-self: stretch; display: flex; align-items: center; justify-content: center; padding: 8px 6px; border-left: 1px solid var(--line); font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sc-tot-headrow .sc-tot-item { background: var(--surface-2); }
+.sc-tot-headrow .sc-tot-item > span, .sc-tot .sc-tot-headrow .sc-tot-item > b { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding-top: 9px; padding-bottom: 9px; }
+@media (max-width: 900px) { .sc-tot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sc-tot-headrow .sc-tot-item:nth-child(3) { display: none; } }
+@media (max-width: 560px) { .sc-tot-grid { grid-template-columns: 1fr; } .sc-tot-headrow .sc-tot-item:nth-child(n+2) { display: none; } }
+
+/* Ficha › Vantagens: vantagem, pontos e observações; editor com custo, níveis e modificador */
+.av-tab td:first-child { width: 32%; }
+.av-tab th:nth-child(2), .av-tab td.gpts { text-align: center; }
+.av-tab th:nth-child(3), .av-tab td.av-notes { text-align: left; }
+.av-tab td.av-notes { color: var(--muted); border-left: 1px solid var(--line); }
+.av-tab td.gpts { border-left: 1px solid var(--line); }
+.av-tab tfoot td { font-weight: 700; }
+.sk-row.av-row { grid-template-columns: minmax(0, 1.2fr) 76px 66px 76px 70px minmax(0, 1fr) 32px; }
+.sk-labels.av-row span:nth-child(n+2):nth-child(-n+5) { text-align: center; }
+.sk-labels.av-row span:nth-child(6) { padding-left: 0; }
+#avRows { display: flex; flex-direction: column; gap: 8px; }
+#avRows .sk-row { align-items: start; }
+.av-pts { text-align: center; }
+.av-warn { color: var(--accent); font-weight: 600; }
+@media (max-width: 760px) {
+  .sk-row.av-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sk-row.av-row .sk-nh { grid-column: auto; }
+  .sk-row.av-row [data-f="notes"] { grid-column: 1 / 4; }
+}
+
+/* Ficha › Vantagens: tamanho e perícias de um talento, embaixo da linha dele */
+.av-talent { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.av-talent fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.av-talent legend { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 0; margin-bottom: 6px; }
+.av-tcount { text-transform: none; letter-spacing: 0; font-family: var(--font-sans, inherit); color: var(--faint); font-weight: 500; margin-left: 6px; }
+.av-sizes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.av-sizes legend { grid-column: 1 / -1; }
+.av-sizes label, .av-tlist label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 14px; line-height: 1.3; }
+.av-sizes label { padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface); }
+.av-sizes label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.av-sizes small { display: block; font-size: 11.5px; color: var(--faint); }
+.av-tlist small { font-size: 11.5px; color: var(--accent); }
+/* Os campos do editor (.sk-row input) têm largura total, borda e fundo; aqui são só a bolinha e a caixa. */
+.sk-row .av-talent input[type=radio], .sk-row .av-talent input[type=checkbox] { width: 16px; height: 16px; min-width: 16px; padding: 0; margin: 2px 0 0; border: 0; border-radius: 0; background: none; accent-color: var(--accent); flex: none; }
+.sk-row .av-talent input[type=radio]:focus, .sk-row .av-talent input[type=checkbox]:focus { outline-offset: 2px; }
+.av-sizes label > span, .av-tlist label > span { min-width: 0; }
+.av-tlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 14px; }
+.av-tab td.av-notes small.av-warn { display: block; font-size: 11.5px; }
+@media (max-width: 760px) { .av-sizes { grid-template-columns: 1fr; } }
+
+/* Ficha › Combate: a conta de cada defesa */
+.sc-def small.sc-calc { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); margin-top: 2px; }
