@@ -7,10 +7,11 @@ interface ConditionsCrudModalProps {
   onClose: () => void;
   conditions: ConditionDefinition[];
   activeNpcConditions: string[];
-  onToggleNpcCondition: (conditionLabel: string) => void;
+  onToggleNpcCondition: (conditionLabel: string, duration?: number) => void;
   onCreateCondition: (condition: Omit<ConditionDefinition, 'id'>) => void;
   onUpdateCondition: (id: string, updated: Omit<ConditionDefinition, 'id'>) => void;
   onDeleteCondition: (id: string) => void;
+  currentRound?: number;
 }
 
 export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
@@ -22,15 +23,18 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
   onCreateCondition,
   onUpdateCondition,
   onDeleteCondition,
+  currentRound = 0,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [newDuration, setNewDuration] = useState<number | ''>('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [editDuration, setEditDuration] = useState<number | ''>('');
 
   if (!isOpen) return null;
 
@@ -40,9 +44,11 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
     onCreateCondition({
       label: newLabel.trim(),
       description: newDesc.trim() || 'Sem descrição.',
+      duration: typeof newDuration === 'number' && newDuration > 0 ? newDuration : undefined,
     });
     setNewLabel('');
     setNewDesc('');
+    setNewDuration('');
     setIsCreating(false);
   };
 
@@ -50,6 +56,7 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
     setEditingId(cond.id);
     setEditLabel(cond.label);
     setEditDesc(cond.description);
+    setEditDuration(cond.duration !== undefined ? cond.duration : '');
   };
 
   const saveEdit = (id: string) => {
@@ -57,6 +64,7 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
     onUpdateCondition(id, {
       label: editLabel.trim(),
       description: editDesc.trim(),
+      duration: typeof editDuration === 'number' && editDuration > 0 ? editDuration : undefined,
     });
     setEditingId(null);
   };
@@ -116,7 +124,7 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
             <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">
               Criar Nova Condição / Estado
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               <input
                 type="text"
                 placeholder="Nome do Estado (ex: Congelado)"
@@ -131,6 +139,15 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
                 value={newDesc}
                 onChange={(e) => setNewDesc(e.target.value)}
                 className="sm:col-span-2 bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+              <input
+                type="number"
+                min="1"
+                placeholder="Duração (rodadas, opc.)"
+                value={newDuration}
+                onChange={(e) => setNewDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                className="bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+                title="Duração em rodadas até alerta de finalização"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -174,7 +191,7 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
                 >
                   {/* Checkbox to toggle on active NPC */}
                   <button
-                    onClick={() => onToggleNpcCondition(cond.label)}
+                    onClick={() => onToggleNpcCondition(cond.label, cond.duration)}
                     title={isActiveOnNpc ? 'Remover deste NPC' : 'Ativar neste NPC'}
                     className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center border shrink-0 transition-colors ${
                       isActiveOnNpc
@@ -188,12 +205,24 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
                   <div className="flex-1 min-w-0">
                     {isEditing ? (
                       <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={editLabel}
-                          onChange={(e) => setEditLabel(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
-                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            value={editLabel}
+                            onChange={(e) => setEditLabel(e.target.value)}
+                            placeholder="Nome..."
+                            className="sm:col-span-2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Duração (rodadas)..."
+                            value={editDuration}
+                            onChange={(e) => setEditDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white font-mono"
+                            title="Duração em rodadas"
+                          />
+                        </div>
                         <textarea
                           rows={2}
                           value={editDesc}
@@ -217,10 +246,15 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-xs font-bold ${isActiveOnNpc ? 'text-red-300' : 'text-slate-200'}`}>
                             {cond.label}
                           </span>
+                          {cond.duration !== undefined && cond.duration > 0 && (
+                            <span className="text-[10px] font-mono bg-purple-950/60 text-purple-300 border border-purple-800/60 px-1.5 py-0.2 rounded" title={`Duração padrão: ${cond.duration} rodadas`}>
+                              ⏱️ {cond.duration} rodada{cond.duration === 1 ? '' : 's'}
+                            </span>
+                          )}
                           {isActiveOnNpc && (
                             <span className="text-[10px] font-mono bg-red-950 text-red-400 border border-red-800 px-1.5 py-0.2 rounded">
                               Ativo no NPC

@@ -96,6 +96,7 @@ export interface ConditionDefinition {
   id: string;
   label: string;
   description: string;
+  duration?: number; // Duração em rodadas (opcional)
   color?: string;
 }
 
@@ -145,6 +146,7 @@ export interface ActiveSpell {
   targetId: string;
   targetName: string;
   round: number;
+  duration?: number; // Duração em rodadas (opcional)
   cost?: number;
   casterId?: string;
   casterName?: string;
@@ -154,10 +156,16 @@ export interface ActiveSpell {
 export interface AffectedSpell {
   id: string; // Mesmo ID da instância lançada pelo conjurador
   spellName: string;
-  casterId: string;
+  casterId?: string;
   casterName: string;
   round: number;
+  duration?: number; // Duração em rodadas (opcional)
   createdAt?: string;
+}
+
+export interface ConditionMetadata {
+  startRound?: number;
+  duration?: number;
 }
 
 export interface NPC {
@@ -183,6 +191,7 @@ export interface NPC {
   fpCurrent: number;
   fpMax: number;
   statusConditions: string[];
+  conditionMetadata?: Record<string, ConditionMetadata>;
 
   // Magias Ativas e Sob Efeito
   activeSpells?: ActiveSpell[];

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NPC, ActionLogEntry, ExtraItem } from '../types/rpg';
 import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info } from 'lucide-react';
 import { calculateLocationDamage } from '../utils/gurps';
@@ -18,6 +18,7 @@ interface DamageCalculatorModalProps {
       targetId: string;
       targetName: string;
       round: number;
+      duration?: number;
     },
     manaStoneUsage?: {
       itemId: string;
@@ -95,7 +96,14 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [isAreaSpell, setIsAreaSpell] = useState<boolean>(false);
   const [spellTargetId, setSpellTargetId] = useState<string>(npc.id);
   const [spellTargetFilter, setSpellTargetFilter] = useState<'all' | 'player' | 'npc'>('all');
-  const [spellRound, setSpellRound] = useState<number>(currentRound || 1);
+  const [spellRound, setSpellRound] = useState<number>(currentRound ?? 0);
+  const [spellDuration, setSpellDuration] = useState<number | ''>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setSpellRound(currentRound ?? 0);
+    }
+  }, [isOpen, currentRound]);
 
   // Seleção de recurso a gastar na aba de Fadiga: 'fp' para Fadiga Própria ou o ID de uma Pedra de Mana
   const [selectedFatigueSource, setSelectedFatigueSource] = useState<string>('fp');
@@ -249,10 +257,11 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     let autoDesc = `Gasto de fadiga: ${costLabel}.`;
     if (spellNameTrimmed) {
       if (isSpellActive) {
+        const durText = typeof spellDuration === 'number' && spellDuration > 0 ? ` [Duração: ${spellDuration}R]` : '';
         if (isAreaSpell) {
-          autoDesc = `Magia Ativa [${spellNameTrimmed}] em Área (R${spellRound}): ${costLabel}.`;
+          autoDesc = `Magia Ativa [${spellNameTrimmed}] em Área (R${spellRound}${durText}): ${costLabel}.`;
         } else {
-          autoDesc = `Magia Ativa [${spellNameTrimmed}] lançada em ${targetChar.name} (R${spellRound}): ${costLabel}.`;
+          autoDesc = `Magia Ativa [${spellNameTrimmed}] lançada em ${targetChar.name} (R${spellRound}${durText}): ${costLabel}.`;
         }
       } else {
         autoDesc = `Magia [${spellNameTrimmed}] lançada: ${costLabel}.`;
@@ -266,7 +275,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
           isActiveSpell: isSpellActive,
           targetId: isAreaSpell ? 'area' : targetChar.id,
           targetName: isAreaSpell ? 'Área / Ambiente' : targetChar.name,
-          round: Number(spellRound) || 1,
+          round: spellRound !== undefined && !isNaN(Number(spellRound)) ? Number(spellRound) : (currentRound ?? 0),
+          duration: typeof spellDuration === 'number' && spellDuration > 0 ? spellDuration : undefined,
           isAreaSpell: isAreaSpell,
         }
       : undefined;
@@ -910,19 +920,33 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                     </div>
 
                     {isAreaSpell ? (
-                      <div className="flex items-center justify-between gap-1.5 bg-slate-900/90 border border-purple-900/40 rounded-lg px-2.5 py-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 bg-slate-900/90 border border-purple-900/40 rounded-lg px-2.5 py-1.5">
                         <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                           <span>🌐</span> Alvo: Área / Ambiente
                         </span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-slate-400 shrink-0">Rodada:</span>
-                          <input
-                            type="number"
-                            min="1"
-                            value={spellRound}
-                            onChange={(e) => setSpellRound(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                            className="w-16 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          />
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400 shrink-0">Rodada:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={spellRound}
+                              onChange={(e) => setSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                              className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400 shrink-0">Duração:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="Opc."
+                              value={spellDuration}
+                              onChange={(e) => setSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                              className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono text-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              title="Quantidade de rodadas que a magia dura (opcional)"
+                            />
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -954,7 +978,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 items-center">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-1.5 items-center">
                           <div className="sm:col-span-2">
                             <select
                               value={spellTargetId}
@@ -982,10 +1006,23 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                             <span className="text-[10px] text-slate-400 shrink-0">Rodada:</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               value={spellRound}
-                              onChange={(e) => setSpellRound(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                              onChange={(e) => setSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
                               className="w-full bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400 shrink-0">Duração:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="Opc."
+                              value={spellDuration}
+                              onChange={(e) => setSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                              className="w-full bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono text-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              title="Quantidade de rodadas que a magia dura (opcional)"
                             />
                           </div>
                         </div>

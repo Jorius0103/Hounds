@@ -81,6 +81,8 @@ interface NpcDetailViewProps {
   isPlayerUser?: boolean;
   currentUserRole?: UserRole;
   hasEditPermission?: boolean;
+  currentRound?: number;
+  conditions?: ConditionDefinition[];
 }
 
 export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
@@ -97,6 +99,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   isPlayerUser = false,
   currentUserRole = 'mestre',
   hasEditPermission = false,
+  currentRound = 0,
+  conditions = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'weapons' | 'spells' | 'armor' | 'traits'>('weapons');
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
@@ -119,7 +123,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const [isAddingActiveSpell, setIsAddingActiveSpell] = useState(false);
   const [manualActiveSpellName, setManualActiveSpellName] = useState('');
   const [manualActiveSpellCost, setManualActiveSpellCost] = useState<number | ''>('');
-  const [manualActiveSpellRound, setManualActiveSpellRound] = useState<number>(1);
+  const [manualActiveSpellRound, setManualActiveSpellRound] = useState<number>(currentRound ?? 0);
+  const [manualActiveSpellDuration, setManualActiveSpellDuration] = useState<number | ''>('');
   const [manualActiveSpellIsArea, setManualActiveSpellIsArea] = useState(false);
   const [manualActiveSpellTargetName, setManualActiveSpellTargetName] = useState('');
 
@@ -127,7 +132,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const [isAddingAffectedSpell, setIsAddingAffectedSpell] = useState(false);
   const [manualAffectedSpellName, setManualAffectedSpellName] = useState('');
   const [manualAffectedSpellCaster, setManualAffectedSpellCaster] = useState('');
-  const [manualAffectedSpellRound, setManualAffectedSpellRound] = useState<number>(1);
+  const [manualAffectedSpellRound, setManualAffectedSpellRound] = useState<number>(currentRound ?? 0);
+  const [manualAffectedSpellDuration, setManualAffectedSpellDuration] = useState<number | ''>('');
 
   // Helper para favoritar / desfavoritar Itens Extras & Recursos
   const handleToggleFavoriteExtraItem = (itemId: string) => {
@@ -145,12 +151,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     const targetName = manualActiveSpellIsArea
       ? 'Área / Ambiente'
       : (manualActiveSpellTargetName.trim() || npc.name);
-    const newEntry = {
+    const newEntry: ActiveSpell = {
       id: `spell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       spellName: manualActiveSpellName.trim(),
       targetId: manualActiveSpellIsArea ? 'area' : npc.id,
       targetName: targetName,
-      round: Number(manualActiveSpellRound) || 1,
+      round: manualActiveSpellRound !== undefined && !isNaN(Number(manualActiveSpellRound)) ? Number(manualActiveSpellRound) : (currentRound ?? 0),
+      duration: typeof manualActiveSpellDuration === 'number' && manualActiveSpellDuration > 0 ? manualActiveSpellDuration : undefined,
       cost: typeof manualActiveSpellCost === 'number' ? manualActiveSpellCost : 0,
       createdAt: new Date().toISOString(),
     };
@@ -164,7 +171,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
     setManualActiveSpellName('');
     setManualActiveSpellCost('');
-    setManualActiveSpellRound(1);
+    setManualActiveSpellRound(currentRound ?? 0);
+    setManualActiveSpellDuration('');
     setManualActiveSpellIsArea(false);
     setManualActiveSpellTargetName('');
     setIsAddingActiveSpell(false);
@@ -172,18 +180,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const handleConfirmManualAffectedSpell = () => {
     if (!manualAffectedSpellName.trim()) return;
-    const newEntry = {
+    const newEntry: AffectedSpell = {
       id: `effect-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       spellName: manualAffectedSpellName.trim(),
       casterName: manualAffectedSpellCaster.trim() || 'Desconhecido',
-      round: Number(manualAffectedSpellRound) || 1,
+      round: manualAffectedSpellRound !== undefined && !isNaN(Number(manualAffectedSpellRound)) ? Number(manualAffectedSpellRound) : (currentRound ?? 0),
+      duration: typeof manualAffectedSpellDuration === 'number' && manualAffectedSpellDuration > 0 ? manualAffectedSpellDuration : undefined,
       createdAt: new Date().toISOString(),
     };
     const nextList = [...(npc.affectedSpells || []), newEntry];
     updateField('affectedSpells', nextList);
     setManualAffectedSpellName('');
     setManualAffectedSpellCaster('');
-    setManualAffectedSpellRound(1);
+    setManualAffectedSpellRound(currentRound ?? 0);
+    setManualAffectedSpellDuration('');
     setIsAddingAffectedSpell(false);
   };
 
@@ -218,6 +228,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         'turnActions',
         'extraItems',
         'statusConditions',
+        'conditionMetadata',
         'combatManeuver',
         'hpCurrent',
         'fpCurrent',
@@ -236,7 +247,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // Remove single condition
   const removeCondition = (condLabel: string) => {
     const updated = (npc.statusConditions || []).filter((c) => c !== condLabel);
-    updateField('statusConditions', updated);
+    const meta = { ...(npc.conditionMetadata || {}) };
+    delete meta[condLabel];
+    const now = Date.now();
+    const next = { ...currentNpcRef.current, statusConditions: updated, conditionMetadata: meta, updatedAt: now };
+    currentNpcRef.current = next;
+    onUpdateNpc(next);
   };
 
   // Parries helpers (Default 1, but user can add N, with parryType)
@@ -771,9 +787,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Custo FP (opcional):</label>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Custo FP:</label>
                     <input
                       type="number"
                       min="0"
@@ -787,10 +803,22 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <label className="text-[10px] text-slate-400 block mb-0.5">Rodada (R):</label>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       value={manualActiveSpellRound}
-                      onChange={(e) => setManualActiveSpellRound(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      onChange={(e) => setManualActiveSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
                       className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Duração (R):</label>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Opc."
+                      value={manualActiveSpellDuration}
+                      onChange={(e) => setManualActiveSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                      title="Quantidade de rodadas que a magia dura (opcional)"
                     />
                   </div>
                 </div>
@@ -852,7 +880,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     className="bg-slate-900/90 border border-purple-800/50 hover:border-purple-600/70 rounded-lg p-2 flex items-center justify-between gap-2 text-xs transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-bold text-purple-200 truncate flex items-center gap-1.5">
+                      <div className="font-bold text-purple-200 truncate flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-black text-purple-100">{sp.spellName}</span>
                         <span className="text-[10px] px-1.5 py-0.5 bg-purple-950 border border-purple-700 text-purple-300 rounded font-mono font-bold">
                           R{sp.round}
@@ -861,6 +889,17 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           <span className="text-[10px] text-cyan-400 font-mono">
                             (-{sp.cost} FP)
                           </span>
+                        )}
+                        {sp.duration !== undefined && sp.duration > 0 && (
+                          currentRound >= (sp.round + sp.duration) ? (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-amber-950/90 border border-amber-600 text-amber-300 rounded font-bold flex items-center gap-1 animate-pulse" title={`Duração de ${sp.duration} rodadas atingida na rodada ${sp.round + sp.duration}. Remova manualmente.`}>
+                              ⚠️ Duração finalizada (Expirou na R{sp.round + sp.duration})
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-purple-950 border border-purple-800 text-purple-300 rounded font-mono font-medium" title={`Duração: ${sp.duration} rodadas (expira na R${sp.round + sp.duration})`}>
+                              ⏳ {sp.duration}R ({Math.max(0, (sp.round + sp.duration) - currentRound)} restantes)
+                            </span>
+                          )
                         )}
                       </div>
                       <div className="text-[11px] text-slate-400 truncate mt-0.5">
@@ -942,7 +981,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                   <div>
                     <label className="text-[10px] text-slate-400 block mb-0.5">Conjurador:</label>
                     <input
@@ -957,10 +996,22 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <label className="text-[10px] text-slate-400 block mb-0.5">Rodada (R):</label>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       value={manualAffectedSpellRound}
-                      onChange={(e) => setManualAffectedSpellRound(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      onChange={(e) => setManualAffectedSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
                       className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Duração (R):</label>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Opc."
+                      value={manualAffectedSpellDuration}
+                      onChange={(e) => setManualAffectedSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
+                      title="Quantidade de rodadas que o efeito dura (opcional)"
                     />
                   </div>
                 </div>
@@ -997,11 +1048,22 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     className="bg-slate-900/90 border border-cyan-800/50 hover:border-cyan-600/70 rounded-lg p-2 flex items-center justify-between gap-2 text-xs transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-bold text-cyan-200 truncate flex items-center gap-1.5">
+                      <div className="font-bold text-cyan-200 truncate flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-black text-cyan-100">{sp.spellName}</span>
                         <span className="text-[10px] px-1.5 py-0.5 bg-cyan-950 border border-cyan-700 text-cyan-300 rounded font-mono font-bold">
                           R{sp.round}
                         </span>
+                        {sp.duration !== undefined && sp.duration > 0 && (
+                          currentRound >= (sp.round + sp.duration) ? (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-amber-950/90 border border-amber-600 text-amber-300 rounded font-bold flex items-center gap-1 animate-pulse" title={`Duração de ${sp.duration} rodadas atingida na rodada ${sp.round + sp.duration}. Remova manualmente.`}>
+                              ⚠️ Duração finalizada (Expirou na R{sp.round + sp.duration})
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-cyan-950 border border-cyan-800 text-cyan-300 rounded font-mono font-medium" title={`Duração: ${sp.duration} rodadas (expira na R${sp.round + sp.duration})`}>
+                              ⏳ {sp.duration}R ({Math.max(0, (sp.round + sp.duration) - currentRound)} restantes)
+                            </span>
+                          )
+                        )}
                       </div>
                       <div className="text-[11px] text-slate-400 truncate mt-0.5">
                         Conjurador: <span className="text-slate-100 font-semibold">{sp.casterName || 'Desconhecido'}</span>
@@ -1164,24 +1226,58 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   Nenhum estado crítico ativo.
                 </span>
               ) : (
-                npc.statusConditions.map((cond) => (
-                  <span
-                    key={cond}
-                    className="inline-flex items-center gap-1 bg-red-950/70 border border-red-800 text-red-200 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help"
-                    title={`${cond}: ${getConditionDescription(cond)}`}
-                  >
-                    <span>{cond}</span>
-                    {!isViewer && (
-                      <button
-                        onClick={() => removeCondition(cond)}
-                        className="text-red-400 hover:text-white ml-0.5 font-bold"
-                        title="Remover estado"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </span>
-                ))
+                npc.statusConditions.map((cond) => {
+                  const meta = npc.conditionMetadata?.[cond];
+                  const condDef = conditions?.find((c) => c.label === cond || c.id === cond);
+                  const startRound = meta?.startRound ?? 0;
+                  const duration = meta?.duration ?? condDef?.duration;
+                  const isExpired = duration !== undefined && duration > 0 && currentRound >= (startRound + duration);
+
+                  return (
+                    <span
+                      key={cond}
+                      className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help border transition-all ${
+                        isExpired
+                          ? 'bg-amber-950/90 border-amber-500 text-amber-200 animate-pulse ring-1 ring-amber-500/60'
+                          : 'bg-red-950/70 border-red-800 text-red-200'
+                      }`}
+                      title={
+                        isExpired
+                          ? `⚠️ ALERTA: ${cond} finalizou sua duração de ${duration} rodada(s) na rodada ${startRound + duration}! Remova manualmente.`
+                          : duration
+                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration} rodadas, expira na R${startRound + duration})`
+                          : `${cond}: ${getConditionDescription(cond)}`
+                      }
+                    >
+                      {isExpired ? (
+                        <>
+                          <span className="font-bold text-amber-300">⚠️ {cond}</span>
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-900/80 text-amber-200 font-bold uppercase tracking-wider">
+                            Duração Finalizada
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{cond}</span>
+                          {duration !== undefined && duration > 0 && (
+                            <span className="text-[9px] text-red-300/80 font-mono">
+                              ({duration}R)
+                            </span>
+                          )}
+                        </>
+                      )}
+                      {!isViewer && (
+                        <button
+                          onClick={() => removeCondition(cond)}
+                          className={`ml-0.5 font-bold ${isExpired ? 'text-amber-400 hover:text-white' : 'text-red-400 hover:text-white'}`}
+                          title="Remover estado manualmente"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  );
+                })
               )}
             </div>
           </div>
@@ -1991,23 +2087,58 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   Nenhum estado crítico ativo no momento.
                 </span>
               ) : (
-                npc.statusConditions.map((cond) => (
-                  <span
-                    key={cond}
-                    className="inline-flex items-center gap-1 bg-red-950/70 border border-red-800 text-red-200 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help"
-                    title={`${cond}: ${getConditionDescription(cond)}`}
-                  >
-                    <span>{cond}</span>
-                    {!isViewer && (
-                      <button
-                        onClick={() => removeCondition(cond)}
-                        className="text-red-400 hover:text-white font-bold ml-0.5"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </span>
-                ))
+                npc.statusConditions.map((cond) => {
+                  const meta = npc.conditionMetadata?.[cond];
+                  const condDef = conditions?.find((c) => c.label === cond || c.id === cond);
+                  const startRound = meta?.startRound ?? 0;
+                  const duration = meta?.duration ?? condDef?.duration;
+                  const isExpired = duration !== undefined && duration > 0 && currentRound >= (startRound + duration);
+
+                  return (
+                    <span
+                      key={cond}
+                      className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help border transition-all ${
+                        isExpired
+                          ? 'bg-amber-950/90 border-amber-500 text-amber-200 animate-pulse ring-1 ring-amber-500/60'
+                          : 'bg-red-950/70 border-red-800 text-red-200'
+                      }`}
+                      title={
+                        isExpired
+                          ? `⚠️ ALERTA: ${cond} finalizou sua duração de ${duration} rodada(s) na rodada ${startRound + duration}! Remova manualmente.`
+                          : duration
+                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration} rodadas, expira na R${startRound + duration})`
+                          : `${cond}: ${getConditionDescription(cond)}`
+                      }
+                    >
+                      {isExpired ? (
+                        <>
+                          <span className="font-bold text-amber-300">⚠️ {cond}</span>
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-900/80 text-amber-200 font-bold uppercase tracking-wider">
+                            Duração Finalizada
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{cond}</span>
+                          {duration !== undefined && duration > 0 && (
+                            <span className="text-[9px] text-red-300/80 font-mono">
+                              ({duration}R)
+                            </span>
+                          )}
+                        </>
+                      )}
+                      {!isViewer && (
+                        <button
+                          onClick={() => removeCondition(cond)}
+                          className={`ml-0.5 font-bold ${isExpired ? 'text-amber-400 hover:text-white' : 'text-red-400 hover:text-white'}`}
+                          title="Remover estado manualmente"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  );
+                })
               )}
             </div>
           </div>

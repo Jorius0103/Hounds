@@ -1127,14 +1127,27 @@ export default function App() {
     broadcastSync(updatedCombats, updated, undefined, undefined, updatedPlayers);
   };
 
-  const handleToggleNpcCondition = (conditionId: string) => {
+  const handleToggleNpcCondition = (conditionId: string, duration?: number, round?: number) => {
     if (!selectedNpc) return;
     const current = selectedNpc.statusConditions || [];
     const exists = current.includes(conditionId);
     const updated = exists ? current.filter((c: string) => c !== conditionId) : [...current, conditionId];
+    
+    const nextMeta = { ...(selectedNpc.conditionMetadata || {}) };
+    if (exists) {
+      delete nextMeta[conditionId];
+    } else {
+      const curRnd = round !== undefined ? round : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
+      nextMeta[conditionId] = {
+        startRound: curRnd,
+        duration: duration,
+      };
+    }
+
     handleUpdateNpc({
       ...selectedNpc,
       statusConditions: updated,
+      conditionMetadata: nextMeta,
     });
   };
 
@@ -1408,6 +1421,7 @@ export default function App() {
               targetId: spellData.targetId,
               targetName: spellData.targetName,
               round: spellData.round,
+              duration: spellData.duration,
               cost: Math.abs(fpDelta) + (manaStoneUsage?.amount || 0),
               casterId: n.id,
               casterName: n.name,
@@ -1460,6 +1474,7 @@ export default function App() {
               casterId: npcId,
               casterName: casterName,
               round: spellData.round,
+              duration: spellData.duration,
               createdAt: new Date().toISOString(),
             },
           ];
@@ -1830,7 +1845,7 @@ export default function App() {
         onAddNewNpc={handleAddNewNpc}
         onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
         onUpdateNpc={handlePartialUpdateNpc}
-        currentUserRole={currentUser?.role || 'mestre'}
+        currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
         currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
         onUpdateRound={handleUpdateCombatRound}
         canControlRound={canEditCurrent}
@@ -1902,6 +1917,8 @@ export default function App() {
                   isPlayerUser={isPlayerUser}
                   currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
                   hasEditPermission={canEditCurrent}
+                  currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+                  conditions={conditions}
                 />
               ) : (
                 <div className="py-16 text-center text-xs text-slate-400 bg-slate-900/60 rounded-2xl border border-slate-800 p-8">
@@ -1970,6 +1987,8 @@ export default function App() {
                   isPlayerUser={isPlayerUser}
                   currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
                   hasEditPermission={canEditCurrent}
+                  currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+                  conditions={conditions}
                 />
               ) : (
                 <div className="py-12 text-center text-xs text-slate-400">
@@ -2019,6 +2038,7 @@ export default function App() {
         onCreateCondition={handleCreateCondition}
         onUpdateCondition={handleUpdateCondition}
         onDeleteCondition={handleDeleteCondition}
+        currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
       />
 
       {/* Weapon Modal */}
