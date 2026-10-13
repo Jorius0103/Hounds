@@ -84,7 +84,7 @@ function spellById(id) {
    choice, or deleted: true. W.spells / W.advantages / W.skills / W.techniques / W.styles are the
    book list with those documents on top.
    ===================================================================== */
-var CATALOG_VERSION = '2026-10-13-v1';
+var CATALOG_VERSION = '2026-10-13-v2';
 // fields: what an entry holds besides visibility; over: the documents of book entries by id;
 // deleted: the book entries the Mestre deleted (for him to see and restore).
 var CATALOG = {
