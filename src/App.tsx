@@ -1841,7 +1841,7 @@ export default function App() {
         const currentItems = p.extraItems || [];
         const updatedItems = currentItems.map((it) => {
           if (it.id === itemId) {
-            const nextVal = Math.max(0, it.current + delta);
+            const nextVal = Math.max(0, (Number(it.current) || 0) + delta);
             return { ...it, current: nextVal };
           }
           return it;
@@ -1849,7 +1849,7 @@ export default function App() {
         updatedNpc = {
           ...p,
           extraItems: updatedItems,
-          history: [entryWithId, ...p.history],
+          history: [entryWithId, ...(p.history || [])],
           updatedAt: now,
         };
         return updatedNpc;
@@ -1866,7 +1866,7 @@ export default function App() {
             const currentItems = n.extraItems || [];
             const updatedItems = currentItems.map((it) => {
               if (it.id === itemId) {
-                const nextVal = Math.max(0, it.current + delta);
+                const nextVal = Math.max(0, (Number(it.current) || 0) + delta);
                 return { ...it, current: nextVal };
               }
               return it;
@@ -1874,7 +1874,7 @@ export default function App() {
             updatedNpc = {
               ...n,
               extraItems: updatedItems,
-              history: [entryWithId, ...n.history],
+              history: [entryWithId, ...(n.history || [])],
               updatedAt: now,
             };
             return updatedNpc;
