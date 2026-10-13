@@ -620,7 +620,10 @@ export function calculateLocationDamage(params: {
     normKey === 'right_shins' ||
     normKey === 'hand' ||
     normKey === 'feet' ||
-    normKey === 'foot'
+    normKey === 'foot' ||
+    normKey.includes('arm') ||
+    normKey.includes('leg') ||
+    normKey.includes('shin')
   ) {
     // Regra Membros/Extremidades: "Perfurante, perfurante grande e empalamento vira x1"
     if (
@@ -629,7 +632,9 @@ export function calculateLocationDamage(params: {
       damageType === 'perfurante' ||
       damageType === 'perfurante_grande' ||
       damageType === 'piercing' ||
-      damageType === 'large_piercing'
+      damageType === 'large_piercing' ||
+      damageType.startsWith('perfurante_grande') ||
+      damageType.startsWith('large_piercing')
     ) {
       woundMultiplier = 1.0;
       appliedRules.push('Membro/Extremidade: Empalamento / Perfuração vira x1');

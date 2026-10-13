@@ -485,11 +485,12 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   const modText = loc.drModifier && loc.modifierDamageType
                     ? ` [${loc.drModifier >= 0 ? `+${loc.drModifier}` : loc.drModifier} vs ${loc.modifierDamageType}]`
                     : '';
+                  const rollPrefix = loc.rollTarget ? `[${loc.rollTarget}] ` : '';
                   return (
                     <option key={loc.id} value={loc.id}>
                       {isRestrictedNpcView
-                        ? loc.location
-                        : `${loc.location} — ${loc.armorName || 'Sem armadura'} (RD ${loc.dr}${modText}${
+                        ? `${rollPrefix}${loc.location}`
+                        : `${rollPrefix}${loc.location} — ${loc.armorName || 'Sem armadura'} (RD ${loc.dr}${modText}${
                             npc.naturalDr > 0 ? ` + ${npc.naturalDr} Natural` : ''
                           })`}
                     </option>
