@@ -6,6 +6,7 @@ import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/online
 import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
 import { NpcDetailView } from './components/NpcDetailView';
+import { HomeOverview } from './components/HomeOverview';
 import { TacticalMapWorkspace } from './components/TacticalMap/TacticalMapWorkspace';
 import { TacticalState, DEFAULT_TACTICAL_STATE } from './types/tactical';
 import { DamageCalculatorModal } from './components/DamageCalculatorModal';
@@ -378,8 +379,8 @@ export default function App() {
     return [];
   });
 
-  // View Mode: 'sheets' | 'tactical' | 'split'
-  const [activeViewMode, setActiveViewMode] = useState<ViewMode>('tactical');
+  // View Mode: 'home' | 'sheets' | 'tactical' | 'split'
+  const [activeViewMode, setActiveViewMode] = useState<ViewMode>('home');
 
   useEffect(() => {
     return systemLogger.subscribe((logs) => {
@@ -1903,7 +1904,12 @@ export default function App() {
       <NpcListBar
         npcs={allCharacters}
         selectedNpcId={selectedNpcId}
-        onSelectNpc={setSelectedNpcId}
+        onSelectNpc={(npcId) => {
+          setSelectedNpcId(npcId);
+          if (activeViewMode === 'home') {
+            setActiveViewMode('sheets');
+          }
+        }}
         onAddNewNpc={handleAddNewNpc}
         onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
         onUpdateNpc={handlePartialUpdateNpc}
@@ -1914,9 +1920,22 @@ export default function App() {
         isNoCombat={isNoCombat}
       />
 
-      {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}
+      {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Tela Inicial, Mesa Tática, Fichas ou Dividida) */}
       <main className="flex-1 w-full p-2.5 sm:p-3.5 lg:px-5">
-        {activeViewMode === 'tactical' ? (
+        {activeViewMode === 'home' ? (
+          /* MODO TELA INICIAL: VISÃO GERAL DE TODOS OS PERSONAGENS E NPCS */
+          <HomeOverview
+            characters={allCharacters}
+            onSelectCharacter={(npcId) => {
+              setSelectedNpcId(npcId);
+              setActiveViewMode('sheets');
+            }}
+            onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
+            onAddNewNpc={handleAddNewNpc}
+            currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
+            conditions={conditions}
+          />
+        ) : activeViewMode === 'tactical' ? (
           /* MODO MESA TÁTICA COMPLETA */
           <div className="w-full">
             <TacticalMapWorkspace

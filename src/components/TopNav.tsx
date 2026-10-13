@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus } from '../utils/onlineSync';
-import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users } from 'lucide-react';
+import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, Home } from 'lucide-react';
 
-export type ViewMode = 'sheets' | 'tactical' | 'split';
+export type ViewMode = 'home' | 'sheets' | 'tactical' | 'split';
 
 interface TopNavProps {
   combats: Combat[];
@@ -64,7 +64,12 @@ export const TopNav: React.FC<TopNavProps> = ({
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 flex-wrap">
         {/* Zone 1: Brand title & Combat selector / CRUD */}
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onSelectViewMode?.('home')}
+            className="flex items-center gap-2 text-left hover:opacity-90 transition-opacity"
+            title="Ir para a Tela Inicial"
+          >
             <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
               <Swords size={16} />
             </div>
@@ -74,7 +79,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             <span className="text-sm font-bold tracking-tight text-white whitespace-nowrap sm:hidden">
               GURPS
             </span>
-          </div>
+          </button>
 
           {/* Combat selector & CRUD de combates: Apenas o Mestre escolhe combate; Jogador apenas visualiza */}
           {currentUser?.role === 'mestre' ? (
@@ -185,9 +190,22 @@ export const TopNav: React.FC<TopNavProps> = ({
           )}
         </div>
 
-        {/* Zone 1.5: Modo de Visualização (Ficha & Log / Mesa Tática / Dividida) */}
+        {/* Zone 1.5: Modo de Visualização (Tela Inicial / Ficha & Log / Mesa Tática / Dividida) */}
         {activeViewMode && onSelectViewMode && (
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
+            <button
+              onClick={() => onSelectViewMode('home')}
+              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                activeViewMode === 'home'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+              title="Tela Inicial: Visão geral de todos os combatentes"
+            >
+              <Home size={13} />
+              <span>Tela Inicial</span>
+            </button>
+
             <button
               onClick={() => onSelectViewMode('sheets')}
               className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
