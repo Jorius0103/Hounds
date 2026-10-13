@@ -51,9 +51,20 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
     return true;
   });
 
-  // Ordenação: Personagens primeiro (por Speed decrescente e desempate por nome),
-  // seguidos por todos os NPCs (por ordem alfabética de Nome)
+  // Ordenação:
+  // Para o Mestre: Por ordem de Speed decrescente (desempate por nome alfabético)
+  // Para os Jogadores: Personagens primeiro (ordenar por Speed decrescente, desempate por nome),
+  // seguidos por todos os NPCs (ordenados por ordem alfabética de Nome)
   const displayedNpcs = [...filteredNpcs].sort((a, b) => {
+    if (currentUserRole === 'mestre') {
+      const speedA = a.basicSpeed ?? 0;
+      const speedB = b.basicSpeed ?? 0;
+      if (speedB !== speedA) {
+        return speedB - speedA;
+      }
+      return (a.name || '').localeCompare(b.name || '', 'pt-BR');
+    }
+
     const isPlayerA = a.characterType === 'player';
     const isPlayerB = b.characterType === 'player';
 

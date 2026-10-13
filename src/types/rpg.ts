@@ -106,7 +106,7 @@ export interface ActionLogEntry {
   round?: number;
   author: 'mestre' | 'assistente' | string;
   authorName?: string;
-  type: 'damage' | 'fatigue' | 'heal' | 'rest' | 'note' | 'defense' | 'condition' | 'item';
+  type: 'damage' | 'fatigue' | 'heal' | 'rest' | 'note' | 'defense' | 'condition' | 'item' | 'edit' | 'spell' | 'turn' | string;
   description: string;
   amount?: number;
   npcId?: string;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, Weapon, ExtraItem } from './types/rpg';
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
-import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation } from './utils/gurps';
+import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, COMBAT_MANEUVERS } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';
 import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
@@ -981,11 +981,165 @@ export default function App() {
     setSelectedNpcId(newNpc.id);
   };
 
+  // Auxiliares de log automático para todas as alterações na ficha (sem apagar ao voltar ao estado inicial)
+  const hubFlat = (o?: NPC): Record<string, any> => {
+    if (!o) return {};
+    const F: Record<string, any> = {};
+    const P: (keyof NPC)[] = [
+      'name', 'title', 'playerName', 'hpCurrent', 'hpMax', 'fpCurrent', 'fpMax',
+      'st', 'dx', 'iq', 'ht', 'per', 'will', 'basicSpeed', 'basicMove', 'naturalDr',
+      'dodge', 'block', 'weight', 'height', 'combatManeuver', 'isDead', 'isVisibleToPlayer'
+    ];
+    for (const k of P) F[k as string] = o[k] === undefined || o[k] === null ? '' : o[k];
+    F.avatar = (o.avatar || '') + '|' + (o.avatarPreset || '');
+    for (const k of ['advantages', 'disadvantages', 'skills', 'combatSkills', 'combatPerks', 'equipment', 'assistantNotes'] as (keyof NPC)[]) {
+      F['txt.' + k] = o[k] || '';
+    }
+    F.cond = (o.statusConditions || []).map((x) => typeof x === 'string' ? x : (x && (x as any).id) || (x as any).name).filter(Boolean).sort().join('|');
+    const ta = o.turnActions || ({} as any);
+    for (const k of ['parryCount', 'dodgeCount', 'blockCount', 'usedRetreat', 'shock', 'usedFatigueThisTurn', 'notes']) {
+      F['ta.' + k] = ta[k] === undefined || ta[k] === null ? '' : ta[k];
+    }
+    for (const it of o.extraItems || []) {
+      if (it && it.id) {
+        F['item.' + it.id] = (it.name || 'Item') + '\x01' + (it.current ?? '') + '\x01' + (it.max ?? '');
+      }
+    }
+    for (const k of ['weapons', 'parries', 'spells', 'armorLocations'] as (keyof NPC)[]) {
+      F['arr.' + k] = JSON.stringify(o[k] || []);
+    }
+    for (const sp of o.activeSpells || []) {
+      if (sp && sp.id) {
+        F['actSpell.' + sp.id] = (sp.spellName || 'Magia') + '\x01' + (sp.targetName || '') + '\x01' + (sp.cost || 0);
+      }
+    }
+    for (const sp of o.affectedSpells || []) {
+      if (sp && sp.id) {
+        F['affSpell.' + sp.id] = (sp.spellName || 'Magia') + '\x01' + (sp.casterName || '');
+      }
+    }
+    return F;
+  };
+
+  const hubDescribe = (A: Record<string, any>, B: Record<string, any>, keys: string[], conds: ConditionDefinition[]): string => {
+    const L: Record<string, string> = {
+      name: 'Nome', title: 'Título', playerName: 'Jogador', hpCurrent: 'PV', hpMax: 'PV máx.',
+      fpCurrent: 'FP', fpMax: 'FP máx.', st: 'ST', dx: 'DX', iq: 'IQ', ht: 'HT', per: 'Per', will: 'Will',
+      basicSpeed: 'Speed', basicMove: 'Move', naturalDr: 'RD Nat.', dodge: 'Esquiva', block: 'Bloqueio',
+      weight: 'Peso', height: 'Altura',
+      'ta.parryCount': 'Aparar no turno', 'ta.dodgeCount': 'Esquiva no turno', 'ta.blockCount': 'Bloqueio no turno',
+      'ta.usedRetreat': 'Recuo', 'ta.shock': 'Choque', 'ta.usedFatigueThisTurn': 'Fadiga no turno', 'ta.notes': 'Notas do turno'
+    };
+    const TX: Record<string, string> = {
+      advantages: 'Vantagens', disadvantages: 'Desvantagens', skills: 'Perícias', combatSkills: 'Perícias de combate',
+      combatPerks: 'Talentos', equipment: 'Equipamento', assistantNotes: 'Observações gerais'
+    };
+    const AR: Record<string, string> = {
+      weapons: 'Armas', parries: 'Defesas de aparar', spells: 'Magias', armorLocations: 'Armaduras'
+    };
+    const v = (x: any) => (x === true ? 'sim' : x === false ? 'não' : x === '' ? '—' : String(x));
+    const man = (id: any) => {
+      const m = COMBAT_MANEUVERS.find((z) => z.id === id);
+      return m ? m.name : id || 'Nenhuma';
+    };
+    const cn = (id: any) => {
+      const m = (conds || []).find((z) => z && (z.id === id || z.label === id));
+      return m ? m.label || m.id : id;
+    };
+
+    const out: string[] = [];
+    for (const k of keys) {
+      const a = A[k], b = B[k];
+      if (k === 'isDead') out.push(b ? 'Marcado como morto' : 'Marcado como vivo');
+      else if (k === 'isVisibleToPlayer') out.push(b ? 'Visível para os jogadores' : 'Oculto dos jogadores');
+      else if (k === 'combatManeuver') out.push('Manobra: ' + man(a) + ' → ' + man(b));
+      else if (k === 'avatar') out.push('Avatar alterado');
+      else if (k.startsWith('txt.')) out.push((TX[k.slice(4)] || k.slice(4)) + ' editado');
+      else if (k.startsWith('arr.')) out.push((AR[k.slice(4)] || k.slice(4)) + ' editado');
+      else if (k === 'cond') {
+        const x = new Set((a || '').split('|').filter(Boolean));
+        const y = new Set((b || '').split('|').filter(Boolean));
+        const ad = [...y].filter((z) => !x.has(z)).map(cn);
+        const rm = [...x].filter((z) => !y.has(z)).map(cn);
+        if (ad.length) out.push('Condição adicionada: ' + ad.join(', '));
+        if (rm.length) out.push('Condição removida: ' + rm.join(', '));
+      } else if (k.startsWith('item.')) {
+        const pa = a === undefined ? null : String(a).split('\x01');
+        const pb = b === undefined ? null : String(b).split('\x01');
+        if (!pa) out.push('Item adicionado: ' + pb![0] + (pb![1] ? ' (' + pb![1] + ')' : ''));
+        else if (!pb) out.push('Item removido: ' + pa[0]);
+        else {
+          if (pa[0] !== pb[0]) out.push('Item renomeado: ' + pa[0] + ' → ' + pb[0]);
+          if (pa[1] !== pb[1]) out.push(pb[0] + ': ' + v(pa[1]) + ' → ' + v(pb[1]));
+          if (pa[2] !== pb[2]) out.push(pb[0] + ' (máx.): ' + v(pa[2]) + ' → ' + v(pb[2]));
+        }
+      } else if (k.startsWith('actSpell.')) {
+        const pa = a === undefined ? null : String(a).split('\x01');
+        const pb = b === undefined ? null : String(b).split('\x01');
+        if (!pa) out.push('Magia ativa adicionada: ' + pb![0] + (pb![1] ? ' no alvo ' + pb![1] : '') + (Number(pb![2]) ? ' (Custo: ' + pb![2] + ' FP)' : ''));
+        else if (!pb) out.push('Magia ativa encerrada: ' + pa[0]);
+        else out.push('Magia ativa alterada: ' + pb[0]);
+      } else if (k.startsWith('affSpell.')) {
+        const pa = a === undefined ? null : String(a).split('\x01');
+        const pb = b === undefined ? null : String(b).split('\x01');
+        if (!pa) out.push('Efeito de magia recebido: ' + pb![0] + (pb![1] ? ' de ' + pb![1] : ''));
+        else if (!pb) out.push('Efeito de magia removido: ' + pa[0]);
+      } else if (k === 'ta.usedRetreat') {
+        out.push(b ? 'Recuo utilizado no turno' : 'Recuo desmarcado');
+      } else if (k === 'ta.usedFatigueThisTurn') {
+        out.push(b ? 'Fadiga utilizada no turno' : 'Fadiga do turno zerada');
+      } else if (k === 'ta.notes') {
+        out.push('Notas do turno editadas');
+      } else {
+        out.push((L[k] || k) + ': ' + v(a) + ' → ' + v(b));
+      }
+    }
+    return out.join(' · ');
+  };
+
+  const hubAuto = (neu: NPC, old: NPC | undefined): NPC => {
+    try {
+      if (!neu || !old) return neu;
+      const hn = neu.history || [], ho = old.history || [];
+      // Se já houver um registro manual novo (ex: DamageCalculatorModal), não duplica
+      if (hn.length !== ho.length || (hn[0] && hn[0].id) !== (ho[0] && ho[0].id)) return neu;
+      const A = hubFlat(old), B = hubFlat(neu);
+      const keys = [...new Set([...Object.keys(A), ...Object.keys(B)])].filter((k) =>
+        A[k] !== B[k] && /^(hpCurrent|hpMax|fpCurrent|fpMax|cond|combatManeuver|isDead|ta\..*|item\..*|actSpell\..*|affSpell\..*)$/.test(k)
+      ).sort();
+      if (!keys.length) return neu;
+      const d = hubDescribe(A, B, keys, conditions);
+      if (!d) return neu;
+      const now = Date.now();
+      const ks = keys.join(',');
+      const newEntry: ActionLogEntry = {
+        id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        author: currentUser?.role === 'mestre' ? 'mestre' : 'assistente',
+        authorName: (currentUser && currentUser.name) || (currentUser && currentUser.role === 'mestre' ? 'Mestre' : 'Assistente'),
+        type: 'edit',
+        description: d + (currentUser && currentUser.name ? ' — por ' + currentUser.name : ''),
+        combatId: activeCombat ? activeCombat.id : undefined,
+        round: activeCombat ? (activeCombat.currentRound ?? (activeCombat as any).round ?? 0) : 0,
+      };
+      // Mantém todo o histórico anterior e adiciona o novo registro
+      return {
+        ...neu,
+        history: [newEntry, ...hn],
+      };
+    } catch (e) {
+      return neu;
+    }
+  };
+
   // Atualização unificada de Personagem ou NPC (usando stateRef para garantir sincronização síncrona sem race conditions)
   const handleUpdateNpc = (updatedNpc: NPC) => {
-    const editTimestamp = updatedNpc.updatedAt || Date.now();
+    const oldNpc = stateRef.current.players.find((p) => p.id === updatedNpc.id) ||
+      stateRef.current.combats.flatMap((c) => c.npcs || []).find((n) => n.id === updatedNpc.id);
+    const autoLoggedNpc = hubAuto(updatedNpc, oldNpc);
+    const editTimestamp = autoLoggedNpc.updatedAt || Date.now();
     const npcWithTimestamp: NPC = {
-      ...updatedNpc,
+      ...autoLoggedNpc,
       updatedAt: editTimestamp,
     };
     lastLocalEditTimestampRef.current = editTimestamp;
@@ -1608,10 +1762,23 @@ export default function App() {
         }
 
         if (changed) {
+          const removedName = n.activeSpells?.find((s) => s.id === spellId)?.spellName ||
+            n.affectedSpells?.find((s) => s.id === spellId)?.spellName || 'Magia';
+          const spellLog: ActionLogEntry = {
+            id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            author: currentUser?.role === 'mestre' ? 'mestre' : 'assistente',
+            authorName: currentUser?.name || (currentUser?.role === 'mestre' ? 'Mestre' : 'Assistente'),
+            type: 'spell',
+            description: `Magia encerrada: ${removedName}${currentUser?.name ? ' — por ' + currentUser.name : ''}`,
+            combatId: activeCombat?.id,
+            round: activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0,
+          };
           return {
             ...n,
             activeSpells: newActive,
             affectedSpells: newAffected,
+            history: [spellLog, ...(n.history || [])],
             updatedAt: now,
           };
         }

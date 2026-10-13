@@ -46,8 +46,16 @@ export const TacticalTokenSidebar: React.FC<TacticalTokenSidebarProps> = ({
   const tokenMap = new Map<string, TacticalToken>();
   tokens.forEach((t) => tokenMap.set(t.npcId, t));
 
-  const players = characters.filter((c) => c.characterType === 'player');
-  const npcs = characters.filter((c) => c.characterType !== 'player');
+  const players = characters
+    .filter((c) => c.characterType === 'player')
+    .sort((a, b) => ((b.basicSpeed ?? 0) - (a.basicSpeed ?? 0)) || (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+  const npcs = characters
+    .filter((c) => c.characterType !== 'player')
+    .sort((a, b) =>
+      isMaster
+        ? (((b.basicSpeed ?? 0) - (a.basicSpeed ?? 0)) || (a.name || '').localeCompare(b.name || '', 'pt-BR'))
+        : (a.name || '').localeCompare(b.name || '', 'pt-BR')
+    );
 
   const renderCharacterCard = (npc: NPC) => {
     const token = tokenMap.get(npc.id);

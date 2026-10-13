@@ -102,6 +102,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setSpellRound(currentRound ?? 0);
+      setHealAmount(1);
     }
   }, [isOpen, currentRound]);
 
@@ -114,7 +115,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
   // Heal state (Agora pode curar PV ou curar Fadiga!)
   const [healTarget, setHealTarget] = useState<'hp' | 'fp'>('hp');
-  const [healAmount, setHealAmount] = useState<number>(3);
+  const [healAmount, setHealAmount] = useState<number>(1);
 
   // Extra Item state (Flechas, Escudos, etc. - Sem pedras de mana)
   const [selectedItemId, setSelectedItemId] = useState<string>(
