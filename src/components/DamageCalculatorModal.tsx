@@ -124,6 +124,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [itemDelta, setItemDelta] = useState<number | ''>(0);
 
   const [eyeConfirmed, setEyeConfirmed] = useState<boolean>(false);
+  const [customMultiplier, setCustomMultiplier] = useState<number | ''>(1.0);
 
   if (!isOpen) return null;
 
@@ -160,6 +161,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     appliesArmorModifier,
     bypassDr,
     isNoLocation,
+    customMultiplier: typeof customMultiplier === 'number' ? customMultiplier : 1.0,
   });
 
   const {
@@ -179,6 +181,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     selectedLocationId &&
     rawDamage !== '' &&
     (damageType || isNoLocation) &&
+    (damageType !== 'personalizado' || customMultiplier !== '') &&
     (!requiresEyeConfirmation || eyeConfirmed)
   );
 
@@ -192,15 +195,18 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       : appliesArmorModifier
       ? `${armorDr} arm (${baseArmorDr}${selectedLoc?.drModifier && selectedLoc.drModifier >= 0 ? `+${selectedLoc.drModifier}` : selectedLoc?.drModifier} vs ${selectedLoc?.modifierDamageType})`
       : `${armorDr} arm`;
-    const effectiveTypeLabel = damageType || (isNoLocation ? 'Direto' : '');
+    const effectiveTypeLabel = damageType === 'personalizado'
+      ? `Personalizado (x${multiplier})`
+      : damageType || (isNoLocation ? 'Direto' : '');
     const bonusDrText = locationBonusDr > 0 ? ` + ${locationBonusDr} bônus Cabeça` : '';
     const attacker = combatants.find((c) => c.id === selectedAttackerId);
     const attackerPrefix = attacker ? `[Atacante: ${attacker.name}] ` : '';
+    const descDamageTypeLabel = damageType === 'personalizado' ? `Personalizado x${multiplier}` : damageType;
     const desc = customDescription.trim()
       ? `${attackerPrefix}${customDescription.trim()}`
       : (isNoLocation
-        ? `${attackerPrefix}Dano Direto (Sem parte do corpo) | Dano: ${numericRawDamage}${damageType ? ` (${damageType} x${multiplier})` : ''} | RD: 0 | Final: -${finalDamage} PV`
-        : `${attackerPrefix}Local: ${locName} | Dano: ${numericRawDamage} (${damageType}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Final: -${finalDamage} PV`);
+        ? `${attackerPrefix}Dano Direto (Sem parte do corpo) | Dano: ${numericRawDamage}${damageType ? ` (${descDamageTypeLabel})` : ''} | RD: 0 | Final: -${finalDamage} PV`
+        : `${attackerPrefix}Local: ${locName} | Dano: ${numericRawDamage} (${descDamageTypeLabel}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Final: -${finalDamage} PV`);
 
     onApplyDamage(npc.id, finalDamage, {
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -520,9 +526,51 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   <option value="perfurante_pequeno">Perfurante Pequeno (x0.5)</option>
                   <option value="contusao">Contusão (x1.0)</option>
                   <option value="queima">Queima / Fogo (x1.0)</option>
+                  <option value="personalizado">Personalizado</option>
                 </select>
               </div>
             </div>
+
+            {/* Caixa para definir Multiplicador Livre quando o Tipo de Dano "Personalizado" é selecionado */}
+            {damageType === 'personalizado' && (
+              <div className="p-3 bg-slate-950/90 border border-amber-500/60 rounded-xl space-y-2 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-amber-300">
+                    Multiplicador de Dano:
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    Multiplicador customizado (Ex: 0.5, 1, 1.5, 2, 3...)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="1.0"
+                    value={customMultiplier}
+                    onChange={(e) => setCustomMultiplier(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-900 border border-amber-500/50 rounded-lg px-3 py-1.5 text-sm font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                  <div className="flex items-center gap-1 shrink-0">
+                    {[0.5, 1.0, 1.5, 2.0, 3.0, 4.0].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setCustomMultiplier(val)}
+                        className={`px-2 py-1 text-[11px] font-mono font-bold rounded-md border transition-all ${
+                          customMultiplier === val
+                            ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-xs'
+                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-750'
+                        }`}
+                      >
+                        x{val}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Regra Adicional da Parte do Corpo (se houver) */}
             {selectedLoc?.additionalRule && (

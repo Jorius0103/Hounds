@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Weapon, WeaponAttackMode } from '../types/rpg';
 import { Sword, X, Check, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface WeaponModalProps {
   isOpen: boolean;
@@ -134,6 +135,7 @@ export const WeaponModal: React.FC<WeaponModalProps> = ({
   const [nh, setNh] = useState<string | number>('');
   const [modes, setModes] = useState<WeaponAttackMode[]>([]);
   const [notes, setNotes] = useState('');
+  const [deletingModeIndex, setDeletingModeIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (initialWeapon) {
@@ -383,7 +385,7 @@ export const WeaponModal: React.FC<WeaponModalProps> = ({
                     {modes.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => handleRemoveMode(index)}
+                        onClick={() => setDeletingModeIndex(index)}
                         className="p-1 text-slate-500 hover:text-rose-400 rounded transition-colors"
                         title="Remover este modo"
                       >
@@ -427,6 +429,22 @@ export const WeaponModal: React.FC<WeaponModalProps> = ({
           </div>
         </form>
       </div>
+
+      <ConfirmModal
+        isOpen={deletingModeIndex !== null}
+        title="Remover Modo de Ataque"
+        message={`Deseja remover o modo de ataque "${deletingModeIndex !== null ? (modes[deletingModeIndex]?.name || `Modo ${deletingModeIndex + 1}`) : ''}"?`}
+        confirmText="Remover Modo"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          if (deletingModeIndex !== null) {
+            handleRemoveMode(deletingModeIndex);
+            setDeletingModeIndex(null);
+          }
+        }}
+        onCancel={() => setDeletingModeIndex(null)}
+      />
     </div>
   );
 };

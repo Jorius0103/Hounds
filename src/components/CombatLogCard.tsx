@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActionLogEntry, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2 } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface CombatLogCardProps {
   entry: ActionLogEntry;
@@ -28,6 +29,8 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   const isFatigue = entry.type === 'fatigue';
   const isHeal = entry.type === 'heal';
   const isRest = entry.type === 'rest';
+
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const isPlayerView = isPlayer || currentUserRole === 'jogador';
   const isNpcTarget = (entry as any).npcCharacterType !== 'player';
@@ -169,7 +172,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onDeleteEntry(entry.id, entry.npcId);
+                setDeleteConfirmOpen(true);
               }}
               className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/60 rounded transition-colors"
               title="Excluir este registro"
@@ -317,6 +320,20 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           {displayDescription}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deleteConfirmOpen}
+        title="Excluir Registro de Combate"
+        message="Deseja excluir este registro do histórico de combate?"
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          onDeleteEntry?.(entry.id, entry.npcId);
+          setDeleteConfirmOpen(false);
+        }}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </div>
   );
 };

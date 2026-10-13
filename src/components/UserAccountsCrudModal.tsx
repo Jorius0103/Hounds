@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount, UserRole } from '../types/rpg';
 import { Users, Plus, KeyRound, Trash2, X, Check, ShieldCheck, UserCheck, Eye } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface UserAccountsCrudModalProps {
   isOpen: boolean;
@@ -25,6 +26,14 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
   const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>('jogador');
   const [password, setPassword] = useState('123');
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    isDanger?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -193,10 +202,19 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
 
                 <div className="flex items-center gap-1.5">
                   <button
+                    type="button"
                     onClick={() => {
-                      if (confirm(`Reiniciar senha de ${u.name}? Ao logar, este usuário terá que cadastrar uma nova senha.`)) {
-                        onResetUserPassword(u.id);
-                      }
+                      setConfirmAction({
+                        isOpen: true,
+                        title: 'Reiniciar Senha',
+                        message: `Reiniciar senha de ${u.name}? Ao logar, este usuário terá que cadastrar uma nova senha.`,
+                        confirmText: 'Reiniciar Senha',
+                        isDanger: false,
+                        onConfirm: () => {
+                          onResetUserPassword(u.id);
+                          setConfirmAction(null);
+                        },
+                      });
                     }}
                     title="Reiniciar a senha deste usuário"
                     className="flex items-center gap-1 px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg transition-colors"
@@ -207,10 +225,19 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
 
                   {!isSelf && users.length > 1 && (
                     <button
+                      type="button"
                       onClick={() => {
-                        if (confirm(`Excluir permanentemente o usuário ${u.name}?`)) {
-                          onDeleteUser(u.id);
-                        }
+                        setConfirmAction({
+                          isOpen: true,
+                          title: 'Excluir Usuário',
+                          message: `Excluir permanentemente o usuário ${u.name}? Esta ação não pode ser desfeita.`,
+                          confirmText: 'Excluir Usuário',
+                          isDanger: true,
+                          onConfirm: () => {
+                            onDeleteUser(u.id);
+                            setConfirmAction(null);
+                          },
+                        });
                       }}
                       title="Excluir usuário"
                       className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
@@ -233,6 +260,19 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(confirmAction?.isOpen)}
+        title={confirmAction?.title || 'Confirmar Ação'}
+        message={confirmAction?.message || ''}
+        confirmText={confirmAction?.confirmText || 'Confirmar'}
+        cancelText="Cancelar"
+        isDanger={confirmAction?.isDanger !== false}
+        onConfirm={() => {
+          confirmAction?.onConfirm();
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Combat, UserRole, NPC } from '../types/rpg';
 import { CombatLogCard } from './CombatLogCard';
 import { ScrollText, Trash2, Search, X, SlidersHorizontal } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface GeneralCombatLogProps {
   activeCombat: Combat | undefined;
@@ -32,6 +33,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
 
   // Filtro 3: Busca Livre
   const [searchTerm, setSearchTerm] = useState('');
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   // Collect and sort all logs across all active combat NPCs and Personagens
   const allLogs = useMemo(() => {
@@ -172,11 +174,8 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
 
             {currentUserRole === 'mestre' && onClearHistory && allLogs.length > 0 && (
               <button
-                onClick={() => {
-                  if (confirm('Deseja limpar todo o histórico de combate de todos os NPCs desta cena?')) {
-                    onClearHistory();
-                  }
-                }}
+                type="button"
+                onClick={() => setClearConfirmOpen(true)}
                 className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
                 title="Limpar histórico de combate de todos os NPCs"
               >
@@ -352,6 +351,20 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         <span>Clique no card para abrir o personagem</span>
         <span className="font-mono text-amber-400/80 font-bold">{activeCombat?.name || 'Combate'}</span>
       </div>
+
+      <ConfirmModal
+        isOpen={clearConfirmOpen}
+        title="Limpar Histórico de Combate"
+        message="Deseja limpar todo o histórico de combate de todos os NPCs desta cena? Esta ação não pode ser desfeita."
+        confirmText="Limpar Histórico"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          onClearHistory?.();
+          setClearConfirmOpen(false);
+        }}
+        onCancel={() => setClearConfirmOpen(false)}
+      />
     </div>
   );
 };

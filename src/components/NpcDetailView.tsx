@@ -16,6 +16,7 @@ import {
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { SpellsModal } from './SpellsModal';
 import { CombatLogCard } from './CombatLogCard';
+import { ConfirmModal } from './ConfirmModal';
 import { systemLogger } from '../utils/systemLogger';
 import {
   Shield,
@@ -105,6 +106,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState<'weapons' | 'spells' | 'armor' | 'traits'>('weapons');
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const isMaster = currentUserRole === 'mestre';
   const isViewer = !isMaster && !hasEditPermission;
@@ -911,12 +919,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          if (onRemoveActiveSpell) {
-                            onRemoveActiveSpell(npc.id, sp.id);
-                          } else {
-                            const remaining = (npc.activeSpells || []).filter((s) => s.id !== sp.id);
-                            updateField('activeSpells', remaining);
-                          }
+                          setConfirmAction({
+                            isOpen: true,
+                            title: 'Encerrar Magia Ativa',
+                            message: `Deseja encerrar a magia ativa "${sp.spellName}" mantida por ${npc.name || 'este personagem'}?`,
+                            confirmText: 'Encerrar Magia',
+                            onConfirm: () => {
+                              if (onRemoveActiveSpell) {
+                                onRemoveActiveSpell(npc.id, sp.id);
+                              } else {
+                                const remaining = (npc.activeSpells || []).filter((s) => s.id !== sp.id);
+                                updateField('activeSpells', remaining);
+                              }
+                            },
+                          });
                         }}
                         className="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-rose-950/50 rounded-lg transition-colors shrink-0"
                         title="Encerrar / Cancelar esta magia ativa"
@@ -1074,12 +1090,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          if (onRemoveAffectedSpell) {
-                            onRemoveAffectedSpell(npc.id, sp.id);
-                          } else {
-                            const remaining = (npc.affectedSpells || []).filter((s) => s.id !== sp.id);
-                            updateField('affectedSpells', remaining);
-                          }
+                          setConfirmAction({
+                            isOpen: true,
+                            title: 'Remover Efeito de Magia',
+                            message: `Deseja remover o efeito da magia "${sp.spellName}" sobre ${npc.name || 'este personagem'}?`,
+                            confirmText: 'Remover Efeito',
+                            onConfirm: () => {
+                              if (onRemoveAffectedSpell) {
+                                onRemoveAffectedSpell(npc.id, sp.id);
+                              } else {
+                                const remaining = (npc.affectedSpells || []).filter((s) => s.id !== sp.id);
+                                updateField('affectedSpells', remaining);
+                              }
+                            },
+                          });
                         }}
                         className="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-rose-950/50 rounded-lg transition-colors shrink-0"
                         title="Remover este efeito de magia"
@@ -1856,7 +1880,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     />
                     {isMaster && parriesList.length > 1 && (
                       <button
-                        onClick={() => handleRemoveParry(idx)}
+                        onClick={() => {
+                          setConfirmAction({
+                            isOpen: true,
+                            title: 'Remover Aparar',
+                            message: `Deseja remover esta linha de Aparar (${parry.weaponName || 'Aparar ' + (idx + 1)})?`,
+                            confirmText: 'Remover Aparar',
+                            onConfirm: () => handleRemoveParry(idx),
+                          });
+                        }}
                         className="text-slate-500 hover:text-rose-400 font-bold text-xs p-0.5 transition-colors"
                         title="Remover este Aparar"
                       >
@@ -2045,7 +2077,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         {isMaster && (
                           <button
                             type="button"
-                            onClick={() => handleRemoveExtraItem(item.id)}
+                            onClick={() => {
+                              setConfirmAction({
+                                isOpen: true,
+                                title: 'Excluir Item Extra',
+                                message: `Deseja excluir o item "${item.name}" da ficha de ${npc.name || 'este personagem'}?`,
+                                confirmText: 'Excluir Item',
+                                onConfirm: () => handleRemoveExtraItem(item.id),
+                              });
+                            }}
                             className="text-slate-500 hover:text-rose-400 font-bold px-1 text-sm ml-0.5"
                             title="Excluir item"
                           >
@@ -2408,7 +2448,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           <Edit2 size={13} />
                         </button>
                         <button
-                          onClick={() => handleRemoveWeapon(w.id)}
+                          onClick={() => {
+                            setConfirmAction({
+                              isOpen: true,
+                              title: 'Excluir Arma',
+                              message: `Deseja excluir a arma "${w.name || 'Arma'}" da ficha de ${npc.name || 'este personagem'}?`,
+                              confirmText: 'Excluir Arma',
+                              onConfirm: () => handleRemoveWeapon(w.id),
+                            });
+                          }}
                           className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
                           title="Excluir arma"
                         >
@@ -2537,7 +2585,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                     {!isViewer && (
                       <button
-                        onClick={() => handleRemoveSpell(s.id)}
+                        onClick={() => {
+                          setConfirmAction({
+                            isOpen: true,
+                            title: 'Excluir Magia do Grimório',
+                            message: `Deseja excluir a magia "${s.name}" do grimório de ${npc.name || 'este personagem'}?`,
+                            confirmText: 'Excluir Magia',
+                            onConfirm: () => handleRemoveSpell(s.id),
+                          });
+                        }}
                         className="p-1 text-slate-500 hover:text-rose-400 transition-colors"
                         title="Excluir magia"
                       >
@@ -2661,7 +2717,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                             {kits.length > 1 && (
                               <button
                                 type="button"
-                                onClick={() => handleRemoveArmorKit(kit.id)}
+                                onClick={() => {
+                                  setConfirmAction({
+                                    isOpen: true,
+                                    title: 'Excluir Kit de Armadura',
+                                    message: `Deseja excluir o kit "${kit.name}" de ${npc.name || 'este personagem'}?`,
+                                    confirmText: 'Excluir Kit',
+                                    onConfirm: () => handleRemoveArmorKit(kit.id),
+                                  });
+                                }}
                                 className="text-slate-500 hover:text-rose-400 p-0.5 rounded"
                                 title="Excluir este kit"
                               >
@@ -3014,47 +3078,38 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         npcName={npc.name || 'NPC'}
       />
 
-      {/* Confirmação Segura de Exclusão de Personagem */}
-      {deleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
-                <Trash2 size={20} />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-white">Excluir Personagem</h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Remover <strong>"{npc.name || 'este personagem'}"</strong> deste combate?
-                </p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-400 bg-slate-950/60 p-3 rounded-xl border border-slate-800 leading-relaxed">
-              {npc.characterType === 'player'
-                ? 'A ficha continuará salva globalmente e poderá ser adicionada novamente a qualquer combate.'
-                : 'O NPC e seus registros serão excluídos permanentemente deste combate.'}
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmOpen(false)}
-                className="px-3 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg font-medium transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onDeleteNpc(npc.id);
-                  setDeleteConfirmOpen(false);
-                }}
-                className="px-3.5 py-1.5 text-xs text-white bg-rose-600 hover:bg-rose-500 font-bold rounded-lg shadow-sm transition-colors"
-              >
-                Confirmar Exclusão
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Confirmação de Exclusão de Personagem */}
+      <ConfirmModal
+        isOpen={deleteConfirmOpen}
+        title="Excluir Personagem"
+        message={`Remover "${npc.name || 'este personagem'}" deste combate?\n\n${
+          npc.characterType === 'player'
+            ? 'A ficha continuará salva globalmente e poderá ser adicionada novamente a qualquer combate.'
+            : 'O NPC e seus registros serão excluídos permanentemente deste combate.'
+        }`}
+        confirmText="Confirmar Exclusão"
+        isDanger={true}
+        onConfirm={() => {
+          onDeleteNpc(npc.id);
+          setDeleteConfirmOpen(false);
+        }}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
+
+      {/* Confirmação Genérica de Exclusão (Armas, Magias, Itens, etc.) */}
+      {confirmAction && (
+        <ConfirmModal
+          isOpen={confirmAction.isOpen}
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmText={confirmAction.confirmText}
+          isDanger={true}
+          onConfirm={() => {
+            confirmAction.onConfirm();
+            setConfirmAction(null);
+          }}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );

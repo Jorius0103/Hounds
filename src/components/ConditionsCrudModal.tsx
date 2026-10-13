@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ConditionDefinition } from '../types/rpg';
 import { Plus, Trash2, Edit2, Check, X, Search, AlertCircle } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface ConditionsCrudModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
   const [editLabel, setEditLabel] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editDuration, setEditDuration] = useState<number | ''>('');
+  const [deletingCondition, setDeletingCondition] = useState<ConditionDefinition | null>(null);
 
   if (!isOpen) return null;
 
@@ -278,11 +280,8 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
                         <Edit2 size={13} />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`Excluir permanentemente a condição "${cond.label}"?`)) {
-                            onDeleteCondition(cond.id);
-                          }
-                        }}
+                        type="button"
+                        onClick={() => setDeletingCondition(cond)}
                         title="Excluir condição"
                         className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg"
                       >
@@ -305,6 +304,22 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deletingCondition)}
+        title="Excluir Condição"
+        message={`Deseja excluir permanentemente a condição "${deletingCondition?.label}"?`}
+        confirmText="Excluir Condição"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          if (deletingCondition) {
+            onDeleteCondition(deletingCondition.id);
+            setDeletingCondition(null);
+          }
+        }}
+        onCancel={() => setDeletingCondition(null)}
+      />
     </div>
   );
 };

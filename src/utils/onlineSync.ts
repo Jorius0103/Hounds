@@ -3,7 +3,7 @@ import { Combat, ConditionDefinition, UserAccount, NPC } from '../types/rpg';
 
 export interface RemoteSyncPayload {
   clientId: string;
-  type: 'SYNC_FULL' | 'SYNC_NPC' | 'REQUEST_SYNC';
+  type: 'SYNC_FULL' | 'SYNC_NPC' | 'REQUEST_SYNC' | 'SYNC_ROUND';
   timestamp: number;
   npc?: NPC;
   combats?: Combat[];
@@ -11,6 +11,8 @@ export interface RemoteSyncPayload {
   conditions?: ConditionDefinition[];
   activeCombatId?: string;
   players?: NPC[];
+  combatId?: string;
+  round?: number;
 }
 
 export type SyncStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
@@ -199,7 +201,7 @@ class OnlineSyncService {
   public sendPayload(
     payload: Omit<RemoteSyncPayload, 'clientId' | 'timestamp'> & { clientId?: string; timestamp?: number }
   ) {
-    if (payload.type === 'REQUEST_SYNC' || payload.type === 'SYNC_NPC') {
+    if (payload.type === 'REQUEST_SYNC' || payload.type === 'SYNC_NPC' || payload.type === 'SYNC_ROUND') {
       this.sendPayloadImmediate(payload);
       return;
     }

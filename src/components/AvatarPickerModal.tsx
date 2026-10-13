@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { PRESET_AVATARS } from './NpcAvatar';
 import { Upload, Link as LinkIcon, Trash2, X, Check } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface AvatarPickerModalProps {
   currentAvatar?: string;
@@ -22,6 +23,7 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
   const [selectedPreset, setSelectedPreset] = useState(currentPreset);
   const [customAvatar, setCustomAvatar] = useState(currentAvatar || '');
   const [urlInput, setUrlInput] = useState('');
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -90,7 +92,8 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
               <div className="flex items-center gap-2">
                 <span>Imagem personalizada ativa</span>
                 <button
-                  onClick={() => setCustomAvatar('')}
+                  type="button"
+                  onClick={() => setRemoveConfirmOpen(true)}
                   className="flex items-center gap-1 text-rose-400 hover:text-rose-300 ml-auto"
                 >
                   <Trash2 size={13} />
@@ -243,6 +246,20 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={removeConfirmOpen}
+        title="Remover Imagem Personalizada"
+        message="Deseja remover a imagem personalizada e voltar ao ícone temático de RPG?"
+        confirmText="Remover Imagem"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          setCustomAvatar('');
+          setRemoveConfirmOpen(false);
+        }}
+        onCancel={() => setRemoveConfirmOpen(false)}
+      />
     </div>
   );
 };

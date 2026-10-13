@@ -245,6 +245,7 @@ export function calculateLocationDamage(params: {
   appliesArmorModifier: boolean;
   bypassDr: boolean;
   isNoLocation?: boolean;
+  customMultiplier?: number;
 }): DamageCalculationResult {
   const {
     locationName,
@@ -256,10 +257,14 @@ export function calculateLocationDamage(params: {
     appliesArmorModifier,
     bypassDr,
     isNoLocation,
+    customMultiplier,
   } = params;
 
   if (isNoLocation) {
-    const defaultMult = getBaseDamageMultiplier(damageType);
+    const defaultMult =
+      customMultiplier !== undefined && (damageType === 'personalizado' || damageType === 'custom')
+        ? customMultiplier
+        : getBaseDamageMultiplier(damageType);
     const finalDamage = Math.floor(rawDamage * defaultMult);
     return {
       armorDr: 0,
@@ -361,6 +366,11 @@ export function calculateLocationDamage(params: {
     // No cérebro através do olho o multiplicador é x4
     woundMultiplier = 4.0;
     appliedRules.push('Olho: Dano atinge o cérebro (x4)');
+  }
+
+  if (customMultiplier !== undefined && (damageType === 'personalizado' || damageType === 'custom')) {
+    woundMultiplier = customMultiplier;
+    appliedRules.push(`Multiplicador Personalizado: x${customMultiplier}`);
   }
 
   const finalDamage = Math.floor(penetratingDamage * woundMultiplier);

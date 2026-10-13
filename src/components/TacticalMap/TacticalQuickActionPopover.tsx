@@ -20,6 +20,7 @@ import {
   Footprints,
   Crosshair,
 } from 'lucide-react';
+import { ConfirmModal } from '../ConfirmModal';
 
 interface TacticalQuickActionPopoverProps {
   token: TacticalToken;
@@ -57,6 +58,7 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
   currentUserRole,
 }) => {
   const isMaster = currentUserRole === 'mestre';
+  const [removeConfirmOpen, setRemoveConfirmOpen] = React.useState(false);
   const isPlayer = npc.characterType === 'player';
 
   const rotateFacing = (delta: number) => {
@@ -307,7 +309,7 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
             </button>
 
             <button
-              onClick={onRemoveToken}
+              onClick={() => setRemoveConfirmOpen(true)}
               className="p-1.5 bg-slate-900 hover:bg-red-950/80 border border-slate-800 hover:border-red-800 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
               title="Remover token da mesa tática"
             >
@@ -316,6 +318,19 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
           </>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={removeConfirmOpen}
+        title="Remover Token da Mesa Tática"
+        message={`Deseja remover o token de "${npc.name}" da mesa tática? O personagem continuará disponível na lista de combate.`}
+        confirmText="Remover Token"
+        isDanger={true}
+        onConfirm={() => {
+          setRemoveConfirmOpen(false);
+          onRemoveToken();
+        }}
+        onCancel={() => setRemoveConfirmOpen(false)}
+      />
     </div>
   );
 };

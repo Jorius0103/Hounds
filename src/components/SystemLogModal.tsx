@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { systemLogger, SystemLogEntry } from '../utils/systemLogger';
 import { X, Trash2, Copy, Check, Activity, ShieldAlert, Radio, Laptop } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface SystemLogModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ export const SystemLogModal: React.FC<SystemLogModalProps> = ({ isOpen, onClose 
   const [filter, setFilter] = useState<'ALL' | 'LOCAL' | 'SYNC' | 'REJECT'>('ALL');
   const [copied, setCopied] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   useEffect(() => {
     const unsub = systemLogger.subscribe((newLogs) => {
@@ -159,7 +161,8 @@ export const SystemLogModal: React.FC<SystemLogModalProps> = ({ isOpen, onClose 
               <span>{copied ? 'Copiado!' : 'Copiar'}</span>
             </button>
             <button
-              onClick={() => systemLogger.clear()}
+              type="button"
+              onClick={() => setClearConfirmOpen(true)}
               className="flex items-center gap-1 px-2.5 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-semibold rounded-lg border border-rose-800/50 transition-colors"
               title="Limpar todos os registros de log"
             >
@@ -209,6 +212,20 @@ export const SystemLogModal: React.FC<SystemLogModalProps> = ({ isOpen, onClose 
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={clearConfirmOpen}
+        title="Limpar Logs do Sistema"
+        message="Deseja limpar todos os registros de log do sistema?"
+        confirmText="Limpar Logs"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          systemLogger.clear();
+          setClearConfirmOpen(false);
+        }}
+        onCancel={() => setClearConfirmOpen(false)}
+      />
     </div>
   );
 };

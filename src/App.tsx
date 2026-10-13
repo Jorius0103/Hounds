@@ -48,7 +48,8 @@ function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]
       const hasContentDiff =
         incoming.hpCurrent !== existing.hpCurrent ||
         incoming.fpCurrent !== existing.fpCurrent ||
-        (incoming.history && incoming.history.length > (existing.history ? existing.history.length : 0)) ||
+        (incoming.history?.length !== existing.history?.length) ||
+        JSON.stringify(incoming.history || []) !== JSON.stringify(existing.history || []) ||
         JSON.stringify(incoming.statusConditions || []) !== JSON.stringify(existing.statusConditions || []) ||
         JSON.stringify(incoming.extraItems || []) !== JSON.stringify(existing.extraItems || []) ||
         JSON.stringify(incoming.activeSpells || []) !== JSON.stringify(existing.activeSpells || []) ||
@@ -95,14 +96,20 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
       const editorIdsChanged = JSON.stringify(existing.editorUserIds || []) !== JSON.stringify(incoming.editorUserIds || []);
       const nameChanged = existing.name !== incoming.name;
       const isActiveChanged = existing.isActive !== incoming.isActive;
+      const existingRound = existing.currentRound ?? (existing as any).round ?? 0;
+      const incomingRound = incoming.currentRound ?? (incoming as any).round ?? 0;
+      const roundChanged = existingRound !== incomingRound;
+      const tacticalChanged = JSON.stringify(existing.tacticalState) !== JSON.stringify(incoming.tacticalState);
 
-      if (npcsChanged || playerIdsChanged || editorIdsChanged || nameChanged || isActiveChanged) {
+      if (npcsChanged || playerIdsChanged || editorIdsChanged || nameChanged || isActiveChanged || roundChanged || tacticalChanged) {
         changed = true;
       }
       merged.push({
         ...existing,
         ...incoming,
         npcs: mergedNpcs,
+        currentRound: incoming.currentRound !== undefined ? incoming.currentRound : incomingRound,
+        round: incoming.round !== undefined ? incoming.round : incomingRound,
         playerIds: incoming.playerIds !== undefined ? incoming.playerIds : existing.playerIds,
         editorUserIds: incoming.editorUserIds !== undefined ? incoming.editorUserIds : existing.editorUserIds,
         isActive: incoming.isActive !== undefined ? incoming.isActive : existing.isActive,
@@ -281,6 +288,7 @@ export default function App() {
   }, [activeCombatId]);
 
   const activeCombat = combats.find((c) => c.id === activeCombatId) || combats[0];
+  const isNoCombat = !activeCombat || activeCombat.id === 'combat-vazio' || activeCombat.name?.toLowerCase().includes('vazio') || activeCombat.name?.toLowerCase().trim() === 'sem combate';
 
   // IDs dos personagens de jogadores visíveis no combate ativo (por padrão, todos)
   const activeCombatPlayerIds = useMemo(() => {
@@ -491,6 +499,18 @@ export default function App() {
         return;
       }
 
+      if (payload.type === 'SYNC_ROUND' && payload.combatId !== undefined) {
+        const combatId = payload.combatId;
+        const newRound = payload.round ?? 0;
+        const updated = stateRef.current.combats.map((c) =>
+          c.id === combatId ? { ...c, currentRound: newRound, round: newRound } : c
+        );
+        stateRef.current.combats = updated;
+        setCombats(updated);
+        systemLogger.addLog('SYNC_RECV', `Rodada do combate atualizada para ${newRound} em tempo real`);
+        return;
+      }
+
       // 1. Mensagem de NPC individual em tempo real (hiper-rápida, 0 debounce)
       if (payload.type === 'SYNC_NPC' && payload.npc) {
         const incomingNpc = payload.npc;
@@ -642,6 +662,17 @@ export default function App() {
 
         if (event.data?.type === 'SYNC_EDITORS' && Array.isArray(event.data.editorUserIds)) {
           setEditorUserIds(event.data.editorUserIds);
+          return;
+        }
+
+        if (event.data?.type === 'SYNC_ROUND' && event.data.combatId !== undefined) {
+          const combatId = event.data.combatId;
+          const newRound = event.data.round ?? 0;
+          const updated = stateRef.current.combats.map((c) =>
+            c.id === combatId ? { ...c, currentRound: newRound, round: newRound } : c
+          );
+          stateRef.current.combats = updated;
+          setCombats(updated);
           return;
         }
 
@@ -874,7 +905,25 @@ export default function App() {
     const updatedCombats = combats.map((c) =>
       c.id === activeCombat.id ? { ...c, currentRound: roundVal, round: roundVal } : c
     );
+    stateRef.current.combats = updatedCombats;
     setCombats(updatedCombats);
+
+    try {
+      broadcastChannelRef.current?.postMessage({
+        type: 'SYNC_ROUND',
+        combatId: activeCombat.id,
+        round: roundVal,
+        sourceId: onlineSyncService.getClientId(),
+      });
+    } catch (e) {}
+
+    onlineSyncService.sendPayloadImmediate({
+      type: 'SYNC_ROUND',
+      combatId: activeCombat.id,
+      round: roundVal,
+      timestamp: Date.now(),
+    });
+
     broadcastSync(updatedCombats);
   };
 
@@ -921,7 +970,7 @@ export default function App() {
 
   // Criação de NPC (Específico do Combate Ativo)
   const handleAddNewNpc = () => {
-    if (!activeCombat) return;
+    if (!activeCombat || isNoCombat) return;
     const newNpc = createNewNpc('NOVO NPC');
     newNpc.characterType = 'npc';
     const updated = combats.map((c) =>
@@ -1672,26 +1721,30 @@ export default function App() {
 
   const handleClearActiveCombatHistory = () => {
     if (!activeCombat) return;
+    const now = Date.now();
     const updated = combats.map((c) => {
       if (c.id !== activeCombat.id) return c;
       return {
         ...c,
-        npcs: c.npcs.map((n) => ({ ...n, history: [] })),
+        npcs: c.npcs.map((n) => ({ ...n, history: [], updatedAt: now })),
       };
     });
+    stateRef.current.combats = updated;
     setCombats(updated);
     broadcastSync(updated);
   };
 
   const handleDeleteLogEntry = (entryId: string, npcId?: string) => {
+    const now = Date.now();
     if (npcId) {
       const isPlayer = players.some((p) => p.id === npcId);
       if (isPlayer) {
         const updatedPlayers = players.map((p) =>
           p.id === npcId
-            ? { ...p, history: (p.history || []).filter((h) => h.id !== entryId) }
+            ? { ...p, history: (p.history || []).filter((h) => h.id !== entryId), updatedAt: now }
             : p
         );
+        stateRef.current.players = updatedPlayers;
         setPlayers(updatedPlayers);
         broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
       } else {
@@ -1699,10 +1752,11 @@ export default function App() {
           ...c,
           npcs: c.npcs.map((n) =>
             n.id === npcId
-              ? { ...n, history: (n.history || []).filter((h) => h.id !== entryId) }
+              ? { ...n, history: (n.history || []).filter((h) => h.id !== entryId), updatedAt: now }
               : n
           ),
         }));
+        stateRef.current.combats = updatedCombats;
         setCombats(updatedCombats);
         broadcastSync(updatedCombats);
       }
@@ -1710,7 +1764,9 @@ export default function App() {
       const updatedPlayers = players.map((p) => ({
         ...p,
         history: (p.history || []).filter((h) => h.id !== entryId),
+        updatedAt: now,
       }));
+      stateRef.current.players = updatedPlayers;
       setPlayers(updatedPlayers);
 
       const updatedCombats = combats.map((c) => ({
@@ -1718,8 +1774,10 @@ export default function App() {
         npcs: c.npcs.map((n) => ({
           ...n,
           history: (n.history || []).filter((h) => h.id !== entryId),
+          updatedAt: now,
         })),
       }));
+      stateRef.current.combats = updatedCombats;
       setCombats(updatedCombats);
       broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
     }
@@ -1849,6 +1907,7 @@ export default function App() {
         currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
         onUpdateRound={handleUpdateCombatRound}
         canControlRound={canEditCurrent}
+        isNoCombat={isNoCombat}
       />
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}

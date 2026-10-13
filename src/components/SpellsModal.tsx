@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Spell } from '../types/rpg';
 import { Sparkles, Plus, Trash2, Star, X, Check, BookOpen } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface SpellsModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
   npcName,
 }) => {
   const [spellList, setSpellList] = useState<Spell[]>([]);
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -200,7 +202,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
                   {/* Remove row */}
                   <button
                     type="button"
-                    onClick={() => handleRemoveRow(index)}
+                    onClick={() => setDeletingIndex(index)}
                     className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg transition-colors shrink-0"
                     title="Excluir magia"
                   >
@@ -242,6 +244,22 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={deletingIndex !== null}
+        title="Excluir Magia"
+        message={`Deseja excluir a magia "${deletingIndex !== null ? (spellList[deletingIndex]?.name || 'esta magia') : ''}"?`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          if (deletingIndex !== null) {
+            handleRemoveRow(deletingIndex);
+            setDeletingIndex(null);
+          }
+        }}
+        onCancel={() => setDeletingIndex(null)}
+      />
     </div>
   );
 };
