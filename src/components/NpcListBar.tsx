@@ -291,7 +291,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                   nameColor = 'text-emerald-200';
                 } else {
                   cardColorClasses =
-                    'bg-slate-950/70 border-slate-700 hover:border-slate-600 hover:bg-slate-850 text-slate-200';
+                    'bg-slate-950/70 border-slate-600 hover:border-slate-500 hover:bg-slate-850 text-slate-200';
                   nameColor = 'text-slate-200';
                 }
 
@@ -299,6 +299,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                   <button
                     key={npc.id}
                     onClick={() => onSelectNpc(npc.id)}
+                    style={{ borderWidth: '2px', borderStyle: 'solid' }}
                     className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all border-2 shrink-0 w-[195px] sm:w-[215px] ${cardColorClasses}`}
                     title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'}${
                       showSpeed ? ` | Speed: ${npc.basicSpeed ?? 0}` : ''
