@@ -6,7 +6,6 @@ import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/online
 import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
 import { NpcDetailView } from './components/NpcDetailView';
-import { HomeOverview } from './components/HomeOverview';
 import { TacticalMapWorkspace } from './components/TacticalMap/TacticalMapWorkspace';
 import { TacticalState, DEFAULT_TACTICAL_STATE } from './types/tactical';
 import { DamageCalculatorModal } from './components/DamageCalculatorModal';
@@ -379,23 +378,8 @@ export default function App() {
     return [];
   });
 
-  // View Mode: 'home' | 'sheets' | 'tactical' | 'split'
-  const [activeViewMode, setActiveViewMode] = useState<ViewMode>(() => {
-    try {
-      const saved = localStorage.getItem('hounds_mesa_view_mode') as ViewMode;
-      if (saved && ['home', 'sheets', 'tactical', 'split'].includes(saved)) {
-        return saved;
-      }
-    } catch {}
-    return 'home';
-  });
-
-  const handleSelectViewMode = (mode: ViewMode) => {
-    setActiveViewMode(mode);
-    try {
-      localStorage.setItem('hounds_mesa_view_mode', mode);
-    } catch {}
-  };
+  // View Mode: 'sheets' | 'tactical' | 'split'
+  const [activeViewMode, setActiveViewMode] = useState<ViewMode>('tactical');
 
   useEffect(() => {
     return systemLogger.subscribe((logs) => {
@@ -1909,7 +1893,7 @@ export default function App() {
         onOpenSystemLog={() => setSystemLogModalOpen(true)}
         systemLogsCount={systemLogsCount}
         activeViewMode={activeViewMode}
-        onSelectViewMode={handleSelectViewMode}
+        onSelectViewMode={setActiveViewMode}
         onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
         editorCount={effectiveEditorIds.length}
         canEditCurrent={canEditCurrent}
@@ -1919,12 +1903,7 @@ export default function App() {
       <NpcListBar
         npcs={allCharacters}
         selectedNpcId={selectedNpcId}
-        onSelectNpc={(npcId) => {
-          setSelectedNpcId(npcId);
-          if (activeViewMode === 'home') {
-            handleSelectViewMode('sheets');
-          }
-        }}
+        onSelectNpc={setSelectedNpcId}
         onAddNewNpc={handleAddNewNpc}
         onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
         onUpdateNpc={handlePartialUpdateNpc}
@@ -1935,22 +1914,9 @@ export default function App() {
         isNoCombat={isNoCombat}
       />
 
-      {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Tela Inicial, Mesa Tática, Fichas ou Dividida) */}
+      {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}
       <main className="flex-1 w-full p-2.5 sm:p-3.5 lg:px-5">
-        {activeViewMode === 'home' ? (
-          /* MODO TELA INICIAL: VISÃO GERAL DE TODOS OS PERSONAGENS E NPCS */
-          <HomeOverview
-            characters={allCharacters}
-            onSelectCharacter={(npcId) => {
-              setSelectedNpcId(npcId);
-              handleSelectViewMode('sheets');
-            }}
-            onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
-            onAddNewNpc={handleAddNewNpc}
-            currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
-            conditions={conditions}
-          />
-        ) : activeViewMode === 'tactical' ? (
+        {activeViewMode === 'tactical' ? (
           /* MODO MESA TÁTICA COMPLETA */
           <div className="w-full">
             <TacticalMapWorkspace
