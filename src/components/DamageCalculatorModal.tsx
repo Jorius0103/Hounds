@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NPC, ActionLogEntry, ExtraItem } from '../types/rpg';
 import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info } from 'lucide-react';
-import { calculateLocationDamage } from '../utils/gurps';
+import { calculateLocationDamage, migrateArmorLocations } from '../utils/gurps';
 
 interface DamageCalculatorModalProps {
   npc: NPC;
@@ -127,10 +127,14 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [eyeConfirmed, setEyeConfirmed] = useState<boolean>(false);
   const [customMultiplier, setCustomMultiplier] = useState<number | ''>(1.0);
 
+  const effectiveLocations = React.useMemo(() => {
+    return migrateArmorLocations(npc.armorLocations, npc.id);
+  }, [npc.armorLocations, npc.id]);
+
   if (!isOpen) return null;
 
   const isNoLocation = selectedLocationId === 'sem-parte';
-  const selectedLoc = isNoLocation ? undefined : npc.armorLocations.find((l) => l.id === selectedLocationId);
+  const selectedLoc = isNoLocation ? undefined : effectiveLocations.find((l) => l.id === selectedLocationId);
   const baseArmorDr = selectedLoc ? selectedLoc.dr : 0;
 
   // Verifica se a armadura possui modificador de RD contra este tipo de dano
@@ -477,7 +481,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 <option value="sem-parte" className="bg-slate-900 text-amber-300 font-bold">
                   ⚡ Sem parte do Corpo (Dano Direto / Sem Armadura)
                 </option>
-                {npc.armorLocations.map((loc) => {
+                {effectiveLocations.map((loc) => {
                   const modText = loc.drModifier && loc.modifierDamageType
                     ? ` [${loc.drModifier >= 0 ? `+${loc.drModifier}` : loc.drModifier} vs ${loc.modifierDamageType}]`
                     : '';

@@ -236,6 +236,10 @@ export interface NPC {
   armorKits?: ArmorKit[];
   activeArmorKitId?: string;
 
+  // Partes do Corpo (Aba de acompanhamento de dano e regras específicas)
+  bodyPartDamageOverrides?: Record<string, number>;
+  bodyPartCustomRules?: Record<string, string>;
+
   // Traços e Equipamentos
   advantages: string;
   disadvantages: string;

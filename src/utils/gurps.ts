@@ -37,32 +37,64 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
     hpFormulaLabel: '---',
   },
   {
-    rollTarget: '6-7 (R) 13-14 (L)',
-    location: 'Leg',
+    rollTarget: '13-14',
+    location: 'Left Leg',
     penalty: '-2',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 2',
     hpDivisor: 2,
   },
   {
-    rollTarget: '6-7 (R) 13-14 (L)',
-    location: 'Shins',
+    rollTarget: '6-7',
+    location: 'Right Leg',
     penalty: '-2',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 2',
     hpDivisor: 2,
   },
   {
-    rollTarget: '8 (R) 12 (L)',
-    location: 'Arm',
+    rollTarget: '13-14',
+    location: 'Left Shins',
     penalty: '-2',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 2',
     hpDivisor: 2,
   },
   {
-    rollTarget: '8 (R) 12 (L)',
-    location: 'Forearms',
+    rollTarget: '6-7',
+    location: 'Right Shins',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '12',
+    location: 'Left Arm',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '8',
+    location: 'Right Arm',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '12',
+    location: 'Left Forearm',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '8',
+    location: 'Right Forearm',
     penalty: '-2',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 2',
@@ -132,10 +164,39 @@ export function normalizeLocationKey(name: string): string {
   if (lower === 'eye' || lower === 'olho' || lower === 'olhos') return 'eye';
   if (lower === 'head' || lower === 'cabeça' || lower === 'cabeca' || lower === 'skull' || lower === 'crânio' || lower === 'cranio') return 'head';
   if (lower === 'face' || lower === 'rosto') return 'face';
-  if (lower.includes('forearm') || lower.includes('antebraço') || lower.includes('antebraco')) return 'forearms';
-  if (lower.includes('shin') || lower.includes('canela')) return 'shins';
-  if (lower.includes('arm') || lower.includes('braço') || lower.includes('braco')) return 'arm';
-  if (lower.includes('leg') || lower.includes('perna')) return 'leg';
+
+  // Forearms (antes de Arm pois contém 'arm')
+  const isForearm = lower.includes('forearm') || lower.includes('antebraço') || lower.includes('antebraco');
+  if (isForearm) {
+    if (lower.includes('left') || lower.includes('esquerd')) return 'left_forearm';
+    if (lower.includes('right') || lower.includes('direit')) return 'right_forearm';
+    return 'forearms';
+  }
+
+  // Shins (antes de Leg)
+  const isShin = lower.includes('shin') || lower.includes('canela');
+  if (isShin) {
+    if (lower.includes('left') || lower.includes('esquerd')) return 'left_shins';
+    if (lower.includes('right') || lower.includes('direit')) return 'right_shins';
+    return 'shins';
+  }
+
+  // Arms
+  const isArm = lower.includes('arm') || lower.includes('braço') || lower.includes('braco');
+  if (isArm) {
+    if (lower.includes('left') || lower.includes('esquerd')) return 'left_arm';
+    if (lower.includes('right') || lower.includes('direit')) return 'right_arm';
+    return 'arm';
+  }
+
+  // Legs
+  const isLeg = lower.includes('leg') || lower.includes('perna');
+  if (isLeg) {
+    if (lower.includes('left') || lower.includes('esquerd')) return 'left_leg';
+    if (lower.includes('right') || lower.includes('direit')) return 'right_leg';
+    return 'leg';
+  }
+
   if (lower === 'torso' || lower === 'tronco') return 'torso';
   if (lower === 'groin' || lower === 'virilha') return 'groin';
   if (lower === 'hand' || lower === 'mão' || lower === 'mãos' || lower === 'mao' || lower === 'maos') return 'hand';
@@ -165,6 +226,227 @@ export function createDefaultArmorLocations(ownerId: string = ''): BodyArmorLoca
     additionalRule: loc.additionalRule,
     notes: '',
   }));
+}
+
+export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerId: string = ''): BodyArmorLocation[] {
+  const defaults = createDefaultArmorLocations(ownerId);
+  if (!existingLocs || existingLocs.length === 0) {
+    return defaults;
+  }
+
+  const hasLeftLeg = existingLocs.some((l) => normalizeLocationKey(l.location) === 'left_leg');
+  const hasRightLeg = existingLocs.some((l) => normalizeLocationKey(l.location) === 'right_leg');
+  const hasLeftArm = existingLocs.some((l) => normalizeLocationKey(l.location) === 'left_arm');
+  const hasRightArm = existingLocs.some((l) => normalizeLocationKey(l.location) === 'right_arm');
+
+  if (hasLeftLeg && hasRightLeg && hasLeftArm && hasRightArm) {
+    return defaults.map((def) => {
+      const found = existingLocs.find((e) => isSameLocation(e.location, def.location));
+      if (found) {
+        return {
+          ...def,
+          ...found,
+          rollTarget: def.rollTarget,
+          penalty: def.penalty,
+        };
+      }
+      return def;
+    });
+  }
+
+  const legacyLeg = existingLocs.find((l) => normalizeLocationKey(l.location) === 'leg');
+  const legacyShins = existingLocs.find((l) => normalizeLocationKey(l.location) === 'shins');
+  const legacyArm = existingLocs.find((l) => normalizeLocationKey(l.location) === 'arm');
+  const legacyForearms = existingLocs.find((l) => normalizeLocationKey(l.location) === 'forearms');
+
+  return defaults.map((def) => {
+    const norm = normalizeLocationKey(def.location);
+    const directMatch = existingLocs.find((e) => isSameLocation(e.location, def.location));
+    if (directMatch) {
+      return {
+        ...def,
+        ...directMatch,
+        rollTarget: def.rollTarget,
+        penalty: def.penalty,
+      };
+    }
+
+    if ((norm === 'left_leg' || norm === 'right_leg') && legacyLeg) {
+      return {
+        ...def,
+        armorName: legacyLeg.armorName || '',
+        dr: legacyLeg.dr || 0,
+        drModifier: legacyLeg.drModifier || 0,
+        modifierDamageType: legacyLeg.modifierDamageType || '',
+      };
+    }
+    if ((norm === 'left_shins' || norm === 'right_shins') && legacyShins) {
+      return {
+        ...def,
+        armorName: legacyShins.armorName || '',
+        dr: legacyShins.dr || 0,
+        drModifier: legacyShins.drModifier || 0,
+        modifierDamageType: legacyShins.modifierDamageType || '',
+      };
+    }
+    if ((norm === 'left_arm' || norm === 'right_arm') && legacyArm) {
+      return {
+        ...def,
+        armorName: legacyArm.armorName || '',
+        dr: legacyArm.dr || 0,
+        drModifier: legacyArm.drModifier || 0,
+        modifierDamageType: legacyArm.modifierDamageType || '',
+      };
+    }
+    if ((norm === 'left_forearm' || norm === 'right_forearm') && legacyForearms) {
+      return {
+        ...def,
+        armorName: legacyForearms.armorName || '',
+        dr: legacyForearms.dr || 0,
+        drModifier: legacyForearms.drModifier || 0,
+        modifierDamageType: legacyForearms.modifierDamageType || '',
+      };
+    }
+
+    return def;
+  });
+}
+
+/**
+ * Configuração das Partes do Corpo para a aba "Partes do Corpo".
+ * Unifica:
+ * - Arms e Forearms Left -> Arms Left (Left Arm)
+ * - Arms e Forearms Right -> Arms Right (Right Arm)
+ * - Legs e Shins Left -> Leg Left (Left Leg)
+ * - Legs e Shins Right -> Leg Right (Right Leg)
+ */
+export interface BodyPartConfig {
+  key: string;
+  name: string;
+  sublabel?: string;
+  hpFormulaLabel: string;
+  hpDivisor?: number;
+  defaultRule: string;
+  logKeys: string[];
+}
+
+export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
+  {
+    key: 'eye',
+    name: 'Eye',
+    hpFormulaLabel: '=Pontos de Vida / 10',
+    hpDivisor: 10,
+    defaultRule: 'Só consegue acertar o olho danos de impaling, piercing ou magia, se for outro alertar antes de registrar mas permitir registro com confirmação',
+    logKeys: ['eye'],
+  },
+  {
+    key: 'head',
+    name: 'Head',
+    hpFormulaLabel: '---',
+    defaultRule: 'Tem +2 de RD / Qualquer dano vira 4X',
+    logKeys: ['head'],
+  },
+  {
+    key: 'face',
+    name: 'Face',
+    hpFormulaLabel: '---',
+    defaultRule: '',
+    logKeys: ['face'],
+  },
+  {
+    key: 'left_arm',
+    name: 'Left Arm',
+    sublabel: 'Left Arm + Left Forearm',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['left_arm', 'left_forearm'],
+  },
+  {
+    key: 'right_arm',
+    name: 'Right Arm',
+    sublabel: 'Right Arm + Right Forearm',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['right_arm', 'right_forearm'],
+  },
+  {
+    key: 'torso',
+    name: 'Torso',
+    hpFormulaLabel: '---',
+    defaultRule: '',
+    logKeys: ['torso'],
+  },
+  {
+    key: 'groin',
+    name: 'Groin',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+    defaultRule: '',
+    logKeys: ['groin'],
+  },
+  {
+    key: 'left_leg',
+    name: 'Left Leg',
+    sublabel: 'Left Leg + Left Shins',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['left_leg', 'left_shins'],
+  },
+  {
+    key: 'right_leg',
+    name: 'Right Leg',
+    sublabel: 'Right Leg + Right Shins',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['right_leg', 'right_shins'],
+  },
+  {
+    key: 'hand',
+    name: 'Hand',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['hand'],
+  },
+  {
+    key: 'feet',
+    name: 'Feet',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['feet', 'foot'],
+  },
+  {
+    key: 'neck',
+    name: 'Neck',
+    hpFormulaLabel: '---',
+    defaultRule: 'Contusão vira 1,5, corte vai de 1,5 para 2.0',
+    logKeys: ['neck'],
+  },
+  {
+    key: 'vitals',
+    name: 'Vitals',
+    hpFormulaLabel: '---',
+    defaultRule: 'Empalamento e perfuração vira x3',
+    logKeys: ['vitals'],
+  },
+];
+
+export function calculateLogDamageForBodyPart(history: any[] = [], logKeys: string[]): number {
+  if (!history || !Array.isArray(history)) return 0;
+  return history
+    .filter((h) => h && h.type === 'damage' && h.hitLocation)
+    .reduce((sum, h) => {
+      const locKey = normalizeLocationKey(h.hitLocation || '');
+      if (logKeys.includes(locKey)) {
+        return sum + (h.finalDamage ?? h.amount ?? 0);
+      }
+      return sum;
+    }, 0);
 }
 
 export function createDefaultArmorKit(name: string = 'Kit Padrão', ownerId: string = '', isActive: boolean = true): ArmorKit {
@@ -325,15 +607,19 @@ export function calculateLocationDamage(params: {
     }
   } else if (
     normKey === 'arm' ||
+    normKey === 'left_arm' ||
+    normKey === 'right_arm' ||
     normKey === 'forearms' ||
+    normKey === 'left_forearm' ||
+    normKey === 'right_forearm' ||
     normKey === 'leg' ||
+    normKey === 'left_leg' ||
+    normKey === 'right_leg' ||
     normKey === 'shins' ||
+    normKey === 'left_shins' ||
+    normKey === 'right_shins' ||
     normKey === 'hand' ||
     normKey === 'feet' ||
-    normKey === 'right_leg' ||
-    normKey === 'left_leg' ||
-    normKey === 'right_arm' ||
-    normKey === 'left_arm' ||
     normKey === 'foot'
   ) {
     // Regra Membros/Extremidades: "Perfurante, perfurante grande e empalamento vira x1"
