@@ -80,7 +80,30 @@ function college(c) {
   if (c === 'Illusion') return 'Illusion and Creation';
   return c.replace(/ And /g, ' and ');
 }
-const spells = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'magias.csv'), 'utf8')).map((r) => {
+// The same spell appears in more than one book (Basic Set and Magic) and, inside a book, once in
+// the list of each college it belongs to (the extra ones only say "As listed under ..."). One entry
+// per name: the full text of the preferred book, with the colleges of all the copies.
+const SPELL_BOOK_ORDER = ['GURPS Magic', 'GURPS Basic Set'];
+const isReference = (x) => /As listed under/i.test(x.description) && x.description.length < 120;
+function spellRank(x) {
+  const b = SPELL_BOOK_ORDER.indexOf(x.source);
+  return (isReference(x) ? 100 : 0) + (b < 0 ? SPELL_BOOK_ORDER.length : b);
+}
+function mergeSpellCopies(list) {
+  const groups = new Map();
+  list.forEach((x) => {
+    const k = x.name.trim().toLowerCase();
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(x);
+  });
+  return [...groups.values()].map((copies) => {
+    const main = copies.slice().sort((a, b) => spellRank(a) - spellRank(b))[0];
+    const colleges = [];
+    [main, ...copies].forEach((x) => x.college.split(',').map((c) => c.trim()).forEach((c) => { if (c && !colleges.includes(c)) colleges.push(c); }));
+    return { ...main, college: colleges.join(', ') };
+  });
+}
+const spells = mergeSpellCopies(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'magias.csv'), 'utf8')).map((r) => {
   const vh = /\(VH\)\s*$/.test(r.magia) || /Very Hard/i.test(r.classe);
   const name = r.magia.replace(/\s*\(VH\)\s*$/, '');
   const code = bookCode(SPELL_BOOKS, r.livro, 'magias.csv');
