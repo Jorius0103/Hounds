@@ -15,6 +15,7 @@ import {
   BODY_PARTS_CONFIG,
   calculateLogDamageForBodyPart,
   migrateArmorLocations,
+  getCrippledBodyParts,
 } from '../utils/gurps';
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { SpellsModal } from './SpellsModal';
@@ -546,12 +547,26 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
+    // 5. Partes do Corpo Inutilizadas (quando o dano tomado na parte supera a vida total calculada)
+    if (isMaster || npc.characterType === 'player') {
+      const crippledParts = getCrippledBodyParts(npc);
+      crippledParts.forEach(({ part, effectiveDmg, maxHp }) => {
+        alerts.push({
+          id: `crippled-${part.key}`,
+          badgeClass: 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
+          text: `${part.name}: Inutilizado`,
+          tooltip: `${part.name} Inutilizado: Dano acumulado (${effectiveDmg}) atingiu ou superou a vida do membro (${maxHp} PV)!`,
+          icon: AlertTriangle,
+        });
+      });
+    }
+
     if (alerts.length === 0) return null;
 
     return (
       <div
         className="flex flex-wrap items-center justify-end gap-1.5 p-2 bg-slate-950/90 border border-rose-900/40 rounded-xl max-w-2xl shadow-sm"
-        title="Condições & Estados Críticos, Pontos de Vida e Fadiga"
+        title="Condições & Estados Críticos, Partes Inutilizadas, Pontos de Vida e Fadiga"
       >
         {alerts.map((al) => {
           const Icon = al.icon;

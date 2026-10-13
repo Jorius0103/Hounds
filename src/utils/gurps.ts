@@ -479,6 +479,28 @@ export function calculateLocationHp(locationName: string, hpMax: number): { valu
   };
 }
 
+export function getCrippledBodyParts(npc: NPC): { part: BodyPartConfig; effectiveDmg: number; maxHp: number; formulaLabel: string }[] {
+  if (!npc || !npc.hpMax || npc.hpMax <= 0) return [];
+  const crippled: { part: BodyPartConfig; effectiveDmg: number; maxHp: number; formulaLabel: string }[] = [];
+  BODY_PARTS_CONFIG.forEach((part) => {
+    const hpInfo = calculateLocationHp(part.name, npc.hpMax);
+    if (hpInfo.value !== null && hpInfo.value > 0) {
+      const logDmg = calculateLogDamageForBodyPart(npc.history || [], part.logKeys);
+      const isOverridden = npc.bodyPartDamageOverrides?.[part.key] !== undefined;
+      const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[part.key] ?? 0) : logDmg;
+      if (effectiveDmg >= hpInfo.value) {
+        crippled.push({
+          part,
+          effectiveDmg,
+          maxHp: hpInfo.value,
+          formulaLabel: hpInfo.formulaLabel,
+        });
+      }
+    }
+  });
+  return crippled;
+}
+
 export function getBaseDamageMultiplier(type: string): number {
   switch (type) {
     case 'corte':

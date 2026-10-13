@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NPC, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription } from '../utils/gurps';
+import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
 import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X } from 'lucide-react';
 
 interface NpcListBarProps {
@@ -270,8 +270,12 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         (fpStat.warningTexts && fpStat.warningTexts.length > 0)
                       )
                     : false;
+                const hasCrippledParts =
+                  (isPlayerChar || currentUserRole === 'mestre')
+                    ? getCrippledBodyParts(npc).length > 0
+                    : false;
 
-                const hasAlerts = hasConditions || hasCriticalHpFp;
+                const hasAlerts = hasConditions || hasCriticalHpFp || hasCrippledParts;
                 const showDeadMarker = isDeadChar;
                 const showSpeed = isPlayerChar || currentUserRole === 'mestre';
 
