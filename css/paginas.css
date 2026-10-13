@@ -439,7 +439,8 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sc-def .gnote { display: inline; margin-left: 4px; }
 
 /* Ficha › Combate: tabelas em colunas (sem buracos entre tabelas de alturas diferentes), arrastáveis */
-.sc-masonry { columns: 280px; column-gap: 14px; }
+/* Tabelas de estilo sempre com 460px: o número de colunas e a largura da grade vêm de fitScMasonry. */
+.sc-masonry { column-count: 1; column-gap: 14px; }
 .sc-card { break-inside: avoid; margin-bottom: 14px; }
 .sc-card .gtab { margin: 0; }
 .sc-tab th:first-child { display: flex; align-items: center; gap: 6px; }

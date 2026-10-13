@@ -520,8 +520,24 @@ function scEditHtml(s, c, pool, av) {
       '<p class="hint-text" style="margin:0">Pelas regras do Basic Set (pp. B374-377): Aparar = 3 + NH/2 com a arma (bastão +2, faca -1); Bloqueio = 3 + Shield ou Cloak/2; Esquiva = VB + 3 - carga. Combat Reflexes e Enhanced Block, Parry e Dodge comprados aqui entram sozinhos. DB do escudo: 1 pequeno ou capa leve, 2 médio ou capa pesada, 3 grande; soma nas três defesas. Outros bônus vão nos campos Bônus.</p></div>' +
     '<div class="form-err" id="scErr" role="alert"></div>';
 }
+// The style tables are always SC_COL wide: as many columns as fit in the section, and the grid
+// exactly as wide as them, so they never stretch (below SC_COL, the whole width). Recomputed when
+// the section changes width. Done here and not with a container query: that would make the
+// section the reference of the position:fixed table being dragged.
+var SC_COL = 460, SC_GAP = 14, scResize = null;
+function fitScMasonry() {
+  var box = $('scGroups'), w = box && box.parentElement ? box.parentElement.clientWidth : 0; if (!w) return;
+  var n = Math.max(1, Math.floor((w + SC_GAP) / (SC_COL + SC_GAP)));
+  box.style.columnCount = String(n);
+  box.style.maxWidth = w < SC_COL ? '' : (n * SC_COL + (n - 1) * SC_GAP) + 'px';
+}
 function wireSheetCombat(s) {
   var ui = S.ui, ed = $('scEdit');
+  if (scResize) { scResize.disconnect(); scResize = null; }
+  if ($('scGroups')) {
+    fitScMasonry();
+    if (typeof ResizeObserver !== 'undefined') { scResize = new ResizeObserver(fitScMasonry); scResize.observe($('combat')); }
+  }
   wireCombatDrag(s);
   if (ed) ed.onclick = function () {
     ui.combatDraft = { c: sheetCombat(s), moved: [] };
