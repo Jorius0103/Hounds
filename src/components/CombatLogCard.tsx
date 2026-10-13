@@ -9,6 +9,7 @@ interface CombatLogCardProps {
   onSelectNpc?: (npcId: string) => void;
   isCompact?: boolean;
   currentUserRole?: UserRole;
+  currentUserName?: string;
   isPlayer?: boolean;
   onDeleteEntry?: (entryId: string, npcId?: string) => void;
 }
@@ -19,6 +20,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   onSelectNpc,
   isCompact = false,
   currentUserRole,
+  currentUserName,
   isPlayer = false,
   onDeleteEntry,
 }) => {
@@ -145,13 +147,19 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
 
         <div className="flex items-center gap-1.5 shrink-0">
           <span
-            className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border ${
-              entry.author === 'assistente'
-                ? 'bg-blue-950/60 text-blue-300 border-blue-800/60'
-                : 'bg-amber-950/60 text-amber-300 border-amber-800/60'
+            className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-900 border border-slate-750 text-amber-300 shrink-0"
+            title={`Rodada ${entry.round ?? 0}`}
+          >
+            R{entry.round !== undefined ? entry.round : 0}
+          </span>
+          <span
+            className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+              entry.author === 'mestre'
+                ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
+                : 'bg-blue-950/60 text-blue-300 border-blue-800/60'
             }`}
           >
-            {entry.author}
+            {entry.authorName || (entry.author === 'assistente' ? (currentUserName || 'Jogador') : entry.author)}
           </span>
           <span className="text-[10px] text-slate-500 font-mono">
             {entry.timestamp}

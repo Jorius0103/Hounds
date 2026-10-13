@@ -34,6 +34,7 @@ interface DamageCalculatorModalProps {
   isPlayerView?: boolean;
   combatants?: NPC[];
   currentRound?: number;
+  currentUserName?: string;
 }
 
 export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
@@ -47,6 +48,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   isPlayerView = false,
   combatants = [],
   currentRound = 1,
+  currentUserName,
 }) => {
   const [mode, setMode] = useState<'damage' | 'fatigue' | 'heal' | 'item'>('damage');
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
@@ -190,7 +192,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
     onApplyDamage(npc.id, finalDamage, {
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      author: isPlayerView ? 'assistente' : 'mestre',
+      round: currentRound ?? 0,
+      author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+      authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
       type: 'damage',
       amount: finalDamage,
       description: desc,
@@ -266,7 +270,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       -personalFpSpend,
       {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: isPlayerView ? 'assistente' : 'mestre',
+        round: currentRound ?? 0,
+        author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+        authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'fatigue',
         amount: numFatigue,
         description: desc,
@@ -289,7 +295,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       const desc = customDescription.trim() || `Recuperação de PV: +${healAmount} PV.`;
       onApplyDamage(npc.id, -healAmount, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: isPlayerView ? 'assistente' : 'mestre',
+        round: currentRound ?? 0,
+        author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+        authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'heal',
         amount: healAmount,
         description: desc,
@@ -305,7 +313,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       const desc = customDescription.trim() || `Descanso / Recuperação de Fadiga: +${healAmount} FP.`;
       onApplyFatigue(npc.id, healAmount, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: isPlayerView ? 'assistente' : 'mestre',
+        round: currentRound ?? 0,
+        author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+        authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'rest',
         amount: healAmount,
         description: desc,
@@ -344,7 +354,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     if (onApplyItemChange) {
       onApplyItemChange(npc.id, targetItem.id, delta, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        author: isPlayerView ? 'assistente' : 'mestre',
+        round: currentRound ?? 0,
+        author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
+        authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'item',
         amount: delta,
         description: desc,

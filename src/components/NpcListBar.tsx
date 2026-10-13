@@ -14,6 +14,7 @@ interface NpcListBarProps {
   currentUserRole?: UserRole;
   currentRound?: number;
   onUpdateRound?: (round: number) => void;
+  canControlRound?: boolean;
 }
 
 export const NpcListBar: React.FC<NpcListBarProps> = ({
@@ -25,6 +26,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   currentUserRole = 'mestre',
   currentRound = 0,
   onUpdateRound,
+  canControlRound,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs' | 'alive' | 'dead'>('all');
 
@@ -172,34 +174,39 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             )}
 
             {/* Controle de Rodadas (iniciando em 0, com botão para trás, label RODADA X e botão para frente) */}
-            <div className={`flex items-center gap-1 bg-slate-950/90 border border-slate-800 rounded-xl px-2 py-0.5 shadow-inner shrink-0 ${currentUserRole === 'mestre' ? 'ml-2' : ''}`}>
-              {currentUserRole === 'mestre' && (
-                <button
-                  type="button"
-                  disabled={currentRound <= 0}
-                  onClick={() => onUpdateRound && onUpdateRound(Math.max(0, currentRound - 1))}
-                  className="w-5 h-5 flex items-center justify-center rounded-lg bg-slate-900 border border-slate-750 text-slate-300 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-xs transition-all active:scale-95"
-                  title="Rodada anterior"
-                >
-                  ‹
-                </button>
-              )}
+            {(() => {
+              const canEditRound = canControlRound ?? (currentUserRole === 'mestre');
+              return (
+                <div className={`flex items-center gap-1 bg-slate-950/90 border border-slate-800 rounded-xl px-2 py-0.5 shadow-inner shrink-0 ${canEditRound ? 'ml-2' : ''}`}>
+                  {canEditRound && (
+                    <button
+                      type="button"
+                      disabled={currentRound <= 0}
+                      onClick={() => onUpdateRound && onUpdateRound(Math.max(0, currentRound - 1))}
+                      className="w-5 h-5 flex items-center justify-center rounded-lg bg-slate-900 border border-slate-750 text-slate-300 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-xs transition-all active:scale-95"
+                      title="Rodada anterior"
+                    >
+                      ‹
+                    </button>
+                  )}
 
-              <span className="text-[11px] font-black text-amber-400 font-mono tracking-wider px-1.5 select-none whitespace-nowrap">
-                RODADA {currentRound}
-              </span>
+                  <span className="text-[11px] font-black text-amber-400 font-mono tracking-wider px-1.5 select-none whitespace-nowrap">
+                    RODADA {currentRound}
+                  </span>
 
-              {currentUserRole === 'mestre' && (
-                <button
-                  type="button"
-                  onClick={() => onUpdateRound && onUpdateRound(currentRound + 1)}
-                  className="w-5 h-5 flex items-center justify-center rounded-lg bg-slate-900 border border-slate-750 text-slate-300 hover:text-white hover:border-slate-600 font-bold text-xs transition-all active:scale-95"
-                  title="Próxima rodada"
-                >
-                  ›
-                </button>
-              )}
-            </div>
+                  {canEditRound && (
+                    <button
+                      type="button"
+                      onClick={() => onUpdateRound && onUpdateRound(currentRound + 1)}
+                      className="w-5 h-5 flex items-center justify-center rounded-lg bg-slate-900 border border-slate-750 text-slate-300 hover:text-white hover:border-slate-600 font-bold text-xs transition-all active:scale-95"
+                      title="Próxima rodada"
+                    >
+                      ›
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
 
