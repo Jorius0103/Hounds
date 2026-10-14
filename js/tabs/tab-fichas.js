@@ -242,9 +242,10 @@ function wireSheetAttrs(s) {
 
 /* =====================================================================
    GURPS 4ª ed.: perícias.
-   sheet.skills is a list of { name, attr, diff, pts, bonus, skillId? }: the level
+   sheet.skills is a list of { name, attr, diff, pts, bonus, bonusNote?, skillId? }: the level
    comes from the points spent (Basic Set, p. 170), bonus is what an
-   advantage or talent adds on top, skillId the entry of Mundo › Perícias
+   advantage or talent adds on top and bonusNote why (asked for when the bonus is
+   not 0, shown when hovering the NH), skillId the entry of Mundo › Perícias
    it was picked from (the name may add a specialty). sheet.cultures is the Cultural
    Familiarity list { name, pts }, shown with the Easy skills (set apart) and counted in their total.
    ===================================================================== */
@@ -257,8 +258,25 @@ function cleanSkill(k) {
   // A specialty left blank after picking from the list ("Animal Handling ()") is dropped.
   var out = { name: String((k && k.name) || '').replace(/\s*\(\s*\)\s*$/, '').trim().slice(0, 100), attr: SKILL_ATTRS.indexOf(k && k.attr) >= 0 ? k.attr : 'IQ',
     diff: SKILL_DIFFS[k && k.diff] ? k.diff : 'A', pts: cleanInt(k && k.pts, 0, 999, 1), bonus: cleanInt(k && k.bonus, -20, 20, 0) };
+  var note = out.bonus ? cleanBonusNote(k && k.bonusNote) : ''; if (note) out.bonusNote = note;
   if (k && typeof k.skillId === 'string' && k.skillId) out.skillId = k.skillId.slice(0, 200);
   return out;
+}
+/* The reason of a bonus (skills here, combat items and defenses in ficha-combate.js): a field
+   beside the bonus, shown while it is not 0 and required to save; the text goes where the bonus
+   is explained on hover ("Inclui +2 de bônus (espada mágica)"). */
+function cleanBonusNote(v) { return String(v == null ? '' : v).trim().slice(0, 120); }
+function bonusText(n, note) { return (n > 0 ? '+' : '') + n + ' de bônus' + (note ? ' (' + note + ')' : ''); }
+function bonusNoteInput(attrs, note) {
+  return '<input type="text" class="bonus-note" data-f="bonusNote"' + attrs + ' maxlength="120" autocomplete="off" placeholder="Motivo do bônus. Ex.: espada mágica, Weapon Master"' +
+    ' aria-label="Motivo do bônus" title="Aparece ao passar o mouse sobre o valor (NH ou defesa)" value="' + esc(note || '') + '">';
+}
+// On save: the shown reason fields left empty are marked and the first gets the focus; false if any.
+function checkBonusNotes(box) {
+  var miss = [].filter.call(box.querySelectorAll('.bonus-note'), function (el) { return !el.closest('[hidden]') && !el.value.trim(); });
+  miss.forEach(function (el) { el.classList.add('invalid'); });
+  if (miss[0]) miss[0].focus();
+  return !miss.length;
 }
 function cleanCulture(c) { return { name: String((c && c.name) || '').trim().slice(0, 200), pts: cleanInt(c && c.pts, 0, 99, 1) }; }
 function sheetSkills(s) { return (Array.isArray(s && s.skills) ? s.skills : []).map(cleanSkill).filter(function (k) { return k.name; }); }
@@ -272,10 +290,10 @@ function skillRel(k) {
   var d = SKILL_DIFFS[k.diff], rel = k.pts > 0 ? d[1] + skillStep(k.pts) : d[2];
   return rel == null ? null : rel + (k.bonus || 0) + (k.tbonus || 0);
 }
-// Hover text of a level with bonuses: "Inclui +1 de bônus e +2 de Talent (Soldier) 2".
+// Hover text of a level with bonuses: "Inclui +1 de bônus (espada mágica) e +2 de Talent (Soldier) 2".
 function skillBonusTitle(k) {
   var p = [];
-  if (k.bonus) p.push((k.bonus > 0 ? '+' : '') + k.bonus + ' de bônus');
+  if (k.bonus) p.push(bonusText(k.bonus, k.bonusNote));
   if (k.tbonus) p.push(k.tfrom || '+' + k.tbonus + ' das vantagens');
   return p.length ? 'Inclui ' + p.join(' e ') : '';
 }
@@ -364,7 +382,8 @@ function skillEditRow(k, i, av) {
     '<input type="number" data-f="pts" min="0" max="999" step="1" inputmode="numeric" aria-label="Pontos" value="' + k.pts + '">' +
     '<input type="number" data-f="bonus" min="-20" max="20" step="1" inputmode="numeric" aria-label="Bônus" value="' + k.bonus + '">' +
     '<span class="sk-nh' + (k.bonus || k.tbonus ? ' bonus' : '') + '" data-nh="' + i + '"' + (skillBonusTitle(k) ? ' title="' + esc(skillBonusTitle(k)) + '"' : '') + '>' + skillEditNhHtml(k, av) + '</span>' +
-    '<button class="icon-btn" type="button" data-del="' + i + '" aria-label="Remover perícia" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
+    '<button class="icon-btn" type="button" data-del="' + i + '" aria-label="Remover perícia" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button>' +
+    '<div class="sk-bnote" data-bnote="' + i + '"' + (k.bonus ? '' : ' hidden') + '>' + bonusNoteInput('', k.bonusNote) + '</div></div>';
 }
 function cultureEditRow(c, i) {
   return '<div class="sk-row cult" data-c="' + i + '">' +
@@ -383,7 +402,7 @@ function sheetSkillsHtml(s, editing) {
       '<div class="box sk-edit"><div class="sk-row sk-labels" aria-hidden="true"><span>Perícia</span><span>Atributo</span><span>Dif.</span><span>Pontos</span><span>Bônus</span><span>NH</span><span></span></div>' +
       '<div id="skRows">' + applyTalents(skills, s).map(function (k, i) { return skillEditRow(k, i, av); }).join('') + '</div>' +
       '<div><button class="btn" type="button" id="skAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar perícia</button></div>' +
-      '<p class="hint-text">Dificuldade: E fácil, A média, H difícil, VH muito difícil. Bônus é o que vantagens ou talentos somam ao NH. Com 0 pontos vale o nível padrão.</p></div>' +
+      '<p class="hint-text">Dificuldade: E fácil, A média, H difícil, VH muito difícil. Bônus é o que vantagens, talentos ou equipamentos somam ao NH; com bônus, escreva o motivo, que aparece ao passar o mouse no NH. Com 0 pontos vale o nível padrão.</p></div>' +
       '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Familiaridade Cultural</h3>' +
       '<p class="hint-text" style="margin:0">Aparece junto com as perícias fáceis, destacada, e os pontos entram no total delas.</p>' +
       '<div id="cuRows">' + cultures.map(cultureEditRow).join('') + '</div>' +
@@ -474,12 +493,14 @@ function wireSheetSkills(s) {
     var k = applyTalents([cleanSkill(d.skills[i])], s)[0], cell = box.querySelector('[data-nh="' + i + '"]'), rules = box.querySelector('[data-rules="' + i + '"]');
     if (cell) { cell.className = 'sk-nh' + (k.bonus || k.tbonus ? ' bonus' : ''); cell.title = skillBonusTitle(k); cell.innerHTML = skillEditNhHtml(k, av); }
     if (rules) rules.innerHTML = skillRulesHtml(k);
+    var note = box.querySelector('[data-bnote="' + i + '"]'); if (note) note.hidden = !k.bonus;
   }
   function onEdit(e) {
     var el = e.target, f = el.dataset && el.dataset.f, row = el.closest && el.closest('[data-i], [data-c]'); if (!f || !row) return;
     var isSkill = row.hasAttribute('data-i'), i = +row.getAttribute(isSkill ? 'data-i' : 'data-c'), item = (isSkill ? d.skills : d.cultures)[i];
-    if (f === 'name' || f === 'attr' || f === 'diff') item[f] = el.value;
+    if (f === 'name' || f === 'attr' || f === 'diff' || f === 'bonusNote') item[f] = el.value;
     else if (el.value !== '') item[f] = f === 'bonus' ? cleanInt(el.value, -20, 20, 0) : cleanInt(el.value, 0, 999, 0);
+    if (f === 'bonusNote' && el.value.trim()) el.classList.remove('invalid');
     if (isSkill) {
       // Another name than the entry picked from the list: the link goes.
       if (f === 'name' && item.skillId && skillById(item.skillId) && !skillLink(item)) delete item.skillId;
@@ -548,6 +569,8 @@ function wireSheetSkills(s) {
   $('cuAdd').onclick = function () { d.cultures.push({ name: '', pts: 1 }); renderSheetPage(); focusLast('#cuRows .sk-name'); };
   $('skCancel').onclick = function () { ui.skillDraft = null; renderSheetPage(); };
   $('skSave').onclick = function () {
+    if (!checkBonusNotes(box)) { $('skErr').textContent = 'Escreva o motivo de cada bônus.'; return; }
+    $('skErr').textContent = '';
     var btn = $('skSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('skCancel').disabled = true;
     Ops.saveSheetSkills(s, d.skills, d.cultures).then(function () { ui.skillDraft = null; toast('Perícias salvas.'); renderSheetPage(); }, function (er) {
       btn.disabled = false; btn.textContent = 'Salvar perícias'; $('skCancel').disabled = false;

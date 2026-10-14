@@ -16,10 +16,12 @@
      weapons: [{ name, mode, mod, type }]           damage table: mode 'sw' | 'thr' | 'fixed';
                                                     mod '+1' added to the ST damage, or the damage
                                                     itself ('3d') when fixed; type 'cut', 'imp'...
-     def:     { parry, parryBonus, block, blockBonus, dodgeBonus, db }   active defenses
+     def:     { parry, parryBonus, parryNote, block, blockBonus, blockNote, dodgeBonus, dodgeNote, db }
+                                                    active defenses; the notes say why each bonus
    }
-   item: { kind: 'skill', name, attr, diff, pts, bonus, skillId? }   level from the points, as in Perícias
-       | { kind: 'tech', name, base, diff (A/H), def, max, pts, bonus, techId? }
+   item: { kind: 'skill', name, attr, diff, pts, bonus, bonusNote?, skillId? }   level from the points, as in Perícias
+       | { kind: 'tech', name, base, diff (A/H), def, max, pts, bonus, bonusNote?, techId? }
+                                                    bonusNote: why the bonus (see cleanBonusNote)
                                                     technique: default def and limit max relative
                                                     to the base skill (null: no limit)
        | { kind: 'trait', name, pts }                perks and advantages: only points
@@ -41,6 +43,7 @@ function cleanCombatItem(x) {
   var o = { kind: kind, name: scStr(x.name, 120), pts: cleanInt(x.pts, 0, 999, kind === 'tech' ? 0 : 1) };
   if (kind === 'trait') return o;
   o.bonus = cleanInt(x.bonus, -20, 20, 0);
+  var note = o.bonus ? cleanBonusNote(x.bonusNote) : ''; if (note) o.bonusNote = note;
   if (kind === 'skill') {
     o.attr = SKILL_ATTRS.indexOf(x.attr) >= 0 ? x.attr : 'DX';
     o.diff = SKILL_DIFFS[x.diff] ? x.diff : 'A';
@@ -71,8 +74,9 @@ function cleanCombat(c) {
       return { name: scStr(w.name, 120), mode: ['sw', 'thr', 'fixed'].indexOf(w.mode) >= 0 ? w.mode : 'sw', mod: scStr(w.mod, 40),
         type: SC_DMG_TYPES.some(function (t) { return t[0] === w.type; }) ? w.type : 'cr' };
     }),
-    def: { parry: scStr(def.parry, 120), parryBonus: cleanInt(def.parryBonus, -20, 20, 0), block: scStr(def.block, 120),
-      blockBonus: cleanInt(def.blockBonus, -20, 20, 0), dodgeBonus: cleanInt(def.dodgeBonus, -20, 20, 0), db: cleanInt(def.db, 0, 10, 0) }
+    def: { parry: scStr(def.parry, 120), parryBonus: cleanInt(def.parryBonus, -20, 20, 0), parryNote: def.parryBonus ? cleanBonusNote(def.parryNote) : '', block: scStr(def.block, 120),
+      blockBonus: cleanInt(def.blockBonus, -20, 20, 0), blockNote: def.blockBonus ? cleanBonusNote(def.blockNote) : '', dodgeBonus: cleanInt(def.dodgeBonus, -20, 20, 0),
+      dodgeNote: def.dodgeBonus ? cleanBonusNote(def.dodgeNote) : '', db: cleanInt(def.db, 0, 10, 0) }
   };
 }
 function sheetCombat(s) { return cleanCombat(s && s.combat); }
@@ -207,7 +211,7 @@ function scFixKinds(c) {
     g.items.forEach(function (x, i) {
       if (!x.name || x.kind !== 'skill') return;
       var k = scKindOf(g.st, x.name);
-      if (k && k !== 'skill') { g.items[i] = scAutofill(cleanCombatItem({ kind: k, name: x.name, pts: x.pts, bonus: x.bonus })); fixed++; }
+      if (k && k !== 'skill') { g.items[i] = scAutofill(cleanCombatItem({ kind: k, name: x.name, pts: x.pts, bonus: x.bonus, bonusNote: x.bonusNote })); fixed++; }
     });
   });
   return fixed;
@@ -250,7 +254,8 @@ function scNhCell(x, pool, av) {
   if (!nh) return '<td class="gnh none" title="Perks e vantagens não têm NH">—</td>';
   var b = x.kind === 'tech' ? scFindSkill(pool, x.base) : null;
   var bonus = x.bonus || x.tbonus || (b && (b.bonus || b.tbonus));
-  var title = x.kind === 'tech' ? 'Técnica de ' + (x.base || '?') + ' · padrão ' + x.def + (x.max != null ? ' · máximo ' + (x.max > 0 ? '+' + x.max : x.max) : '') : skillBonusTitle(x);
+  var title = x.kind === 'tech' ? 'Técnica de ' + (x.base || '?') + ' · padrão ' + x.def + (x.max != null ? ' · máximo ' + (x.max > 0 ? '+' + x.max : x.max) : '') +
+    (x.bonus ? ' · ' + bonusText(x.bonus, x.bonusNote) : '') : skillBonusTitle(x);
   return '<td class="gnh' + (bonus ? ' bonus' : '') + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' +
     esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small></td>';
 }
@@ -337,6 +342,7 @@ function scCalc(parts, total) {
     return v + (p[1] ? ' (' + p[1] + ')' : '');
   }).join(' ') + ' = ' + total;
 }
+function scBonusLabel(note) { return note ? 'bônus: ' + note : 'bônus'; }
 function scHasTrait(c, re) { return scAllItems(c).some(function (x) { return x.kind === 'trait' && re.test(x.name); }); }
 // The active defenses as the Basic Set has them (pp. B374-377):
 //   Dodge = Basic Speed + 3 - encumbrance; Parry = 3 + skill/2 (+ weapon modifier); Block = 3 + Shield or Cloak/2;
@@ -364,7 +370,7 @@ function combatDefenses(c, pool, av, r, a) {
       var notes = [], pEnc = (p[1] === 'F' || k.key === 'karate') ? enc : 0;
       var v = 3 + Math.floor(base / 2) + p[0] + ep + cr + d.parryBonus - pEnc;
       var calc = scCalc([[3, ''], [Math.floor(base / 2), (base > k.abs ? 'DX ' + base + ', maior que ' + k.name + ' ' + k.abs : k.name + ' ' + base) + ' ÷ 2'],
-        [p[0], 'arma'], [cr, 'Combat Reflexes'], [ep, 'Enhanced Parry'], [d.parryBonus, 'bônus'], [-pEnc, 'carga']], v);
+        [p[0], 'arma'], [cr, 'Combat Reflexes'], [ep, 'Enhanced Parry'], [d.parryBonus, scBonusLabel(d.parryNote)], [-pEnc, 'carga']], v);
       if (p[0]) notes.push('arma ' + (p[0] > 0 ? '+' : '') + p[0]);
       if (p[1] === 'U') notes.push('desbalanceada: não apara se atacou com ela no turno');
       if (p[1] === 'H') notes.push('-3 contra armas, exceto golpes de ponta');
@@ -376,7 +382,7 @@ function combatDefenses(c, pool, av, r, a) {
     if (/^(shield|cloak)\b/.test(k.key)) {
       var b = 3 + Math.floor(k.abs / 2) + eb + cr + d.blockBonus;
       blocks.push({ name: k.name, value: b, retreat: b + 1, retreatBonus: 1, notes: [],
-        calc: scCalc([[3, ''], [Math.floor(k.abs / 2), k.name + ' ' + k.abs + ' ÷ 2'], [cr, 'Combat Reflexes'], [eb, 'Enhanced Block'], [d.blockBonus, 'bônus']], b) });
+        calc: scCalc([[3, ''], [Math.floor(k.abs / 2), k.name + ' ' + k.abs + ' ÷ 2'], [cr, 'Combat Reflexes'], [eb, 'Enhanced Block'], [d.blockBonus, scBonusLabel(d.blockNote)]], b) });
     }
   });
   var best = function (l, chosen) {
@@ -384,7 +390,7 @@ function combatDefenses(c, pool, av, r, a) {
     return hit || l.slice().sort(function (x, y) { return y.value - x.value; })[0] || null;
   };
   var dodge = r.dodge + ed + cr + d.dodgeBonus;
-  var dcalc = scCalc([[3, ''], [Math.floor(r.speed), 'Velocidade Básica ' + fmtDec(r.speed, 2) + ', sem a fração'], [-enc, 'carga'], [cr, 'Combat Reflexes'], [ed, 'Enhanced Dodge'], [d.dodgeBonus, 'bônus']], dodge);
+  var dcalc = scCalc([[3, ''], [Math.floor(r.speed), 'Velocidade Básica ' + fmtDec(r.speed, 2) + ', sem a fração'], [-enc, 'carga'], [cr, 'Combat Reflexes'], [ed, 'Enhanced Dodge'], [d.dodgeBonus, scBonusLabel(d.dodgeNote)]], dodge);
   // The weapon (skill) chosen in the editor, or the best one; when Equipamentos exists, the ready weapon.
   return { parry: best(parries, d.parry), parries: parries, block: best(blocks, d.block), blocks: blocks, parryAuto: !d.parry, blockAuto: !d.block,
     dodge: { value: dodge, retreat: dodge + 3, retreatBonus: 3, calc: dcalc }, cr: cr, ep: ep, eb: eb, ed: ed, enc: enc };
@@ -397,7 +403,7 @@ function scDefHtml(c, dv) {
   function row(label, x, weapon, empty) {
     var lines = x ? [weapon, x.calc, 'Recuando: ' + x.retreat + ' (+' + x.retreatBonus + ')' + (db ? ' · com escudo: ' + (x.value + db) + ', recuando ' + (x.retreat + db) + ' (DB ' + db + ')' : '')] : [empty];
     return '<tr><td><b>' + label + '</b>' + lines.filter(Boolean).map(function (l, i) { return '<small' + (i === 1 && x ? ' class="sc-calc"' : '') + '>' + esc(l) + '</small>'; }).join('') +
-      '</td><td class="gval">' + val(x ? x.value : null) + '</td></tr>';
+      '</td><td class="gval"' + (x ? ' title="' + esc(x.calc) + '"' : '') + '>' + val(x ? x.value : null) + '</td></tr>';
   }
   function weapon(x, auto) { return x ? 'Com ' + x.name + (auto ? ' (a melhor da ficha)' : '') + (x.notes.length ? ' · ' + x.notes.join(' · ') : '') : ''; }
   return '<table class="gtab sc-def"><thead><tr><th>Defesas</th><th></th></tr></thead><tbody>' +
@@ -442,6 +448,9 @@ function sheetCombatHtml(s, editing) {
 /* ---------- editor ---------- */
 function scOpts(list, cur) { return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); }
 function scField(label, html, cls) { return '<label class="sc-f' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span>' + html + '</label>'; }
+// The reason of a bonus beside it, shown while the bonus is not 0 (see cleanBonusNote).
+function scNoteField(input, bonus, attrs) { return '<label class="sc-f sc-bnote"' + attrs + (bonus ? '' : ' hidden') + '><span>Motivo do bônus</span>' + input + '</label>'; }
+function scDefNote(key, note, bonus) { return scNoteField(bonusNoteInput('', note).replace('data-f="bonusNote"', 'data-f="' + key + 'Note"'), bonus, ' data-dnote="' + key + '"'); }
 // g: the group ('s<i>' for a style, 'g' for the skills outside styles); n: the row in it.
 function scEditRow(x, g, n, pool, av, listId) {
   var nh = combatNh(x, pool, av), at = ' data-g="' + g + '" data-n="' + n + '"';
@@ -458,7 +467,8 @@ function scEditRow(x, g, n, pool, av, listId) {
       scField('Máximo', '<input type="number" data-f="max"' + at + ' min="-20" max="20" step="1" value="' + (x.max == null ? '' : x.max) + '" placeholder="—" title="Limite em relação à perícia-base; vazio se não há">');
   }
   f += scField('Pts', '<input type="number" data-f="pts"' + at + ' min="0" max="999" step="1" inputmode="numeric" value="' + x.pts + '">');
-  if (x.kind !== 'trait') f += scField('Bônus', '<input type="number" data-f="bonus"' + at + ' min="-20" max="20" step="1" inputmode="numeric" value="' + x.bonus + '">');
+  if (x.kind !== 'trait') f += scField('Bônus', '<input type="number" data-f="bonus"' + at + ' min="-20" max="20" step="1" inputmode="numeric" value="' + x.bonus + '">') +
+    scNoteField(bonusNoteInput(at, x.bonusNote), x.bonus, ' data-bnote="' + g + ':' + n + '"');
   f += '<span class="sc-nh' + (x.bonus ? ' bonus' : '') + '" data-nh="' + g + ':' + n + '">' + scEditNhHtml(nh) + '</span>' +
     '<button class="icon-btn" type="button" data-del="' + g + ':' + n + '" aria-label="Remover" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button>';
   return '<div class="sc-row">' + f + '</div>';
@@ -512,12 +522,12 @@ function scEditHtml(s, c, pool, av) {
       '<p class="hint-text" style="margin:0">swing e thrust usam o dano da ST (' + st + ': sw ' + gurpsDamage(st).sw + ', thr ' + gurpsDamage(st).thr + ') mais o modificador. Repita o nome da arma para cada ataque dela.</p></div>' +
     '<div class="box sc-edit"><h3 class="sec-title" style="margin:0">Defesas</h3><div class="sc-row">' +
       scField('Aparar com', '<select data-f="parry"><option value="">Automático (a melhor)</option>' + scOpts(parryNames, dd.parry) + '</select>', 'sc-name') +
-      scField('Bônus', '<input type="number" data-f="parryBonus" min="-20" max="20" value="' + dd.parryBonus + '">') + '</div><div class="sc-row">' +
+      scField('Bônus', '<input type="number" data-f="parryBonus" min="-20" max="20" value="' + dd.parryBonus + '">') + scDefNote('parry', dd.parryNote, dd.parryBonus) + '</div><div class="sc-row">' +
       scField('Bloquear com', '<select data-f="block"><option value="">Automático (a melhor)</option>' + scOpts(blockNames, dd.block) + '</select>', 'sc-name') +
-      scField('Bônus', '<input type="number" data-f="blockBonus" min="-20" max="20" value="' + dd.blockBonus + '">') + '</div><div class="sc-row">' +
+      scField('Bônus', '<input type="number" data-f="blockBonus" min="-20" max="20" value="' + dd.blockBonus + '">') + scDefNote('block', dd.blockNote, dd.blockBonus) + '</div><div class="sc-row">' +
       scField('Esquiva: bônus', '<input type="number" data-f="dodgeBonus" min="-20" max="20" value="' + dd.dodgeBonus + '">') +
-      scField('DB do escudo', '<input type="number" data-f="db" min="0" max="10" value="' + dd.db + '">') + '</div>' +
-      '<p class="hint-text" style="margin:0">Pelas regras do Basic Set (pp. B374-377): Aparar = 3 + NH/2 com a arma (bastão +2, faca -1); Bloqueio = 3 + Shield ou Cloak/2; Esquiva = VB + 3 - carga. Combat Reflexes e Enhanced Block, Parry e Dodge comprados aqui entram sozinhos. DB do escudo: 1 pequeno ou capa leve, 2 médio ou capa pesada, 3 grande; soma nas três defesas. Outros bônus vão nos campos Bônus.</p></div>' +
+      scField('DB do escudo', '<input type="number" data-f="db" min="0" max="10" value="' + dd.db + '">') + scDefNote('dodge', dd.dodgeNote, dd.dodgeBonus) + '</div>' +
+      '<p class="hint-text" style="margin:0">Pelas regras do Basic Set (pp. B374-377): Aparar = 3 + NH/2 com a arma (bastão +2, faca -1); Bloqueio = 3 + Shield ou Cloak/2; Esquiva = VB + 3 - carga. Combat Reflexes e Enhanced Block, Parry e Dodge comprados aqui entram sozinhos. DB do escudo: 1 pequeno ou capa leve, 2 médio ou capa pesada, 3 grande; soma nas três defesas. Outros bônus vão nos campos Bônus, com o motivo, que aparece ao passar o mouse.</p></div>' +
     '<div class="form-err" id="scErr" role="alert"></div>';
 }
 // The style tables are always SC_COL wide: as many columns as fit in the section, and the grid
@@ -562,6 +572,8 @@ function wireSheetCombat(s) {
       var nh = combatNh(cleanCombatItem(x), pool, av);
       el.className = 'sc-nh' + (x.bonus ? ' bonus' : ''); el.innerHTML = scEditNhHtml(nh);
     });
+    box.querySelectorAll('[data-bnote]').forEach(function (el) { var p = el.getAttribute('data-bnote').split(':'), x = group(p[0])[+p[1]]; if (x) el.hidden = !x.bonus; });
+    box.querySelectorAll('[data-dnote]').forEach(function (el) { el.hidden = !c.def[el.getAttribute('data-dnote') + 'Bonus']; });
     box.querySelectorAll('[data-wdmg]').forEach(function (el) { var w = c.weapons[+el.getAttribute('data-wdmg')]; if (w) el.textContent = weaponDamage(cleanCombat({ weapons: [w] }).weapons[0], a.st); });
     $('scTotal').textContent = combatTotal(cleanCombat(c)) + ' pts';
   }
@@ -574,11 +586,12 @@ function wireSheetCombat(s) {
       if (f === 'wmode' && change) { renderSheetPage(); return; }
       paint(); return;
     }
-    if (f in c.def) { c.def[f] = /Bonus$|^db$/.test(f) ? (v === '' ? 0 : +v) : v; return; }
+    if (/Note$/.test(f) && v.trim()) el.classList.remove('invalid');
+    if (f in c.def) { c.def[f] = /Bonus$|^db$/.test(f) ? (v === '' ? 0 : +v) : v; if (/Bonus$/.test(f)) paint(); return; }
     var g = el.getAttribute('data-g'); if (!g) return;
     if (f === 'stname') { styleOf(g).name = v; return; }
     var x = group(g)[+el.getAttribute('data-n')]; if (!x) return;
-    if (f === 'kind') { if (change) { group(g)[+el.getAttribute('data-n')] = scAutofill(cleanCombatItem({ kind: v, name: x.name, pts: x.pts, bonus: x.bonus })); renderSheetPage(); } return; }
+    if (f === 'kind') { if (change) { group(g)[+el.getAttribute('data-n')] = scAutofill(cleanCombatItem({ kind: v, name: x.name, pts: x.pts, bonus: x.bonus, bonusNote: x.bonusNote })); renderSheetPage(); } return; }
     if (f === 'name') {
       x.name = v;
       if (change) {
@@ -587,7 +600,7 @@ function wireSheetCombat(s) {
         group(g)[+el.getAttribute('data-n')] = scAutofill(y);
         renderSheetPage(); return;
       }
-    } else if (f === 'attr' || f === 'diff' || f === 'base') x[f] = v;
+    } else if (f === 'attr' || f === 'diff' || f === 'base' || f === 'bonusNote') x[f] = v;
     else if (f === 'max') x.max = v === '' ? null : +v;
     else if (v !== '') x[f] = +v;
     paint();
@@ -620,12 +633,14 @@ function wireSheetCombat(s) {
     var left = sheetSkills(s).filter(function (k) { return !d.moved.some(function (m) { return m.name === k.name && m.attr === k.attr && m.diff === k.diff; }); });
     var k = left[+$('scFromSkill').value], t = $('scFromTarget').value; if (!k) return;
     d.moved.push(k);
-    group(t).push(cleanCombatItem({ kind: 'skill', name: k.name, attr: k.attr, diff: k.diff, pts: k.pts, bonus: k.bonus, skillId: k.skillId }));
+    group(t).push(cleanCombatItem({ kind: 'skill', name: k.name, attr: k.attr, diff: k.diff, pts: k.pts, bonus: k.bonus, bonusNote: k.bonusNote, skillId: k.skillId }));
     renderSheetPage();
   };
   $('scAddWeapon').onclick = function () { c.weapons.push({ name: c.weapons.length ? c.weapons[c.weapons.length - 1].name : '', mode: 'sw', mod: '', type: 'cut' }); renderSheetPage(); };
   $('scCancel').onclick = function () { ui.combatDraft = null; renderSheetPage(); };
   $('scSave').onclick = function () {
+    if (!checkBonusNotes(box)) { $('scErr').textContent = 'Escreva o motivo de cada bônus.'; return; }
+    $('scErr').textContent = '';
     var btn = $('scSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('scCancel').disabled = true;
     Ops.saveSheetCombat(s, c, d.moved).then(function () { ui.combatDraft = null; toast('Combate salvo.'); renderSheetPage(); }, function (er) {
       btn.disabled = false; btn.textContent = 'Salvar combate'; $('scCancel').disabled = false; $('scErr').textContent = errorText(er);

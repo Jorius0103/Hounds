@@ -319,6 +319,12 @@ details.box.fold { display: block; padding: 0; }
 .sk-edit { gap: 8px; }
 .sk-row { display: grid; grid-template-columns: minmax(0, 1fr) 76px 72px 70px 70px 132px 32px; gap: 8px; align-items: center; }
 .sk-row.cult { grid-template-columns: minmax(0, 1fr) 70px 32px; }
+/* Motivo do bônus: na perícia, a linha de baixo; no combate, ao lado do bônus. Só enquanto o bônus não é 0. */
+.sk-row .sk-bnote { grid-column: 1 / -1; }
+.sk-bnote[hidden], .sc-bnote[hidden] { display: none; }
+.sc-f.sc-bnote { flex: 1 1 220px; }
+.sc-f.sc-bnote input { width: 100%; box-sizing: border-box; }
+.bonus-note.invalid { border-color: var(--danger) !important; }
 .sk-labels { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 /* Os títulos ficam centrados sobre as caixas curtas; o de NH, alinhado com o texto da célula. */
 .sk-labels span:nth-child(n+2):nth-child(-n+5) { text-align: center; }
