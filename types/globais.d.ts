@@ -7,6 +7,10 @@ interface Window {
   hubUsers(): { id: string; name: string; role: string }[] | null;
   hubSwitchUser(): void;
   hubApplyUser(u: { id: string; name: string; role: string }): void;
+  /** Com o Supabase: mostra o login (email e senha) e resolve com o usuário quando `submit` dá certo (js/gate.js). */
+  hubAskLogin(opts: { notice?: string; submit(email: string, password: string): Promise<{ id: string; name: string; role: string }> }): Promise<{ id: string; name: string; role: string }>;
+  /** Com o Supabase: sai da conta e volta ao login (js/store/supabase.js). */
+  hubSignOut?(): Promise<unknown>;
   /** Força a Mesa a recarregar na próxima abertura. */
   hubMesaStale(): void;
   /** Promise com o HTML da Mesa (js/mesa-frame.js). */

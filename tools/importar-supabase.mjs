@@ -4,6 +4,10 @@
 //   cd tools
 //   node importar-supabase.mjs
 //
+// Com o login ligado (migration 7), a chave pública não grava: rode com a chave service_role do
+// projeto (Project Settings › API Keys), só no seu computador, sem gravar em arquivo nenhum:
+//   PowerShell:  $env:SUPABASE_SERVICE_ROLE_KEY = '...'; node importar-supabase.mjs
+//
 // Opções:
 //   --pasta <dir>    onde estão os JSON e as imagens (padrão: a raiz do repositório)
 //   --sobrescrever   importa mesmo se já houver registros no banco
@@ -56,7 +60,7 @@ const cfg = sandbox.window.HOUNDS_SUPABASE;
 if (!cfg || !cfg.url || !cfg.anonKey) fail('Preencha supabase-config.js com url e anonKey válidos.');
 
 const API_URL = cfg.url.replace(/\/$/, '');
-const KEY = cfg.anonKey;
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || cfg.anonKey;
 const BUCKET = cfg.bucket || 'hounds-images';
 
 const headers = {

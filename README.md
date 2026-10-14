@@ -57,7 +57,7 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 ## Funcionalidades
 
 - **Página inicial:** é a primeira página ao abrir o site. Tem atalhos para cada seção, com as contagens, e a lista do que foi atualizado por último. Para voltar a ela, clique na patinha no topo do menu.
-- **Usuários:** escolha de usuário ao abrir, com perfis Mestre (administrador de tudo), Jogador e Espectador. Só o Mestre gerencia os usuários.
+- **Usuários:** com o Supabase, login com email e senha (as contas são criadas pelo Mestre no painel do Supabase e ligadas pelo email na aba Usuários); sem ele, escolha de usuário ao abrir. Perfis Mestre (administrador de tudo), Jogador e Espectador. Só o Mestre gerencia os usuários.
 - **Visibilidade:** fora da Mesa de Combate, quem cria um item (mapa, local, personagem, marcador, título ou anotação) marca se ele fica "Visível para todos". Desmarcado, só o Mestre e quem criou veem, e só os dois podem mudar isso depois. Em mapas, locais e personagens, o Mestre também escolhe quais contas podem ver o item enquanto ele está oculto. Os itens criados antes dessa regra continuam sob controle do Mestre.
 - **Informações:** mapas em hierarquia (sem limite de níveis) com marcadores, árvore e filtros de busca; localizações e personagens.
   - Trocar a imagem de um mapa exclui todos os marcadores dele; com marcadores, o formulário pede confirmação antes.
@@ -77,6 +77,6 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 
 ## Segurança
 
-Com o Firebase, só quem sabe a senha da campanha lê ou altera os dados. Com o Supabase, qualquer pessoa com o link lê e altera os dados pelo site, mas o banco só aceita gravações pelas funções do Hounds, que validam os dados e os relacionamentos (veja a seção "Segurança" do [SUPABASE.md](SUPABASE.md)). Dentro do site, porém, quem entrou escolhe qualquer usuário, inclusive o Mestre. Itens que não estão visíveis para todos somem da tela, mas ainda são enviados ao navegador de todo mundo. Não guarde nada sigiloso.
+Com o Firebase, só quem sabe a senha da campanha lê ou altera os dados. Com o Supabase, cada pessoa entra com email e senha, e o próprio banco garante as permissões de Mestre e de Jogador (veja "Login e permissões" no [SUPABASE.md](SUPABASE.md)). Com o Firebase ou só no navegador, porém, quem entra escolhe qualquer usuário, inclusive o Mestre. Em todos os casos, itens que não estão visíveis para todos somem da tela, mas ainda são enviados ao navegador de quem entrou. Não guarde nada sigiloso.
 
 Os arquivos de `dados/` e `imagens/` deste repositório ficam públicos no GitHub Pages, sem senha.

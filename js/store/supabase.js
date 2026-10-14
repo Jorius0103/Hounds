@@ -20,13 +20,17 @@
        with the item as saved. A removal follows the rules of the entity
        there (a deleted map's submaps move up...), so the Ops in mundo.js
        skip their own cascade when the store is `relational`.
-     One realtime channel, "hounds", for every table:
-       postgres_changes  a row changed: the item is downloaded again from
-                         its view, a few at once (a changed link also
-                         marks the item it belongs to). The Mesa's state
-                         comes whole in the notice and is not downloaded.
-       broadcast         messages straight to the other browsers, ahead
-                         of the database (the Mesa uses it; see MesaSync).
+     Everything needs a logged-in account linked to a hub user (sbSignIn,
+       below); the database checks each role's permissions itself.
+     Two realtime channels:
+       "hounds"          postgres_changes of every table: a row changed,
+                         the item is downloaded again from its view, a few
+                         at once (a changed link also marks the item it
+                         belongs to). The Mesa's state comes whole in the
+                         notice and is not downloaded.
+       "hounds-mesa"     private; broadcast messages straight to the other
+                         browsers, ahead of the database (the Mesa uses
+                         it; see MesaSync).
      Writes show on this screen at once and the answer of the database
      replaces that copy; notices about an item with a write of this
      browser still on the way wait for it. A failed write downloads the
@@ -41,7 +45,7 @@ function SupabaseStore(client, bucket) {
     skills: 'pericias', techniques: 'tecnicas', styles: 'estilos', mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
   var COL_OF = {}; Object.keys(TABLES).forEach(function (k) { COL_OF[TABLES[k]] = k; });
   var MARKERS = /^maps\/([^/]+)\/markers$/;
-  var cols = {}, channel = null, live = false, bcast = {};
+  var cols = {}, channel = null, live = false, mesaChannel = null, mesaLive = false, bcast = {};
 
   // updated_at in one format, whether it came from a select or from realtime ("T" or " ",
   // with or without the time zone; the column is timestamptz, always UTC here). The format
@@ -198,14 +202,22 @@ function SupabaseStore(client, bucket) {
   }
   function ensureChannel() {
     if (channel) return;
-    channel = client.channel('hounds', { config: { broadcast: { self: false } } });
+    // The tables' notices follow each table's RLS (only accounts linked to a user get them).
+    channel = client.channel('hounds');
     Object.keys(COL_OF).concat(['marcadores']).forEach(function (t) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, onChange);
     });
-    channel.on('broadcast', { event: 'hub' }, function (m) { var p = m && m.payload, f = p && bcast[p.kind]; if (f) f(p.data); });
     channel.subscribe(function (status) {
       live = status === 'SUBSCRIBED';
       if (live) resync(); // first connection and every reconnection
+    });
+    // The Mesa's direct messages, on a private channel (policies on realtime.messages). If it
+    // can't connect, the Mesa still syncs through the database, a moment later.
+    mesaChannel = client.channel('hounds-mesa', { config: { private: true, broadcast: { self: false } } })
+      .on('broadcast', { event: 'hub' }, function (m) { var p = m && m.payload, f = p && bcast[p.kind]; if (f) f(p.data); });
+    mesaChannel.subscribe(function (status, err) {
+      mesaLive = status === 'SUBSCRIBED';
+      if (status === 'CHANNEL_ERROR') console.warn('Hounds: canal da Mesa indisponível; a Mesa sincroniza pelo banco.', err);
     });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) resync(); });
     window.addEventListener('online', resync);
@@ -341,8 +353,8 @@ function SupabaseStore(client, bucket) {
     inlineMax: 5000000,
     realtime: {
       send: function (kind, data) {
-        if (!channel || !live) return Promise.resolve('closed');
-        return Promise.resolve(channel.send({ type: 'broadcast', event: 'hub', payload: { kind: kind, data: data } })).catch(function () { return 'error'; });
+        if (!mesaChannel || !mesaLive) return Promise.resolve('closed');
+        return Promise.resolve(mesaChannel.send({ type: 'broadcast', event: 'hub', payload: { kind: kind, data: data } })).catch(function () { return 'error'; });
       },
       on: function (kind, fn) { ensureChannel(); bcast[kind] = fn; }
     }
@@ -352,7 +364,51 @@ function SupabaseStore(client, bucket) {
 function connectSupabase(cfg) {
   return loadScript(SB_SDK).then(function () {
     var client = window.supabase.createClient(cfg.url, cfg.anonKey, { realtime: { params: { eventsPerSecond: 40 } } });
-    return SupabaseStore(client, cfg.bucket || 'hounds-images');
+    return sbSignIn(client).then(function () { return SupabaseStore(client, cfg.bucket || 'hounds-images'); });
+  });
+}
+
+/* ---------- login (Supabase Auth, email e senha) ----------
+   The database only answers to an account linked to a hub user (its email is in the Usuários
+   tab; see supabase/migrations/20261015120000_autenticacao.sql). The session the SDK keeps in
+   this browser is used again on the next visit; without one, or with an account no user has,
+   the gate asks for the email and password (hubAskLogin, in gate.js). Resolves once the user
+   is known (hubApplyUser); the store connects after that, with the account's token. */
+function sbWhoAmI(client) {
+  return client.rpc('hounds_eu').then(function (r) { if (r.error) throw r.error; return r.data || null; });
+}
+function sbSignIn(client) {
+  window.hubSignOut = function () {
+    try { localStorage.removeItem('hounds_active_user'); } catch (e) {}
+    return client.auth.signOut().catch(function () {}).then(function () { location.reload(); });
+  };
+  var NOT_LINKED = 'Esta conta não está ligada a nenhum usuário do Hounds. Peça ao Mestre para cadastrar o seu email na aba Usuários.';
+  return client.auth.getSession().then(function (res) {
+    var s = res && res.data && res.data.session;
+    return s ? sbWhoAmI(client).then(function (me) { return { me: me, email: s.user && s.user.email }; }) : { me: null, email: null };
+  }).catch(function () { return { me: null, email: null }; }).then(function (r) {
+    if (r.me) return r.me;
+    return window.hubAskLogin({
+      notice: r.email ? r.email + ': ' + NOT_LINKED : '',
+      submit: function (email, password) {
+        return client.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+          if (res.error) throw res.error;
+          return sbWhoAmI(client);
+        }).then(function (me) {
+          if (!me) throw { code: 'not_linked', message: NOT_LINKED };
+          return me;
+        });
+      }
+    });
+  }).then(function (me) {
+    window.hubApplyUser(me);
+    // Signed out elsewhere (another tab, or the session ended): back to the login.
+    client.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') location.reload(); });
+    // Realtime with this account's token, so the tables' notices pass their RLS.
+    return client.auth.getSession().then(function (res) {
+      var s = res && res.data && res.data.session;
+      if (s && client.realtime && client.realtime.setAuth) return Promise.resolve(client.realtime.setAuth(s.access_token)).catch(function () {});
+    });
   });
 }
 

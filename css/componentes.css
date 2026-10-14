@@ -16,7 +16,7 @@
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label, .field .lab { font-size: 12px; font-weight: 700; color: var(--muted); }
-.field input[type=text], .field input[type=password], .field textarea, .field select { background: var(--well); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 14px; width: 100%; box-sizing: border-box; }
+.field input[type=text], .field input[type=email], .field input[type=password], .field textarea, .field select { background: var(--well); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 14px; width: 100%; box-sizing: border-box; }
 .field textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
 .field input:focus, .field textarea:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
 .field .err { font-size: 12px; color: var(--danger); min-height: 0; }

@@ -5,7 +5,12 @@
 //   cd tools
 //   node validar-migracao.mjs
 //
-// Usa o supabase-config.js (chave pública). Termina com código 1 se algum campo mudou.
+// Usa a url do supabase-config.js. Depois da migration de autenticação (7), a chave pública não
+// lê mais nada: rode com a chave service_role do projeto (Project Settings › API Keys), só no
+// seu computador, sem gravar em arquivo nenhum:
+//   PowerShell:  $env:SUPABASE_SERVICE_ROLE_KEY = '...'; node validar-migracao.mjs
+//   Bash:        SUPABASE_SERVICE_ROLE_KEY=... node validar-migracao.mjs
+// Termina com código 1 se algum campo mudou.
 // As diferenças esperadas aparecem como avisos, não como erro:
 //   - ids de itens que não existem mais, ou repetidos, nas listas (o site já os ignorava);
 //   - createdBy de uma conta que não existe mais (o item fica sem dono, como os antigos);
@@ -151,7 +156,8 @@ async function main() {
   vm.runInNewContext(await readFile(cfgFile, 'utf8'), sandbox);
   const cfg = sandbox.window.HOUNDS_SUPABASE;
   if (!cfg || !cfg.url || !cfg.anonKey) { console.error('ERRO: preencha supabase-config.js com url e anonKey.'); process.exit(1); }
-  const API = cfg.url.replace(/\/$/, '') + '/rest/v1/', headers = { apikey: cfg.anonKey, Authorization: `Bearer ${cfg.anonKey}` };
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || cfg.anonKey;
+  const API = cfg.url.replace(/\/$/, '') + '/rest/v1/', headers = { apikey: key, Authorization: `Bearer ${key}` };
   async function get(table, select) {
     const res = await fetch(`${API}${table}?select=${select}`, { headers });
     if (!res.ok) throw new Error(`${table}: ${res.status} ${await res.text()}`);

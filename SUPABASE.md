@@ -61,6 +61,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | 4 | `20261014120300_funcoes_gravacao.sql` | Funções de gravação (RPC). |
 | 5 | `20261014120400_seguranca_rls.sql` | RLS e permissões. |
 | 6 | `20261014120500_migrar_dados.sql` | Deixa o `hounds_docs` só leitura, copia os dados e mostra a validação. |
+| 7 | `20261015120000_autenticacao.sql` | Login com email e senha e permissões de Mestre e Jogador no banco (seção 4). |
 
 **Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
 
@@ -78,7 +79,7 @@ O banco de produção já tem os dados em `hounds_docs`. A troca é feita assim:
    - a validação, uma linha por verificação, com `ok = true` em todas: quantidade de itens por coleção, vínculos (membros, locais, mapas, personagens de eventos, compartilhamentos), referências (mapa pai, ficha do personagem...) e as seções das fichas.
 
    Para consultar a validação de novo: `SELECT * FROM hounds_interno.validar_migracao();`
-3. **Compare campo a campo:** `cd tools` e `node validar-migracao.mjs`. O script lê cada documento de `hounds_docs` e o item correspondente nas views, e lista qualquer diferença. Os avisos são diferenças esperadas: ids de itens que já não existiam, contas excluídas.
+3. **Compare campo a campo:** `cd tools` e `node validar-migracao.mjs` (depois da migration 7, com a chave `service_role`; veja o início do script). O script lê cada documento de `hounds_docs` e o item correspondente nas views, e lista qualquer diferença. Os avisos são diferenças esperadas: ids de itens que já não existiam, contas excluídas.
 4. **Publique o site:** faça o merge desta versão na `main`, que o GitHub Pages publica. Peça a quem estava com o site aberto que recarregue a página.
 
 **Nada é apagado.** O `hounds_docs` continua no banco como cópia, só para leitura.
@@ -107,16 +108,46 @@ O script grava pelas mesmas funções do site.
 
 ---
 
-## 4. Segurança
+## 4. Login e permissões
 
-O site não tem login: quem abre escolhe um usuário na entrada e usa a chave pública (`anon`). Por isso, as regras de Mestre, Jogador e visibilidade continuam no site, e o banco garante o resto:
+Cada pessoa entra com **email e senha** (Supabase Auth, provedor Email). A conta é criada pelo Mestre no painel do Supabase e ligada ao usuário do Hounds pelo email, cadastrado na aba **Usuários**. A estrutura está na migration `20261015120000_autenticacao.sql` (7).
 
-- **RLS ligado em todas as tabelas,** com política só de leitura.
-- **Nenhuma escrita direta nas tabelas.** As permissões de INSERT, UPDATE e DELETE foram retiradas da chave pública. Só as funções `hounds_*` gravam (SECURITY DEFINER), e elas validam os dados e respeitam as chaves estrangeiras.
-- **As funções internas** (schema `hounds_interno`) não são expostas pela API.
-- **A chave `service_role`** (que ignora o RLS) nunca vai para o site. O `supabase-config.js` só tem a `anon`.
+### Ligar o login (uma vez)
 
-Isso impede dados inválidos ou relacionamentos quebrados, mas não identifica quem está gravando. Quem tem o link do site ainda lê e altera os dados pelo próprio site. Não guarde nada sigiloso.
+1. **Bloqueie o cadastro pelo site:** em [Authentication › Sign In / Providers](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/auth/providers), desligue **Allow new users to sign up** e deixe o provedor **Email** ligado. Assim só existem as contas que o Mestre criar.
+2. **Crie as contas:** em [Authentication › Users](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/auth/users), clique em **Add user › Create new user** para cada pessoa (Mestre e jogadores). Informe o email e uma senha e marque **Auto Confirm User**. Passe a senha para a pessoa.
+3. **Rode a migration 7** no SQL Editor. A partir daqui, o site antigo (sem login) para de funcionar, então siga direto para os passos 4 a 6.
+4. **Ligue a conta do Mestre**, ainda no SQL Editor, com o email da conta dele:
+   ```sql
+   INSERT INTO public.usuario_email (usuario_id, email) VALUES ('user-leandro', 'email-do-mestre@exemplo.com');
+   ```
+   O email não fica no código: o repositório é público.
+5. **Teste no computador** antes de publicar: rode o site localmente (veja "Rodar no computador" no README), entre com a conta do Mestre e, na aba **Usuários**, cadastre o email de cada jogador.
+6. **Publique o site** (merge na `main`) e avise o grupo para recarregar a página e entrar com email e senha.
+
+### No dia a dia
+
+- **Jogador novo:** o Mestre cria a conta no painel (passo 2) e cadastra o usuário com o mesmo email na aba Usuários.
+- **Esqueceu a senha:** o Mestre abre a conta em Authentication › Users e define uma senha nova. O site não envia email de recuperação, porque o servidor de email padrão do Supabase só envia para a equipe do projeto.
+- **Tirar alguém:** exclua o usuário na aba Usuários (a pessoa não entra mais) e, se quiser, a conta no painel.
+
+### O que o banco garante
+
+- **Leitura:** só contas ligadas a um usuário leem. A chave pública sozinha não lê nada, nem o `hounds_docs`.
+- **Mestre:** tudo. Gerencia usuários e emails (só ele vê os emails), os catálogos de GURPS, a visibilidade e o compartilhamento de qualquer item.
+- **Jogador:**
+  - cria e altera os itens que vê: mapas, locais, personagens, fichas, organizações, eventos, marcadores, anotações e a Mesa;
+  - muda a visibilidade só do que ele criou;
+  - não altera usuários, catálogos nem com quem um item é compartilhado;
+  - não altera nem exclui um item oculto que não foi compartilhado com ele.
+- **Dono:** quem criou um item é sempre a conta que gravou, e isso não muda depois.
+- **Mestre sempre existe:** o banco recusa rebaixar ou excluir o último Mestre.
+- **Gravação:** só pelas funções `hounds_*`, que validam os dados e respeitam as chaves estrangeiras. RLS ligado em todas as tabelas e nenhuma escrita direta.
+- **Imagens:** enviar, trocar e apagar só com login. Quem tem o endereço de uma imagem a abre, mas os endereços são aleatórios.
+- **Mesa:** as mensagens diretas vão por um canal privado (`hounds-mesa`), só para contas ligadas.
+- **Chaves:** a `service_role` (que ignora as regras) nunca vai para o site. O `supabase-config.js` só tem a `anon`. Os scripts de `tools/` usam a `service_role` pela variável de ambiente `SUPABASE_SERVICE_ROLE_KEY`, só no seu computador.
+
+Itens ocultos ainda chegam ao navegador dos jogadores logados, e o site os esconde, como antes. Esconder no próprio banco é um passo seguinte.
 
 ---
 

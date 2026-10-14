@@ -220,8 +220,8 @@ interface Note extends Doc { notebookId: string; title: string; body?: string; f
 
 type Role = 'mestre' | 'jogador';
 
-/** Coleção `users`. */
-interface HubUser extends Doc { name: string; role: Role | string }
+/** Coleção `users`. Com o Supabase, `email` liga a conta (Supabase Auth) ao usuário e só o Mestre o recebe. */
+interface HubUser extends Doc { name: string; role: Role | string; email?: string | null }
 
 /** API de armazenamento comum aos bancos (js/store/). */
 interface Store {
