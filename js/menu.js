@@ -62,7 +62,7 @@ function buildMenu() {
         return { id: 'nb:' + nb.id, label: nb.name, icon: ICON.notes, route: true, secret: isSecret(nb),
           children: nbNotes(nb.id).map(function (n) { return { id: 'note:' + n.id, label: n.title, icon: ICON.note, route: true, secret: isSecret(n) }; }) };
       }) }
-  ].concat(isMestre() ? [{ id: 'users', label: 'Usuários', icon: ICON.users, route: true }] : []);
+  ].concat(canManageUsers() ? [{ id: 'users', label: 'Usuários', icon: ICON.users, route: true }] : []);
 }
 var menuEl = $('menu'), app = $('app');
 var byId = {}, parentOf = {}, expanded = {};

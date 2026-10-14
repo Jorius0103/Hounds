@@ -11,7 +11,8 @@
     { id: 'user-leandro', name: 'Leandro', role: 'mestre' },
     { id: 'user-jogador', name: 'Jogador', role: 'jogador' }
   ];
-  var ROLE = { mestre: 'Mestre', jogador: 'Jogador' };
+  var ROLE = { mestre: 'Mestre', admin: 'Admin', jogador: 'Jogador' };
+  function cleanRoleOf(r) { return r === 'mestre' || r === 'admin' ? r : 'jogador'; }
   // Login com email e senha: o banco é o Supabase (o artifact do claude.ai vem antes dele, em connect()).
   var AUTH = typeof sbConfig === 'function' && !!sbConfig() && !(window.claude && typeof window.claude.use === 'function');
   function el(id) { return /** @type {AnyEl} */ (document.getElementById(id)); }
@@ -22,7 +23,7 @@
       var l = JSON.parse(localStorage.getItem(USERS_KEY) || 'null');
       if (Array.isArray(l) && l.length) {
         return l.map(function(u) {
-          return { id: u.id, name: u.name, role: u.role === 'mestre' ? 'mestre' : 'jogador' };
+          return { id: u.id, name: u.name, role: cleanRoleOf(u.role) };
         });
       }
     } catch (e) {}
@@ -47,11 +48,11 @@
   }
   window.addEventListener('hashchange', syncMesa);
   function apply(u) {
-    var cleanRole = u.role === 'mestre' ? 'mestre' : 'jogador';
+    var cleanRole = cleanRoleOf(u.role);
     var cleanUser = { id: u.id, name: u.name, role: cleanRole };
     window.hubUser = cleanUser;
-    // The Mesa (iframe) reads the user from here.
-    try { localStorage.setItem('hounds_active_user', JSON.stringify(cleanUser)); } catch (e) {}
+    // The Mesa (iframe) reads the user from here. It knows Mestre and Jogador: an Admin is a Jogador there.
+    try { localStorage.setItem('hounds_active_user', JSON.stringify({ id: cleanUser.id, name: cleanUser.name, role: cleanRole === 'admin' ? 'jogador' : cleanRole })); } catch (e) {}
     document.body.setAttribute('data-role', cleanRole);
     document.body.setAttribute('data-user', cleanUser.id || '');
     el('whoAv').textContent = ini(cleanUser.name);

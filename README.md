@@ -58,7 +58,7 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 ## Funcionalidades
 
 - **Página inicial:** é a primeira página ao abrir o site. Tem atalhos para cada seção, com as contagens, e a lista do que foi atualizado por último. Para voltar a ela, clique na patinha no topo do menu.
-- **Usuários:** com o Supabase, login com email e senha (o Mestre cria as contas e define senhas na aba Usuários); sem ele, escolha de usuário ao abrir. Perfis Mestre (administrador de tudo), Jogador e Espectador. Só o Mestre gerencia os usuários.
+- **Usuários:** com o Supabase, login com email e senha (o Mestre cria as contas e define senhas na aba Usuários); sem ele, escolha de usuário ao abrir. Perfis Mestre (administrador de tudo), Admin (Jogador que também gerencia os usuários; não promove nem edita Mestres, mas define a senha deles) e Jogador. Só o Mestre e o Admin gerenciam os usuários.
 - **Visibilidade:** fora da Mesa de Combate, quem cria um item (mapa, local, personagem, marcador, título ou anotação) marca se ele fica "Visível para todos". Desmarcado, só o Mestre e quem criou veem, e só os dois podem mudar isso depois. Em mapas, locais e personagens, o Mestre também escolhe quais contas podem ver o item enquanto ele está oculto. Os itens criados antes dessa regra continuam sob controle do Mestre.
 - **Informações:** mapas em hierarquia (sem limite de níveis) com marcadores, árvore e filtros de busca; localizações e personagens.
   - Trocar a imagem de um mapa exclui todos os marcadores dele; com marcadores, o formulário pede confirmação antes.

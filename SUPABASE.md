@@ -63,6 +63,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | 6 | `20261014120500_migrar_dados.sql` | Deixa o `hounds_docs` só leitura, copia os dados e mostra a validação. |
 | 7 | `20261015120000_autenticacao.sql` | Login com email e senha e permissões de Mestre e Jogador no banco (seção 4). |
 | 8 | `20261016120000_contas_pelo_site.sql` | Apoio à Edge Function `contas`, com que o Mestre cria contas e define senhas pelo site (seção 4). |
+| 9 | `20261017120000_perfil_admin.sql` | Perfil Admin: um Jogador que também gerencia os usuários (seção 4). |
 
 **Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
 
@@ -132,12 +133,13 @@ Cada pessoa entra com **email e senha** (Supabase Auth, provedor Email). O Mestr
    Pela Supabase CLI, o mesmo é `supabase functions deploy contas`. A função recebe sozinha as chaves do projeto. Não configure nenhuma chave nela.
 7. **Publique o site** (merge na `main`), entre como Mestre e, na aba **Usuários**, crie ou ligue a conta de cada jogador. Avise o grupo para recarregar a página (Ctrl + Shift + R) e entrar com email e senha.
 
-### No dia a dia (aba Usuários, como Mestre)
+### No dia a dia (aba Usuários, como Mestre ou Admin)
 
-- **Pessoa nova:** clique em **Novo usuário** e preencha nome, email, **senha** e perfil (Mestre ou Jogador). A conta de login é criada junto, já confirmada e sem enviar email. Passe o email e a senha para a pessoa.
+- **Pessoa nova:** clique em **Novo usuário** e preencha nome, email, **senha** e perfil (Mestre, Admin ou Jogador). A conta de login é criada junto, já confirmada e sem enviar email. Passe o email e a senha para a pessoa.
 - **Conta que já existe no painel:** crie o usuário com o mesmo email e a senha em branco. Ele fica ligado à conta existente.
 - **Esqueceu a senha:** clique na chave (**Definir senha**) ao lado do usuário e defina uma nova. O site não usa a recuperação por email, porque o servidor de email padrão do Supabase envia só uns 2 emails por hora e só para a equipe do projeto.
 - **Mudar o perfil:** clique no lápis e troque o perfil. O banco não deixa rebaixar o último Mestre.
+- **Admin:** faz tudo isso, com limites nos Mestres: ele não cria Mestre, não dá o perfil de Mestre a ninguém e não edita nem exclui um Mestre. Ele pode definir a senha de um Mestre (por isso, na prática, consegue entrar como Mestre: dê esse perfil só a quem merece essa confiança). Nas linhas dos Mestres, aparece para ele só a chave.
 - **Tirar alguém:** clique na lixeira. Com **Excluir também a conta de login** marcado, a conta do Supabase sai junto.
 
 Sem a função `contas` publicada, a aba Usuários avisa e o resto continua funcionando. Nesse caso, as contas são criadas no painel (passo 4) e ligadas pelo email. Para definir uma senha sem a função, use o SQL Editor:
@@ -151,6 +153,7 @@ WHERE email = 'email-da-pessoa@exemplo.com';
 
 - **Leitura:** só contas ligadas a um usuário leem. A chave pública sozinha não lê nada, nem o `hounds_docs`.
 - **Mestre:** tudo. Gerencia usuários e emails (só ele vê os emails), os catálogos de GURPS, a visibilidade e o compartilhamento de qualquer item.
+- **Admin:** igual ao Jogador em tudo, e também gerencia os usuários: cria, edita e exclui usuários e contas de login, define senhas (inclusive a de um Mestre) e vê os emails. Não cria Mestre, não promove ninguém a Mestre e não edita nem exclui um Mestre. Na Mesa de Combate, é Jogador.
 - **Jogador:**
   - cria e altera os itens que vê: mapas, locais, personagens, fichas, organizações, eventos, marcadores, anotações e a Mesa;
   - muda a visibilidade só do que ele criou;
@@ -161,7 +164,7 @@ WHERE email = 'email-da-pessoa@exemplo.com';
 - **Gravação:** só pelas funções `hounds_*`, que validam os dados e respeitam as chaves estrangeiras. RLS ligado em todas as tabelas e nenhuma escrita direta.
 - **Imagens:** enviar, trocar e apagar só com login. Quem tem o endereço de uma imagem a abre, mas os endereços são aleatórios.
 - **Mesa:** as mensagens diretas vão por um canal privado (`hounds-mesa`), só para contas ligadas.
-- **Contas de login:** só o Mestre cria, troca a senha ou exclui, pela função `contas`. Ela confere quem pediu antes de usar a chave `service_role`.
+- **Contas de login:** só o Mestre e o Admin criam, trocam a senha ou excluem, pela função `contas`. Ela confere quem pediu (e, para o Admin, que não está criando nem excluindo um Mestre) antes de usar a chave `service_role`.
 - **Chaves:** a `service_role` (que ignora as regras) nunca vai para o site. O `supabase-config.js` só tem a `anon`, e a função `contas` recebe a `service_role` do próprio Supabase. Os scripts de `tools/` usam a `service_role` pela variável de ambiente `SUPABASE_SERVICE_ROLE_KEY`, só no seu computador.
 
 Itens ocultos ainda chegam ao navegador dos jogadores logados, e o site os esconde, como antes. Esconder no próprio banco é um passo seguinte.

@@ -17,11 +17,16 @@
 var MESA_USERS_KEY = 'gurps_combat_master_users_v2';
 var ROLES = [
   { id: 'mestre', label: 'Mestre', help: 'Administrador de tudo' },
+  { id: 'admin', label: 'Admin', help: 'Jogador que também gerencia os usuários' },
   { id: 'jogador', label: 'Jogador', help: 'Visualiza e joga' }
 ];
 function roleLabel(r) { for (var i = 0; i < ROLES.length; i++) if (ROLES[i].id === r) return ROLES[i].label; return 'Jogador'; }
-function roleId(r) { return r === 'mestre' ? 'mestre' : 'jogador'; }
+function roleId(r) { return r === 'mestre' || r === 'admin' ? r : 'jogador'; }
 function isMestre() { return !!(window.hubUser && window.hubUser.role === 'mestre'); }
+// The Mestre and the Admin manage users. The Admin can set a Mestre's password, but not edit or
+// delete a Mestre, nor make anyone Mestre (the database and the "contas" function check it too).
+function canManageUsers() { return isMestre() || !!(window.hubUser && window.hubUser.role === 'admin'); }
+function canManageUser(u) { return isMestre() || (canManageUsers() && roleId(u.role) !== 'mestre'); }
 // People log in with email and password (Supabase Auth): users have an email.
 function usersLogin() { return !!(W.store && W.store.kind === 'supabase'); }
 function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
@@ -33,7 +38,8 @@ function mirrorUsers() {
   var old = {}; mesaUsers().forEach(function (u) { old[u.id] = u; });
   var out = W.users.map(function (u) {
     var o = old[u.id] || {};
-    return { id: u.id, name: u.name, role: u.role, password: o.password || '', needsPasswordReset: false, createdAt: o.createdAt || new Date(u.createdAt || Date.now()).toLocaleDateString('pt-BR') };
+    // The Mesa knows Mestre and Jogador: an Admin is a Jogador there.
+    return { id: u.id, name: u.name, role: u.role === 'admin' ? 'jogador' : u.role, password: o.password || '', needsPasswordReset: false, createdAt: o.createdAt || new Date(u.createdAt || Date.now()).toLocaleDateString('pt-BR') };
   });
   try { localStorage.setItem(MESA_USERS_KEY, JSON.stringify(out)); } catch (e) {}
 }
@@ -57,7 +63,7 @@ function onUsers(list) {
 
 
 function renderUsersPage() {
-  if (!isMestre()) { pageRoot.innerHTML = '<h1>Usuários</h1><p class="notice">Só o Mestre pode gerenciar usuários.</p>'; return; }
+  if (!canManageUsers()) { pageRoot.innerHTML = '<h1>Usuários</h1><p class="notice">Só o Mestre e o Admin podem gerenciar usuários.</p>'; return; }
   var can = canWrite(), me = window.hubUser && window.hubUser.id, ui = S.ui;
   var login = usersLogin();
   var head = '<div class="head-row"><div><h1>Usuários</h1><p class="lede">' + (login
@@ -78,14 +84,15 @@ function renderUsersPage() {
       var mail = login ? '<span class="you">' + (u.email ? esc(u.email) : 'sem email: não consegue entrar') + '</span>' : '';
       return '<div class="user-row"><span class="av">' + esc(initials(u.name)) + '</span><span class="nm"><strong>' + esc(u.name) + '</strong><span class="role-tag ' + r + '">' + esc(roleLabel(r)) + '</span>' + (u.id === me ? '<span class="you">(você)</span>' : '') + mail + '</span>' +
         (can ? '<span class="acts">' + (usersAccounts() && u.email ? '<button class="icon-btn" type="button" data-act="pass" data-id="' + esc(u.id) + '" title="Definir senha" aria-label="Definir a senha de ' + esc(u.name) + '">' + svg(ICON.key, 16) + '</button>' : '') +
-          '<button class="icon-btn" type="button" data-act="edit" data-id="' + esc(u.id) + '" title="Editar" aria-label="Editar ' + esc(u.name) + '">' + svg(ICON.edit, 16) + '</button>' +
-          (u.id === me ? '' : '<button class="icon-btn" type="button" data-act="del" data-id="' + esc(u.id) + '" title="Excluir" aria-label="Excluir ' + esc(u.name) + '">' + svg(ICON.trash, 16) + '</button>') + '</span>' : '') + '</div>';
+          (canManageUser(u) ? '<button class="icon-btn" type="button" data-act="edit" data-id="' + esc(u.id) + '" title="Editar" aria-label="Editar ' + esc(u.name) + '">' + svg(ICON.edit, 16) + '</button>' : '') +
+          (u.id === me || !canManageUser(u) ? '' : '<button class="icon-btn" type="button" data-act="del" data-id="' + esc(u.id) + '" title="Excluir" aria-label="Excluir ' + esc(u.name) + '">' + svg(ICON.trash, 16) + '</button>') + '</span>' : '') + '</div>';
     }).join('') + '</div>';
   pageRoot.innerHTML = head + body;
   var nb = $('newUserBtn'); if (nb) nb.onclick = function () { openUserForm(null); };
   pageRoot.querySelectorAll('.user-list [data-act]').forEach(function (b) {
     b.onclick = function () {
       var act = b.getAttribute('data-act'), id = b.getAttribute('data-id'), u = W.users.filter(function (x) { return x.id === id; })[0];
+      if (u && act !== 'pass' && !canManageUser(u)) return;
       if (act === 'edit' && u) openUserForm(u);
       else if (act === 'pass' && u) openPasswordForm(u);
       else if (act === 'del') { ui.delUser = id; renderUsersPage(); }
@@ -113,7 +120,8 @@ function openUserForm(u) {
       '<span class="lab" style="font-weight:500">' + (editing ? 'O email da conta de login desta pessoa. Mudar aqui não muda o email da conta.' : 'O email com que a pessoa vai entrar.') + '</span><div class="err" id="err_umail"></div></div>' : '') +
     (login && !editing && usersAccounts() ? '<div class="field" id="f_upass"><label for="upass">Senha</label><input type="password" id="upass" maxlength="72" autocomplete="new-password" placeholder="Pelo menos 6 caracteres">' +
       '<span class="lab" style="font-weight:500">Cria a conta de login com este email e senha. Deixe em branco se a conta já existe no painel do Supabase.</span><div class="err" id="err_upass"></div></div>' : '') +
-    '<div class="field"><label for="urole">Perfil</label><select id="urole">' + ROLES.map(function (r) { return '<option value="' + r.id + '"' + (r.id === cur ? ' selected' : '') + '>' + esc(r.label + ' — ' + r.help) + '</option>'; }).join('') + '</select></div>' +
+    '<div class="field"><label for="urole">Perfil</label><select id="urole">' + ROLES.filter(function (r) { return isMestre() || r.id !== 'mestre'; }).map(function (r) { return '<option value="' + r.id + '"' + (r.id === cur ? ' selected' : '') + '>' + esc(r.label + ' — ' + r.help) + '</option>'; }).join('') + '</select>' +
+      (isMestre() ? '' : '<span class="lab" style="font-weight:500">Só o Mestre dá o perfil de Mestre.</span>') + '</div>' +
     '<div class="form-err" id="ufErr" role="alert"></div>' +
     '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="ufCancel">Cancelar</button><button class="btn primary" type="submit" id="ufSave">' + (editing ? 'Salvar usuário' : 'Criar usuário') + '</button></div></form>';
   showModal(html);

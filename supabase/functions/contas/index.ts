@@ -2,7 +2,9 @@
 //
 // Criar uma conta de login exige a chave service_role, que nunca pode ir para o navegador.
 // Esta função roda no Supabase, que entrega a chave a ela (SUPABASE_SERVICE_ROLE_KEY), e só
-// atende quem entrou com a conta de um usuário Mestre (confere pelo hounds_eu).
+// atende quem entrou com a conta de um usuário Mestre ou Admin (confere pelo hounds_eu).
+// Com a service_role as regras do banco não valem, então as do Admin são conferidas aqui: ele
+// não cria Mestre e não exclui um Mestre (trocar a senha de um Mestre ele pode).
 //
 // Pedido (POST, JSON), com o login de quem pede no cabeçalho Authorization (o site manda):
 //   { acao: 'criar',   id, nome, email, senha, papel }  cria a conta (já confirmada, sem email)
@@ -20,7 +22,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
-const PAPEIS = ['mestre', 'jogador'];
+const PAPEIS = ['mestre', 'admin', 'jogador'];
 
 function resposta(status: number, corpo: Record<string, unknown>): Response {
   return new Response(JSON.stringify(corpo), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
@@ -55,7 +57,8 @@ Deno.serve(async (req: Request) => {
   });
   const eu = await comoQuemPediu.rpc('hounds_eu');
   if (eu.error || !eu.data) return erro(401, 'Entre com a sua conta para fazer isso.');
-  if (eu.data.role !== 'mestre') return erro(403, 'Só o Mestre pode gerenciar contas.');
+  if (eu.data.role !== 'mestre' && eu.data.role !== 'admin') return erro(403, 'Só o Mestre e o Admin podem gerenciar contas.');
+  const mestre = eu.data.role === 'mestre';
 
   let corpo: Record<string, unknown>;
   try { corpo = await req.json(); } catch { return erro(400, 'Pedido inválido.'); }
@@ -69,6 +72,13 @@ Deno.serve(async (req: Request) => {
     if (r.error) throw r.error;
     return (r.data as string | null) ?? null;
   }
+  // O Admin não exclui um Mestre (a mesma regra de hounds_interno.autorizar).
+  async function protegeMestre(usuario: string): Promise<Response | null> {
+    if (mestre) return null;
+    const r = await admin.from('usuarios').select('papel').eq('id', usuario).maybeSingle();
+    if (r.error) throw r.error;
+    return r.data?.papel === 'mestre' ? erro(403, 'Só o Mestre pode excluir um Mestre.') : null;
+  }
 
   try {
     if (corpo.acao === 'criar') {
@@ -80,6 +90,7 @@ Deno.serve(async (req: Request) => {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return erro(400, 'Esse email não parece válido.', 'email_invalid');
       if (senha.length < 6) return erro(400, 'A senha precisa ter pelo menos 6 caracteres.', 'weak_password');
       if (!PAPEIS.includes(papel)) return erro(400, 'Perfil inválido.');
+      if (papel === 'mestre' && !mestre) return erro(403, 'Só o Mestre pode criar um Mestre.');
 
       const criada = await admin.auth.admin.createUser({ email, password: senha, email_confirm: true });
       if (criada.error || !criada.data.user) return erroDaConta(criada.error ?? {});
@@ -96,6 +107,7 @@ Deno.serve(async (req: Request) => {
     if (corpo.acao === 'senha') {
       const senha = String(corpo.senha ?? '');
       if (senha.length < 6) return erro(400, 'A senha precisa ter pelo menos 6 caracteres.', 'weak_password');
+      // O Admin também define a senha de um Mestre.
       const conta = await contaDe(id);
       if (!conta) return erro(404, 'Esse usuário não tem conta de login: falta o email, ou não há conta com esse email no Supabase.', 'sem_conta');
       const r = await admin.auth.admin.updateUserById(conta, { password: senha });
@@ -105,6 +117,8 @@ Deno.serve(async (req: Request) => {
 
     if (corpo.acao === 'excluir') {
       if (id === eu.data.id) return erro(400, 'Você não pode excluir o seu próprio usuário.');
+      const bloqueio = await protegeMestre(id);
+      if (bloqueio) return bloqueio;
       const conta = corpo.excluirConta ? await contaDe(id) : null;
       const r = await admin.rpc('hounds_remove', { p_col: 'users', p_id: id });
       if (r.error) return erro(400, r.error.message);

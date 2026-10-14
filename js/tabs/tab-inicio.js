@@ -31,7 +31,7 @@ function renderHomePage() {
     card('#combate', ICON.combat, 'Combate', (W.loaded.techniques ? plural(W.techniques.length, 'técnica', 'técnicas') + ' e perícias de combate' : 'Perícias, técnicas e estilos')),
     card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
   ];
-  if (isMestre()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));
+  if (canManageUsers()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));
 
   // What changed lately, across the kinds of things people open most.
   var recent = [].concat(

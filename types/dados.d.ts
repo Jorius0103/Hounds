@@ -218,7 +218,8 @@ interface Notebook extends Doc { name: string }
 /** Coleção `notes`. `format: 'html'` para texto formatado; sem ele, texto simples. */
 interface Note extends Doc { notebookId: string; title: string; body?: string; format?: string }
 
-type Role = 'mestre' | 'jogador';
+/** mestre: tudo; admin: Jogador que também gerencia os usuários (menos os Mestres); jogador. */
+type Role = 'mestre' | 'admin' | 'jogador';
 
 /** Coleção `users`. Com o Supabase, `email` liga a conta (Supabase Auth) ao usuário e só o Mestre o recebe. */
 interface HubUser extends Doc { name: string; role: Role | string; email?: string | null }

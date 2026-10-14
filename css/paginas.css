@@ -124,6 +124,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .gate-user .nm { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .role-tag { flex: none; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; border: 1px solid; }
 .role-tag.mestre { color: var(--tag-amber); border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.12); }
+.role-tag.admin { color: var(--tag-violet); border-color: rgba(139,92,246,.45); background: rgba(139,92,246,.12); }
 .role-tag.jogador { color: var(--tag-blue); border-color: rgba(59,130,246,.45); background: rgba(59,130,246,.12); }
 .role-tag.visualizador { color: var(--tag-cyan); border-color: rgba(6,182,212,.45); background: rgba(6,182,212,.12); }
 .gate-close { margin-top: 14px; width: 100%; }
