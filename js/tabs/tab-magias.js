@@ -50,12 +50,40 @@ function spellClasses() {
   return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'pt'); });
 }
 
+// The resistance is the rest of the class field ("Area; Special Resistance", "Regular; Resisted by
+// HT or Will"). It is written in many ways, so the filter groups it by what resists: [key, label].
+var SPELL_RESISTANCES = [['none', 'Sem resistência'], ['HT', 'Resistida por HT'], ['Will', 'Resistida por Vontade'],
+  ['IQ', 'Resistida por IQ'], ['ST', 'Resistida por ST'], ['DX', 'Resistida por DX'], ['Per', 'Resistida por Percepção'],
+  ['special', 'Resistência especial'], ['spell', 'Resistida por outra magia'], ['resists', 'Resiste a magias ou ataques'],
+  ['other', 'Outra resistência']];
+// The keys of SPELL_RESISTANCES a spell belongs to ("Resisted by HT or Will" is in both).
+function spellResistance(s) {
+  var keys = [];
+  (s.class || '').split(/[;,]/).forEach(function (part) {
+    var p = part.trim();
+    if (!/resist/i.test(p)) return;
+    if (/^(special|automatic) resistance/i.test(p)) { keys.push('special'); return; }
+    if (/^resists\b/i.test(p)) { keys.push('resists'); return; }
+    var by = p.replace(/^resisted by\s*/i, ''), n = keys.length;
+    ['HT', 'Will', 'IQ', 'ST', 'DX', 'Per'].forEach(function (a) { if (new RegExp('\\b' + a + '\\b').test(by)) keys.push(a); });
+    if (/spell|magelock|gate|hide path/i.test(by)) keys.push('spell');
+    if (keys.length === n) keys.push('other');
+  });
+  return keys.length ? keys : ['none'];
+}
+// The groups that have spells, with how many each one has.
+function spellResistances() {
+  var n = {};
+  (W.spells || []).forEach(function (s) { spellResistance(s).forEach(function (k) { n[k] = (n[k] || 0) + 1; }); });
+  return SPELL_RESISTANCES.filter(function (r) { return n[r[0]]; }).map(function (r) { return [r[0], r[1], n[r[0]]]; });
+}
+
 // Typing in the search waits a moment before redrawing the list.
 var spellSearchTimer = 0;
 var SPELL_SEARCH_FIELDS = ['name', 'college', 'class', 'description', 'prerequisites'];
 // Search, filters and page of the list: kept while the site is open, so opening a spell
 // and coming back returns to the same page.
-var spellView = { q: '', college: '', spellClass: '', difficulty: '', book: '', change: '', page: 1 };
+var spellView = { q: '', college: '', spellClass: '', resistance: '', difficulty: '', book: '', change: '', page: 1 };
 // The "Alterações do Mestre" filter. 'any' is every kind of change.
 var SPELL_CHANGE_FILTERS = [['any', 'Alteradas pelo Mestre'], ['created', 'Criadas pelo Mestre'], ['edited', 'Editadas dos livros'], ['hidden', 'Ocultas dos jogadores'], ['deleted', 'Excluídas']];
 // Books of the list, with how many spells each one has.
@@ -105,6 +133,10 @@ function renderSpellsPage() {
     '<option value="">Todas as classes</option>' +
     classes.map(function (cl) { return '<option value="' + esc(cl) + '"' + (ui.spellClass === cl ? ' selected' : '') + '>' + esc(cl) + '</option>'; }).join('') +
     '</select></div>' +
+    '<div class="field" style="margin:0"><select id="spellResistFilter" aria-label="Filtrar por resistência">' +
+    '<option value="">Todas as resistências</option>' +
+    spellResistances().map(function (r) { return '<option value="' + r[0] + '"' + (ui.resistance === r[0] ? ' selected' : '') + '>' + esc(r[1]) + ' (' + r[2] + ')</option>'; }).join('') +
+    '</select></div>' +
     '<div class="field" style="margin:0"><select id="spellDiffFilter" aria-label="Filtrar por dificuldade">' +
     '<option value="">Dificuldade (Todas)</option>' +
     '<option value="H"' + (ui.difficulty === 'H' ? ' selected' : '') + '>Hard (H)</option>' +
@@ -149,6 +181,9 @@ function renderSpellsPage() {
     };
   }
 
+  var rFilter = $('spellResistFilter');
+  if (rFilter) rFilter.onchange = function () { ui.resistance = rFilter.value; ui.page = 1; renderSpellList(); };
+
   var dFilter = $('spellDiffFilter');
   if (dFilter) {
     dFilter.onchange = function () {
@@ -189,6 +224,7 @@ function filterSpellsList() {
     if (diff && (s.difficulty || '').toUpperCase() !== diff) return false;
     if (college && (s.college || '').toLowerCase().indexOf(college) < 0) return false;
     if (sClass && (s.class || '').toLowerCase().indexOf(sClass) < 0) return false;
+    if (ui.resistance && spellResistance(s).indexOf(ui.resistance) < 0) return false;
     if (!q) return true;
     return searchText(s, SPELL_SEARCH_FIELDS).indexOf(q) >= 0;
   }); // W.spells is already in name order (mergeCatalog)
@@ -212,7 +248,7 @@ function renderSpellList() {
       return;
     }
 
-    container.innerHTML = '<p class="lede" style="padding:24px 0">' + (ui.change && !ui.q && !ui.book && !ui.college && !ui.spellClass && !ui.difficulty ? 'O Mestre ainda não fez alterações desse tipo.' : 'Nenhuma magia corresponde aos filtros aplicados.') + '</p>';
+    container.innerHTML = '<p class="lede" style="padding:24px 0">' + (ui.change && !ui.q && !ui.book && !ui.college && !ui.spellClass && !ui.resistance && !ui.difficulty ? 'O Mestre ainda não fez alterações desse tipo.' : 'Nenhuma magia corresponde aos filtros aplicados.') + '</p>';
     return;
   }
 
