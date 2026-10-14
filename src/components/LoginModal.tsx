@@ -51,34 +51,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
 
     const enteredPass = password.trim();
-    const isLeandro =
-      targetUser.id === 'user-leandro' ||
-      targetUser.name.toLowerCase() === 'leandro' ||
-      targetUser.role === 'mestre';
-
-    // Senha padrão oficial '230589' é sempre aceita para o Mestre Leandro
-    const isMasterOverride = isLeandro && enteredPass === '230589';
-    const isPassCorrect =
-      isMasterOverride ||
-      targetUser.password === enteredPass ||
-      targetUser.password === password;
+    // A senha de cada usuário, a mesma regra para o Mestre e para os jogadores (sem senha fixa no código).
+    const isPassCorrect = targetUser.password === enteredPass || targetUser.password === password;
 
     if (!isPassCorrect) {
       setErrorMsg('Senha incorreta.');
       return;
     }
 
-    // Se o Mestre Leandro logar com 230589, sincroniza e atualiza imediatamente
-    if (isLeandro) {
-      if (targetUser.password !== '230589' || targetUser.needsPasswordReset) {
-        onUpdateUserPassword(targetUser.id, '230589');
-      }
-      onLoginSuccess({ ...targetUser, password: '230589', needsPasswordReset: false });
-      setPassword('');
-      return;
-    }
-
-    // Check if user requires password reset (para outros usuários)
+    // Check if user requires password reset
     if (targetUser.needsPasswordReset) {
       setResetTargetUser(targetUser);
       setIsResetStep(true);

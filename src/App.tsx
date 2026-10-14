@@ -130,8 +130,9 @@ const DEFAULT_USERS: UserAccount[] = [
     id: 'user-leandro',
     name: 'Leandro',
     role: 'mestre',
-    password: '230589',
-    needsPasswordReset: false,
+    // Sem senha fixa no código: o Mestre define a dele no primeiro acesso.
+    password: '',
+    needsPasswordReset: true,
     createdAt: new Date().toLocaleDateString('pt-BR'),
   },
   {
@@ -227,16 +228,7 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const updated = parsed.map((u: UserAccount) => {
-            if (u.id === 'user-leandro' || u.name.toLowerCase() === 'leandro' || u.role === 'mestre') {
-              return { ...u, password: '230589', needsPasswordReset: false };
-            }
-            return u;
-          });
-          try {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
-          } catch {}
-          return updated;
+          return parsed;
         }
       }
     } catch (e) {
@@ -613,12 +605,6 @@ export default function App() {
             const map = new Map<string, UserAccount>();
             prevUsers.forEach((u) => map.set(u.id, u));
             payload.users!.forEach((u) => {
-              if (
-                (u.id === 'user-leandro' || u.name.toLowerCase() === 'leandro' || u.role === 'mestre') &&
-                u.password === '123'
-              ) {
-                u = { ...u, password: '230589' };
-              }
               map.set(u.id, u);
             });
             return Array.from(map.values());
