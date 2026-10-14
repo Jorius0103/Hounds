@@ -22,7 +22,6 @@ const DIR = path.resolve(opt('--pasta') || ROOT);
 const LOOK_IN = [DIR, path.join(DIR, 'dados'), path.join(DIR, 'imagens')];
 
 const COLLECTIONS = ['users', 'maps', 'locations', 'characters', 'notebooks', 'notes'];
-const MESA_PIECE = 60000;
 const TYPES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
 
 function fail(msg) { console.error('ERRO:', msg); process.exit(1); }
@@ -66,10 +65,16 @@ const headers = {
   'Content-Type': 'application/json'
 };
 
-// 2. Testa se a tabela hounds_docs existe
-const testRes = await fetch(`${API_URL}/rest/v1/hounds_docs?limit=1`, { headers });
+// Grava um documento pela mesma função do site (hounds_put), que o leva para as tabelas.
+async function put(col, id, doc) {
+  const res = await fetch(`${API_URL}/rest/v1/rpc/hounds_put`, { method: 'POST', headers, body: JSON.stringify({ p_col: col, p_id: id, p_doc: doc }) });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `${res.status}`); }
+}
+
+// 2. Testa se as tabelas do Hounds existem
+const testRes = await fetch(`${API_URL}/rest/v1/mapas_doc?select=id&limit=1`, { headers });
 if (testRes.status === 404) {
-  fail('A tabela "hounds_docs" não foi encontrada no Supabase.\nExecute o script supabase-setup.sql no SQL Editor do Supabase primeiro!');
+  fail('As tabelas do Hounds não foram encontradas no Supabase.\nExecute as migrations de supabase/migrations no SQL Editor primeiro (veja SUPABASE.md).');
 } else if (!testRes.ok) {
   fail(`Erro ao conectar com o Supabase: ${testRes.status} ${await testRes.text()}`);
 }
@@ -78,35 +83,26 @@ if (testRes.status === 404) {
 if (!flag('--sobrescrever')) {
   const existing = await testRes.json();
   if (Array.isArray(existing) && existing.length > 0) {
-    fail('O banco já possui documentos gravados. Use --sobrescrever para atualizar.');
+    fail('O banco já possui dados gravados. Use --sobrescrever para atualizar.');
   }
 }
 
-// 4. Importa documentos JSON
+// 4. Importa documentos JSON. Duas passadas: um item que aponta para outro importado depois
+// dele (o mapa pai, os personagens de um local) só fica com o vínculo na segunda.
 const docs = {};
 for (const col of COLLECTIONS) {
   const data = await readJson(col + '.json');
   if (!data) { console.log(`- ${col}.json não encontrado, pulando`); continue; }
   docs[col] = data;
-
-  const records = Object.entries(data).map(([id, body]) => ({
-    col: col,
-    id: id,
-    data: body,
-    updated_at: new Date().toISOString()
-  }));
-
-  if (records.length > 0) {
-    const postRes = await fetch(`${API_URL}/rest/v1/hounds_docs`, {
-      method: 'POST',
-      headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify(records)
-    });
-    if (!postRes.ok) {
-      console.warn(`! Falha ao inserir ${col}:`, await postRes.text());
-    } else {
-      console.log(`✓ ${col}: ${records.length} registros`);
+}
+for (let pass = 1; pass <= 2; pass++) {
+  for (const col of Object.keys(docs)) {
+    let ok = 0;
+    for (const [id, body] of Object.entries(docs[col])) {
+      try { await put(col, id, body); ok++; }
+      catch (e) { if (pass === 2) console.warn(`! ${col}/${id}: ${e.message}`); }
     }
+    if (pass === 2) console.log(`✓ ${col}: ${ok} de ${Object.keys(docs[col]).length} registros`);
   }
 }
 
@@ -145,40 +141,16 @@ for (const ref of refs) {
 }
 console.log(`✓ imagens enviadas para storage: ${sentImgs} de ${refs.size}`);
 
-// 6. Importa a Mesa de Combate
+// 6. Importa a Mesa de Combate (o estado inteiro num registro só, como o site grava)
 const mesa = await readJson('mesa-de-combate.json');
 if (mesa) {
-  const st = { combats: mesa.combats, conditions: mesa.conditions, players: mesa.players, activeCombatId: mesa.activeCombatId || null };
-  const json = JSON.stringify(st);
-  const parts = [];
-  for (let i = 0; i < json.length; i += MESA_PIECE) parts.push(json.slice(i, i + MESA_PIECE));
-  const t = Date.now(), rev = `import-${t}`;
-
-  const chunkRecords = parts.map((part, i) => ({
-    col: 'mesa_chunks',
-    id: `${rev}_${i}`,
-    data: { rev, i, part, createdAt: t },
-    updated_at: new Date().toISOString()
-  }));
-
-  await fetch(`${API_URL}/rest/v1/hounds_docs`, {
-    method: 'POST',
-    headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify(chunkRecords)
-  });
-
-  await fetch(`${API_URL}/rest/v1/hounds_docs`, {
-    method: 'POST',
-    headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify([{
-      col: 'mesa',
-      id: 'state',
-      data: { rev, n: parts.length, by: null, createdAt: t, updatedAt: t },
-      updated_at: new Date().toISOString()
-    }])
-  });
-
-  console.log(`✓ mesa de combate: ${(st.combats || []).length} combates importados`);
+  const t = Date.now();
+  const st = { combats: mesa.combats, conditions: mesa.conditions, players: mesa.players, activeCombatId: mesa.activeCombatId || null,
+    deletedCombatIds: mesa.deletedCombatIds || [], editors: mesa.editors || null };
+  try {
+    await put('mesa', 'state', { rev: `import-${t}`, n: 0, by: null, createdAt: t, updatedAt: t, ...st });
+    console.log(`✓ mesa de combate: ${(st.combats || []).length} combates importados`);
+  } catch (e) { console.warn(`! mesa de combate: ${e.message}`); }
 }
 
 console.log('Importação concluída com sucesso!');

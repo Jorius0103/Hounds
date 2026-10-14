@@ -49,6 +49,8 @@ Ops.saveSheetAttrs = function (s, a) {
 };
 // Characters linked to it lose the link; they stay as they are otherwise.
 Ops.deleteSheet = function (s) {
+  // A relational database unlinks the characters itself, in one transaction (hounds_remove).
+  if (W.store.relational) return W.store.remove('sheets', s.id);
   return W.raw.characters.filter(function (c) { return c.sheetId === s.id; }).reduce(function (q, c) {
     return q.then(function () { return W.store.patch('characters', c.id, { sheetId: null, updatedAt: now() }); });
   }, Promise.resolve()).then(function () { return W.store.remove('sheets', s.id); });

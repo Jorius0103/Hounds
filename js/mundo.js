@@ -306,6 +306,13 @@ var Ops = {
     if (!file || !dims) return Promise.reject({ message: 'Selecione a nova imagem do mapa.' });
     return W.store.all(col).then(function (list) {
       if (list.length && confirmed !== true) throw { code: 'markers_exist', count: list.length, message: 'Este mapa tem ' + plural(list.length, 'marcador', 'marcadores') + '. Confirme a troca da imagem, que exclui todos eles.' };
+      // In a relational database the markers go and the image changes in one transaction, which
+      // also counts the markers again (someone may have added one after the check above).
+      if (W.store.replaceMapImage) return W.store.upload(file).then(function (up) {
+        return W.store.replaceMapImage(id, { ref: up.ref, w: dims.w, h: dims.h, type: up.type, size: up.size }, confirmed, now())
+          .then(function (r) { if (r.imagemAnterior && r.imagemAnterior !== up.ref) W.store.dropImage(r.imagemAnterior); return r.removidos; },
+            function (e) { W.store.dropImage(up.ref); throw e; });
+      });
       return W.store.upload(file).then(function (up) {
         return list.reduce(function (p, mk) { return p.then(function () { return W.store.remove(col, mk.id); }); }, Promise.resolve())
           .then(function () { return W.store.patch('maps', id, { image: { ref: up.ref, w: dims.w, h: dims.h, type: up.type, size: up.size }, updatedAt: now() }); })
@@ -315,6 +322,8 @@ var Ops = {
     });
   },
   deleteMap: function (m) {
+    // A relational database does all of the below itself, in one transaction (hounds_remove).
+    if (W.store.relational) return W.store.remove('maps', m.id).then(function () { return W.store.dropImage(m.image && m.image.ref); });
     var up = W.parent[m.id] || null, col = 'maps/' + m.id + '/markers';
     var seq = Promise.resolve();
     function then(f) { seq = seq.then(f); }
@@ -369,6 +378,10 @@ var Ops = {
   },
   // Sub-locations move up to the deleted location's parent (or to the top level).
   deleteLocation: function (l) {
+    // A relational database does all of the below itself, in one transaction (hounds_remove).
+    if (W.store.relational) return W.store.remove('locations', l.id)
+      .then(function () { return W.store.dropImage(l.image && l.image.ref); })
+      .then(function () { return W.store.dropImage(l.image2 && l.image2.ref); });
     var up = l.parentId && rawHas('locations', l.parentId) ? l.parentId : null;
     return W.raw.locations.filter(function (c) { return c.parentId === l.id; }).reduce(function (p, c) {
       return p.then(function () { return W.store.patch('locations', c.id, { parentId: up, updatedAt: now() }); });

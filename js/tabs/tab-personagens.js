@@ -75,6 +75,8 @@ Ops.saveCharacter = function (c, fields, newFile, newDims, removeImage, locIds) 
   });
 };
 Ops.deleteCharacter = function (c) {
+  // A relational database removes the character's links itself, in one transaction (hounds_remove).
+  if (W.store.relational) return W.store.remove('characters', c.id).then(function () { return W.store.dropImage(c.image && c.image.ref); });
   return W.raw.locations.filter(function (l) { return (l.characterIds || []).indexOf(c.id) >= 0; }).reduce(function (q, l) {
     return q.then(function () { return W.store.patch('locations', l.id, { characterIds: (l.characterIds || []).filter(function (x) { return x !== c.id; }), updatedAt: now() }); });
   }, Promise.resolve()).then(function () {

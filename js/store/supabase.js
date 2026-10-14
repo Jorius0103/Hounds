@@ -7,32 +7,50 @@
 'use strict';
 
 /* =====================================================================
-   Supabase backend
-     hounds_docs (col, id, data jsonb): one row per document.
-     One realtime channel, "hounds", for the whole table:
-       postgres_changes  every change arrives with its row and is applied
-                         to an in-memory copy of each watched collection,
-                         in the order the database committed them.
+   Supabase backend (PostgreSQL tables; supabase/migrations/)
+     Each collection of the site is a table (maps → mapas, characters →
+     personagens, maps/{id}/markers → marcadores...), and its lists of ids
+     are link tables (organization members → personagem_organizacao...).
+     Reads: the view <table>_doc gives each item put together with its
+       links, in the shape the rest of the site uses ({ id, data,
+       updated_at }; updated_at is when the row last changed).
+     Writes: only through the database functions hounds_put, hounds_patch,
+       hounds_remove, hounds_remove_many and hounds_trocar_imagem_mapa,
+       which save an item and all its links in one transaction and answer
+       with the item as saved. A removal follows the rules of the entity
+       there (a deleted map's submaps move up...), so the Ops in mundo.js
+       skip their own cascade when the store is `relational`.
+     One realtime channel, "hounds", for every table:
+       postgres_changes  a row changed: the item is downloaded again from
+                         its view, a few at once (a changed link also
+                         marks the item it belongs to). The Mesa's state
+                         comes whole in the notice and is not downloaded.
        broadcast         messages straight to the other browsers, ahead
                          of the database (the Mesa uses it; see MesaSync).
-     Writes show on this screen at once; the database's echo of them is
-     recognized and a failed write reloads the collection. Watched
-     collections are checked again after every (re)connection, when the
-     tab comes back and every 60 s, to catch anything missed. The first
-     load of a collection reads every row; the checks after it read only
-     each row's id and updated_at, then download just the rows that
-     changed and drop the ones that are gone (see check()).
+     Writes show on this screen at once and the answer of the database
+     replaces that copy; notices about an item with a write of this
+     browser still on the way wait for it. A failed write downloads the
+     item again. Watched collections are checked again after every
+     (re)connection, when the tab comes back and every 60 s: only each
+     row's id and updated_at, then the rows that changed (see check()).
    ===================================================================== */
 function SupabaseStore(client, bucket) {
-  var bName = bucket || 'hounds-images', T = 'hounds_docs', BATCH = 100;
+  var bName = bucket || 'hounds-images', BATCH = 100;
+  var TABLES = { users: 'usuarios', maps: 'mapas', locations: 'locais', characters: 'personagens', organizations: 'organizacoes',
+    sheets: 'fichas', events: 'eventos', notebooks: 'cadernos', notes: 'anotacoes', spells: 'magias', advantages: 'vantagens',
+    skills: 'pericias', techniques: 'tecnicas', styles: 'estilos', mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
+  var COL_OF = {}; Object.keys(TABLES).forEach(function (k) { COL_OF[TABLES[k]] = k; });
+  var MARKERS = /^maps\/([^/]+)\/markers$/;
   var cols = {}, channel = null, live = false, bcast = {};
+
   // updated_at in one format, whether it came from a select or from realtime ("T" or " ",
-  // with or without the time zone; the column is timestamptz, always UTC here). A format
-  // that still differs only costs one extra download of that row.
+  // with or without the time zone; the column is timestamptz, always UTC here). The format
+  // also sorts in time order. A format that still differs only costs one extra download.
   function ts(v) {
     var m = /^(\d{4}-\d\d-\d\d)[T ](\d\d:\d\d:\d\d)(?:\.(\d+))?/.exec(String(v || ''));
     return m ? m[1] + ' ' + m[2] + '.' + ((m[3] || '') + '000000').slice(0, 6) : '';
   }
+  function msOf(v) { var t = ts(v); return t ? Date.parse(t.slice(0, 23).replace(' ', 'T') + 'Z') : 0; }
 
   // Same JSON whatever the key order (Postgres jsonb reorders keys).
   function stable(v) {
@@ -48,131 +66,143 @@ function SupabaseStore(client, bucket) {
     c.queued = true;
     Promise.resolve().then(function () { c.queued = false; if (cols[c.col] !== c || !c.ready) return; var l = list(c); c.subs.slice().forEach(function (cb) { cb(l.slice()); }); });
   }
-  function fetchRows(col) {
-    return client.from(T).select('id, data, updated_at').eq('col', col).then(function (res) { if (res.error) throw res.error; return res.data || []; });
+  function rows(res) { if (res.error) throw res.error; return res.data || []; }
+
+  // The view of a collection; markers are one table for every map, filtered by mapa_id.
+  function select(col, what) {
+    var m = MARKERS.exec(col), t = m ? 'marcadores' : TABLES[col];
+    if (!t) throw new Error('Coleção desconhecida: ' + col);
+    var q = client.from(t + '_doc').select(what);
+    return m ? q.eq('mapa_id', m[1]) : q;
   }
+  function fetchRows(col) { return select(col, 'id, data, updated_at').then(rows); }
   // Only the rows asked for, BATCH ids per request so the URL stays short.
   function fetchSome(col, ids) {
     var parts = [];
     for (var i = 0; i < ids.length; i += BATCH) parts.push(ids.slice(i, i + BATCH));
-    return Promise.all(parts.map(function (p) {
-      return client.from(T).select('id, data, updated_at').eq('col', col).in('id', p).then(function (res) { if (res.error) throw res.error; return res.data || []; });
-    })).then(function (l) { return [].concat.apply([], l); });
+    return Promise.all(parts.map(function (p) { return select(col, 'id, data, updated_at').in('id', p).then(rows); }))
+      .then(function (l) { return [].concat.apply([], l); });
   }
 
-  // Full load of one collection (the first time, and after a failed write); changes that
-  // arrive meanwhile are replayed on top.
+  // The copy here of one item, from the database. A copy older than the one here is left out
+  // (two downloads of the same item can arrive out of order). Returns whether anything changed.
+  function setRow(c, id, d, stamp) {
+    if (stamp && c.stamp[id] && stamp < c.stamp[id]) return false;
+    c.ver[id] = (c.ver[id] || 0) + 1;
+    if (stamp) c.stamp[id] = stamp;
+    if (c.rows[id] && stable(c.rows[id]) === stable(d)) return false;
+    c.rows[id] = d;
+    return true;
+  }
+  function dropRow(c, id) {
+    c.ver[id] = (c.ver[id] || 0) + 1;
+    delete c.stamp[id];
+    if (!(id in c.rows)) return false;
+    delete c.rows[id];
+    return true;
+  }
+
+  // Full load of one collection (the first time). Items with a write of this browser on the
+  // way keep the copy here and are downloaded again when it ends.
   function load(c) {
     var gen = ++c.gen;
-    c.buffer = [];
+    c.loading = true;
     return fetchRows(c.col).then(function (data) {
       if (cols[c.col] !== c || gen !== c.gen) return;
-      var before = c.ready ? stable(list(c)) : null, rows = {}, stamp = {};
-      data.forEach(function (r) { rows[r.id] = doc(r); stamp[r.id] = ts(r.updated_at); });
-      var buf = c.buffer; c.buffer = null; c.rows = rows; c.stamp = stamp; c.ready = true;
-      buf.forEach(function (p) { apply(c, p, true); });
+      var before = c.ready ? stable(list(c)) : null, r = {}, stamp = {};
+      data.forEach(function (x) { r[x.id] = doc(x); stamp[x.id] = ts(x.updated_at); });
+      Object.keys(c.busy).forEach(function (id) {
+        c.dirty[id] = true;
+        if (!c.ready) return;
+        if (id in c.rows) r[id] = c.rows[id]; else delete r[id];
+      });
+      c.rows = r; c.stamp = stamp; c.ready = true; c.loading = false;
+      if (Object.keys(c.want).length) flush(c);
       if (before === null || stable(list(c)) !== before) emit(c);
     }, function (e) {
       if (cols[c.col] !== c || gen !== c.gen) return;
-      c.buffer = null;
+      c.loading = false;
       c.errs.slice().forEach(function (f) { f(e); });
     });
   }
-  // Light check of a loaded collection: ids and updated_at only (a few dozen bytes a row),
-  // then the rows whose updated_at differs from the one known here, or that this browser
-  // doesn't have, and the removal of rows the database no longer has. Rows with a write of
-  // this browser still on the way are left alone. A failed check changes nothing; the next
-  // one tries again.
+  // Light check of a loaded collection: ids and updated_at only (a few dozen bytes a row), then
+  // the items whose updated_at differs from the one known here, or that this browser doesn't
+  // have, and the removal of items the database no longer has. Items with a write of this
+  // browser on the way are left alone. A failed check changes nothing; the next one tries again.
   function check(c) {
-    if (!c.ready) return load(c);
-    var gen = ++c.gen;
-    c.buffer = [];
-    return client.from(T).select('id, updated_at').eq('col', c.col).then(function (res) {
-      if (res.error) throw res.error;
-      if (cols[c.col] !== c || gen !== c.gen) return;
-      var there = {}, stale = [];
-      (res.data || []).forEach(function (r) { var t = ts(r.updated_at); there[r.id] = true; if (!(r.id in c.rows) || c.stamp[r.id] !== t) stale.push(r.id); });
-      var gone = Object.keys(c.rows).filter(function (id) { return !there[id] && !pending(c, id); });
-      stale = stale.filter(function (id) { return !pending(c, id); });
-      return (stale.length ? fetchSome(c.col, stale) : Promise.resolve([])).then(function (data) {
-        if (cols[c.col] !== c || gen !== c.gen) return;
-        var buf = c.buffer; c.buffer = null;
-        if (!data.length && !gone.length && !buf.length) return;
-        var before = stable(list(c)), got = {};
-        data.forEach(function (r) { got[r.id] = true; c.rows[r.id] = doc(r); c.stamp[r.id] = ts(r.updated_at); });
-        // Asked for but not returned: deleted in between.
-        gone.concat(stale.filter(function (id) { return !got[id]; })).forEach(function (id) { delete c.rows[id]; delete c.stamp[id]; });
-        buf.forEach(function (p) { apply(c, p, true); });
-        if (stable(list(c)) !== before) emit(c);
-      });
-    }).catch(function (e) {
-      if (cols[c.col] === c && gen === c.gen) c.buffer = null;
-      console.warn('Hounds: não foi possível conferir ' + c.col + ' com o banco.', e);
-    });
+    if (!c.ready) { if (!c.loading) load(c); return Promise.resolve(); }
+    var ver = Object.assign({}, c.ver), had = Object.keys(c.rows);
+    return select(c.col, 'id, updated_at').then(rows).then(function (data) {
+      if (cols[c.col] !== c) return;
+      var there = {}, changed = false;
+      data.forEach(function (r) { there[r.id] = true; if (!c.busy[r.id] && (!(r.id in c.rows) || c.stamp[r.id] !== ts(r.updated_at))) want(c, r.id); });
+      had.forEach(function (id) { if (!there[id] && !c.busy[id] && c.ver[id] === ver[id] && dropRow(c, id)) changed = true; });
+      if (changed) emit(c);
+    }).catch(function (e) { console.warn('Hounds: não foi possível conferir ' + c.col + ' com o banco.', e); });
   }
   function resync() { Object.keys(cols).forEach(function (k) { check(cols[k]); }); }
 
-  // This browser's writes not yet echoed back by the database, per document.
-  function expect(c, id, e) { e.at = Date.now(); (c.echo[id] = c.echo[id] || []).push(e); }
-  function isEcho(e, del, row) {
-    if (e.del || del) return !!e.del && del;
-    var d = row.data;
-    if (d === undefined) return false;
-    if (e.keys) return e.keys.every(function (k) { return stable(d[k]) === e.vals[k]; });
-    return stable(d) === e.val;
+  // Items to download again, a few at once (one request for the ones asked for within 30 ms).
+  function want(c, id) {
+    c.want[id] = true;
+    if (!c.timer) c.timer = setTimeout(function () { flush(c); }, 30);
   }
-  // A write of this browser to the row is still on the way (its echo is at most 15 s old).
-  function pending(c, id) { var q = c.echo[id], t = Date.now(); return !!q && q.some(function (e) { return t - e.at < 15000; }); }
-  function failed(col, id) { var c = cols[col]; if (c) { delete c.echo[id]; delete c.stamp[id]; load(c); } }
+  function flush(c) {
+    c.timer = 0;
+    if (cols[c.col] !== c || !c.ready) return;
+    // An item with a write of this browser on the way is downloaded when the write ends.
+    var ids = Object.keys(c.want).filter(function (id) { if (c.busy[id]) { c.dirty[id] = true; return false; } return true; });
+    c.want = {};
+    if (!ids.length) return;
+    var ver = {}; ids.forEach(function (id) { ver[id] = c.ver[id]; });
+    fetchSome(c.col, ids).then(function (data) {
+      if (cols[c.col] !== c) return;
+      var got = {}, changed = false;
+      data.forEach(function (r) {
+        got[r.id] = true;
+        if (c.busy[r.id]) { c.dirty[r.id] = true; return; }
+        if (setRow(c, r.id, doc(r), ts(r.updated_at))) changed = true;
+      });
+      // Asked for but not returned: deleted (unless something newer about it arrived meanwhile).
+      ids.forEach(function (id) { if (!got[id] && !c.busy[id] && c.ver[id] === ver[id] && dropRow(c, id)) changed = true; });
+      if (changed) emit(c);
+    }, function (e) { console.warn('Hounds: não foi possível baixar itens de ' + c.col + '.', e); });
+  }
 
-  function apply(c, p, replay) {
+  // The Mesa's rows come whole in the realtime notice, with the same fields as their views.
+  function mesaDoc(col, r) {
+    if (col === 'mesa') return Object.assign({ id: r.id }, r.estado, { rev: r.rev, n: r.partes, by: r.autor, createdAt: msOf(r.criado_em), updatedAt: msOf(r.atualizado_em) });
+    return { id: r.id, rev: r.rev, i: r.indice, part: r.parte, createdAt: msOf(r.criado_em) };
+  }
+  // The watched collection of a notice. A deleted marker comes only with its id.
+  function colOf(table, row, del) {
+    if (table !== 'marcadores') return COL_OF[table] || null;
+    if (!del) return row.mapa_id ? 'maps/' + row.mapa_id + '/markers' : null;
+    return Object.keys(cols).filter(function (k) { return MARKERS.test(k) && row.id in cols[k].rows; })[0] || null;
+  }
+  function onChange(p) {
     var del = p.eventType === 'DELETE', row = del ? p.old : p.new;
     if (!row || row.id == null) return;
-    var id = row.id, q = c.echo[id];
-    if (q) {
-      var now = Date.now(), hit = -1;
-      q = q.filter(function (e) { return now - e.at < 15000; });
-      for (var i = 0; i < q.length; i++) if (isEcho(q[i], del, row)) { hit = i; break; }
-      if (hit >= 0) q.splice(0, hit + 1);
-      if (q.length) { c.echo[id] = q; return; } // more of this browser's writes to it are on the way
-      delete c.echo[id];
-    }
-    c.ver[id] = (c.ver[id] || 0) + 1;
-    if (del) {
-      delete c.stamp[id];
-      if (!(id in c.rows)) return;
-      delete c.rows[id];
-    } else if (!row.data || typeof row.data !== 'object') {
-      refetch(c, id); return; // row over the 1 MB realtime limit (or a column left out of the event) arrives without its data
-    } else {
-      if (row.updated_at) c.stamp[id] = ts(row.updated_at);
-      var d = doc(row);
-      if (c.rows[id] && stable(c.rows[id]) === stable(d)) return;
-      c.rows[id] = d;
-    }
-    if (!replay) emit(c);
-  }
-  function refetch(c, id) {
-    var v = c.ver[id];
-    client.from(T).select('id, data, updated_at').eq('col', c.col).eq('id', id).then(function (res) {
-      if (res.error || cols[c.col] !== c || c.ver[id] !== v) return;
-      var r = res.data && res.data[0];
-      if (r) { c.rows[id] = doc(r); c.stamp[id] = ts(r.updated_at); } else { delete c.rows[id]; delete c.stamp[id]; }
-      emit(c);
-    });
-  }
-
-  function onChange(p) {
-    var row = p && (p.eventType === 'DELETE' ? p.old : p.new), c = row && cols[row.col];
+    var col = colOf(p.table, row, del), c = col && cols[col], id = row.id;
     if (!c) return;
-    if (c.buffer) c.buffer.push(p);
-    if (c.ready) apply(c, p, false);
+    if (c.busy[id]) { c.dirty[id] = true; return; } // a write of this browser is on the way: its answer, or a download after it, comes next
+    if (!c.ready) { if (!del) want(c, id); return; }
+    if (del) { delete c.want[id]; if (dropRow(c, id)) emit(c); return; }
+    var stamp = ts(row.gravado_em);
+    if (stamp && c.stamp[id] === stamp) return; // this version is here already (the echo of a write of this browser)
+    if ((col === 'mesa' && row.estado && typeof row.estado === 'object') || (col === 'mesa_chunks' && typeof row.parte === 'string')) {
+      if (setRow(c, id, mesaDoc(col, row), stamp)) emit(c);
+      return;
+    }
+    want(c, id); // includes a Mesa row over the 1 MB realtime limit, which arrives without its state
   }
   function ensureChannel() {
     if (channel) return;
-    channel = client.channel('hounds', { config: { broadcast: { self: false } } })
-      .on('postgres_changes', { event: '*', schema: 'public', table: T }, onChange)
-      .on('broadcast', { event: 'hub' }, function (m) { var p = m && m.payload, f = p && bcast[p.kind]; if (f) f(p.data); });
+    channel = client.channel('hounds', { config: { broadcast: { self: false } } });
+    Object.keys(COL_OF).concat(['marcadores']).forEach(function (t) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, onChange);
+    });
+    channel.on('broadcast', { event: 'hub' }, function (m) { var p = m && m.payload, f = p && bcast[p.kind]; if (f) f(p.data); });
     channel.subscribe(function (status) {
       live = status === 'SUBSCRIBED';
       if (live) resync(); // first connection and every reconnection
@@ -184,11 +214,12 @@ function SupabaseStore(client, bucket) {
 
   function watch(col, cb, err) {
     ensureChannel();
-    var c = cols[col] || (cols[col] = { col: col, rows: {}, stamp: {}, ready: false, buffer: null, subs: [], errs: [], echo: {}, ver: {}, gen: 0 });
+    var c = cols[col] || (cols[col] = { col: col, rows: {}, stamp: {}, ver: {}, ready: false, loading: false, gen: 0, subs: [], errs: [],
+                                        busy: {}, dirty: {}, want: {}, timer: 0 });
     c.subs.push(cb);
     if (err) c.errs.push(err);
     if (c.ready) emit(c);
-    else if (!c.buffer) load(c);
+    else if (!c.loading) load(c);
     return function () {
       c.subs = c.subs.filter(function (x) { return x !== cb; });
       c.errs = c.errs.filter(function (x) { return x !== err; });
@@ -204,51 +235,73 @@ function SupabaseStore(client, bucket) {
     var c = cols[col];
     if (c && c.ready) return Promise.resolve(list(c).filter(function (d) { return d[field] === value; }));
     if (typeof value !== 'string') return all(col).then(function (l) { return l.filter(function (d) { return d[field] === value; }); });
-    return client.from(T).select('id, data').eq('col', col).eq('data->>' + field, value)
-      .then(function (res) { if (res.error) throw res.error; return (res.data || []).map(doc).sort(byCreated); });
+    return select(col, 'id, data').eq('data->>' + field, value).then(rows).then(function (d) { return d.map(doc).sort(byCreated); });
+  }
+
+  // A write of this browser to an item: begin() before, end() with the database's answer.
+  function begin(c, id) { if (c) c.busy[id] = (c.busy[id] || 0) + 1; }
+  function end(c, id, ok, saved) {
+    if (!c || cols[c.col] !== c || !c.busy[id]) return;
+    if (--c.busy[id] > 0) return; // another write of this browser to it is still on the way
+    delete c.busy[id];
+    var dirty = c.dirty[id];
+    delete c.dirty[id];
+    if (!ok || dirty || !c.ready) { want(c, id); return; } // failed, or changed meanwhile: the database's copy
+    if (saved && saved.data) { if (setRow(c, id, doc(saved), ts(saved.updated_at))) emit(c); }
+    else if (saved && saved.updated_at) c.stamp[id] = ts(saved.updated_at); // the Mesa: the copy here is what was saved
+  }
+  function call(c, id, fn, args) {
+    begin(c, id);
+    return client.rpc(fn, args).then(function (res) {
+      if (res.error) { end(c, id, false); throw res.error; }
+      end(c, id, true, res.data);
+      return res.data;
+    }, function (e) { end(c, id, false); throw e; });
   }
 
   function put(col, id, body) {
     var docId = id || uid(), c = cols[col];
-    if (c && c.ready) { expect(c, docId, { val: stable(body) }); c.rows[docId] = Object.assign({ id: docId }, body); emit(c); }
-    return client.from(T).upsert({ col: col, id: docId, data: body, updated_at: new Date().toISOString() }, { onConflict: 'col,id' })
-      .then(function (res) { if (res.error) throw res.error; return docId; })
-      .catch(function (e) { failed(col, docId); throw e; });
+    if (c && c.ready) { c.rows[docId] = Object.assign({ id: docId }, body); emit(c); }
+    return call(c, docId, 'hounds_put', { p_col: col, p_id: docId, p_doc: body }).then(function () { return docId; });
   }
   function patch(col, id, p) {
     var c = cols[col];
-    if (c && c.ready && c.rows[id]) {
-      var keys = Object.keys(p).filter(function (k) { return p[k] !== undefined; }), vals = {};
-      keys.forEach(function (k) { vals[k] = stable(p[k]); });
-      expect(c, id, { keys: keys, vals: vals });
-      c.rows[id] = Object.assign({}, c.rows[id], p); emit(c);
-    }
-    return client.rpc('patch_hounds_doc', { p_col: col, p_id: id, p_patch: p }).then(function (res) {
-      if (!res.error) return;
-      // Without the SQL function: read, merge and write back.
-      return client.from(T).select('data').eq('col', col).eq('id', id).single().then(function (sel) {
-        if (sel.error) throw sel.error;
-        var merged = Object.assign({}, sel.data && sel.data.data, p);
-        return client.from(T).upsert({ col: col, id: id, data: merged, updated_at: new Date().toISOString() }, { onConflict: 'col,id' })
-          .then(function (uRes) { if (uRes.error) throw uRes.error; });
-      });
-    }).catch(function (e) { failed(col, id); throw e; });
+    if (c && c.ready && c.rows[id]) { c.rows[id] = Object.assign({}, c.rows[id], p); emit(c); }
+    return call(c, id, 'hounds_patch', { p_col: col, p_id: id, p_patch: p });
   }
   function remove(col, id) {
     var c = cols[col];
-    if (c && c.ready && c.rows[id]) { expect(c, id, { del: true }); delete c.rows[id]; emit(c); }
-    return client.from(T).delete().eq('col', col).eq('id', id)
-      .then(function (res) { if (res.error) throw res.error; })
-      .catch(function (e) { failed(col, id); throw e; });
+    if (c && c.ready && dropRow(c, id)) emit(c);
+    return call(c, id, 'hounds_remove', { p_col: col, p_id: id }).then(function () {});
   }
   // Many rows at once: one redraw here and BATCH ids per request, instead of one of each per row.
   function removeMany(col, ids) {
     var c = cols[col], parts = [];
-    if (c && c.ready) { ids.forEach(function (id) { if (c.rows[id]) { expect(c, id, { del: true }); delete c.rows[id]; } }); emit(c); }
+    if (c && c.ready) { var changed = false; ids.forEach(function (id) { if (dropRow(c, id)) changed = true; }); if (changed) emit(c); }
     for (var i = 0; i < ids.length; i += BATCH) parts.push(ids.slice(i, i + BATCH));
     return parts.reduce(function (p, part) {
-      return p.then(function () { return client.from(T).delete().eq('col', col).in('id', part).then(function (res) { if (res.error) throw res.error; }); });
-    }, Promise.resolve()).catch(function (e) { if (c) load(c); throw e; });
+      return p.then(function () {
+        part.forEach(function (id) { begin(c, id); });
+        return client.rpc('hounds_remove_many', { p_col: col, p_ids: part }).then(function (res) {
+          part.forEach(function (id) { end(c, id, !res.error); });
+          if (res.error) throw res.error;
+        }, function (e) { part.forEach(function (id) { end(c, id, false); }); throw e; });
+      });
+    }, Promise.resolve());
+  }
+  // A new image for a map, deleting its markers (their positions belong to the old image), in one
+  // transaction. Without confirmed and with markers there, rejects with { code: 'markers_exist',
+  // count }. Resolves with { removidos, imagemAnterior }.
+  function replaceMapImage(mapId, image, confirmed, updatedAt) {
+    return client.rpc('hounds_trocar_imagem_mapa', { p_mapa_id: mapId, p_imagem: image, p_confirmado: confirmed === true, p_atualizado_em: updatedAt || null }).then(function (res) {
+      var e = res.error;
+      if (e && e.hint === 'markers_exist') throw { code: 'markers_exist', count: Number(e.details) || 0, message: e.message };
+      if (e) throw e;
+      if (cols.maps) want(cols.maps, mapId);
+      var mk = cols['maps/' + mapId + '/markers'];
+      if (mk && mk.ready) { var changed = false; Object.keys(mk.rows).forEach(function (id) { if (dropRow(mk, id)) changed = true; }); if (changed) emit(mk); }
+      return res.data || { removidos: 0, imagemAnterior: null };
+    });
   }
 
   function upload(file) {
@@ -276,10 +329,12 @@ function SupabaseStore(client, bucket) {
 
   return {
     kind: 'supabase',
+    relational: true,
     canUpload: true,
     canWrite: function () { return true; },
     init: function () { return Promise.resolve(); },
     watch: watch, all: all, query: query, put: put, patch: patch, remove: remove, removeMany: removeMany,
+    replaceMapImage: replaceMapImage,
     upload: upload, imageUrl: imageUrl, dropImage: dropImage,
     // For MesaSync: save soon and in one row, and reach the others directly.
     saveDelay: 300,

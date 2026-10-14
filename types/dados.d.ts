@@ -243,6 +243,17 @@ interface Store {
   putBatch?(col: string, items: { id: string; data: object }[], toRemove?: string[]): Promise<unknown>;
   /** Remove vários documentos de uma vez (Supabase). */
   removeMany?(col: string, ids: string[]): Promise<unknown>;
+  /**
+   * Supabase: banco relacional. Uma exclusão já segue as regras da entidade no banco (os submapas
+   * de um mapa excluído sobem, o personagem sai das organizações...), numa transação só, e as
+   * operações de mundo.js não repetem esses passos.
+   */
+  relational?: boolean;
+  /**
+   * Supabase: troca a imagem do mapa e exclui os marcadores dele numa transação. Sem `confirmed`
+   * e com marcadores, rejeita com `{ code: 'markers_exist', count }`.
+   */
+  replaceMapImage?(mapId: string, image: ImageInfo, confirmed: boolean, updatedAt?: number): Promise<{ removidos: number; imagemAnterior: string | null }>;
   /** Supabase: atraso para salvar a Mesa (ms). */
   saveDelay?: number;
   /** Supabase: tamanho máximo do estado da Mesa salvo numa linha só. */

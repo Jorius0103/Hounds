@@ -15,10 +15,11 @@ O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, 
 | `dados/` | Cópia dos dados salvos no site, em JSON. |
 | `imagens/` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |
 | `supabase-config.js` | Configuração do banco de dados (Supabase). Veja [SUPABASE.md](SUPABASE.md). |
+| `supabase/migrations/` | Estrutura do banco no Supabase (tabelas, views, funções de gravação, RLS e migração dos dados), em migrations SQL executadas em ordem. Veja [SUPABASE.md](SUPABASE.md). |
 | `firebase-config.js` | Configuração do banco de dados (Firebase). Veja [FIREBASE.md](FIREBASE.md). |
 | `firestore.rules` | Regras de acesso do banco: só a conta da campanha lê e grava. |
 | `types/`, `jsconfig.json` | Tipos dos dados para a checagem do VS Code (não vão para o navegador). Veja [CONTRIBUTING.md](CONTRIBUTING.md). |
-| `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase, e `checar-globais.mjs`, usado na checagem dos PRs. |
+| `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase, `validar-migracao.mjs` (compara os dados antigos com as tabelas do Supabase) e `checar-globais.mjs`, usado na checagem dos PRs. |
 | `src/`, `vite.config.ts`, `package.json` | Código-fonte React da Mesa (trazido do AI Studio). Ainda não gera o `mesa.html`. |
 
 ### Arquivos de dados (`dados/`)
@@ -47,7 +48,7 @@ Com o `supabase-config.js` preenchido, o site local usa o **mesmo banco de produ
 O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. A página escolhe onde guardar os dados, nesta ordem:
 
 1. **Artifact do claude.ai:** usa o banco de dados e o armazenamento de imagens da plataforma.
-2. **Supabase:** quando `supabase-config.js` está preenchido. Dados em tempo real (PostgreSQL + Realtime + Storage): cada mudança aparece na hora para quem altera e em uma fração de segundo nos outros navegadores. Configuração e detalhes da sincronização em [SUPABASE.md](SUPABASE.md).
+2. **Supabase:** quando `supabase-config.js` está preenchido. Dados em tabelas relacionais do PostgreSQL, imagens no Storage e mudanças em tempo real pelo Realtime: cada mudança aparece na hora para quem altera e em uma fração de segundo nos outros navegadores. Configuração e detalhes da sincronização em [SUPABASE.md](SUPABASE.md).
 3. **Firebase:** quando `firebase-config.js` está preenchido. Todos veem os mesmos dados, em tempo real, e o grupo entra com a senha da campanha. Configuração em [FIREBASE.md](FIREBASE.md).
 4. **Só o navegador:** sem nenhum dos dois, a página funciona, mas os dados ficam só no navegador de quem usa e começam vazios.
 
@@ -76,6 +77,6 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 
 ## Segurança
 
-Com o Firebase, só quem sabe a senha da campanha lê ou altera os dados. Dentro do site, porém, quem entrou escolhe qualquer usuário, inclusive o Mestre. Itens que não estão visíveis para todos somem da tela, mas ainda são enviados ao navegador de todo mundo. Não guarde nada sigiloso.
+Com o Firebase, só quem sabe a senha da campanha lê ou altera os dados. Com o Supabase, qualquer pessoa com o link lê e altera os dados pelo site, mas o banco só aceita gravações pelas funções do Hounds, que validam os dados e os relacionamentos (veja a seção "Segurança" do [SUPABASE.md](SUPABASE.md)). Dentro do site, porém, quem entrou escolhe qualquer usuário, inclusive o Mestre. Itens que não estão visíveis para todos somem da tela, mas ainda são enviados ao navegador de todo mundo. Não guarde nada sigiloso.
 
 Os arquivos de `dados/` e `imagens/` deste repositório ficam públicos no GitHub Pages, sem senha.

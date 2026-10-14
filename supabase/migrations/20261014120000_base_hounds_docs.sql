@@ -1,7 +1,11 @@
 -- ============================================================
--- SCRIPT DE CONFIGURAÇÃO DO SUPABASE PARA O HOUNDS
--- Execute este script no SQL Editor do seu projeto Supabase:
--- https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql
+-- 1/6 · BASE: o banco de documentos JSON original do Hounds
+-- (antigo supabase-setup.sql). O site não grava mais aqui: os dados
+-- foram para as tabelas relacionais das migrations seguintes, e a
+-- 20261014120500 deixa esta tabela só para leitura, como cópia de
+-- segurança. Continua na sequência para que um banco novo tenha o
+-- mesmo ponto de partida (e o bucket de imagens, criado no passo 6).
+-- Ordem e modo de executar em SUPABASE.md.
 -- ============================================================
 
 -- 1. Cria a tabela de documentos do Hounds (mapas, locais, personagens, etc.)

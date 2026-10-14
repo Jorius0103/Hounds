@@ -6,6 +6,7 @@
 |---|---|
 | Uma aba (Mapas, Locais, Personagens, Fichas, Organizações, Eventos, Magias, Anotações, Usuários, Início) | `js/tabs/tab-<aba>.js` |
 | Como os dados são salvos, ou regras de visibilidade | `js/mundo.js` (operações `Ops.*` e visibilidade) e `js/store/` (bancos) |
+| Tabelas, campos ou regras do banco no Supabase | Uma migration nova em `supabase/migrations/` (nunca edite uma que já rodou). Um campo novo num documento precisa de coluna, de leitura na view `<tabela>_doc` e de gravação em `hounds_interno.salvar_<entidade>`. Veja [SUPABASE.md](SUPABASE.md). |
 | Uma rota nova (`#algo`) | `js/rotas.js` (`parseRoute`, `hrefFor`) e `js/app.js` (`renderPage`) |
 | O menu lateral ou o tema | `js/menu.js` |
 | Ícones, categorias de marcador, funções pequenas (`esc`, `toast`…) | `js/utils.js` |

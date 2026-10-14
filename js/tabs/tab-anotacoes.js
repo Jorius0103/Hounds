@@ -60,7 +60,8 @@ function renderNotebookPage() {
   var dn = $('delNbNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderNotebookPage(); };
   var dy = $('delNbYes'); if (dy) dy.onclick = function () {
     dy.disabled = true;
-    var all = W.raw.notes.filter(function (n) { return n.notebookId === nb.id; });
+    // In a relational database the notes go with their notebook, in one transaction.
+    var all = W.store.relational ? [] : W.raw.notes.filter(function (n) { return n.notebookId === nb.id; });
     all.reduce(function (p, n) { return p.then(function () { return W.store.remove('notes', n.id); }); }, Promise.resolve())
       .then(function () { return W.store.remove('notebooks', nb.id); })
       .then(function () { toast('Título excluído.'); go('#anotacoes', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
