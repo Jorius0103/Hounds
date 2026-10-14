@@ -1,20 +1,32 @@
-{
-  "user-espectador": {
-    "createdAt": 1791211382843,
-    "name": "Espectador",
-    "role": "visualizador",
-    "updatedAt": 1791211382843
-  },
-  "user-leandro": {
-    "createdAt": 1791211382842,
-    "name": "Leandro",
-    "role": "mestre",
-    "updatedAt": 1791211382842
-  },
-  "user-muvpm6366mtg2u3n": {
-    "createdAt": 1791232556370,
-    "name": "palermo",
-    "role": "jogador",
-    "updatedAt": 1791232556370
-  }
+﻿{
+    "user-espectador":  {
+                            "createdAt":  1791211382843,
+                            "name":  "Espectador",
+                            "role":  "visualizador",
+                            "updatedAt":  1791211382843
+                        },
+    "user-leandro":  {
+                         "createdAt":  1791211382842,
+                         "name":  "Leandro",
+                         "role":  "mestre",
+                         "updatedAt":  1791211382842
+                     },
+    "user-muvpm6366mtg2u3n":  {
+                                  "createdAt":  1791232556370,
+                                  "name":  "palermo",
+                                  "role":  "jogador",
+                                  "updatedAt":  1791232556370
+                              },
+    "user-mv37om22fetmwu1q":  {
+                                  "createdAt":  1791646800000,
+                                  "name":  "Renato",
+                                  "role":  "jogador",
+                                  "updatedAt":  1791646800000
+                              },
+    "user-mv37opqxi87qtpk0":  {
+                                  "createdAt":  1791646800000,
+                                  "name":  "Jorio",
+                                  "role":  "jogador",
+                                  "updatedAt":  1791646800000
+                              }
 }

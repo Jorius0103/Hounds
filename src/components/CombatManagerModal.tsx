@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Combat } from '../types/rpg';
-import { Swords, Plus, Trash2, Edit2, X, Eye, EyeOff } from 'lucide-react';
+import { Swords, Plus, Trash2, Edit2, X, Eye, EyeOff, Download, Upload } from 'lucide-react';
 
 interface CombatManagerModalProps {
   isOpen: boolean;
@@ -57,6 +57,73 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     if (!editName.trim()) return;
     onRenameCombat(id, editName.trim(), editDesc.trim());
     setEditingCombatId(null);
+  };
+
+  const handleDownloadBackup = () => {
+    const backupKeys = [
+      'gurps_combat_master_data_v2',
+      'gurps_fixed_personagens_v1',
+      'gurps_combat_master_conditions_v2',
+      'gurps_combat_master_users_v2',
+      'gurps_combat_master_active_combat_id_v1',
+      'gurps_combat_master_deleted_v1',
+      'gurps_combat_master_editors_v1',
+      'hounds_active_user',
+      'hounds_mesa_backup_v1',
+      'hounds_theme'
+    ];
+    const payload: Record<string, any> = {
+      app: 'Hounds GURPS',
+      exportedAt: new Date().toISOString(),
+      localStorage: {},
+    };
+    backupKeys.forEach((k) => {
+      try {
+        const item = localStorage.getItem(k);
+        if (item !== null) payload.localStorage[k] = JSON.parse(item);
+      } catch {
+        payload.localStorage[k] = localStorage.getItem(k);
+      }
+    });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hounds-backup-completo-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleUploadBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const backup = JSON.parse(ev.target?.result as string);
+        if (backup && backup.localStorage) {
+          Object.keys(backup.localStorage).forEach((k) => {
+            const val = backup.localStorage[k];
+            localStorage.setItem(k, typeof val === 'string' ? val : JSON.stringify(val));
+          });
+          alert('Backup restaurado com sucesso! A página será recarregada.');
+          window.location.reload();
+        } else if (backup && (backup.combats || backup.gurps_combat_master_data_v2)) {
+          if (backup.gurps_combat_master_data_v2) localStorage.setItem('gurps_combat_master_data_v2', JSON.stringify(backup.gurps_combat_master_data_v2));
+          else if (backup.combats) localStorage.setItem('gurps_combat_master_data_v2', JSON.stringify(backup.combats));
+          if (backup.players || backup.gurps_fixed_personagens_v1) localStorage.setItem('gurps_fixed_personagens_v1', JSON.stringify(backup.players || backup.gurps_fixed_personagens_v1));
+          alert('Backup restaurado com sucesso! A página será recarregada.');
+          window.location.reload();
+        } else {
+          throw new Error('Formato de backup inválido.');
+        }
+      } catch (err: any) {
+        alert('Erro ao restaurar backup: ' + (err?.message || 'Arquivo corrompido'));
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -280,6 +347,37 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               </div>
             );
           })}
+        </div>
+
+        {/* Seção de Backup e Restauração Completa da Mesa */}
+        <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-xs text-slate-400">
+            <span className="font-bold text-amber-300">Backup & Segurança:</span> Baixe o estado atual da Mesa em arquivo ou restaure.
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadBackup}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm"
+              title="Baixar arquivo JSON completo com todos os combates, personagens e configurações"
+            >
+              <Download size={14} />
+              <span>Baixar Backup (.json)</span>
+            </button>
+            <label
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer shadow-sm"
+              title="Restaurar a Mesa a partir de um arquivo de backup (.json)"
+            >
+              <Upload size={14} />
+              <span>Restaurar Backup</span>
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleUploadBackup}
+              />
+            </label>
+          </div>
         </div>
       </div>
     </div>
