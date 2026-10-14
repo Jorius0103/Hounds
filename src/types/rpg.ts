@@ -2,6 +2,9 @@ import { TacticalState } from './tactical';
 
 export type UserRole = 'mestre' | 'jogador';
 
+// Papel de quem está usando a Mesa: o Jogador sem permissão de edição é 'visualizador' (só assiste).
+export type MesaRole = UserRole | 'visualizador';
+
 export interface UserAccount {
   id: string;
   name: string; // Ex: Leandro
@@ -113,6 +116,8 @@ export interface ActionLogEntry {
   npcName?: string;
   npcAvatar?: string;
   npcPreset?: string;
+  npcCharacterType?: 'player' | 'npc'; // Separa Personagens de NPCs no filtro do log geral
+  combatId?: string; // Combate em que a ação aconteceu
 
   // Detalhes de itens extras
   itemId?: string;
@@ -269,6 +274,9 @@ export interface Combat {
   npcs: NPC[];
   tacticalState?: TacticalState;
   currentRound?: number;
+  round?: number; // O mesmo que currentRound, com o nome usado nos dados mais antigos
+  events?: unknown[]; // Eventos do combate (usados só pelo mesa.html compilado)
+  roundLog?: { round: number; endedAt: number }[]; // Fim de cada rodada (usado só pelo mesa.html compilado)
   editorUserIds?: string[]; // IDs dos jogadores que possuem permissão de edição
   playerIds?: string[]; // IDs dos personagens de jogadores visíveis/ativos neste combate
   isActive?: boolean; // Se false, inativo: não aparece na barra principal, apenas no CRUD

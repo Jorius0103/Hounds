@@ -38,8 +38,9 @@ function mirrorUsers() {
   var old = {}; mesaUsers().forEach(function (u) { old[u.id] = u; });
   var out = W.users.map(function (u) {
     var o = old[u.id] || {};
-    // The Mesa knows Mestre and Jogador: an Admin is a Jogador there.
-    return { id: u.id, name: u.name, role: u.role === 'admin' ? 'jogador' : u.role, password: o.password || '', needsPasswordReset: false, createdAt: o.createdAt || new Date(u.createdAt || Date.now()).toLocaleDateString('pt-BR') };
+    // The Mesa knows Mestre and Jogador: an Admin is a Jogador there. Its own login (and the passwords
+    // it kept here in plain text) is not used inside the hub: the empty password overwrites old ones.
+    return { id: u.id, name: u.name, role: u.role === 'admin' ? 'jogador' : u.role, password: '', needsPasswordReset: false, createdAt: o.createdAt || new Date(u.createdAt || Date.now()).toLocaleDateString('pt-BR') };
   });
   try { localStorage.setItem(MESA_USERS_KEY, JSON.stringify(out)); } catch (e) {}
 }

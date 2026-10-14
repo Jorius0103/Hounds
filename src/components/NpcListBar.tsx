@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NPC, UserRole } from '../types/rpg';
+import { NPC, MesaRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
 import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X } from 'lucide-react';
@@ -11,7 +11,7 @@ interface NpcListBarProps {
   onAddNewNpc: () => void;
   onAddNewPlayer?: () => void;
   onUpdateNpc?: (id: string, updates: Partial<NPC>) => void;
-  currentUserRole?: UserRole;
+  currentUserRole?: MesaRole;
   currentRound?: number;
   onUpdateRound?: (round: number) => void;
   canControlRound?: boolean;
@@ -32,9 +32,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs' | 'alive' | 'dead'>('all');
 
-  // Se jogador, exibe apenas os que estão visíveis (personagens são sempre visíveis)
+  // Se jogador ou visualizador, exibe apenas os que estão visíveis (personagens são sempre visíveis)
   const rawDisplayedNpcs =
-    currentUserRole === 'jogador'
+    currentUserRole === 'jogador' || currentUserRole === 'visualizador'
       ? npcs.filter((n) => n.characterType === 'player' || n.isVisibleToPlayer !== false)
       : npcs;
 

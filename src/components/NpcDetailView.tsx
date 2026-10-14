@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, UserRole, ArmorKit } from '../types/rpg';
+import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, MesaRole, ArmorKit, ConditionDefinition, ActiveSpell, AffectedSpell } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import {
   getHpStatus,
@@ -50,6 +50,7 @@ import {
   Target,
   Check,
   Layers,
+  X,
 } from 'lucide-react';
 
 const getItemIcon = (name: string, category?: string) => {
@@ -84,7 +85,7 @@ interface NpcDetailViewProps {
   onRemoveActiveSpell?: (casterId: string, spellId: string) => void;
   onRemoveAffectedSpell?: (targetId: string, spellId: string) => void;
   isPlayerUser?: boolean;
-  currentUserRole?: UserRole;
+  currentUserRole?: MesaRole;
   hasEditPermission?: boolean;
   currentRound?: number;
   conditions?: ConditionDefinition[];
@@ -494,7 +495,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   // Div 1: Alertas Críticos (Condições & Estados Críticos, Pontos de Vida e Pontos de Fadiga)
   const renderCriticalAlertsBox = (isPlayer: boolean = false) => {
-    const alerts: { id: string; badgeClass: string; text: string; icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
+    const alerts: { id: string; badgeClass: string; text: string; tooltip?: string; icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
 
     // 1. Mortalidade
     if (npc.isDead) {
@@ -573,7 +574,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           return (
             <span
               key={al.id}
-              title={(al as any).tooltip || al.text}
+              title={al.tooltip || al.text}
               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs border ${al.badgeClass}`}
             >
               {Icon && <Icon size={12} className="shrink-0" />}

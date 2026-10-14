@@ -983,7 +983,7 @@ export default function App() {
     }
     F.cond = (o.statusConditions || []).map((x) => typeof x === 'string' ? x : (x && (x as any).id) || (x as any).name).filter(Boolean).sort().join('|');
     const ta = o.turnActions || ({} as any);
-    for (const k of ['parryCount', 'dodgeCount', 'blockCount', 'usedRetreat', 'shock', 'usedFatigueThisTurn', 'notes']) {
+    for (const k of ['parryCount', 'dodgeCount', 'blockCount', 'usedRetreat', 'shock', 'usedFatigueThisTurn', 'notes'] as (keyof NPC['turnActions'])[]) {
       F['ta.' + k] = ta[k] === undefined || ta[k] === null ? '' : ta[k];
     }
     for (const it of o.extraItems || []) {
@@ -1615,6 +1615,7 @@ export default function App() {
       targetId: string;
       targetName: string;
       round: number;
+      duration?: number;
     },
     manaStoneUsage?: {
       itemId: string;

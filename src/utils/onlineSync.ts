@@ -3,7 +3,7 @@ import { Combat, ConditionDefinition, UserAccount, NPC } from '../types/rpg';
 
 export interface RemoteSyncPayload {
   clientId: string;
-  type: 'SYNC_FULL' | 'SYNC_NPC' | 'REQUEST_SYNC' | 'SYNC_ROUND';
+  type: 'SYNC_FULL' | 'SYNC_NPC' | 'REQUEST_SYNC' | 'SYNC_ROUND' | 'SYNC_EDITORS';
   timestamp: number;
   npc?: NPC;
   combats?: Combat[];
@@ -13,6 +13,7 @@ export interface RemoteSyncPayload {
   players?: NPC[];
   combatId?: string;
   round?: number;
+  editorUserIds?: string[];
 }
 
 export type SyncStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
