@@ -254,6 +254,11 @@ interface Store {
    * e com marcadores, rejeita com `{ code: 'markers_exist', count }`.
    */
   replaceMapImage?(mapId: string, image: ImageInfo, confirmed: boolean, updatedAt?: number): Promise<{ removidos: number; imagemAnterior: string | null }>;
+  /**
+   * Supabase: contas de login, pelo Mestre (Edge Function "contas"). 'criar' { id, nome, email, senha, papel },
+   * 'senha' { id, senha }, 'excluir' { id, excluirConta }. Rejeita com `{ message }`.
+   */
+  account?(acao: 'criar' | 'senha' | 'excluir', dados: object): Promise<any>;
   /** Supabase: atraso para salvar a Mesa (ms). */
   saveDelay?: number;
   /** Supabase: tamanho máximo do estado da Mesa salvo numa linha só. */

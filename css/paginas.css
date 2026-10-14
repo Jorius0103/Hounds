@@ -132,6 +132,7 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .gate-login .btn, .gate-list > .btn { width: 100%; justify-content: center; }
 .gate-note { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
 .gate-me { cursor: default; box-sizing: border-box; }
+.user-row .del-acct { flex-basis: 100%; display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
 .gate-me:hover { border-color: var(--line-2); background: var(--surface-2); }
 .who { margin: 10px 10px 0; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; text-align: left; min-width: 0; }
 .who:hover { background: var(--surface); }

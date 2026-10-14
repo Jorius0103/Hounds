@@ -15,6 +15,7 @@ O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, 
 | `dados/` | Cópia dos dados salvos no site, em JSON. |
 | `imagens/` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |
 | `supabase-config.js` | Configuração do banco de dados (Supabase). Veja [SUPABASE.md](SUPABASE.md). |
+| `supabase/functions/contas/` | Edge Function com que o Mestre cria contas de login e define senhas pela aba Usuários. Veja [SUPABASE.md](SUPABASE.md). |
 | `supabase/migrations/` | Estrutura do banco no Supabase (tabelas, views, funções de gravação, RLS e migração dos dados), em migrations SQL executadas em ordem. Veja [SUPABASE.md](SUPABASE.md). |
 | `firebase-config.js` | Configuração do banco de dados (Firebase). Veja [FIREBASE.md](FIREBASE.md). |
 | `firestore.rules` | Regras de acesso do banco: só a conta da campanha lê e grava. |
@@ -57,7 +58,7 @@ Os arquivos JSON não são carregados automaticamente. Para levá-los ao Supabas
 ## Funcionalidades
 
 - **Página inicial:** é a primeira página ao abrir o site. Tem atalhos para cada seção, com as contagens, e a lista do que foi atualizado por último. Para voltar a ela, clique na patinha no topo do menu.
-- **Usuários:** com o Supabase, login com email e senha (as contas são criadas pelo Mestre no painel do Supabase e ligadas pelo email na aba Usuários); sem ele, escolha de usuário ao abrir. Perfis Mestre (administrador de tudo), Jogador e Espectador. Só o Mestre gerencia os usuários.
+- **Usuários:** com o Supabase, login com email e senha (o Mestre cria as contas e define senhas na aba Usuários); sem ele, escolha de usuário ao abrir. Perfis Mestre (administrador de tudo), Jogador e Espectador. Só o Mestre gerencia os usuários.
 - **Visibilidade:** fora da Mesa de Combate, quem cria um item (mapa, local, personagem, marcador, título ou anotação) marca se ele fica "Visível para todos". Desmarcado, só o Mestre e quem criou veem, e só os dois podem mudar isso depois. Em mapas, locais e personagens, o Mestre também escolhe quais contas podem ver o item enquanto ele está oculto. Os itens criados antes dessa regra continuam sob controle do Mestre.
 - **Informações:** mapas em hierarquia (sem limite de níveis) com marcadores, árvore e filtros de busca; localizações e personagens.
   - Trocar a imagem de um mapa exclui todos os marcadores dele; com marcadores, o formulário pede confirmação antes.

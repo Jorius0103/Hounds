@@ -62,6 +62,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | 5 | `20261014120400_seguranca_rls.sql` | RLS e permissões. |
 | 6 | `20261014120500_migrar_dados.sql` | Deixa o `hounds_docs` só leitura, copia os dados e mostra a validação. |
 | 7 | `20261015120000_autenticacao.sql` | Login com email e senha e permissões de Mestre e Jogador no banco (seção 4). |
+| 8 | `20261016120000_contas_pelo_site.sql` | Apoio à Edge Function `contas`, com que o Mestre cria contas e define senhas pelo site (seção 4). |
 
 **Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
 
@@ -110,26 +111,41 @@ O script grava pelas mesmas funções do site.
 
 ## 4. Login e permissões
 
-Cada pessoa entra com **email e senha** (Supabase Auth, provedor Email). A conta é criada pelo Mestre no painel do Supabase e ligada ao usuário do Hounds pelo email, cadastrado na aba **Usuários**. A estrutura está na migration `20261015120000_autenticacao.sql` (7).
+Cada pessoa entra com **email e senha** (Supabase Auth, provedor Email). O Mestre cria as contas pela aba **Usuários** do site, com a Edge Function `contas` ([supabase/functions/contas/index.ts](supabase/functions/contas/index.ts)). Cada conta é ligada ao usuário do Hounds pelo email. A estrutura está nas migrations `20261015120000_autenticacao.sql` (7) e `20261016120000_contas_pelo_site.sql` (8).
 
 ### Ligar o login (uma vez)
 
-1. **Bloqueie o cadastro pelo site:** em [Authentication › Sign In / Providers](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/auth/providers), desligue **Allow new users to sign up** e deixe o provedor **Email** ligado. Assim só existem as contas que o Mestre criar.
-2. **Crie as contas:** em [Authentication › Users](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/auth/users), clique em **Add user › Create new user** para cada pessoa (Mestre e jogadores). Informe o email e uma senha e marque **Auto Confirm User**. Passe a senha para a pessoa.
-3. **Rode a migration 7** no SQL Editor. A partir daqui, o site antigo (sem login) para de funcionar, então siga direto para os passos 4 a 6.
-4. **Ligue a conta do Mestre**, ainda no SQL Editor, com o email da conta dele:
+1. **Bloqueie o cadastro aberto:** em [Authentication › Sign In / Providers](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/auth/providers), desligue **Allow new users to sign up** e deixe o provedor **Email** ligado. Assim só existem as contas que o Mestre criar.
+2. **Endereço do site:** em [Authentication › URL Configuration](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/auth/url-configuration), ponha `https://jorius0103.github.io/Hounds/` em **Site URL** e adicione `https://jorius0103.github.io/Hounds/**` em **Redirect URLs**. O padrão é `http://localhost:3000`, e é para lá que iriam os links dos emails do Supabase.
+3. **Rode as migrations 7 e 8** no SQL Editor. A partir da 7, o site antigo (sem login) para de funcionar, então siga direto para os passos 4 a 7.
+4. **Crie a conta do Mestre** em [Authentication › Users](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/auth/users), com **Add user › Create new user**. Informe o email e a senha e marque **Auto Confirm User**.
+5. **Ligue a conta do Mestre**, no SQL Editor, com o email dela:
    ```sql
    INSERT INTO public.usuario_email (usuario_id, email) VALUES ('user-leandro', 'email-do-mestre@exemplo.com');
    ```
    O email não fica no código: o repositório é público.
-5. **Teste no computador** antes de publicar: rode o site localmente (veja "Rodar no computador" no README), entre com a conta do Mestre e, na aba **Usuários**, cadastre o email de cada jogador.
-6. **Publique o site** (merge na `main`) e avise o grupo para recarregar a página e entrar com email e senha.
+6. **Publique a função `contas`:**
+   1. Em [Edge Functions](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/functions), clique em **Deploy a new function › Via Editor**.
+   2. Dê o nome `contas`, apague o código de exemplo e cole o conteúdo de [supabase/functions/contas/index.ts](supabase/functions/contas/index.ts).
+   3. Clique em **Deploy function**. Deixe ligada a opção **Verify JWT**, que é o padrão.
 
-### No dia a dia
+   Pela Supabase CLI, o mesmo é `supabase functions deploy contas`. A função recebe sozinha as chaves do projeto. Não configure nenhuma chave nela.
+7. **Publique o site** (merge na `main`), entre como Mestre e, na aba **Usuários**, crie ou ligue a conta de cada jogador. Avise o grupo para recarregar a página (Ctrl + Shift + R) e entrar com email e senha.
 
-- **Jogador novo:** o Mestre cria a conta no painel (passo 2) e cadastra o usuário com o mesmo email na aba Usuários.
-- **Esqueceu a senha:** o Mestre abre a conta em Authentication › Users e define uma senha nova. O site não envia email de recuperação, porque o servidor de email padrão do Supabase só envia para a equipe do projeto.
-- **Tirar alguém:** exclua o usuário na aba Usuários (a pessoa não entra mais) e, se quiser, a conta no painel.
+### No dia a dia (aba Usuários, como Mestre)
+
+- **Pessoa nova:** clique em **Novo usuário** e preencha nome, email, **senha** e perfil (Mestre ou Jogador). A conta de login é criada junto, já confirmada e sem enviar email. Passe o email e a senha para a pessoa.
+- **Conta que já existe no painel:** crie o usuário com o mesmo email e a senha em branco. Ele fica ligado à conta existente.
+- **Esqueceu a senha:** clique na chave (**Definir senha**) ao lado do usuário e defina uma nova. O site não usa a recuperação por email, porque o servidor de email padrão do Supabase envia só uns 2 emails por hora e só para a equipe do projeto.
+- **Mudar o perfil:** clique no lápis e troque o perfil. O banco não deixa rebaixar o último Mestre.
+- **Tirar alguém:** clique na lixeira. Com **Excluir também a conta de login** marcado, a conta do Supabase sai junto.
+
+Sem a função `contas` publicada, a aba Usuários avisa e o resto continua funcionando. Nesse caso, as contas são criadas no painel (passo 4) e ligadas pelo email. Para definir uma senha sem a função, use o SQL Editor:
+
+```sql
+UPDATE auth.users SET encrypted_password = extensions.crypt('SenhaNova123', extensions.gen_salt('bf')), updated_at = now()
+WHERE email = 'email-da-pessoa@exemplo.com';
+```
 
 ### O que o banco garante
 
@@ -145,7 +161,8 @@ Cada pessoa entra com **email e senha** (Supabase Auth, provedor Email). A conta
 - **Gravação:** só pelas funções `hounds_*`, que validam os dados e respeitam as chaves estrangeiras. RLS ligado em todas as tabelas e nenhuma escrita direta.
 - **Imagens:** enviar, trocar e apagar só com login. Quem tem o endereço de uma imagem a abre, mas os endereços são aleatórios.
 - **Mesa:** as mensagens diretas vão por um canal privado (`hounds-mesa`), só para contas ligadas.
-- **Chaves:** a `service_role` (que ignora as regras) nunca vai para o site. O `supabase-config.js` só tem a `anon`. Os scripts de `tools/` usam a `service_role` pela variável de ambiente `SUPABASE_SERVICE_ROLE_KEY`, só no seu computador.
+- **Contas de login:** só o Mestre cria, troca a senha ou exclui, pela função `contas`. Ela confere quem pediu antes de usar a chave `service_role`.
+- **Chaves:** a `service_role` (que ignora as regras) nunca vai para o site. O `supabase-config.js` só tem a `anon`, e a função `contas` recebe a `service_role` do próprio Supabase. Os scripts de `tools/` usam a `service_role` pela variável de ambiente `SUPABASE_SERVICE_ROLE_KEY`, só no seu computador.
 
 Itens ocultos ainda chegam ao navegador dos jogadores logados, e o site os esconde, como antes. Esconder no próprio banco é um passo seguinte.
 

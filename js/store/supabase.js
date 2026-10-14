@@ -316,6 +316,24 @@ function SupabaseStore(client, bucket) {
     });
   }
 
+  // Login accounts, by the Mestre (Edge Function "contas", supabase/functions/contas): acao
+  // 'criar' { id, nome, email, senha, papel }, 'senha' { id, senha }, 'excluir' { id, excluirConta }.
+  // Rejects with { message } in words for the Mestre.
+  function account(acao, dados) {
+    return client.functions.invoke('contas', { body: Object.assign({ acao: acao }, dados) }).then(function (res) {
+      if (!res.error) { if (cols.users) check(cols.users); return res.data; }
+      var e = res.error, ctx = e.context;
+      var body = ctx && typeof ctx.json === 'function' ? ctx.json().catch(function () { return null; }) : Promise.resolve(null);
+      return body.then(function (b) {
+        if (b && b.error) throw { message: b.error, code: b.code };
+        if (e.name === 'FunctionsFetchError' || e.name === 'FunctionsRelayError' || (ctx && ctx.status === 404)) {
+          throw { message: 'A função "contas" não está publicada no Supabase (veja SUPABASE.md, seção Login e permissões). Por enquanto, crie a conta no painel do Supabase.' };
+        }
+        throw e;
+      });
+    });
+  }
+
   function upload(file) {
     var ext = file.name ? file.name.slice(file.name.lastIndexOf('.')) : '';
     if (!ext && file.type) {
@@ -346,7 +364,7 @@ function SupabaseStore(client, bucket) {
     canWrite: function () { return true; },
     init: function () { return Promise.resolve(); },
     watch: watch, all: all, query: query, put: put, patch: patch, remove: remove, removeMany: removeMany,
-    replaceMapImage: replaceMapImage,
+    replaceMapImage: replaceMapImage, account: account,
     upload: upload, imageUrl: imageUrl, dropImage: dropImage,
     // For MesaSync: save soon and in one row, and reach the others directly.
     saveDelay: 300,
