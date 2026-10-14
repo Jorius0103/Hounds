@@ -6,3 +6,6 @@ Gurps/*.pdf
 
 # Cache do Python (gerado ao rodar Gurps/extrair_tecnicas.py, que importa extrair_pericias.py)
 __pycache__/
+
+# Estado local da Supabase CLI (projeto ligado, versão); cada um tem o seu
+supabase/.temp/
