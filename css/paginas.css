@@ -518,6 +518,45 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .av-sizes label > span, .av-tlist label > span { min-width: 0; }
 .av-tlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 14px; }
 .av-tab td.av-notes small.av-warn { display: block; font-size: 11.5px; }
+
+/* Ficha › Equipamentos: item, quantidade, peso, custo e observações; a carga embaixo */
+#equip { margin-top: 22px; }
+.eq-tab td:first-child { width: 30%; }
+.eq-tab th:nth-child(2), .eq-tab td.eq-qty { text-align: center; }
+.eq-tab th:nth-child(5), .eq-tab td.av-notes { text-align: left; }
+.eq-tab td.av-notes { color: var(--muted); border-left: 1px solid var(--line); }
+.eq-tab td:nth-child(n+2):nth-child(-n+4) { border-left: 1px solid var(--line); white-space: nowrap; }
+.eq-tab tfoot td:nth-child(n+2) { border-left: 1px solid var(--line); white-space: nowrap; }
+.eq-tab tfoot td small { font-weight: 500; }
+.eq-tab td small { white-space: normal; }
+.eq-tab td small.eq-note { display: none; color: var(--muted); }
+/* No celular a coluna Observações sai e o texto dela vai para baixo do nome do item. */
+@media (max-width: 560px) {
+  .eq-tab th:nth-child(5), .eq-tab tbody td:nth-child(5), .eq-tab tfoot td:last-child { display: none; }
+  .eq-tab td small.eq-note { display: block; }
+  .eq-tab th, .eq-tab td { padding-left: 8px; padding-right: 8px; }
+  .eq-tab td:first-child { width: auto; }
+}
+.eq-tab tr.eq-stored td { color: var(--muted); }
+.eq-tab tr.eq-stored td:first-child { box-shadow: inset 3px 0 0 var(--line-2); }
+.eq-none { color: var(--faint); }
+.eq-enc { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--accent-soft); font-size: 13px; }
+.eq-enc svg { flex: none; color: var(--accent); }
+.eq-enc span { flex: 1 1 260px; min-width: 0; }
+.sk-row.eq-row { grid-template-columns: minmax(0, 1.2fr) 70px 90px 100px 108px minmax(0, 1fr) 32px; }
+.sk-labels.eq-row span:nth-child(n+2):nth-child(-n+4) { text-align: center; }
+.sk-labels.eq-row span:nth-child(6) { padding-left: 0; }
+#eqRows { display: flex; flex-direction: column; gap: 8px; }
+.eq-carried { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+/* Os campos do editor (.sk-row input) têm largura total, borda e fundo; aqui é só a caixa. */
+.sk-row .eq-carried input[type=checkbox] { width: 16px; height: 16px; min-width: 16px; padding: 0; margin: 0; border: 0; border-radius: 0; background: none; accent-color: var(--accent); flex: none; }
+.sk-row .eq-carried input[type=checkbox]:focus { outline-offset: 2px; }
+@media (max-width: 760px) {
+  .sk-row.eq-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sk-row.eq-row .eq-carried { grid-column: 1 / 3; }
+  .sk-row.eq-row [data-f="notes"] { grid-column: 1 / -1; }
+  .sk-row.eq-row .icon-btn { grid-column: 3; grid-row: 3; }
+}
 @media (max-width: 760px) { .av-sizes { grid-template-columns: 1fr; } }
 
 /* Ficha › Combate: a conta de cada defesa */

@@ -92,7 +92,13 @@ interface SheetAttrs {
 }
 
 /** Coleção `sheets` (fichas) de GURPS. Ligada a personagens por `Character.sheetId`. */
-interface Sheet extends Doc { name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[] }
+interface Sheet extends Doc { name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[]; equip?: SheetEquip[] }
+/** Linha da seção Equipamentos da ficha (veja js/tabs/ficha-equipamentos.js): peso (lbs) e custo ($) de uma unidade. */
+interface SheetEquip {
+  name: string; qty: number; weight: number; cost: number;
+  /** false: fica guardado (no cavalo, na estalagem) e o peso não entra na carga. */
+  carried: boolean; notes: string;
+}
 /** Linha da seção Vantagens da ficha (veja js/tabs/ficha-vantagens.js): custo por nível, níveis (0: sem níveis), modificador em %. */
 interface SheetAdv {
   name: string; advId?: string; cost: number; levels: number; mod: number; notes: string;
@@ -103,6 +109,8 @@ interface SheetAdv {
 /** Item da seção Combate da ficha: perícia, técnica ou perk/vantagem (veja js/tabs/ficha-combate.js). */
 interface CombatItem {
   kind: 'skill' | 'tech' | 'trait'; name: string; pts: number; bonus?: number;
+  /** Por que o bônus (só com bônus diferente de 0; veja cleanBonusNote em js/tabs/tab-fichas.js). */
+  bonusNote?: string;
   attr?: string; diff?: string; skillId?: string;
   /** Técnica: perícia-base, padrão e limite em relação a ela (null: sem limite). */
   base?: string; def?: number; max?: number | null; techId?: string;
@@ -112,7 +120,7 @@ interface SheetCombat {
   styles: { name: string; styleId?: string; items: CombatItem[] }[];
   general: CombatItem[];
   weapons: { name: string; mode: 'sw' | 'thr' | 'fixed'; mod: string; type: string }[];
-  def: { parry: string; parryBonus: number; block: string; blockBonus: number; dodgeBonus: number; db: number };
+  def: { parry: string; parryBonus: number; parryNote: string; block: string; blockBonus: number; blockNote: string; dodgeBonus: number; dodgeNote: string; db: number };
 }
 
 /** Coleção `events`. `date` é texto livre, no calendário da campanha. */

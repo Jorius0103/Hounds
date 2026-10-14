@@ -38,7 +38,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | `personagem_mapa` | Personagem ↔ mapas onde aparece. |
 | `personagem_relacao` | Personagem ↔ personagem, com o `tipo` (não pode ser consigo mesmo). |
 | `<entidade>_compartilhamento` | Contas que veem um item oculto (`visivel = false`). |
-| `ficha_pericia`, `ficha_cultura`, `ficha_vantagem`, `ficha_vantagem_pericia`, `ficha_estilo`, `ficha_item_combate`, `ficha_arma` | Seções da ficha, na ordem em que aparecem. |
+| `ficha_pericia`, `ficha_cultura`, `ficha_vantagem`, `ficha_vantagem_pericia`, `ficha_estilo`, `ficha_item_combate`, `ficha_arma`, `ficha_equipamento` | Seções da ficha, na ordem em que aparecem. |
 
 ### Leitura e gravação
 
@@ -64,6 +64,8 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | 7 | `20261015120000_autenticacao.sql` | Login com email e senha e permissões de Mestre e Jogador no banco (seção 4). |
 | 8 | `20261016120000_contas_pelo_site.sql` | Apoio à Edge Function `contas`, com que o Mestre cria contas e define senhas pelo site (seção 4). |
 | 9 | `20261017120000_perfil_admin.sql` | Perfil Admin: um Jogador que também gerencia os usuários (seção 4). |
+| 10 | `20261018120000_ficha_equipamentos.sql` | Seção Equipamentos da ficha: tabela `ficha_equipamento`, view `fichas_doc` e função `salvar_ficha` com a lista nova. |
+| 11 | `20261019120000_notas_bonus.sql` | Motivo dos bônus da ficha (perícias, itens de combate e defesas), que antes se perdia ao salvar. |
 
 **Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
 

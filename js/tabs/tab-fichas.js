@@ -38,7 +38,7 @@ Ops.saveSheet = function (s, fields) {
   var body = { v: 1, name: name, description: (fields.description || '').trim(), visible: fields.visible !== false, sharedWith: fields.sharedWith || (s && s.sharedWith) || [],
     createdBy: owner(s), createdAt: (s && s.createdAt) || t, updatedAt: t };
   // put replaces the whole document: attributes and skills are edited apart and must survive a rename.
-  ['attrs', 'skills', 'cultures', 'combat', 'advs'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  ['attrs', 'skills', 'cultures', 'combat', 'advs', 'equip'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
   return W.store.put('sheets', s ? s.id : null, body);
 };
 Ops.saveSheetAttrs = function (s, a) {
@@ -637,7 +637,7 @@ function renderSheetPage() {
     (can ? '<div style="margin-top:10px"><button class="btn" type="button" id="sheetCharsBtn">' + svg(ICON.user, 15) + (chars.length ? 'Trocar personagem' : 'Vincular personagem') + '</button></div>' : ''));
   pageRoot.innerHTML = head + '<div class="sheet-chars">' + side + '</div>' +
     sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
-    sheetCombatHtml(s, !!ui.combatDraft && can) + sheetAdvsHtml(s, !!ui.advDraft && can) + main;
+    sheetCombatHtml(s, !!ui.combatDraft && can) + sheetAdvsHtml(s, !!ui.advDraft && can) + sheetEquipHtml(s, !!ui.equipDraft && can) + main;
   fillImages(pageRoot);
   if (portrait) W.store.imageUrl(portrait.ref).then(function (u) {
     var h = $('sheetPortrait'); if (!h || !u) return;
@@ -649,6 +649,7 @@ function renderSheetPage() {
   wireSheetSkills(s);
   wireSheetCombat(s);
   wireSheetAdvs(s);
+  wireSheetEquip(s);
   var cb = $('sheetCharsBtn'); if (cb) cb.onclick = function () { openSheetCharsForm(s); };
   var e = $('editSheetBtn'); if (e) e.onclick = function () { openSheetForm(s); };
   var d = $('delSheetBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderSheetPage(); };
