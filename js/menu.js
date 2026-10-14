@@ -55,7 +55,7 @@ function buildMenu() {
       { id: 'skills', label: 'Perícias', icon: ICON.skill, route: true, hideKids: true,
         children: openLeaf('skill:', ICON.skill, skillById, 'Perícia') },
       { id: 'combat', label: 'Combate', icon: ICON.combat, route: true, hideKids: true,
-        children: openLeaf('tech:', ICON.combat, techById, 'Técnica').concat(openLeaf('style:', ICON.combat, styleById, 'Estilo')) }
+        children: openLeaf('cskill:', ICON.skill, skillById, 'Perícia').concat(openLeaf('tech:', ICON.combat, techById, 'Técnica')).concat(openLeaf('style:', ICON.combat, styleById, 'Estilo')) }
     ] },
     { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, hideKids: true,
       children: W.notebooks.slice().sort(byName).map(function (nb) {

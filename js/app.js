@@ -128,7 +128,7 @@ function onRoute() {
   var prev = S.route;
   if (!prev || prev.node !== r.node) S.ui = { q: prev && prev.page === r.page ? S.ui.q : '' };
   S.route = r;
-  if (r.node && !byId[r.node] && /^(spell|adv|skill|tech|style):/.test(r.node)) renderMenu(); // the menu lists only the open one
+  if (r.node && !byId[r.node] && /^(spell|adv|c?skill|tech|style):/.test(r.node)) renderMenu(); // the menu lists only the open one
   var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa';
   app.classList.toggle('on-mesa', isMesa);
   if (isMesa) setCollapsed(true, true);

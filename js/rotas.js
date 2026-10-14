@@ -10,6 +10,7 @@
    Routing
      #mesa · #maps · #map~<id> · #map~<id>~explorar · #locais · #local~<id>
      #fichas · #ficha~<id> · #eventos · #evento~<id>
+     #pericia~<id> is a skill under Perícias; #pericia-combate~<id> the same page under Combate
    ===================================================================== */
 function parseRoute() {
   var h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
@@ -33,6 +34,7 @@ function parseRoute() {
   if (p[0] === 'pericias') return { page: 'skills', node: 'skills' };
   if (p[0] === 'pericia' && p[1]) return { page: 'skill', skillId: p[1], node: 'skill:' + p[1] };
   if (p[0] === 'combate') return { page: 'combat', node: 'combat' };
+  if (p[0] === 'pericia-combate' && p[1]) return { page: 'skill', skillId: p[1], node: 'cskill:' + p[1] };
   if (p[0] === 'tecnica' && p[1]) return { page: 'tech', techId: p[1], node: 'tech:' + p[1] };
   if (p[0] === 'estilo' && p[1]) return { page: 'style', styleId: p[1], node: 'style:' + p[1] };
   if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
@@ -66,6 +68,7 @@ function hrefFor(node) {
   if (node === 'skills') return '#pericias';
   if (node.indexOf('skill:') === 0) return '#pericia~' + encodeURIComponent(node.slice(6));
   if (node === 'combat') return '#combate';
+  if (node.indexOf('cskill:') === 0) return '#pericia-combate~' + encodeURIComponent(node.slice(7));
   if (node.indexOf('tech:') === 0) return '#tecnica~' + encodeURIComponent(node.slice(5));
   if (node.indexOf('style:') === 0) return '#estilo~' + encodeURIComponent(node.slice(6));
   return '#';

@@ -11,7 +11,8 @@
    Três listas na mesma página:
      - Perícias de combate: as entradas de Mundo › Perícias (dados/pericias.json)
        que são de armas, combate desarmado e luta (COMBAT_SKILLS), mais as de
-       imbuement (tipo "Melee; DX/Very Hard"). Abrem em modal (openSkillModal).
+       imbuement (tipo "Melee; DX/Very Hard"). Abrem a página da perícia dentro de
+       Combate (#pericia-combate~id), como as técnicas e os estilos.
      - Técnicas: vêm de dados/tecnicas.json (veja "Catálogos de GURPS" em
        mundo.js); o banco guarda só o que o Mestre mudou.
      - Estilos de luta: vêm de dados/estilos.json, do mesmo jeito; na página de
@@ -25,6 +26,7 @@ ICON.combat = '<polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13"
 function indexTechniques() { var idx = /** @type {Record<string, Technique>} */ ({}); (W.techniques || []).forEach(function (t) { idx[t.id] = t; }); W.techIdx = idx; }
 function techById(id) { return (id && W.techIdx[id]) || null; }
 function techHref(id) { return hrefFor('tech:' + id); }
+function combatSkillHref(id) { return hrefFor('cskill:' + id); }
 
 // The skills of Mundo › Perícias that count as combat skills, by name without "/TL" and
 // without a specialty ("Guns/TL (Pistol)" is Guns).
@@ -181,7 +183,7 @@ function renderCombatList() {
 }
 function combatSkillCardHtml(s) {
   var tags = skillTags(s);
-  return '<a class="spell-card adv-card" href="' + skillHref(s.id) + '" data-skill-modal="' + esc(s.id) + '">' +
+  return '<a class="spell-card adv-card" href="' + combatSkillHref(s.id) + '">' +
     '<div class="adv-card-top"><strong>' + esc(s.name) + '</strong>' + skillBadge(s) + '</div>' +
     (s.defaults ? '<div class="adv-cost">Padrão: ' + esc(s.defaults) + '</div>' : '') +
     (tags ? '<div class="adv-src">' + esc(tags) + '</div>' : '') +
@@ -339,8 +341,8 @@ function styleCardHtml(x) {
     '<div class="adv-src">' + esc([x.book, x.page ? 'p. ' + x.page : ''].filter(Boolean).join(' · ')) + '</div></a>';
 }
 
-// An item of a style's list as a chip; the ones found in the catalogs link to them (skills open
-// in the modal). "Disarming (Judo)" is the technique Disarming; "Savoir-Faire (Dojo)" the skill.
+// An item of a style's list as a chip; the ones found in the catalogs link to them (skills to their
+// page under Combate). "Disarming (Judo)" is the technique Disarming; "Savoir-Faire (Dojo)" the skill.
 function styleFind(kind, item) {
   var base = combatKey(item);
   if (kind === 'skill') return (W.skills || []).filter(function (s) { return s.attribute && combatKey(s.name) === base; })[0] || null;
@@ -351,7 +353,7 @@ function styleFind(kind, item) {
 function styleChipsHtml(text, kind) {
   return '<div class="style-chips">' + styleItems(text).map(function (item) {
     var hit = styleFind(kind, item);
-    if (hit && kind === 'skill') return '<a class="style-chip linked" href="' + skillHref(hit.id) + '" data-skill-modal="' + esc(hit.id) + '">' + esc(item) + '</a>';
+    if (hit && kind === 'skill') return '<a class="style-chip linked" href="' + combatSkillHref(hit.id) + '">' + esc(item) + '</a>';
     if (hit && kind === 'tech') return '<a class="style-chip linked" href="' + techHref(hit.id) + '">' + esc(item) + '</a>';
     if (hit && kind === 'adv') return '<a class="style-chip linked" href="' + hrefFor('adv:' + hit.id) + '">' + esc(item) + '</a>';
     return '<span class="style-chip">' + esc(item) + '</span>';

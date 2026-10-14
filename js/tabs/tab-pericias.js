@@ -203,17 +203,20 @@ document.addEventListener('click', function (e) {
   var t = /** @type {AnyEl} */ (e.target), a = t && t.closest && t.closest('[data-skill-modal]'); if (!a) return;
   e.preventDefault(); openSkillModal(a.getAttribute('data-skill-modal'));
 });
+// The same page opens under Perícias (#pericia~id) or under Combate (#pericia-combate~id, from the
+// combat skills): the crumbs, the way back and where a deleted one leaves to follow the one it came from.
 function renderSkillPage() {
   loadCatalog('skills');
   var s = skillById(S.route.skillId), ui = S.ui;
+  var list = S.route.node.indexOf('cskill:') === 0 ? 'combat' : 'skills';
   if (!s) {
-    pageRoot.innerHTML = crumbsHtml('skills') + (W.loaded.skills
-      ? '<h1>Perícia não encontrada</h1><p class="lede">Essa perícia pode ter sido excluída ou o link está incorreto.</p><div><a class="btn" href="#pericias">Voltar para Perícias</a></div>'
+    pageRoot.innerHTML = crumbsHtml(list) + (W.loaded.skills
+      ? '<h1>Perícia não encontrada</h1><p class="lede">Essa perícia pode ter sido excluída ou o link está incorreto.</p><div><a class="btn" href="' + hrefFor(list) + '">Voltar para ' + (list === 'combat' ? 'Combate' : 'Perícias') + '</a></div>'
       : '<p class="lede">Carregando perícia…</p>');
     return;
   }
   var can = isMestre(), tags = skillTags(s), lede = skillLede(s);
-  var head = crumbsHtml('skill:' + s.id) +
+  var head = crumbsHtml(S.route.node) +
     '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.skill, 12, 2.4) + ' Perícia</span>' + skillBadge(s) + '</div>' +
     '<h1>' + esc(s.name) + '</h1><p class="lede">' + esc(lede) + (tags ? ' · ' + esc(tags) : '') + '</p></div>' +
     (can ? '<div class="btn-row">' + (s.catalog && rawHas('skills', s.id) ? '<button class="btn" type="button" id="restoreSkillBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editSkillBtn">' + svg(ICON.edit, 15) + 'Editar perícia</button><button class="btn danger" type="button" id="delSkillBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
@@ -230,7 +233,7 @@ function renderSkillPage() {
   var dn = $('delSkillNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderSkillPage(); };
   var dy = $('delSkillYes'); if (dy) dy.onclick = function () {
     dy.disabled = true;
-    Ops.deleteSkill(s).then(function () { toast('Perícia excluída.'); go('#pericias', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
+    Ops.deleteSkill(s).then(function () { toast('Perícia excluída.'); go(hrefFor(list), true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
   };
   var rb = $('restoreSkillBtn'); if (rb) rb.onclick = function () {
     rb.disabled = true;
