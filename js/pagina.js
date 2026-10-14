@@ -81,11 +81,12 @@ function locPickOptions(q) {
   })(null, 0);
   return out;
 }
-// A box that starts closed and opens on a click on its title. Whether it is open is kept in
-// S.ui.open[key], so a redraw (data arriving, a confirmation) leaves it as the person left it;
-// a new page starts with all closed. count: shown beside the title while closed, when not null.
-function foldBox(key, title, count, body, forceOpen) {
-  var open = forceOpen || !!(S.ui.open && S.ui.open[key]);
+// A box that starts closed (or open, with startOpen) and opens or closes on a click on its title.
+// Whether it is open is kept in S.ui.open[key], so a redraw (data arriving, a confirmation) leaves it
+// as the person left it; a new page starts again as it starts. count: shown beside the title while
+// closed, when not null.
+function foldBox(key, title, count, body, startOpen) {
+  var open = S.ui.open && key in S.ui.open ? !!S.ui.open[key] : !!startOpen;
   return '<details class="box fold" data-fold="' + esc(key) + '"' + (open ? ' open' : '') + '><summary><h2 class="sec-title">' + esc(title) + '</h2>' +
     (count != null ? '<span class="fold-count">' + esc(count) + '</span>' : '') + '<span class="fold-chev">' + svg('<path d="m9 18 6-6-6-6"/>', 14, 2.4) + '</span></summary>' +
     '<div class="fold-body">' + body + '</div></details>';

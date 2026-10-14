@@ -149,13 +149,13 @@ function renderAdvantagePage() {
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a vantagem <b>' + esc(a.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delAdvYes">Excluir vantagem</button><button class="btn ghost" type="button" id="delAdvNo">Cancelar</button></div></div>' : '');
   var main = '<section><h2 class="sec-title">Descrição</h2>' + (a.description ? '<p class="long">' + esc(a.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') + '</section>';
-  // Closed until its title is clicked (see foldBox).
+  // Open when the page opens; a click on its title closes it (see foldBox).
   var side = foldBox('params', 'Parâmetros', null, '<dl class="facts">' +
     '<dt>Custo</dt><dd>' + (a.cost ? esc(a.cost) : '<span class="none">—</span>') + '</dd>' +
     '<dt>Tipo</dt><dd>' + (a.type ? esc(advTypeLabel(a.type)) + (advTypeLabel(a.type) !== a.type ? ' <span class="none">(' + esc(a.type) + ')</span>' : '') : '<span class="none">—</span>') + '</dd>' +
     '<dt>Livro</dt><dd>' + (a.book ? esc(a.book) : '<span class="none">—</span>') + '</dd>' +
     '<dt>Página</dt><dd>' + (a.page ? esc(a.page) : '<span class="none">—</span>') + '</dd>' +
-    '</dl>');
+    '</dl>', true);
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   wireFolds(pageRoot);
   if (!can) return;

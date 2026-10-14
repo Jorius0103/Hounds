@@ -332,7 +332,7 @@ function renderSpellPage() {
     (s.item ? '<section><h2 class="sec-title">Item Mágico</h2><div class="box" style="margin:0"><p style="margin:0;font-size:14px;line-height:1.6">' + esc(s.item) + '</p></div></section>' : '') +
     (s.prerequisites ? '<section><h2 class="sec-title">Pré-requisitos</h2><div class="box" style="margin:0"><p style="margin:0;font-size:14px;line-height:1.6">' + esc(s.prerequisites) + '</p></div></section>' : '');
 
-  // Closed until its title is clicked (see foldBox).
+  // Open when the page opens; a click on its title closes it (see foldBox).
   var side = foldBox('params', 'Parâmetros', null, '<dl class="facts">' +
     '<dt>Escola / Colégio</dt><dd>' + (s.college ? esc(s.college) : '<span class="none">Não informado</span>') + '</dd>' +
     '<dt>Classe</dt><dd>' + (s.class ? esc(s.class) : '<span class="none">Não informado</span>') + '</dd>' +
@@ -344,7 +344,7 @@ function renderSpellPage() {
     (s.maintenanceCost ? '<dt>Custo Manutenção</dt><dd>' + esc(s.maintenanceCost) + '</dd>' : '') +
     '<dt>Página</dt><dd>' + (s.page ? esc(s.page) : '<span class="none">—</span>') + '</dd>' +
     '<dt>Fonte</dt><dd>' + (s.source ? esc(s.source) : '<span class="none">—</span>') + '</dd>' +
-    '</dl>');
+    '</dl>', true);
 
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   wireFolds(pageRoot);

@@ -222,8 +222,8 @@ function renderSkillPage() {
     (can ? '<div class="btn-row">' + (s.catalog && rawHas('skills', s.id) ? '<button class="btn" type="button" id="restoreSkillBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editSkillBtn">' + svg(ICON.edit, 15) + 'Editar perícia</button><button class="btn danger" type="button" id="delSkillBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a perícia <b>' + esc(s.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSkillYes">Excluir perícia</button><button class="btn ghost" type="button" id="delSkillNo">Cancelar</button></div></div>' : '');
-  // Closed until its title is clicked (see foldBox).
-  var side = foldBox('params', 'Parâmetros', null, skillFactsHtml(s));
+  // Open when the page opens; a click on its title closes it (see foldBox).
+  var side = foldBox('params', 'Parâmetros', null, skillFactsHtml(s), true);
   var main = skillTextHtml(s);
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   wireFolds(pageRoot);

@@ -225,14 +225,14 @@ function renderTechniquePage() {
     (t.prerequisites ? sec('Pré-requisitos', t.prerequisites) : '') +
     (t.modifiers ? sec('Modificadores', t.modifiers) : '');
   function fact(label, v) { return '<dt>' + label + '</dt><dd>' + (v ? esc(v) : '<span class="none">—</span>') + '</dd>'; }
-  // Closed until its title is clicked (see foldBox).
+  // Open when the page opens; a click on its title closes it (see foldBox).
   var side = foldBox('params', 'Parâmetros', null, '<dl class="facts">' +
     fact('Dificuldade', TECH_DIFF_LABELS[t.difficulty] || t.difficulty) +
     fact('Padrão', t.defaults) +
     fact('Cinemática', t.cinematic ? 'Sim' : 'Não') +
     fact('Livro', t.book) +
     fact('Página', t.page) +
-    '</dl>');
+    '</dl>', true);
   pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
   wireFolds(pageRoot);
   if (!can) return;
