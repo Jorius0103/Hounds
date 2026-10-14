@@ -68,6 +68,100 @@ function write(file, list) {
   console.log(`dados/${file}: ${list.length} itens`);
 }
 
+// ---------- remissões e cópias ----------
+// The books send the reader to another page: a spell of more than one college is printed in full
+// once and the other colleges only say "As listed under Air Spells, p. 243"; the alphabetical list of
+// skills says "see Melee Weapon, p. 208"; a supplement says "see p. B72" or "see Martial Arts, p. 49".
+// The entry gets the text of that page: the entry of the same name there, or else the one it names.
+// A field that is only the reference is replaced; a reference inside a text of its own ("See GURPS
+// Magic, p. 126. Always costs 3 FP…") gets the text of that page as a paragraph after it.
+const NOT_TEXT = new Set(['id', 'name', 'page', 'book', 'source']);
+const BOOK_NAMES = { 'gurps magic': 'M', magic: 'M', 'martial arts': 'MA', 'gurps martial arts': 'MA' };
+const nameKey = (s) => s.trim().toLowerCase().replace(/\/tl$/, '');
+// To find the page's entry: without the specialty or the plural ("Alchemy (Infusions)" is under
+// Alchemy/TL, "Patron" under Patrons).
+const baseKey = (s) => nameKey(s.replace(/\s*\(.*\)\s*$/, '')).replace(/s$/, '');
+const codeOf = (x) => x.page.replace(/\d+$/, '');
+const pageOf = (x) => Number(x.page.replace(/^\D+/, ''));
+function parseReference(cited, code, from, to, above) {
+  if (above && !cited) return null; // "See above." in a field: the text before it, not another entry
+  const book = cited && BOOK_NAMES[cited.trim().toLowerCase()];
+  return { name: book ? '' : (cited || '').trim(), code: book || code || '', from: Number(from) || 0, to: Number(to || from) || 0, above: !!above };
+}
+// The field of the entry that is only a reference, and where it points.
+function pointerOf(x) {
+  for (const [k, v] of Object.entries(x)) {
+    if (typeof v !== 'string' || NOT_TEXT.has(k)) continue;
+    if (k === 'description' && /(listed|described|description) under/i.test(v.slice(0, 80))) {
+      const m = v.slice(0, 80).match(/pp?\.\s*(\d+)(?:\s*[-–]\s*(\d+))?/);
+      if (m) return { field: k, ref: parseReference('', '', m[1], m[2]) };
+    }
+    const m = v.length < 100 && v.trim().match(/^see\s+(?:(?!pp?\.)(.+?)\s*,\s*)?(?:pp?\.\s*([A-Z]*)(\d+)(?:\s*[-–]\s*(\d+))?|(above))/i);
+    // Only the reference: nothing after it but punctuation ("See GURPS Magic, p. 126. Always costs…" has a text of its own).
+    const ref = m && !/[.;]\s*\S/.test(v.trim().slice(m[0].length).replace(/pp?\.\s*[A-Z]*\d+/g, '')) && parseReference(m[1], m[2], m[3], m[4], m[5]);
+    if (ref) return { field: k, ref };
+  }
+  return null;
+}
+// "See Mounted Shooting (p. 77)", "See GURPS Magic, p. 126. Always costs…": a reference that is what
+// the description is about (at its start, or in a short one). In a long text it is only a pointer to
+// a rule, and the text of that page would bury the entry's own.
+function seeInText(x) {
+  const d = x.description || '';
+  const m = d.match(/\b[Ss]ee\s+(?:([A-Z][^.;()]*?)\s*(?:,\s*|\(\s*))?pp?\.\s*([A-Z]*)(\d+)(?:\s*[-–]\s*(\d+))?/);
+  return m && (m.index < 40 || d.length < 200) ? parseReference(m[1], m[2], m[3], m[4]) : null;
+}
+function findReferenced(x, ref, list, pointers, spellList) {
+  const pool = ref.code === 'M' && spellList && list !== spellList ? spellList : list;
+  const code = ref.code || codeOf(x);
+  // A section can go on to the next page ("Melee Weapon, p. 208" lists Kusari on p. 209).
+  const from = ref.above ? pageOf(x) : ref.from, to = ref.above ? pageOf(x) : ref.to + 1;
+  const at = pool.filter((y) => y !== x && codeOf(y) === code && pageOf(y) >= from && pageOf(y) <= to && !pointers.has(y));
+  return at.find((y) => nameKey(y.name) === nameKey(x.name)) || (ref.name && at.find((y) => nameKey(y.name) === nameKey(ref.name))) ||
+    at.find((y) => baseKey(y.name) === baseKey(x.name)) || (ref.name && at.find((y) => baseKey(y.name) === baseKey(ref.name)));
+}
+const withText = (x, t) => (x ? x + '\n\n' : '') + `${t.name} (${t.page}): ${t.description}`;
+function resolveReferences(list, spellList) {
+  const pointers = new Map();
+  list.forEach((x) => { const p = pointerOf(x); if (p) pointers.set(x, p); });
+  list.forEach((x) => {
+    const p = pointers.get(x);
+    if (!p) {
+      const ref = seeInText(x), t = ref && findReferenced(x, ref, list, pointers, spellList);
+      if (t && t.description) x.description = withText(x.description, t);
+      return;
+    }
+    const t = findReferenced(x, p.ref, list, pointers, spellList);
+    if (!t) { console.warn(`  ${x.id}: ${p.field} "${x[p.field].slice(0, 60)}" sem a página no CSV`); return; }
+    // In the same book, the reference is all the entry has (what else is there is the PDF's leftovers).
+    // Only the fields of the entry's own catalog (a skill that points to a spell gets its text, not its college).
+    const sameBook = codeOf(t) === codeOf(x);
+    Object.keys(x).filter((k) => !NOT_TEXT.has(k) && k in t).forEach((k) => {
+      if (k === p.field || (k === 'description' && sameBook) || !x[k]) x[k] = t[k];
+      else if (k === 'description' && t.description) x.description = withText(x.description, t);
+    });
+    x.referenced = true;
+  });
+  return list;
+}
+// Same name and same text (another listing of the same page, or the same text in two books): one
+// entry. Same name with another text stays. The one kept is the page the text was printed on, in the
+// order of `books`, then of the CSV; `merge` lists the fields that join the values of all of them.
+const sameText = (s) => s.toLowerCase().replace(/[‘’“”"']/g, '').replace(/\s+/g, ' ').replace(/[\s.]+$/, '').trim();
+function mergeSame(list, { books = [], bookField = 'book', merge = [] } = {}) {
+  const rank = (x) => (x.referenced ? 100 : 0) + (books.includes(x[bookField]) ? books.indexOf(x[bookField]) : books.length);
+  const kept = new Map();
+  list.map((x, i) => ({ x, i })).sort((a, b) => rank(a.x) - rank(b.x) || a.i - b.i).forEach(({ x, i }) => {
+    const k = x.description ? nameKey(x.name) + '|' + sameText(x.description) : i;
+    const main = kept.get(k);
+    if (!main) { kept.set(k, x); return; }
+    merge.forEach((f) => (x[f] || '').split(',').map((c) => c.trim()).forEach((c) => { if (c && !main[f].split(', ').includes(c)) main[f] += (main[f] ? ', ' : '') + c; }));
+    Object.keys(x).forEach((f) => { if (!main[f]) main[f] = x[f]; });
+  });
+  const keep = new Set(kept.values());
+  return list.filter((x) => keep.has(x)).map(({ referenced, ...x }) => x);
+}
+
 // ---------- magias ----------
 const SPELL_BOOKS = {
   'GURPS Basic Set': 'B', 'GURPS Magic': 'M', 'GURPS Fantasy': 'F', 'GURPS Magic: Death Spells': 'DS',
@@ -80,30 +174,8 @@ function college(c) {
   if (c === 'Illusion') return 'Illusion and Creation';
   return c.replace(/ And /g, ' and ');
 }
-// The same spell appears in more than one book (Basic Set and Magic) and, inside a book, once in
-// the list of each college it belongs to (the extra ones only say "As listed under ..."). One entry
-// per name: the full text of the preferred book, with the colleges of all the copies.
-const SPELL_BOOK_ORDER = ['GURPS Magic', 'GURPS Basic Set'];
-const isReference = (x) => /As listed under/i.test(x.description) && x.description.length < 120;
-function spellRank(x) {
-  const b = SPELL_BOOK_ORDER.indexOf(x.source);
-  return (isReference(x) ? 100 : 0) + (b < 0 ? SPELL_BOOK_ORDER.length : b);
-}
-function mergeSpellCopies(list) {
-  const groups = new Map();
-  list.forEach((x) => {
-    const k = x.name.trim().toLowerCase();
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(x);
-  });
-  return [...groups.values()].map((copies) => {
-    const main = copies.slice().sort((a, b) => spellRank(a) - spellRank(b))[0];
-    const colleges = [];
-    [main, ...copies].forEach((x) => x.college.split(',').map((c) => c.trim()).forEach((c) => { if (c && !colleges.includes(c)) colleges.push(c); }));
-    return { ...main, college: colleges.join(', ') };
-  });
-}
-const spells = mergeSpellCopies(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'magias.csv'), 'utf8')).map((r) => {
+// A spell of more than one college: one entry, with the colleges of all the listings.
+const spells = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'magias.csv'), 'utf8')).map((r) => {
   const vh = /\(VH\)\s*$/.test(r.magia) || /Very Hard/i.test(r.classe);
   const name = r.magia.replace(/\s*\(VH\)\s*$/, '');
   const code = bookCode(SPELL_BOOKS, r.livro, 'magias.csv');
@@ -113,7 +185,7 @@ const spells = mergeSpellCopies(parseCsv(readFileSync(path.join(ROOT, 'Gurps', '
     timeToCast: r.tempo_de_conjuracao, duration: r.duracao, initialCost: r.custo, maintenanceCost: '',
     prerequisites: r.pre_requisitos, description: r.descricao, item: r.item, page: code + r.pagina, source: r.livro
   };
-}));
+})), { books: ['GURPS Magic', 'GURPS Basic Set'], bookField: 'source', merge: ['college'] }));
 write('magias.json', spells);
 
 // ---------- vantagens ----------
@@ -121,11 +193,11 @@ const ADV_BOOKS = {
   'GURPS Basic Set (4th ed.)': 'B', 'GURPS Basic Set (4ª ed.)': 'B', 'GURPS Martial Arts': 'MA', 'GURPS Fantasy': 'F',
   'GURPS Martial Arts: Gladiators': 'MAG', 'GURPS Low-Tech': 'LT'
 };
-const advantages = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'advantages.csv'), 'utf8')).map((r) => {
+const advantages = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'advantages.csv'), 'utf8')).map((r) => {
   const code = bookCode(ADV_BOOKS, r.livro, 'advantages.csv');
   return { id: 'adv_' + slug(r.advantage) + '_' + code.toLowerCase() + r.pagina, name: r.advantage, cost: r.custo, type: r.tipo,
     book: r.livro, page: code + r.pagina, description: r.descricao };
-}));
+}))));
 write('vantagens.json', advantages);
 
 // ---------- perícias ----------
@@ -138,7 +210,7 @@ const SKILL_BOOKS = {
 };
 // Same abbreviations the spells use (H, VH).
 const DIFFICULTY = { Easy: 'E', Average: 'A', Hard: 'H', 'Very Hard': 'VH' };
-const skills = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'pericias.csv'), 'utf8')).map((r) => {
+const skills = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'pericias.csv'), 'utf8')).map((r) => {
   const code = bookCode(SKILL_BOOKS, r.livro, 'pericias.csv');
   return {
     id: 'skill_' + slug(r.pericia) + '_' + code.toLowerCase() + r.pagina,
@@ -147,14 +219,14 @@ const skills = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'pericia
     defaults: r.defaults, prerequisites: r.pre_requisitos, description: r.descricao, modifiers: r.modificadores,
     book: r.livro, page: code + r.pagina
   };
-}));
+}), spells)));
 write('pericias.json', skills);
 
 // ---------- técnicas ----------
 // Same books (and codes) as the skills; a book that only has techniques goes here.
 const TECH_BOOKS = { ...SKILL_BOOKS, 'GURPS Low-Tech Companion 1: Philosophers and Kings': 'LTC1',
   'GURPS Low-Tech Companion 2: Weapons and Warriors': 'LTC2' };
-const techniques = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'tecnicas.csv'), 'utf8')).map((r) => {
+const techniques = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'tecnicas.csv'), 'utf8')).map((r) => {
   const code = bookCode(TECH_BOOKS, r.livro, 'tecnicas.csv');
   return {
     id: 'tech_' + slug(r.tecnica) + '_' + code.toLowerCase() + r.pagina,
@@ -162,12 +234,12 @@ const techniques = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'tec
     defaults: r.defaults, prerequisites: r.pre_requisitos, description: r.descricao, modifiers: r.modificadores,
     book: r.livro, page: code + r.pagina
   };
-}));
+}))));
 write('tecnicas.json', techniques);
 
 // ---------- estilos ----------
 const STYLE_BOOKS = { ...TECH_BOOKS };
-const styles = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'estilos.csv'), 'utf8')).map((r) => {
+const styles = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'estilos.csv'), 'utf8')).map((r) => {
   const code = bookCode(STYLE_BOOKS, r.livro, 'estilos.csv');
   return {
     id: 'style_' + slug(r.estilo) + '_' + code.toLowerCase() + r.pagina,
@@ -176,5 +248,5 @@ const styles = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'estilos
     perks: r.perks, optAdvantages: r.opc_vantagens, optDisadvantages: r.opc_desvantagens, optSkills: r.opc_pericias,
     optTechniques: r.opc_tecnicas, optPerks: r.opc_perks, book: r.livro, page: code + r.pagina
   };
-}));
+}))));
 write('estilos.json', styles);

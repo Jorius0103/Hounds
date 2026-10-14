@@ -90,7 +90,9 @@ function mapPreview(box, m, markers) {
   });
 
   // ----- input: drag, pinch, wheel, double click, keys, buttons -----
-  var pts = {}, gesture = null;
+  var pts = {};
+  /** @type {{ moved: number, multi: boolean, dist?: number, mid?: { x: number, y: number } }} */
+  var gesture = null;
   function ptList() { return Object.keys(pts).map(function (k) { return pts[k]; }); }
   vp.addEventListener('pointerdown', function (e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;

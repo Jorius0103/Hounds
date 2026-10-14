@@ -17,7 +17,7 @@
    ===================================================================== */
 ICON.advantage = '<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>';
 function indexAdvantages() { var idx = /** @type {Record<string, Advantage>} */ ({}); (W.advantages || []).forEach(function (a) { idx[a.id] = a; }); W.advIdx = idx; }
-function advById(id) { return (id && W.advIdx[id]) || null; }
+function advById(id) { return (id && (W.advIdx[id] || movedCatalogItem('advantages', id))) || null; }
 function advHref(id) { return hrefFor('adv:' + id); }
 
 // Values found in the list, for the filters and the form suggestions.

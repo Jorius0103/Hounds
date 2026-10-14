@@ -684,6 +684,7 @@ function wireCombatDrag(s) {
       if (!moving) { if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return; begin(); }
       card.style.left = (ev.clientX - dx) + 'px'; card.style.top = (ev.clientY - dy) + 'px';
       // The table under the finger: the placeholder goes before it (upper half) or after it.
+      /** @type {{ el: Element, r: DOMRect }} */
       var over = null;
       [].forEach.call(box.querySelectorAll('.sc-card'), function (el) {
         if (el === card) return;

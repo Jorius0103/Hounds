@@ -84,7 +84,7 @@ function spellById(id) {
    choice, or deleted: true. W.spells / W.advantages / W.skills / W.techniques / W.styles are the
    book list with those documents on top.
    ===================================================================== */
-var CATALOG_VERSION = '2026-10-13-v2';
+var CATALOG_VERSION = '2026-10-14-v2';
 // fields: what an entry holds besides visibility; over: the documents of book entries by id;
 // deleted: the book entries the Mestre deleted (for him to see and restore).
 var CATALOG = {
@@ -101,6 +101,20 @@ var CATALOG = {
       'optAdvantages', 'optDisadvantages', 'optSkills', 'optTechniques', 'optPerks', 'book', 'page'] }
 };
 function isCatalogId(col, id) { return String(id || '').indexOf(CATALOG[col].prefix) === 0; }
+// An id that left the book list (an index entry merged into the page it pointed to, as Knife on
+// p. B203 into p. B208) still opens from old links and sheets: the entry of the same name in the
+// same book, or else in another one.
+function movedCatalogItem(col, id) {
+  var c = CATALOG[col], m = /^(.+_)([a-z]+)\d+(?:_\d+)?$/.exec(String(id || ''));
+  if (!m || !c.idx || c.idx[id] || !isCatalogId(col, id)) return null;
+  var any = null, list = W[col] || [];
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].id.indexOf(m[1]) !== 0) continue;
+    if (list[i].id.slice(m[1].length).replace(/\d.*$/, '') === m[2]) return list[i];
+    any = any || list[i];
+  }
+  return any;
+}
 function loadCatalog(col) {
   var c = CATALOG[col];
   if (c.list || c.failed) return Promise.resolve();
