@@ -44,7 +44,8 @@ function SupabaseStore(client, bucket) {
   var bName = bucket || 'hounds-images', BATCH = 100;
   var TABLES = { users: 'usuarios', maps: 'mapas', locations: 'locais', characters: 'personagens', organizations: 'organizacoes',
     sheets: 'fichas', events: 'eventos', notebooks: 'cadernos', notes: 'anotacoes', spells: 'magias', advantages: 'vantagens', disadvantages: 'desvantagens',
-    skills: 'pericias', techniques: 'tecnicas', styles: 'estilos', weapons: 'armas', armors: 'armaduras', items: 'itens', mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
+    skills: 'pericias', techniques: 'tecnicas', styles: 'estilos', weapons: 'armas', armors: 'armaduras', items: 'itens',
+    armorLocs: 'armadura_localizacoes', mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
   var COL_OF = {}; Object.keys(TABLES).forEach(function (k) { COL_OF[TABLES[k]] = k; });
   var MARKERS = /^maps\/([^/]+)\/markers$/;
   var cols = {}, channel = null, live = false, mesaChannel = null, mesaLive = false, bcast = {};

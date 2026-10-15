@@ -92,13 +92,65 @@ interface SheetAttrs {
 }
 
 /** Coleção `sheets` (fichas) de GURPS. Ligada a personagens por `Character.sheetId`. */
-interface Sheet extends Doc { name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[]; equip?: SheetEquip[] }
-/** Linha da seção Equipamentos da ficha (veja js/tabs/ficha-equipamentos.js): peso (lbs) e custo ($) de uma unidade. */
-interface SheetEquip {
-  name: string; qty: number; weight: number; cost: number;
-  /** false: fica guardado (no cavalo, na estalagem) e o peso não entra na carga. */
-  carried: boolean; notes: string;
+interface Sheet extends Doc {
+  name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[];
+  equip?: SheetEquip[]; bodies?: SheetBody[]; packs?: SheetPack[]; armorSets?: ArmorSet[]; customWeapons?: CustomWeapon[]; customShields?: CustomShield[];
 }
+/** Escudo de Criar Escudo (veja js/tabs/ficha-escudos.js): o escudo do livro (ou digitado) como era ao criar, os ajustes e o resultado. */
+interface CustomShield {
+  id: string; baseId: string | null;
+  base: { name: string; tl: string; db: string; dr: string; hp: string; cost: number; weight: number; skill: string; defaults: string };
+  description: string;
+  /** Ajustes: somam ou tiram do BD, da RD, do NH com o escudo, do custo ($) e do peso (%). */
+  mods: { name: string; spellId?: string; db: number; dr: number; nh: number; cost: number; weightPct: number }[];
+  db: string; dr: string; hp: string; cost: number; weight: number;
+  /** A linha de Meus Itens que é o escudo (null: saiu da lista). */
+  equipId: string | null;
+}
+/** Arma de Criar Arma (veja js/tabs/ficha-armas.js): a arma do livro como era ao criar, os ajustes e o resultado. */
+interface CustomWeapon {
+  id: string; baseId: string | null; base: { name: string; tl: string; type: string; cost: number; weight: number }; description: string;
+  /** Ajustes: texto livre ou uma magia (spellId); somam ou tiram do dano de todos os ataques, do NH com a arma, do custo ($) e do peso (%). */
+  mods: { name: string; spellId?: string; dmg: number; nh: number; cost: number; weightPct: number }[];
+  /** Os ataques do livro, com o dano do livro (baseDamage) e o ajustado (damage). */
+  attacks: (Omit<WeaponAttack, 'damage'> & { baseDamage: string; damage: string })[];
+  cost: number; weight: number;
+  /** A linha de Meus Itens que é a arma (null: saiu da lista). */
+  equipId: string | null;
+}
+/** Conjunto de armadura modular (Criar Armadura; veja js/tabs/ficha-armaduras.js): o modelo base como era ao criar, os modificadores com os valores aplicados e as peças calculadas. */
+interface ArmorSet {
+  id: string; name: string; description: string; baseId: string | null;
+  base: { name: string; dr: string; cost: number; weight: number; don: number | null; tl: string };
+  version: number; originId: string | null;
+  /** Ajustes: texto livre ou uma magia (spellId); somam ou tiram da RD de cada peça (pontos), do custo do conjunto ($) e do peso de cada peça (%). */
+  mods: { name: string; spellId?: string; dr: number; cost: number; weightPct: number }[];
+  /** equipId: a linha da lista que é a peça (null: saiu da lista). pct: o percentual final sobre o tronco, com a cobertura. */
+  pieces: { id: string; loc: string; cover: 'full' | 'front'; pct: number; dr: string; cost: number; weight: number; don: number | null; equipId: string | null }[];
+}
+/** Localização de armadura (coleção `armorLocs`, tabela armadura_localizacoes). */
+interface ArmorLoc extends Doc { name: string; pct: number; front: boolean; canFront: boolean; parent: string | null; conflicts: string[]; parts: string[]; oneSide: boolean; order: number }
+/**
+ * Linha da lista de equipamentos da ficha (veja js/tabs/ficha-equipamentos.js): tudo o que o personagem
+ * tem. Peso (lbs) e custo ($) de uma unidade. A lista sozinha não entra na carga: só o que está na
+ * configuração de corpo em uso e nas mochilas em uso.
+ */
+interface SheetEquip {
+  /** Fixo na ficha; o Corpo e as Mochilas apontam para ele. Linhas antigas, sem id, são 'e1', 'e2'… pela posição. */
+  id: string;
+  kind: 'item' | 'armor' | 'weapon';
+  /** A entrada de Mundo › Itens, Armaduras ou Armas de onde veio. */
+  refId?: string;
+  name: string; qty: number; weight: number; cost: number; notes: string;
+  /** Só em fichas antigas: false ficava guardado, fora da carga (veja sheetGear). */
+  carried?: boolean;
+}
+/** Parte do corpo do GURPS (Basic Set, p. B398) onde vai um equipamento (GEAR_PARTS). */
+type GearPart = 'eyes' | 'skull' | 'face' | 'neck' | 'torso' | 'groin' | 'right_arm' | 'left_arm' | 'hands' | 'right_leg' | 'left_leg' | 'feet';
+/** Configuração de corpo: o que está em cada parte. No máximo uma da ficha com `active`. */
+interface SheetBody { id: string; name: string; active: boolean; slots: { part: GearPart; equipId: string; qty: number }[] }
+/** Mochila: o que ela leva e, em `equipId`, a linha da lista que é a própria mochila (o peso próprio; null: sem). */
+interface SheetPack { id: string; name: string; inUse: boolean; equipId: string | null; items: { equipId: string; qty: number }[] }
 /** Linha da seção Vantagens da ficha (veja js/tabs/ficha-vantagens.js): custo por nível, níveis (0: sem níveis), modificador em %. */
 interface SheetAdv {
   name: string; advId?: string; cost: number; levels: number; mod: number; notes: string;
@@ -406,7 +458,7 @@ interface World {
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[]; armorLocs: ArmorLoc[] };
   loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; disadvantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; items: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;

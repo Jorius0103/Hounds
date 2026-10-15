@@ -133,11 +133,18 @@ function scEnhanced(c, kind) {
   return n;
 }
 function scAllItems(c) { var l = []; c.styles.forEach(function (st) { l = l.concat(st.items); }); return l.concat(c.general); }
-// "2d-1" plus 2 is "2d+1".
-function dmgAdd(dice, add) {
+// "2d-1" plus 2 is "2d+1". An add of +4 or more becomes dice: every +4 is +1d ("2d+4" is "3d",
+// "2d+7" is "3d+3"). dmgAddRaw keeps the add as it is ("2d+7").
+function dmgAddRaw(dice, add) {
   var m = /^(\d+)d([+-]\d+)?$/.exec(dice); if (!m) return dice;
   var k = (+m[2] || 0) + add;
   return m[1] + 'd' + (k > 0 ? '+' + k : k < 0 ? String(k) : '');
+}
+function dmgAdd(dice, add) {
+  var m = /^(\d+)d([+-]\d+)?$/.exec(dice); if (!m) return dice;
+  var n = +m[1], k = (+m[2] || 0) + add;
+  if (k >= 4) { n += Math.floor(k / 4); k %= 4; }
+  return n + 'd' + (k > 0 ? '+' + k : k < 0 ? String(k) : '');
 }
 function weaponDamage(w, st) {
   if (w.mode === 'fixed') return w.mod || '—';
@@ -394,23 +401,6 @@ function scMainHtml(all, pool, av) {
 // among them: it is the main one, always first, above the points per style.
 function combatOrder(c) { return c.styles.map(function (st, i) { return 's' + i; }); }
 function scDmgLabel(t) { var x = SC_DMG_TYPES.filter(function (y) { return y[0] === t; })[0]; return x ? x[1] : t; }
-function scWeaponsHtml(c, st) {
-  if (!c.weapons.length) return '';
-  // Rows of the same weapon in a row share its name cell, as in the spreadsheet.
-  var rows = '', i = 0;
-  while (i < c.weapons.length) {
-    var j = i; while (j + 1 < c.weapons.length && c.weapons[j + 1].name === c.weapons[i].name) j++;
-    for (var k = i; k <= j; k++) {
-      var w = c.weapons[k];
-      rows += '<tr>' + (k === i ? '<td rowspan="' + (j - i + 1) + '"><b>' + esc(w.name || '—') + '</b></td>' : '') +
-        '<td>' + (w.mode === 'fixed' ? '—' : w.mode === 'thr' ? 'thrust' : 'swing') + '</td>' +
-        '<td class="gval" title="' + esc(w.mode === 'fixed' ? 'Dano fixo' : (w.mode === 'thr' ? 'thr' : 'sw') + (w.mod ? w.mod : '') + ' com ST ' + st) + '">' + esc(weaponDamage(w, st)) + '</td>' +
-        '<td>' + esc(scDmgLabel(w.type)) + '</td></tr>';
-    }
-    i = j + 1;
-  }
-  return '<table class="gtab sc-dmg"><thead><tr><th>Arma</th><th>Tipo</th><th>Dano</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table>';
-}
 // Parry by skill (Basic Set): [modifier of the Parry column of the Melee Weapon Table (pp. B271-273)
 // for the skill's usual weapon, kind]. Kind: 'U' unbalanced (cannot parry after attacking with
 // it), 'F' fencing (+3 retreating, parry at -encumbrance, p. B208), 'K' Boxing/Judo/Karate
@@ -493,7 +483,7 @@ function scDefHtml(c, dv) {
       '</td><td class="gval"' + (x ? ' title="' + esc(x.calc) + '"' : '') + '>' + val(x ? x.value : null) + '</td></tr>';
   }
   function weapon(x, auto) { return x ? 'Com ' + x.name + (auto ? ' (a melhor da ficha)' : '') + (x.notes.length ? ' · ' + x.notes.join(' · ') : '') : ''; }
-  return '<table class="gtab sc-def"><thead><tr><th>Defesas</th><th></th></tr></thead><tbody>' +
+  return '<table class="gtab sc-def"><thead><tr><th>Defesa</th><th>Valor</th></tr></thead><tbody>' +
     row('Aparar', dv.parry, weapon(dv.parry, dv.parryAuto), 'Nenhuma perícia que apare.') +
     row('Esquiva', dv.dodge, '', '') +
     row('Bloqueio', dv.block, weapon(dv.block, dv.blockAuto), 'Sem Shield ou Cloak.') +
@@ -516,14 +506,16 @@ function scTotalsHtml(c, pool) {
     [0, 1, 2].map(function (i) { return '<div class="sc-tot-item"><span role="columnheader">' + (i ? '' : 'Pontos por estilo') + '</span><b role="columnheader">Pts</b></div>'; }).join('') + '</div>' +
     '<div class="sc-tot-grid">' + rows.map(function (r) { return '<div class="sc-tot-item" role="row"><span role="cell">' + esc(r[0]) + '</span><b class="gpts" role="cell">' + r[1] + '</b></div>'; }).join('') + '</div></div>';
 }
+// Whether a section of the sheet that edits in place is being edited: only one at a time.
+function sheetDraftOpen() { var ui = S.ui; return !!(ui.skillDraft || ui.combatDraft || ui.advDraft || ui.dmgDraft || ui.defDraft); }
 function sheetCombatHtml(s, editing) {
-  var ui = S.ui, c = editing ? ui.combatDraft.c : sheetCombat(s), a = ui.attrDraft || sheetAttrs(s), av = attrValues(a), r = gurpsStats(a);
+  var ui = S.ui, c = editing ? ui.combatDraft.c : sheetCombat(s), a = ui.attrDraft || sheetAttrs(s), av = attrValues(a);
   var pool = combatSkillPool(c, s), can = canWrite();
   var head = '<div class="gurps-head"><h2 class="sec-title">Combate</h2><span class="gurps-total" id="scTotal">' + combatTotal(c) + ' pts</span>' +
     (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="scCancel">Cancelar</button><button class="btn primary" type="button" id="scSave">Salvar combate</button></div>'
-      : can && !ui.skillDraft && !ui.advDraft ? '<div class="btn-row"><button class="btn" type="button" id="scEdit">' + svg(ICON.edit, 15) + 'Editar combate</button></div>' : '') + '</div>';
+      : can && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="scEdit">' + svg(ICON.edit, 15) + 'Editar combate</button></div>' : '') + '</div>';
   if (editing) return '<section class="gurps" id="combat">' + head + scEditHtml(s, c, pool, av) + '</section>';
-  var empty = !c.styles.length && !c.general.length && !c.weapons.length;
+  var empty = !c.styles.length && !c.general.length;
   if (empty) return '<section class="gurps" id="combat">' + head + '<p class="long none">Nenhum estilo ou perícia de combate.' + (can ? ' Use <b>Editar combate</b> para adicionar.' : '') + '</p></section>';
   var drag = can && !ui.skillDraft && !ui.attrDraft && !ui.advDraft;
   // Links to the catalogs (see scLink): they arrive once and the page redraws with them.
@@ -538,8 +530,7 @@ function sheetCombatHtml(s, editing) {
     // tables they sum up.
     (scShown(c.general).length ? scMainHtml(c.general, pool, av) : '') +
     scTotalsHtml(c, pool) +
-    '<div class="sc-masonry" id="scGroups">' + groups.join('') + '</div>' +
-    '<div class="sc-bottom">' + scWeaponsHtml(c, a.st) + '<div class="sc-side">' + scDefHtml(c, combatDefenses(scWithAdvs(c, s), pool, av, r, a)) + '</div></div></section>';
+    '<div class="sc-masonry" id="scGroups">' + groups.join('') + '</div></section>';
 }
 
 /* ---------- editor ---------- */
@@ -594,24 +585,12 @@ function scGroupEditHtml(title, items, g, pool, av, listId, st) {
     (cat ? '<p class="hint-text" style="margin:0">Os nomes sugeridos vêm das listas do estilo (técnicas, perks e opcionais): escolher um preenche o resto.</p>' : '') + reqHtml + '</div></div>';
 }
 function scEditHtml(s, c, pool, av) {
-  var d = S.ui.combatDraft, a = S.ui.attrDraft || sheetAttrs(s), st = a.st;
+  var d = S.ui.combatDraft;
   var lists = c.styles.map(function (x, i) { return '<datalist id="scList' + i + '">' + scSuggestions(x).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>'; }).join('') +
     '<datalist id="scListG">' + scSuggestions(null).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>' +
     '<datalist id="scBases">' + pool.map(function (k) { return '<option value="' + esc(k.name) + '">'; }).join('') + '</datalist>';
   var fromSkills = sheetSkills(s).filter(function (k) { return !d.moved.some(function (m) { return m.name === k.name && m.attr === k.attr && m.diff === k.diff; }); });
   var targets = [['g', 'Perícias de Combate']].concat(c.styles.map(function (x, i) { return ['s' + i, x.name || 'Estilo ' + (i + 1)]; }));
-  var weaponRows = c.weapons.map(function (w, n) {
-    var at = ' data-w="' + n + '"';
-    return '<div class="sc-row">' + scField('Arma', '<input type="text" data-f="wname"' + at + ' maxlength="120" value="' + esc(w.name) + '" placeholder="Ex.: Broadsword">', 'sc-name') +
-      scField('Tipo', '<select data-f="wmode"' + at + '>' + scOpts(SC_MODES, w.mode) + '</select>') +
-      scField(w.mode === 'fixed' ? 'Dano' : 'Modificador', '<input type="text" data-f="wmod"' + at + ' maxlength="40" value="' + esc(w.mod) + '" placeholder="' + (w.mode === 'fixed' ? 'Ex.: 3d' : 'Ex.: +1') + '">') +
-      scField('Status', '<select data-f="wtype"' + at + '>' + scOpts(SC_DMG_TYPES, w.type) + '</select>') +
-      '<span class="sc-nh" data-wdmg="' + n + '">' + esc(weaponDamage(w, st)) + '</span>' +
-      '<button class="icon-btn" type="button" data-delw="' + n + '" aria-label="Remover ataque" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
-  }).join('');
-  var parryNames = pool.filter(function (k) { return SC_PARRY[combatKey(k.name)]; }).map(function (k) { return [k.name, k.name]; });
-  var blockNames = pool.filter(function (k) { return /^(shield|cloak)\b/.test(combatKey(k.name)); }).map(function (k) { return [k.name, k.name]; });
-  var dd = c.def;
   return lists +
     scGroupEditHtml('Perícias de Combate', c.general, 'g', pool, av, 'scListG', null) +
     c.styles.map(function (x, i) { return scGroupEditHtml('', x.items, 's' + i, pool, av, 'scList' + i, x); }).join('') +
@@ -625,17 +604,6 @@ function scEditHtml(s, c, pool, av) {
       scField('Para', '<select id="scFromTarget">' + scOpts(targets, targets[0][0]) + '</select>') +
       '<button class="btn" type="button" id="scBring">Trazer</button></div>' +
       '<p class="hint-text" style="margin:0">A perícia sai da seção Perícias e passa a contar aqui, com os mesmos pontos.</p>' : '') + '</div>' +
-    '<div class="box sc-edit"><h3 class="sec-title" style="margin:0">Danos</h3><div class="sc-rows">' + weaponRows + '</div>' +
-      '<div><button class="btn" type="button" id="scAddWeapon">' + svg(ICON.plus, 14, 2.4) + 'Adicionar ataque</button></div>' +
-      '<p class="hint-text" style="margin:0">swing e thrust usam o dano da ST (' + st + ': sw ' + gurpsDamage(st).sw + ', thr ' + gurpsDamage(st).thr + ') mais o modificador. Repita o nome da arma para cada ataque dela.</p></div>' +
-    '<div class="box sc-edit"><h3 class="sec-title" style="margin:0">Defesas</h3><div class="sc-row">' +
-      scField('Aparar com', '<select data-f="parry"><option value="">Automático (a melhor)</option>' + scOpts(parryNames, dd.parry) + '</select>', 'sc-name') +
-      scField('Bônus', '<input type="number" data-f="parryBonus" min="-20" max="20" value="' + dd.parryBonus + '">') + scDefNote('parry', dd.parryNote, dd.parryBonus) + '</div><div class="sc-row">' +
-      scField('Bloquear com', '<select data-f="block"><option value="">Automático (a melhor)</option>' + scOpts(blockNames, dd.block) + '</select>', 'sc-name') +
-      scField('Bônus', '<input type="number" data-f="blockBonus" min="-20" max="20" value="' + dd.blockBonus + '">') + scDefNote('block', dd.blockNote, dd.blockBonus) + '</div><div class="sc-row">' +
-      scField('Esquiva: bônus', '<input type="number" data-f="dodgeBonus" min="-20" max="20" value="' + dd.dodgeBonus + '">') +
-      scField('DB do escudo', '<input type="number" data-f="db" min="0" max="10" value="' + dd.db + '">') + scDefNote('dodge', dd.dodgeNote, dd.dodgeBonus) + '</div>' +
-      '<p class="hint-text" style="margin:0">Pelas regras do Basic Set (pp. B374-377): Aparar = 3 + NH/2 com a arma (bastão +2, faca -1); Bloqueio = 3 + Shield ou Cloak/2; Esquiva = VB + 3 - carga. Combat Reflexes e Enhanced Block, Parry e Dodge comprados aqui entram sozinhos. DB do escudo: 1 pequeno ou capa leve, 2 médio ou capa pesada, 3 grande; soma nas três defesas. Outros bônus vão nos campos Bônus, com o motivo, que aparece ao passar o mouse.</p></div>' +
     '<div class="form-err" id="scErr" role="alert"></div>';
 }
 // The style tables are always SC_COL wide: as many columns as fit in the section, and the grid
@@ -687,21 +655,12 @@ function wireSheetCombat(s) {
       el.className = 'sc-nh' + (x.bonus ? ' bonus' : ''); el.innerHTML = scEditNhHtml(nh);
     });
     box.querySelectorAll('[data-bnote]').forEach(function (el) { var p = el.getAttribute('data-bnote').split(':'), x = group(p[0])[+p[1]]; if (x) el.hidden = !x.bonus; });
-    box.querySelectorAll('[data-dnote]').forEach(function (el) { el.hidden = !c.def[el.getAttribute('data-dnote') + 'Bonus']; });
-    box.querySelectorAll('[data-wdmg]').forEach(function (el) { var w = c.weapons[+el.getAttribute('data-wdmg')]; if (w) el.textContent = weaponDamage(cleanCombat({ weapons: [w] }).weapons[0], a.st); });
     $('scTotal').textContent = combatTotal(cleanCombat(c)) + ' pts';
   }
   function onEdit(e) {
     var el = /** @type {AnyEl} */ (e.target), f = el && el.dataset && el.dataset.f; if (!f) return;
     var v = el.value, change = e.type === 'change';
-    if (el.hasAttribute('data-w')) {
-      var w = c.weapons[+el.getAttribute('data-w')];
-      w[{ wname: 'name', wmode: 'mode', wmod: 'mod', wtype: 'type' }[f]] = v;
-      if (f === 'wmode' && change) { renderSheetPage(); return; }
-      paint(); return;
-    }
     if (/Note$/.test(f) && v.trim()) el.classList.remove('invalid');
-    if (f in c.def) { c.def[f] = /Bonus$|^db$/.test(f) ? (v === '' ? 0 : +v) : v; if (/Bonus$/.test(f)) paint(); return; }
     var g = el.getAttribute('data-g'); if (!g) return;
     if (f === 'stname') {
       // Its Style Familiarity follows the name, while it still has the one it got.
@@ -733,9 +692,8 @@ function wireSheetCombat(s) {
   box.addEventListener('click', function (e) {
     var fold = /** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('[data-fold]');
     if (fold) { scFold(fold.getAttribute('data-fold'), fold.getAttribute('aria-expanded') !== 'true'); return; }
-    var b = /** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('[data-del], [data-delw], [data-delstyle], [data-add]'); if (!b) return;
+    var b = /** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('[data-del], [data-delstyle], [data-add]'); if (!b) return;
     if (b.hasAttribute('data-del')) { var p = b.getAttribute('data-del').split(':'); group(p[0]).splice(+p[1], 1); }
-    else if (b.hasAttribute('data-delw')) c.weapons.splice(+b.getAttribute('data-delw'), 1);
     else if (b.hasAttribute('data-delstyle')) {
       var st = styleOf(b.getAttribute('data-delstyle'));
       if (st.items.length && !confirm('Remover o estilo ' + (st.name || '') + ' e tudo o que está nele?')) return;
@@ -807,7 +765,6 @@ function wireSheetCombat(s) {
     group(t).push(cleanCombatItem({ kind: 'skill', name: k.name, attr: k.attr, diff: k.diff, pts: k.pts, bonus: k.bonus, bonusNote: k.bonusNote, skillId: k.skillId }));
     renderSheetPage();
   };
-  $('scAddWeapon').onclick = function () { c.weapons.push({ name: c.weapons.length ? c.weapons[c.weapons.length - 1].name : '', mode: 'sw', mod: '', type: 'cut' }); renderSheetPage(); };
   $('scCancel').onclick = function () { ui.combatDraft = null; renderSheetPage(); };
   $('scSave').onclick = function () {
     if (!checkBonusNotes(box)) {
@@ -817,8 +774,69 @@ function wireSheetCombat(s) {
     }
     $('scErr').textContent = '';
     var btn = $('scSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('scCancel').disabled = true;
-    Ops.saveSheetCombat(s, c, d.moved).then(function () { ui.combatDraft = null; toast('Combate salvo.'); renderSheetPage(); }, function (er) {
+    // Danos and Defesas are edited in their own sections: theirs as they are now.
+    var cur = sheetCombat(sheetById(s.id) || s);
+    Ops.saveSheetCombat(s, Object.assign({}, c, { weapons: cur.weapons, def: cur.def }), d.moved).then(function () { ui.combatDraft = null; toast('Combate salvo.'); renderSheetPage(); }, function (er) {
       btn.disabled = false; btn.textContent = 'Salvar combate'; $('scCancel').disabled = false; $('scErr').textContent = errorText(er);
+    });
+  };
+}
+
+/* ---------- Danos and Defesas ----------
+   Sections of their own, side by side below Combate, each with its editor; still saved in
+   sheet.combat (weapons and def), only their part, over the combat as it is now.
+   S.ui.dmgDraft: the attacks being changed (Danos is in ficha-danos.js); S.ui.defDraft: the defenses. */
+Ops.saveSheetCombatPart = function (s, part) {
+  var cur = sheetById(s.id) || s;
+  return Ops.saveSheetCombat(cur, Object.assign(sheetCombat(cur), part));
+};
+function scSectionHead(title, editing, id, label) {
+  return '<div class="gurps-head"><h2 class="sec-title">' + title + '</h2>' +
+    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="' + id + 'Cancel">Cancelar</button><button class="btn primary" type="button" id="' + id + 'Save">Salvar ' + label + '</button></div>'
+      : canWrite() && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="' + id + 'Edit">' + svg(ICON.edit, 15) + 'Editar ' + label + '</button></div>' : '') + '</div>';
+}
+function sheetDefenseHtml(s, editing) {
+  var ui = S.ui, c = sheetCombat(s), a = ui.attrDraft || sheetAttrs(s), pool = combatSkillPool(c, s), head = scSectionHead('Defesas', editing, 'df', 'defesas');
+  if (!editing) return '<section class="gurps" id="defense">' + head + scDefHtml(c, combatDefenses(scWithAdvs(c, s), pool, attrValues(a), gurpsStats(a), a)) + '</section>';
+  var dd = ui.defDraft;
+  var parryNames = pool.filter(function (k) { return SC_PARRY[combatKey(k.name)]; }).map(function (k) { return [k.name, k.name]; });
+  var blockNames = pool.filter(function (k) { return /^(shield|cloak)\b/.test(combatKey(k.name)); }).map(function (k) { return [k.name, k.name]; });
+  return '<section class="gurps" id="defense">' + head + '<div class="box sc-edit"><div class="sc-row">' +
+    scField('Aparar com', '<select data-f="parry"><option value="">Automático (a melhor)</option>' + scOpts(parryNames, dd.parry) + '</select>', 'sc-name') +
+    scField('Bônus', '<input type="number" data-f="parryBonus" min="-20" max="20" value="' + dd.parryBonus + '">') + scDefNote('parry', dd.parryNote, dd.parryBonus) + '</div><div class="sc-row">' +
+    scField('Bloquear com', '<select data-f="block"><option value="">Automático (a melhor)</option>' + scOpts(blockNames, dd.block) + '</select>', 'sc-name') +
+    scField('Bônus', '<input type="number" data-f="blockBonus" min="-20" max="20" value="' + dd.blockBonus + '">') + scDefNote('block', dd.blockNote, dd.blockBonus) + '</div><div class="sc-row">' +
+    scField('Esquiva: bônus', '<input type="number" data-f="dodgeBonus" min="-20" max="20" value="' + dd.dodgeBonus + '">') +
+    scField('DB do escudo', '<input type="number" data-f="db" min="0" max="10" value="' + dd.db + '">') + scDefNote('dodge', dd.dodgeNote, dd.dodgeBonus) + '</div>' +
+    '<p class="hint-text" style="margin:0">Pelas regras do Basic Set (pp. B374-377): Aparar = 3 + NH/2 com a arma (bastão +2, faca -1); Bloqueio = 3 + Shield ou Cloak/2; Esquiva = VB + 3 - carga. Combat Reflexes e Enhanced Block, Parry e Dodge comprados em Combate ou Vantagens entram sozinhos. DB do escudo: 1 pequeno ou capa leve, 2 médio ou capa pesada, 3 grande; soma nas três defesas. Outros bônus vão nos campos Bônus, com o motivo, que aparece ao passar o mouse.</p></div>' +
+    '<div class="form-err" id="dfErr" role="alert"></div></section>';
+}
+// Side by side, as in the spreadsheet; one below the other while one is edited.
+function sheetDmgDefHtml(s) {
+  var ui = S.ui, can = canWrite(), dm = !!ui.dmgDraft && can, df = !!ui.defDraft && can;
+  return '<div class="sc-pair' + (dm || df ? ' editing' : '') + '">' + sheetDamageHtml(s, dm) + sheetDefenseHtml(s, df) + '</div>';
+}
+function scSaving(id, label, on) {
+  var btn = $(id + 'Save'); btn.disabled = on; btn.textContent = on ? 'Salvando…' : 'Salvar ' + label; $(id + 'Cancel').disabled = on;
+}
+function wireSheetDefense(s) {
+  var ui = S.ui, ed = $('dfEdit');
+  if (ed) ed.onclick = function () { ui.defDraft = sheetCombat(s).def; renderSheetPage(); };
+  var d = ui.defDraft, box = $('defense'); if (!d || !box || !$('dfSave')) return;
+  function onEdit(e) {
+    var el = /** @type {AnyEl} */ (e.target), f = el && el.dataset && el.dataset.f; if (!f || !(f in d)) return;
+    var v = el.value;
+    if (/Note$/.test(f) && v.trim()) el.classList.remove('invalid');
+    d[f] = /Bonus$|^db$/.test(f) ? (v === '' ? 0 : +v) : v;
+    if (/Bonus$/.test(f)) box.querySelectorAll('[data-dnote]').forEach(function (n) { n.hidden = !d[n.getAttribute('data-dnote') + 'Bonus']; });
+  }
+  box.addEventListener('input', onEdit); box.addEventListener('change', onEdit);
+  $('dfCancel').onclick = function () { ui.defDraft = null; renderSheetPage(); };
+  $('dfSave').onclick = function () {
+    if (!checkBonusNotes(box)) { $('dfErr').textContent = 'Escreva o motivo de cada bônus.'; return; }
+    scSaving('df', 'defesas', true); $('dfErr').textContent = '';
+    Ops.saveSheetCombatPart(s, { def: d }).then(function () { ui.defDraft = null; toast('Defesas salvas.'); renderSheetPage(); }, function (er) {
+      scSaving('df', 'defesas', false); $('dfErr').textContent = errorText(er);
     });
   };
 }

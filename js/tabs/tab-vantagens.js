@@ -225,7 +225,7 @@ function openAdvModal(id) {
     var box = $('advModal'); if (!box) return;
     var a = advById(id);
     if (!a) { box.innerHTML = '<h2>Vantagem não encontrada</h2><p class="lede">Essa vantagem pode ter sido excluída ou ocultada.</p>'; return; }
-    var away = S.ui && (S.ui.skillDraft || S.ui.combatDraft || S.ui.advDraft) ? ' target="_blank" rel="noopener"' : '';
+    var away = S.ui && sheetDraftOpen() ? ' target="_blank" rel="noopener"' : '';
     box.innerHTML = '<div class="skill-modal-head"><div style="display:flex;align-items:center;gap:8px"><span class="badge">' + svg(ICON.advantage, 12, 2.4) + ' ' + esc(advTypeLabel(a.type)) + '</span>' +
       '<span class="spell-badge ' + advTypeClass(a.type) + '">' + esc(advTypeLabel(a.type)) + '</span></div>' +
       '<h2 id="advModalTitle">' + esc(a.name) + '</h2><p class="lede">' + (a.cost ? esc(a.cost) : 'Custo não informado') + '</p></div>' +

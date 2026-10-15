@@ -461,7 +461,7 @@ function openTechModal(id) {
     var t = techById(id);
     if (!t) { box.innerHTML = '<h2>Técnica não encontrada</h2><p class="lede">Essa técnica pode ter sido excluída ou ocultada.</p>'; return; }
     // A sheet being edited would lose its draft on leaving the page: the page opens in another tab then.
-    var away = S.ui && (S.ui.skillDraft || S.ui.combatDraft) ? ' target="_blank" rel="noopener"' : '';
+    var away = S.ui && sheetDraftOpen() ? ' target="_blank" rel="noopener"' : '';
     function sec(title, text) { return text ? '<h3 class="sec-title">' + title + '</h3><p class="long">' + esc(text) + '</p>' : ''; }
     box.innerHTML = '<div class="skill-modal-head"><div style="display:flex;align-items:center;gap:8px"><span class="badge">' + svg(ICON.combat, 12, 2.4) + ' Técnica</span>' + techBadge(t) + '</div>' +
       '<h2 id="techModalTitle">' + esc(t.name) + '</h2><p class="lede">Técnica ' + esc(TECH_DIFF_LABELS[t.difficulty] || t.difficulty || '') + (t.cinematic ? ' · Cinemática' : '') +

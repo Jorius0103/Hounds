@@ -1,35 +1,205 @@
 /* =====================================================================
-   Hounds — Ficha › Equipamentos
+   Hounds — Ficha › Equipamentos, Corpo e Mochilas
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
    ===================================================================== */
 'use strict';
 
-/* Data: sheet.equip = [{ name, qty, weight, cost, carried, notes }], in the order the player gave.
-     qty      how many; 0 keeps the line (what ran out and is to be bought again)
-     weight   lbs of one; cost: $ of one. The table shows the line's total
-     carried  false: kept somewhere else (the horse, the inn); its weight does not count
-     notes    the Observações column
-   The carried weight against Basic Lift gives the encumbrance level (Basic Set, p. B17). The
-   sheet keeps the level in Atributos › Peso (attrs.enc), set by hand: this section shows the
-   level of the equipment and offers to use it there. */
+/* Data (see types/dados.d.ts):
+   sheet.equip  = [{ id, kind, refId?, name, qty, weight, cost, notes }]
+     Everything the character owns, in the player's order; Corpo and Mochilas point to a line by its
+     id. kind 'item' | 'armor' | 'weapon'; refId: the entry of Mundo › Itens, Armaduras or Armas it
+     was picked from. qty 0 keeps the line (what ran out and is to be bought again); weight (lbs) and
+     cost ($) are of one. The list alone is not carried weight.
+   sheet.bodies = [{ id, name, active, slots: [{ part, equipId, qty }] }]
+     Body configurations ("Armadura de combate", "Viagem"): the armors worn on each part of the body
+     (GEAR_PARTS; several on a part are layers), and the weapons and items carried, outside the parts
+     (part GEAR_CARRY). At most one is active: the one the character is using.
+   sheet.packs  = [{ id, name, inUse, equipId, items: [{ equipId, qty }] }] (at most one in use)
+     Packs: what each holds, and equipId, the line that is the pack itself (its own weight; null:
+     none). Any number of them can be in use.
+   The load (gearLoad) is the active configuration plus the packs in use, each line counted at most
+   as many times as the character has it. Its level against Basic Lift (Basic Set, p. B17) shows
+   here; the sheet keeps the level in Atributos › Peso (attrs.enc), set by hand, and this tab offers
+   to use the load's level there. */
 // [up to how many times Basic Lift, name] of the levels 0 to 4; more than 10 × BL: no moving.
 var EQ_LEVELS = /** @type {[number, string][]} */ ([[1, 'Nenhuma'], [2, 'Leve'], [3, 'Média'], [6, 'Pesada'], [10, 'Muito Pesada']]);
+var EQ_KIND_LABEL = { item: 'Item', armor: 'Armadura', weapon: 'Arma' };
+// The catalog the Equipamento field searches for each kind.
+var EQ_KIND_COL = { item: 'items', armor: 'armors', weapon: 'weapons' };
+// The parts of the body where armor is worn, head to feet (the locations of Criar Armadura: Low-Tech,
+// pp. 100-101): [key, name, the book's]. The torso's armor protects the vitals too.
+var GEAR_PARTS = [['head', 'Cabeça', 'Head'], ['neck', 'Pescoço', 'Neck'], ['torso', 'Tronco', 'Torso'], ['groin', 'Virilha', 'Groin'],
+  ['arms', 'Braços', 'Arms'], ['hands', 'Mãos', 'Hands'], ['legs', 'Pernas', 'Legs'], ['feet', 'Pés', 'Feet']];
+var GEAR_PART_KEYS = GEAR_PARTS.map(function (p) { return p[0]; });
+// Weapons, shields and items are carried, outside the parts.
+var GEAR_CARRY = 'carry';
+// The parts of before (hit locations one by one) and the ones they are now; the database migrates the
+// same (migration 21).
+var GEAR_OLD_PARTS = { eyes: 'head', skull: 'head', face: 'head', right_arm: 'arms', left_arm: 'arms', right_leg: 'legs', left_leg: 'legs' };
+function gearPartKey(k) { k = GEAR_OLD_PARTS[k] || k; return GEAR_PART_KEYS.indexOf(k) >= 0 || k === GEAR_CARRY ? k : null; }
+// The words of an armor's Local in Mundo › Armaduras and the parts they are; "limbs" are the arms and
+// legs (p. B398). A word not here ("body", "full suit") is not defined by the catalog: such an armor
+// goes on any part, and the player chooses.
+var GEAR_LOC_WORDS = { eyes: ['head'], eye: ['head'], skull: ['head'], face: ['head'], head: ['head'], neck: ['neck'], torso: ['torso'], groin: ['groin'],
+  arms: ['arms'], arm: ['arms'], hands: ['hands'], hand: ['hands'], legs: ['legs'], leg: ['legs'], feet: ['feet'], foot: ['feet'], limbs: ['arms', 'legs'] };
+// A shield or cloak (Shield in the catalog) is carried, as a weapon.
+function gearIsShield(e) { var c = e && e.kind === 'armor' && e.refId ? armorById(e.refId) : null; return !!c && c.type === 'Shield'; }
+
+/* ---------- data ---------- */
 // Weight and cost take cents; never negative.
 function cleanDec(v, hi, dflt) { var n = Number(v); return isFinite(n) && v !== '' && v != null ? Math.min(hi, Math.max(0, Math.round(n * 100) / 100)) : dflt; }
-function cleanEquip(x) {
+function gearId(v, n) { return typeof v === 'string' ? v.trim().slice(0, n || 60) : ''; }
+// A line of the list. i: its position, which names a line saved before the ids existed ('e1',
+// 'e2'…, as the database migration does).
+function cleanEquip(x, i) {
   x = x || {};
-  return { name: String(x.name || '').trim().slice(0, 120), qty: cleanInt(x.qty, 0, 9999, 1), weight: cleanDec(x.weight, 99999, 0),
-    cost: cleanDec(x.cost, 9999999, 0), carried: x.carried !== false, notes: String(x.notes || '').trim().slice(0, 400) };
+  var o = { id: gearId(x.id) || (typeof i === 'number' ? 'e' + (i + 1) : ''), kind: x.kind === 'armor' || x.kind === 'weapon' ? x.kind : 'item',
+    name: String(x.name || '').trim().slice(0, 120), qty: cleanInt(x.qty, 0, 9999, 1), weight: cleanDec(x.weight, 99999, 0),
+    cost: cleanDec(x.cost, 9999999, 0), notes: String(x.notes || '').trim().slice(0, 400) };
+  var ref = gearId(x.refId, 200); if (ref) o.refId = ref;
+  return o;
 }
-function sheetEquip(s) { return (Array.isArray(s && s.equip) ? s.equip : []).map(cleanEquip).filter(function (x) { return x.name; }); }
+function gearIndex(list) { var by = Object.create(null); list.forEach(function (e) { by[e.id] = e; }); return by; }
+// A new id that is not in taken (an index by id).
+function gearNewId(prefix, taken) { var id; do { id = prefix + Math.random().toString(36).slice(2, 8); } while (taken[id]); return id; }
+// Ids repeated (by hand, or an old copy) get new ones; the links stay with the first.
+function gearUniq(list, prefix) { var seen = Object.create(null); list.forEach(function (x) { if (!x.id || seen[x.id]) x.id = gearNewId(prefix, seen); seen[x.id] = true; }); return list; }
+// A body configuration with only parts of GEAR_PARTS (or GEAR_CARRY) and lines of the list (by: the
+// list by id). Parts of before become the ones of now (gearPartKey); weapons and items are always
+// carried. The same line twice on a part is one row: an armor keeps one piece (the largest quantity),
+// the rest add up.
+function cleanBody(b, i, by) {
+  b = b || {};
+  var slots = [], at = Object.create(null);
+  (Array.isArray(b.slots) ? b.slots : []).forEach(function (sl) {
+    var e = sl && by[sl.equipId], part = e ? (e.kind === 'armor' ? gearPartKey(sl.part) : GEAR_CARRY) : null; if (!part) return;
+    var k = part + '|' + sl.equipId, q = cleanInt(sl.qty, 1, 9999, 1);
+    if (at[k]) at[k].qty = e.kind === 'armor' ? Math.max(at[k].qty, q) : Math.min(9999, at[k].qty + q);
+    else slots.push(at[k] = { part: part, equipId: sl.equipId, qty: q });
+  });
+  return { id: gearId(b.id) || 'b' + (i + 1), name: String(b.name || '').trim().slice(0, 80) || 'Configuração ' + (i + 1), active: b.active === true, slots: slots };
+}
+// A pack with only lines of the list; the same line twice is one row, with the quantities added.
+function cleanPack(p, i, by) {
+  p = p || {};
+  var items = [], at = Object.create(null);
+  (Array.isArray(p.items) ? p.items : []).forEach(function (it) {
+    if (!it || !by[it.equipId]) return;
+    var q = cleanInt(it.qty, 1, 9999, 1);
+    if (at[it.equipId]) at[it.equipId].qty = Math.min(9999, at[it.equipId].qty + q); else items.push(at[it.equipId] = { equipId: it.equipId, qty: q });
+  });
+  return { id: gearId(p.id) || 'm' + (i + 1), name: String(p.name || '').trim().slice(0, 80) || 'Mochila ' + (i + 1), inUse: p.inUse === true,
+    equipId: p.equipId && by[p.equipId] ? p.equipId : null, items: items };
+}
+// The lists, clean and consistent: links only to lines of the list (a line that left the list takes
+// its links along; a piece of an armor set stays in the set, without its line), at most one active
+// configuration and one pack in use. pieces: the piece of a set that each line is, by the line's id; weaponLines: the
+// weapon of Criar Arma that each line is; shieldLines: the shield of Criar Escudo.
+function gearOf(equip, bodies, packs, sets, weapons, shields) {
+  var list = gearUniq((Array.isArray(equip) ? equip : []).map(cleanEquip).filter(function (x) { return x.name; }), 'e'), by = gearIndex(list), on = false;
+  var bs = gearUniq((Array.isArray(bodies) ? bodies : []).map(function (b, i) { return cleanBody(b, i, by); }), 'b');
+  bs.forEach(function (b) { if (b.active && on) b.active = false; if (b.active) on = true; });
+  var ps = gearUniq((Array.isArray(packs) ? packs : []).map(function (p, i) { return cleanPack(p, i, by); }), 'm'), pon = false;
+  ps.forEach(function (p) { if (p.inUse && pon) p.inUse = false; if (p.inUse) pon = true; });
+  var as = gearUniq((Array.isArray(sets) ? sets : []).map(function (a, i) { return cleanArmorSet(a, i, by); }), 'a'), pieces = Object.create(null);
+  as.forEach(function (a) { a.pieces.forEach(function (pc) { if (!pc.equipId) return; if (pieces[pc.equipId]) pc.equipId = null; else pieces[pc.equipId] = { set: a, piece: pc }; }); });
+  var ws = gearUniq((Array.isArray(weapons) ? weapons : []).map(function (w, i) { return cleanCustomWeapon(w, i, by); }), 'w'), weaponLines = Object.create(null);
+  ws.forEach(function (w) { if (!w.equipId) return; if (weaponLines[w.equipId] || pieces[w.equipId]) w.equipId = null; else weaponLines[w.equipId] = w; });
+  var hs = gearUniq((Array.isArray(shields) ? shields : []).map(function (w, i) { return cleanCustomShield(w, i, by); }), 'h'), shieldLines = Object.create(null);
+  hs.forEach(function (w) { if (!w.equipId) return; if (shieldLines[w.equipId] || weaponLines[w.equipId] || pieces[w.equipId]) w.equipId = null; else shieldLines[w.equipId] = w; });
+  return { equip: list, bodies: bs, packs: ps, armorSets: as, pieces: pieces, customWeapons: ws, weaponLines: weaponLines, customShields: hs, shieldLines: shieldLines };
+}
+// A sheet saved before Corpo and Mochilas: lines without an id, no packs. What was marked Carregado
+// goes to a pack in use, "Itens carregados", with the whole quantity (as the database migration does),
+// so the load stays what it was.
+function gearLegacy(s) { return !!s && Array.isArray(s.equip) && s.equip.length > 0 && (!Array.isArray(s.packs) || s.equip.some(function (x) { return x && !x.id; })); }
+function sheetGear(s) {
+  var packs = s && s.packs;
+  if (!Array.isArray(packs)) {
+    var held = [];
+    (Array.isArray(s && s.equip) ? s.equip : []).forEach(function (x, i) {
+      var e = cleanEquip(x, i);
+      if (x && x.carried === true && e.name && e.qty > 0) held.push({ equipId: e.id, qty: e.qty });
+    });
+    packs = held.length ? [{ id: 'm1', name: 'Itens carregados', inUse: true, equipId: null, items: held }] : [];
+  }
+  return gearOf(s && s.equip, s && s.bodies, packs, s && s.armorSets, s && s.customWeapons, s && s.customShields);
+}
+// The tab's lists as they are on screen: the saved ones, with the one being edited in its place.
+function gearNow(s) {
+  var ui = S.ui, g = sheetGear(s);
+  if (!gearEditing()) return g;
+  return gearOf(g.equip, ui.bodyDraft ? ui.bodyDraft.bodies : g.bodies, ui.packDraft ? ui.packDraft.packs : g.packs, g.armorSets, g.customWeapons, g.customShields);
+}
+function gearEditing() { var ui = S.ui; return !!(ui.bodyDraft || ui.packDraft || ui.armorDraft || ui.weaponDraft || ui.shieldDraft || ui.itemDraft); }
+
+/* ---------- the load: one rule for everything that weighs ---------- */
 function eqRound(n) { return Math.round(n * 100) / 100; }
-// Weights of what is carried and of what is kept elsewhere, and the cost of everything.
-function equipTotals(list) {
-  var t = { carried: 0, stored: 0, cost: 0 };
-  list.forEach(function (x) { var w = x.qty * x.weight; if (x.carried) t.carried += w; else t.stored += w; t.cost += x.qty * x.cost; });
-  return { carried: eqRound(t.carried), stored: eqRound(t.stored), cost: eqRound(t.cost) };
+function addUnits(to, from) { Object.keys(from).forEach(function (id) { to[id] = (to[id] || 0) + from[id]; }); return to; }
+// How many of each line a body configuration uses: an armor on several parts is one piece (the
+// largest quantity on a part); weapons and items on several parts add up (a knife in the hand and
+// another at the belt are two).
+function bodyUnits(b, by) {
+  var u = Object.create(null);
+  b.slots.forEach(function (sl) {
+    var e = by[sl.equipId]; if (!e) return;
+    u[e.id] = e.kind === 'armor' ? Math.max(u[e.id] || 0, sl.qty) : (u[e.id] || 0) + sl.qty;
+  });
+  return u;
+}
+// How many of each line a pack takes: the pack itself and what it holds.
+function packUnits(p) {
+  var u = Object.create(null);
+  if (p.equipId) u[p.equipId] = 1;
+  p.items.forEach(function (it) { u[it.equipId] = (u[it.equipId] || 0) + it.qty; });
+  return u;
+}
+function unitsLbs(u, by) { var w = 0; Object.keys(u).forEach(function (id) { if (by[id]) w += u[id] * by[id].weight; }); return eqRound(w); }
+// The load: the active configuration and the packs in use (each with its own weight). A line counts
+// at most as many times as the character has it, so what is on the body and in a pack in use (or in
+// two of them) weighs once. counted: how many of each line count.
+function gearLoad(g) {
+  var by = gearIndex(g.equip), active = g.bodies.filter(function (b) { return b.active; })[0] || null;
+  var bu = active ? bodyUnits(active, by) : Object.create(null), all = addUnits(Object.create(null), bu), inUse = 0;
+  var packs = g.packs.map(function (p) {
+    var own = p.equipId ? by[p.equipId].weight : 0, content = 0;
+    p.items.forEach(function (it) { content += it.qty * by[it.equipId].weight; });
+    var x = { pack: p, own: eqRound(own), content: eqRound(content), total: eqRound(own + content) };
+    if (p.inUse) { addUnits(all, packUnits(p)); inUse += x.total; }
+    return x;
+  });
+  var total = 0, raw = 0, over = [], counted = Object.create(null), cost = 0, owned = 0;
+  Object.keys(all).forEach(function (id) {
+    var e = by[id], n = Math.min(e.qty, all[id]);
+    counted[id] = n; total += n * e.weight; raw += all[id] * e.weight;
+    if (all[id] > e.qty) over.push({ e: e, n: all[id] });
+  });
+  g.equip.forEach(function (e) { cost += e.qty * e.cost; owned += e.qty * e.weight; });
+  return { active: active, body: unitsLbs(bu, by), packs: packs, inUse: eqRound(inUse), total: eqRound(total), once: eqRound(raw - total),
+    over: over, counted: counted, cost: eqRound(cost), owned: eqRound(owned) };
+}
+// What a save would leave wrong (part: only the configurations, only the packs, or all): more of a
+// line placed than the character has, in a configuration or in all the packs together (in use or
+// not: they are where things are), or an armor on a part it does not cover. The database checks the
+// same quantities (salvar_ficha).
+function gearIssues(g, part) {
+  var by = gearIndex(g.equip), out = [];
+  if (part !== 'packs') g.bodies.forEach(function (b) {
+    var u = bodyUnits(b, by);
+    Object.keys(u).forEach(function (id) { if (u[id] > by[id].qty) out.push(by[id].name + ': ' + u[id] + ' na configuração de corpo “' + b.name + '”, mas a lista de equipamentos tem ' + by[id].qty + '.'); });
+    b.slots.forEach(function (sl) {
+      var e = by[sl.equipId], parts = gearParts(e, g);
+      if (parts && parts.indexOf(sl.part) < 0) out.push(e.name + ' não vai em ' + gearPartName(sl.part) + ' (“' + b.name + '”; ' + gearPartsText(e, g) + ').');
+    });
+  });
+  if (part !== 'bodies') {
+    var u = Object.create(null);
+    g.packs.forEach(function (p) { addUnits(u, packUnits(p)); });
+    Object.keys(u).forEach(function (id) { if (u[id] > by[id].qty) out.push(by[id].name + ': ' + u[id] + ' nas mochilas, mas a lista de equipamentos tem ' + by[id].qty + '.'); });
+  }
+  return out;
 }
 // 0 to 4; 5 is more than Extra-Heavy.
 function equipLevel(weight, lift) {
@@ -41,118 +211,637 @@ function eqNum(n) { return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 
 function eqLbs(n) { return eqNum(n) + ' lbs'; }
 function eqMoney(n) { return '$' + eqNum(n); }
 
-Ops.saveSheetEquip = function (s, list) {
-  if (!rawHas('sheets', s.id)) return Promise.reject({ message: 'Essa ficha não existe mais.' });
-  return W.store.patch('sheets', s.id, { equip: list.map(cleanEquip).filter(function (x) { return x.name; }), updatedAt: now() });
-};
-
-/* ---------- view ---------- */
-function equipStatsHtml(t, a) {
-  var lift = gurpsStats(a).lift, lv = equipLevel(t.carried, lift), over = lv >= EQ_LEVELS.length;
-  function stat(label, val, note) { return '<div class="gstat"><span>' + label + '</span><strong>' + val + '</strong>' + (note ? '<small>' + note + '</small>' : '') + '</div>'; }
-  function times(n) { return n === 1 ? 'Carga Básica' : n + ' × Carga Básica'; }
-  return stat('Peso carregado', esc(eqLbs(t.carried)), t.stored ? esc(eqLbs(t.stored)) + ' guardados, fora da conta' : 'tudo com o personagem') +
-    stat('Nível de carga', over ? 'Acima do limite' : esc(EQ_LEVELS[lv][1]) + ' (' + lv + ')',
-      over ? 'mais de ' + esc(eqLbs(10 * lift)) + ' (' + times(10) + '): não consegue se mover' : 'até ' + esc(eqLbs(EQ_LEVELS[lv][0] * lift)) + ' (' + times(EQ_LEVELS[lv][0]) + ')') +
-    stat('Custo total', esc(eqMoney(t.cost)), 'de tudo, guardado ou não');
+/* ---------- parts and catalogs ---------- */
+function gearPartName(k) { if (k === GEAR_CARRY) return 'Armas, escudos e itens'; var p = GEAR_PARTS.filter(function (x) { return x[0] === k; })[0]; return p ? p[1] : k; }
+// The parts a line goes on: weapons, items and shields are carried (GEAR_CARRY); a piece of Criar
+// Armadura, the part of its location; from the catalog entry, an armor's Local ("torso, groin").
+// null: any part (an armor without an entry, with the catalog not loaded yet, or whose Local has a
+// word the catalog does not define). g: the lists, for the pieces.
+function gearParts(e, g) {
+  if (e && (e.kind !== 'armor' || (g && g.shieldLines[e.id]))) return [GEAR_CARRY];
+  var pc = g && e && g.pieces[e.id], l = pc ? armorLocById(pc.piece.loc) : null;
+  if (pc) return l ? l.parts.slice() : null;
+  var a = e && e.kind === 'armor' && e.refId ? armorById(e.refId) : null;
+  if (!a) return null;
+  if (a.type === 'Shield') return [GEAR_CARRY];
+  var words = String(a.location || '').toLowerCase().split(/,|;|\band\b/).map(function (w) { return w.replace(/[^a-z ]/g, '').trim(); }).filter(Boolean), out = [];
+  for (var i = 0; i < words.length; i++) {
+    var p = Object.prototype.hasOwnProperty.call(GEAR_LOC_WORDS, words[i]) ? GEAR_LOC_WORDS[words[i]] : null;
+    if (!p) return null;
+    p.forEach(function (k) { if (out.indexOf(k) < 0) out.push(k); });
+  }
+  return out.length ? out : null;
 }
-// The equipment's level against Atributos › Peso: a line and a button when they differ.
-function equipEncHtml(t, a) {
-  var lv = Math.min(equipLevel(t.carried, gurpsStats(a).lift), EQ_LEVELS.length - 1);
-  if (lv === a.enc || !canWrite() || S.ui.attrDraft) return '';
-  return '<p class="eq-enc">' + svg(ICON.info, 15) + '<span>Em Atributos, Peso está em <b>' + a.enc + '</b>; pelo equipamento carregado seria <b>' + lv + '</b> (' + esc(EQ_LEVELS[lv][1].toLowerCase()) + ').</span>' +
+function gearPartsText(e, g) {
+  var pc = g && g.pieces[e.id];
+  if (pc) return 'peça de ' + armorLocName(pc.piece.loc) + ', de Criar Armadura';
+  if (e.kind !== 'armor') return 'armas e itens vão fora das partes'; var a = armorById(e.refId); return a && a.type === 'Shield' ? 'escudo: vai com as armas, fora das partes' : 'no catálogo: ' + (a ? a.location : '—');
+}
+// The protection of an armor line, for the body: "RD 6" (a piece; "frontal" when only the front), the
+// catalog's "RD 4/2* · BD 2". '' when none is known.
+function gearArmorDr(e, g) {
+  if (!e || e.kind !== 'armor') return '';
+  var sh = g && g.shieldLines[e.id];
+  if (sh) return ['BD ' + (sh.db || '—'), 'RD ' + (sh.dr || '—')].join(' · ');
+  var pc = g && g.pieces[e.id];
+  if (pc) return 'RD ' + pc.piece.dr + (pc.piece.cover === 'front' ? ' frontal' : '');
+  var c = gearLink(e);
+  return c ? armorSummary(c).split(' · ').filter(function (t) { return /^(RD|BD) /.test(t); }).join(' · ') : '';
+}
+function gearCat(e) {
+  if (!e || !e.refId) return null;
+  return e.kind === 'armor' ? armorById(e.refId) : e.kind === 'weapon' ? weaponById(e.refId) : itemById(e.refId);
+}
+function gearCatHref(kind, id) { return kind === 'armor' ? armorHref(id) : kind === 'weapon' ? weaponHref(id) : itemHref(id); }
+function gearKindIcon(kind) { return kind === 'armor' ? ICON.armor : kind === 'weapon' ? ICON.weapon : ICON.item; }
+// An entry in one line: "RD 4/2* · torso, groin", "sw+1 cut · alcance 1", "Camping and Survival Gear".
+function gearCatLine(kind, c) { return !c ? '' : kind === 'armor' ? armorSummary(c) : kind === 'weapon' ? weaponSummary(c) : c.category || ''; }
+// The book's weight or cost of one as a number: "10 lbs.", "3/0.1" (weapon/ammo: the weapon's),
+// "$1,500", "$2K", "$5 per pint"; "neg." is 0. null without a number ("var.", "–").
+function catNum(v) {
+  var t = String(v || '').replace(/,/g, ''), m = /(\d+(?:\.\d+)?)\s*(K|M|million)?/i.exec(t);
+  if (!m) return /neg/i.test(t) ? 0 : null;
+  var k = (m[2] || '').toLowerCase();
+  return +m[1] * (k === 'k' ? 1e3 : k ? 1e6 : 1);
+}
+// The entry a line was picked from, while its name is still the entry's, in English or in Portuguese
+// (a note may follow: "Rope (10 yards)").
+function gearLink(x) {
+  var c = gearCat(x); if (!c) return null;
+  var n = norm(x.name), pt = ptName(c);
+  return n.indexOf(norm(c.name)) === 0 || (pt && n.indexOf(norm(pt)) === 0) ? c : null;
+}
+// Where a line is, for the list: "Corpo › Combate (em uso): Tronco, Virilha", "Mochilas › Viagem: 2".
+function gearWhere(g, id) {
+  var out = [];
+  g.bodies.forEach(function (b) {
+    var parts = b.slots.filter(function (sl) { return sl.equipId === id; }).map(function (sl) { return gearPartName(sl.part) + (sl.qty > 1 ? ' ×' + sl.qty : ''); });
+    if (parts.length) out.push('Corpo › ' + b.name + (b.active ? ' (em uso)' : '') + ': ' + parts.join(', '));
+  });
+  g.packs.forEach(function (p) {
+    var at = 'Mochilas › ' + p.name + (p.inUse ? ' (em uso)' : '');
+    if (p.equipId === id) out.push(at + ': a própria mochila');
+    p.items.forEach(function (it) { if (it.equipId === id) out.push(at + ': ' + it.qty); });
+  });
+  return out;
+}
+// How many of a line the body configuration in use carries (0: none, or no configuration in use).
+function gearOnBody(g, id) {
+  var b = g.bodies.filter(function (x) { return x.active; })[0];
+  return b ? b.slots.reduce(function (n, sl) { return n + (sl.equipId === id ? sl.qty : 0); }, 0) : 0;
+}
+// The mark of a pack's line that is also on the body in use: it is counted in the load once, up to
+// the list's quantity, so the same unit is not in two places.
+function gearOnBodyBadge(g, e) {
+  var n = gearOnBody(g, e.id); if (!n) return '';
+  var b = g.bodies.filter(function (x) { return x.active; })[0];
+  return '<span class="gear-badge warn" title="' + esc('Também está em Corpo › ' + b.name + ' (em uso)' + (n > 1 ? ': ' + n : '') + '. Na carga conta uma vez só, até a quantidade de Meus Itens (' + e.qty + ').') + '">no corpo em uso</span>';
+}
+function gearKindTag(kind) { return '<span class="eq-kind k-' + kind + '" title="' + EQ_KIND_LABEL[kind] + '">' + svg(gearKindIcon(kind), 12, 2.2) + '</span>'; }
+
+/* ---------- saving ---------- */
+// Saves one list (equip, bodies or packs) checked against the other two as they are now (someone may
+// have changed them meanwhile). Lines that left the list take their links along, in the same save; a
+// sheet from before Corpo and Mochilas gets all three at once (ids and the pack of what was carried).
+function saveGear(s, part, value) { var ch = {}; ch[part] = value; return saveGearLists(s, ch); }
+// ch: the lists that changed ({ equip, armorSets } when a set creates its pieces), saved in one write.
+function saveGearLists(s, ch) {
+  if (!rawHas('sheets', s.id)) return Promise.reject({ message: 'Essa ficha não existe mais.' });
+  var cur = sheetById(s.id) || s, saved = sheetGear(cur);
+  function pick(k) { return k in ch ? ch[k] : saved[k]; }
+  var g = gearOf(pick('equip'), pick('bodies'), pick('packs'), pick('armorSets'), pick('customWeapons'), pick('customShields')), keys = Object.keys(ch);
+  var issues = gearIssues(g, keys.length === 1 && (keys[0] === 'bodies' || keys[0] === 'packs') ? keys[0] : null);
+  if (issues.length) return Promise.reject({ message: issues.slice(0, 3).join(' ') + (issues.length > 3 ? ' E mais ' + (issues.length - 3) + '.' : '') });
+  var p = { updatedAt: now() }, legacy = gearLegacy(cur);
+  keys.forEach(function (k) { p[k] = g[k]; });
+  if (legacy) p.equip = g.equip;
+  ['bodies', 'packs', 'armorSets', 'customWeapons', 'customShields'].forEach(function (k) { if (legacy || JSON.stringify(g[k]) !== JSON.stringify(saved[k])) p[k] = g[k]; });
+  return W.store.patch('sheets', s.id, p);
+}
+Ops.saveSheetEquip = function (s, list) { return saveGear(s, 'equip', list); };
+// A line of Meus Itens out; the body and the packs lose it too.
+Ops.deleteSheetItem = function (s, id) { return saveGear(s, 'equip', sheetGear(sheetById(s.id) || s).equip.filter(function (x) { return x.id !== id; })); };
+Ops.saveSheetBodies = function (s, bodies) { return saveGear(s, 'bodies', bodies); };
+Ops.saveSheetPacks = function (s, packs) { return saveGear(s, 'packs', packs); };
+
+/* ---------- view: the tab ---------- */
+// The catalogs this tab uses: Armaduras always (which parts an armor covers); Itens and Armas when the
+// list has lines from them or the list is being edited. They arrive once and the page redraws.
+function gearLoadCatalogs(g) {
+  loadCatalog('armors');
+  ['items', 'weapons'].forEach(function (col) {
+    if (g.equip.some(function (e) { return e.refId && EQ_KIND_COL[e.kind] === col; })) loadCatalog(col);
+  });
+}
+function sheetGearHtml(s) {
+  var ui = S.ui, can = canWrite(), g = gearNow(s), saved = sheetGear(s), L = gearLoad(g), a = ui.attrDraft || sheetAttrs(s);
+  gearLoadCatalogs(saved);
+  // Criar (Armadura, Arma, Escudo, Item) first, then the list (Meus Itens), the body and the packs; the load they give last.
+  return sheetCreateHtml(s, saved) + sheetInvHtml(g, L, can && !gearEditing()) +
+    sheetBodyHtml(g, L, can && !!ui.bodyDraft, can && !!ui.packDraft) +
+    sheetPacksHtml(g, L, can && !!ui.packDraft, can && !!ui.bodyDraft) + sheetLoadHtml(L, a);
+}
+// The four Criar: closed, one row of cards (a card opens its builder); one open, only its builder, the
+// whole width (the others wait while it is open, as Meus Itens does).
+function sheetCreateHtml(s, g) {
+  var ui = S.ui, open = canWrite() && (ui.armorDraft ? sheetArmorHtml : ui.weaponDraft ? sheetWeaponHtml : ui.shieldDraft ? sheetShieldHtml : ui.itemDraft ? sheetItemHtml : null);
+  if (open) return open(s, g);
+  return '<section class="gurps" id="createSec"><div class="gurps-head"><h2 class="sec-title">Criar</h2><span class="hint-text">vai para <b>Meus Itens</b>, onde é editado e excluído</span></div>' +
+    '<div class="cr-grid">' + sheetArmorHtml(s, g) + sheetWeaponHtml(s, g) + sheetShieldHtml(s, g) + sheetItemHtml(s) + '</div></section>';
+}
+// A card of Criar: the button that opens the builder (without the right to change the sheet, or while
+// something else is being edited, only what it is).
+function gearCreateTile(sec, btn, icon, title, count, hint) {
+  var inner = '<span class="cr-ico">' + svg(icon, 20) + '</span><span class="cr-txt"><b>' + esc(title) + (count ? '<em>' + esc(count) + '</em>' : '') + '</b><small>' + esc(hint) + '</small></span>';
+  return '<div class="cr-cell" id="' + sec + '">' + (canWrite() && !gearEditing() ?
+    '<button class="cr-card" type="button" id="' + btn + '" title="Criar ' + esc(title.toLowerCase()) + '">' + inner + '<span class="cr-plus">' + svg(ICON.plus, 16, 2.4) + '</span></button>' :
+    '<div class="cr-card off">' + inner + '</div>') + '</div>';
+}
+// Meus Itens, Corpo and Mochilas fold: the header stays (title, total, buttons), the rest goes. Which
+// are folded is remembered in this browser; one being edited is always open.
+var GEAR_FOLD_KEY = 'hounds_equip_folded';
+function gearFolded() { try { var v = JSON.parse(lstore(GEAR_FOLD_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function gearFoldClass(key, editing) { return !editing && gearFolded().indexOf(key) >= 0 ? ' folded' : ''; }
+function gearFoldTitle(key, title, editing) {
+  var open = !!editing || gearFolded().indexOf(key) < 0;
+  return '<h2 class="sec-title"><button class="fold-btn" type="button" data-fold="' + key + '" aria-expanded="' + open + '" title="' + (open ? 'Recolher' : 'Mostrar') + '"' + (editing ? ' disabled' : '') + '>' +
+    svg('<path d="m6 9 6 6 6-6"/>', 14, 2.4) + title + '</button></h2>';
+}
+function wireGearFold() {
+  // Only its own buttons: Combate's editor and the pages' <details> use data-fold too.
+  document.querySelectorAll('button.fold-btn[data-fold]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-fold') || '', list = gearFolded(), i = list.indexOf(k), open = i >= 0, sec = b.closest('section');
+      if (open) list.splice(i, 1); else list.push(k);
+      lstore(GEAR_FOLD_KEY, JSON.stringify(list));
+      if (sec) sec.classList.toggle('folded', !open);
+      b.setAttribute('aria-expanded', String(open)); b.setAttribute('title', open ? 'Recolher' : 'Mostrar');
+    });
+  });
+}
+function gearStat(label, val, note) { return '<div class="gstat"><span>' + label + '</span><strong>' + val + '</strong>' + (note ? '<small>' + note + '</small>' : '') + '</div>'; }
+function gearLoadStatsHtml(L, a) {
+  var lift = gurpsStats(a).lift, lv = equipLevel(L.total, lift), over = lv >= EQ_LEVELS.length, on = L.packs.filter(function (x) { return x.pack.inUse; })[0];
+  function times(n) { return n === 1 ? 'Carga Básica' : n + ' × Carga Básica'; }
+  return gearStat('Corpo em uso', L.active ? esc(eqLbs(L.body)) : '—', L.active ? esc(L.active.name) : 'nenhuma configuração em uso') +
+    gearStat('Mochila em uso', on ? esc(eqLbs(L.inUse)) : '—', on ? esc(on.pack.name) : L.packs.length ? 'nenhuma em uso' : 'nenhuma mochila') +
+    gearStat('Peso carregado', esc(eqLbs(L.total)), L.once ? esc(eqLbs(L.once)) + ' contados uma vez só' : 'corpo + mochila em uso') +
+    gearStat('Nível de carga', over ? 'Acima do limite' : esc(EQ_LEVELS[lv][1]) + ' (' + lv + ')',
+      over ? 'mais de ' + esc(eqLbs(10 * lift)) + ' (' + times(10) + '): não consegue se mover' : 'até ' + esc(eqLbs(EQ_LEVELS[lv][0] * lift)) + ' (' + times(EQ_LEVELS[lv][0]) + ')') +
+    gearStat('Custo total', esc(eqMoney(L.cost)), 'de toda a lista');
+}
+// A line on the body and in packs in use beyond what the list has: it weighs only what the list has.
+function gearOverHtml(L) {
+  if (!L.over.length) return '';
+  return '<p class="eq-enc">' + svg(ICON.info, 15) + '<span>' + L.over.map(function (o) {
+    return '<b>' + esc(o.e.name) + '</b>: ' + o.n + ' entre o corpo e as mochilas em uso, mas a lista tem ' + o.e.qty;
+  }).join('; ') + '. O peso conta só o que a lista tem.</span></p>';
+}
+// The load's level against Atributos › Peso: a line and a button when they differ.
+function equipEncHtml(total, a) {
+  var lv = Math.min(equipLevel(total, gurpsStats(a).lift), EQ_LEVELS.length - 1);
+  if (lv === a.enc || !canWrite() || S.ui.attrDraft || gearEditing()) return '';
+  return '<p class="eq-enc">' + svg(ICON.info, 15) + '<span>Em Atributos, Peso está em <b>' + a.enc + '</b>; pela carga seria <b>' + lv + '</b> (' + esc(EQ_LEVELS[lv][1].toLowerCase()) + ').</span>' +
     '<button class="btn" type="button" id="eqUseEnc" data-enc="' + lv + '">Usar ' + lv + ' em Peso</button></p>';
 }
-function equipRowHtml(x) {
-  var sub = [x.carried ? '' : 'guardado · fora do peso carregado', x.qty === 0 ? 'acabou' : ''].filter(Boolean).join(' · ');
-  function each(total, one, fmt) { return total ? esc(fmt(total)) + (x.qty > 1 ? '<small>' + esc(fmt(one)) + ' cada</small>' : '') : '<span class="eq-none">—</span>'; }
-  // On a phone the Observações column goes and the notes show under the name (see paginas.css).
-  return '<tr' + (x.carried ? '' : ' class="eq-stored"') + '><td><b>' + esc(x.name) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') +
-    (x.notes ? '<small class="eq-note">' + esc(x.notes) + '</small>' : '') + '</td>' +
-    '<td class="eq-qty">' + x.qty + '</td><td>' + each(eqRound(x.qty * x.weight), x.weight, eqLbs) + '</td><td>' + each(eqRound(x.qty * x.cost), x.cost, eqMoney) + '</td>' +
-    '<td class="av-notes">' + esc(x.notes) + '</td></tr>';
+function sheetLoadHtml(L, a) {
+  return '<section class="gurps" id="gearLoad"><div class="gurps-head"><h2 class="sec-title">Carga</h2><span class="gurps-total" id="gearTotal" title="Peso carregado">' + esc(eqLbs(L.total)) + '</span></div>' +
+    '<div class="gurps-derived" id="gearStats">' + gearLoadStatsHtml(L, a) + '</div><div class="gear-notes" id="gearNotes">' + gearOverHtml(L) + equipEncHtml(L.total, a) + '</div>' +
+    '<p class="hint-text" style="margin:0">A carga é o peso da configuração de <b>Corpo</b> em uso mais o das <b>Mochilas</b> em uso, com o peso próprio de cada mochila. <b>Meus Itens</b> é tudo o que o personagem tem e não entra sozinho na carga. ' +
+    'O nível vem da carga comparada com a Carga Básica: até 1× nenhuma, 2× leve, 3× média, 6× pesada e 10× muito pesada (Basic Set, p. B17).</p></section>';
 }
-function sheetEquipHtml(s, editing) {
-  var ui = S.ui, can = canWrite(), list = editing ? ui.equipDraft : sheetEquip(s), a = ui.attrDraft || sheetAttrs(s);
-  var t = equipTotals(editing ? list.map(cleanEquip) : list);
-  var head = '<div class="gurps-head"><h2 class="sec-title">Equipamentos</h2><span class="gurps-total" id="eqTotal" title="Peso carregado">' + esc(eqLbs(t.carried)) + '</span>' +
-    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="eqCancel">Cancelar</button><button class="btn primary" type="button" id="eqSave">Salvar equipamentos</button></div>'
-      : can ? '<div class="btn-row"><button class="btn" type="button" id="eqEdit">' + svg(ICON.edit, 15) + 'Editar equipamentos</button></div>' : '') + '</div>';
-  var stats = '<div class="gurps-derived" id="eqStats">' + equipStatsHtml(t, a) + '</div>';
-  if (editing) {
-    return '<section class="gurps" id="equip">' + head +
-      '<div class="box sk-edit"><div class="sk-row eq-row sk-labels" aria-hidden="true"><span>Item</span><span>Qtd.</span><span>Peso (lbs)</span><span>Custo ($)</span><span></span><span>Observações</span><span></span></div>' +
-      '<div id="eqRows">' + list.map(equipEditRow).join('') + '</div>' +
-      '<div><button class="btn" type="button" id="eqAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar item</button></div>' +
-      '<p class="hint-text">Peso e custo são de uma unidade; a tabela mostra o total de cada linha. Desmarque <b>Carregado</b> no que fica guardado (no cavalo, na estalagem): o peso dele não entra na carga. ' +
-      'O nível de carga vem do peso carregado comparado com a Carga Básica: até 1× nenhuma, 2× leve, 3× média, 6× pesada e 10× muito pesada (Basic Set, p. B17).</p></div>' +
-      stats + '<div class="form-err" id="eqErr" role="alert"></div></section>';
-  }
-  if (!list.length) return '<section class="gurps" id="equip">' + head + '<p class="long none">Nenhum equipamento cadastrado.' + (can ? ' Use <b>Editar equipamentos</b> para adicionar.' : '') + '</p></section>';
-  return '<section class="gurps" id="equip">' + head +
-    '<table class="gtab eq-tab"><thead><tr><th>Item</th><th>Qtd.</th><th>Peso</th><th>Custo</th><th>Observações</th></tr></thead><tbody>' +
-    list.map(equipRowHtml).join('') + '</tbody>' +
-    '<tfoot><tr><td colspan="2">Total</td><td>' + esc(eqLbs(t.carried)) + '<small>carregado' + (t.stored ? ' · mais ' + esc(eqLbs(t.stored)) + ' guardados' : '') + '</small></td>' +
-    '<td>' + esc(eqMoney(t.cost)) + '</td><td></td></tr></tfoot></table>' + stats + equipEncHtml(t, a) + '</section>';
+// While a list is edited, the load and the totals follow what is typed (the rest redraws on save).
+function paintGear(s) {
+  var g = gearNow(s), L = gearLoad(g), a = S.ui.attrDraft || sheetAttrs(s);
+  $('gearTotal').textContent = eqLbs(L.total);
+  $('gearStats').innerHTML = gearLoadStatsHtml(L, a);
+  $('gearNotes').innerHTML = gearOverHtml(L);
+  $('eqTotal').textContent = eqLbs(L.owned);
+  $('bodyTotal').textContent = L.active ? eqLbs(L.body) : '—';
+  $('packTotal').textContent = eqLbs(L.inUse);
+  return { g: g, L: L };
 }
 
-/* ---------- editor ---------- */
-function equipEditRow(x, i) {
-  function num(f, hi, step, label) {
-    return '<input type="number" data-f="' + f + '" min="0" max="' + hi + '" step="' + step + '" inputmode="' + (step === '1' ? 'numeric' : 'decimal') + '" aria-label="' + label + '" value="' + x[f] + '">';
-  }
-  return '<div class="sk-row eq-row" data-i="' + i + '">' +
-    '<input class="sk-name" type="text" data-f="name" maxlength="120" placeholder="Ex.: Mochila, Corda (10 m), Ração de viagem" aria-label="Item" value="' + esc(x.name) + '">' +
-    num('qty', 9999, '1', 'Quantidade') + num('weight', 99999, 'any', 'Peso de uma unidade, em lbs') + num('cost', 9999999, 'any', 'Custo de uma unidade, em $') +
-    '<label class="eq-carried" title="Desmarque se fica guardado: o peso não entra na carga"><input type="checkbox" data-f="carried"' + (x.carried ? ' checked' : '') + '><span>Carregado</span></label>' +
-    '<input type="text" data-f="notes" maxlength="400" placeholder="Ex.: no cavalo, presente do conde" aria-label="Observações" value="' + esc(x.notes) + '">' +
-    '<button class="icon-btn" type="button" data-del="' + i + '" aria-label="Remover item" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
+/* ---------- view: Equipamentos (the list) ---------- */
+function eqEach(x, total, one, fmt) { return total ? esc(fmt(total)) + (x.qty > 1 ? '<small>' + esc(fmt(one)) + ' cada</small>' : '') : '<span class="eq-none">—</span>'; }
+// can: the line's actions, Editar (Criar Item's form) and Excluir (asking first, under the row).
+function invRowHtml(x, g, L, can) {
+  var c = gearLink(x), where = gearWhere(g, x.id), counted = L.counted[x.id] || 0, pc = g.pieces[x.id];
+  var sub = [pc ? 'Criar Armadura: ' + armorLocName(pc.piece.loc) + ' · ' + gearArmorDr(x, g) : c ? gearCatLine(x.kind, c) : '', x.qty === 0 ? 'acabou' : ''].filter(Boolean).join(' · ');
+  var name = c ? '<a href="' + gearCatHref(x.kind, c.id) + '" title="Ver em Mundo › ' + (x.kind === 'armor' ? 'Armaduras' : x.kind === 'weapon' ? 'Armas' : 'Itens') + '">' + esc(x.name) + '</a>' : esc(x.name);
+  var load = counted ? (counted < x.qty ? counted + ' de ' + x.qty + ' na carga' : 'na carga') : 'fora da carga';
+  // The notes show under the name (the table is half the width: no column of its own).
+  return '<tr' + (counted ? '' : ' class="eq-stored"') + '><td><b>' + gearKindTag(x.kind) + name + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') +
+    '<small class="eq-where">' + esc(where.length ? where.join(' · ') + ' · ' + load : 'Só na lista · fora da carga') + '</small>' +
+    (x.notes ? '<small class="eq-note">' + esc(x.notes) + '</small>' : '') + '</td>' +
+    '<td class="eq-qty">' + x.qty + '</td><td>' + eqEach(x, eqRound(x.qty * x.weight), x.weight, eqLbs) + '</td>' +
+    (can ? '<td class="ab-acts"><button class="icon-btn" type="button" data-it-edit="' + esc(x.id) + '" aria-label="Editar ' + esc(x.name) + '" title="Editar">' + svg(ICON.edit, 15) + '</button>' +
+      '<button class="icon-btn" type="button" data-it-del="' + esc(x.id) + '" aria-label="Excluir ' + esc(x.name) + '" title="Excluir">' + svg(ICON.trash, 15) + '</button></td>' : '') + '</tr>' +
+    (can && S.ui.itemDel === x.id ? '<tr><td colspan="4"><div class="confirm" role="alert"><span>Excluir <b>' + esc(x.name) + '</b> de Meus Itens?' +
+      (where.length ? ' Está em ' + esc(where.join(' · ')) + ': sai de lá também.' : '') + '</span><div class="btn-row"><button class="btn danger solid" type="button" data-it-delyes="' + esc(x.id) + '">Excluir</button>' +
+      '<button class="btn ghost" type="button" data-it-delno="1">Cancelar</button></div></div></td></tr>' : '');
 }
-// While editing, S.ui.equipDraft holds the list being changed; typing updates it and the weights
-// and cost beside it, adding or removing a row redraws the page from it.
+// can: the actions of the lines (not while something else is being edited).
+function sheetInvHtml(g, L, can) {
+  var head = '<div class="gurps-head">' + gearFoldTitle('equip', 'Meus Itens', false) + '<span class="gurps-total" id="eqTotal" title="Peso de tudo o que o personagem tem (não é a carga)">' + esc(eqLbs(L.owned)) + '</span></div>';
+  if (!g.equip.length) return '<section class="gurps' + gearFoldClass('equip', false) + '" id="equip">' + head + '<p class="long none">Nenhum equipamento.' + (canWrite() ? ' Use os cartões de <b>Criar</b> acima.' : '') + '</p></section>';
+  // The pieces of Criar Armadura, the weapons and the shields in their own tables; the rest below, in
+  // two tables side by side (half each; one under the other on a narrow screen); the total of everything last.
+  var armors = g.equip.filter(function (x) { return g.pieces[x.id]; }), weapons = g.equip.filter(function (x) { return g.weaponLines[x.id]; });
+  var shields = g.equip.filter(function (x) { return g.shieldLines[x.id]; });
+  var rest = g.equip.filter(function (x) { return !g.pieces[x.id] && !g.weaponLines[x.id] && !g.shieldLines[x.id]; });
+  var half = Math.ceil(rest.length / 2);
+  function tab(list) {
+    return '<table class="gtab eq-tab"><thead><tr><th>Equipamento</th><th>Qtd.</th><th>Peso</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' +
+      list.map(function (x) { return invRowHtml(x, g, L, can); }).join('') + '</tbody></table>';
+  }
+  return '<section class="gurps' + gearFoldClass('equip', false) + '" id="equip">' + head +
+    (armors.length ? armorItemsHtml(armors, g, L, can) : '') +
+    (weapons.length ? weaponItemsHtml(weapons, g, L, can) : '') +
+    (shields.length ? shieldItemsHtml(shields, g, L, can) : '') +
+    (rest.length ? '<div class="eq-split">' + tab(rest.slice(0, half)) + (rest.length > 1 ? tab(rest.slice(half)) : '') + '</div>' : '') +
+    '<div class="eq-grand"><span>Total de tudo</span><b>' + esc(eqLbs(L.owned)) + '</b><small>na carga: ' + esc(eqLbs(L.total)) + '</small></div></section>';
+}
+/* ---------- view: Corpo ---------- */
+function gearChip(e, qty, g) {
+  var sub = gearArmorDr(e, g);
+  return '<span class="gear-chip k-' + e.kind + '">' + gearKindTag(e.kind) + (qty > 1 ? qty + ' × ' : '') + esc(e.name) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>';
+}
+function sheetBodyHtml(g, L, editing, busy) {
+  var ui = S.ui, can = canWrite(), quick = can && !gearEditing(), by = gearIndex(g.equip);
+  var head = '<div class="gurps-head">' + gearFoldTitle('body', 'Corpo', editing) + '<span class="gurps-total" id="bodyTotal" title="Peso da configuração em uso">' + (L.active ? esc(eqLbs(L.body)) : '—') + '</span>' +
+    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="bodyCancel">Cancelar</button><button class="btn primary" type="button" id="bodySave">Salvar corpo</button></div>'
+      : can && !busy && !gearEditing() ? '<div class="btn-row"><button class="btn" type="button" id="bodyEdit">' + svg(ICON.edit, 15) + 'Editar corpo</button></div>' : '') + '</div>';
+  if (editing) return '<section class="gurps' + gearFoldClass('body', editing) + '" id="gearBody">' + head + bodyEditHtml(g) + '</section>';
+  if (!g.bodies.length) return '<section class="gurps' + gearFoldClass('body', editing) + '" id="gearBody">' + head + '<p class="long none">Nenhuma configuração de corpo.' + (can ? ' Use <b>Editar corpo</b> para criar uma (ex.: Armadura de combate, Viagem), pôr as armaduras nas partes do corpo e levar armas e itens.' : '') + '</p></section>';
+  var b = g.bodies.filter(function (x) { return x.id === ui.bodySel; })[0] || L.active || g.bodies[0];
+  var tabs = '<div class="seg gear-confs" role="tablist" aria-label="Configurações de corpo">' + g.bodies.map(function (x) {
+    var on = x === b;
+    return '<button type="button" role="tab" data-bview="' + esc(x.id) + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '">' + esc(x.name) +
+      (x.active ? '<span class="gear-badge on">em uso</span>' : '') + '</button>';
+  }).join('') + '</div>';
+  var bar = '<div class="gear-bar' + (b.active ? ' on' : '') + '"><span>' + (b.active ? svg(ICON.info, 14) + '<b>Em uso</b>: entra na carga.' : '<b>Fora de uso</b>: não entra na carga.') + '</span>' +
+    (quick ? (b.active ? '<button class="btn ghost" type="button" data-buse="">Parar de usar</button>' : '<button class="btn" type="button" data-buse="' + esc(b.id) + '">Usar esta configuração</button>') : '') + '</div>';
+  // A card per part (its armors, layers one under the other; none: faded), then what is carried.
+  var parts = GEAR_PARTS.map(function (p) {
+    var here = b.slots.filter(function (sl) { return sl.part === p[0] && by[sl.equipId]; }), n = here.length;
+    return '<div class="gb-part' + (n ? '' : ' empty') + '" data-part="' + p[0] + '"><div class="gb-head"><b>' + p[1] + '</b><small>' + p[2] + '</small>' +
+      (n > 1 ? '<span class="gb-layers" title="Camadas: sem regra de sobreposição configurada, as RDs não são somadas">' + n + ' camadas</span>' : '') + '</div>' +
+      (n ? here.map(function (sl) { return bodyArmorHtml(by[sl.equipId], sl.qty, g); }).join('') : '<span class="gb-none">Sem armadura</span>') + '</div>';
+  }).join('');
+  var carried = b.slots.filter(function (sl) { return sl.part === GEAR_CARRY && by[sl.equipId]; });
+  return '<section class="gurps' + gearFoldClass('body', editing) + '" id="gearBody">' + head + tabs + bar +
+    '<div class="gear-body"><div class="gb-grid">' + parts + '</div>' +
+    '<div class="gb-carry"><div class="gb-head"><b>Armas, escudos e itens</b><small>fora das partes</small></div><div class="gb-chips">' +
+    (carried.length ? carried.map(function (sl) { return gearChip(by[sl.equipId], sl.qty, g); }).join('') : '<span class="gb-none">Nada</span>') + '</div>' +
+    '<div class="gb-weight"><span>Peso</span><b>' + esc(eqLbs(unitsLbs(bodyUnits(b, by), by))) + '</b></div></div></div></section>';
+}
+// An armor on a part, as worn: the armor and its RD ("RD 4*", "RD 6 frontal"; a catalog armor's
+// "RD 4/2* · BD 2"), under them the adjustments of Criar Armadura and the line's notes. Layers: the RDs
+// are listed and not added, the project has no layering rule configured (Basic Set, p. B286).
+function bodyArmorHtml(e, qty, g) {
+  var pc = g.pieces[e.id], adj = pc && pc.set.mods.length ? pc.set.mods.map(armorAdjText).join('; ') : '', dr = gearArmorDr(e, g);
+  return '<div class="gb-armor"><div class="gb-line"><span class="gb-name">' + gearKindTag(e.kind) + '<span>' + (qty > 1 ? qty + ' × ' : '') + esc(e.name) + '</span></span>' +
+    (dr ? '<span class="gb-dr">' + esc(dr) + '</span>' : '') + '</div>' +
+    (adj ? '<p class="gb-adj" title="Ajustes">' + esc(adj) + '</p>' : '') +
+    (e.notes ? '<p class="gb-note" title="' + esc(e.notes) + '">' + esc(e.notes) + '</p>' : '') + '</div>';
+}
+// The armors of Meus Itens that can go on a part of b, as options: only the pieces of Criar Armadura
+// made for that part. A part takes several (layers); what is on it already is not offered again.
+function bodyOptionsHtml(g, b, part) {
+  var here = b.slots.filter(function (sl) { return sl.part === part; }).map(function (sl) { return sl.equipId; });
+  return g.equip.filter(function (e) {
+    if (e.kind !== 'armor' || !g.pieces[e.id] || here.indexOf(e.id) >= 0) return false;
+    var parts = gearParts(e, g);
+    return !parts || parts.indexOf(part) >= 0;
+  }).map(function (e) { return '<option value="' + esc(e.id) + '"' + (e.qty > 0 ? '' : ' disabled') + '>' + esc(e.name) + (e.qty > 0 ? '' : ' (acabou)') + '</option>'; }).join('');
+}
+function bodyAddHtml(g, b, part, partName) {
+  var opts = bodyOptionsHtml(g, b, part);
+  return '<select data-addpart="' + part + '" aria-label="Adicionar armadura em ' + partName + '"' + (opts ? '' : ' disabled title="Nenhuma armadura criada para esta parte (use Criar Armadura)"') + '>' +
+    '<option value="">+ Armadura…</option>' + opts + '</select>';
+}
+// What can be carried (kind 'weapon': the weapons; 'shield': the shields, of the catalog and of Criar
+// Escudo; 'item': the items), not carried yet
+// in b, with the units left.
+function bodyCarryOptions(g, b, kind) {
+  var by = gearIndex(g.equip), used = bodyUnits(b, by), here = b.slots.filter(function (sl) { return sl.part === GEAR_CARRY; }).map(function (sl) { return sl.equipId; });
+  return g.equip.filter(function (e) {
+    if (here.indexOf(e.id) >= 0) return false;
+    var shield = gearIsShield(e) || !!g.shieldLines[e.id];
+    return kind === 'shield' ? shield : kind === 'weapon' ? e.kind === 'weapon' : e.kind === 'item';
+  }).map(function (e) { return { e: e, left: e.qty - (used[e.id] || 0) }; });
+}
+function bodySlotHtml(e, x, partName, g) {
+  return '<div class="gear-slot">' + gearChip(e, 1, g) +
+    (e.qty > 1 ? '<input type="number" data-f="sqty" data-j="' + x.j + '" min="1" max="9999" step="1" inputmode="numeric" aria-label="Quantidade de ' + esc(e.name) + ' em ' + partName + '" value="' + x.sl.qty + '">' : '') +
+    '<button class="icon-btn" type="button" data-sdel="' + x.j + '" aria-label="Tirar ' + esc(e.name) + ' de ' + partName + '" title="Tirar">' + svg(ICON.x, 14, 2.4) + '</button></div>';
+}
+// The weapons and items carried, outside the parts: the buttons Adicionar arma and Adicionar item open
+// the list of what Meus Itens has of each (d.addKind).
+function bodyCarryHtml(g, b, d, by) {
+  var slots = b.slots.map(function (sl, j) { return { sl: sl, j: j }; }).filter(function (x) { return x.sl.part === GEAR_CARRY && by[x.sl.equipId]; });
+  var pick = d.addKind ? bodyCarryOptions(g, b, d.addKind) : null;
+  return '<div class="box sk-edit gear-carry-edit"><h3 class="sec-title" style="margin:0">Armas, escudos e itens · fora das partes</h3>' +
+    (slots.length ? '<div class="gear-slots">' + slots.map(function (x) { return bodySlotHtml(by[x.sl.equipId], x, 'Armas, escudos e itens', g); }).join('') + '</div>' : '<p class="hint-text" style="margin:0">Nenhuma arma, escudo ou item.</p>') +
+    '<div class="btn-row">' + [['weapon', ICON.weapon, 'Adicionar arma'], ['shield', ICON.armor, 'Adicionar escudo'], ['item', ICON.item, 'Adicionar item']].map(function (k) {
+      return '<button class="btn' + (d.addKind === k[0] ? ' on' : '') + '" type="button" data-carry-kind="' + k[0] + '" aria-expanded="' + (d.addKind === k[0]) + '">' + svg(k[1], 15) + k[2] + '</button>';
+    }).join('') + '</div>' +
+    (pick ? '<div class="gear-pick">' + (pick.length ? pick.map(function (o) {
+      return '<button class="gear-chip k-' + o.e.kind + '" type="button" data-carry-add="' + esc(o.e.id) + '"' + (o.left > 0 ? '' : ' disabled title="' + (o.e.qty ? 'Todas já estão no corpo' : 'Acabou') + '"') + '>' +
+        gearKindTag(o.e.kind) + esc(o.e.name) + '<small>' + esc(eqLbs(o.e.weight)) + (o.e.qty > 1 ? ' · ' + o.left + ' de ' + o.e.qty : '') + '</small></button>';
+    }).join('') : '<p class="hint-text" style="margin:0">' + ({ weapon: 'Nenhuma arma em Meus Itens (use Criar Arma).', shield: 'Nenhum escudo em Meus Itens (use Criar Escudo).', item: 'Nenhum item em Meus Itens (use Criar Item).' })[d.addKind] + '</p>') + '</div>' : '') +
+    '</div>';
+}
+function bodyEditHtml(g) {
+  var d = S.ui.bodyDraft, by = gearIndex(g.equip), b = d.bodies.filter(function (x) { return x.id === d.sel; })[0] || d.bodies[0];
+  var noneOn = !d.bodies.some(function (x) { return x.active; });
+  var confs = d.bodies.map(function (x, i) {
+    var on = x === b;
+    return '<div class="gear-conf-row" data-b="' + i + '">' +
+      '<label class="gear-use" title="A configuração em uso entra na carga; só uma por vez"><input type="radio" name="bodyActive" data-f="active" value="' + i + '"' + (x.active ? ' checked' : '') + '><span>Em uso</span></label>' +
+      '<input type="text" data-f="bname" maxlength="80" placeholder="Ex.: Armadura de combate" aria-label="Nome da configuração" value="' + esc(x.name) + '">' +
+      '<span class="gear-w" data-btot="' + i + '">' + esc(eqLbs(unitsLbs(bodyUnits(x, by), by))) + '</span>' +
+      '<button class="btn' + (on ? ' on' : '') + '" type="button" data-bsel="' + i + '"' + (on ? ' aria-pressed="true"' : '') + '>' + (on ? 'Partes abaixo' : 'Editar partes') + '</button>' +
+      '<button class="icon-btn" type="button" data-bdel="' + i + '" aria-label="Excluir a configuração" title="Excluir">' + svg(ICON.trash, 15) + '</button></div>';
+  }).join('');
+  var parts = b ? GEAR_PARTS.map(function (p) {
+    // j: the row in the draft. A line that left the list meanwhile is not shown (and goes on save).
+    var slots = b.slots.map(function (sl, j) { return { sl: sl, j: j }; }).filter(function (x) { return x.sl.part === p[0] && by[x.sl.equipId]; });
+    return '<div class="gear-part"><div class="gear-part-name"><b>' + p[1] + '</b><small>' + p[2] + '</small></div><div class="gear-slots">' +
+      slots.map(function (x) { return bodySlotHtml(by[x.sl.equipId], x, p[1], g); }).join('') +
+      bodyAddHtml(g, b, p[0], p[1]) + '</div></div>';
+  }).join('') : '';
+  return '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Configurações</h3>' +
+    (confs ? '<div class="gear-confs-edit">' + confs + '</div>' : '<p class="hint-text" style="margin:0">Nenhuma ainda.</p>') +
+    '<div class="btn-row">' + (d.bodies.length ? '<label class="gear-use"><input type="radio" name="bodyActive" data-f="active" value="-1"' + (noneOn ? ' checked' : '') + '><span>Nenhuma em uso</span></label>' : '') +
+    '<button class="btn" type="button" id="bodyAdd">' + svg(ICON.plus, 15, 2.4) + 'Nova configuração</button></div>' +
+    '<p class="hint-text" style="margin:0">Só a configuração marcada <b>Em uso</b> entra na carga; as outras ficam guardadas para trocar depois.</p></div>' +
+    (b ? '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Partes do corpo · ' + esc(b.name) + '</h3><div class="gear-parts">' + parts + '</div>' +
+      '<p class="hint-text" style="margin:0">Nas partes do corpo vão só armaduras: <b>+ Armadura</b> traz as peças feitas em Criar Armadura para aquela parte, e uma parte pode ter mais de uma (camadas). O tronco protege também os órgãos vitais.</p></div>' +
+      bodyCarryHtml(g, b, d, by) : '') +
+    '<div class="form-err" id="bodyErr" role="alert"></div>';
+}
+
+/* ---------- view: Mochilas ---------- */
+// A pack's content: its lines in two tables side by side (half each; the pack itself first, when it
+// is a line of the list), then its weight.
+function packCardHtml(x, by, g) {
+  var p = x.pack, own = p.equipId ? by[p.equipId] : null;
+  var rows = (own ? ['<tr class="gear-own"><td><b>' + gearKindTag(own.kind) + esc(own.name) + '</b><small>a própria mochila</small></td><td class="eq-qty">1</td><td>' + esc(eqLbs(own.weight)) + '</td></tr>'] : []).concat(p.items.map(function (it) {
+    var e = by[it.equipId];
+    return '<tr><td><b>' + gearKindTag(e.kind) + esc(e.name) + '</b>' + gearOnBodyBadge(g, e) + '</td><td class="eq-qty">' + it.qty + '</td><td>' + eqEach({ qty: it.qty }, eqRound(it.qty * e.weight), e.weight, eqLbs) + '</td></tr>';
+  }));
+  var half = Math.ceil(rows.length / 2);
+  function tab(list) { return '<table class="gtab eq-tab"><thead><tr><th>Item</th><th>Qtd.</th><th>Peso</th></tr></thead><tbody>' + list.join('') + '</tbody></table>'; }
+  return '<div class="gear-pack' + (p.inUse ? '' : ' off') + '" data-pack="' + esc(p.id) + '">' +
+    (rows.length ? '<div class="eq-split">' + tab(rows.slice(0, half)) + (rows.length > 1 ? tab(rows.slice(half)) : '') + '</div>' : '<p class="gp-empty">Vazia.</p>') +
+    '<div class="gp-foot"><span>' + plural(p.items.length, 'item', 'itens') + (own ? ' · com a própria mochila' : '') + '</span>' +
+    '<span class="gp-total"><span>Peso</span><b>' + esc(eqLbs(x.total)) + '</b><small>' + (p.inUse ? 'entra na carga' : 'fora da carga') + '</small></span></div></div>';
+}
+// As the Corpo: a tab per pack (the one in use marked), the bar to use it (only one at a time), its content.
+function sheetPacksHtml(g, L, editing, busy) {
+  var ui = S.ui, can = canWrite(), quick = can && !gearEditing(), by = gearIndex(g.equip);
+  var head = '<div class="gurps-head">' + gearFoldTitle('packs', 'Mochilas', editing) + '<span class="gurps-total" id="packTotal" title="Peso da mochila em uso">' + esc(eqLbs(L.inUse)) + '</span>' +
+    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="packCancel">Cancelar</button><button class="btn primary" type="button" id="packSave">Salvar mochilas</button></div>'
+      : can && !busy && !gearEditing() ? '<div class="btn-row"><button class="btn" type="button" id="packEdit">' + svg(ICON.edit, 15) + 'Editar mochilas</button></div>' : '') + '</div>';
+  if (editing) return '<section class="gurps' + gearFoldClass('packs', editing) + '" id="gearPacks">' + head + packEditHtml(g) + '</section>';
+  if (!g.packs.length) return '<section class="gurps' + gearFoldClass('packs', editing) + '" id="gearPacks">' + head + '<p class="long none">Nenhuma mochila.' + (can ? ' Use <b>Editar mochilas</b> para criar uma e pôr nela os itens da lista.' : '') + '</p></section>';
+  var used = L.packs.filter(function (y) { return y.pack.inUse; })[0] || null;
+  var x = L.packs.filter(function (y) { return y.pack.id === ui.packSel; })[0] || used || L.packs[0], p = x.pack;
+  var tabs = '<div class="seg gear-confs" role="tablist" aria-label="Mochilas">' + L.packs.map(function (y) {
+    var on = y === x;
+    return '<button type="button" role="tab" data-pview="' + esc(y.pack.id) + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '">' + esc(y.pack.name) +
+      (y.pack.inUse ? '<span class="gear-badge on">em uso</span>' : '') + '</button>';
+  }).join('') + '</div>';
+  var bar = '<div class="gear-bar' + (p.inUse ? ' on' : '') + '"><span>' + (p.inUse ? svg(ICON.info, 14) + '<b>Em uso</b>: entra na carga.' :
+      '<b>Guardada</b>: não entra na carga.' + (used ? ' Só uma mochila fica em uso: usar esta guarda “' + esc(used.pack.name) + '”.' : '')) + '</span>' +
+    (quick ? (p.inUse ? '<button class="btn ghost" type="button" data-pkuse="" data-pksel="' + esc(p.id) + '">Parar de usar</button>' : '<button class="btn" type="button" data-pkuse="' + esc(p.id) + '" data-pksel="' + esc(p.id) + '">Usar esta mochila</button>') : '') + '</div>';
+  return '<section class="gurps' + gearFoldClass('packs', editing) + '" id="gearPacks">' + head + tabs + bar + packCardHtml(x, by, g) + '</section>';
+}
+// What of the list is left for the packs: what it has minus what all the packs take.
+function packLeft(g, packs) {
+  var by = gearIndex(g.equip), u = Object.create(null), left = Object.create(null);
+  packs.forEach(function (p) { addUnits(u, packUnits(p)); });
+  g.equip.forEach(function (e) { left[e.id] = e.qty - (u[e.id] || 0); });
+  return { by: by, left: left };
+}
+function packEditHtml(g) {
+  var d = S.ui.packDraft, k = packLeft(g, d.packs), by = k.by, left = k.left;
+  function opt(e, cur) {
+    var n = left[e.id] + (cur ? 1 : 0), body = gearOnBody(g, e.id);
+    return '<option value="' + esc(e.id) + '"' + (cur ? ' selected' : '') + (n > 0 ? '' : ' disabled') + '>' + esc(e.name) + ' · ' + esc(eqLbs(e.weight)) +
+      (n > 0 ? '' : ' (todas nas mochilas)') + (body ? ' · ⚠ no corpo em uso' : '') + '</option>';
+  }
+  return d.packs.map(function (p, i) {
+    var pk = cleanPack(p, i, by), own = pk.equipId ? by[pk.equipId].weight : 0, content = 0;
+    pk.items.forEach(function (it) { content += it.qty * by[it.equipId].weight; });
+    var inside = p.items.map(function (it) { return it.equipId; });
+    return '<div class="box sk-edit gear-pack-edit" data-p="' + i + '"><div class="sc-row">' +
+      scField('Mochila', '<input type="text" data-f="pname" maxlength="80" placeholder="Ex.: Mochila de viagem" value="' + esc(p.name) + '">', 'sc-name') +
+      scField('A própria mochila (peso próprio)', '<select data-f="pown"><option value="">Sem peso próprio</option>' + g.equip.map(function (e) { return opt(e, e.id === p.equipId); }).join('') + '</select>', 'sc-name') +
+      '<label class="gear-use" title="A mochila em uso entra na carga; só uma por vez"><input type="radio" name="packActive" data-f="puse" value="' + i + '"' + (p.inUse ? ' checked' : '') + '><span>Em uso</span></label>' +
+      '<button class="btn ghost" type="button" data-pdel="' + i + '">' + svg(ICON.trash, 14) + 'Excluir mochila</button></div>' +
+      '<div class="gear-slots">' + p.items.map(function (it, j) {
+        var e = by[it.equipId]; if (!e) return ''; // left the list meanwhile; goes on save
+        return '<div class="gear-slot">' + gearChip(e, 1, g).replace(/<\/span>$/, gearOnBodyBadge(g, e) + '</span>') + '<input type="number" data-f="iqty" data-j="' + j + '" min="1" max="9999" step="1" inputmode="numeric" aria-label="Quantidade de ' + esc(e.name) + '" value="' + it.qty + '">' +
+          '<span class="gear-w" data-iw="' + i + ':' + j + '">' + esc(eqLbs(eqRound(it.qty * e.weight))) + '</span>' +
+          '<button class="icon-btn" type="button" data-idel="' + j + '" aria-label="Tirar ' + esc(e.name) + ' da mochila" title="Tirar">' + svg(ICON.x, 14, 2.4) + '</button></div>';
+      }).join('') +
+      '<select data-f="padd" aria-label="Adicionar à mochila"><option value="">+ Adicionar da lista…</option>' + g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) { return opt(e, false); }).join('') + '</select></div>' +
+      '<p class="gear-ptot" data-ptot="' + i + '">' + packTotalText(own, content) + '</p></div>';
+  }).join('') +
+    '<div class="btn-row"><button class="btn" type="button" id="packAdd">' + svg(ICON.plus, 15, 2.4) + 'Nova mochila</button>' +
+    (d.packs.length ? '<label class="gear-use"><input type="radio" name="packActive" data-f="puse" value="-1"' + (d.packs.some(function (x) { return x.inUse; }) ? '' : ' checked') + '><span>Nenhuma em uso</span></label>' : '') + '</div>' +
+    '<p class="hint-text" style="margin:0">Só entram equipamentos da lista acima, e não mais do que ela tem, somando todas as mochilas. A própria mochila, se estiver na lista (ex.: Backpack, Small), dá o peso próprio dela. ' +
+    'Só a mochila <b>Em uso</b> entra na carga (uma por vez); as outras continuam guardadas com o que têm.</p>' +
+    '<div class="form-err" id="packErr" role="alert"></div>';
+}
+function packTotalText(own, content) { return 'Peso: ' + esc(eqLbs(eqRound(own + content))) + (own ? ' (' + esc(eqLbs(eqRound(own))) + ' da mochila + ' + esc(eqLbs(eqRound(content))) + ' de conteúdo)' : ''); }
+
+/* ---------- wiring ---------- */
 function wireSheetEquip(s) {
   var ui = S.ui;
-  function focusLast() { var l = document.querySelectorAll('#eqRows .sk-name'); var f = l[l.length - 1]; if (f instanceof HTMLElement) f.focus(); }
-  var ed = $('eqEdit'); if (ed) ed.onclick = function () {
-    ui.equipDraft = sheetEquip(s);
-    if (!ui.equipDraft.length) ui.equipDraft.push(cleanEquip({}));
-    renderSheetPage(); focusLast();
-  };
   var use = $('eqUseEnc'); if (use) use.onclick = function () {
     var n = +use.getAttribute('data-enc'); use.disabled = true;
     Ops.saveSheetAttrs(s, Object.assign(sheetAttrs(s), { enc: n })).then(function () { toast('Peso em Atributos agora é ' + n + '.'); renderSheetPage(); }, function (er) {
       use.disabled = false; toast(errorText(er), true);
     });
   };
-  var d = ui.equipDraft, box = $('equip'); if (!d || !box || !$('eqSave')) return;
-  var a = ui.attrDraft || sheetAttrs(s);
-  function paint() {
-    var t = equipTotals(d.map(cleanEquip));
-    $('eqTotal').textContent = eqLbs(t.carried);
-    $('eqStats').innerHTML = equipStatsHtml(t, a);
-  }
-  function onEdit(e) {
-    var el = e.target, f = el.dataset && el.dataset.f, row = el.closest && el.closest('[data-i]'); if (!f || !row) return;
-    var x = d[+row.getAttribute('data-i')];
-    if (f === 'carried') x.carried = el.checked;
-    else if (f === 'name' || f === 'notes') x[f] = el.value;
-    else if (el.value !== '') x[f] = f === 'qty' ? cleanInt(el.value, 0, 9999, 1) : cleanDec(el.value, f === 'cost' ? 9999999 : 99999, 0);
-    // A number field left empty shows again the value it keeps.
-    else if (e.type === 'change') el.value = String(x[f]);
-    paint();
-  }
-  box.addEventListener('input', onEdit); box.addEventListener('change', onEdit);
-  box.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-del]'); if (!b) return;
-    d.splice(+b.getAttribute('data-del'), 1); renderSheetPage();
+  // The common lines of Meus Itens: Editar opens Criar Item's form with the line; Excluir asks first.
+  var items = $('equip'); if (items && !gearEditing()) items.addEventListener('click', function (e) {
+    var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-it-edit], [data-it-del], [data-it-delyes], [data-it-delno]'); if (!b) return;
+    if (b.hasAttribute('data-it-edit')) {
+      var line = sheetGear(s).equip.filter(function (x) { return x.id === b.getAttribute('data-it-edit'); })[0]; if (!line) return;
+      ui.itemDraft = itemDraftFromLine(line); ui.itemDel = null; renderSheetPage();
+      var sec = $('itemSec'); if (sec) sec.scrollIntoView({ block: 'start' });
+      return;
+    }
+    if (b.hasAttribute('data-it-del')) { ui.itemDel = b.getAttribute('data-it-del'); renderSheetPage(); return; }
+    if (b.hasAttribute('data-it-delno')) { ui.itemDel = null; renderSheetPage(); return; }
+    b.disabled = true;
+    Ops.deleteSheetItem(s, b.getAttribute('data-it-delyes')).then(function () { ui.itemDel = null; toast('Item excluído de Meus Itens.'); renderSheetPage(); },
+      function (er) { b.disabled = false; toast(errorText(er), true); });
   });
-  $('eqAdd').onclick = function () { d.push(cleanEquip({})); renderSheetPage(); focusLast(); };
-  $('eqCancel').onclick = function () { ui.equipDraft = null; renderSheetPage(); };
-  $('eqSave').onclick = function () {
-    var btn = $('eqSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('eqCancel').disabled = true;
-    Ops.saveSheetEquip(s, d).then(function () { ui.equipDraft = null; toast('Equipamentos salvos.'); renderSheetPage(); }, function (er) {
-      btn.disabled = false; btn.textContent = 'Salvar equipamentos'; $('eqCancel').disabled = false;
-      $('eqErr').textContent = errorText(er);
+  var be = $('bodyEdit'); if (be) be.onclick = function () {
+    var g = sheetGear(s), L = gearLoad(g), shown = g.bodies.filter(function (x) { return x.id === ui.bodySel; })[0] || L.active || g.bodies[0];
+    ui.bodyDraft = { bodies: JSON.parse(JSON.stringify(g.bodies)), sel: shown ? shown.id : null, addKind: null };
+    if (!ui.bodyDraft.bodies.length) { var nb = gearNewBody(ui.bodyDraft.bodies); nb.active = true; ui.bodyDraft.bodies.push(nb); ui.bodyDraft.sel = nb.id; }
+    renderSheetPage();
+  };
+  var pe = $('packEdit'); if (pe) pe.onclick = function () {
+    ui.packDraft = { packs: JSON.parse(JSON.stringify(sheetGear(s).packs)) };
+    if (!ui.packDraft.packs.length) ui.packDraft.packs.push(gearNewPack(ui.packDraft.packs));
+    renderSheetPage();
+  };
+  wireGearFold();
+  wireArmorSec(s);
+  wireWeaponSec(s);
+  wireShieldSec(s);
+  wireItemSec(s);
+  wireGearQuick(s);
+  wireBodyEdit(s);
+  wirePackEdit(s);
+}
+function gearNewBody(list) { return { id: gearNewId('b', gearIndex(list)), name: 'Configuração ' + (list.length + 1), active: false, slots: [] }; }
+function gearNewPack(list) { return { id: gearNewId('m', gearIndex(list)), name: list.length ? 'Mochila ' + (list.length + 1) : 'Mochila', inUse: !list.some(function (x) { return x.inUse; }), equipId: null, items: [] }; }
+
+// Out of the editors: which configuration shows, which one is in use and which packs are in use. The
+// last two are saved at once, and the load follows.
+function wireGearQuick(s) {
+  var ui = S.ui, box = $('gearBody');
+  if (box) box.addEventListener('click', function (e) {
+    var t = /** @type {AnyEl} */ (e.target), v = t.closest && t.closest('[data-bview]'), u = t.closest && t.closest('[data-buse]');
+    if (v) { ui.bodySel = v.getAttribute('data-bview'); renderSheetPage(); return; }
+    if (!u) return;
+    var id = u.getAttribute('data-buse'), g = sheetGear(s);
+    u.disabled = true;
+    Ops.saveSheetBodies(s, g.bodies.map(function (b) { return Object.assign({}, b, { active: b.id === id }); })).then(function () {
+      var b = g.bodies.filter(function (x) { return x.id === id; })[0];
+      if (b) ui.bodySel = id;
+      toast(b ? '“' + b.name + '” em uso: a carga foi atualizada.' : 'Nenhuma configuração de corpo em uso.');
+    }, function (er) { u.disabled = false; toast(errorText(er), true); });
+  });
+  var packs = $('gearPacks');
+  if (packs) packs.addEventListener('click', function (e) {
+    var t = /** @type {AnyEl} */ (e.target), v = t.closest && t.closest('[data-pview]'), u = t.closest && t.closest('[data-pkuse]');
+    if (v) { ui.packSel = v.getAttribute('data-pview'); renderSheetPage(); return; }
+    if (!u) return;
+    var id = u.getAttribute('data-pkuse'), g = sheetGear(s), p = g.packs.filter(function (x) { return x.id === id; })[0];
+    ui.packSel = u.getAttribute('data-pksel'); u.disabled = true;
+    Ops.saveSheetPacks(s, g.packs.map(function (x) { return Object.assign({}, x, { inUse: x.id === id }); })).then(function () {
+      toast(p ? '“' + p.name + '” em uso: a carga foi atualizada.' : 'Nenhuma mochila em uso.');
+    }, function (er) { u.disabled = false; toast(errorText(er), true); });
+  });
+}
+
+// The configurations being edited: S.ui.bodyDraft = { bodies, sel } (sel: the one whose parts show).
+function wireBodyEdit(s) {
+  var ui = S.ui, d = ui.bodyDraft, box = $('gearBody'); if (!d || !box || !$('bodySave')) return;
+  var g = sheetGear(s), by = gearIndex(g.equip);
+  function cur() { return d.bodies.filter(function (x) { return x.id === d.sel; })[0] || d.bodies[0]; }
+  function paint() {
+    var r = paintGear(s);
+    box.querySelectorAll('[data-btot]').forEach(function (el) { var b = d.bodies[+el.getAttribute('data-btot')]; if (b) el.textContent = eqLbs(unitsLbs(bodyUnits(cleanBody(b, 0, by), by), by)); });
+    return r;
+  }
+  box.addEventListener('input', function (e) {
+    var el = /** @type {AnyEl} */ (e.target), f = el.dataset && el.dataset.f;
+    if (f === 'bname') { var b = d.bodies[+el.closest('[data-b]').getAttribute('data-b')]; b.name = el.value; paintGear(s); }
+    else if (f === 'sqty' && el.value !== '') { cur().slots[+el.getAttribute('data-j')].qty = cleanInt(el.value, 1, 9999, 1); paint(); }
+  });
+  box.addEventListener('change', function (e) {
+    var el = /** @type {AnyEl} */ (e.target), f = el.dataset && el.dataset.f;
+    if (f === 'active') { var n = +el.value; d.bodies.forEach(function (b, i) { b.active = i === n; }); paint(); return; }
+    if (f === 'sqty' && el.value === '') { el.value = String(cur().slots[+el.getAttribute('data-j')].qty); return; }
+    var part = el.getAttribute && el.getAttribute('data-addpart'); if (!part || !el.value) return;
+    var b = cur(), e2 = by[el.value]; if (!e2) return;
+    // An armor of the catalog goes on every part it covers: it is one piece.
+    var pc = g.pieces[e2.id], loc = pc ? armorLocById(pc.piece.loc) : null;
+    var parts = e2.kind === 'armor' && !(loc && loc.oneSide) ? (gearParts(e2, g) || [part]) : [part], also = [];
+    if (parts.indexOf(part) < 0) parts = [part];
+    parts.forEach(function (p) {
+      if (b.slots.some(function (sl) { return sl.part === p && sl.equipId === e2.id; })) return;
+      b.slots.push({ part: p, equipId: e2.id, qty: 1 });
+      if (p !== part) also.push(gearPartName(p));
+    });
+    renderSheetPage();
+    if (also.length) toast(e2.name + ' cobre também: ' + also.join(', ') + '. Tire de alguma parte, se quiser.');
+  });
+  box.addEventListener('click', function (e) {
+    var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-bsel], [data-bdel], [data-sdel], [data-carry-kind], [data-carry-add]'); if (!b) return;
+    if (b.hasAttribute('data-carry-kind')) { var k = b.getAttribute('data-carry-kind'); d.addKind = d.addKind === k ? null : k; renderSheetPage(); return; }
+    if (b.hasAttribute('data-carry-add')) { cur().slots.push({ part: GEAR_CARRY, equipId: b.getAttribute('data-carry-add'), qty: 1 }); d.addKind = null; renderSheetPage(); return; }
+    if (b.hasAttribute('data-bsel')) { d.sel = d.bodies[+b.getAttribute('data-bsel')].id; renderSheetPage(); return; }
+    if (b.hasAttribute('data-sdel')) { cur().slots.splice(+b.getAttribute('data-sdel'), 1); renderSheetPage(); return; }
+    var i = +b.getAttribute('data-bdel'), x = d.bodies[i];
+    if ((x.slots.length || x.active) && !confirm('Excluir a configuração “' + x.name + '”' + (x.active ? ', que está em uso (a carga deixa de contar o corpo)' : '') + '? Os equipamentos continuam na lista.')) return;
+    d.bodies.splice(i, 1);
+    if (d.sel === x.id) d.sel = d.bodies.length ? d.bodies[0].id : null;
+    renderSheetPage();
+  });
+  $('bodyAdd').onclick = function () {
+    var nb = gearNewBody(d.bodies); d.bodies.push(nb); d.sel = nb.id; renderSheetPage();
+    var f = box.querySelector('[data-b="' + (d.bodies.length - 1) + '"] [data-f="bname"]'); if (f instanceof HTMLInputElement) { f.focus(); f.select(); }
+  };
+  $('bodyCancel').onclick = function () { ui.bodyDraft = null; renderSheetPage(); };
+  $('bodySave').onclick = function () {
+    var btn = $('bodySave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('bodyCancel').disabled = true; $('bodyErr').textContent = '';
+    Ops.saveSheetBodies(s, d.bodies).then(function () { ui.bodySel = d.sel; ui.bodyDraft = null; toast('Corpo salvo.'); renderSheetPage(); }, function (er) {
+      btn.disabled = false; btn.textContent = 'Salvar corpo'; $('bodyCancel').disabled = false;
+      $('bodyErr').textContent = errorText(er);
+    });
+  };
+}
+
+// The packs being edited: S.ui.packDraft = { packs }.
+function wirePackEdit(s) {
+  var ui = S.ui, d = ui.packDraft, box = $('gearPacks'); if (!d || !box || !$('packSave')) return;
+  var by = gearIndex(sheetGear(s).equip);
+  function pack(el) { var r = el.closest && el.closest('[data-p]'); return r ? d.packs[+r.getAttribute('data-p')] : null; }
+  function paint(el) {
+    paintGear(s);
+    var r = el.closest('[data-p]'), i = +r.getAttribute('data-p'), p = d.packs[i], own = p.equipId && by[p.equipId] ? by[p.equipId].weight : 0, content = 0;
+    p.items.forEach(function (it, j) {
+      var w = by[it.equipId] ? it.qty * by[it.equipId].weight : 0; content += w;
+      var c = box.querySelector('[data-iw="' + i + ':' + j + '"]'); if (c) c.textContent = eqLbs(eqRound(w));
+    });
+    var t = box.querySelector('[data-ptot="' + i + '"]'); if (t) t.innerHTML = packTotalText(own, content);
+  }
+  box.addEventListener('input', function (e) {
+    var el = /** @type {AnyEl} */ (e.target), f = el.dataset && el.dataset.f, p = pack(el); if (!p) return;
+    if (f === 'pname') { p.name = el.value; return; }
+    if (f === 'iqty' && el.value !== '') { p.items[+el.getAttribute('data-j')].qty = cleanInt(el.value, 1, 9999, 1); paint(el); }
+  });
+  box.addEventListener('change', function (e) {
+    var el = /** @type {AnyEl} */ (e.target), f = el.dataset && el.dataset.f;
+    if (f === 'puse') { var n = +el.value; d.packs.forEach(function (x, i) { x.inUse = i === n; }); return; }
+    var p = pack(el); if (!p) return;
+    if (f === 'iqty' && el.value === '') el.value = String(p.items[+el.getAttribute('data-j')].qty);
+    else if (f === 'pown') { p.equipId = el.value || null; renderSheetPage(); }
+    else if (f === 'padd' && el.value) {
+      p.items.push({ equipId: el.value, qty: 1 }); renderSheetPage();
+      var on = gearIndex(gearNow(s).equip)[el.value];
+      if (on && gearOnBody(gearNow(s), on.id)) toast('“' + on.name + '” também está no corpo em uso. Na carga conta uma vez só.');
+    }
+  });
+  box.addEventListener('click', function (e) {
+    var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-pdel], [data-idel]'); if (!b) return;
+    var p = pack(b); if (!p) return;
+    if (b.hasAttribute('data-idel')) { p.items.splice(+b.getAttribute('data-idel'), 1); renderSheetPage(); return; }
+    if (p.items.length && !confirm('Excluir a mochila “' + p.name + '”? O que está nela continua na lista de equipamentos.')) return;
+    d.packs.splice(d.packs.indexOf(p), 1); renderSheetPage();
+  });
+  $('packAdd').onclick = function () {
+    d.packs.push(gearNewPack(d.packs)); renderSheetPage();
+    var l = box.querySelectorAll('[data-f="pname"]'), f = l[l.length - 1]; if (f instanceof HTMLInputElement) { f.focus(); f.select(); }
+  };
+  $('packCancel').onclick = function () { ui.packDraft = null; renderSheetPage(); };
+  $('packSave').onclick = function () {
+    var btn = $('packSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('packCancel').disabled = true; $('packErr').textContent = '';
+    Ops.saveSheetPacks(s, d.packs).then(function () { ui.packDraft = null; toast('Mochilas salvas.'); renderSheetPage(); }, function (er) {
+      btn.disabled = false; btn.textContent = 'Salvar mochilas'; $('packCancel').disabled = false;
+      $('packErr').textContent = errorText(er);
     });
   };
 }

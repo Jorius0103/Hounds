@@ -38,7 +38,7 @@ Ops.saveSheet = function (s, fields) {
   var body = { v: 1, name: name, description: (fields.description || '').trim(), visible: fields.visible !== false, sharedWith: fields.sharedWith || (s && s.sharedWith) || [],
     createdBy: owner(s), createdAt: (s && s.createdAt) || t, updatedAt: t };
   // put replaces the whole document: attributes and skills are edited apart and must survive a rename.
-  ['attrs', 'skills', 'cultures', 'combat', 'advs', 'equip'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  ['attrs', 'skills', 'cultures', 'combat', 'advs', 'equip', 'bodies', 'packs', 'armorSets', 'customWeapons', 'customShields'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
   return W.store.put('sheets', s ? s.id : null, body);
 };
 Ops.saveSheetAttrs = function (s, a) {
@@ -390,7 +390,7 @@ function sheetSkillsHtml(s, editing) {
   var av = attrValues(S.ui.attrDraft || sheetAttrs(s)), can = canWrite();
   var head = '<div class="gurps-head"><h2 class="sec-title">Perícias</h2><span class="gurps-total" id="skTotal">' + skillsTotal(skills, cultures) + ' pts</span>' +
     (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="skCancel">Cancelar</button><button class="btn primary" type="button" id="skSave">Salvar perícias</button></div>'
-      : can && !S.ui.combatDraft && !S.ui.advDraft ? '<div class="btn-row"><button class="btn" type="button" id="skEdit">' + svg(ICON.edit, 15) + 'Editar perícias</button></div>' : '') + '</div>';
+      : can && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="skEdit">' + svg(ICON.edit, 15) + 'Editar perícias</button></div>' : '') + '</div>';
   if (editing) {
     return '<section class="gurps" id="skills">' + head +
       '<div class="box sk-edit"><div class="sk-row sk-labels" aria-hidden="true"><span>Perícia</span><span>Atributo</span><span>Dif.</span><span>Pontos</span><span>Bônus</span><span>NH</span><span></span></div>' +
@@ -637,9 +637,9 @@ function renderSheetPage() {
     var on = t.key === tab;
     return '<button type="button" role="tab" data-stab="' + t.key + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '">' + t.label + '</button>';
   }).join('') + '</div>';
-  pageRoot.innerHTML = head + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetEquipHtml(s, !!ui.equipDraft && can)
+  pageRoot.innerHTML = head + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetGearHtml(s)
     : sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
-      sheetCombatHtml(s, !!ui.combatDraft && can) + sheetAdvsHtml(s, !!ui.advDraft && can) + main);
+      sheetCombatHtml(s, !!ui.combatDraft && can) + sheetDmgDefHtml(s) + sheetAdvsHtml(s, !!ui.advDraft && can) + main);
   pageRoot.querySelectorAll('[data-stab]').forEach(function (b) {
     b.onclick = function () { var t = b.getAttribute('data-stab'); if (t !== tab) { ui.sheetTab = t; renderSheetPage(); } };
   });
@@ -653,6 +653,8 @@ function renderSheetPage() {
   wireSheetAttrs(s);
   wireSheetSkills(s);
   wireSheetCombat(s);
+  wireSheetDamage(s);
+  wireSheetDefense(s);
   wireSheetAdvs(s);
   wireSheetEquip(s);
   var cb = $('sheetCharsBtn'); if (cb) cb.onclick = function () { openSheetCharsForm(s); };

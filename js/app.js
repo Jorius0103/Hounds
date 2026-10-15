@@ -191,7 +191,7 @@ function onData(kind) {
   }
   if (modalOpen) return; // keep forms stable while open; pages refresh when they close
   if (S.route.page === 'note' && S.ui.editing) return;
-  if (S.route.page === 'sheet' && (S.ui.attrDraft || S.ui.skillDraft || S.ui.combatDraft || S.ui.advDraft || S.ui.equipDraft || S.ui.scDragging)) return; // attributes or skills being edited; the page redraws on save or cancel
+  if (S.route.page === 'sheet' && (S.ui.attrDraft || sheetDraftOpen() || gearEditing() || S.ui.scDragging)) return; // a section being edited; the page redraws on save or cancel
   if (S.route.page === 'sheet' && document.activeElement && document.activeElement.classList.contains('gpts-in')) { S.ui.ptsStale = true; return; } // points being typed in the table; redraws when the field is left
   if (S.route.page === 'maps' && document.activeElement && document.activeElement.id === 'mapSearch') { renderMapList(); return; }
   if (S.route.page === 'locais' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'locSearch') { renderLocList(); return; }
@@ -287,5 +287,7 @@ connect().then(function (s) {
     s.watch('weapons', function (l) { onCatalogDocs('weapons', l); }, fail);
     s.watch('armors', function (l) { onCatalogDocs('armors', l); }, fail);
     s.watch('items', function (l) { onCatalogDocs('items', l); }, fail);
+    // Criar Armadura's table (Ficha › Equip.): locations and percentages.
+    s.watch('armorLocs', function (l) { W.raw.armorLocs = l; onData('armorRules'); }, fail);
   });
 }).catch(function () { toast('Não foi possível carregar os dados.', true); });

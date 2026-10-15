@@ -13,7 +13,7 @@
    ===================================================================== */
 /** @type {World} */
 var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], disadvantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], items: [], sheets: [], events: [],
-          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], disadvantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], items: [], sheets: [], events: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [],
+          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], disadvantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], items: [], sheets: [], events: [], notebooks: [], notes: [], armorLocs: [] }, notebooks: [], notes: [], users: [],
           loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, advantages: false, disadvantages: false, skills: false, techniques: false, styles: false, weapons: false, armors: false, items: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
           mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, advIdx: {}, disadvIdx: {}, skillIdx: {}, techIdx: {}, styleIdx: {}, weaponIdx: {}, armorIdx: {}, itemIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
 // The same ids once each, in order: links are lists of ids and must never repeat one.

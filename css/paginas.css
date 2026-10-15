@@ -259,6 +259,15 @@ details.box.fold { display: block; padding: 0; }
 .gurps { display: flex; flex-direction: column; gap: 12px; }
 .gurps-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .gurps-head .sec-title { margin: 0; }
+/* Recolher (Meus Itens, Corpo, Mochilas): o título é o botão; recolhida, só o cabeçalho fica */
+.fold-btn { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.fold-btn svg { flex: none; color: var(--muted); transition: transform .15s, color .15s; }
+.fold-btn[aria-expanded="false"] svg { transform: rotate(-90deg); }
+.fold-btn:hover:not(:disabled) svg { color: var(--accent); }
+.fold-btn:disabled { cursor: default; }
+.fold-btn:disabled svg { opacity: .35; }
+.fold-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+section.gurps.folded > :not(.gurps-head) { display: none; }
 .gurps-head .btn-row { margin-left: auto; }
 .gurps-total { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
 .gurps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; align-items: start; }
@@ -424,17 +433,31 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sheet-thumb img { object-position: 50% 25%; }
 @media (max-width: 760px) { .sheet-portrait { width: 64px; height: 64px; border-radius: 12px; } .sheet-title { gap: 12px; } }
 
-/* Ficha › Combate: estilos lado a lado, danos e defesas embaixo, como na planilha */
+/* Ficha › Combate: estilos lado a lado; embaixo, Danos e Defesas (seções próprias) lado a lado, como na planilha */
 #combat { margin-top: 22px; }
 .sc-tab th a { color: inherit; text-decoration: none; }
 .sc-tab th a:hover { color: var(--accent); }
-.sc-bottom { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 14px; align-items: start; }
-.sc-bottom > :only-child { grid-column: 1 / -1; }
-.sc-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sc-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px 14px; align-items: start; margin-top: 22px; }
+.sc-pair > section { min-width: 0; }
+.sc-pair.editing { grid-template-columns: minmax(0, 1fr); }
 .sc-dmg td, .sc-dmg th { text-align: center; }
 .sc-dmg td[rowspan], .sc-dmg th:first-child { text-align: left; }
 .sc-def td:first-child small { display: block; font-size: 11px; color: var(--faint); font-weight: 400; }
-@media (max-width: 900px) { .sc-bottom { grid-template-columns: 1fr; } .sc-dmg { display: block; overflow-x: auto; } }
+/* Danos: armas do Corpo em uso, sem arma e outros ataques; o que veio das vantagens em destaque */
+.dm-tab tr.dm-group th { text-align: left; background: var(--surface); color: var(--accent); border-top: 1px solid var(--line); }
+.dm-tab tbody tr.dm-group:first-child th { border-top: 0; }
+.dm-tab td.gval.bonus { color: var(--accent); }
+/* Danos e Defesas dividem a linha ao meio; a tabela ocupa a sua metade (rola de lado se não couber).
+   As colunas de dados centradas, também na 2ª linha de uma arma, onde a 1ª célula é a do Modo */
+.dm-wrap { display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-x: auto; }
+.dm-tab { width: 100%; }
+/* A coluna Arma cresce com o nome (e a legenda) da arma, sem quebrar linha */
+.dm-tab td.dm-name:not(.gnone), .dm-tab tr.dm-group th { white-space: nowrap; }
+.dm-tab thead th:not(:first-child), .dm-tab tbody td:not(.dm-name) { white-space: nowrap; padding-left: 12px; padding-right: 12px; text-align: center; }
+.dm-tab td.dm-name { text-align: left; }
+.dm-tab td[title] { cursor: help; }
+.dm-fx { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 900px) { .sc-pair { grid-template-columns: minmax(0, 1fr); } .sc-dmg { display: block; overflow-x: auto; } }
 /* editor */
 .sc-edit { gap: 10px; }
 .sc-ghead { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
@@ -545,44 +568,205 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .av-tlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 14px; }
 .av-tab td.av-notes small.av-warn { display: block; font-size: 11.5px; }
 
-/* Ficha › Equipamentos: item, quantidade, peso, custo e observações; a carga embaixo */
-#equip { margin-top: 22px; }
-.eq-tab td:first-child { width: 30%; }
-.eq-tab th:nth-child(2), .eq-tab td.eq-qty { text-align: center; }
-.eq-tab th:nth-child(5), .eq-tab td.av-notes { text-align: left; }
-.eq-tab td.av-notes { color: var(--muted); border-left: 1px solid var(--line); }
-.eq-tab td:nth-child(n+2):nth-child(-n+4) { border-left: 1px solid var(--line); white-space: nowrap; }
-.eq-tab tfoot td:nth-child(n+2) { border-left: 1px solid var(--line); white-space: nowrap; }
-.eq-tab tfoot td small { font-weight: 500; }
+/* Ficha › Equip.: a carga no alto; a lista de equipamentos (tipo, item, quantidade, peso, custo,
+   observações e onde está); o corpo, por configuração e parte; as mochilas */
+#gearLoad { margin-top: 22px; }
+#equip, #gearBody, #gearPacks { margin-top: 26px; }
+.gear-notes { display: flex; flex-direction: column; gap: 8px; }
+.gear-notes:empty { display: none; }
+/* Meus Itens, os itens comuns: duas tabelas lado a lado (uma embaixo da outra em tela estreita) */
+.eq-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .eq-split { grid-template-columns: minmax(0, 1fr); } }
+.eq-tab th, .eq-tab td { padding: 6px 10px; }
+.eq-tab th:nth-child(2), .eq-tab td.eq-qty { text-align: center; width: 1%; }
+.eq-tab td:nth-child(n+2):nth-child(-n+3) { border-left: 1px solid var(--line); white-space: nowrap; }
+.eq-tab td:nth-child(3) { width: 1%; }
+.eq-tab td:nth-child(3) small { white-space: nowrap; }
+.eq-tab td b { font-size: 13.5px; }
 .eq-tab td small { white-space: normal; }
-.eq-tab td small.eq-note { display: none; color: var(--muted); }
-/* No celular a coluna Observações sai e o texto dela vai para baixo do nome do item. */
-@media (max-width: 560px) {
-  .eq-tab th:nth-child(5), .eq-tab tbody td:nth-child(5), .eq-tab tfoot td:last-child { display: none; }
-  .eq-tab td small.eq-note { display: block; }
-  .eq-tab th, .eq-tab td { padding-left: 8px; padding-right: 8px; }
-  .eq-tab td:first-child { width: auto; }
-}
+.eq-tab td small.eq-where { color: var(--muted); }
+.eq-tab td small.eq-note { color: var(--faint); font-style: italic; }
+.eq-tab td.ab-acts { width: 1%; white-space: nowrap; border-left: 1px solid var(--line); padding: 4px 6px; }
+.eq-tab td.ab-acts .icon-btn { display: inline-grid; }
+.eq-grand { display: flex; align-items: baseline; justify-content: flex-end; gap: 8px; padding: 9px 14px; border-radius: 12px; background: var(--accent-soft); font-size: 13px; color: var(--muted); }
+.eq-grand b { font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+.eq-grand span { margin-right: auto; font-weight: 700; color: var(--text); }
+/* Fora da carga: só na lista, numa configuração que não está em uso ou numa mochila guardada. */
 .eq-tab tr.eq-stored td { color: var(--muted); }
 .eq-tab tr.eq-stored td:first-child { box-shadow: inset 3px 0 0 var(--line-2); }
 .eq-none { color: var(--faint); }
 .eq-enc { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--accent-soft); font-size: 13px; }
 .eq-enc svg { flex: none; color: var(--accent); }
 .eq-enc span { flex: 1 1 260px; min-width: 0; }
-.sk-row.eq-row { grid-template-columns: minmax(0, 1.2fr) 70px 90px 100px 108px minmax(0, 1fr) 32px; }
-.sk-labels.eq-row span:nth-child(n+2):nth-child(-n+4) { text-align: center; }
-.sk-labels.eq-row span:nth-child(6) { padding-left: 0; }
-#eqRows { display: flex; flex-direction: column; gap: 8px; }
-.eq-carried { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
-/* Os campos do editor (.sk-row input) têm largura total, borda e fundo; aqui é só a caixa. */
-.sk-row .eq-carried input[type=checkbox] { width: 16px; height: 16px; min-width: 16px; padding: 0; margin: 0; border: 0; border-radius: 0; background: none; accent-color: var(--accent); flex: none; }
-.sk-row .eq-carried input[type=checkbox]:focus { outline-offset: 2px; }
+/* O tipo de cada linha: um ícone com a cor dele (armadura, arma, item). */
+.eq-kind { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 6px; border-radius: 6px; vertical-align: -4px; border: 1px solid var(--line-2); background: var(--well); color: var(--muted); }
+.eq-kind.k-armor { color: #3b82f6; background: rgba(59, 130, 246, .12); border-color: rgba(59, 130, 246, .3); }
+.eq-kind.k-weapon { color: var(--accent); background: var(--accent-soft); border-color: rgba(245, 158, 11, .3); }
+.eq-kind.k-item { color: #16a34a; background: rgba(34, 197, 94, .12); border-color: rgba(34, 197, 94, .3); }
+
+/* Corpo: as configurações em abas, a em uso marcada; as partes numa tabela e, no editor, em caixas */
+.seg.gear-confs { flex-wrap: wrap; margin-bottom: 0; }
+.gear-badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; vertical-align: 1px; background: var(--well); color: var(--muted); }
+.gear-badge.on { background: rgba(34, 197, 94, .16); color: #16a34a; }
+.gear-badge.warn { background: var(--accent-soft); color: var(--accent); cursor: help; white-space: nowrap; }
+.gear-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 13px; color: var(--muted); }
+.gear-bar > span { flex: 1 1 220px; min-width: 0; }
+.gear-bar.on { border-color: rgba(34, 197, 94, .4); background: rgba(34, 197, 94, .08); color: var(--text); }
+.gear-bar.on svg { color: #16a34a; vertical-align: -2px; margin-right: 4px; }
+.gear-chip { display: inline-flex; align-items: center; flex-wrap: wrap; margin: 2px 6px 2px 0; padding: 3px 9px 3px 4px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--well); font-size: 13px; line-height: 1.3; min-width: 0; }
+.gear-chip .eq-kind { width: 18px; height: 18px; margin-right: 5px; vertical-align: 0; }
+.gtab td .gear-chip small, .gear-chip small { display: inline; margin-left: 6px; font-size: 11px; color: var(--faint); }
+.gear-use { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.gear-use input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); flex: none; }
+.gear-w { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gear-confs-edit { display: flex; flex-direction: column; gap: 8px; }
+.gear-conf-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto 32px; gap: 8px 10px; align-items: center; }
+.gear-conf-row input[type=text], .gear-slots select, .gear-slot input { min-width: 0; box-sizing: border-box; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 14px; }
+.gear-conf-row input[type=text]:focus, .gear-slots select:focus, .gear-slot input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.gear-parts { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; }
+.gear-part { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); min-width: 0; }
+.gear-part-name small { margin-left: 6px; font-size: 11px; color: var(--faint); }
+.gear-slots { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gear-slot { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gear-add { display: flex; flex-direction: column; gap: 5px; }
+.gear-add select { width: 100%; min-width: 0; padding: 5px 8px; font-size: 13px; }
+.gear-add select:disabled { opacity: .55; cursor: not-allowed; }
+.gear-slots > select { width: 100%; min-width: 0; padding: 5px 8px; font-size: 13px; }
+.gear-slots > select:disabled { opacity: .55; cursor: not-allowed; }
+.gear-pick { display: flex; flex-wrap: wrap; gap: 4px; padding: 10px; border: 1px dashed var(--line-2); border-radius: 10px; }
+.gear-pick button.gear-chip { cursor: pointer; font: inherit; font-size: 13px; color: var(--text); }
+.gear-pick button.gear-chip:hover:not(:disabled) { border-color: var(--accent); }
+.gear-pick button.gear-chip:disabled { opacity: .5; cursor: not-allowed; }
+.gear-slot .gear-chip { flex: 1 1 auto; margin: 0; }
+.gear-slot input[type=number] { width: 72px; flex: none; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) {
-  .sk-row.eq-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .sk-row.eq-row .eq-carried { grid-column: 1 / 3; }
-  .sk-row.eq-row [data-f="notes"] { grid-column: 1 / -1; }
-  .sk-row.eq-row .icon-btn { grid-column: 3; grid-row: 3; }
+  .gear-conf-row { grid-template-columns: auto minmax(0, 1fr) 32px; }
+  .gear-conf-row .gear-w { grid-column: 1; }
+  .gear-conf-row [data-bsel] { grid-column: 2 / -1; }
 }
+
+/* Corpo: um cartão por parte (4 colunas; 2 no tablet; 1 no celular), depois o que vai fora das partes */
+.gear-body { display: flex; flex-direction: column; gap: 10px; }
+.gb-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.gb-part, .gb-carry { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.gb-part.empty { background: transparent; border-style: dashed; }
+.gb-head { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.gb-head b { font-size: 14px; }
+.gb-head small { font-size: 11px; color: var(--faint); }
+.gb-layers { margin-left: auto; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 1px 7px; white-space: nowrap; cursor: help; }
+.gb-none { font-size: 12.5px; color: var(--faint); }
+.gb-armor { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gb-armor + .gb-armor { border-top: 1px dashed var(--line-2); padding-top: 8px; }
+.gb-line { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.gb-name { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 600; }
+.gb-name > span:last-child { overflow-wrap: anywhere; line-height: 1.3; }
+.gb-name .eq-kind { width: 18px; height: 18px; flex: none; }
+.gb-dr { margin-left: auto; flex: none; font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 2px 7px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gb-adj, .gb-note { margin: 0; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.gb-note { font-style: italic; color: var(--faint); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gb-carry { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px 14px; background: var(--surface-2); }
+.gb-carry .gb-head { flex-direction: column; gap: 0; }
+.gb-chips { flex: 1; display: flex; flex-wrap: wrap; align-items: center; min-width: 0; }
+.gb-chips .gear-chip { flex-wrap: nowrap; white-space: nowrap; }
+.gb-weight { display: flex; align-items: baseline; gap: 6px; margin-left: auto; font-size: 12px; color: var(--muted); }
+.gb-weight b { font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
+@media (max-width: 1100px) { .gb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .gb-carry { flex-direction: column; align-items: stretch; } .gb-weight { margin-left: 0; } .gb-grid { gap: 8px; } .gb-part { padding: 9px 10px; } .gb-head { flex-wrap: wrap; } .gb-layers { margin-left: 0; } }
+
+/* Mochilas: um cartão por mochila; as que não estão em uso, apagadas */
+.gear-pack { display: flex; flex-direction: column; gap: 10px; }
+.gear-pack .gtab { margin: 0; }
+.gear-pack td.eq-qty { text-align: center; }
+.gear-pack tr.gear-own td { background: var(--surface-2); }
+.gear-pack.off .eq-split, .gear-pack.off .gp-empty { opacity: .72; }
+.gp-empty { margin: 0; font-size: 13px; font-style: italic; color: var(--faint); }
+.gp-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 9px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.gp-total { margin-left: auto; display: flex; align-items: baseline; gap: 6px; }
+.gp-total b { font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
+.gp-total small { font-size: 11.5px; color: var(--muted); }
+.gear-pack-edit .gear-slots > select { align-self: flex-start; max-width: 100%; }
+.gear-ptot { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* Criar Armadura: os conjuntos em cartões; o construtor com modelo base, qualidade, localizações e resumo */
+section#armorSec { margin-top: 22px; }
+.ab-tab th, .ab-tab td { white-space: nowrap; }
+.ab-tab th:first-child, .ab-tab td:first-child, .ab-tab th:nth-child(2), .ab-tab td:nth-child(2) { text-align: left; }
+.ab-tab tr.on td { background: var(--accent-soft); }
+.ab-tab td select { background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 6px; color: var(--text); font: inherit; font-size: 13px; }
+.ab-tab td input[type=number], .ab-tab td input[type=text] { width: 86px; box-sizing: border-box; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 6px; color: var(--text); font: inherit; font-size: 13px; text-align: right; }
+.ab-tab td input[type=text] { width: 220px; text-align: left; }
+.ab-tab td input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+.ab-dr { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.ab-dr-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 8px; }
+.ab-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 10px 14px; }
+.ab-grid .ab-wide { grid-column: 1 / -1; }
+.ab-grid input, .ab-grid textarea { width: 100%; box-sizing: border-box; }
+.ab-grid textarea { background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 14px; resize: vertical; }
+.ab-mods { display: flex; flex-direction: column; gap: 8px; }
+.ab-lv { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.ab-lv input { width: 64px; text-align: right; }
+.gstat input { width: 100%; box-sizing: border-box; margin-top: 2px; }
+/* Meus Itens: as armaduras de Criar Armadura (Armadura | RD | Custo | Peso | Ajustes | Notas) */
+#equip .wtab-wrap + .eq-split, #equip .wtab-wrap + .wtab-wrap, #equip .wtab-wrap + .eq-grand, #equip .eq-split + .eq-grand { margin-top: 12px; }
+section#weaponSec, section#shieldSec, section#itemSec { margin-top: 22px; }
+/* Criar: os quatro cartões numa linha (dois em telas médias, um no celular) */
+#createSec { margin-top: 22px; gap: 10px; }
+#createSec .gurps-head .hint-text { margin: 0; }
+.cr-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.cr-grid > .cr-cell { margin: 0; display: flex; }
+.cr-card { flex: 1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; color: var(--text); font: inherit; cursor: pointer;
+  transition: border-color .15s, background .15s, transform .15s, box-shadow .15s; }
+.cr-card:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); box-shadow: 0 6px 18px -10px var(--shadow); }
+.cr-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cr-card.off { cursor: default; grid-template-columns: auto minmax(0, 1fr); }
+.cr-card.off:hover { border-color: var(--line); background: var(--surface); transform: none; box-shadow: none; }
+.cr-ico { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+.cr-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cr-txt b { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.cr-txt em { white-space: nowrap; font-style: normal; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 1px 8px; font-variant-numeric: tabular-nums; }
+.cr-txt small { font-size: 12px; line-height: 1.35; color: var(--muted); }
+.cr-plus { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); }
+@media (max-width: 1100px) { .cr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .cr-grid { grid-template-columns: minmax(0, 1fr); } }
+.ib-grid { display: grid; grid-template-columns: minmax(0, 2fr) 80px 120px 120px; gap: 10px 12px; }
+.ib-grid .ib-notes { grid-column: 1 / -1; }
+.ib-grid .sc-f input { width: 100%; max-width: none; box-sizing: border-box; }
+@media (max-width: 760px) { .ib-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ib-grid .ib-name { grid-column: 1 / -1; } }
+.ab-items td.gval.bonus { color: var(--accent); }
+.ab-items td.wmode { font-style: italic; color: var(--muted); }
+.ab-items th, .ab-items td { white-space: nowrap; }
+.ab-items th:first-child, .ab-items td:first-child, .ab-items th:nth-child(4), .ab-items th:nth-child(5), .ab-items td.ab-txt { text-align: left; }
+.ab-items td:first-child small { white-space: normal; }
+.ab-items td.ab-txt { white-space: normal; min-width: 160px; max-width: 340px; font-size: 12.5px; color: var(--muted); }
+.ab-items td.gval small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
+.ab-items td.ab-acts { width: 1%; }
+/* Armas: tudo centralizado, menos o nome; a marca de "fora da carga" só na célula do nome (que
+   ocupa as linhas de todos os ataques) */
+.gtab.ab-items.wb-items th, .gtab.ab-items.wb-items td { text-align: center; }
+.gtab.ab-items.wb-items th:first-child, .gtab.ab-items.wb-items td.wb-name { text-align: left; }
+.gtab.ab-items.wb-items tr.eq-stored td:first-child { box-shadow: none; }
+.gtab.ab-items.wb-items tr.eq-stored td.wb-name { box-shadow: inset 3px 0 0 var(--line-2); }
+.ab-items td.ab-acts .icon-btn { display: inline-grid; }
+.ab-items tr.eq-stored td { color: var(--muted); }
+.ab-items tr.eq-stored td:first-child { box-shadow: inset 3px 0 0 var(--line-2); }
+.ab-adjs { display: flex; flex-direction: column; gap: 8px; }
+.ab-adjs:empty { display: none; }
+.ab-adj { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 6px 12px; }
+.ab-adj-name { flex: 1 1 320px; min-width: 0; }
+.ab-adj-name input { width: 100%; box-sizing: border-box; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 8px; color: var(--text); font: inherit; font-size: 14px; }
+.ab-adj-name small { display: block; margin-top: 3px; font-size: 12px; }
+.ab-adj-name small svg { vertical-align: -2px; margin-right: 4px; }
+.ab-adj .ab-lv { padding-top: 4px; }
+.ab-adj .ab-lv input { width: 90px; }
+.ab-flex { margin-top: 10px; }
+.ab-loc-pick { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px 14px; align-items: end; }
+.ab-loc-pick select { width: 100%; box-sizing: border-box; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px; color: var(--text); font: inherit; font-size: 14px; }
+@media (max-width: 560px) { .ab-loc-pick { grid-template-columns: 1fr; } }
+.suggest .ab-custom-opt span { color: var(--accent); font-weight: 600; }
+.suggest .ab-custom-opt svg { vertical-align: -2px; margin-right: 4px; }
+.ab-custom .gstat input { width: 100%; box-sizing: border-box; margin-top: 2px; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 6px; color: var(--text); font: inherit; font-size: 13px; }
+@media (max-width: 760px) { .ab-grid { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .av-sizes { grid-template-columns: 1fr; } }
 
 /* Ficha › Combate: a conta de cada defesa */

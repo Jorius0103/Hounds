@@ -193,7 +193,7 @@ function sheetAdvsHtml(s, editing) {
   var ui = S.ui, can = canWrite(), list = editing ? ui.advDraft : sheetAdvs(s);
   var head = '<div class="gurps-head"><h2 class="sec-title">Vantagens</h2><span class="gurps-total" id="avTotal">' + advsTotal(list) + ' pts</span>' +
     (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="avCancel">Cancelar</button><button class="btn primary" type="button" id="avSave">Salvar vantagens</button></div>'
-      : can && !ui.skillDraft && !ui.combatDraft ? '<div class="btn-row"><button class="btn" type="button" id="avEdit">' + svg(ICON.edit, 15) + 'Editar vantagens</button></div>' : '') + '</div>';
+      : can && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="avEdit">' + svg(ICON.edit, 15) + 'Editar vantagens</button></div>' : '') + '</div>';
   if (editing) {
     var choices = advSkillChoices(s);
     return '<section class="gurps" id="advs">' + head +

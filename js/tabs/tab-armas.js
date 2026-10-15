@@ -67,21 +67,22 @@ var WEAPON_ATTACK_COLS = [
 var WEAPON_FORM_COLS = { Melee: ['damage', 'reach', 'parry', 'st'], Ranged: ['damage', 'acc', 'range', 'rof', 'shots', 'st', 'bulk', 'rcl'] };
 // "or" in the table is another attack of the same weapon; the other labels say which ("with Dart").
 function weaponModeText(m) { return m === 'or' ? 'ou' : m || ''; }
-function weaponAttacksHtml(w) {
+// nhOf(attack): optional, the cell of an NH column after Dano (Criar Arma: the sheet's NH with the weapon).
+function weaponAttacksHtml(w, nhOf) {
   var list = w.attacks || [];
   if (!list.length) return '<p class="long none">Sem ataques cadastrados.</p>';
   // Only the columns some attack fills.
   var cols = WEAPON_ATTACK_COLS.filter(function (c) { return list.some(function (a) { return a[c[0]]; }); });
   var hasMode = list.some(function (a) { return a.mode; }), hasNotes = list.some(function (a) { return a.notes; }), prev = null;
   return '<div class="wtab-wrap"><table class="gtab wtab"><thead><tr><th>Perícia</th>' + (hasMode ? '<th>Modo</th>' : '') +
-    cols.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + (hasNotes ? '<th>Notas</th>' : '') + '</tr></thead><tbody>' +
+    cols.map(function (c) { return '<th>' + c[1] + '</th>' + (nhOf && c[0] === 'damage' ? '<th>NH</th>' : ''); }).join('') + (hasNotes ? '<th>Notas</th>' : '') + '</tr></thead><tbody>' +
     list.map(function (a) {
       // The skill once for its run of attacks, with its defaults below.
       var same = prev && prev.skill === a.skill && prev.defaults === a.defaults;
       prev = a;
       return '<tr><td>' + (same ? '' : (a.skill ? '<b>' + esc(a.skill) + '</b>' : '<span class="none">—</span>') + (a.defaults ? '<small>' + esc(a.defaults) + '</small>' : '')) + '</td>' +
         (hasMode ? '<td class="wmode">' + esc(weaponModeText(a.mode)) + '</td>' : '') +
-        cols.map(function (c) { return '<td>' + (a[c[0]] ? esc(a[c[0]]) : '<span class="none">—</span>') + '</td>'; }).join('') +
+        cols.map(function (c) { return '<td>' + (a[c[0]] ? esc(a[c[0]]) : '<span class="none">—</span>') + '</td>' + (nhOf && c[0] === 'damage' ? nhOf(a) : ''); }).join('') +
         (hasNotes ? '<td class="wnotes">' + esc(a.notes || '') + '</td>' : '') + '</tr>';
     }).join('') + '</tbody></table></div>';
 }
