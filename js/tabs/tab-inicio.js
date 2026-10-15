@@ -29,6 +29,8 @@ function renderHomePage() {
     card('#vantagens', ICON.advantage, 'Vantagens', (W.loaded.advantages ? plural(W.advantages.length, 'vantagem', 'vantagens') : 'Vantagens, talentos e perks')),
     card('#pericias', ICON.skill, 'Perícias', (W.loaded.skills ? plural(W.skills.length, 'perícia', 'perícias') : 'Perícias dos livros')),
     card('#combate', ICON.combat, 'Combate', (W.loaded.techniques ? plural(W.techniques.length, 'técnica', 'técnicas') + ' e perícias de combate' : 'Perícias, técnicas e estilos')),
+    card('#armas', ICON.weapon, 'Armas', (W.loaded.weapons ? plural(W.weapons.length, 'arma', 'armas') : 'Armas dos livros')),
+    card('#armaduras', ICON.armor, 'Armaduras', (W.loaded.armors ? plural(W.armors.length, 'armadura ou escudo', 'armaduras e escudos') : 'Armaduras e escudos')),
     card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
   ];
   if (canManageUsers()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));

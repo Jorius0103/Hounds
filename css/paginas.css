@@ -445,6 +445,9 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sc-f input[type=number] { width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
 .sc-f input:focus, .sc-f select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
 .sc-f.sc-name { flex: 1 1 220px; }
+/* Adicionar estilo: a busca no catálogo, com a lista filtrada embaixo */
+.sc-f .sk-pick input { width: 100%; box-sizing: border-box; }
+#scStyleSug { max-height: 320px; }
 .sc-f.sc-base input { width: 150px; }
 .sc-nh { min-width: 92px; font-weight: 700; font-size: 14px; padding: 7px 8px; border-radius: 8px; display: flex; flex-direction: column; }
 .sc-nh small { font-weight: 500; font-size: 11px; color: var(--faint); }
@@ -459,6 +462,15 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sc-masonry { column-count: 1; column-gap: 14px; }
 .sc-card { break-inside: avoid; margin-bottom: 14px; }
 .sc-card .gtab { margin: 0; }
+/* Estilo com pré-requisito não atendido (falta uma perícia que ele pede): borda e etiqueta vermelhas */
+.sc-unmet .gtab, .box.sc-edit.sc-unmet { border-color: var(--danger); }
+.sc-unmet-tag { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: var(--danger-soft); color: var(--danger); font-family: var(--font-ui); font-size: 11px; letter-spacing: 0; text-transform: none; font-weight: 600; white-space: nowrap; }
+.sc-req td small { color: var(--faint); }
+.sc-req.miss td b, .sc-req.miss .gnh { color: var(--danger); }
+.sc-req-line.miss b { color: var(--danger); }
+/* Perícias de Combate: a tabela principal, em três lado a lado, com o total embaixo */
+.sc-main { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.sc-main .gtab { margin: 0; }
 .sc-tab th:first-child { display: flex; align-items: center; gap: 6px; }
 .sc-grip { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; margin: -4px 0 -4px -6px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); cursor: grab; touch-action: none; }
 .sc-grip:hover { color: var(--text); background: var(--surface); }
@@ -563,3 +575,16 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 
 /* Ficha › Combate: a conta de cada defesa */
 .sc-def small.sc-calc { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* Armas e armaduras (js/tabs/tab-armas.js, tab-armaduras.js): a tabela de ataques e os formulários,
+   mais largos que os outros por causa das linhas de ataque */
+.wtab-wrap { overflow-x: auto; }
+.wtab th, .wtab td { text-align: left; white-space: nowrap; }
+.wtab td small { white-space: normal; min-width: 160px; }
+.wtab .wmode { color: var(--muted); font-style: italic; }
+.wtab .wnotes { white-space: normal; min-width: 90px; }
+.wtab .none { color: var(--faint); }
+.modal.modal-wide { max-width: 780px; }
+.sc-f.wf-short input { width: 84px; }
+.sc-f.wf-dmg input { width: 140px; }
+.sc-f.wf-notes input { width: 110px; }

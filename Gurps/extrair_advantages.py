@@ -456,7 +456,8 @@ def juntar(partes):
             texto = texto[:-1] + p
         else:
             texto = f"{texto} {p}" if texto else p
-    return re.sub(r"\s+", " ", texto).strip()
+    # a fonte dos livros desenha o "×" com o código do "¥"
+    return re.sub(r"\s+", " ", texto).strip().replace("¥", "×")
 
 
 class Livro:

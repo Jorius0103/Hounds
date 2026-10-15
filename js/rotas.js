@@ -11,6 +11,7 @@
      #mesa · #maps · #map~<id> · #map~<id>~explorar · #locais · #local~<id>
      #fichas · #ficha~<id> · #eventos · #evento~<id>
      #pericia~<id> is a skill under Perícias; #pericia-combate~<id> the same page under Combate
+     #armas · #arma~<id> · #armaduras · #armadura~<id>
    ===================================================================== */
 function parseRoute() {
   var h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
@@ -37,6 +38,10 @@ function parseRoute() {
   if (p[0] === 'pericia-combate' && p[1]) return { page: 'skill', skillId: p[1], node: 'cskill:' + p[1] };
   if (p[0] === 'tecnica' && p[1]) return { page: 'tech', techId: p[1], node: 'tech:' + p[1] };
   if (p[0] === 'estilo' && p[1]) return { page: 'style', styleId: p[1], node: 'style:' + p[1] };
+  if (p[0] === 'armas') return { page: 'weapons', node: 'weapons' };
+  if (p[0] === 'arma' && p[1]) return { page: 'weapon', weaponId: p[1], node: 'weapon:' + p[1] };
+  if (p[0] === 'armaduras') return { page: 'armors', node: 'armors' };
+  if (p[0] === 'armadura' && p[1]) return { page: 'armor', armorId: p[1], node: 'armor:' + p[1] };
   if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
   if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
   if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
@@ -71,6 +76,10 @@ function hrefFor(node) {
   if (node.indexOf('cskill:') === 0) return '#pericia-combate~' + encodeURIComponent(node.slice(7));
   if (node.indexOf('tech:') === 0) return '#tecnica~' + encodeURIComponent(node.slice(5));
   if (node.indexOf('style:') === 0) return '#estilo~' + encodeURIComponent(node.slice(6));
+  if (node === 'weapons') return '#armas';
+  if (node.indexOf('weapon:') === 0) return '#arma~' + encodeURIComponent(node.slice(7));
+  if (node === 'armors') return '#armaduras';
+  if (node.indexOf('armor:') === 0) return '#armadura~' + encodeURIComponent(node.slice(6));
   return '#';
 }
 function mapHref(id) { return hrefFor('map:' + id); }

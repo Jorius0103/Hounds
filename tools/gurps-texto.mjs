@@ -1,5 +1,5 @@
 // Revisão dos textos dos catálogos de GURPS (dados/magias.json, vantagens.json, pericias.json,
-// tecnicas.json e estilos.json): conserta o que a extração dos PDFs estragou — espaço antes da
+// tecnicas.json, estilos.json, armas.json e armaduras.json): conserta o que a extração dos PDFs estragou — espaço antes da
 // pontuação, hífen de fim de linha ("high- Will", "pp. 242- 253"), palavras que perderam o hífen
 // ("onehanded", "IQbased"), reticências espaçadas (". . ."), restos do custo no começo da
 // descrição, listas com "•" num parágrafo só — sem mudar o que o texto diz.
@@ -33,6 +33,8 @@ function hifenar(word) {
 export function revisarTexto(s) {
   if (typeof s !== 'string' || !s) return s;
   let t = s.replace(/\r\n?/g, '\n').replace(/[ \t ]+/g, ' ').replace(/ *\n */g, '\n');
+  // A fonte dos livros desenha o "×" com o código do "¥" ("15 minutes × the spirit's HT").
+  t = t.replace(/¥/g, '×');
   // Reticências: ". . ." do livro vira "…", colado na palavra de antes.
   t = t.replace(/ ?\.(?: \.){2,3}/g, '…').replace(/…(?=[A-Za-z(“])/g, '… ');
   // Sem espaço antes da pontuação, nem depois de "(" ou antes de ")".
@@ -81,10 +83,10 @@ export function revisarItem(x) {
   return out;
 }
 
-// CLI: revisa os cinco arquivos no lugar, no mesmo formato compacto.
+// CLI: revisa os sete arquivos no lugar, no mesmo formato compacto.
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  for (const f of ['magias', 'vantagens', 'pericias', 'tecnicas', 'estilos']) {
+  for (const f of ['magias', 'vantagens', 'pericias', 'tecnicas', 'estilos', 'armas', 'armaduras']) {
     const file = path.join(ROOT, 'dados', f + '.json');
     const list = JSON.parse(readFileSync(file, 'utf8'));
     let n = 0;

@@ -11,8 +11,9 @@
      styles:  [{ name, styleId?, items: [item] }]   fighting styles, each a group as in the
                                                     player's spreadsheet (styleId: Mundo › Combate)
      general: [item]                                combat skills outside any style
-   generalPos: n                                  where its table goes among the styles' (they are
-                                                  dragged into any order; styles keep theirs in the array)
+   generalPos: n                                  where its table went among the styles'; no longer
+                                                  used: it is the main table, always first (the
+                                                  styles are dragged into any order, kept in the array)
      weapons: [{ name, mode, mod, type }]           damage table: mode 'sw' | 'thr' | 'fixed';
                                                     mod '+1' added to the ST damage, or the damage
                                                     itself ('3d') when fixed; type 'cut', 'imp'...
@@ -64,7 +65,7 @@ function cleanCombat(c) {
   return {
     generalPos: Math.min(cleanInt(c.generalPos, 0, 999, styles.length), styles.length),
     styles: (Array.isArray(c.styles) ? c.styles : []).map(function (st) {
-      var o = { name: scStr(st && st.name, 120), items: items(st && st.items) };
+      var o = { name: scStr(st && st.name, 120), items: scSfFirst(items(st && st.items)) };
       if (st && typeof st.styleId === 'string' && st.styleId) o.styleId = st.styleId.slice(0, 200);
       return o;
     }),
@@ -216,12 +217,96 @@ function scFixKinds(c) {
   });
   return fixed;
 }
-// A style picked from the catalog: Style Familiarity and its required skills, 1 point each.
-function styleFromCatalog(cat) {
-  var items = [cleanCombatItem({ kind: 'trait', name: 'Style Familiarity (' + cat.name + ')', pts: 1 })];
-  styleItems(cat.skills).forEach(function (n) { items.push(cleanCombatItem(scAutofill({ kind: 'skill', name: n, attr: 'DX', diff: 'A', pts: 1 }))); });
+// The skills and techniques of the styles go to the other skills (the styles keep the perks and
+// advantages). The same skill or technique twice is one row, the one with the most points.
+// Returns how many rows moved and how many repeated ones went.
+function scStyleSkillCount(c) { return c.styles.reduce(function (n, st) { return n + st.items.filter(function (x) { return x.kind !== 'trait' && x.name; }).length; }, 0); }
+function scMoveToGeneral(c) {
+  var moved = 0;
+  c.styles.forEach(function (st) {
+    st.items = st.items.filter(function (x) {
+      if (x.kind === 'trait' || !x.name) return true;
+      c.general.push(x); moved++; return false;
+    });
+  });
+  var seen = {}, out = [];
+  c.general.forEach(function (x) {
+    if (x.kind === 'trait' || !x.name) { out.push(x); return; }
+    var key = x.kind + ':' + norm(x.name) + (x.kind === 'tech' ? ':' + norm(x.base) : ''), i = seen[key];
+    if (i == null) { seen[key] = out.length; out.push(x); } else if (+x.pts > +out[i].pts) out[i] = x;
+  });
+  var dup = c.general.length - out.length;
+  c.general = out;
+  return { moved: moved, dup: dup };
+}
+// A style picked from the catalog: Style Familiarity, and at 0 points (bought later; out of the
+// editor a row shows only with points, see scShown) its techniques, cinematic skills, cinematic
+// techniques and perks. Its skills are a prerequisite, met by the sheet's own (see scStyleReqs),
+// whose points are already spent.
+var SC_STYLE_BRINGS = [['techniques', 'tech'], ['cinematicSkills', 'skill'], ['cinematicTechniques', 'tech'], ['perks', 'trait']];
+// Every style, from the catalog or free, starts with its Style Familiarity, and it stays the first
+// row of the style (cleanCombat puts it there: in the editor, on save and on the sheet).
+function scSfName(style) { return 'Style Familiarity' + (style ? ' (' + style + ')' : ''); }
+function scIsSf(x) { return x.kind === 'trait' && /^style familiarity\b/i.test(x.name || ''); }
+function scSfFirst(items) { return items.filter(scIsSf).concat(items.filter(function (x) { return !scIsSf(x); })); }
+function scSfItem(style) { return cleanCombatItem({ kind: 'trait', name: scSfName(style), pts: 1 }); }
+function styleFromCatalog(cat, pool) {
+  var items = [scSfItem(cat.name)], seen = {};
+  var learned = pool.filter(function (k) { return k.pts > 0; });
+  SC_STYLE_BRINGS.forEach(function (f) {
+    styleItems(cat[f[0]]).forEach(function (n) {
+      var name = scCatalogName(n, learned); if (!name || seen[norm(name)]) return;
+      seen[norm(name)] = 1;
+      // A perk list may hold a technique (Off-Hand Weapon Training): the catalogs say which.
+      var kind = f[1] === 'trait' && scCatalogKind(name) === 'tech' ? 'tech' : f[1];
+      items.push(cleanCombatItem(scAutofill({ kind: kind, name: kind === 'tech' ? scTechOnLearned(name, learned) : name, pts: 0 })));
+    });
+  });
   return { name: cat.name, styleId: cat.id, items: items };
 }
+// An item of a style's list as a sheet row's name; null for book text that is not one ("All",
+// "Disarming (Any skill in style)", "As Boxing (pp. 152-153), but…"). "Feint (Shield or
+// Shortsword)" and "Sweep (Polearm, Spear, Staff, or Two-Handed Sword)" are on the first skill the
+// sheet has (with points), else the first listed; with more after the skills ("…Sword
+// Swing/Arm") it stays as is.
+function scCatalogName(n, learned) {
+  if (n.length > 80 || /^(all|as\b)|\bpp?\.\s*\d|\bany\b/i.test(n)) return null;
+  var m = /^(.*?)\s*\(([^()]*\bor\b[^()]*)\)$/.exec(n); if (!m || m[2].indexOf('/') >= 0) return n;
+  var alts = m[2].split(/\s*,\s*(?:or\s+)?|\s+or\s+/).filter(Boolean);
+  var base = alts.filter(function (a) { return scFindSkill(learned, a); })[0] || alts[0];
+  return m[1] + ' (' + base + ')';
+}
+// A technique with no skill in its name ("Arm Lock") goes on the one of its defaults in the
+// catalog ("Judo or Wrestling") that the sheet has; unchanged when none.
+function scTechOnLearned(name, learned) {
+  if (/\(.*\)\s*$/.test(name)) return name;
+  var t = /** @type {any} */ (styleFind('tech', name)); if (!t) return name;
+  var hit = null;
+  String(t.defaults || '').split(/\s*,\s*(?:or\s+)?|\s+or\s+/).some(function (d) {
+    d = d.replace(/\s*[+-]\d+\s*$/, '').trim();
+    hit = d && !/prerequisite|skill$/i.test(d) ? scFindSkill(learned, d) : null; return !!hit;
+  });
+  return hit ? name + ' (' + hit.name + ')' : name;
+}
+// The skills a catalog style requires, each a list of alternatives: "Broadsword" is one; "and at
+// least one of Knife, Spear, and Staff" or "and Polearm or Two-Handed Sword" are any of them.
+// Book text that spilled into the list (long sentences) is left out.
+function scReqAlts(item) {
+  var t = item.replace(/^and\s+/i, '').replace(/^(at least\s+)?one of\s+/i, '');
+  return t.split(/\s*,\s*(?:and\s+|or\s+)?|\s+or\s+|\s+and\s+/i).map(function (x) { return x.trim(); }).filter(Boolean);
+}
+// [{ label, skill }] of a style's prerequisites: skill is the sheet's (Combate or Perícias, with
+// points) that meets it, or null. Empty for a free style or while the catalog has not arrived.
+function scStyleReqs(st, pool) {
+  var cat = st && st.styleId ? styleById(st.styleId) : null; if (!cat) return [];
+  var learned = pool.filter(function (k) { return k.pts > 0; });
+  return styleItems(cat.skills).filter(function (i) { return i.length <= 200; }).map(function (item) {
+    var alts = scReqAlts(item), hit = null;
+    alts.some(function (n) { hit = scFindSkill(learned, n); return !!hit; });
+    return { label: alts.join(' ou '), skill: hit };
+  });
+}
+function scReqsMissing(reqs) { return reqs.filter(function (r) { return !r.skill; }).map(function (r) { return r.label; }); }
 // Suggestions for the names of a style's rows: its lists in the catalog, or all combat
 // skills and techniques for a free style and for the skills outside styles.
 function scSuggestions(st) {
@@ -291,21 +376,45 @@ function scItemName(x) {
 }
 // Six dots: the handle that drags a table.
 var SC_GRIP = '<circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="19" r="1.4"/>';
-function scGroupHtml(title, items, pool, av, href, key, drag) {
+// A style's prerequisite as a row: the sheet's skill with its level and no points (they count
+// where the skill is), or what is missing.
+function scReqRow(r, pool, av) {
+  if (!r.skill) return '<tr class="sc-req miss"><td><b>' + esc(r.label) + '</b><small>Pré-requisito · a ficha não tem</small></td><td class="gpts">—</td><td class="gnh none">falta</td></tr>';
+  var x = Object.assign({}, r.skill, { kind: 'skill' }), l = scLink(x);
+  var name = l ? '<a href="' + l.href + '" ' + l.attr + '="' + esc(l.id) + '" title="' + l.title + '">' + esc(x.name) + '</a>' : esc(x.name);
+  return '<tr class="sc-req"><td><b>' + name + '</b><small>Pré-requisito · ' + x.attr + '/' + x.diff + '</small></td>' +
+    '<td class="gpts" title="Os pontos já contam onde a perícia está na ficha">—</td>' + scNhCell(x, pool, av) + '</tr>';
+}
+// Out of the editor, a row shows only once it has points (a style brings its lists at 0).
+function scShown(items) { return items.filter(function (x) { return x.pts >= 1; }); }
+function scGroupHtml(title, items, pool, av, href, key, drag, reqs) {
   var label = href ? '<a href="' + href + '" title="Ver o estilo">' + esc(title) + '</a>' : esc(title);
-  return '<div class="sc-card" data-key="' + key + '"><table class="gtab sc-tab"><thead><tr><th>' +
+  // A prerequisite bought inside the style itself (older sheets) shows once, as its own row.
+  reqs = (reqs || []).filter(function (r) { return !r.skill || items.indexOf(r.skill) < 0; });
+  var miss = scReqsMissing(reqs), shown = scShown(items);
+  function row(x) { return '<tr>' + scItemName(x) + '<td class="gpts">' + x.pts + '</td>' + scNhCell(x, pool, av) + '</tr>'; }
+  // Style Familiarity first, then the prerequisites, then the rest.
+  var sf = shown.filter(scIsSf), rest = shown.filter(function (x) { return !scIsSf(x); });
+  return '<div class="sc-card' + (miss.length ? ' sc-unmet' : '') + '" data-key="' + key + '"><table class="gtab sc-tab"><thead><tr><th>' +
     (drag ? '<button class="sc-grip" type="button" aria-label="Mover a tabela ' + esc(title) + ' (arraste, ou use as setas)" title="Arraste para mudar a ordem">' + svg(SC_GRIP, 14, 2.4) + '</button>' : '') +
-    label + '</th><th>Pts</th><th>NH</th></tr></thead><tbody>' +
-    (items.length ? items.map(function (x) { return '<tr>' + scItemName(x) + '<td class="gpts">' + x.pts + '</td>' + scNhCell(x, pool, av) + '</tr>'; }).join('')
+    label + (miss.length ? '<span class="sc-unmet-tag" title="Falta: ' + esc(miss.join('; ')) + '">Pré-requisito não atendido</span>' : '') + '</th><th>Pts</th><th>NH</th></tr></thead><tbody>' +
+    (shown.length || reqs.length ? sf.map(row).join('') + reqs.map(function (r) { return scReqRow(r, pool, av); }).join('') + rest.map(row).join('')
       : '<tr><td colspan="3" class="gnone">Nada ainda.</td></tr>') +
-    '</tbody><tfoot><tr><td colspan="2">Total</td><td class="gpts">' + sumPts(items) + '</td></tr></tfoot></table></div>';
+    '</tbody></table></div>';
 }
-// The tables in the order the player left them: 's<i>' for the styles, 'g' for the other skills.
-function combatOrder(c) {
-  var keys = c.styles.map(function (st, i) { return 's' + i; });
-  if (c.general.length) keys.splice(Math.min(c.generalPos, keys.length), 0, 'g');
-  return keys;
+// The main table (the skills outside styles), in name order, split in three side by side, down each
+// column; the title over the first, the total once below them.
+function scMainHtml(all, pool, av) {
+  var items = scShown(all).sort(byName), per = Math.ceil(items.length / 3), cols = [];
+  for (var i = 0; i < items.length; i += per) cols.push(items.slice(i, i + per));
+  return '<div class="sc-main"><div class="gurps-grid">' + cols.map(function (col, j) {
+    return '<table class="gtab sc-tab"><thead><tr><th>' + (j ? '&nbsp;' : 'Perícias de Combate') + '</th><th>Pts</th><th>NH</th></tr></thead><tbody>' +
+      col.map(function (x) { return '<tr>' + scItemName(x) + '<td class="gpts">' + x.pts + '</td>' + scNhCell(x, pool, av) + '</tr>'; }).join('') + '</tbody></table>';
+  }).join('') + '</div><table class="gtab sc-tab"><tfoot><tr><td colspan="2">Total perícias de combate</td><td class="gpts">' + sumPts(items) + '</td></tr></tfoot></table></div>';
 }
+// The style tables in the order the player left them ('s<i>'). The other skills' table is not
+// among them: it is the main one, always first, above the points per style.
+function combatOrder(c) { return c.styles.map(function (st, i) { return 's' + i; }); }
 function scDmgLabel(t) { var x = SC_DMG_TYPES.filter(function (y) { return y[0] === t; })[0]; return x ? x[1] : t; }
 function scWeaponsHtml(c, st) {
   if (!c.weapons.length) return '';
@@ -412,9 +521,17 @@ function scDefHtml(c, dv) {
     row('Bloqueio', dv.block, weapon(dv.block, dv.blockAuto), 'Sem Shield ou Cloak.') +
     '<tr><td colspan="2" class="gnone">Basic Set, pp. B374-377</td></tr></tbody></table>';
 }
+// What a style is worth: the points in the skills that meet its prerequisites (where they are on
+// the sheet) plus its own rows, without perks and advantages (Style Familiarity among them).
+// A skill counts once, even when it meets two prerequisites or is also a row of the style.
+function scStylePts(st, pool) {
+  var own = st.items.filter(function (x) { return x.kind !== 'trait'; }), seen = own.slice();
+  scStyleReqs(st, pool).forEach(function (r) { if (r.skill && seen.indexOf(r.skill) < 0) seen.push(r.skill); });
+  return sumPts(seen);
+}
 // Points per style, three side by side per row (fewer rows, more columns), in the tables' order.
-function scTotalsHtml(c) {
-  var rows = combatOrder(c).map(function (k) { return k === 'g' ? ['Outras perícias', sumPts(c.general)] : [c.styles[+k.slice(1)].name || 'Estilo sem nome', sumPts(c.styles[+k.slice(1)].items)]; });
+function scTotalsHtml(c, pool) {
+  var rows = combatOrder(c).map(function (k) { var st = c.styles[+k.slice(1)]; return [st.name || 'Estilo sem nome', scStylePts(st, pool)]; });
   if (rows.length < 2) return '';
   return '<div class="gtab sc-tot" role="table" aria-label="Pontos por estilo"><div class="sc-tot-grid sc-tot-headrow" role="row">' +
     // A "Pts" over each column of points; the title only over the first.
@@ -432,15 +549,17 @@ function sheetCombatHtml(s, editing) {
   if (empty) return '<section class="gurps" id="combat">' + head + '<p class="long none">Nenhum estilo ou perícia de combate.' + (can ? ' Use <b>Editar combate</b> para adicionar.' : '') + '</p></section>';
   var drag = can && !ui.skillDraft && !ui.attrDraft && !ui.advDraft;
   // Links to the catalogs (see scLink): they arrive once and the page redraws with them.
-  ['skills', 'techniques', 'advantages'].forEach(function (k) { loadCatalog(k); });
+  // The styles too, for their prerequisites (see scStyleReqs).
+  ['skills', 'techniques', 'advantages', 'styles'].forEach(function (k) { loadCatalog(k); });
   var groups = combatOrder(c).map(function (k) {
-    if (k === 'g') return scGroupHtml('Outras perícias de combate', c.general, pool, av, '', k, drag);
     var st = c.styles[+k.slice(1)];
-    return scGroupHtml(st.name || 'Estilo sem nome', st.items, pool, av, st.styleId ? styleHref(st.styleId) : '', k, drag);
+    return scGroupHtml(st.name || 'Estilo sem nome', st.items, pool, av, st.styleId ? styleHref(st.styleId) : '', k, drag, scStyleReqs(st, pool));
   });
   return '<section class="gurps" id="combat">' + head +
-    // Points per style first, above the tables they sum up.
-    scTotalsHtml(c) +
+    // The other skills first (the main table, not dragged), then the points per style above the
+    // tables they sum up.
+    (scShown(c.general).length ? scMainHtml(c.general, pool, av) : '') +
+    scTotalsHtml(c, pool) +
     '<div class="sc-masonry" id="scGroups">' + groups.join('') + '</div>' +
     '<div class="sc-bottom">' + scWeaponsHtml(c, a.st) + '<div class="sc-side">' + scDefHtml(c, combatDefenses(scWithAdvs(c, s), pool, av, r, a)) + '</div></div></section>';
 }
@@ -474,16 +593,20 @@ function scEditRow(x, g, n, pool, av, listId) {
   return '<div class="sc-row">' + f + '</div>';
 }
 function scEditNhHtml(nh) { return nh ? esc(nh.rel) + ' <small>' + esc(nh.lvl) + '</small>' + (nh.waste ? '<small class="sk-waste">' + nh.waste + ' pt sem efeito</small>' : '') : '<small>sem NH</small>'; }
-function scGroupEditHtml(title, items, g, pool, av, listId, st) {
-  var cat = st && st.styleId ? styleById(st.styleId) : null;
-  return '<div class="box sc-edit" data-group="' + g + '">' +
+function scGroupEditHtml(title, items, g, pool, av, listId, st, extra) {
+  var cat = st && st.styleId ? styleById(st.styleId) : null, reqs = scStyleReqs(st, pool), miss = scReqsMissing(reqs);
+  var reqHtml = reqs.length ? '<p class="hint-text sc-req-line' + (miss.length ? ' miss' : '') + '" style="margin:0">' +
+    (miss.length ? '<b>Pré-requisito não atendido.</b> Falta: ' + esc(miss.join('; ')) + '. ' : '') + 'Pré-requisitos (perícias da ficha, só o NH): ' +
+    reqs.map(function (r) { if (!r.skill) return esc(r.label) + ' (falta)'; var nh = combatNh(Object.assign({}, r.skill, { kind: 'skill' }), pool, av); return esc(r.skill.name) + ' ' + esc(nh ? nh.lvl : ''); }).join(' · ') + '</p>' : '';
+  extra = reqHtml + (extra || '');
+  return '<div class="box sc-edit' + (miss.length ? ' sc-unmet' : '') + '" data-group="' + g + '">' +
     (st ? '<div class="sc-ghead">' + scField('Estilo', '<input type="text" data-f="stname" data-g="' + g + '" maxlength="120" value="' + esc(st.name) + '" placeholder="Nome do estilo">', 'sc-name') +
       (cat ? '<a class="sc-catlink" href="' + styleHref(cat.id) + '" target="_blank" rel="noopener">' + esc(cat.page || 'Ver estilo') + '</a>' : '') +
       '<button class="btn ghost" type="button" data-delstyle="' + g + '">' + svg(ICON.trash, 14) + 'Remover estilo</button></div>'
       : '<h3 class="sec-title" style="margin:0">' + esc(title) + '</h3>') +
     '<div class="sc-rows">' + items.map(function (x, n) { return scEditRow(x, g, n, pool, av, listId); }).join('') + '</div>' +
     '<div class="btn-row">' + SC_KINDS.map(function (k) { return '<button class="btn" type="button" data-add="' + g + ':' + k[0] + '">' + svg(ICON.plus, 14, 2.4) + k[1] + '</button>'; }).join('') + '</div>' +
-    (cat ? '<p class="hint-text" style="margin:0">Os nomes sugeridos vêm das listas do estilo (técnicas, perks e opcionais): escolher um preenche o resto.</p>' : '') + '</div>';
+    (cat ? '<p class="hint-text" style="margin:0">Os nomes sugeridos vêm das listas do estilo (técnicas, perks e opcionais): escolher um preenche o resto.</p>' : '') + (extra || '') + '</div>';
 }
 function scEditHtml(s, c, pool, av) {
   var d = S.ui.combatDraft, a = S.ui.attrDraft || sheetAttrs(s), st = a.st;
@@ -491,8 +614,7 @@ function scEditHtml(s, c, pool, av) {
     '<datalist id="scListG">' + scSuggestions(null).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>' +
     '<datalist id="scBases">' + pool.map(function (k) { return '<option value="' + esc(k.name) + '">'; }).join('') + '</datalist>';
   var fromSkills = sheetSkills(s).filter(function (k) { return !d.moved.some(function (m) { return m.name === k.name && m.attr === k.attr && m.diff === k.diff; }); });
-  var targets = c.styles.map(function (x, i) { return ['s' + i, x.name || 'Estilo ' + (i + 1)]; }).concat([['g', 'Outras perícias de combate']]);
-  var styleOpts = (W.styles || []).map(function (x) { return [x.id, x.name + (x.page ? ' · ' + x.page : '')]; });
+  var targets = [['g', 'Perícias de Combate']].concat(c.styles.map(function (x, i) { return ['s' + i, x.name || 'Estilo ' + (i + 1)]; }));
   var weaponRows = c.weapons.map(function (w, n) {
     var at = ' data-w="' + n + '"';
     return '<div class="sc-row">' + scField('Arma', '<input type="text" data-f="wname"' + at + ' maxlength="120" value="' + esc(w.name) + '" placeholder="Ex.: Broadsword">', 'sc-name') +
@@ -503,15 +625,18 @@ function scEditHtml(s, c, pool, av) {
       '<button class="icon-btn" type="button" data-delw="' + n + '" aria-label="Remover ataque" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
   }).join('');
   var parryNames = pool.filter(function (k) { return SC_PARRY[combatKey(k.name)]; }).map(function (k) { return [k.name, k.name]; });
-  var blockNames = pool.filter(function (k) { return /^(shield|cloak)/.test(combatKey(k.name)); }).map(function (k) { return [k.name, k.name]; });
-  var dd = c.def;
+  var blockNames = pool.filter(function (k) { return /^(shield|cloak)\b/.test(combatKey(k.name)); }).map(function (k) { return [k.name, k.name]; });
+  var dd = c.def, inStyles = scStyleSkillCount(c);
+  var fromStyles = inStyles ? '<div class="sc-row"><button class="btn" type="button" id="scFromStyles">Trazer perícias e técnicas dos estilos</button></div>' +
+    '<p class="hint-text" style="margin:0">' + plural(inStyles, 'perícia ou técnica está', 'perícias ou técnicas estão') + ' dentro de estilos. Elas vêm para cá e os estilos ficam com os perks e vantagens; a mesma perícia ou técnica repetida fica uma vez só, com os pontos da maior.</p>' : '';
   return lists +
+    scGroupEditHtml('Perícias de Combate', c.general, 'g', pool, av, 'scListG', null, fromStyles) +
     c.styles.map(function (x, i) { return scGroupEditHtml('', x.items, 's' + i, pool, av, 'scList' + i, x); }).join('') +
-    scGroupEditHtml('Outras perícias de combate', c.general, 'g', pool, av, 'scListG', null) +
     '<div class="box sc-edit"><h3 class="sec-title" style="margin:0">Adicionar estilo</h3><div class="sc-row">' +
-      scField('Estilo do catálogo', '<select id="scStylePick"><option value="">' + (W.loaded.styles ? 'Estilo livre (sem catálogo)' : 'Carregando estilos…') + '</option>' + scOpts(styleOpts, '') + '</select>', 'sc-name') +
+      scField('Estilo do catálogo', '<div class="sk-pick"><input type="text" id="scStylePick" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scStyleSug" placeholder="' +
+        (W.loaded.styles ? 'Digite para buscar; vazio, ou um nome fora da lista, é um estilo livre' : 'Carregando estilos…') + '"><div class="suggest" id="scStyleSug" role="listbox" hidden></div></div>', 'sc-name') +
       '<button class="btn" type="button" id="scAddStyle">' + svg(ICON.plus, 14, 2.4) + 'Adicionar estilo</button></div>' +
-      '<p class="hint-text" style="margin:0">Do catálogo, o estilo já vem com Style Familiarity e as perícias obrigatórias, com 1 ponto cada.</p>' +
+      '<p class="hint-text" style="margin:0">Do catálogo, o estilo vem com Style Familiarity e, com 0 pontos, as técnicas, perícias cinemáticas, técnicas cinemáticas e perks dele (na ficha, só aparecem com pelo menos 1 ponto). As perícias que ele pede são pré-requisito: vêm da ficha só com o NH (os pontos já foram gastos), e o estilo fica marcado se faltar alguma.</p>' +
     (fromSkills.length ? '<h3 class="sec-title" style="margin:8px 0 0">Trazer da seção Perícias</h3><div class="sc-row">' +
       scField('Perícia', '<select id="scFromSkill">' + fromSkills.map(function (k, i) { return '<option value="' + i + '">' + esc(k.name + ' · ' + k.attr + '/' + k.diff + ' · ' + k.pts + ' pts') + '</option>'; }).join('') + '</select>', 'sc-name') +
       scField('Para', '<select id="scFromTarget">' + scOpts(targets, targets[0][0]) + '</select>') +
@@ -589,7 +714,17 @@ function wireSheetCombat(s) {
     if (/Note$/.test(f) && v.trim()) el.classList.remove('invalid');
     if (f in c.def) { c.def[f] = /Bonus$|^db$/.test(f) ? (v === '' ? 0 : +v) : v; if (/Bonus$/.test(f)) paint(); return; }
     var g = el.getAttribute('data-g'); if (!g) return;
-    if (f === 'stname') { styleOf(g).name = v; return; }
+    if (f === 'stname') {
+      // Its Style Familiarity follows the name, while it still has the one it got.
+      var stl = styleOf(g), old = scSfName(stl.name.trim());
+      stl.name = v;
+      stl.items.forEach(function (y, n) {
+        if (!scIsSf(y) || y.name !== old) return;
+        y.name = scSfName(v.trim());
+        var inp = box.querySelector('[data-f="name"][data-g="' + g + '"][data-n="' + n + '"]'); if (inp instanceof HTMLInputElement) inp.value = y.name;
+      });
+      return;
+    }
     var x = group(g)[+el.getAttribute('data-n')]; if (!x) return;
     if (f === 'kind') { if (change) { group(g)[+el.getAttribute('data-n')] = scAutofill(cleanCombatItem({ kind: v, name: x.name, pts: x.pts, bonus: x.bonus, bonusNote: x.bonusNote })); renderSheetPage(); } return; }
     if (f === 'name') {
@@ -624,10 +759,53 @@ function wireSheetCombat(s) {
     }
     renderSheetPage();
   });
+  // The style to add: typed, the catalog filtered below as it goes (name or book page), picked
+  // with a click or the arrows and Enter. A name not picked from the list is a free style.
+  var pick = $('scStylePick'), sug = $('scStyleSug'), opts = [], act = 0;
+  function styleMatches(q) {
+    q = norm(q).trim();
+    var starts = [], has = [];
+    (W.styles || []).forEach(function (x) {
+      if (!q) { starts.push(x); return; }
+      var at = norm(x.name).indexOf(q);
+      if (at === 0) starts.push(x); else if (at > 0 || norm(x.page || '').indexOf(q) >= 0) has.push(x);
+    });
+    return starts.concat(has);
+  }
+  function hideStyles() { sug.hidden = true; sug.innerHTML = ''; pick.setAttribute('aria-expanded', 'false'); pick.removeAttribute('aria-activedescendant'); }
+  function paintStyles() {
+    opts = styleMatches(pick.value); act = Math.min(act, Math.max(0, opts.length - 1));
+    if (!opts.length) { hideStyles(); return; }
+    sug.innerHTML = opts.map(function (x, n) {
+      return '<button type="button" role="option" id="scStyleSug' + n + '" data-o="' + n + '" class="' + (n === act ? 'act' : '') + '" aria-selected="' + (n === act) + '">' +
+        '<span>' + esc(x.name) + '</span><small>' + esc([x.page, styleCost(x)].filter(Boolean).join(' · ')) + '</small></button>';
+    }).join('');
+    sug.hidden = false; pick.setAttribute('aria-expanded', 'true'); pick.setAttribute('aria-activedescendant', 'scStyleSug' + act);
+    var on = sug.querySelector('.act'); if (on) on.scrollIntoView({ block: 'nearest' });
+  }
+  function pickStyle(n) { var x = opts[n]; if (!x) return; pick.value = x.name; pick.dataset.id = x.id; hideStyles(); $('scAddStyle').focus(); }
+  pick.addEventListener('input', function () { delete pick.dataset.id; act = 0; paintStyles(); });
+  pick.addEventListener('focus', function () { act = 0; paintStyles(); });
+  pick.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement !== pick) hideStyles(); }, 150); });
+  pick.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); if (!sug.hidden && opts.length) pickStyle(act); else $('scAddStyle').click(); return; }
+    if (sug.hidden || !opts.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); act = Math.min(opts.length - 1, act + 1); paintStyles(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); act = Math.max(0, act - 1); paintStyles(); }
+    else if (e.key === 'Escape') { e.stopPropagation(); hideStyles(); }
+  });
+  sug.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  sug.addEventListener('click', function (e) { var b = e.target.closest('[data-o]'); if (b) pickStyle(+b.getAttribute('data-o')); });
   $('scAddStyle').onclick = function () {
-    var id = $('scStylePick').value, cat = id ? styleById(id) : null;
-    c.styles.push(cat ? styleFromCatalog(cat) : { name: '', items: [] });
+    var name = pick.value.trim(), cat = pick.dataset.id ? styleById(pick.dataset.id) : null;
+    // Typed in full without picking: the catalog style of that exact name.
+    if (!cat && name) cat = (W.styles || []).filter(function (x) { return norm(x.name) === norm(name); })[0] || null;
+    var st = cat ? styleFromCatalog(cat, combatSkillPool(c, s)) : { name: name, items: [scSfItem(name)] };
+    c.styles.push(st);
     renderSheetPage();
+    // Only when the sheet lacks a skill the style requires; the block is marked as well.
+    var miss = scReqsMissing(scStyleReqs(st, combatSkillPool(c, s)));
+    if (miss.length) toast('Pré-requisito de ' + st.name + ' não atendido. Falta: ' + miss.join('; ') + '.', true);
   };
   var bring = $('scBring'); if (bring) bring.onclick = function () {
     var left = sheetSkills(s).filter(function (k) { return !d.moved.some(function (m) { return m.name === k.name && m.attr === k.attr && m.diff === k.diff; }); });
@@ -635,6 +813,11 @@ function wireSheetCombat(s) {
     d.moved.push(k);
     group(t).push(cleanCombatItem({ kind: 'skill', name: k.name, attr: k.attr, diff: k.diff, pts: k.pts, bonus: k.bonus, bonusNote: k.bonusNote, skillId: k.skillId }));
     renderSheetPage();
+  };
+  var fs = $('scFromStyles'); if (fs) fs.onclick = function () {
+    var r = scMoveToGeneral(c);
+    renderSheetPage();
+    toast(plural(r.moved, 'linha veio', 'linhas vieram') + ' dos estilos' + (r.dup ? ', ' + plural(r.dup, 'repetida juntada', 'repetidas juntadas') : '') + '. Salve para guardar.');
   };
   $('scAddWeapon').onclick = function () { c.weapons.push({ name: c.weapons.length ? c.weapons[c.weapons.length - 1].name : '', mode: 'sw', mod: '', type: 'cut' }); renderSheetPage(); };
   $('scCancel').onclick = function () { ui.combatDraft = null; renderSheetPage(); };
@@ -653,13 +836,10 @@ function wireSheetCombat(s) {
    moved with the arrow keys on it; the new order is saved at once. While a table is being
    dragged, data that arrives does not redraw the page (S.ui.scDragging, see onData). */
 function saveCombatOrder(s, keys) {
-  var cur = sheetById(s.id) || s, c = sheetCombat(cur), styles = [], gpos = c.generalPos;
-  keys.forEach(function (k) {
-    if (k === 'g') gpos = styles.length;
-    else if (c.styles[+k.slice(1)]) styles.push(c.styles[+k.slice(1)]);
-  });
+  var cur = sheetById(s.id) || s, c = sheetCombat(cur), styles = [];
+  keys.forEach(function (k) { if (c.styles[+k.slice(1)]) styles.push(c.styles[+k.slice(1)]); });
   if (styles.length !== c.styles.length) return; // someone changed the styles meanwhile: keep theirs
-  c.styles = styles; c.generalPos = gpos;
+  c.styles = styles;
   Ops.saveSheetCombat(cur, c).catch(function (er) { toast(errorText(er), true); renderSheetPage(); });
 }
 function wireCombatDrag(s) {

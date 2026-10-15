@@ -166,7 +166,8 @@ def juntar(partes):
             texto += p  # "Two-" + "Handed", "DX-" + "4"
         else:
             texto = f"{texto} {p}" if texto else p
-    return re.sub(r"\s+", " ", texto).strip()
+    # a fonte dos livros desenha o "×" com o código do "¥"
+    return re.sub(r"\s+", " ", texto).strip().replace("¥", "×")
 
 
 def texto(ln):

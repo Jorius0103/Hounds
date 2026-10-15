@@ -21,7 +21,7 @@ A estrutura do banco está nas migrations versionadas de [supabase/migrations/](
 | `organizacoes` | Organizações. | — |
 | `eventos` | Eventos. A data é `data_texto` (texto livre, no calendário da campanha). | `local_id` → `locais`. |
 | `cadernos`, `anotacoes` | Títulos e anotações. | `anotacoes.caderno_id` → `cadernos` (exclusão em cascata). |
-| `magias`, `vantagens`, `pericias`, `tecnicas`, `estilos` | O que o Mestre criou ou mudou nos catálogos (os livros continuam em `dados/*.json`). | — |
+| `magias`, `vantagens`, `pericias`, `tecnicas`, `estilos`, `armas`, `armaduras` | O que o Mestre criou ou mudou nos catálogos (os livros continuam em `dados/*.json`). | Os ataques de cada arma em `arma_ataque`. |
 | `mesa_estado`, `mesa_partes` | Estado da Mesa de Combate, num registro só (veja a seção 6). | — |
 
 ### Tabelas de vínculo
@@ -39,6 +39,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | `personagem_relacao` | Personagem ↔ personagem, com o `tipo` (não pode ser consigo mesmo). |
 | `<entidade>_compartilhamento` | Contas que veem um item oculto (`visivel = false`). |
 | `ficha_pericia`, `ficha_cultura`, `ficha_vantagem`, `ficha_vantagem_pericia`, `ficha_estilo`, `ficha_item_combate`, `ficha_arma`, `ficha_equipamento` | Seções da ficha, na ordem em que aparecem. |
+| `arma_ataque` | Ataques de uma arma do catálogo (uma linha da tabela do livro cada), na ordem. Sem nenhum, os ataques seguem o livro. |
 
 ### Leitura e gravação
 
@@ -66,6 +67,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | 9 | `20261017120000_perfil_admin.sql` | Perfil Admin: um Jogador que também gerencia os usuários (seção 4). |
 | 10 | `20261018120000_ficha_equipamentos.sql` | Seção Equipamentos da ficha: tabela `ficha_equipamento`, view `fichas_doc` e função `salvar_ficha` com a lista nova. |
 | 11 | `20261019120000_notas_bonus.sql` | Motivo dos bônus da ficha (perícias, itens de combate e defesas), que antes se perdia ao salvar. |
+| 12 | `20261020120000_armas_armaduras.sql` | Catálogos de armas e armaduras: tabelas `armas`, `arma_ataque` e `armaduras`, views e gravação. **Rode antes de publicar** a versão do site com as abas Armas e Armaduras, que lê essas tabelas. |
 
 **Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
 

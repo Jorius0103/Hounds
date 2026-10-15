@@ -1,0 +1,158 @@
+﻿livro;pagina;tipo;tabela;categoria;pericia;defaults;tl;armadura;modo;local;rd;bd;pv;rd_cobertura;custo;peso;vestir;cl;notas;rodape
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;0;Fur Loincloth;;groin;1*;;;;$10;neg.;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;0;Fur Tunic;;torso;1*;;;;$25;2;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;1;Bronze Breastplate;;torso;4F;;;;$400;20;;3;[2];[2] Partial coverage: sandals give DR 1 to the underside of the foot, while breastplates protect only from the front.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;1;Bronze Corselet;;torso, groin;5;;;;$1,300;40;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;1;Cloth Armor;;torso, groin;1*;;;;$30;6;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;1;Leather Armor;;torso, groin;2;;;;$100;10;;4;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;1;Leather Jacket;;arms, torso;1*;;;;$50;4;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;2;Light Scale Armor;;torso;3;;;;$150;15;;4;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;2;Lorica Segmentata;;torso;5;;;;$680;26;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;2;Mail Hauberk;;torso, groin;4/2*;;;;$230;25;;3;[3];[3] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;2;Mail Shirt;;torso;4/2*;;;;$150;16;;4;[1, 3];[1] Concealable as or under clothing. [3] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;2;Scale Armor;;torso, groin;4;;;;$420;35;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;3;Double Mail Hauberk;;torso, groin;5/3*;;;;$520;44;;3;[3];[3] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;3;Heavy Steel Corselet;;torso, groin;7;;;;$2,300;45;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;3;Steel Breastplate;;torso;5F;;;;$500;18;;3;[2];[2] Partial coverage: sandals give DR 1 to the underside of the foot, while breastplates protect only from the front.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;3;Steel Corselet;;torso, groin;6;;;;$1,300;35;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;3;Steel Laminate Plate;;torso, groin;5;;;;$900;30;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Body Armor;;;4;Buff Coat (Leather);;body, limbs;2*;;;;$210;16;;4;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;1;Bronze Armbands;;arms;3;;;;$180;9;;4;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;1;Bronze Greaves;;legs;3;;;;$270;17;;4;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;1;Cloth Sleeves;;arms;1*;;;;$20;2;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;1;Heavy Leather Leggings;;legs;2;;;;$60;4;;4;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;1;Heavy Leather Sleeves;;arms;2;;;;$50;2;;4;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;1;Leather Leggings;;legs;1*;;;;$40;2;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;1;Leather Pants;;legs, groin;1*;;;;$40;3;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;1;Studded Leather Skirt;;groin, legs;3/2*;;;;$60;4;;–;[3];[3] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;2;Mail Leggings;;legs;4/2*;;;;$110;15;;3;[3];[3] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;2;Mail Sleeves;;arms;4/2*;;;;$70;9;;3;[3];[3] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;2;Scale Leggings;;legs;4;;;;$250;21;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;2;Scale Sleeves;;arms;4;;;;$210;14;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;3;Heavy Plate Arms;;arms;7;;;;$1,500;20;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;3;Heavy Plate Legs;;legs;7;;;;$1,600;25;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;3;Plate Arms;;arms;6;;;;$1,000;15;;3;;
+GURPS Basic Set;283;Armor;Low-Tech Armor Table;Limb Armor;;;3;Plate Legs;;legs;6;;;;$1,100;20;;3;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;1;Bronze Helmet;;skull, face;3;;;;$160;7.5;;4;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;1;Bronze Pot-Helm;;skull;3;;;;$60;5;;4;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;1;Cloth Cap;;skull;1*;;;;$5;neg.;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;1;Leather Cap;;skull;1*;;;;$32;neg.;;4;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;1;Leather Helm;;skull, face;2;;;;$20;0.5;;4;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;2;Legionary Helmet;;skull, face;4;;;;$150;6;;3;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;2;Mail Coif;;skull, neck;4/2*;;;;$55;4;;3;[3];[3] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;3;Barrel Helm;;skull, face;6;;;;$240;10;;3;[4];[4] Helmet gives wearer the No Peripheral Vision disadvantage (p. 151) while worn.
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;3;Face Mask;;face;4;;;;$100;2;;3;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;3;Greathelm;;skull, face, neck;7;;;;$340;10;;3;[4];[4] Helmet gives wearer the No Peripheral Vision disadvantage (p. 151) while worn.
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Headgear;;;3;Pot-Helm;;skull;4;;;;$100;5;;4;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Gloves;;;1;Cloth Gloves;;hands;1*;;;;$15;neg.;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Gloves;;;1;Leather Gloves;;hands;2*;;;;$30;neg.;;–;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Gloves;;;2;Gauntlets;;hands;4;;;;$100;2;;4;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Gloves;;;3;Heavy Gauntlets;;hands;5;;;;$250;2.5;;3;;
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Footwear;;;0;Sandals;;feet;0;;;;$25;0.5;;–;[1, 2];[1] Concealable as or under clothing. [2] Partial coverage: sandals give DR 1 to the underside of the foot, while breastplates protect only from the front.
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Footwear;;;1;Shoes;;feet;1*;;;;$40;2;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Footwear;;;2;Boots;;feet;2*;;;;$80;3;;–;[1];[1] Concealable as or under clothing.
+GURPS Basic Set;284;Armor;Low-Tech Armor Table;Footwear;;;3;Sollerets;;feet;4;;;;$150;7;;3;;
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Body Armor;;;6;Flak Jacket;;torso;7;;;;$500;20;;3;;
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Body Armor;;;7;Frag Vest;;torso, groin;5/2*;;;;$350;9;;3;[1];"[1] Split DR: use the first, higher DR against piercing and cutting attacks; use the second, lower DR against all other damage types."
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Body Armor;;;7;Frag Vest;+ Plate Inserts;torso;+20;;;;+$300;+15;;3;;
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Body Armor;;;8;Ballistic Vest;;torso;8/2*;;;;$400;2;;3;[1, 2, 3];"[1] Split DR: use the first, higher DR against piercing and cutting attacks; use the second, lower DR against all other damage types. [2] Concealable as or under clothing. [3] DR increases with TL. After the TL of introduction, consult the following table: TL"
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Body Armor;;;8;Tactical Vest;;torso, groin;12/5*;;;;$900;9;;2;[1, 3];"[1] Split DR: use the first, higher DR against piercing and cutting attacks; use the second, lower DR against all other damage types. [3] DR increases with TL. After the TL of introduction, consult the following table: TL"
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Body Armor;;;8;Tactical Vest;+ Trauma Plates;torso;+23;;;;+$600;+9;;2;;
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Body Armor;;;9;Ballistic Suit;;body, limbs;12/4*;;;;$1,000;6;;3;[1, 2, 3];"[1] Split DR: use the first, higher DR against piercing and cutting attacks; use the second, lower DR against all other damage types. [2] Concealable as or under clothing. [3] DR increases with TL. After the TL of introduction, consult the following table: TL"
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Body Armor;;;9;Tactical Suit;;full suit;20/10*;;;;$3,000;15;;2;[1, 3, 4, 5];"[1] Split DR: use the first, higher DR against piercing and cutting attacks; use the second, lower DR against all other damage types. [3] DR increases with TL. After the TL of introduction, consult the following table: TL [4] Biomedical sensors allow remote monitoring of vital signs, giving +1 to Diagnosis skill when examining the wearer. In addition, the suit is climate-controlled. [5] Requires NBC Suit skill – but at TL9+, the suit does not limit DX. Worn with a mask or a helmet with note [7], the combination provides the Sealed advantage."
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Gloves and Footwear;;;7;Reinforced Boots;;feet;5/2;;;;$75;3;;–;[2, 6];[2] Concealable as or under clothing. [6] Split DR: use the higher DR only if the attack strikes the torso (if body armor), skull (if headgear), or underside of the foot (if footwear).
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Gloves and Footwear;;;9;Assault Boots;;feet;12/6;;;;$150;3;;4;[3, 6];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [6] Split DR: use the higher DR only if the attack strikes the torso (if body armor), skull (if headgear), or underside of the foot (if footwear).
+GURPS Basic Set;284;Armor;High- and Ultra-Tech Armor Table;Gloves and Footwear;;;9;Ballistic Gloves;;hands;8/2*;;;;$30;neg.;;4;[1, 2, 3];"[1] Split DR: use the first, higher DR against piercing and cutting attacks; use the second, lower DR against all other damage types. [2] Concealable as or under clothing. [3] DR increases with TL. After the TL of introduction, consult the following table: TL"
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Headgear;;;6;Gas Mask;;eyes, face;2;;;;$100;4;;4;[7];[7] Provides Filter Lungs, Protected Smell, and Protected Vision – but before TL9, it also gives the No Peripheral Vision disadvantage.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Headgear;;;6;Steel Pot;;skull;4;;;;$60;3;;4;;
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Headgear;;;7;Frag Helmet;;skull;5;;;;$125;3;;4;;
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Headgear;;;7;Frag Helmet;+ Visor;eyes, face;1;;;;+$25;+1.5;;4;[8];[8] Provides Protected Vision.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Headgear;;;8;Ballistic Helmet;;skull;12;;;;$250;3;;3;[3];[3] DR increases with TL. After the TL of introduction, consult the following table: TL
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Headgear;;;8;Ballistic Helmet;+ Visor;eyes, face;10;;;;+$100;+3;;3;[3, 8];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [8] Provides Protected Vision.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;7;NBC Suit;;full suit;1;;;;$150;3.5;;4;[5, 9];[5] Requires NBC Suit skill – but at TL9+, the suit does not limit DX. Worn with a mask or a helmet with note [7], the combination provides the Sealed advantage. [9] Suit’s DR applies only against burning or corrosion damage.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;7;Space Suit;;full suit;2;;;;$2,000,000;225;;4;[4, 9, 10];[4] Biomedical sensors allow remote monitoring of vital signs, giving +1 to Diagnosis skill when examining the wearer. In addition, the suit is climate-controlled. [9] Suit’s DR applies only against burning or corrosion damage. [10] Requires Vacc Suit skill. If worn with its helmet, the suit gives Doesn’t Breathe (for 12 hours), Protected Smell, Sealed, and Vacuum Support.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;7;Space Suit;+ Space Helmet;head;3;;;;+$25,000;10;;4;[7, 11];[7] Provides Filter Lungs, Protected Smell, and Protected Vision – but before TL9, it also gives the No Peripheral Vision disadvantage. [11] Provides Protected Hearing, Protected Vision, and Radio. At TL9+, add Absolute Direction (Requires Signal), Infravision, Night Vision 9, and (TL - 8) levels of Telescopic Vision. TL9+ helmets also include a head-up display (HUD) compatible with “smartgun” electronics (p. 278). Battlesuits add Hyperspectral Vision and Laser Communication.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;9;Battlesuit;;full suit;70/50;;;;$80,000;150;;1;[3, 4, 6, 12];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [4] Biomedical sensors allow remote monitoring of vital signs, giving +1 to Diagnosis skill when examining the wearer. In addition, the suit is climate-controlled. [6] Split DR: use the higher DR only if the attack strikes the torso (if body armor), skull (if headgear), or underside of the foot (if footwear). [12] Requires Battlesuit skill. Gives Lifting ST +10, Striking ST +10, and Super Jump 1. Add +5 to Lifting ST, +5 to Striking ST, and +1 to Super Jump per TL past TL9. With its helmet in place, it also grants Doesn’t Breathe (for 12 hours), Protected Smell, Sealed, and Vacuum Support. Do not count suit weight toward encumbrance! ×1 ×1.5 ×2 ×3 ×4
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;9;Battlesuit;+ Helmet;head;70/50;;;;+$10,000;15;;1;[3, 6, 7, 11];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [6] Split DR: use the higher DR only if the attack strikes the torso (if body armor), skull (if headgear), or underside of the foot (if footwear). [7] Provides Filter Lungs, Protected Smell, and Protected Vision – but before TL9, it also gives the No Peripheral Vision disadvantage. [11] Provides Protected Hearing, Protected Vision, and Radio. At TL9+, add Absolute Direction (Requires Signal), Infravision, Night Vision 9, and (TL - 8) levels of Telescopic Vision. TL9+ helmets also include a head-up display (HUD) compatible with “smartgun” electronics (p. 278). Battlesuits add Hyperspectral Vision and Laser Communication.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;9;Combat Hardsuit;;full suit;50/30;;;;$10,000;30;;2;[3, 4, 5, 6];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [4] Biomedical sensors allow remote monitoring of vital signs, giving +1 to Diagnosis skill when examining the wearer. In addition, the suit is climate-controlled. [5] Requires NBC Suit skill – but at TL9+, the suit does not limit DX. Worn with a mask or a helmet with note [7], the combination provides the Sealed advantage. [6] Split DR: use the higher DR only if the attack strikes the torso (if body armor), skull (if headgear), or underside of the foot (if footwear).
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;9;Combat Hardsuit;+ Helmet;head;18/12;;;;+$2,000;5;;2;[3, 6, 7, 11];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [6] Split DR: use the higher DR only if the attack strikes the torso (if body armor), skull (if headgear), or underside of the foot (if footwear). [7] Provides Filter Lungs, Protected Smell, and Protected Vision – but before TL9, it also gives the No Peripheral Vision disadvantage. [11] Provides Protected Hearing, Protected Vision, and Radio. At TL9+, add Absolute Direction (Requires Signal), Infravision, Night Vision 9, and (TL - 8) levels of Telescopic Vision. TL9+ helmets also include a head-up display (HUD) compatible with “smartgun” electronics (p. 278). Battlesuits add Hyperspectral Vision and Laser Communication.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;9;Space Armor;;full suit;50/30;;;;$20,000;45;;2;[3, 4, 6, 10];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [4] Biomedical sensors allow remote monitoring of vital signs, giving +1 to Diagnosis skill when examining the wearer. In addition, the suit is climate-controlled. [6] Split DR: use the higher DR only if the attack strikes the torso (if body armor), skull (if headgear), or underside of the foot (if footwear). [10] Requires Vacc Suit skill. If worn with its helmet, the suit gives Doesn’t Breathe (for 12 hours), Protected Smell, Sealed, and Vacuum Support.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;9;Space Armor;+ Helmet;head;40/30;;;;+$3,000;7;;2;[3, 6, 7, 11];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [6] Split DR: use the higher DR only if the attack strikes the torso (if body armor), skull (if headgear), or underside of the foot (if footwear). [7] Provides Filter Lungs, Protected Smell, and Protected Vision – but before TL9, it also gives the No Peripheral Vision disadvantage. [11] Provides Protected Hearing, Protected Vision, and Radio. At TL9+, add Absolute Direction (Requires Signal), Infravision, Night Vision 9, and (TL - 8) levels of Telescopic Vision. TL9+ helmets also include a head-up display (HUD) compatible with “smartgun” electronics (p. 278). Battlesuits add Hyperspectral Vision and Laser Communication.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;9;Vacc Suit;;full suit;6*;;;;$10,000;25;;4;[3, 4, 10];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [4] Biomedical sensors allow remote monitoring of vital signs, giving +1 to Diagnosis skill when examining the wearer. In addition, the suit is climate-controlled. [10] Requires Vacc Suit skill. If worn with its helmet, the suit gives Doesn’t Breathe (for 12 hours), Protected Smell, Sealed, and Vacuum Support.
+GURPS Basic Set;285;Armor;High- and Ultra-Tech Armor Table;Environment Suits;;;9;Vacc Suit;+ Vacc Helmet;head;6;;;;+$2,000;5;;4;[3, 11];[3] DR increases with TL. After the TL of introduction, consult the following table: TL [11] Provides Protected Hearing, Protected Vision, and Radio. At TL9+, add Absolute Direction (Requires Signal), Infravision, Night Vision 9, and (TL - 8) levels of Telescopic Vision. TL9+ helmets also include a head-up display (HUD) compatible with “smartgun” electronics (p. 278). Battlesuits add Hyperspectral Vision and Laser Communication.
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Face Masks;;;1;Leather & Cloth;;face;2;;;;$40;3;;4;[1];[1] Gives mount the No Peripheral Vision disadvantage (p. 151) while worn.
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Face Masks;;;2;Mail;;face;4/2*;;;;$60;7;;3;[1, 2];[1] Gives mount the No Peripheral Vision disadvantage (p. 151) while worn. [2] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Face Masks;;;2;Scale;;face;4;;;;$200;12;;3;[1];[1] Gives mount the No Peripheral Vision disadvantage (p. 151) while worn.
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Face Masks;;;3;Plate;;face;5;;;;$200;12;;3;[1];[1] Gives mount the No Peripheral Vision disadvantage (p. 151) while worn.
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Head/Neck Armor;;;2;Leather & Cloth;;neck, skull;2;;;;$80;4;;4;;
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Head/Neck Armor;;;2;Mail;;neck, skull;4/2*;;;;$100;15;;3;[2];[2] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Head/Neck Armor;;;2;Scale;;neck, skull;4;;;;$320;20;;3;;
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Head/Neck Armor;;;3;Plate;;neck, skull;5;;;;$330;18;;3;;
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Partial Barding;;;1;Leather & Cloth;;torso;2F;;;;$260;12;;4;;
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Partial Barding;;;2;Mail;;torso;4/2F*;;;;$440;20;;3;[2];[2] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Partial Barding;;;2;Scale;;torso;4F;;;;$480;60;;3;;
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Full Barding;;;2;Leather & Cloth;;torso, groin;2;;;;$345;30;;4;;
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Full Barding;;;3;Mail;;torso, groin;4/2*;;;;$670;59;;3;[2];[2] Split DR: use the lower DR against crushing attacks.
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Full Barding;;;3;Plate;;torso, groin;5;;;;$1,650;90;;3;;
+GURPS Basic Set;286;Armor;Horse Armor (Barding) Table;Leggings;;;3;Plate;;legs;5;;;;$400;20;;3;[3];[3] Weight and cost are per pair of legs protected. Each pair gives -1 to Move.
+GURPS Basic Set;287;Shield;Shield Table;;Cloak;DX-5, Net-4, or Shield (any)-4;1;Light Cloak;;;1;1;3;;$20;2;;–;[1];"[1] Can be used offensively to entangle; see Cloaks (p. 404)."
+GURPS Basic Set;287;Shield;Shield Table;;Cloak;DX-5, Net-4, or Shield (any)-4;1;Heavy Cloak;;;1;2;5;;$50;5;;–;[1];"[1] Can be used offensively to entangle; see Cloaks (p. 404)."
+GURPS Basic Set;287;Shield;Shield Table;;Shield;DX-4, or other Shield at -2;0;Light Shield;;;5;1;20;;$25;2;;4;[2, 3, 4];[2] Can be used offensively with a shield bash (see the Melee Weapon Table) or shield rush (see Slam, p. 371). At TL2+, you can give your small, medium, or large shield a spike to increase damage: add $20 and 5 lbs. [3] Also available as a buckler. You can ready a buckler in one turn and drop it as a free action, just like a weapon – but it always occupies one hand, and it does not allow a shield rush. Use Shield (Buckler) instead of regular Shield skill. No effect on statistics. [4] At TL3+, iron shields are available but uncommon: ×5 cost, ×2 weight, +3 DR, and ×2 HP. At TL7+, plastic riot shields (made of Lexan, etc.) have ×1/2 weight but otherwise identical statistics. Shield composition never affects DB.
+GURPS Basic Set;287;Shield;Shield Table;;Shield;DX-4, or other Shield at -2;0;Small Shield;;;6;1;30;;$40;8;;4;[2, 3, 4];[2] Can be used offensively with a shield bash (see the Melee Weapon Table) or shield rush (see Slam, p. 371). At TL2+, you can give your small, medium, or large shield a spike to increase damage: add $20 and 5 lbs. [3] Also available as a buckler. You can ready a buckler in one turn and drop it as a free action, just like a weapon – but it always occupies one hand, and it does not allow a shield rush. Use Shield (Buckler) instead of regular Shield skill. No effect on statistics. [4] At TL3+, iron shields are available but uncommon: ×5 cost, ×2 weight, +3 DR, and ×2 HP. At TL7+, plastic riot shields (made of Lexan, etc.) have ×1/2 weight but otherwise identical statistics. Shield composition never affects DB.
+GURPS Basic Set;287;Shield;Shield Table;;Shield;DX-4, or other Shield at -2;1;Medium Shield;;;7;2;40;;$60;15;;4;[2, 3, 4];[2] Can be used offensively with a shield bash (see the Melee Weapon Table) or shield rush (see Slam, p. 371). At TL2+, you can give your small, medium, or large shield a spike to increase damage: add $20 and 5 lbs. [3] Also available as a buckler. You can ready a buckler in one turn and drop it as a free action, just like a weapon – but it always occupies one hand, and it does not allow a shield rush. Use Shield (Buckler) instead of regular Shield skill. No effect on statistics. [4] At TL3+, iron shields are available but uncommon: ×5 cost, ×2 weight, +3 DR, and ×2 HP. At TL7+, plastic riot shields (made of Lexan, etc.) have ×1/2 weight but otherwise identical statistics. Shield composition never affects DB.
+GURPS Basic Set;287;Shield;Shield Table;;Shield;DX-4, or other Shield at -2;1;Large Shield;;;9;3;60;;$90;25;;4;[2, 4];[2] Can be used offensively with a shield bash (see the Melee Weapon Table) or shield rush (see Slam, p. 371). At TL2+, you can give your small, medium, or large shield a spike to increase damage: add $20 and 5 lbs. [4] At TL3+, iron shields are available but uncommon: ×5 cost, ×2 weight, +3 DR, and ×2 HP. At TL7+, plastic riot shields (made of Lexan, etc.) have ×1/2 weight but otherwise identical statistics. Shield composition never affects DB.
+GURPS Basic Set;287;Shield;Shield Table;;Shield (Force);DX-4, or other Shield at -2;^;Force Shield;;;100;3;–;;$1,500;0.5;;3;[3, 5];[3] Also available as a buckler. You can ready a buckler in one turn and drop it as a free action, just like a weapon – but it always occupies one hand, and it does not allow a shield rush. Use Shield (Buckler) instead of regular Shield skill. No effect on statistics. [5] Worn on the wrist, leaving the hand free. DR is hardened (treat as one level of the Hardened enhancement, p. 47).
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Cane;;torso;1;;;;$35;12;28;;[1];"[1] Combustible. If DR is penetrated by burning damage, it can catch fire. See Making Things Burn (p. B433); treat the armor material as resistant."
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Cloth, Padded;;torso;1*;;;;$50;6;15;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Horn;;torso;3;;;;$250;25;30;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Layered Cloth, Light;;torso;2*;;;;$150;12;20;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Layered Cloth, Medium;;torso;3;;;;$350;20;30;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Layered Cloth, Heavy;;torso;4;;;;$600;28;30;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Leather, Medium;;torso;2*;;;;$100;12;30;;[2];[2] -1 DR vs. impaling.
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Leather, Heavy;;torso;3;;;;$200;20;30;;[2];[2] -1 DR vs. impaling.
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Straw;;torso;2;;;;$50;20;30;;[1];"[1] Combustible. If DR is penetrated by burning damage, it can catch fire. See Making Things Burn (p. B433); treat the armor material as resistant."
+GURPS Low-Tech;110;Armor;Armor Table;;;;0;Wood;;torso;3;;;;$100;30;30;;[3];[3] Semi-ablative. Loses 1 DR per 10 points of basic damage it resists (see p. B47)
+GURPS Low-Tech;110;Armor;Armor Table;;;;1;Layered Leather, Light;;torso;2*;;;;$120;15;20;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;1;Layered Leather, Medium;;torso;3;;;;$220;26;30;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;1;Layered Leather, Heavy;;torso;4;;;;$525;35;30;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;1;Scale, Light;;torso;3;;;;$320;16;30;;[4];[4] -1 DR vs. crushing.
+GURPS Low-Tech;110;Armor;Armor Table;;;;1;Scale, Medium;;torso;4;;;;$550;28;30;;[4];[4] -1 DR vs. crushing.
+GURPS Low-Tech;110;Armor;Armor Table;;;;1;Scale, Heavy;;torso;5;;;;$1,100;40;30;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;2;Hardened Leather, Medium;;torso;2;;;;$125;15;30;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;2;Hardened Leather, Heavy;;torso;3;;;;$250;25;30;;;
+GURPS Low-Tech;110;Armor;Armor Table;;;;2;Jack of Plates;;torso;3;;;;$300;18;30;;[4];[4] -1 DR vs. crushing.
+GURPS Low-Tech;110;Armor;Armor Table;;;;2;Mail, Light;;torso;3*;;;;$500;12;15;;[5];[5] -2 DR vs. crushing.
+GURPS Low-Tech;111;Armor;Armor Table;;;;2;Mail, Fine;;torso;4*;;;;$900;15;15;;[5];[5] -2 DR vs. crushing.
+GURPS Low-Tech;111;Armor;Armor Table;;;;2;Mail, Heavy;;torso;5*;;;;$1,200;18;15;;[5];[5] -2 DR vs. crushing.
+GURPS Low-Tech;111;Armor;Armor Table;;;;2;Segmented Plate, Light;;torso;3;;;;$600;16;45;;;
+GURPS Low-Tech;111;Armor;Armor Table;;;;2;Segmented Plate, Medium;;torso;4;;;;$900;24;45;;;
+GURPS Low-Tech;111;Armor;Armor Table;;;;2;Segmented Plate, Heavy;;torso;5;;;;$1,200;32;45;;;
+GURPS Low-Tech;111;Armor;Armor Table;;;;3;Mail and Plates;;torso;5;;;;$1,000;20;20;;[4];[4] -1 DR vs. crushing.
+GURPS Low-Tech;111;Armor;Armor Table;;;;3;Mail, Jousting;;torso;6;;;;$1,500;30;30;;[6];[6] -1 DX, except for Lance skill.
+GURPS Low-Tech;111;Armor;Armor Table;;;;4;Brigandine, Light;;torso;3;;;;$900;10;30;;;
+GURPS Low-Tech;111;Armor;Armor Table;;;;4;Brigandine, Medium;;torso;5;;;;$1,800;20;30;;;
+GURPS Low-Tech;111;Armor;Armor Table;;;;4;Paper, Proofed;;torso;6;;;;$2,000;45;20;;[1];"[1] Combustible. If DR is penetrated by burning damage, it can catch fire. See Making Things Burn (p. B433); treat the armor material as resistant."
+GURPS Low-Tech;111;Armor;Armor Table;;;;4;Plate, Light;;torso;3;;;;$1,000;8;45;;;
+GURPS Low-Tech;111;Armor;Armor Table;;;;4;Plate, Medium;;torso;6;;;;$2,500;20;45;;;
+GURPS Low-Tech;111;Armor;Armor Table;;;;4;Plate, Heavy;;torso;9;;;;$4,000;32;45;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;0;Parrying Buckler;;;4;1;16;8;$50;8;;;[1];[1] +1 to Block.
+GURPS Low-Tech;116;Shield;Shield Table;;;;0;Small Shield, Light;;;2;1;12;5;$30;3;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;0;Comanche Shield;;;4;2;21;9;$100;16;;;[2];"[2] Fragile (Combustible); see p. B136."
+GURPS Low-Tech;116;Shield;Shield Table;;;;0;Medium Shield, Light;;;2;2;16;6;$45;7;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;0;Large Shield, Light;;;2;3;18;6;$68;10;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;0;Mycenaean Shield;;;2;3;17;6;$58;9;;;[3];"[3] Controlled solely by neck strap; see Shield Grips (p. 113-114)."
+GURPS Low-Tech;116;Shield;Shield Table;;;;1;Small Shield, Heavy;;;4;1;15;7;$40;6;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;1;Homeric Buckler, Medium;;;4;2;21;9;$100;16;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;1;Medium Shield, Heavy;;;4;2;20;9;$60;14;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;1;Homeric Buckler, Large;;;4;3;22;9;$150;20;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;1;Large Shield, Heavy;;;4;3;22;9;$90;20;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;2;Argive Shield;;;4;2;20;9;$120;15;;;[4];[4] +1 DB when used in shield wall.
+GURPS Low-Tech;116;Shield;Shield Table;;;;2;Roman Scutum, Medium;;;4;2;25;10;$140;16;;;[5];[5] Laminated wood (+20% HP).
+GURPS Low-Tech;116;Shield;Shield Table;;;;2;Roman Scutum, Large;;;4;3;27;10;$200;22;;;[5];[5] Laminated wood (+20% HP).
+GURPS Low-Tech;116;Shield;Shield Table;;;;3;Dueling Buckler;;;4;0;11;6;$25;2;;;[1];[1] +1 to Block.
+GURPS Low-Tech;116;Shield;Shield Table;;;;3;Heater Shield;;;4;2;19;8;$75;13;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;3;Kite Shield;;;4;3;21;9;$120;18;;;;
+GURPS Low-Tech;116;Shield;Shield Table;;;;4;Dueling Long Shield;;;4;3;21;9;$200;16;;;[6];
+GURPS: Dungeon Fantasy 13: Loadouts;8;Armor;;;;;;Mail Loincloth;;Groin;4/2*;;;;$60;6;;;;
+GURPS: Dungeon Fantasy 13: Loadouts;8;Armor;;;;;;Partial Mail Top;;Torso†;4/2*;;;;$75;7;;;;
+GURPS: Dungeon Fantasy 13: Loadouts;8;Armor;;;;;;Partial Plate Top;;Torso†;5;;;;$280;8;;;;

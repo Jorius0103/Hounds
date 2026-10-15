@@ -1,6 +1,8 @@
-// Converte as planilhas de GURPS (Gurps/magias.csv, Gurps/advantages.csv, Gurps/pericias.csv e
-// Gurps/tecnicas.csv e Gurps/estilos.csv) nos arquivos que o site sincroniza: dados/magias.json,
-// dados/vantagens.json, dados/pericias.json, dados/tecnicas.json e dados/estilos.json.
+// Converte as planilhas de GURPS (Gurps/magias.csv, Gurps/advantages.csv, Gurps/pericias.csv,
+// Gurps/tecnicas.csv, Gurps/estilos.csv, Gurps/armas.csv e Gurps/armaduras.csv) nos arquivos que o
+// site sincroniza: dados/magias.json, dados/vantagens.json, dados/pericias.json, dados/tecnicas.json,
+// dados/estilos.json, dados/armas.json e dados/armaduras.json. Armas e armaduras ainda não têm
+// página no site: os dois arquivos ficam prontos para quando tiverem.
 //
 //   node tools/gurps-csv-para-json.mjs
 //
@@ -250,3 +252,70 @@ const styles = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.
   };
 }))));
 write('estilos.json', styles);
+
+// ---------- armas ----------
+// The books with weapon and armor tables; the same codes as the other catalogs.
+const GEAR_BOOKS = { ...TECH_BOOKS, 'GURPS: Dungeon Fantasy 6: 40 Artifacts': 'DF6', 'GURPS: Dungeon Fantasy 7: Clerics': 'DF7',
+  'GURPS: Dungeon Fantasy 8: Treasure Tables': 'DF8', 'GURPS: Dungeon Fantasy 12: Ninja': 'DF12',
+  'GURPS: Dungeon Fantasy 13: Loadouts': 'DF13', 'GURPS: Dungeon Fantasy 16: Wilderness Adventures': 'DF16' };
+const noEmpty = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== ''));
+// "[1] Can be thrown… [2] May get stuck…" (the "rodape" of a CSV line): one note per line, each once.
+function addFootnotes(x, rodape) {
+  rodape.split(/\s(?=\[\d+\]\s)/).filter(Boolean).forEach((n) => {
+    if (!x.footnotes.split('\n').includes(n)) x.footnotes += (x.footnotes ? '\n' : '') + n;
+  });
+}
+// The CSV has one line per line of the book's table: the first line of a weapon, then its other
+// attacks ("or", "with Dart"). One entry per weapon, with one attack per line. A weapon listed
+// again in the same table under another skill (the katana under Broadsword and Two-Handed Sword)
+// is one entry with the attacks of both; under another table (the throwing axe in the melee and
+// in the thrown weapons tables) it is another entry, as the footnote numbers are the table's.
+const weaponRows = parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'armas.csv'), 'utf8'));
+const weapons = [];
+let run = '', inRun = new Map(), current = null;
+weaponRows.forEach((r) => {
+  // The other attacks have "–" for cost and weight, but "with Dart" under Atlatl has the dart's.
+  const own = (v) => (r.modo && v !== '–' ? v : '');
+  const attack = noEmpty({ skill: r.pericia, defaults: r.defaults, mode: r.modo, damage: r.dano, reach: r.alcance,
+    parry: r.aparar, acc: r.precisao, range: r.distancia, rof: r.cdt, shots: r.tiros, fuse: r.espoleta, st: r.st, bulk: r.volume,
+    rcl: r.recuo, cost: own(r.custo), weight: own(r.peso), notes: r.notas });
+  if (r.modo && current && current.name === r.arma) {
+    current.attacks.push(attack);
+    addFootnotes(current, r.rodape);
+    return;
+  }
+  const table = [r.livro, r.tipo, r.tabela].join('|');
+  if (table !== run) { run = table; inRun = new Map(); }
+  const key = r.arma + '|' + r.tl, same = inRun.get(key);
+  if (same && !same.attacks.some((a) => (a.skill || '') === r.pericia)) {
+    same.attacks.push(attack);
+    addFootnotes(same, r.rodape);
+    current = same;
+    return;
+  }
+  const code = bookCode(GEAR_BOOKS, r.livro, 'armas.csv');
+  const x = { id: 'weapon_' + slug(r.arma) + '_' + code.toLowerCase() + r.pagina, name: r.arma, tl: r.tl, type: r.tipo,
+    table: r.tabela, cost: r.custo, weight: r.peso, lc: r.cl, description: r.descricao, footnotes: '', attacks: [attack],
+    book: r.livro, page: code + r.pagina };
+  addFootnotes(x, r.rodape);
+  inRun.set(key, x);
+  weapons.push(x);
+  current = x;
+});
+write('armas.json', uniqueIds(weapons));
+
+// ---------- armaduras ----------
+// One entry per line of the table. A piece added to the one above ("+ Visor" under Frag Helmet)
+// is an entry of its own: "Visor (Frag Helmet)", with the cost and weight it adds ("+$25").
+const armorRows = parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'armaduras.csv'), 'utf8'));
+const armors = uniqueIds(armorRows.map((r) => {
+  const code = bookCode(GEAR_BOOKS, r.livro, 'armaduras.csv');
+  const name = r.modo ? `${r.modo.replace(/^\+\s*/, '')} (${r.armadura})` : r.armadura;
+  const x = { id: 'armor_' + slug(name) + '_' + code.toLowerCase() + r.pagina, name, tl: r.tl, type: r.tipo, table: r.tabela,
+    category: r.categoria, skill: r.pericia, defaults: r.defaults, location: r.local, dr: r.rd, db: r.bd, hp: r.pv,
+    coverDr: r.rd_cobertura, cost: r.custo, weight: r.peso, don: r.vestir, lc: r.cl, notes: r.notas, footnotes: '',
+    book: r.livro, page: code + r.pagina };
+  addFootnotes(x, r.rodape);
+  return x;
+}));
+write('armaduras.json', armors);

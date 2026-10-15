@@ -220,6 +220,82 @@ interface FightingStyle extends Doc {
   page?: string;
 }
 
+/** Uma linha da tabela de armas do livro: um ataque, com os valores como o livro escreve ("sw+1 cut", "1, 2*"). */
+interface WeaponAttack {
+  /** Perícia do grupo da tabela ("Broadsword") e os padrões dela ("DX-5, Force Sword-4, ..."). */
+  skill?: string;
+  defaults?: string;
+  /** O que o livro escreve no lugar do nome nas linhas seguintes: "or", "with Dart", "linked". */
+  mode?: string;
+  damage?: string;
+  reach?: string;
+  parry?: string;
+  acc?: string;
+  range?: string;
+  rof?: string;
+  shots?: string;
+  fuse?: string;
+  st?: string;
+  bulk?: string;
+  rcl?: string;
+  /** Custo e peso próprios do ataque (o dardo e o dardo-lança do atlatl). */
+  cost?: string;
+  weight?: string;
+  notes?: string;
+}
+
+/** Coleção `weapons` (armas de GURPS). Ids `weapon_*` vêm de dados/armas.json. */
+interface Weapon extends Doc {
+  name: string;
+  tl?: string;
+  /** Melee ou Ranged. */
+  type?: string;
+  /** Título da tabela no livro ("Melee Weapon Table"). */
+  table?: string;
+  cost?: string;
+  weight?: string;
+  /** Classe de legalidade (LC). */
+  lc?: string;
+  /** Verbete da arma nas listas do Low-Tech e do Martial Arts. */
+  description?: string;
+  /** Texto das notas numeradas da tabela citadas nos ataques, uma por linha ("[1] Can be thrown..."). */
+  footnotes?: string;
+  attacks?: WeaponAttack[];
+  book?: string;
+  page?: string;
+}
+
+/** Coleção `armors` (armaduras e escudos de GURPS). Ids `armor_*` vêm de dados/armaduras.json. */
+interface Armor extends Doc {
+  name: string;
+  tl?: string;
+  /** Armor ou Shield. */
+  type?: string;
+  /** Título da tabela no livro ("Horse Armor (Barding) Table"). */
+  table?: string;
+  /** Subtítulo da tabela de armaduras ("Body Armor", "Headgear"). */
+  category?: string;
+  /** Escudos: perícia e padrões do grupo da tabela ("Shield", "DX-4, or other Shield at -2"). */
+  skill?: string;
+  defaults?: string;
+  location?: string;
+  dr?: string;
+  /** Bônus de defesa (DB) dos escudos. */
+  db?: string;
+  hp?: string;
+  coverDr?: string;
+  cost?: string;
+  weight?: string;
+  /** Segundos para vestir (Don, Low-Tech). */
+  don?: string;
+  lc?: string;
+  /** A coluna Notes da tabela ("[1, 3]") e o texto dessas notas, uma por linha. */
+  notes?: string;
+  footnotes?: string;
+  book?: string;
+  page?: string;
+}
+
 /** Coleção `notebooks` (títulos). */
 interface Notebook extends Doc { name: string }
 
@@ -288,14 +364,16 @@ interface World {
   skills: Skill[];
   techniques: Technique[];
   styles: FightingStyle[];
+  weapons: Weapon[];
+  armors: Armor[];
   sheets: Sheet[];
   events: HEvent[];
   notebooks: Notebook[];
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; skills: boolean; techniques: boolean; styles: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
@@ -305,6 +383,8 @@ interface World {
   skillIdx: Record<string, Skill>;
   techIdx: Record<string, Technique>;
   styleIdx: Record<string, FightingStyle>;
+  weaponIdx: Record<string, Weapon>;
+  armorIdx: Record<string, Armor>;
   sheetIdx: Record<string, Sheet>;
   eventIdx: Record<string, HEvent>;
   /** Pai efetivo de cada mapa. */
@@ -331,6 +411,8 @@ interface Route {
   skillId?: string;
   techId?: string;
   styleId?: string;
+  weaponId?: string;
+  armorId?: string;
   sheetId?: string;
   eventId?: string;
   nbId?: string;

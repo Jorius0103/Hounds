@@ -10,7 +10,7 @@ O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, 
 | `css/` | Estilos, divididos por área. A ordem dos `<link>` no `index.html` importa. |
 | `js/` | O código do hub. Base (utilitários, banco, modelo do mundo, rotas, menu, modal), `explorer.js`, `editor-texto.js`, a sincronização da Mesa e `app.js`, que inicializa tudo. |
 | `js/store/` | Acesso ao banco: API genérica e IndexedDB local (`store.js`), `firebase.js` e `supabase.js`. |
-| `js/tabs/` | Uma aba por arquivo: `tab-inicio`, `tab-mapas`, `tab-locais`, `tab-personagens`, `tab-fichas`, `tab-organizacoes`, `tab-eventos`, `tab-magias`, `tab-anotacoes`, `tab-usuarios`. |
+| `js/tabs/` | Uma aba por arquivo: `tab-inicio`, `tab-mapas`, `tab-locais`, `tab-personagens`, `tab-fichas`, `tab-organizacoes`, `tab-eventos`, `tab-magias`, `tab-vantagens`, `tab-pericias`, `tab-combate`, `tab-armas`, `tab-armaduras`, `tab-anotacoes`, `tab-usuarios`. |
 | `mesa.html` | A Mesa de Combate (Dash RPG) compilada. O hub a carrega no iframe por `js/mesa-frame.js`. |
 | `dados/` | Cópia dos dados salvos no site, em JSON. |
 | `imagens/` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |

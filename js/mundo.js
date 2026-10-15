@@ -12,10 +12,10 @@
    stored documents, so a change anywhere shows up everywhere.
    ===================================================================== */
 /** @type {World} */
-var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], skills: [], techniques: [], styles: [], sheets: [], events: [],
-          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], skills: [], techniques: [], styles: [], sheets: [], events: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [],
-          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, advantages: false, skills: false, techniques: false, styles: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
-          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, advIdx: {}, skillIdx: {}, techIdx: {}, styleIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
+var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], sheets: [], events: [],
+          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], sheets: [], events: [], notebooks: [], notes: [] }, notebooks: [], notes: [], users: [],
+          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, advantages: false, skills: false, techniques: false, styles: false, weapons: false, armors: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
+          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, advIdx: {}, skillIdx: {}, techIdx: {}, styleIdx: {}, weaponIdx: {}, armorIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
 // The same ids once each, in order: links are lists of ids and must never repeat one.
 function uniqIds(ids) { var seen = {}; return (ids || []).filter(function (id) { if (!id || seen[id]) return false; seen[id] = true; return true; }); }
 // Ids picked in a form plus the ones this user can't see (and so couldn't pick), which are kept.
@@ -75,16 +75,16 @@ function spellById(id) {
   return null;
 }
 /* =====================================================================
-   Catálogos de GURPS (magias, vantagens, perícias, técnicas e estilos dos livros)
+   Catálogos de GURPS (magias, vantagens, perícias, técnicas, estilos, armas e armaduras dos livros)
    The book entries live in dados/magias.json, dados/vantagens.json, dados/pericias.json,
-   dados/tecnicas.json and dados/estilos.json, fetched only when
-   someone opens their tab and then cached by the browser. The database keeps just the
-   Mestre's own work: entries he created (random ids), and for a book entry, a document
-   with the same id (spell_*, adv_*, skill_*, tech_*, style_*) holding his edits, his visibility
-   choice, or deleted: true. W.spells / W.advantages / W.skills / W.techniques / W.styles are the
-   book list with those documents on top.
+   dados/tecnicas.json, dados/estilos.json, dados/armas.json and dados/armaduras.json, fetched
+   only when someone opens their tab and then cached by the browser. The database keeps just the
+   Mestre's own work: entries he created (random ids), and for a book entry, a document with the
+   same id (spell_*, adv_*, skill_*, tech_*, style_*, weapon_*, armor_*) holding his edits, his
+   visibility choice, or deleted: true. W.spells / W.advantages / W.skills / W.techniques /
+   W.styles / W.weapons / W.armors are the book list with those documents on top.
    ===================================================================== */
-var CATALOG_VERSION = '2026-10-14-v2';
+var CATALOG_VERSION = '2026-10-14-v3';
 // fields: what an entry holds besides visibility; over: the documents of book entries by id;
 // deleted: the book entries the Mestre deleted (for him to see and restore).
 var CATALOG = {
@@ -98,8 +98,20 @@ var CATALOG = {
     fields: ['name', 'difficulty', 'cinematic', 'defaults', 'prerequisites', 'description', 'modifiers', 'book', 'page'] },
   styles: { file: 'dados/estilos.json', prefix: 'style_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
     fields: ['name', 'cost', 'description', 'skills', 'techniques', 'cinematicSkills', 'cinematicTechniques', 'perks',
-      'optAdvantages', 'optDisadvantages', 'optSkills', 'optTechniques', 'optPerks', 'book', 'page'] }
+      'optAdvantages', 'optDisadvantages', 'optSkills', 'optTechniques', 'optPerks', 'book', 'page'] },
+  // attacks: the weapon's lines of the book's table (see Weapon in types/dados.d.ts); an edit replaces them all.
+  weapons: { file: 'dados/armas.json', prefix: 'weapon_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
+    fields: ['name', 'tl', 'type', 'table', 'cost', 'weight', 'lc', 'description', 'footnotes', 'attacks', 'book', 'page'] },
+  armors: { file: 'dados/armaduras.json', prefix: 'armor_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
+    fields: ['name', 'tl', 'type', 'table', 'category', 'skill', 'defaults', 'location', 'dr', 'db', 'hp', 'coverDr', 'cost', 'weight',
+      'don', 'lc', 'notes', 'footnotes', 'book', 'page'] }
 };
+// The same value of a catalog field: text compared as text (empty and missing are the same), the
+// attacks of a weapon by their content.
+function sameCatalogValue(a, b) {
+  if (a && typeof a === 'object' || b && typeof b === 'object') return JSON.stringify(a || null) === JSON.stringify(b || null);
+  return (a || '') === (b || '');
+}
 function isCatalogId(col, id) { return String(id || '').indexOf(CATALOG[col].prefix) === 0; }
 // An id that left the book list (an index entry merged into the page it pointed to, as Knife on
 // p. B203 into p. B208) still opens from old links and sheets: the entry of the same name in the
@@ -158,7 +170,7 @@ function catalogChange(col, x) {
   var c = CATALOG[col], d = c.over[x.id], orig = c.idx && c.idx[x.id];
   if (!d) return '';
   if (d.deleted) return 'deleted';
-  if (orig && c.fields.some(function (k) { return k in d && (d[k] || '') !== (orig[k] || ''); })) return 'edited';
+  if (orig && c.fields.some(function (k) { return k in d && !sameCatalogValue(d[k], orig[k]); })) return 'edited';
   // Same text as the book: a change only while hidden (shown again, it is back to the book's state).
   return d.visible === false || (d.sharedWith || []).length ? 'hidden' : '';
 }
@@ -289,8 +301,9 @@ document.addEventListener('change', function (e) {
 function secretTag(item) { return '<span class="secret-tag" title="Não está visível para todos">' + svg(EYE_OFF, 12, 2.4) + esc('Só ' + seenBy(item)) + '</span>'; }
 function refilter() {
   W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters); W.organizations = pub(W.raw.organizations);
-  mergeCatalog('spells'); mergeCatalog('advantages'); mergeCatalog('skills'); mergeCatalog('techniques'); mergeCatalog('styles'); W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events);
-  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexAdvantages(); indexSkills(); indexTechniques(); indexStyles(); indexSheets(); indexEvents(); filterNotes();
+  mergeCatalog('spells'); mergeCatalog('advantages'); mergeCatalog('skills'); mergeCatalog('techniques'); mergeCatalog('styles'); mergeCatalog('weapons'); mergeCatalog('armors');
+  W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events);
+  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexAdvantages(); indexSkills(); indexTechniques(); indexStyles(); indexWeapons(); indexArmors(); indexSheets(); indexEvents(); filterNotes();
   S.markers = pub(S.rawMarkers || []);
   if (Explorer.isOpen() && S.route && S.route.explore) Explorer.setMarkers(S.markers);
 }
@@ -478,7 +491,7 @@ var Ops = {
       var x = c.idx[d.id];
       if (!x) return true;
       if (d.deleted || d.visible === false || (d.sharedWith || []).length) return false;
-      return fields.every(function (k) { return k === 'id' || !(k in d) || (d[k] || '') === (x[k] || ''); });
+      return fields.every(function (k) { return k === 'id' || !(k in d) || sameCatalogValue(d[k], x[k]); });
     }).map(function (d) { return d.id; });
     if (!gone.length) return Promise.resolve(0);
     if (typeof W.store.removeMany === 'function') return W.store.removeMany(col, gone).then(function () { return gone.length; });

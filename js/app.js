@@ -64,6 +64,11 @@ renderTechniquePage = function () { _rTech(); tagPage(techById(S.route.techId), 
 var _rStyle = renderStylePage;
 // @ts-expect-error -- idem, tab-combate.js
 renderStylePage = function () { _rStyle(); tagPage(styleById(S.route.styleId), 'styles'); };
+var _rWeapon = renderWeaponPage, _rArmor = renderArmorPage;
+// @ts-expect-error -- idem, tab-armas.js
+renderWeaponPage = function () { _rWeapon(); tagPage(weaponById(S.route.weaponId), 'weapons'); };
+// @ts-expect-error -- idem, tab-armaduras.js
+renderArmorPage = function () { _rArmor(); tagPage(armorById(S.route.armorId), 'armors'); };
 
 // One-time: items created before the visibility flag existed become Mestre-only.
 var migratedVis = false;
@@ -93,7 +98,7 @@ function renderPage() {
   var r = S.route; if (!r) return;
   if (r.page === 'mesa') return;
   // The long card lists use the width of the screen; the other pages keep a reading width.
-  pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs' || r.page === 'skills' || r.page === 'combat' || r.page === 'sheet');
+  pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'sheet');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
   else if (r.page === 'maps') renderMapsPage();
@@ -117,6 +122,10 @@ function renderPage() {
   else if (r.page === 'combat') renderCombatPage();
   else if (r.page === 'tech') renderTechniquePage();
   else if (r.page === 'style') renderStylePage();
+  else if (r.page === 'weapons') renderWeaponsPage();
+  else if (r.page === 'weapon') renderWeaponPage();
+  else if (r.page === 'armors') renderArmorsPage();
+  else if (r.page === 'armor') renderArmorPage();
   else if (r.page === 'users') renderUsersPage();
   else if (r.page === 'notes') renderNotesPage();
   else if (r.page === 'nb') renderNotebookPage();
@@ -128,13 +137,13 @@ function onRoute() {
   var prev = S.route;
   if (!prev || prev.node !== r.node) S.ui = { q: prev && prev.page === r.page ? S.ui.q : '' };
   S.route = r;
-  if (r.node && !byId[r.node] && /^(spell|adv|c?skill|tech|style):/.test(r.node)) renderMenu(); // the menu lists only the open one
+  if (r.node && !byId[r.node] && /^(spell|adv|c?skill|tech|style|weapon|armor):/.test(r.node)) renderMenu(); // the menu lists only the open one
   var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa';
   app.classList.toggle('on-mesa', isMesa);
   if (isMesa) setCollapsed(true, true);
   else if (wasMesa) setCollapsed(lstore('hounds_rail_collapsed') === '1', true);
   document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : 'view-page'); });
-  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'skills' || r.page === 'combat' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
+  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
   paintMenu();
   topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
   if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : r.page === 'spell' ? spellHref(r.spellId) : hrefFor(r.node));
@@ -155,6 +164,8 @@ function onData(kind) {
   if (kind === 'skills') indexSkills();
   if (kind === 'techniques') indexTechniques();
   if (kind === 'styles') indexStyles();
+  if (kind === 'weapons') indexWeapons();
+  if (kind === 'armors') indexArmors();
   if (kind === 'sheets') indexSheets();
   if (kind === 'events') indexEvents();
   migrateOrganizations();
@@ -180,6 +191,8 @@ function onData(kind) {
   if (S.route.page === 'advs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'advSearch') { renderAdvList(); return; }
   if (S.route.page === 'skills' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'skillSearch') { renderSkillList(); return; }
   if (S.route.page === 'combat' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'combatSearch') { renderCombatList(); return; }
+  if (S.route.page === 'weapons' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'weaponSearch') { renderWeaponList(); return; }
+  if (S.route.page === 'armors' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'armorSearch') { renderArmorList(); return; }
   renderPage();
 }
 
@@ -206,7 +219,7 @@ function connect() {
     try { return window.indexedDB ? LocalStore() : null; } catch (e) { return null; }
   });
 }
-// The spells, advantages, skills, techniques and styles of the books are files, not database documents (see
+// The spells, advantages, skills, techniques, styles, weapons and armors of the books are files, not database documents (see
 // "Catálogos de GURPS" in mundo.js). Their documents change in bursts (a cleanup removes
 // hundreds at once), so their redraws wait a moment and happen once per burst.
 var catalogTimers = {};
@@ -234,10 +247,10 @@ function cleanCatalogCopies(col) {
   }).catch(function (err) { console.warn('Falha ao limpar ' + col + ':', err); });
 }
 // The account (and whether it is the Mestre's) may arrive after the documents.
-window.addEventListener('hub:user', function () { cleanCatalogCopies('spells'); cleanCatalogCopies('advantages'); cleanCatalogCopies('skills'); cleanCatalogCopies('techniques'); cleanCatalogCopies('styles'); });
+window.addEventListener('hub:user', function () { Object.keys(CATALOG).forEach(cleanCatalogCopies); });
 
 connect().then(function (s) {
-  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, advantages: true, skills: true, techniques: true, styles: true, sheets: true, events: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
+  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, advantages: true, skills: true, techniques: true, styles: true, weapons: true, armors: true, sheets: true, events: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
   W.store = s;
   return s.init().then(function () {
     var fail = function () { toast('Não foi possível carregar os dados.', true); };
@@ -256,5 +269,7 @@ connect().then(function (s) {
     s.watch('skills', function (l) { onCatalogDocs('skills', l); }, fail);
     s.watch('techniques', function (l) { onCatalogDocs('techniques', l); }, fail);
     s.watch('styles', function (l) { onCatalogDocs('styles', l); }, fail);
+    s.watch('weapons', function (l) { onCatalogDocs('weapons', l); }, fail);
+    s.watch('armors', function (l) { onCatalogDocs('armors', l); }, fail);
   });
 }).catch(function () { toast('Não foi possível carregar os dados.', true); });

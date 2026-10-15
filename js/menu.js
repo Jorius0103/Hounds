@@ -26,8 +26,8 @@ function locNodes(pid) {
     return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l), children: k.length ? locNodes(l.id) : null };
   });
 }
-// Spells, advantages, skills, techniques and styles are too many for the menu (their pages list them): it keeps only the
-// one open, so the breadcrumbs and the title still find it.
+// Spells, advantages, skills, techniques, styles, weapons and armors are too many for the menu (their pages list them):
+// it keeps only the one open, so the breadcrumbs and the title still find it.
 function openLeaf(prefix, icon, find, label) {
   var node = S.route && S.route.node;
   if (!node || node.indexOf(prefix) !== 0) return [];
@@ -55,7 +55,11 @@ function buildMenu() {
       { id: 'skills', label: 'Perícias', icon: ICON.skill, route: true, hideKids: true,
         children: openLeaf('skill:', ICON.skill, skillById, 'Perícia') },
       { id: 'combat', label: 'Combate', icon: ICON.combat, route: true, hideKids: true,
-        children: openLeaf('cskill:', ICON.skill, skillById, 'Perícia').concat(openLeaf('tech:', ICON.combat, techById, 'Técnica')).concat(openLeaf('style:', ICON.combat, styleById, 'Estilo')) }
+        children: openLeaf('cskill:', ICON.skill, skillById, 'Perícia').concat(openLeaf('tech:', ICON.combat, techById, 'Técnica')).concat(openLeaf('style:', ICON.combat, styleById, 'Estilo')) },
+      { id: 'weapons', label: 'Armas', icon: ICON.weapon, route: true, hideKids: true,
+        children: openLeaf('weapon:', ICON.weapon, weaponById, 'Arma') },
+      { id: 'armors', label: 'Armaduras', icon: ICON.armor, route: true, hideKids: true,
+        children: openLeaf('armor:', ICON.armor, armorById, 'Armadura') }
     ] },
     { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, hideKids: true,
       children: W.notebooks.slice().sort(byName).map(function (nb) {
