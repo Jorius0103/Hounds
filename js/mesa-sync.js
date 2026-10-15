@@ -163,12 +163,10 @@ var MesaSync = (function () {
         var sC = s.replace(/^user-/, '');
         return s === uid || s === unm || sC === uidC || sC === unmC || s === 'user-' + unmC || uid === 'user-' + sC;
       };
-      var editors = JSON.parse(localStorage.getItem('gurps_combat_master_editors_v1') || '[]');
+      // Only the Mestre's list (the one the Permissões dialog shows). The editorUserIds each
+      // combat still carries are old copies, left behind by "Bloquear Todos" in another combat.
+      var editors = JSON.parse(localStorage.getItem(MESA_LS.editors) || '[]');
       if (Array.isArray(editors) && editors.some(matchUser)) return true;
-      var combats = JSON.parse(localStorage.getItem(MESA_LS.combats) || '[]');
-      var actId = JSON.parse(localStorage.getItem(MESA_LS.activeCombatId) || 'null');
-      var activeCb = combats.filter(function (c) { return c.id === actId; })[0] || combats[0];
-      if (activeCb && Array.isArray(activeCb.editorUserIds) && activeCb.editorUserIds.some(matchUser)) return true;
     } catch (e) {}
     return false;
   }

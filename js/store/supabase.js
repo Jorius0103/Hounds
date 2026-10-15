@@ -35,8 +35,10 @@
      replaces that copy; notices about an item with a write of this
      browser still on the way wait for it. A failed write downloads the
      item again. Watched collections are checked again after every
-     (re)connection, when the tab comes back and every 60 s: only each
-     row's id and updated_at, then the rows that changed (see check()).
+     (re)connection, when the tab comes back and every 60 s (15 s while
+     the realtime is down): only each row's id and updated_at, then the
+     rows that changed (see check()). Channels that drop are made again
+     (see revive()).
    ===================================================================== */
 function SupabaseStore(client, bucket) {
   var bName = bucket || 'hounds-images', BATCH = 100;
@@ -46,6 +48,9 @@ function SupabaseStore(client, bucket) {
   var COL_OF = {}; Object.keys(TABLES).forEach(function (k) { COL_OF[TABLES[k]] = k; });
   var MARKERS = /^maps\/([^/]+)\/markers$/;
   var cols = {}, channel = null, live = false, mesaChannel = null, mesaLive = false, bcast = {};
+  // mesaOk: the Mesa's channel connected once (so a drop of it is worth reconnecting). chGen
+  // tells the callbacks of channels already replaced to keep quiet.
+  var started = false, mesaOk = false, chGen = 0, reviving = false, reviveTimer = 0, reviveWait = 0;
 
   // updated_at in one format, whether it came from a select or from realtime ("T" or " ",
   // with or without the time zone; the column is timestamptz, always UTC here). The format
@@ -200,28 +205,71 @@ function SupabaseStore(client, bucket) {
     }
     want(c, id); // includes a Mesa row over the 1 MB realtime limit, which arrives without its state
   }
-  function ensureChannel() {
-    if (channel) return;
+  function openChannels() {
+    var gen = ++chGen;
     // The tables' notices follow each table's RLS (only accounts linked to a user get them).
     channel = client.channel('hounds');
     Object.keys(COL_OF).concat(['marcadores']).forEach(function (t) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, onChange);
     });
     channel.subscribe(function (status) {
+      if (gen !== chGen) return;
       live = status === 'SUBSCRIBED';
-      if (live) resync(); // first connection and every reconnection
+      if (live) { reviveWait = 0; resync(); } // first connection and every reconnection
+      else reviveSoon();
     });
     // The Mesa's direct messages, on a private channel (policies on realtime.messages). If it
     // can't connect, the Mesa still syncs through the database, a moment later.
     mesaChannel = client.channel('hounds-mesa', { config: { private: true, broadcast: { self: false } } })
       .on('broadcast', { event: 'hub' }, function (m) { var p = m && m.payload, f = p && bcast[p.kind]; if (f) f(p.data); });
     mesaChannel.subscribe(function (status, err) {
+      if (gen !== chGen) return;
       mesaLive = status === 'SUBSCRIBED';
-      if (status === 'CHANNEL_ERROR') console.warn('Hounds: canal da Mesa indisponível; a Mesa sincroniza pelo banco.', err);
+      if (mesaLive) mesaOk = true;
+      else if (mesaOk) reviveSoon(); // it worked before: it dropped
+      else if (status === 'CHANNEL_ERROR') console.warn('Hounds: canal da Mesa indisponível; a Mesa sincroniza pelo banco.', err);
     });
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) resync(); });
-    window.addEventListener('online', resync);
-    setInterval(function () { if (!document.hidden) resync(); }, 60000);
+  }
+  function healthy() { return live && (mesaLive || !mesaOk); }
+  /* A channel the server closed doesn't come back by itself: the token expired while the tab
+     slept (the server drops the channels when it does), or the connection died with the timers
+     of a hidden tab held back. The channels are made again with the session's current token.
+     A drop the SDK fixes by itself (a short network loss) is back before the wait ends. */
+  function reviveSoon() {
+    if (reviveTimer) return;
+    reviveWait = Math.min(reviveWait ? reviveWait * 2 : 5000, 60000);
+    reviveTimer = setTimeout(function () { reviveTimer = 0; if (!healthy()) revive(); }, reviveWait);
+  }
+  function revive() {
+    clearTimeout(reviveTimer); reviveTimer = 0;
+    if (reviving) return;
+    reviving = true;
+    var old = [channel, mesaChannel];
+    chGen++; channel = mesaChannel = null; live = mesaLive = false;
+    // getSession() refreshes an expired session. The old channels go first: the SDK hands back
+    // an existing channel with the same name instead of making a new one.
+    client.auth.getSession().then(function (res) {
+      var s = res && res.data && res.data.session;
+      if (s && client.realtime && client.realtime.setAuth) return client.realtime.setAuth(s.access_token);
+    }).catch(function () {}).then(function () {
+      var gone = Promise.all(old.filter(Boolean).map(function (ch) { return Promise.resolve(client.removeChannel(ch)).catch(function () {}); }));
+      return Promise.race([gone, new Promise(function (r) { setTimeout(r, 3000); })]);
+    }).then(function () { reviving = false; openChannels(); });
+  }
+  function ensureChannel() {
+    if (started) return;
+    started = true;
+    openChannels();
+    document.addEventListener('visibilitychange', function () { if (document.hidden) return; if (!healthy()) revive(); resync(); });
+    window.addEventListener('online', function () { if (!healthy()) revive(); resync(); });
+    // Every 60 s; every 15 s while the realtime is down, so the screen doesn't stop.
+    var ticks = 0;
+    setInterval(function () {
+      if (document.hidden) return;
+      var ok = healthy();
+      if (!ok && !reviving && !reviveTimer) revive();
+      if (!ok || ++ticks % 4 === 0) resync();
+    }, 15000);
   }
 
   function watch(col, cb, err) {

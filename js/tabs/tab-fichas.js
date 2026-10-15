@@ -617,6 +617,7 @@ function renderSheetList() {
 /* =====================================================================
    Page: single sheet
    ===================================================================== */
+var SHEET_TABS = [{ key: 'sheet', label: 'Ficha' }, { key: 'equip', label: 'Equip.' }];
 function renderSheetPage() {
   var s = sheetById(S.route.sheetId), ui = S.ui;
   if (!s) {
@@ -635,9 +636,19 @@ function renderSheetPage() {
   var side = foldBox('chars', 'Personagens', chars.length,
     (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px;margin:0">Nenhum personagem vinculado.</p>') +
     (can ? '<div style="margin-top:10px"><button class="btn" type="button" id="sheetCharsBtn">' + svg(ICON.user, 15) + (chars.length ? 'Trocar personagem' : 'Vincular personagem') + '</button></div>' : ''));
-  pageRoot.innerHTML = head + '<div class="sheet-chars">' + side + '</div>' +
-    sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
-    sheetCombatHtml(s, !!ui.combatDraft && can) + sheetAdvsHtml(s, !!ui.advDraft && can) + sheetEquipHtml(s, !!ui.equipDraft && can) + main;
+  // Two tabs: everything but the equipment, and the equipment. Only the open one is drawn (the
+  // wire* functions skip a section that isn't there); a draft in the other survives the switch.
+  var tab = ui.sheetTab === 'equip' ? 'equip' : 'sheet';
+  var tabs = '<div class="seg" role="tablist" aria-label="Seção da ficha">' + SHEET_TABS.map(function (t) {
+    var on = t.key === tab;
+    return '<button type="button" role="tab" data-stab="' + t.key + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '">' + t.label + '</button>';
+  }).join('') + '</div>';
+  pageRoot.innerHTML = head + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetEquipHtml(s, !!ui.equipDraft && can)
+    : sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
+      sheetCombatHtml(s, !!ui.combatDraft && can) + sheetAdvsHtml(s, !!ui.advDraft && can) + main);
+  pageRoot.querySelectorAll('[data-stab]').forEach(function (b) {
+    b.onclick = function () { var t = b.getAttribute('data-stab'); if (t !== tab) { ui.sheetTab = t; renderSheetPage(); } };
+  });
   fillImages(pageRoot);
   if (portrait) W.store.imageUrl(portrait.ref).then(function (u) {
     var h = $('sheetPortrait'); if (!h || !u) return;

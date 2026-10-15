@@ -404,9 +404,11 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
    pela grade conforme o espaço (4 a 6 por linha em telas largas). */
 .page-inner.wide { max-width: 1680px; }
 
-/* Ficha: a caixa de personagens vinculados fica no alto, à direita, acima dos atributos */
-.sheet-chars { display: flex; justify-content: flex-end; }
-.sheet-chars > .fold { width: 320px; max-width: 100%; }
+/* Ficha: as abas (Ficha / Equip.) à esquerda e a caixa de personagens vinculados à direita,
+   no alto, acima das seções */
+.sheet-chars { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.sheet-chars > .seg { margin-bottom: 0; }
+.sheet-chars > .fold { width: 320px; max-width: 100%; margin-left: auto; }
 @media (max-width: 760px) { .sheet-chars > .fold { width: 100%; } }
 
 /* Ficha: retrato do personagem vinculado */

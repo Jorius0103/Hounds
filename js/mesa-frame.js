@@ -45,6 +45,7 @@
     'html[data-theme=light] [class*="bg-[#"]{--color-white:#fff}' +
     'html[data-theme=light] [style*="background: rgb(2, 6, 23)"]{background:#f8fafc!important}' +
     'html[data-theme=light] [style*="background: rgb(15, 23, 42)"]{background:#ffffff!important}' +
+    'html[data-theme=light] [style*="background: rgb(30, 41, 59)"]{background:#e2e8f0!important}' +
     'html[data-theme=light] [style*="solid rgb(30, 41, 59)"]{border-color:#e2e8f0!important}' +
     'html[data-theme=light] [style*="solid rgb(51, 65, 85)"]{border-color:#cbd5e1!important}' +
     'html[data-theme=light] [style^="color: rgb(148, 163, 184)"],html[data-theme=light] [style*=" color: rgb(148, 163, 184)"]{color:#64748b!important}' +
