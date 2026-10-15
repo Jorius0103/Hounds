@@ -51,7 +51,8 @@
     var cleanRole = cleanRoleOf(u.role);
     var cleanUser = { id: u.id, name: u.name, role: cleanRole };
     window.hubUser = cleanUser;
-    // The Mesa (iframe) reads the user from here. It knows Mestre and Jogador: an Admin is a Jogador there.
+    // The Mesa (iframe) reads the user from window.hubUser, the hub:user event and here. There, only
+    // the Mestre is told apart by profile; anyone else edits if the account is on the editors list.
     try { localStorage.setItem('hounds_active_user', JSON.stringify({ id: cleanUser.id, name: cleanUser.name, role: cleanRole === 'admin' ? 'jogador' : cleanRole })); } catch (e) {}
     document.body.setAttribute('data-role', cleanRole);
     document.body.setAttribute('data-user', cleanUser.id || '');
