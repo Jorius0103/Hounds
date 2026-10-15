@@ -1,8 +1,8 @@
-// Converte as planilhas de GURPS (Gurps/magias.csv, Gurps/advantages.csv, Gurps/pericias.csv,
-// Gurps/tecnicas.csv, Gurps/estilos.csv, Gurps/armas.csv e Gurps/armaduras.csv) nos arquivos que o
-// site sincroniza: dados/magias.json, dados/vantagens.json, dados/pericias.json, dados/tecnicas.json,
-// dados/estilos.json, dados/armas.json e dados/armaduras.json. Armas e armaduras ainda não têm
-// página no site: os dois arquivos ficam prontos para quando tiverem.
+// Converte as planilhas de GURPS (Gurps/magias.csv, Gurps/advantages.csv, Gurps/desvantagens.csv,
+// Gurps/pericias.csv, Gurps/tecnicas.csv, Gurps/estilos.csv, Gurps/armas.csv, Gurps/armaduras.csv e
+// Gurps/itens.csv) nos arquivos que o site sincroniza: dados/magias.json, dados/vantagens.json,
+// dados/desvantagens.json, dados/pericias.json, dados/tecnicas.json, dados/estilos.json,
+// dados/armas.json, dados/armaduras.json e dados/itens.json.
 //
 //   node tools/gurps-csv-para-json.mjs
 //
@@ -202,6 +202,21 @@ const advantages = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(p
 }))));
 write('vantagens.json', advantages);
 
+// ---------- desvantagens ----------
+// An entry that only expands one of the Basic Set ("Code of Honor, see p. B127") gets its cost,
+// classes and text from there (resolveReferences), like the advantages.
+const DISADV_BOOKS = {
+  'GURPS Basic Set': 'B', 'GURPS Martial Arts': 'MA', 'GURPS Fantasy': 'F', 'GURPS Low-Tech': 'LT',
+  'GURPS Magic: Plant Spells': 'PS', 'GURPS Social Engineering': 'SE', 'GURPS Thaumatology': 'T',
+  'GURPS: Dungeon Fantasy 12: Ninja': 'DF12', 'Martial Arts: Yrth Fighting Styles': 'MAY'
+};
+const disadvantages = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'desvantagens.csv'), 'utf8')).map((r) => {
+  const code = bookCode(DISADV_BOOKS, r.livro, 'desvantagens.csv');
+  return { id: 'disadv_' + slug(r.desvantagem) + '_' + code.toLowerCase() + r.pagina, name: r.desvantagem, cost: r.custo, type: r.tipo,
+    classes: r.classes, selfControl: r.autocontrole === 'sim' || '', book: r.livro, page: code + r.pagina, description: r.descricao };
+}))));
+write('desvantagens.json', disadvantages);
+
 // ---------- perícias ----------
 const SKILL_BOOKS = {
   'GURPS Basic Set': 'B', 'GURPS Martial Arts': 'MA', 'GURPS Fantasy': 'F', 'GURPS Low-Tech': 'LT',
@@ -319,3 +334,31 @@ const armors = uniqueIds(armorRows.map((r) => {
   return x;
 }));
 write('armaduras.json', armors);
+
+// ---------- itens ----------
+// The equipment of the books (not weapons nor armor). A treasure table only pointing to the item of
+// another book ("Bucket. See Dungeon Fantasy 1, p. 24.") gets its text from there, and as the same
+// name and text it is then one entry with it (mergeSame keeps the one of the book that describes it).
+const ITEM_BOOKS = { ...GEAR_BOOKS, 'GURPS: Dungeon Fantasy 1: Adventurers': 'DF1', 'GURPS: Dungeon Fantasy 2: Dungeons': 'DF2',
+  'GURPS: Dungeon Fantasy 4: Sages': 'DF4', 'GURPS: Dungeon Fantasy 10: Taverns': 'DF10' };
+const DF_REFERENCE = /^See (?:GURPS )?Dungeon Fantasy (\d+)(?::[^,]*)?, p\. (\d+)\.?$/;
+function resolveDfReferences(list) {
+  list.forEach((x) => {
+    const m = DF_REFERENCE.exec(x.description || '');
+    if (!m) return;
+    // (the page "DF124" is DF1, p. 24: here the book code and the page come apart, from the CSV)
+    const code = 'DF' + m[1], page = +m[2];
+    const t = list.find((y) => y !== x && y.code === code && Math.abs(y.pg - page) <= 1 && baseKey(y.name) === baseKey(x.name));
+    if (!t) return;
+    x.description = t.description;
+    if (!x.weight) x.weight = t.weight;
+    x.referenced = true;
+  });
+  return list;
+}
+const items = uniqueIds(mergeSame(resolveDfReferences(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'itens.csv'), 'utf8')).map((r) => {
+  const code = bookCode(ITEM_BOOKS, r.livro, 'itens.csv');
+  return { id: 'item_' + slug(r.item) + '_' + code.toLowerCase() + r.pagina, name: r.item, tl: r.tl, category: r.categoria,
+    cost: r.custo, weight: r.peso, description: r.descricao, book: r.livro, page: code + r.pagina, code, pg: +r.pagina };
+})))).map(({ code, pg, ...x }) => x);
+write('itens.json', items);

@@ -157,13 +157,13 @@ function renderCombatList() {
   var el = $('combatResults'); if (!el) return;
   var ui = combatView, tab = combatTab(), techs = tab.key === 'techs', styles = tab.key === 'styles';
   if (!W.loaded[tab.col]) { el.innerHTML = '<p class="lede">Carregando…</p>'; return; }
-  var q = norm(ui.q || '').trim(), fields = styles ? STYLE_SEARCH_FIELDS : COMBAT_SEARCH_FIELDS;
-  var all = combatList().filter(function (x) {
+  var fields = styles ? STYLE_SEARCH_FIELDS : COMBAT_SEARCH_FIELDS;
+  var all = searchCatalog(combatList().filter(function (x) {
     if (ui.diff && x.difficulty !== ui.diff) return false;
     if (ui.book && x.book !== ui.book) return false;
     if (techs && ui.kind && isCombatTech(x) !== (ui.kind === 'combat')) return false;
-    return !q || searchText(x, fields).indexOf(q) >= 0;
-  }); // the lists are already in name order (mergeCatalog)
+    return true;
+  }), ui.q, function (x) { return searchText(x, fields); }); // in name order (mergeCatalog); with a search, the most alike first
   var pg = pageOf(all, ui.page); ui.page = pg.page;
   if (!all.length) {
     if (!combatList().length) {
@@ -214,7 +214,7 @@ function renderTechniquePage() {
   var can = isMestre();
   var head = crumbsHtml('tech:' + t.id) +
     '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.combat, 12, 2.4) + ' Técnica</span>' + techBadge(t) + '</div>' +
-    '<h1>' + esc(t.name) + '</h1><p class="lede">Técnica ' + esc(TECH_DIFF_LABELS[t.difficulty] || t.difficulty || '') + (t.cinematic ? ' · Cinemática' : '') + (t.defaults ? ' · Padrão: ' + esc(t.defaults) : '') + '</p></div>' +
+    '<h1>' + esc(t.name) + '</h1>' + ptNameHtml(t, 'p') + '<p class="lede">Técnica ' + esc(TECH_DIFF_LABELS[t.difficulty] || t.difficulty || '') + (t.cinematic ? ' · Cinemática' : '') + (t.defaults ? ' · Padrão: ' + esc(t.defaults) : '') + '</p></div>' +
     (can ? '<div class="btn-row">' + (t.catalog && rawHas('techniques', t.id) ? '<button class="btn" type="button" id="restoreTechBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editTechBtn">' + svg(ICON.edit, 15) + 'Editar técnica</button><button class="btn danger" type="button" id="delTechBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a técnica <b>' + esc(t.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delTechYes">Excluir técnica</button><button class="btn ghost" type="button" id="delTechNo">Cancelar</button></div></div>' : '');
@@ -377,7 +377,7 @@ function renderStylePage() {
   var head = crumbsHtml('style:' + x.id) +
     '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.combat, 12, 2.4) + ' Estilo</span>' +
     (x.cost ? '<span class="spell-badge adv-adv">' + esc(x.cost) + ' pts</span>' : '') + '</div>' +
-    '<h1>' + esc(x.name) + '</h1><p class="lede">' + (x.cost ? esc(styleCost(x)) + ' de Style Familiarity e perks obrigatórios' : 'Custo não informado') + '</p></div>' +
+    '<h1>' + esc(x.name) + '</h1>' + ptNameHtml(x, 'p') + '<p class="lede">' + (x.cost ? esc(styleCost(x)) + ' de Style Familiarity e perks obrigatórios' : 'Custo não informado') + '</p></div>' +
     (can ? '<div class="btn-row">' + (x.catalog && rawHas('styles', x.id) ? '<button class="btn" type="button" id="restoreStyleBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editStyleBtn">' + svg(ICON.edit, 15) + 'Editar estilo</button><button class="btn danger" type="button" id="delStyleBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir o estilo <b>' + esc(x.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delStyleYes">Excluir estilo</button><button class="btn ghost" type="button" id="delStyleNo">Cancelar</button></div></div>' : '');

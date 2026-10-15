@@ -163,6 +163,22 @@ interface Advantage extends Doc {
   description?: string;
 }
 
+/** Coleção `disadvantages` (desvantagens de GURPS). Ids `disadv_*` vêm de dados/desvantagens.json. */
+interface Disadvantage extends Doc {
+  name: string;
+  /** "-10 points", "Variable", "-5 to -15 points". */
+  cost?: string;
+  /** Disadvantage, Expansion (Basic Set disadvantage) ou Cross-reference. */
+  type?: string;
+  /** Mental, Physical, Social, Exotic, Supernatural, separadas por vírgula ("Physical, Exotic"). */
+  classes?: string;
+  /** Pede teste de autocontrole (o * do livro). */
+  selfControl?: boolean;
+  book?: string;
+  page?: string;
+  description?: string;
+}
+
 /** Coleção `skills` (perícias de GURPS). Ids `skill_*` vêm de dados/pericias.json. */
 interface Skill extends Doc {
   name: string;
@@ -296,6 +312,22 @@ interface Armor extends Doc {
   page?: string;
 }
 
+/** Coleção `items` (equipamentos de GURPS, sem armas nem armaduras). Ids `item_*` vêm de dados/itens.json. */
+interface GearItem extends Doc {
+  name: string;
+  /** "1", "0-4" ou "var." (o TL da perícia que o item serve); vazio no Dungeon Fantasy. */
+  tl?: string;
+  /** A seção do livro ("Camping and Survival Gear", "Potions"). */
+  category?: string;
+  /** "$100", "$2 per pint". */
+  cost?: string;
+  /** "10 lbs.", "neg.". */
+  weight?: string;
+  description?: string;
+  book?: string;
+  page?: string;
+}
+
 /** Coleção `notebooks` (títulos). */
 interface Notebook extends Doc { name: string }
 
@@ -361,30 +393,34 @@ interface World {
   organizations: Organization[];
   spells: Spell[];
   advantages: Advantage[];
+  disadvantages: Disadvantage[];
   skills: Skill[];
   techniques: Technique[];
   styles: FightingStyle[];
   weapons: Weapon[];
   armors: Armor[];
+  items: GearItem[];
   sheets: Sheet[];
   events: HEvent[];
   notebooks: Notebook[];
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; disadvantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; items: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
   orgIdx: Record<string, Organization>;
   spellIdx: Record<string, Spell>;
   advIdx: Record<string, Advantage>;
+  disadvIdx: Record<string, Disadvantage>;
   skillIdx: Record<string, Skill>;
   techIdx: Record<string, Technique>;
   styleIdx: Record<string, FightingStyle>;
   weaponIdx: Record<string, Weapon>;
   armorIdx: Record<string, Armor>;
+  itemIdx: Record<string, GearItem>;
   sheetIdx: Record<string, Sheet>;
   eventIdx: Record<string, HEvent>;
   /** Pai efetivo de cada mapa. */
@@ -408,11 +444,13 @@ interface Route {
   orgId?: string;
   spellId?: string;
   advId?: string;
+  disadvId?: string;
   skillId?: string;
   techId?: string;
   styleId?: string;
   weaponId?: string;
   armorId?: string;
+  itemId?: string;
   sheetId?: string;
   eventId?: string;
   nbId?: string;

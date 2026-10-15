@@ -1,5 +1,5 @@
-// Revisão dos textos dos catálogos de GURPS (dados/magias.json, vantagens.json, pericias.json,
-// tecnicas.json, estilos.json, armas.json e armaduras.json): conserta o que a extração dos PDFs estragou — espaço antes da
+// Revisão dos textos dos catálogos de GURPS (dados/magias.json, vantagens.json, desvantagens.json,
+// pericias.json, tecnicas.json, estilos.json, armas.json, armaduras.json e itens.json): conserta o que a extração dos PDFs estragou — espaço antes da
 // pontuação, hífen de fim de linha ("high- Will", "pp. 242- 253"), palavras que perderam o hífen
 // ("onehanded", "IQbased"), reticências espaçadas (". . ."), restos do custo no começo da
 // descrição, listas com "•" num parágrafo só — sem mudar o que o texto diz.
@@ -83,10 +83,10 @@ export function revisarItem(x) {
   return out;
 }
 
-// CLI: revisa os sete arquivos no lugar, no mesmo formato compacto.
+// CLI: revisa os nove arquivos no lugar, no mesmo formato compacto.
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  for (const f of ['magias', 'vantagens', 'pericias', 'tecnicas', 'estilos', 'armas', 'armaduras']) {
+  for (const f of ['magias', 'vantagens', 'desvantagens', 'pericias', 'tecnicas', 'estilos', 'armas', 'armaduras', 'itens']) {
     const file = path.join(ROOT, 'dados', f + '.json');
     const list = JSON.parse(readFileSync(file, 'utf8'));
     let n = 0;

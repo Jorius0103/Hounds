@@ -26,7 +26,7 @@ function locNodes(pid) {
     return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l), children: k.length ? locNodes(l.id) : null };
   });
 }
-// Spells, advantages, skills, techniques, styles, weapons and armors are too many for the menu (their pages list them):
+// Spells, advantages, disadvantages, skills, techniques, styles, weapons, armors and items are too many for the menu (their pages list them):
 // it keeps only the one open, so the breadcrumbs and the title still find it.
 function openLeaf(prefix, icon, find, label) {
   var node = S.route && S.route.node;
@@ -52,6 +52,8 @@ function buildMenu() {
         children: openLeaf('spell:', ICON.spell, spellById, 'Magia') },
       { id: 'advs', label: 'Vantagens', icon: ICON.advantage, route: true, hideKids: true,
         children: openLeaf('adv:', ICON.advantage, advById, 'Vantagem') },
+      { id: 'disadvs', label: 'Desvantagens', icon: ICON.disadvantage, route: true, hideKids: true,
+        children: openLeaf('disadv:', ICON.disadvantage, disadvById, 'Desvantagem') },
       { id: 'skills', label: 'Perícias', icon: ICON.skill, route: true, hideKids: true,
         children: openLeaf('skill:', ICON.skill, skillById, 'Perícia') },
       { id: 'combat', label: 'Combate', icon: ICON.combat, route: true, hideKids: true,
@@ -59,7 +61,9 @@ function buildMenu() {
       { id: 'weapons', label: 'Armas', icon: ICON.weapon, route: true, hideKids: true,
         children: openLeaf('weapon:', ICON.weapon, weaponById, 'Arma') },
       { id: 'armors', label: 'Armaduras', icon: ICON.armor, route: true, hideKids: true,
-        children: openLeaf('armor:', ICON.armor, armorById, 'Armadura') }
+        children: openLeaf('armor:', ICON.armor, armorById, 'Armadura') },
+      { id: 'items', label: 'Itens', icon: ICON.item, route: true, hideKids: true,
+        children: openLeaf('item:', ICON.item, itemById, 'Item') }
     ] },
     { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, hideKids: true,
       children: W.notebooks.slice().sort(byName).map(function (nb) {

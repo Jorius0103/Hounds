@@ -208,14 +208,13 @@ function renderSpellsPage() {
 
 function filterSpellsList() {
   var ui = spellView;
-  var q = norm(ui.q || '').trim();
   var college = (ui.college || '').toLowerCase();
   var sClass = (ui.spellClass || '').toLowerCase();
   var diff = (ui.difficulty || '').toUpperCase();
   // Deleted entries are not in W.spells: only that filter lists them.
   var source = ui.change === 'deleted' ? CATALOG.spells.deleted : (W.spells || []);
 
-  return source.filter(function (s) {
+  return searchCatalog(source.filter(function (s) {
     if (ui.change && ui.change !== 'deleted') {
       var k = spellChange(s);
       if (ui.change === 'any' ? !k : k !== ui.change) return false;
@@ -225,9 +224,8 @@ function filterSpellsList() {
     if (college && (s.college || '').toLowerCase().indexOf(college) < 0) return false;
     if (sClass && (s.class || '').toLowerCase().indexOf(sClass) < 0) return false;
     if (ui.resistance && spellResistance(s).indexOf(ui.resistance) < 0) return false;
-    if (!q) return true;
-    return searchText(s, SPELL_SEARCH_FIELDS).indexOf(q) >= 0;
-  }); // W.spells is already in name order (mergeCatalog)
+    return true;
+  }), ui.q, function (s) { return searchText(s, SPELL_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }
 
 function renderSpellList() {
@@ -319,7 +317,7 @@ function renderSpellPage() {
     '<span class="badge">' + svg(ICON.spell, 12, 2.4) + ' Magia</span>' +
     '<span class="spell-badge ' + (isVH ? 'diff-vh' : 'diff-h') + '">' + (isVH ? 'Very Hard (VH)' : 'Hard (H)') + '</span>' +
     '</div>' +
-    '<h1>' + esc(s.name) + '</h1>' +
+    '<h1>' + esc(s.name) + '</h1>' + ptNameHtml(s, 'p') +
     '<p class="lede">' + (s.college ? esc(s.college) : 'Sem escola') + (s.class ? ' · ' + esc(s.class) : '') + '</p>' +
     '</div>' +
     (can ? '<div class="btn-row">' + (s.catalog && rawHas('spells', s.id) ? '<button class="btn" type="button" id="restoreSpellBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editSpellBtn">' + svg(ICON.edit, 15) + 'Editar magia</button><button class="btn danger" type="button" id="delSpellBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +

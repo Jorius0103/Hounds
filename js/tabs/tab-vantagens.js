@@ -95,12 +95,12 @@ function renderAdvantagesPage() {
   renderAdvList();
 }
 function filterAdvList() {
-  var ui = advView, q = norm(ui.q || '').trim();
-  return (W.advantages || []).filter(function (a) {
+  var ui = advView;
+  return searchCatalog((W.advantages || []).filter(function (a) {
     if (ui.advType && a.type !== ui.advType) return false;
     if (ui.advBook && a.book !== ui.advBook) return false;
-    return !q || searchText(a, ADV_SEARCH_FIELDS).indexOf(q) >= 0;
-  }); // W.advantages is already in name order (mergeCatalog)
+    return true;
+  }), ui.q, function (a) { return searchText(a, ADV_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }
 function renderAdvList() {
   var el = $('advResults'); if (!el) return;
@@ -144,7 +144,7 @@ function renderAdvantagePage() {
   var head = crumbsHtml('adv:' + a.id) +
     '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.advantage, 12, 2.4) + ' Vantagem</span>' +
     '<span class="spell-badge ' + advTypeClass(a.type) + '">' + esc(advTypeLabel(a.type)) + '</span></div>' +
-    '<h1>' + esc(a.name) + '</h1><p class="lede">' + (a.cost ? esc(a.cost) : 'Custo não informado') + '</p></div>' +
+    '<h1>' + esc(a.name) + '</h1>' + ptNameHtml(a, 'p') + '<p class="lede">' + (a.cost ? esc(a.cost) : 'Custo não informado') + '</p></div>' +
     (can ? '<div class="btn-row">' + (a.catalog && rawHas('advantages', a.id) ? '<button class="btn" type="button" id="restoreAdvBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editAdvBtn">' + svg(ICON.edit, 15) + 'Editar vantagem</button><button class="btn danger" type="button" id="delAdvBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a vantagem <b>' + esc(a.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delAdvYes">Excluir vantagem</button><button class="btn ghost" type="button" id="delAdvNo">Cancelar</button></div></div>' : '');

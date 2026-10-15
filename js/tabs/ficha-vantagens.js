@@ -139,16 +139,11 @@ function advCostOf(c) {
   return { cost: +m[1], levels: per ? 1 : 0, fixed: !per && !m[2].trim() };
 }
 // Entries offered while a name is typed: advantages, perks, talents and cross-references (not
-// the expansions, which repeat the names); the ones starting with it first.
+// the expansions, which repeat the names) whose name, in English or in Portuguese, is like it
+// (see searchCatalog); the most alike first.
 function advSuggestions(q) {
-  q = norm(q || '').trim(); if (!q) return [];
-  var starts = [], has = [];
-  (W.advantages || []).forEach(function (c) {
-    if (advTypeKey(c.type) === 'exp') return;
-    var at = norm(c.name).indexOf(q);
-    if (at === 0) starts.push(c); else if (at > 0) has.push(c);
-  });
-  return starts.concat(has).slice(0, 8);
+  if (!norm(q || '').trim()) return [];
+  return searchCatalog((W.advantages || []).filter(function (c) { return advTypeKey(c.type) !== 'exp'; }), q, null).slice(0, 8);
 }
 // The rules that a row breaks, in short.
 function advWarnings(x, c) {
@@ -340,7 +335,7 @@ function wireSheetAdvs(s) {
     sug.i = i; sug.list = list; sug.input = input; sug.options = options; sug.active = Math.min(sug.active, options.length - 1);
     list.innerHTML = options.map(function (c, n) {
       return '<button type="button" role="option" id="avSug' + i + 'o' + n + '" data-o="' + n + '" class="' + (n === sug.active ? 'act' : '') + '" aria-selected="' + (n === sug.active) + '">' +
-        '<span>' + esc(c.name) + '</span><small>' + esc(advTypeLabel(c.type) + ' · ' + (c.cost || '') + (c.page ? ' · ' + c.page : '')) + '</small></button>';
+        '<span>' + esc(c.name) + ptNameHtml(c) + '</span><small>' + esc(advTypeLabel(c.type) + ' · ' + (c.cost || '') + (c.page ? ' · ' + c.page : '')) + '</small></button>';
     }).join('');
     list.hidden = false; input.setAttribute('aria-expanded', 'true'); input.setAttribute('aria-activedescendant', 'avSug' + i + 'o' + sug.active);
   }

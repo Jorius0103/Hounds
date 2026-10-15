@@ -18,9 +18,10 @@
      organizations        { v, name, description, reputation, members[{ charId, rank }], locationIds[], mapIds[], createdAt, updatedAt }
      sheets               { v, name, description, attrs{ st, dx, iq, ht, per, will, hp, fp, speed, move, enc, metal, spellPenalty }, createdAt, updatedAt }   (characters[].sheetId points here)
      spells, advantages,  only the Mestre's work: entries he created, and for an entry of the books
-     skills, techniques,  (dados/magias.json, dados/vantagens.json, dados/pericias.json, dados/tecnicas.json,
-     styles, weapons,     dados/estilos.json, dados/armas.json, dados/armaduras.json; ids spell_*, adv_*, skill_*,
-     armors               tech_*, style_*, weapon_*, armor_*) his edits, visibility or deleted: true.
+     disadvantages,       (dados/magias.json, dados/vantagens.json, dados/desvantagens.json, dados/pericias.json,
+     skills, techniques,  dados/tecnicas.json, dados/estilos.json, dados/armas.json, dados/armaduras.json,
+     styles, weapons,     dados/itens.json; ids spell_*, adv_*, disadv_*, skill_*, tech_*, style_*, weapon_*,
+     armors, items        armor_*, item_*) his edits, visibility or deleted: true.
                           See "Catálogos de GURPS" in mundo.js.
      events               { v, name, date, description, locationId, characterIds[], image{...}|null, createdAt, updatedAt }
    `position` on a location is reserved for coordinates inside its map.

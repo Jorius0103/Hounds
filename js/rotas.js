@@ -11,7 +11,7 @@
      #mesa · #maps · #map~<id> · #map~<id>~explorar · #locais · #local~<id>
      #fichas · #ficha~<id> · #eventos · #evento~<id>
      #pericia~<id> is a skill under Perícias; #pericia-combate~<id> the same page under Combate
-     #armas · #arma~<id> · #armaduras · #armadura~<id>
+     #desvantagens · #desvantagem~<id> · #armas · #arma~<id> · #armaduras · #armadura~<id> · #itens · #item~<id>
    ===================================================================== */
 function parseRoute() {
   var h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
@@ -32,6 +32,8 @@ function parseRoute() {
   if (p[0] === 'magia' && p[1]) return { page: 'spell', spellId: p[1], node: 'spell:' + p[1] };
   if (p[0] === 'vantagens') return { page: 'advs', node: 'advs' };
   if (p[0] === 'vantagem' && p[1]) return { page: 'adv', advId: p[1], node: 'adv:' + p[1] };
+  if (p[0] === 'desvantagens') return { page: 'disadvs', node: 'disadvs' };
+  if (p[0] === 'desvantagem' && p[1]) return { page: 'disadv', disadvId: p[1], node: 'disadv:' + p[1] };
   if (p[0] === 'pericias') return { page: 'skills', node: 'skills' };
   if (p[0] === 'pericia' && p[1]) return { page: 'skill', skillId: p[1], node: 'skill:' + p[1] };
   if (p[0] === 'combate') return { page: 'combat', node: 'combat' };
@@ -42,6 +44,8 @@ function parseRoute() {
   if (p[0] === 'arma' && p[1]) return { page: 'weapon', weaponId: p[1], node: 'weapon:' + p[1] };
   if (p[0] === 'armaduras') return { page: 'armors', node: 'armors' };
   if (p[0] === 'armadura' && p[1]) return { page: 'armor', armorId: p[1], node: 'armor:' + p[1] };
+  if (p[0] === 'itens') return { page: 'items', node: 'items' };
+  if (p[0] === 'item' && p[1]) return { page: 'item', itemId: p[1], node: 'item:' + p[1] };
   if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
   if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
   if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
@@ -70,6 +74,8 @@ function hrefFor(node) {
   if (node.indexOf('spell:') === 0) return '#magia~' + encodeURIComponent(node.slice(6));
   if (node === 'advs') return '#vantagens';
   if (node.indexOf('adv:') === 0) return '#vantagem~' + encodeURIComponent(node.slice(4));
+  if (node === 'disadvs') return '#desvantagens';
+  if (node.indexOf('disadv:') === 0) return '#desvantagem~' + encodeURIComponent(node.slice(7));
   if (node === 'skills') return '#pericias';
   if (node.indexOf('skill:') === 0) return '#pericia~' + encodeURIComponent(node.slice(6));
   if (node === 'combat') return '#combate';
@@ -80,6 +86,8 @@ function hrefFor(node) {
   if (node.indexOf('weapon:') === 0) return '#arma~' + encodeURIComponent(node.slice(7));
   if (node === 'armors') return '#armaduras';
   if (node.indexOf('armor:') === 0) return '#armadura~' + encodeURIComponent(node.slice(6));
+  if (node === 'items') return '#itens';
+  if (node.indexOf('item:') === 0) return '#item~' + encodeURIComponent(node.slice(5));
   return '#';
 }
 function mapHref(id) { return hrefFor('map:' + id); }

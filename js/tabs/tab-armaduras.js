@@ -103,13 +103,13 @@ function renderArmorsPage() {
   renderArmorList();
 }
 function filterArmorList() {
-  var ui = armorView, q = norm(ui.q || '').trim();
-  return (W.armors || []).filter(function (a) {
+  var ui = armorView;
+  return searchCatalog((W.armors || []).filter(function (a) {
     if (ui.type && a.type !== ui.type) return false;
     if (ui.category && a.category !== ui.category) return false;
     if (ui.book && a.book !== ui.book) return false;
-    return !q || searchText(a, ARMOR_SEARCH_FIELDS).indexOf(q) >= 0;
-  }); // W.armors is already in name order (mergeCatalog)
+    return true;
+  }), ui.q, function (a) { return searchText(a, ARMOR_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }
 function renderArmorList() {
   var el = $('armorResults'); if (!el) return;
@@ -163,7 +163,7 @@ function renderArmorPage() {
   var can = isMestre(), kind = a.type === 'Shield' ? 'escudo' : 'armadura', sum = armorSummary(a);
   var head = crumbsHtml('armor:' + a.id) +
     '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.armor, 12, 2.4) + ' ' + esc(armorTypeLabel(a.type)) + '</span>' + armorBadge(a) + '</div>' +
-    '<h1>' + esc(a.name) + '</h1><p class="lede">' + (sum ? esc(sum) : 'Proteção não informada') + '</p></div>' +
+    '<h1>' + esc(a.name) + '</h1>' + ptNameHtml(a, 'p') + '<p class="lede">' + (sum ? esc(sum) : 'Proteção não informada') + '</p></div>' +
     (can ? '<div class="btn-row">' + (a.catalog && rawHas('armors', a.id) ? '<button class="btn" type="button" id="restoreArmorBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editArmorBtn">' + svg(ICON.edit, 15) + 'Editar ' + kind + '</button><button class="btn danger" type="button" id="delArmorBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir ' + (kind === 'escudo' ? 'o escudo' : 'a armadura') + ' <b>' + esc(a.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delArmorYes">Excluir ' + kind + '</button><button class="btn ghost" type="button" id="delArmorNo">Cancelar</button></div></div>' : '');

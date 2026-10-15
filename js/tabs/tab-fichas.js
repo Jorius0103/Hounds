@@ -358,17 +358,11 @@ function skillRulesHtml(k) {
   return '<a href="' + skillHref(c.id) + '" data-skill-modal="' + esc(c.id) + '" title="Ver as regras desta perícia">' + svg(ICON.skill, 12, 2.2) + esc(c.page || 'Regras') + '</a>' +
     (rules ? ' <span title="' + esc(rules) + '">' + esc(rules) + '</span>' : '');
 }
-// Book entries with attribute and difficulty (not the cross-references) whose name has q;
-// the ones starting with it first. W.skills is already in name order.
+// Book entries with attribute and difficulty (not the cross-references) whose name, in English
+// or in Portuguese, is like q (see searchCatalog); the most alike first.
 function skillSuggestions(q) {
-  q = norm(q || '').trim(); if (!q) return [];
-  var starts = [], has = [];
-  (W.skills || []).forEach(function (c) {
-    if (!c.attribute || !SKILL_DIFFS[c.difficulty]) return;
-    var at = norm(c.name).indexOf(q);
-    if (at === 0) starts.push(c); else if (at > 0) has.push(c);
-  });
-  return starts.concat(has).slice(0, 8);
+  if (!norm(q || '').trim()) return [];
+  return searchCatalog((W.skills || []).filter(function (c) { return c.attribute && SKILL_DIFFS[c.difficulty]; }), q, null).slice(0, 8);
 }
 function skillEditRow(k, i, av) {
   return '<div class="sk-row" data-i="' + i + '">' +
@@ -526,7 +520,7 @@ function wireSheetSkills(s) {
     sug.i = i; sug.list = list; sug.input = input; sug.options = options; sug.active = Math.min(sug.active, options.length - 1);
     list.innerHTML = options.map(function (c, n) {
       return '<button type="button" role="option" id="skSug' + i + 'o' + n + '" data-o="' + n + '" class="' + (n === sug.active ? 'act' : '') + '" aria-selected="' + (n === sug.active) + '">' +
-        '<span>' + esc(c.name) + '</span><small>' + esc(c.attribute + '/' + c.difficulty + (c.page ? ' · ' + c.page : '')) + '</small></button>';
+        '<span>' + esc(c.name) + ptNameHtml(c) + '</span><small>' + esc(c.attribute + '/' + c.difficulty + (c.page ? ' · ' + c.page : '')) + '</small></button>';
     }).join('');
     list.hidden = false; input.setAttribute('aria-expanded', 'true'); input.setAttribute('aria-activedescendant', 'skSug' + i + 'o' + sug.active);
   }

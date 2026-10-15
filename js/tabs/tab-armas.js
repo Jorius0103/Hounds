@@ -162,13 +162,13 @@ function renderWeaponsPage() {
   renderWeaponList();
 }
 function filterWeaponList() {
-  var ui = weaponView, q = norm(ui.q || '').trim();
-  return (W.weapons || []).filter(function (w) {
+  var ui = weaponView;
+  return searchCatalog((W.weapons || []).filter(function (w) {
     if (ui.type && w.type !== ui.type) return false;
     if (ui.skill && weaponSkills(w).indexOf(ui.skill) < 0) return false;
     if (ui.book && w.book !== ui.book) return false;
-    return !q || weaponSearchText(w).indexOf(q) >= 0;
-  }); // W.weapons is already in name order (mergeCatalog)
+    return true;
+  }), ui.q, weaponSearchText); // in name order (mergeCatalog); with a search, the most alike first
 }
 function renderWeaponList() {
   var el = $('weaponResults'); if (!el) return;
@@ -226,7 +226,7 @@ function renderWeaponPage() {
   var can = isMestre(), skills = weaponSkills(w);
   var head = crumbsHtml('weapon:' + w.id) +
     '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.weapon, 12, 2.4) + ' Arma</span>' + weaponBadge(w) + '</div>' +
-    '<h1>' + esc(w.name) + '</h1><p class="lede">' + (skills.length ? esc(skills.join(', ')) : 'Perícia não informada') + '</p></div>' +
+    '<h1>' + esc(w.name) + '</h1>' + ptNameHtml(w, 'p') + '<p class="lede">' + (skills.length ? esc(skills.join(', ')) : 'Perícia não informada') + '</p></div>' +
     (can ? '<div class="btn-row">' + (w.catalog && rawHas('weapons', w.id) ? '<button class="btn" type="button" id="restoreWeaponBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editWeaponBtn">' + svg(ICON.edit, 15) + 'Editar arma</button><button class="btn danger" type="button" id="delWeaponBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a arma <b>' + esc(w.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delWeaponYes">Excluir arma</button><button class="btn ghost" type="button" id="delWeaponNo">Cancelar</button></div></div>' : '');

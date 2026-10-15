@@ -304,6 +304,10 @@ details.box.fold { display: block; padding: 0; }
 .adv-cost { font-size: 12px; font-weight: 600; color: var(--accent); }
 .adv-desc { font-size: 13px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .adv-src { font-size: 11px; color: var(--faint); margin-top: auto; }
+/* O nome em português dos catálogos (js/busca-catalogos.js): abaixo do nome do livro */
+.pt-name { display: block; font-size: 12.5px; font-weight: 500; line-height: 1.3; color: var(--muted); margin-top: 2px; }
+p.pt-name { font-size: 15px; margin: -2px 0 4px; }
+.suggest .pt-name { display: inline; margin: 0 0 0 6px; font-size: 12px; }
 .spell-badge.adv-adv { background: rgba(245, 158, 11, .14); color: var(--accent); border: 1px solid rgba(245, 158, 11, .3); }
 .spell-badge.adv-talent { background: rgba(168, 85, 247, .12); color: #a855f7; border: 1px solid rgba(168, 85, 247, .25); }
 .spell-badge.adv-perk { background: rgba(34, 197, 94, .12); color: #16a34a; border: 1px solid rgba(34, 197, 94, .3); }
@@ -435,6 +439,14 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sc-edit { gap: 10px; }
 .sc-ghead { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 .sc-ghead .btn { margin-left: auto; }
+/* Editor de Combate: o bloco de um estilo recolhe ao cabeçalho (os salvos começam recolhidos) */
+.sc-ghead .chev-btn { margin: 0 0 3px -4px; }
+.sc-gbody { display: flex; flex-direction: column; gap: 10px; }
+.sc-edit.closed .sc-gbody { display: none; }
+.sc-fold-sum { align-self: center; margin-top: 16px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.sc-fold-sum b { color: var(--danger); font-weight: 600; }
+.sc-ghead-g { align-items: center; }
+.sc-ghead-g .chev-btn, .sc-ghead-g .sc-fold-sum { margin-top: 0; margin-bottom: 0; }
 .sc-catlink { font-size: 12px; font-weight: 600; color: var(--accent); text-decoration: none; padding-bottom: 9px; }
 .sc-rows { display: flex; flex-direction: column; gap: 8px; }
 .sc-row { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid var(--line); }

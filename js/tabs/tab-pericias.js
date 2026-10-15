@@ -114,13 +114,13 @@ function renderSkillsPage() {
   renderSkillList();
 }
 function filterSkillList() {
-  var ui = skillView, q = norm(ui.q || '').trim();
-  return (W.skills || []).filter(function (s) {
+  var ui = skillView;
+  return searchCatalog((W.skills || []).filter(function (s) {
     if (ui.attr && s.attribute !== ui.attr) return false;
     if (ui.diff && s.difficulty !== ui.diff) return false;
     if (ui.book && s.book !== ui.book) return false;
-    return !q || searchText(s, SKILL_SEARCH_FIELDS).indexOf(q) >= 0;
-  }); // W.skills is already in name order (mergeCatalog)
+    return true;
+  }), ui.q, function (s) { return searchText(s, SKILL_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }
 function renderSkillList() {
   var el = $('skillResults'); if (!el) return;
@@ -218,7 +218,7 @@ function renderSkillPage() {
   var can = isMestre(), tags = skillTags(s), lede = skillLede(s);
   var head = crumbsHtml(S.route.node) +
     '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.skill, 12, 2.4) + ' Perícia</span>' + skillBadge(s) + '</div>' +
-    '<h1>' + esc(s.name) + '</h1><p class="lede">' + esc(lede) + (tags ? ' · ' + esc(tags) : '') + '</p></div>' +
+    '<h1>' + esc(s.name) + '</h1>' + ptNameHtml(s, 'p') + '<p class="lede">' + esc(lede) + (tags ? ' · ' + esc(tags) : '') + '</p></div>' +
     (can ? '<div class="btn-row">' + (s.catalog && rawHas('skills', s.id) ? '<button class="btn" type="button" id="restoreSkillBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editSkillBtn">' + svg(ICON.edit, 15) + 'Editar perícia</button><button class="btn danger" type="button" id="delSkillBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a perícia <b>' + esc(s.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSkillYes">Excluir perícia</button><button class="btn ghost" type="button" id="delSkillNo">Cancelar</button></div></div>' : '');
