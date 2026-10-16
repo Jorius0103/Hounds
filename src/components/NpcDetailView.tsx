@@ -16,6 +16,7 @@ import {
   calculateLogDamageForBodyPart,
   migrateArmorLocations,
   getCrippledBodyParts,
+  sanitizeHitLocationRule,
 } from '../utils/gurps';
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { SpellsModal } from './SpellsModal';
@@ -3122,7 +3123,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[part.key] ?? 0) : logDmg;
                     const isCrippled = hpInfo.value !== null && effectiveDmg >= hpInfo.value;
                     const customRule = npc.bodyPartCustomRules?.[part.key];
-                    const activeRule = customRule !== undefined ? customRule : part.defaultRule;
+                    const activeRule = sanitizeHitLocationRule(customRule !== undefined ? customRule : part.defaultRule);
 
                     return (
                       <tr key={part.key} className="hover:bg-slate-850/50 transition-colors">

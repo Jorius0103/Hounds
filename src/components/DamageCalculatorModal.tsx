@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NPC, ActionLogEntry, ExtraItem } from '../types/rpg';
-import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info } from 'lucide-react';
-import { calculateLocationDamage, migrateArmorLocations } from '../utils/gurps';
+import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info, Crosshair } from 'lucide-react';
+import { calculateLocationDamage, migrateArmorLocations, normalizeLocationKey, sanitizeHitLocationRule } from '../utils/gurps';
 
 interface DamageCalculatorModalProps {
   npc: NPC;
@@ -196,7 +196,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     appliedRules,
     requiresEyeConfirmation,
     eyeWarningMessage,
+    torsoVitalsNotice,
   } = damageCalc;
+
+  const vitalsLoc = effectiveLocations.find((l) => normalizeLocationKey(l.location) === 'vitals');
 
   const isDamageFormReady = Boolean(
     selectedLocationId &&
@@ -606,7 +609,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 <Info size={15} className="text-blue-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold text-blue-300">Regra de {selectedLoc.location}:</span>{' '}
-                  <span>{selectedLoc.additionalRule}</span>
+                  <span>{sanitizeHitLocationRule(selectedLoc.additionalRule)}</span>
                 </div>
               </div>
             )}
@@ -627,6 +630,36 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   />
                   <span>Confirmar e permitir registro deste dano no Olho</span>
                 </label>
+              </div>
+            )}
+
+            {/* Alerta de Regra de Torso -> Vitals */}
+            {torsoVitalsNotice && (
+              <div className="p-3 bg-amber-950/70 border border-amber-600/80 rounded-xl space-y-2 animate-in fade-in">
+                <div className="flex items-start gap-2 text-amber-300 text-xs font-semibold">
+                  <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-amber-200 block">Regra de Torso:</span>
+                    <span className="text-amber-300 font-normal leading-relaxed block">
+                      Sempre que um ataque dos tipos Contusão, Perfuração ou Queima / fogo:
+                      <br />
+                      Role 1d, se o resultado for 1, o ataque atinge o Vitals.
+                    </span>
+                  </div>
+                </div>
+                {vitalsLoc && selectedLocationId !== vitalsLoc.id && (
+                  <div className="pl-6 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLocationId(vitalsLoc.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-amber-600/25 hover:bg-amber-600/45 text-amber-200 hover:text-white border border-amber-500/50 rounded-lg transition-colors cursor-pointer shadow-sm"
+                      title="Mudar o local atingido para Órgãos Vitais (Vitals)"
+                    >
+                      <Crosshair size={13} className="text-amber-400" />
+                      <span>Se tirou 1 no dado: Mudar alvo para Vitals</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

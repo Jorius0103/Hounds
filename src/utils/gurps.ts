@@ -18,7 +18,7 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
     rollTarget: '-',
     location: 'Eye',
     penalty: '-9',
-    additionalRule: 'Só consegue acertar o olho danos de impaling, piercing ou magia, se for outro alertar antes de registrar mas permitir registro com confirmação',
+    additionalRule: 'Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia',
     hpFormulaLabel: '=Pontos de Vida / 10',
     hpDivisor: 10,
   },
@@ -228,6 +228,18 @@ export function createDefaultArmorLocations(ownerId: string = ''): BodyArmorLoca
   }));
 }
 
+export function sanitizeHitLocationRule(rule?: string): string {
+  if (!rule) return '';
+  if (
+    rule.includes('alertar antes de registrar') ||
+    rule.includes('danos de impaling, piercing ou magia') ||
+    rule.includes('danos de impaling')
+  ) {
+    return 'Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia';
+  }
+  return rule;
+}
+
 export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerId: string = ''): BodyArmorLocation[] {
   const defaults = createDefaultArmorLocations(ownerId);
   if (!existingLocs || existingLocs.length === 0) {
@@ -246,6 +258,7 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
         return {
           ...def,
           ...found,
+          additionalRule: sanitizeHitLocationRule(found.additionalRule || def.additionalRule),
           rollTarget: def.rollTarget,
           penalty: def.penalty,
         };
@@ -266,6 +279,7 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
       return {
         ...def,
         ...directMatch,
+        additionalRule: sanitizeHitLocationRule(directMatch.additionalRule || def.additionalRule),
         rollTarget: def.rollTarget,
         penalty: def.penalty,
       };
@@ -340,7 +354,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
     name: 'Eye',
     hpFormulaLabel: '=Pontos de Vida / 10',
     hpDivisor: 10,
-    defaultRule: 'Só consegue acertar o olho danos de impaling, piercing ou magia, se for outro alertar antes de registrar mas permitir registro com confirmação',
+    defaultRule: 'Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia',
     logKeys: ['eye'],
   },
   {
@@ -541,6 +555,21 @@ export interface DamageCalculationResult {
   appliedRules: string[];
   requiresEyeConfirmation?: boolean;
   eyeWarningMessage?: string;
+  torsoVitalsNotice?: string;
+}
+
+export function isTorsoVitalsEligibleDamageType(damageType?: string): boolean {
+  if (!damageType) return false;
+  const dt = damageType.toLowerCase().trim();
+  return (
+    dt === 'contusao' ||
+    dt === 'crushing' ||
+    dt.startsWith('perfurante') ||
+    dt.startsWith('piercing') ||
+    dt === 'queima' ||
+    dt === 'burning' ||
+    dt === 'fogo'
+  );
 }
 
 export function calculateLocationDamage(params: {
@@ -606,8 +635,14 @@ export function calculateLocationDamage(params: {
 
   let requiresEyeConfirmation = false;
   let eyeWarningMessage: string | undefined = undefined;
+  let torsoVitalsNotice: string | undefined = undefined;
 
-  if (normKey === 'head') {
+  if (normKey === 'torso') {
+    if (isTorsoVitalsEligibleDamageType(damageType)) {
+      torsoVitalsNotice =
+        'Sempre que um ataque dos tipos Contusão, Perfuração ou Queima / fogo: Role 1d, se o resultado for 1, o ataque atinge o Vitals.';
+    }
+  } else if (normKey === 'head') {
     // Regra Head: "Qualquer dano vira 4X"
     woundMultiplier = 4.0;
     appliedRules.push('Cabeça: Qualquer dano vira x4');
@@ -666,7 +701,7 @@ export function calculateLocationDamage(params: {
       appliedRules.push('Membro/Extremidade: Empalamento / Perfuração vira x1');
     }
   } else if (normKey === 'eye') {
-    // Regra Eye: "Só consegue acertar o olho danos de impaling, piercing ou magia, se for outro alertar antes de registrar mas permitir registro com confirmação"
+    // Regra Eye: "Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia"
     const isImpalingOrPiercing =
       damageType === 'empalamento' ||
       damageType === 'impaling' ||
@@ -678,7 +713,7 @@ export function calculateLocationDamage(params: {
 
     if (!isImpalingOrPiercing && damageType) {
       requiresEyeConfirmation = true;
-      eyeWarningMessage = 'Só consegue acertar o olho danos de impaling, piercing ou magia. Se for outro, confirme antes de registrar.';
+      eyeWarningMessage = 'Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia. Confirme antes de registrar.';
     }
     // No cérebro através do olho o multiplicador é x4
     woundMultiplier = 4.0;
@@ -703,6 +738,7 @@ export function calculateLocationDamage(params: {
     appliedRules,
     requiresEyeConfirmation,
     eyeWarningMessage,
+    torsoVitalsNotice,
   };
 }
 
