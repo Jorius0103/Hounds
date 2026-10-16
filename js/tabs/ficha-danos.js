@@ -221,6 +221,41 @@ function dmCarried(ctx) {
   });
   return { body: active, weapons: out };
 }
+// The weapons and shields of the Corpo configuration in use, for the defenses (combatDefenses): as in
+// dmCarried, only what is carried counts. weapons: each melee attack that parries, once a weapon and
+// skill (swing and thrust parry the same), with the parry ("0F": modifier 0, fencing) and the NH
+// (weaponNh, with the weapon's adjustments); shields: the shields and cloaks, with the NH and DB.
+// null with no configuration in use.
+function defCarried(s) {
+  var g = sheetGear(s), active = g.bodies.filter(function (b) { return b.active; })[0];
+  if (!active) return null;
+  var by = gearIndex(g.equip), units = bodyUnits(active, by), out = { weapons: [], shields: [] }, seen = {};
+  function nhOf(a, plus) { var nh = weaponNh(s, a, plus); return nh ? { v: nh.v, adj: plus } : null; }
+  Object.keys(units).forEach(function (id) {
+    var e = by[id]; if (!e) return;
+    if (e.kind === 'armor') {
+      if (e.refId && !W.loaded.armors) loadCatalog('armors');
+      var sh = g.shieldLines[id], cat = !sh && gearIsShield(e) ? armorById(e.refId) : null; if (!sh && !cat) return;
+      var skill = (sh ? sh.base.skill : cat.skill) || 'Shield';
+      var nh = nhOf({ skill: skill, defaults: (sh ? sh.base.defaults : cat.defaults) || '' }, sh ? shieldAdjTotal(sh.mods).nh : 0); if (!nh) return;
+      var db = parseInt(String(sh ? sh.db : cat.db), 10);
+      out.shields.push({ name: e.name, skill: skill, nh: nh, db: isFinite(db) ? db : null });
+      return;
+    }
+    if (e.kind !== 'weapon') return;
+    var cw = g.weaponLines[id], wc = !cw && e.refId && W.weaponIdx ? weaponById(e.refId) : null;
+    if (!cw && e.refId && !W.loaded.weapons) loadCatalog('weapons');
+    var plus = cw ? weaponAdjTotal(cw.mods).nh : 0;
+    (cw ? cw.attacks : wc ? wc.attacks || [] : []).forEach(function (a) {
+      var m = /^([+-]?\d+)\s*([A-Za-z]*)/.exec(String(a.parry || '').trim()), key = id + '|' + norm(a.skill || '');
+      if (!m || !a.skill || seen[key]) return;
+      var nh = nhOf(a, plus); if (!nh) return;
+      seen[key] = true;
+      out.weapons.push({ name: e.name, skill: a.skill, nh: nh, mod: +m[1], flags: m[2].toUpperCase() });
+    });
+  });
+  return out;
+}
 // Unarmed (pp. B271, B182, B203): who hits best, and the damage bonus a die of the skill used.
 //   Brawling: +1 a die at DX+2 (punch, kick, bite); Boxing: +1 at DX+1, +2 at DX+2 (punch only);
 //   Karate: +1 at DX, +2 at DX+1 (punch and kick; bite with Biting Mastery). Kick at -2.
@@ -263,7 +298,7 @@ function dmTyped(ctx, list) {
   return rows;
 }
 function dmContext(s) {
-  var a = S.ui.attrDraft || sheetAttrs(s), ctx = { s: s, av: attrValues(a), pool: combatSkillPool(sheetCombat(s), s), st: a.st, dmgSt: a.st, fx: null };
+  var a = sheetAttrsNow(s), ctx = { s: s, av: attrValues(a), pool: combatSkillPool(sheetCombat(s), s), st: a.st, dmgSt: a.st, fx: null };
   ctx.fx = dmEffects(s, function (name) { return dmLevel(ctx, name); });
   ctx.dmgSt = a.st + ctx.fx.striking;
   return ctx;

@@ -26,7 +26,7 @@ function locNodes(pid) {
     return { id: 'loc:' + l.id, label: l.name, icon: ICON.pin, route: true, secret: isSecret(l), children: k.length ? locNodes(l.id) : null };
   });
 }
-// Spells, advantages, disadvantages, skills, techniques, styles, weapons, armors and items are too many for the menu (their pages list them):
+// Spells, advantages, disadvantages, skills, techniques, styles, weapons, armors, items and improvements are too many for the menu (their pages list them):
 // it keeps only the one open, so the breadcrumbs and the title still find it.
 function openLeaf(prefix, icon, find, label) {
   var node = S.route && S.route.node;
@@ -63,7 +63,9 @@ function buildMenu() {
       { id: 'armors', label: 'Armaduras', icon: ICON.armor, route: true, hideKids: true,
         children: openLeaf('armor:', ICON.armor, armorById, 'Armadura') },
       { id: 'items', label: 'Itens', icon: ICON.item, route: true, hideKids: true,
-        children: openLeaf('item:', ICON.item, itemById, 'Item') }
+        children: openLeaf('item:', ICON.item, itemById, 'Item') },
+      { id: 'improvements', label: 'Melhoramentos', icon: ICON.improvement, route: true, hideKids: true,
+        children: openLeaf('impr:', ICON.improvement, improvementById, 'Melhoramento') }
     ] },
     { id: 'notes', label: 'Anotações', icon: ICON.notes, route: true, hideKids: true,
       children: W.notebooks.slice().sort(byName).map(function (nb) {

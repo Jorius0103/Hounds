@@ -64,18 +64,19 @@ function hasCombatReflexes(s) {
     scAllItems(sheetCombat(s)).some(function (x) { return x.kind === 'trait' && CR_RE.test(x.name); });
 }
 function isFastDraw(name) { return /^fast-?draw\b/i.test(name || ''); }
-// Marks each skill of the list with the bonus the sheet's advantages give it: its talents' and,
-// on Fast-Draw, Combat Reflexes' (k.tbonus; k.tfrom says where it comes from: "+2 de Talent
-// (Soldier) 2 e +1 de Combat Reflexes"). Returns the list. The marks are for showing the level
-// only: cleanSkill and cleanCombatItem drop them.
+// Marks each skill of the list with the bonus the sheet's advantages give it: its talents', on
+// Fast-Draw Combat Reflexes', and the effects of the advantages (see ficha-efeitos.js) (k.tbonus;
+// k.tfrom says where it comes from: "+2 de Talent (Soldier) 2 e +1 de Combat Reflexes"). Returns the
+// list. The marks are for showing the level only: cleanSkill and cleanCombatItem drop them.
 function applyTalents(list, s) {
   var t = talentBonuses(s), cr = list.some(function (k) { return isFastDraw(k.name); }) && hasCombatReflexes(s);
   list.forEach(function (k) {
-    var o = t[norm(k.name)], from = [];
+    var o = t[norm(k.name)], from = [], fx = k.kind === 'tech' ? null : fxForSkill(s, k);
     k.tbonus = 0;
     if (o) { k.tbonus += o.n; from.push('+' + o.n + ' de ' + o.from); }
     if (cr && isFastDraw(k.name)) { k.tbonus += 1; from.push('+1 de Combat Reflexes'); }
-    k.tfrom = from.join(' e ');
+    if (fx) { k.tbonus += fx.n; from = from.concat(fxParts(fx)); }
+    k.tfrom = joinE(from);
   });
   return list;
 }
@@ -186,6 +187,9 @@ function advRowHtml(x, inCombat, onSheet, fastDraws) {
     x.mod ? (x.mod > 0 ? '+' : '') + x.mod + '%' + (x.mod < -80 ? ' (vale -80%)' : '') : '',
     CR_RE.test(x.name) ? '+1 nas defesas ativas e em ' + (fastDraws.length ? joinE(fastDraws) : 'Fast-Draw (nenhuma na ficha)') : '',
     inCombat ? 'também na seção Combate' : ''].filter(Boolean).join(' · ');
+  // The effects the Mestre gave the entry (see ficha-efeitos.js), applied on the sheet.
+  var fx = c && !x.size && !ADV_FX_BUILTIN_RE.test(x.name) ? advEffects(c) : [];
+  if (fx.length) sub += (sub ? ' · ' : '') + 'Efeitos: ' + fx.map(advEffectText).join('; ');
   return '<tr><td><b>' + label + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</td><td class="gpts">' + advPts(x) + '</td>' +
     '<td class="av-notes">' + esc(obs) + (problem ? '<small class="av-warn">' + esc(problem) + '</small>' : '') + '</td></tr>';
 }
@@ -197,9 +201,10 @@ function sheetAdvsHtml(s, editing) {
   if (editing) {
     var choices = advSkillChoices(s);
     return '<section class="gurps" id="advs">' + head +
-      '<div class="box sk-edit"><div class="sk-row av-row sk-labels" aria-hidden="true"><span>Vantagem</span><span>Custo</span><span>Níveis</span><span>Mod. %</span><span>Pts</span><span>Observações</span><span></span></div>' +
+      // New advantages go on top, under the button.
+      '<div class="box sk-edit"><div><button class="btn" type="button" id="avAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar vantagem</button></div>' +
+      '<div class="sk-row av-row sk-labels" aria-hidden="true"><span>Vantagem</span><span>Custo</span><span>Níveis</span><span>Mod. %</span><span>Pts</span><span>Observações</span><span></span></div>' +
       '<div id="avRows">' + list.map(function (x, i) { return advEditRow(x, i, choices); }).join('') + '</div>' +
-      '<div><button class="btn" type="button" id="avAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar vantagem</button></div>' +
       '<p class="hint-text">Custo é o da vantagem, ou o de cada nível quando ela tem níveis (0 níveis: sem níveis). Mod. % soma ampliações (+) e limitações (−): ' +
       'os pontos são custo × níveis com o modificador aplicado, arredondando para cima, e as limitações não tiram mais de 80% (Basic Set, pp. B101-102). ' +
       'Perk custa 1 ponto. Talento: escolha o tamanho (pequeno 5 pts/nível e até 6 perícias, médio 10 e 7 a 12, grande 15 e 13 ou mais) e marque as perícias da ficha; ' +
@@ -261,7 +266,7 @@ function advEditRow(x, i, choices) {
 // total beside it, adding or removing a row redraws the page from it.
 function wireSheetAdvs(s) {
   var ui = S.ui;
-  function focusLast() { var l = document.querySelectorAll('#avRows .sk-name'); var f = l[l.length - 1]; if (f instanceof HTMLElement) f.focus(); }
+  function focusFirst() { var f = document.querySelector('#avRows .sk-name'); if (f instanceof HTMLElement) f.focus(); }
   var ed = $('avEdit'); if (ed) ed.onclick = function () {
     ui.advDraft = sheetAdvs(s);
     // Talents saved before they had a size: the size of the cost a level they have.
@@ -270,7 +275,7 @@ function wireSheetAdvs(s) {
       x.size = x.cost >= 15 ? 'L' : x.cost >= 10 ? 'M' : 'S'; x.cost = TALENT_SIZES[x.size].cost; x.levels = Math.max(1, x.levels); x.skills = [];
     });
     if (!ui.advDraft.length) ui.advDraft.push(cleanAdv({ name: '', cost: 0 }));
-    renderSheetPage(); focusLast();
+    renderSheetPage(); focusFirst();
   };
   var d = ui.advDraft, box = $('advs'); if (!d || !box || !$('avSave')) return;
   function paintRow(i) {
@@ -382,7 +387,7 @@ function wireSheetAdvs(s) {
     var b = e.target.closest && e.target.closest('[data-del]'); if (!b) return;
     d.splice(+b.getAttribute('data-del'), 1); renderSheetPage();
   });
-  $('avAdd').onclick = function () { d.push(cleanAdv({ name: '', cost: 0 })); renderSheetPage(); focusLast(); };
+  $('avAdd').onclick = function () { d.unshift(cleanAdv({ name: '', cost: 0 })); renderSheetPage(); focusFirst(); };
   $('avCancel').onclick = function () { ui.advDraft = null; renderSheetPage(); };
   $('avSave').onclick = function () {
     var btn = $('avSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('avCancel').disabled = true;

@@ -1,8 +1,8 @@
 // Converte as planilhas de GURPS (Gurps/magias.csv, Gurps/advantages.csv, Gurps/desvantagens.csv,
-// Gurps/pericias.csv, Gurps/tecnicas.csv, Gurps/estilos.csv, Gurps/armas.csv, Gurps/armaduras.csv e
-// Gurps/itens.csv) nos arquivos que o site sincroniza: dados/magias.json, dados/vantagens.json,
-// dados/desvantagens.json, dados/pericias.json, dados/tecnicas.json, dados/estilos.json,
-// dados/armas.json, dados/armaduras.json e dados/itens.json.
+// Gurps/pericias.csv, Gurps/tecnicas.csv, Gurps/estilos.csv, Gurps/armas.csv, Gurps/armaduras.csv,
+// Gurps/itens.csv e Gurps/melhoramentos.csv) nos arquivos que o site sincroniza: dados/magias.json,
+// dados/vantagens.json, dados/desvantagens.json, dados/pericias.json, dados/tecnicas.json,
+// dados/estilos.json, dados/armas.json, dados/armaduras.json, dados/itens.json e dados/melhoramentos.json.
 //
 //   node tools/gurps-csv-para-json.mjs
 //
@@ -362,3 +362,26 @@ const items = uniqueIds(mergeSame(resolveDfReferences(parseCsv(readFileSync(path
     cost: r.custo, weight: r.peso, description: r.descricao, book: r.livro, page: code + r.pagina, code, pg: +r.pagina };
 })))).map(({ code, pg, ...x }) => x);
 write('itens.json', items);
+
+// ---------- melhoramentos ----------
+// The modifiers of weapons, shields, armor, clothing and other gear (Balanced, Fine, Dwarven,
+// Ornate, embroidery, the curses of magic items). appliesTo is the kind of gear (Arma, Escudo,
+// Armadura, Roupa, Item, Item mágico); cost is the cost factor ("+4 CF", "+2/+3/+9 CF"). The lines of
+// the quality tables of Dungeon Fantasy 8 have no text ("See Dungeon Fantasy 1, pp. 26-27"): they get
+// the one of the same modifier for the same kind of gear in Dungeon Fantasy 1 (or another book).
+const IMPROVEMENT_BOOKS = { ...ITEM_BOOKS, 'GURPS: Dungeon Fantasy 14: Psi': 'DF14' };
+// "Dwarven 2" is Dwarven, "Silver-Coated" is Silver, "Thieves' Mail" is Thieves', "Giant-Spider Silk" is Giant Spider Silk.
+const improvementKey = (s) => s.toLowerCase().replace(/[’']/g, '').replace(/-/g, ' ').replace(/\s+\d$/, '').replace(/ coated$| mail$/, '').trim();
+const improvements = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'melhoramentos.csv'), 'utf8')).map((r) => {
+  const code = bookCode(IMPROVEMENT_BOOKS, r.livro, 'melhoramentos.csv');
+  return { id: 'impr_' + slug(r.melhoramento) + '_' + code.toLowerCase() + r.pagina, name: r.melhoramento, tl: r.tl,
+    appliesTo: r.aplica_a, category: r.categoria, restriction: r.restricao, cost: r.custo, weight: r.peso,
+    description: r.descricao, book: r.livro, page: code + r.pagina };
+}));
+improvements.forEach((x) => {
+  if (x.description) return;
+  const k = improvementKey(x.name), from = (y) => y !== x && y.description && y.appliesTo === x.appliesTo && improvementKey(y.name) === k;
+  const t = improvements.find((y) => from(y) && y.book === 'GURPS: Dungeon Fantasy 1: Adventurers') || improvements.find(from);
+  if (t) x.description = `${t.name} (${t.page}): ${t.description}`;
+});
+write('melhoramentos.json', improvements);

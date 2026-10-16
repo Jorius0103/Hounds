@@ -33,6 +33,7 @@ function renderHomePage() {
     card('#armas', ICON.weapon, 'Armas', (W.loaded.weapons ? plural(W.weapons.length, 'arma', 'armas') : 'Armas dos livros')),
     card('#armaduras', ICON.armor, 'Armaduras', (W.loaded.armors ? plural(W.armors.length, 'armadura ou escudo', 'armaduras e escudos') : 'Armaduras e escudos')),
     card('#itens', ICON.item, 'Itens', (W.loaded.items ? plural(W.items.length, 'item', 'itens') : 'Equipamentos dos livros')),
+    card('#melhoramentos', ICON.improvement, 'Melhoramentos', (W.loaded.improvements ? plural(W.improvements.length, 'melhoramento', 'melhoramentos') : 'Modificadores de armas, armaduras e equipamentos')),
     card('#anotacoes', ICON.notes, 'Anotações', notesMeta)
   ];
   if (canManageUsers()) cards.push(card('#usuarios', ICON.users, 'Usuários', W.users.length ? plural(W.users.length, 'usuário', 'usuários') : 'Gerenciar quem entra no hub'));

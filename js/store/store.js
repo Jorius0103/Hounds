@@ -20,8 +20,9 @@
      spells, advantages,  only the Mestre's work: entries he created, and for an entry of the books
      disadvantages,       (dados/magias.json, dados/vantagens.json, dados/desvantagens.json, dados/pericias.json,
      skills, techniques,  dados/tecnicas.json, dados/estilos.json, dados/armas.json, dados/armaduras.json,
-     styles, weapons,     dados/itens.json; ids spell_*, adv_*, disadv_*, skill_*, tech_*, style_*, weapon_*,
-     armors, items        armor_*, item_*) his edits, visibility or deleted: true.
+     styles, weapons,     dados/itens.json, dados/melhoramentos.json; ids spell_*, adv_*, disadv_*, skill_*,
+     armors, items,       tech_*, style_*, weapon_*, armor_*, item_*, impr_*) his edits, visibility or
+     improvements         deleted: true.
                           See "Catálogos de GURPS" in mundo.js.
      events               { v, name, date, description, locationId, characterIds[], image{...}|null, createdAt, updatedAt }
    `position` on a location is reserved for coordinates inside its map.

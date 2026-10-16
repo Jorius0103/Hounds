@@ -89,12 +89,23 @@ interface SheetAttrs {
   st: number; dx: number; iq: number; ht: number;
   per: number; will: number; perBase: number; willBase: number; hp: number; fp: number; speed: number; move: number;
   enc: number; metal: number; spellPenalty: number;
+  /** Só nos atributos com os efeitos das vantagens (withAdvFx em js/tabs/ficha-efeitos.js): a base e o que cada efeito soma. */
+  fx?: { base: SheetAttrs; b: Record<string, any>; def: Record<string, any> };
 }
 
 /** Coleção `sheets` (fichas) de GURPS. Ligada a personagens por `Character.sheetId`. */
 interface Sheet extends Doc {
   name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[];
   equip?: SheetEquip[]; bodies?: SheetBody[]; packs?: SheetPack[]; armorSets?: ArmorSet[]; customWeapons?: CustomWeapon[]; customShields?: CustomShield[];
+  spells?: SheetSpell[];
+}
+/** Magia da aba Magia da ficha (veja js/tabs/ficha-magias.js): perícia de IQ, H ou VH, mostrada na tabela da escola `college` ('' : Sem escola). */
+interface SheetSpell {
+  name: string; college: string; diff: 'H' | 'VH'; pts: number; bonus: number;
+  /** Por que o bônus (só com bônus diferente de 0). */
+  bonusNote?: string;
+  /** Entrada de Mundo › Magias de onde a magia veio. */
+  spellId?: string;
 }
 /** Escudo de Criar Escudo (veja js/tabs/ficha-escudos.js): o escudo do livro (ou digitado) como era ao criar, os ajustes e o resultado. */
 interface CustomShield {
@@ -213,6 +224,19 @@ interface Advantage extends Doc {
   book?: string;
   page?: string;
   description?: string;
+  /** O que a vantagem soma ou tira na ficha de quem a tem (veja js/tabs/ficha-efeitos.js). */
+  effects?: AdvEffect[];
+}
+/** Efeito de uma vantagem na ficha. `key`: o atributo, a defesa ou o atributo das perícias; `names`: perícias, magias ou escolas. */
+interface AdvEffect {
+  target: 'attr' | 'def' | 'skill' | 'skillAttr' | 'skillAll' | 'spell' | 'college' | 'spellAll';
+  key: string; names: string[]; op: 'add' | 'sub'; value: number; perLevel: boolean;
+  /** O máximo que o efeito dá, depois dos níveis (null: sem limite). */
+  max: number | null;
+  /** false: entre os efeitos que não acumulam no mesmo campo, só o maior vale. */
+  stacks: boolean;
+  /** Com condição, o efeito é mostrado e não somado. */
+  cond: string; note: string;
 }
 
 /** Coleção `disadvantages` (desvantagens de GURPS). Ids `disadv_*` vêm de dados/desvantagens.json. */
@@ -380,6 +404,26 @@ interface GearItem extends Doc {
   page?: string;
 }
 
+/** Coleção `improvements` (melhoramentos de GURPS: modificadores de armas, escudos, armaduras, roupas e equipamentos). Ids `impr_*` vêm de dados/melhoramentos.json. */
+interface Improvement extends Doc {
+  name: string;
+  /** "1", "0-4"; vazio no Dungeon Fantasy. */
+  tl?: string;
+  /** O tipo de equipamento: Arma, Escudo, Armadura, Roupa, Item ou Item mágico. */
+  appliesTo?: string;
+  /** A seção do livro ("Weapons of Quality", "Soft Items Table"). */
+  category?: string;
+  /** A que equipamentos serve ("Any metal weapon"); com várias faixas de custo, "Metallic (+2 CF) / Nonmetallic (+6 CF)". */
+  restriction?: string;
+  /** O fator de custo ("+4 CF", "+2/+3/+9 CF") ou o que o livro diz ("×4", "+$20"). */
+  cost?: string;
+  /** O efeito no peso ("×2", "×3/4", "-10%", "+6 lbs."). */
+  weight?: string;
+  description?: string;
+  book?: string;
+  page?: string;
+}
+
 /** Coleção `notebooks` (títulos). */
 interface Notebook extends Doc { name: string }
 
@@ -452,14 +496,15 @@ interface World {
   weapons: Weapon[];
   armors: Armor[];
   items: GearItem[];
+  improvements: Improvement[];
   sheets: Sheet[];
   events: HEvent[];
   notebooks: Notebook[];
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[]; armorLocs: ArmorLoc[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; disadvantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; items: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; improvements: Improvement[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[]; armorLocs: ArmorLoc[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; disadvantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; items: boolean; improvements: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
@@ -473,6 +518,7 @@ interface World {
   weaponIdx: Record<string, Weapon>;
   armorIdx: Record<string, Armor>;
   itemIdx: Record<string, GearItem>;
+  improvementIdx: Record<string, Improvement>;
   sheetIdx: Record<string, Sheet>;
   eventIdx: Record<string, HEvent>;
   /** Pai efetivo de cada mapa. */
@@ -503,6 +549,7 @@ interface Route {
   weaponId?: string;
   armorId?: string;
   itemId?: string;
+  improvementId?: string;
   sheetId?: string;
   eventId?: string;
   nbId?: string;

@@ -8,7 +8,7 @@
 
 /* =====================================================================
    The catalogs (magias, vantagens, desvantagens, perícias, técnicas,
-   estilos, armas, armaduras, itens) are in English. dados/traducoes.json gives
+   estilos, armas, armaduras, itens, melhoramentos) are in English. dados/traducoes.json gives
    each name of the books its Portuguese one ("Fireball": "Bola de Fogo",
    with synonyms after "|": "Lightning": "Relâmpago|Raio"); it is fetched
    once, at the first search or when an entry's page shows its name.

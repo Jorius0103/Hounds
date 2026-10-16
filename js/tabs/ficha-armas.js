@@ -69,7 +69,7 @@ var WEAPON_ADJ = { p: 'wb', nums: [['dmg', 'Dano', '1'], ['nh', 'NH', '1'], ['co
 // sheet can use it neither way. title: how it was reached.
 function weaponNh(s, a, plus) {
   if (!s || (!a.skill && !a.defaults)) return null;
-  var av = attrValues(S.ui.attrDraft || sheetAttrs(s)), pool = combatSkillPool(sheetCombat(s), s), best = null;
+  var av = attrValues(sheetAttrsNow(s)), pool = combatSkillPool(sheetCombat(s), s), best = null;
   function lvl(k) { var x = cleanCombatItem(Object.assign({}, k, { kind: 'skill' })); x.tbonus = k.tbonus; var nh = combatNh(x, pool, av); return nh && nh.abs != null ? nh.abs : null; }
   var k = a.skill ? scFindSkill(pool, a.skill) : null, v = k ? lvl(k) : null;
   if (v != null) best = { v: v, from: k.name + ' ' + v };
@@ -91,7 +91,7 @@ function weaponDice(dmg, st) {
   if (!m) return String(dmg || '');
   return dmgAdd(gurpsDamage(Math.max(1, st))[m[1].toLowerCase()], m[2] ? +m[2] : 0) + m[3];
 }
-function weaponSt(s) { return s ? (S.ui.attrDraft || sheetAttrs(s)).st : 10; }
+function weaponSt(s) { return s ? sheetAttrsNow(s).st : 10; }
 // The Dano cell: the dice for the sheet's ST, the formula below; the hover says where it came from.
 function weaponDmgCell(s, a) {
   var st = weaponSt(s), dice = weaponDice(a.damage, st), changed = a.damage !== a.baseDamage;

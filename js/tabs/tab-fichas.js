@@ -38,7 +38,7 @@ Ops.saveSheet = function (s, fields) {
   var body = { v: 1, name: name, description: (fields.description || '').trim(), visible: fields.visible !== false, sharedWith: fields.sharedWith || (s && s.sharedWith) || [],
     createdBy: owner(s), createdAt: (s && s.createdAt) || t, updatedAt: t };
   // put replaces the whole document: attributes and skills are edited apart and must survive a rename.
-  ['attrs', 'skills', 'cultures', 'combat', 'advs', 'equip', 'bodies', 'packs', 'armorSets', 'customWeapons', 'customShields'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  ['attrs', 'skills', 'cultures', 'spells', 'combat', 'advs', 'equip', 'bodies', 'packs', 'armorSets', 'customWeapons', 'customShields'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
   return W.store.put('sheets', s ? s.id : null, body);
 };
 Ops.saveSheetAttrs = function (s, a) {
@@ -121,10 +121,11 @@ function gurpsDamage(st) {
   var row = DMG_HIGH.filter(function (r) { return r[0] <= st; }).pop() || [40, DMG_THR[39], DMG_SW[39]];
   return { thr: row[1], sw: row[2] };
 }
+// a may carry the advantages' effects (withAdvFx): the values come from it, the points from its base.
 function gurpsStats(a) {
-  var speed = (a.ht + a.dx) / 4 + a.speed, move = Math.max(0, Math.floor(speed) + a.move), bl = a.st * a.st / 5;
-  var cost = { st: (a.st - 10) * 10, dx: (a.dx - 10) * 20, iq: (a.iq - 10) * 20, ht: (a.ht - 10) * 10, per: a.per * 5, will: a.will * 5,
-    hp: a.hp * 2, fp: a.fp * 3, speed: a.speed * 20, move: a.move * 5 };
+  var speed = (a.ht + a.dx) / 4 + a.speed, move = Math.max(0, Math.floor(speed) + a.move), bl = a.st * a.st / 5, p = a.fx ? a.fx.base : a;
+  var cost = { st: (p.st - 10) * 10, dx: (p.dx - 10) * 20, iq: (p.iq - 10) * 20, ht: (p.ht - 10) * 10, per: p.per * 5, will: p.will * 5,
+    hp: p.hp * 2, fp: p.fp * 3, speed: p.speed * 20, move: p.move * 5 };
   var attrPts = cost.st + cost.dx + cost.iq + cost.ht + cost.per + cost.will, secPts = cost.hp + cost.fp + cost.speed + cost.move;
   return {
     per: a.perBase + a.per, will: a.willBase + a.will, hp: a.st + a.hp, fp: a.ht + a.fp, speed: speed, move: move,
@@ -163,14 +164,31 @@ function attrInput(k, label, a, r) {
   return '<input class="attr-in" type="number" inputmode="decimal" data-k="' + k + '" aria-label="' + esc(label) + '" value="' + attrValue(k, a, r) + '"' +
     ' step="' + (k === 'speed' ? '0.25' : k === 'metal' ? '0.1' : '1') + '"' + (free ? ' min="' + lim[0] + '" max="' + lim[1] + '"' : '') + '>';
 }
-function attrRowsHtml(rows, a, r, editing) {
+// e and re: the attributes with the advantages' effects (withAdvFx) and their stats. Out of the
+// editor the value is the final one, with the base and the bonus under it; in the editor the field
+// is the base and the bonus is beside it.
+function attrRowsHtml(rows, a, r, editing, e, re) {
   return rows.map(function (row) {
-    var k = row[0], pts = r.cost[k];
+    var k = row[0], pts = r.cost[k], fx = attrFxInfo(k, a, r, e, re);
     var sub = ATTR_BASES[k] ? attrBaseHtml(k, a, editing) : row[2] ? esc(row[2]) : '';
     return '<tr><td><b>' + esc(row[1]) + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</td>' +
-      '<td class="gval">' + (editing ? attrInput(k, row[1], a, r) : attrValueText(k, a, r)) + '</td>' +
+      '<td class="gval' + (fx ? ' fx' : '') + '"' + (fx ? ' title="' + esc(fx.title) + '"' : '') + '>' +
+      (editing ? attrInput(k, row[1], a, r) + (fx ? '<span class="gnote fxnote">' + esc(fx.short) + '</span>' : '')
+        : attrValueText(k, e, re) + (fx ? '<span class="gnote fxnote">' + esc(fx.note) + '</span>' : '')) + '</td>' +
       '<td class="gpts' + (pts == null ? ' none' : '') + '" data-pts="' + k + '">' + (pts == null ? '—' : pts) + '</td></tr>';
   }).join('');
+}
+// What the advantages do to a row: null when nothing. note: "base 10 · +1 de vantagens"; title: each source.
+function attrFxInfo(k, a, r, e, re) {
+  var own = e.fx && e.fx.b[k], bv = attrValue(k, a, r), fv = attrValue(k, e, re);
+  if (k === 'move') { bv = Math.max(0, r.move - a.enc); fv = Math.max(0, re.move - e.enc); }
+  if (bv === fv && fxEmpty(own)) return null;
+  function fmt(v) { return k === 'speed' ? fmtDec(v, 2) : String(v); }
+  var d = Math.round((fv - bv) * 100) / 100, parts = own ? fxParts(own) : [];
+  if (d !== (own ? own.n : 0)) parts.push((d - (own ? own.n : 0) > 0 ? '+' : '') + fmt(Math.round((d - (own ? own.n : 0)) * 100) / 100) + ' de outro atributo mudado por vantagem');
+  return { note: 'base ' + fmt(bv) + (d ? ' · ' + (d > 0 ? '+' : '') + fmt(d) + ' de vantagens' : '') + (own && own.conds.length ? ' · condicional' : ''),
+    short: (d ? (d > 0 ? '+' : '') + fmt(d) + ' de vantagens' : 'condicional'),
+    title: 'Base ' + fmt(bv) + ' · ' + parts.join(' · ') + ' = ' + fmt(fv) };
 }
 function gurpsDerivedHtml(a, r) {
   function stat(label, val, note) { return '<div class="gstat"><span>' + label + '</span><strong>' + val + '</strong>' + (note ? '<small>' + note + '</small>' : '') + '</div>'; }
@@ -180,16 +198,16 @@ function gurpsDerivedHtml(a, r) {
     stat('Dano', r.dmg.thr + ' / ' + r.dmg.sw, 'Estocada / Balanço');
 }
 function sheetAttrsHtml(s, a, editing) {
-  var r = gurpsStats(a), can = canWrite();
+  var r = gurpsStats(a), e = withAdvFx(s, a), re = gurpsStats(e), can = canWrite();
   return '<section class="gurps" id="gurps"><div class="gurps-head"><h2 class="sec-title">Atributos</h2><span class="gurps-total" id="gTotal">' + r.total + ' pts</span>' +
     (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="attrCancel">Cancelar</button><button class="btn primary" type="button" id="attrSave">Salvar atributos</button></div>'
       : can ? '<div class="btn-row"><button class="btn" type="button" id="attrEdit">' + svg(ICON.edit, 15) + 'Editar atributos</button></div>' : '') + '</div>' +
     '<div class="gurps-grid">' +
-    '<table class="gtab"><thead><tr><th>Atributo</th><th>Valor</th><th>Pontos</th></tr></thead><tbody>' + attrRowsHtml(ATTR_ROWS, a, r, editing) + '</tbody>' +
+    '<table class="gtab"><thead><tr><th>Atributo</th><th>Valor</th><th>Pontos</th></tr></thead><tbody>' + attrRowsHtml(ATTR_ROWS, a, r, editing, e, re) + '</tbody>' +
     '<tfoot><tr><td colspan="2">Total pontos atributos</td><td class="gpts" data-tot="attr">' + r.attrPts + '</td></tr></tfoot></table>' +
-    '<table class="gtab"><thead><tr><th>Dados</th><th>Valor</th><th>Pontos</th></tr></thead><tbody>' + attrRowsHtml(SEC_ROWS, a, r, editing) + '</tbody>' +
+    '<table class="gtab"><thead><tr><th>Dados</th><th>Valor</th><th>Pontos</th></tr></thead><tbody>' + attrRowsHtml(SEC_ROWS, a, r, editing, e, re) + '</tbody>' +
     '<tfoot><tr><td colspan="2">Total pontos dados</td><td class="gpts" data-tot="sec">' + r.secPts + '</td></tr></tfoot></table></div>' +
-    '<div class="gurps-derived" id="gDerived">' + gurpsDerivedHtml(a, r) + '</div>' +
+    '<div class="gurps-derived" id="gDerived">' + gurpsDerivedHtml(e, re) + '</div>' +
     (editing ? '<div class="form-err" id="attrErr" role="alert"></div>' : '') + '</section>';
 }
 // While editing, S.ui.attrDraft holds the attributes being changed; each keystroke recomputes
@@ -206,7 +224,7 @@ function wireSheetAttrs(s) {
     box.querySelector('[data-tot="attr"]').textContent = String(r.attrPts);
     box.querySelector('[data-tot="sec"]').textContent = String(r.secPts);
     $('gTotal').textContent = r.total + ' pts';
-    $('gDerived').innerHTML = gurpsDerivedHtml(d, r);
+    var e = withAdvFx(s, d); $('gDerived').innerHTML = gurpsDerivedHtml(e, gurpsStats(e));
   }
   box.querySelectorAll('.attr-in').forEach(function (inp) {
     inp.addEventListener('input', function () {
@@ -294,7 +312,7 @@ function skillRel(k) {
 function skillBonusTitle(k) {
   var p = [];
   if (k.bonus) p.push(bonusText(k.bonus, k.bonusNote));
-  if (k.tbonus) p.push(k.tfrom || '+' + k.tbonus + ' das vantagens');
+  if (k.tbonus || k.tfrom) p.push(k.tfrom || '+' + k.tbonus + ' das vantagens');
   return p.length ? 'Inclui ' + p.join(' e ') : '';
 }
 function attrValues(a) { var r = gurpsStats(a); return { ST: a.st, DX: a.dx, IQ: a.iq, HT: a.ht, Per: r.per, Will: r.will }; }
@@ -387,7 +405,7 @@ function cultureEditRow(c, i) {
 }
 function sheetSkillsHtml(s, editing) {
   var d = S.ui.skillDraft, skills = editing ? d.skills : sheetSkills(s), cultures = editing ? d.cultures : sheetCultures(s);
-  var av = attrValues(S.ui.attrDraft || sheetAttrs(s)), can = canWrite();
+  var av = attrValues(sheetAttrsNow(s)), can = canWrite();
   var head = '<div class="gurps-head"><h2 class="sec-title">Perícias</h2><span class="gurps-total" id="skTotal">' + skillsTotal(skills, cultures) + ' pts</span>' +
     (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="skCancel">Cancelar</button><button class="btn primary" type="button" id="skSave">Salvar perícias</button></div>'
       : can && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="skEdit">' + svg(ICON.edit, 15) + 'Editar perícias</button></div>' : '') + '</div>';
@@ -417,7 +435,7 @@ function sheetSkillsHtml(s, editing) {
 // While a points field has focus, data that arrives does not redraw the page (see onData in app.js);
 // leaving it redraws the page if something arrived meanwhile.
 function wireQuickPts(s, box) {
-  var ui = S.ui, av = attrValues(ui.attrDraft || sheetAttrs(s)), list = applyTalents(sheetSkills(s), s), cultures = sheetCultures(s), edits = {}, timer = 0;
+  var ui = S.ui, av = attrValues(sheetAttrsNow(s)), list = applyTalents(sheetSkills(s), s), cultures = sheetCultures(s), edits = {}, timer = 0;
   if (!box.querySelector('.gpts-in')) return;
   function paintTotals() {
     $('skTotal').textContent = skillsTotal(list, cultures) + ' pts';
@@ -481,7 +499,7 @@ function wireSheetSkills(s) {
   };
   if (!ui.skillDraft && $('skills')) wireQuickPts(s, $('skills'));
   var d = ui.skillDraft, box = $('skills'); if (!d || !box || !$('skSave')) return;
-  var av = attrValues(ui.attrDraft || sheetAttrs(s));
+  var av = attrValues(sheetAttrsNow(s));
   box.addEventListener('input', onEdit); box.addEventListener('change', onEdit);
   function paintRow(i) {
     var k = applyTalents([cleanSkill(d.skills[i])], s)[0], cell = box.querySelector('[data-nh="' + i + '"]'), rules = box.querySelector('[data-rules="' + i + '"]');
@@ -611,7 +629,7 @@ function renderSheetList() {
 /* =====================================================================
    Page: single sheet
    ===================================================================== */
-var SHEET_TABS = [{ key: 'sheet', label: 'Ficha' }, { key: 'equip', label: 'Equip.' }];
+var SHEET_TABS = [{ key: 'sheet', label: 'Ficha' }, { key: 'equip', label: 'Equip.' }, { key: 'magic', label: 'Magia' }];
 function renderSheetPage() {
   var s = sheetById(S.route.sheetId), ui = S.ui;
   if (!s) {
@@ -630,14 +648,14 @@ function renderSheetPage() {
   var side = foldBox('chars', 'Personagens', chars.length,
     (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px;margin:0">Nenhum personagem vinculado.</p>') +
     (can ? '<div style="margin-top:10px"><button class="btn" type="button" id="sheetCharsBtn">' + svg(ICON.user, 15) + (chars.length ? 'Trocar personagem' : 'Vincular personagem') + '</button></div>' : ''));
-  // Two tabs: everything but the equipment, and the equipment. Only the open one is drawn (the
-  // wire* functions skip a section that isn't there); a draft in the other survives the switch.
-  var tab = ui.sheetTab === 'equip' ? 'equip' : 'sheet';
+  // Three tabs: everything but the equipment and the spells, the equipment, and the spells. Only the
+  // open one is drawn (the wire* functions skip a section that isn't there); a draft in another survives the switch.
+  var tab = ui.sheetTab === 'equip' || ui.sheetTab === 'magic' ? ui.sheetTab : 'sheet';
   var tabs = '<div class="seg" role="tablist" aria-label="Seção da ficha">' + SHEET_TABS.map(function (t) {
     var on = t.key === tab;
     return '<button type="button" role="tab" data-stab="' + t.key + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '">' + t.label + '</button>';
   }).join('') + '</div>';
-  pageRoot.innerHTML = head + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetGearHtml(s)
+  pageRoot.innerHTML = head + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetGearHtml(s) : tab === 'magic' ? sheetSpellsHtml(s, !!ui.spellDraft && can)
     : sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
       sheetCombatHtml(s, !!ui.combatDraft && can) + sheetDmgDefHtml(s) + sheetAdvsHtml(s, !!ui.advDraft && can) + main);
   pageRoot.querySelectorAll('[data-stab]').forEach(function (b) {
@@ -657,6 +675,7 @@ function renderSheetPage() {
   wireSheetDefense(s);
   wireSheetAdvs(s);
   wireSheetEquip(s);
+  wireSheetSpells(s);
   var cb = $('sheetCharsBtn'); if (cb) cb.onclick = function () { openSheetCharsForm(s); };
   var e = $('editSheetBtn'); if (e) e.onclick = function () { openSheetForm(s); };
   var d = $('delSheetBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderSheetPage(); };

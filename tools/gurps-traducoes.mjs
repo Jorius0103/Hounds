@@ -14,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CATALOGOS = ['magias', 'vantagens', 'desvantagens', 'pericias', 'tecnicas', 'estilos', 'armas', 'armaduras', 'itens'];
+const CATALOGOS = ['magias', 'vantagens', 'desvantagens', 'pericias', 'tecnicas', 'estilos', 'armas', 'armaduras', 'itens', 'melhoramentos'];
 const arquivo = path.join(ROOT, 'dados', 'traducoes.json');
 const traducoes = JSON.parse(readFileSync(arquivo, 'utf8'));
 

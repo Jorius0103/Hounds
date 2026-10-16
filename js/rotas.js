@@ -12,6 +12,7 @@
      #fichas · #ficha~<id> · #eventos · #evento~<id>
      #pericia~<id> is a skill under Perícias; #pericia-combate~<id> the same page under Combate
      #desvantagens · #desvantagem~<id> · #armas · #arma~<id> · #armaduras · #armadura~<id> · #itens · #item~<id>
+     #melhoramentos · #melhoramento~<id>
    ===================================================================== */
 function parseRoute() {
   var h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
@@ -46,6 +47,8 @@ function parseRoute() {
   if (p[0] === 'armadura' && p[1]) return { page: 'armor', armorId: p[1], node: 'armor:' + p[1] };
   if (p[0] === 'itens') return { page: 'items', node: 'items' };
   if (p[0] === 'item' && p[1]) return { page: 'item', itemId: p[1], node: 'item:' + p[1] };
+  if (p[0] === 'melhoramentos') return { page: 'improvements', node: 'improvements' };
+  if (p[0] === 'melhoramento' && p[1]) return { page: 'improvement', improvementId: p[1], node: 'impr:' + p[1] };
   if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
   if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
   if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
@@ -88,6 +91,8 @@ function hrefFor(node) {
   if (node.indexOf('armor:') === 0) return '#armadura~' + encodeURIComponent(node.slice(6));
   if (node === 'items') return '#itens';
   if (node.indexOf('item:') === 0) return '#item~' + encodeURIComponent(node.slice(5));
+  if (node === 'improvements') return '#melhoramentos';
+  if (node.indexOf('impr:') === 0) return '#melhoramento~' + encodeURIComponent(node.slice(5));
   return '#';
 }
 function mapHref(id) { return hrefFor('map:' + id); }

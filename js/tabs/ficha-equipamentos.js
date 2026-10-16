@@ -334,7 +334,7 @@ function gearLoadCatalogs(g) {
   });
 }
 function sheetGearHtml(s) {
-  var ui = S.ui, can = canWrite(), g = gearNow(s), saved = sheetGear(s), L = gearLoad(g), a = ui.attrDraft || sheetAttrs(s);
+  var ui = S.ui, can = canWrite(), g = gearNow(s), saved = sheetGear(s), L = gearLoad(g), a = sheetAttrsNow(s);
   gearLoadCatalogs(saved);
   // Criar (Armadura, Arma, Escudo, Item) first, then the list (Meus Itens), the body and the packs; the load they give last.
   return sheetCreateHtml(s, saved) + sheetInvHtml(g, L, can && !gearEditing()) +
@@ -412,7 +412,7 @@ function sheetLoadHtml(L, a) {
 }
 // While a list is edited, the load and the totals follow what is typed (the rest redraws on save).
 function paintGear(s) {
-  var g = gearNow(s), L = gearLoad(g), a = S.ui.attrDraft || sheetAttrs(s);
+  var g = gearNow(s), L = gearLoad(g), a = sheetAttrsNow(s);
   $('gearTotal').textContent = eqLbs(L.total);
   $('gearStats').innerHTML = gearLoadStatsHtml(L, a);
   $('gearNotes').innerHTML = gearOverHtml(L);

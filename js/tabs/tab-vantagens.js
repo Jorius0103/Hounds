@@ -47,6 +47,8 @@ Ops.saveAdvantage = function (adv, fields) {
     book: (fields.book || '').trim(),
     page: (fields.page || '').trim(),
     description: (fields.description || '').trim(),
+    // What it does on the sheets (see ficha-efeitos.js).
+    effects: (fields.effects || (adv && adv.effects) || []).map(cleanAdvEffect).filter(advEffectOk),
     visible: fields.visible !== false,
     sharedWith: fields.sharedWith || (adv && adv.sharedWith) || [],
     createdBy: owner(adv),
@@ -148,7 +150,8 @@ function renderAdvantagePage() {
     (can ? '<div class="btn-row">' + (a.catalog && rawHas('advantages', a.id) ? '<button class="btn" type="button" id="restoreAdvBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editAdvBtn">' + svg(ICON.edit, 15) + 'Editar vantagem</button><button class="btn danger" type="button" id="delAdvBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a vantagem <b>' + esc(a.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delAdvYes">Excluir vantagem</button><button class="btn ghost" type="button" id="delAdvNo">Cancelar</button></div></div>' : '');
-  var main = '<section><h2 class="sec-title">Descrição</h2>' + (a.description ? '<p class="long">' + esc(a.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') + '</section>';
+  var main = '<section><h2 class="sec-title">Descrição</h2>' + (a.description ? '<p class="long">' + esc(a.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') + '</section>' +
+    advEffectsHtml(a, can, 'h2');
   // Open when the page opens; a click on its title closes it (see foldBox).
   var side = foldBox('params', 'Parâmetros', null, '<dl class="facts">' +
     '<dt>Custo</dt><dd>' + (a.cost ? esc(a.cost) : '<span class="none">—</span>') + '</dd>' +
@@ -172,6 +175,40 @@ function renderAdvantagePage() {
   };
 }
 
+/* ---------- effects (see ficha-efeitos.js) ---------- */
+// The effects of an entry, for its page and modal: a list, or nothing (the Mestre sees how to add them).
+function advEffectsHtml(a, can, h) {
+  var fx = advEffects(a);
+  if (!fx.length) return can ? '<section><' + h + ' class="sec-title">Efeitos na ficha</' + h + '><p class="long none">Nenhum efeito cadastrado. Use <b>Editar vantagem</b> para dizer o que ela soma na ficha.</p></section>' : '';
+  return '<section><' + h + ' class="sec-title">Efeitos na ficha</' + h + '><ul class="fx-list">' + fx.map(function (e) {
+    return '<li><b>' + esc(advEffectText(e)) + '</b>' + (e.note ? '<small>' + esc(e.note) + '</small>' : '') + '</li>';
+  }).join('') + '</ul>' + (ADV_FX_BUILTIN_RE.test(a.name) ? '<p class="hint-text">A ficha já aplica esta vantagem sozinha; estes efeitos não são somados.</p>' : '') + '</section>';
+}
+function advFxEditRow(e, i) {
+  var keys = advFxKeys(e.target);
+  function opt(list, v) { return list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (x[0] === v ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join(''); }
+  var ph = { skill: 'Perícias. Ex.: Judo, Karate, Sumo Wrestling', spell: 'Magias. Ex.: Fireball, Ignite Fire', college: 'Escolas. Ex.: Fire, Water' }[e.target];
+  return '<div class="fx-row" data-n="' + i + '"><div class="fx-line">' +
+    '<select data-x="target" aria-label="Alvo do efeito ' + (i + 1) + '">' + opt(ADV_FX_TARGETS, e.target) + '</select>' +
+    (keys.length ? '<select data-x="key" aria-label="Campo">' + opt(keys, e.key) + '</select>'
+      : ph ? '<input type="text" data-x="names" maxlength="1000" placeholder="' + esc(ph) + '" aria-label="Nomes" value="' + esc(e.names.join(', ')) + '">' : '<span class="fx-all"></span>') +
+    '<select data-x="op" aria-label="Operação"><option value="add"' + (e.op === 'add' ? ' selected' : '') + '>+ soma</option><option value="sub"' + (e.op === 'sub' ? ' selected' : '') + '>− tira</option></select>' +
+    '<input type="number" data-x="value" min="0" max="99" step="1" inputmode="numeric" aria-label="Valor" title="Valor" value="' + e.value + '">' +
+    '<input type="number" data-x="max" min="0" max="99" step="1" inputmode="numeric" placeholder="máx." aria-label="Máximo (vazio: sem limite)" title="Máximo (vazio: sem limite)" value="' + (e.max == null ? '' : e.max) + '">' +
+    '<label class="fx-chk" title="O valor vale para cada nível da vantagem"><input type="checkbox" data-x="perLevel"' + (e.perLevel ? ' checked' : '') + '>por nível</label>' +
+    '<label class="fx-chk" title="Soma com os outros efeitos no mesmo campo; sem marcar, só o maior vale"><input type="checkbox" data-x="stacks"' + (e.stacks ? ' checked' : '') + '>acumula</label>' +
+    '<button class="icon-btn" type="button" data-xdel="' + i + '" aria-label="Remover efeito ' + (i + 1) + '" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>' +
+    '<div class="fx-line2"><input type="text" data-x="cond" maxlength="200" placeholder="Condição (opcional). Ex.: ao resistir a venenos" aria-label="Condição" value="' + esc(e.cond) + '">' +
+    '<input type="text" data-x="note" maxlength="300" placeholder="Descrição do efeito (opcional)" aria-label="Descrição do efeito" value="' + esc(e.note) + '"></div></div>';
+}
+// A row of the editor as it is now (not cleaned: cleanAdvEffect does that on save).
+function advFxReadRow(row) {
+  function v(k) { var el = row.querySelector('[data-x="' + k + '"]'); return el ? el.value : ''; }
+  function on(k) { var el = row.querySelector('[data-x="' + k + '"]'); return !!(el && el.checked); }
+  return { target: v('target'), key: v('key'), names: v('names'), op: v('op'), value: v('value'), max: v('max'), perLevel: on('perLevel'), stacks: on('stacks'),
+    cond: v('cond'), note: v('note') };
+}
+
 /* =====================================================================
    Form: advantage (Mestre)
    ===================================================================== */
@@ -190,23 +227,56 @@ function openAdvantageForm(a) {
     '<datalist id="advBookList">' + advValues('book').map(function (b) { return '<option value="' + esc(b) + '">'; }).join('') + '</datalist></div>' +
     '<div class="field"><label for="apage">Página</label><input type="text" id="apage" maxlength="30" placeholder="Ex.: B43, MA49" value="' + val('page') + '"></div></div>' +
     '<div class="field"><label for="adesc">Descrição</label><textarea id="adesc" rows="6" maxlength="20000" placeholder="O que a vantagem faz, níveis, limitações…">' + val('description') + '</textarea></div>' +
+    '<fieldset class="fx-box"><legend>Efeitos na ficha</legend>' +
+    '<p class="hint-text" style="margin:0">O que a vantagem soma ou tira na ficha de quem a tiver, em Vantagens ou nos traços de Combate. Os valores-base da ficha não mudam: o bônus aparece separado e sai junto com a vantagem. ' +
+    'Por nível: o valor vale para cada nível da vantagem na ficha. Máx.: o máximo que o efeito dá. Sem “acumula”, entre os efeitos que não acumulam no mesmo campo só o maior vale. ' +
+    'Com condição, o efeito aparece ao lado do campo mas não é somado. Nomes separados por vírgula; com * no fim, todos os que começam assim (Guns* pega Guns (Pistol)).</p>' +
+    '<p class="hint-text av-warn" id="afFxBuiltin" style="margin:0"' + (editing && ADV_FX_BUILTIN_RE.test(a.name) ? '' : ' hidden') + '>A ficha já aplica Combat Reflexes, Enhanced Defenses, Magery e talentos sozinha: efeitos cadastrados nelas não são somados, para não contar duas vezes.</p>' +
+    '<div id="afFx"></div><div><button class="btn" type="button" id="afFxAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar efeito</button></div></fieldset>' +
     flagHtml('avis', a, true) +
     '<div class="form-err" id="afErr" role="alert"></div>' +
     '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="afCancel">Cancelar</button><button class="btn primary" type="submit" id="afSave">' + (editing ? 'Salvar vantagem' : 'Criar vantagem') + '</button></div></form>';
   showModal(html);
   modal.setAttribute('aria-labelledby', 'afTitle');
   var name = $('aname');
-  name.addEventListener('input', function () { if (name.value.trim()) { $('err_aname').textContent = ''; $('f_aname').classList.remove('invalid'); } });
+  name.addEventListener('input', function () {
+    if (name.value.trim()) { $('err_aname').textContent = ''; $('f_aname').classList.remove('invalid'); }
+    $('afFxBuiltin').hidden = !ADV_FX_BUILTIN_RE.test(name.value.trim());
+  });
+  // The effects being edited: read from the rows before each redraw of the list.
+  var fx = editing ? advEffects(a) : [], box = $('afFx');
+  function paintFx() { box.innerHTML = fx.length ? fx.map(function (e, i) { return advFxEditRow(cleanAdvEffect(e), i); }).join('') : '<p class="hint-text" style="margin:0">Nenhum efeito: a vantagem não muda nada na ficha.</p>'; }
+  function readFx() { fx = [].map.call(box.querySelectorAll('.fx-row'), advFxReadRow); }
+  paintFx();
+  box.addEventListener('change', function (e) {
+    var t = /** @type {AnyEl} */ (e.target);
+    if (t && t.getAttribute('data-x') === 'target') { readFx(); var i = +t.closest('.fx-row').getAttribute('data-n'); fx[i].key = ''; paintFx(); var f = box.querySelector('[data-n="' + i + '"] [data-x="target"]'); if (f instanceof HTMLElement) f.focus(); }
+  });
+  box.addEventListener('click', function (e) {
+    var b = /** @type {AnyEl} */ (e.target).closest('[data-xdel]'); if (!b) return;
+    readFx(); fx.splice(+b.getAttribute('data-xdel'), 1); paintFx();
+  });
+  $('afFxAdd').onclick = function () {
+    readFx(); fx.push(cleanAdvEffect({ target: 'attr', key: 'st', value: 1 })); paintFx();
+    var l = box.querySelectorAll('[data-x="target"]'), f = l[l.length - 1]; if (f instanceof HTMLElement) f.focus();
+  };
   $('afCancel').onclick = function () { closeModal(); };
   $('advForm').onsubmit = function (e) {
     e.preventDefault();
     if (modalOpen.busy) return;
     var n = name.value.trim();
     if (!n) { $('err_aname').textContent = 'Informe o nome da vantagem.'; $('f_aname').classList.add('invalid'); name.focus(); return; }
+    readFx();
+    var effects = fx.map(cleanAdvEffect), bad = effects.map(advEffectOk).indexOf(false);
+    if (bad >= 0) {
+      $('afErr').textContent = 'Efeito ' + (bad + 1) + ': escreva ' + ({ skill: 'as perícias', spell: 'as magias', college: 'as escolas' })[effects[bad].target] + ', separadas por vírgula.';
+      var nf = box.querySelector('[data-n="' + bad + '"] [data-x="names"]'); if (nf instanceof HTMLElement) nf.focus();
+      return;
+    }
     modalOpen.busy = true;
     var btn = $('afSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('afCancel').disabled = true; $('afErr').textContent = '';
     Ops.saveAdvantage(a, { name: n, cost: $('acost').value, type: $('atype').value, book: $('abook').value, page: $('apage').value, description: $('adesc').value,
-      visible: flagVal('avis', a), sharedWith: shareVal('avis', a) }).then(function (id) {
+      effects: effects, visible: flagVal('avis', a), sharedWith: shareVal('avis', a) }).then(function (id) {
       closeModal(true);
       toast(editing ? 'Vantagem salva.' : 'Vantagem criada.');
       if (!editing) go(advHref(id));
@@ -230,6 +300,7 @@ function openAdvModal(id) {
       '<span class="spell-badge ' + advTypeClass(a.type) + '">' + esc(advTypeLabel(a.type)) + '</span></div>' +
       '<h2 id="advModalTitle">' + esc(a.name) + '</h2><p class="lede">' + (a.cost ? esc(a.cost) : 'Custo não informado') + '</p></div>' +
       '<h3 class="sec-title">Descrição</h3>' + (a.description ? '<p class="long">' + esc(a.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') +
+      advEffectsHtml(a, false, 'h3') +
       '<p class="hint-text">' + esc([a.book, a.page ? 'p. ' + a.page : ''].filter(Boolean).join(' · ')) + '</p>' +
       '<div class="btn-row" style="justify-content:flex-end"><a class="btn" href="' + advHref(a.id) + '"' + away + ' id="advModalPage">Abrir página da vantagem</a></div>';
     modal.setAttribute('aria-labelledby', 'advModalTitle');

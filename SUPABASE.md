@@ -21,7 +21,7 @@ A estrutura do banco está nas migrations versionadas de [supabase/migrations/](
 | `organizacoes` | Organizações. | — |
 | `eventos` | Eventos. A data é `data_texto` (texto livre, no calendário da campanha). | `local_id` → `locais`. |
 | `cadernos`, `anotacoes` | Títulos e anotações. | `anotacoes.caderno_id` → `cadernos` (exclusão em cascata). |
-| `magias`, `vantagens`, `desvantagens`, `pericias`, `tecnicas`, `estilos`, `armas`, `armaduras`, `itens` | O que o Mestre criou ou mudou nos catálogos (os livros continuam em `dados/*.json`). | Os ataques de cada arma em `arma_ataque`. |
+| `magias`, `vantagens`, `desvantagens`, `pericias`, `tecnicas`, `estilos`, `armas`, `armaduras`, `itens`, `melhoramentos` | O que o Mestre criou ou mudou nos catálogos (os livros continuam em `dados/*.json`). | Os ataques de cada arma em `arma_ataque`. |
 | `armadura_localizacoes` | Dados de referência de Criar Armadura (GURPS Low-Tech, pp. 100-101): as localizações com o percentual do tronco, as subdivisões e as partes do corpo. Vêm da migration; só o Mestre pode mudá-las. | `pai` → `armadura_localizacoes`; as peças apontam para a localização. |
 | `mesa_estado`, `mesa_partes` | Estado da Mesa de Combate, num registro só (veja a seção 6). | — |
 
@@ -85,6 +85,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | 21 | `20261029120000_corpo_oito_partes.sql` | Corpo com 8 partes (Cabeça, Pescoço, Tronco, Virilha, Braços, Mãos, Pernas, Pés) só para armaduras, e armas, escudos e itens fora das partes (`carry`). Converte o que já está no corpo e as localizações de Criar Armadura. Pode rodar de novo sem efeito. |
 | 22 | `20261030120000_ficha_criar_escudo.sql` | Criar Escudo: tabelas `ficha_escudo` (o escudo do livro ou digitado como era ao criar, o resultado e a linha da lista que é o escudo) e `ficha_escudo_mod` (os ajustes: BD, RD, NH, custo em $ e peso em %). **Rode antes de publicar** a versão do site com Criar Escudo. |
 | 23 | `20261031120000_mochila_uma_em_uso.sql` | Mochilas: só uma em uso por ficha (índice único, como o Corpo). Numa ficha que já tem mais de uma em uso, fica a primeira; as outras passam a guardadas. **Rode antes de publicar** a versão do site com as abas de Mochilas. |
+| 26 | `20261103120000_melhoramentos.sql` | Catálogo de melhoramentos (modificadores de armas, escudos, armaduras, roupas e equipamentos: Balanced, Fine, Dwarven, Ornate...): tabela `melhoramentos`, view e gravação. **Rode antes de publicar** a versão do site com a aba Melhoramentos, que lê essa tabela. |
 
 **Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
 

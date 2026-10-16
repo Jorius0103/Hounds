@@ -368,6 +368,39 @@ function renderSpellPage() {
   }
 }
 
+// The rules of a spell in a modal, for links elsewhere (Ficha › Magia): <a href="#magia~id"
+// data-spell-modal="id">. A plain click opens the modal; Ctrl/middle click still opens the page.
+function openSpellModal(id) {
+  showModal('<div class="skill-modal" id="spellModal"><p class="lede">Carregando magia…</p></div>');
+  function fact(label, v) { return v ? '<dt>' + label + '</dt><dd>' + esc(v) + '</dd>' : ''; }
+  function paint() {
+    var box = $('spellModal'); if (!box) return;
+    var s = spellById(id);
+    if (!s) { box.innerHTML = '<h2>Magia não encontrada</h2><p class="lede">Essa magia pode ter sido excluída ou ocultada.</p>'; return; }
+    var isVH = (s.difficulty || '').toUpperCase() === 'VH';
+    // A sheet being edited would lose its draft on leaving the page: the page opens in another tab then.
+    var away = S.ui && S.ui.spellDraft ? ' target="_blank" rel="noopener"' : '';
+    box.innerHTML = '<div class="skill-modal-head"><div style="display:flex;align-items:center;gap:8px"><span class="badge">' + svg(ICON.spell, 12, 2.4) + ' Magia</span>' +
+      '<span class="spell-badge ' + (isVH ? 'diff-vh' : 'diff-h') + '">' + (isVH ? 'Very Hard (VH)' : 'Hard (H)') + '</span></div>' +
+      '<h2 id="spellModalTitle">' + esc(s.name) + '</h2>' + ptNameHtml(s, 'p') +
+      '<p class="lede">' + (s.college ? esc(s.college) : 'Sem escola') + (s.class ? ' · ' + esc(s.class) : '') + '</p></div>' +
+      (s.description ? '<section><h3 class="sec-title">Efeito e Descrição</h3><p class="long">' + esc(s.description) + '</p></section>' : '') +
+      (s.prerequisites ? '<section><h3 class="sec-title">Pré-requisitos</h3><p class="long">' + esc(s.prerequisites) + '</p></section>' : '') +
+      '<dl class="facts">' + fact('Tempo de Conjuração', s.timeToCast) + fact('Duração', s.duration) +
+      fact(s.maintenanceCost ? 'Custo Inicial' : 'Custo', s.initialCost) + fact('Custo Manutenção', s.maintenanceCost) +
+      fact('Página', s.page) + fact('Fonte', s.source) + '</dl>' +
+      '<div class="btn-row" style="justify-content:flex-end"><a class="btn" href="' + spellHref(s.id) + '"' + away + ' id="spellModalPage">Abrir página da magia</a></div>';
+    modal.setAttribute('aria-labelledby', 'spellModalTitle');
+    var pg = $('spellModalPage'); if (pg && !away) pg.onclick = function () { closeModal(); };
+  }
+  loadCatalog('spells').then(paint, paint);
+}
+document.addEventListener('click', function (e) {
+  if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  var t = /** @type {AnyEl} */ (e.target), a = t && t.closest && t.closest('[data-spell-modal]'); if (!a) return;
+  e.preventDefault(); openSpellModal(a.getAttribute('data-spell-modal'));
+});
+
 function openSpellForm(s) {
   if (!isMestre()) {
     toast('Apenas o Mestre pode criar ou editar magias.', true);
