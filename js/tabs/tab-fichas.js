@@ -31,6 +31,16 @@ function sheetLink(s) {
     '<span class="where">' + (n ? plural(n, 'personagem', 'personagens') : 'Nenhum personagem') + '</span></span></a></li>';
 }
 
+// The buttons of a sheet section, the same in all of them (same text, same size: .sec-btn): Editar
+// while closed; Cancelar and Salvar while it is edited. what: the section ("perícias"), for the
+// screen readers and the hover.
+function secEditBtnHtml(id, what) {
+  return '<div class="btn-row"><button class="btn sec-btn" type="button" id="' + id + '" aria-label="Editar ' + what + '" title="Editar ' + what + '">' + svg(ICON.edit, 15) + 'Editar</button></div>';
+}
+function secSaveBtnsHtml(cancelId, saveId, what) {
+  return '<div class="btn-row"><button class="btn ghost sec-btn" type="button" id="' + cancelId + '" aria-label="Cancelar a edição de ' + what + '">Cancelar</button>' +
+    '<button class="btn primary sec-btn" type="button" id="' + saveId + '" aria-label="Salvar ' + what + '" title="Salvar ' + what + '">Salvar</button></div>';
+}
 Ops.saveSheet = function (s, fields) {
   var name = (fields.name || '').trim();
   if (!name) return Promise.reject({ message: 'Informe o nome da ficha.' });
@@ -38,7 +48,7 @@ Ops.saveSheet = function (s, fields) {
   var body = { v: 1, name: name, description: (fields.description || '').trim(), visible: fields.visible !== false, sharedWith: fields.sharedWith || (s && s.sharedWith) || [],
     createdBy: owner(s), createdAt: (s && s.createdAt) || t, updatedAt: t };
   // put replaces the whole document: attributes and skills are edited apart and must survive a rename.
-  ['attrs', 'skills', 'cultures', 'spells', 'combat', 'advs', 'equip', 'bodies', 'packs', 'armorSets', 'customWeapons', 'customShields'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  ['attrs', 'skills', 'cultures', 'spells', 'combat', 'advs', 'equip', 'bodies', 'packs', 'homes', 'armorSets', 'customWeapons', 'customShields'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
   return W.store.put('sheets', s ? s.id : null, body);
 };
 Ops.saveSheetAttrs = function (s, a) {
@@ -75,8 +85,10 @@ Ops.setCharSheet = function (charId, sheetId, justCreated) {
    as an adjustment over their base (hp: 1 is HP = ST + 1), so buying ST
    also raises HP, as in the book. Percepção and Vontade start from a base
    of their own (perBase, willBase; 10 unless changed), not from IQ: each
-   level above it costs 5 points. enc (Peso, the encumbrance level),
-   metal and spellPenalty belong to the table and cost no points.
+   level above it costs 5 points. metal and spellPenalty belong to the
+   table and cost no points. enc (Peso, the encumbrance level) is not typed:
+   it is the level of the load carried (sheetEncLevel), and each level takes
+   1 from Move and from Dodge (the table's rule).
    ===================================================================== */
 var SHEET_ATTRS0 = { st: 10, dx: 10, iq: 10, ht: 10, per: 0, will: 0, perBase: 10, willBase: 10, hp: 0, fp: 0, speed: 0, move: 0, enc: 0, metal: 0, spellPenalty: 0 };
 var ATTR_LIMITS = { st: [1, 200], dx: [1, 50], iq: [1, 50], ht: [1, 50], per: [-50, 50], will: [-50, 50], perBase: [1, 50], willBase: [1, 50], hp: [-200, 200], fp: [-50, 50],
@@ -97,7 +109,17 @@ function sheetAttrs(s) {
     if (k + 'Base' in a || !(k in a)) return;
     out[k] = cleanAttr(k, out.iq + out[k] - out[k + 'Base']);
   });
+  out.enc = sheetEncLevel(s, out.st);
   return out;
+}
+// Basic Lift (p. B15): ST × ST ÷ 5, whole from 10 lbs up.
+function basicLift(st) { var bl = st * st / 5; return bl >= 10 ? Math.round(bl) : Math.round(bl * 10) / 10; }
+// Peso: the level of the load (Equip. › Carga: the Corpo configuration in use and the pack in use,
+// saved) against Basic Lift at ST st (p. B17), 0 to 4; over 10 × Basic Lift counts as 4. Changing
+// what is carried (or ST) changes it, and with it Move, Dodge and the Judo and Karate penalty.
+function sheetEncLevel(s, st) {
+  if (!s || typeof sheetGear !== 'function') return 0;
+  return Math.min(EQ_LEVELS.length - 1, equipLevel(gearLoad(sheetGear(s)).total, basicLift(st)));
 }
 // What a secondary value starts from before its own adjustment.
 function attrBase(k, a) {
@@ -123,7 +145,7 @@ function gurpsDamage(st) {
 }
 // a may carry the advantages' effects (withAdvFx): the values come from it, the points from its base.
 function gurpsStats(a) {
-  var speed = (a.ht + a.dx) / 4 + a.speed, move = Math.max(0, Math.floor(speed) + a.move), bl = a.st * a.st / 5, p = a.fx ? a.fx.base : a;
+  var speed = (a.ht + a.dx) / 4 + a.speed, move = Math.max(0, Math.floor(speed) + a.move), p = a.fx ? a.fx.base : a;
   var cost = { st: (p.st - 10) * 10, dx: (p.dx - 10) * 20, iq: (p.iq - 10) * 20, ht: (p.ht - 10) * 10, per: p.per * 5, will: p.will * 5,
     hp: p.hp * 2, fp: p.fp * 3, speed: p.speed * 20, move: p.move * 5 };
   var attrPts = cost.st + cost.dx + cost.iq + cost.ht + cost.per + cost.will, secPts = cost.hp + cost.fp + cost.speed + cost.move;
@@ -131,7 +153,7 @@ function gurpsStats(a) {
     per: a.perBase + a.per, will: a.willBase + a.will, hp: a.st + a.hp, fp: a.ht + a.fp, speed: speed, move: move,
     // The table's rule: each level of Peso takes 1 from Move and from Dodge.
     moveNow: Math.max(0, move - a.enc), dodge: Math.floor(speed) + 3 - a.enc,
-    lift: bl >= 10 ? Math.round(bl) : Math.round(bl * 10) / 10, dmg: gurpsDamage(a.st),
+    lift: basicLift(a.st), dmg: gurpsDamage(a.st),
     cost: cost, attrPts: attrPts, secPts: secPts, total: attrPts + secPts
   };
 }
@@ -147,7 +169,7 @@ function attrBaseHtml(k, a, editing) {
     ' aria-label="Valor base de ' + (k === 'per' ? 'Percepção' : 'Vontade') + '"></label>';
 }
 var SEC_ROWS = [['fp', 'Fadiga', 'base HT'], ['hp', 'HP', 'base ST'], ['speed', 'VB', '(HT + DX) ÷ 4'], ['move', 'Deslocamento', 'base VB'],
-  ['metal', 'Peso em Metal', ''], ['spellPenalty', 'Penalidade em Magias', ''], ['enc', 'Peso', 'nível de carga, 0 a 4']];
+  ['metal', 'Peso em Metal', ''], ['spellPenalty', 'Penalidade em Magias', ''], ['enc', 'Peso', 'nível de carga, pelo que carrega (Equip. › Carga)']];
 // The value a row shows (and its input holds while editing).
 function attrValue(k, a, r) {
   if (k in r && k !== 'cost') return r[k];
@@ -157,6 +179,7 @@ function attrValueText(k, a, r) {
   if (k === 'speed') return fmtDec(r.speed, 2);
   if (k === 'metal') return String(a.metal).replace('.', ',');
   if (k === 'move' && a.enc) return r.moveNow + '<span class="gnote">' + r.move + ' − ' + a.enc + ' de Peso</span>';
+  if (k === 'enc') return '<span data-encv>' + a.enc + '<span class="gnote">' + esc(EQ_LEVELS[a.enc][1].toLowerCase()) + ', automático</span></span>';
   return String(attrValue(k, a, r));
 }
 function attrInput(k, label, a, r) {
@@ -173,7 +196,7 @@ function attrRowsHtml(rows, a, r, editing, e, re) {
     var sub = ATTR_BASES[k] ? attrBaseHtml(k, a, editing) : row[2] ? esc(row[2]) : '';
     return '<tr><td><b>' + esc(row[1]) + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</td>' +
       '<td class="gval' + (fx ? ' fx' : '') + '"' + (fx ? ' title="' + esc(fx.title) + '"' : '') + '>' +
-      (editing ? attrInput(k, row[1], a, r) + (fx ? '<span class="gnote fxnote">' + esc(fx.short) + '</span>' : '')
+      (editing && k !== 'enc' ? attrInput(k, row[1], a, r) + (fx ? '<span class="gnote fxnote">' + esc(fx.short) + '</span>' : '')
         : attrValueText(k, e, re) + (fx ? '<span class="gnote fxnote">' + esc(fx.note) + '</span>' : '')) + '</td>' +
       '<td class="gpts' + (pts == null ? ' none' : '') + '" data-pts="' + k + '">' + (pts == null ? '—' : pts) + '</td></tr>';
   }).join('');
@@ -181,7 +204,7 @@ function attrRowsHtml(rows, a, r, editing, e, re) {
 // What the advantages do to a row: null when nothing. note: "base 10 · +1 de vantagens"; title: each source.
 function attrFxInfo(k, a, r, e, re) {
   var own = e.fx && e.fx.b[k], bv = attrValue(k, a, r), fv = attrValue(k, e, re);
-  if (k === 'move') { bv = Math.max(0, r.move - a.enc); fv = Math.max(0, re.move - e.enc); }
+  if (k === 'move') { bv = Math.max(0, r.move - e.enc); fv = Math.max(0, re.move - e.enc); }
   if (bv === fv && fxEmpty(own)) return null;
   function fmt(v) { return k === 'speed' ? fmtDec(v, 2) : String(v); }
   var d = Math.round((fv - bv) * 100) / 100, parts = own ? fxParts(own) : [];
@@ -199,9 +222,9 @@ function gurpsDerivedHtml(a, r) {
 }
 function sheetAttrsHtml(s, a, editing) {
   var r = gurpsStats(a), e = withAdvFx(s, a), re = gurpsStats(e), can = canWrite();
-  return '<section class="gurps" id="gurps"><div class="gurps-head"><h2 class="sec-title">Atributos</h2><span class="gurps-total" id="gTotal">' + r.total + ' pts</span>' +
-    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="attrCancel">Cancelar</button><button class="btn primary" type="button" id="attrSave">Salvar atributos</button></div>'
-      : can ? '<div class="btn-row"><button class="btn" type="button" id="attrEdit">' + svg(ICON.edit, 15) + 'Editar atributos</button></div>' : '') + '</div>' +
+  return '<section class="gurps' + gearFoldClass('attrs', editing) + '" id="gurps"><div class="gurps-head">' + gearFoldTitle('attrs', 'Atributos', editing) + '<span class="gurps-total" id="gTotal">' + r.total + ' pts</span>' +
+    (editing ? secSaveBtnsHtml('attrCancel', 'attrSave', 'atributos')
+      : can ? secEditBtnHtml('attrEdit', 'atributos') : '') + '</div>' +
     '<div class="gurps-grid">' +
     '<table class="gtab"><thead><tr><th>Atributo</th><th>Valor</th><th>Pontos</th></tr></thead><tbody>' + attrRowsHtml(ATTR_ROWS, a, r, editing, e, re) + '</tbody>' +
     '<tfoot><tr><td colspan="2">Total pontos atributos</td><td class="gpts" data-tot="attr">' + r.attrPts + '</td></tr></tfoot></table>' +
@@ -224,7 +247,9 @@ function wireSheetAttrs(s) {
     box.querySelector('[data-tot="attr"]').textContent = String(r.attrPts);
     box.querySelector('[data-tot="sec"]').textContent = String(r.secPts);
     $('gTotal').textContent = r.total + ' pts';
-    var e = withAdvFx(s, d); $('gDerived').innerHTML = gurpsDerivedHtml(e, gurpsStats(e));
+    var e = withAdvFx(s, d), re = gurpsStats(e); $('gDerived').innerHTML = gurpsDerivedHtml(e, re);
+    // A new ST changes Basic Lift, and so Peso.
+    var enc = box.querySelector('[data-encv]'); if (enc) enc.outerHTML = attrValueText('enc', e, re);
   }
   box.querySelectorAll('.attr-in').forEach(function (inp) {
     inp.addEventListener('input', function () {
@@ -252,7 +277,7 @@ function wireSheetAttrs(s) {
   $('attrSave').onclick = function () {
     var btn = $('attrSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('attrCancel').disabled = true;
     Ops.saveSheetAttrs(s, d).then(function () { ui.attrDraft = null; toast('Atributos salvos.'); renderSheetPage(); }, function (er) {
-      btn.disabled = false; btn.textContent = 'Salvar atributos'; $('attrCancel').disabled = false;
+      btn.disabled = false; btn.textContent = 'Salvar'; $('attrCancel').disabled = false;
       $('attrErr').textContent = errorText(er);
     });
   };
@@ -340,22 +365,24 @@ function skillNhCell(k, av) {
   return '<td class="gnh' + (t ? ' bonus' : '') + '"' + (k.i != null ? ' data-gnh="' + k.i + '"' : '') + (t ? ' title="' + esc(t) + '"' : '') + '>' + esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small></td>';
 }
 // can: the points are a field, changed right in the table (see wireQuickPts); k.i is the
-// position of the skill in sheet.skills. cultures: the Cultural Familiarity rows, after the
-// skills of the Easy table and set apart from them.
-function skillGroupHtml(diff, list, av, can, cultures) {
+// position of the skill in sheet.skills.
+function skillGroupHtml(diff, list, av, can) {
   var name = SKILL_DIFFS[diff][0];
-  cultures = cultures || [];
-  var cultRows = cultures.map(function (c, j) {
-    return '<tr class="gcult"><td><b>' + esc(c.name) + '</b><small>Familiaridade cultural</small></td><td class="gpts">' +
-      (can ? '<input class="gpts-in" type="number" min="0" max="99" step="1" inputmode="numeric" data-c="' + j + '" value="' + c.pts + '" aria-label="Pontos em ' + esc(c.name) + '">' : c.pts) + '</td><td class="gnh none" title="Familiaridade cultural não tem NH">—</td></tr>';
-  }).join('');
   return '<table class="gtab"><thead><tr><th>' + name + '</th><th>Pontos</th><th>NH</th></tr></thead><tbody>' +
-    (list.length || cultures.length ? list.map(function (k) {
+    (list.length ? list.map(function (k) {
       var name = k.skillId ? '<a href="' + skillHref(k.skillId) + '" data-skill-modal="' + esc(k.skillId) + '" title="Ver as regras da perícia">' + esc(k.name) + '</a>' : esc(k.name);
       return '<tr><td><b>' + name + '</b><small>' + k.attr + '/' + diff + '</small></td><td class="gpts">' +
         (can ? '<input class="gpts-in" type="number" min="0" max="999" step="1" inputmode="numeric" data-k="' + k.i + '" value="' + k.pts + '" aria-label="Pontos em ' + esc(k.name) + '">' : k.pts) + '</td>' + skillNhCell(k, av) + '</tr>';
-    }).join('') + cultRows : '<tr><td colspan="3" class="gnone">Nenhuma perícia ' + name.toLowerCase() + '.</td></tr>') + '</tbody>' +
-    '<tfoot><tr><td colspan="2">Total perícias ' + name + '</td><td class="gpts" data-gtot="' + diff + '">' + skillsTotal(list, cultures) + '</td></tr></tfoot></table>';
+    }).join('') : '<tr><td colspan="3" class="gnone">Nenhuma perícia ' + name.toLowerCase() + '.</td></tr>') + '</tbody>' +
+    '<tfoot><tr><td colspan="2">Total perícias ' + name + '</td><td class="gpts" data-gtot="' + diff + '">' + skillsTotal(list) + '</td></tr></tfoot></table>';
+}
+// The Cultural Familiarity rows, in a table of their own after the skills' (they have no NH).
+function cultureGroupHtml(cultures, can) {
+  return '<table class="gtab gcult-tab"><thead><tr><th>Familiaridade Cultural</th><th>Pontos</th></tr></thead><tbody>' + cultures.map(function (c, j) {
+    return '<tr class="gcult"><td><b>' + esc(c.name) + '</b></td><td class="gpts">' +
+      (can ? '<input class="gpts-in" type="number" min="0" max="99" step="1" inputmode="numeric" data-c="' + j + '" value="' + c.pts + '" aria-label="Pontos em ' + esc(c.name) + '">' : c.pts) + '</td></tr>';
+  }).join('') + '</tbody>' +
+    '<tfoot><tr><td>Total familiaridade cultural</td><td class="gpts" data-gtot="C">' + sumPts(cultures) + '</td></tr></tfoot></table>';
 }
 // NH of a row being edited; the points that buy nothing go on a line of their own.
 function skillEditNhHtml(k, av) {
@@ -406,11 +433,11 @@ function cultureEditRow(c, i) {
 function sheetSkillsHtml(s, editing) {
   var d = S.ui.skillDraft, skills = editing ? d.skills : sheetSkills(s), cultures = editing ? d.cultures : sheetCultures(s);
   var av = attrValues(sheetAttrsNow(s)), can = canWrite();
-  var head = '<div class="gurps-head"><h2 class="sec-title">Perícias</h2><span class="gurps-total" id="skTotal">' + skillsTotal(skills, cultures) + ' pts</span>' +
-    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="skCancel">Cancelar</button><button class="btn primary" type="button" id="skSave">Salvar perícias</button></div>'
-      : can && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="skEdit">' + svg(ICON.edit, 15) + 'Editar perícias</button></div>' : '') + '</div>';
+  var head = '<div class="gurps-head">' + gearFoldTitle('skills', 'Perícias', editing) + '<span class="gurps-total" id="skTotal">' + skillsTotal(skills, cultures) + ' pts</span>' +
+    (editing ? secSaveBtnsHtml('skCancel', 'skSave', 'perícias')
+      : can && !sheetDraftOpen() ? secEditBtnHtml('skEdit', 'perícias') : '') + '</div>';
   if (editing) {
-    return '<section class="gurps" id="skills">' + head +
+    return '<section class="gurps' + gearFoldClass('skills', editing) + '" id="skills">' + head +
       '<div class="box sk-edit"><div class="sk-row sk-labels" aria-hidden="true"><span>Perícia</span><span>Atributo</span><span>Dif.</span><span>Pontos</span><span>Bônus</span><span>NH</span><span></span></div>' +
       '<div id="skRows">' + applyTalents(skills, s).map(function (k, i) { return skillEditRow(k, i, av); }).join('') + '</div>' +
       '<div><button class="btn" type="button" id="skAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar perícia</button></div>' +
@@ -424,11 +451,11 @@ function sheetSkillsHtml(s, editing) {
   var groups = SKILL_DIFF_KEYS.filter(function (x) { return x !== 'VH' || skills.some(function (k) { return k.diff === 'VH'; }); });
   skills.forEach(function (k, i) { k.i = i; });
   applyTalents(skills, s);
-  return '<section class="gurps" id="skills">' + head +
+  return '<section class="gurps' + gearFoldClass('skills', editing) + '" id="skills">' + head +
     (skills.length || cultures.length ? '<div class="gurps-grid">' + groups.map(function (x) {
-      return skillGroupHtml(x, skills.filter(function (k) { return k.diff === x; }), av, can, x === 'E' ? cultures : null);
-    }).join('') + '</div>'
-      : '<p class="long none">Nenhuma perícia cadastrada.' + (can ? ' Use <b>Editar perícias</b> para adicionar.' : '') + '</p>') + '</section>';
+      return skillGroupHtml(x, skills.filter(function (k) { return k.diff === x; }), av, can);
+    }).join('') + (cultures.length ? cultureGroupHtml(cultures, can) : '') + '</div>'
+      : '<p class="long none">Nenhuma perícia cadastrada.' + (can ? ' Use <b>Editar</b> para adicionar.' : '') + '</p>') + '</section>';
 }
 // Out of the editor, the points of each skill change right in the table: the NH and totals follow
 // as you type, and the sheet is saved a moment after the last change or when the field is left.
@@ -441,8 +468,9 @@ function wireQuickPts(s, box) {
     $('skTotal').textContent = skillsTotal(list, cultures) + ' pts';
     SKILL_DIFF_KEYS.forEach(function (x) {
       var t = box.querySelector('[data-gtot="' + x + '"]');
-      if (t) t.textContent = String(skillsTotal(list.filter(function (k) { return k.diff === x; }), x === 'E' ? cultures : null));
+      if (t) t.textContent = String(skillsTotal(list.filter(function (k) { return k.diff === x; })));
     });
+    var tc = box.querySelector('[data-gtot="C"]'); if (tc) tc.textContent = String(sumPts(cultures));
   }
   // edits: 'k<i>' for a skill, 'c<j>' for a Cultural Familiarity row, with the new points.
   function save() {
@@ -585,7 +613,7 @@ function wireSheetSkills(s) {
     $('skErr').textContent = '';
     var btn = $('skSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('skCancel').disabled = true;
     Ops.saveSheetSkills(s, d.skills, d.cultures).then(function () { ui.skillDraft = null; toast('Perícias salvas.'); renderSheetPage(); }, function (er) {
-      btn.disabled = false; btn.textContent = 'Salvar perícias'; $('skCancel').disabled = false;
+      btn.disabled = false; btn.textContent = 'Salvar'; $('skCancel').disabled = false;
       $('skErr').textContent = errorText(er);
     });
   };
@@ -644,10 +672,22 @@ function renderSheetPage() {
     (can ? '<div class="btn-row"><button class="btn" type="button" id="editSheetBtn">' + svg(ICON.edit, 15) + 'Editar ficha</button><button class="btn danger" type="button" id="delSheetBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a ficha <b>' + esc(s.name) + '</b>?' + (chars.length ? ' ' + plural(chars.length, 'personagem fica', 'personagens ficam') + ' sem ficha; os personagens continuam cadastrados.' : '') + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSheetYes">Excluir ficha</button><button class="btn ghost" type="button" id="delSheetNo">Cancelar</button></div></div>' : '');
   var main = '<section><h2 class="sec-title">Observações</h2>' + (s.description ? '<p class="long">' + esc(s.description) + '</p>' : '<p class="long none">Sem observações.</p>') + '</section>';
-  // Closed until its title is clicked (see foldBox). At the top, above the attributes.
-  var side = foldBox('chars', 'Personagens', chars.length,
-    (chars.length ? '<div class="people">' + chars.map(personChip).join('') + '</div>' : '<p class="lede" style="font-size:13px;margin:0">Nenhum personagem vinculado.</p>') +
-    (can ? '<div style="margin-top:10px"><button class="btn" type="button" id="sheetCharsBtn">' + svg(ICON.user, 15) + (chars.length ? 'Trocar personagem' : 'Vincular personagem') + '</button></div>' : ''));
+  // Closed until its title is clicked (see foldBox). At the top, above the attributes. As the Ficha box
+  // of the character's page: the character, Trocar (or Vincular) and Remover vínculo, which asks first
+  // (the box stays open while it asks). hidden: a character this account cannot see is on the sheet.
+  var hidden = !chars.length && W.raw.characters.some(function (c) { return c.sheetId === s.id; }), unlink = can && !!ui.confirmUnlink && chars.length > 0;
+  var side = foldBox('chars', 'Personagem', null,
+    (chars.length ? '<ul class="links">' + chars.map(function (c) {
+      return '<li><a class="row-link" href="' + charHref(c.id) + '">' + thumbSlot(c.image && c.image.ref, ICON.user) + '<span class="mtext"><b>' + esc(c.name) + '</b>' +
+        '<span class="where">' + esc(charSubtitle(c) || 'Personagem') + '</span></span></a></li>';
+    }).join('') + '</ul>'
+      : '<p class="lede" style="font-size:13px;margin:0">' + (hidden ? 'Vinculada a um personagem que você não pode ver.' : 'Nenhum personagem vinculado.' + (can ? ' Cada ficha pode ter um personagem.' : '')) + '</p>') +
+    (can ? '<div class="btn-row" style="margin-top:10px"><button class="btn" type="button" id="sheetCharsBtn">' + svg(ICON.user, 15) + (chars.length || hidden ? 'Trocar personagem' : 'Vincular personagem') + '</button>' +
+      (chars.length ? '<button class="btn ghost" type="button" id="sheetCharsRm">' + svg(ICON.x, 14, 2.4) + 'Remover vínculo</button>' : '') + '</div>' : '') +
+    (unlink ? '<div class="confirm" role="alert"><span>Remover o vínculo da ficha <b>' + esc(s.name) + '</b> com <b>' + esc(chars.map(function (c) { return c.name; }).join(', ')) + '</b>? ' +
+      (chars.length > 1 ? 'Os personagens continuam' : 'O personagem continua') + ' cadastrado' + (chars.length > 1 ? 's' : '') + '.</span><div class="btn-row"><button class="btn danger solid" type="button" id="sheetCharsRmYes">Remover vínculo</button>' +
+      '<button class="btn ghost" type="button" id="sheetCharsRmNo">Cancelar</button></div></div>' : ''),
+    unlink);
   // Three tabs: everything but the equipment and the spells, the equipment, and the spells. Only the
   // open one is drawn (the wire* functions skip a section that isn't there); a draft in another survives the switch.
   var tab = ui.sheetTab === 'equip' || ui.sheetTab === 'magic' ? ui.sheetTab : 'sheet';
@@ -668,6 +708,8 @@ function renderSheetPage() {
     h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, portrait.name); };
   });
   wireFolds(pageRoot);
+  // Atributos, Perícias, Combate, Vantagens and the lists of Equip. fold (gearFoldTitle).
+  wireGearFold();
   wireSheetAttrs(s);
   wireSheetSkills(s);
   wireSheetCombat(s);
@@ -677,6 +719,13 @@ function renderSheetPage() {
   wireSheetEquip(s);
   wireSheetSpells(s);
   var cb = $('sheetCharsBtn'); if (cb) cb.onclick = function () { openSheetCharsForm(s); };
+  var cr = $('sheetCharsRm'); if (cr) cr.onclick = function () { ui.confirmUnlink = true; renderSheetPage(); };
+  var crn = $('sheetCharsRmNo'); if (crn) crn.onclick = function () { ui.confirmUnlink = false; renderSheetPage(); };
+  var cry = $('sheetCharsRmYes'); if (cry) cry.onclick = function () {
+    cry.disabled = true;
+    chars.reduce(function (p, c) { return p.then(function () { return Ops.setCharSheet(c.id, null); }); }, Promise.resolve())
+      .then(function () { ui.confirmUnlink = false; toast('Vínculo com o personagem removido.'); renderSheetPage(); }, function (er) { cry.disabled = false; toast(errorText(er), true); });
+  };
   var e = $('editSheetBtn'); if (e) e.onclick = function () { openSheetForm(s); };
   var d = $('delSheetBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderSheetPage(); };
   var dn = $('delSheetNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderSheetPage(); };

@@ -153,8 +153,8 @@ function sheetSpellsHtml(s, editing) {
   var d = S.ui.spellDraft, list = editing ? d : sheetSpells(s), can = canWrite(), m = sheetMagery(s);
   var iq = sheetAttrsNow(s).iq;
   var head = '<div class="gurps-head"><h2 class="sec-title">Magias</h2><span class="gurps-total" id="spTotal">' + sumPts(list) + ' pts</span>' +
-    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="spCancel">Cancelar</button><button class="btn primary" type="button" id="spSave">Salvar magias</button></div>'
-      : can && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="spEdit">' + svg(ICON.edit, 15) + 'Editar magias</button></div>' : '') + '</div>' +
+    (editing ? secSaveBtnsHtml('spCancel', 'spSave', 'magias')
+      : can && !sheetDraftOpen() ? secEditBtnHtml('spEdit', 'magias') : '') + '</div>' +
     (m && m.n ? '<p class="hint-text" style="margin:0">Magery ' + m.n + ': +' + m.n + ' no NH de todas as magias.</p>' : '');
   if (editing) {
     return '<section class="gurps" id="sheetSpells">' + head +
@@ -171,7 +171,7 @@ function sheetSpellsHtml(s, editing) {
   applyMagery(list, s);
   return '<section class="gurps" id="sheetSpells">' + head +
     (list.length ? '<div class="gurps-grid sp-grid">' + sheetSpellColumns(sheetSpellGroups(list)).map(function (col) { return sheetSpellTableHtml(col, iq, can); }).join('') + '</div>'
-      : '<p class="long none">Nenhuma magia cadastrada.' + (can ? ' Use <b>Editar magias</b> para adicionar.' : '') + '</p>') + '</section>';
+      : '<p class="long none">Nenhuma magia cadastrada.' + (can ? ' Use <b>Editar</b> para adicionar.' : '') + '</p>') + '</section>';
 }
 
 // Out of the editor, the points change right in the table, as in the skills (see wireQuickPts).
@@ -311,7 +311,7 @@ function wireSheetSpells(s) {
     $('spErr').textContent = '';
     var btn = $('spSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('spCancel').disabled = true;
     Ops.saveSheetSpells(s, d).then(function () { ui.spellDraft = null; toast('Magias salvas.'); renderSheetPage(); }, function (er) {
-      btn.disabled = false; btn.textContent = 'Salvar magias'; $('spCancel').disabled = false;
+      btn.disabled = false; btn.textContent = 'Salvar'; $('spCancel').disabled = false;
       $('spErr').textContent = errorText(er);
     });
   };

@@ -32,36 +32,44 @@ function cleanWeaponAdj(m) {
   var o = { name: String(m.name || '').trim().slice(0, 120), dmg: cleanInt(m.dmg, -20, 20, 0), nh: cleanInt(m.nh, -20, 20, 0), cost: abNum(m.cost, -9999999, 9999999) || 0, weightPct: abNum(m.weightPct, -100, 1000) || 0 };
   o.cost = Math.round(o.cost * 100) / 100; o.weightPct = Math.round(o.weightPct * 100) / 100;
   var sp = gearId(m.spellId, 200); if (sp) o.spellId = sp;
-  return o;
+  // cutImp: the damage only on the cutting and impaling attacks (Fine, Very Fine).
+  if (m.cutImp === true && o.dmg) o.cutImp = true;
+  return cleanAdjCf(o, m);
 }
+// dmgCutImp: the damage of the adjustments that is only for cutting and impaling attacks.
 function weaponAdjTotal(mods) {
-  var t = { dmg: 0, nh: 0, cost: 0, weightPct: 0 };
-  mods.forEach(function (m) { t.dmg += m.dmg || 0; t.nh += m.nh || 0; t.cost += m.cost || 0; t.weightPct += m.weightPct || 0; });
-  t.cost = eqRound(t.cost); t.weightPct = eqRound(t.weightPct);
+  var t = { dmg: 0, dmgCutImp: 0, nh: 0, cost: 0, cf: 0, weightPct: 0 };
+  mods.forEach(function (m) { if (m.cutImp) t.dmgCutImp += m.dmg || 0; else t.dmg += m.dmg || 0; t.nh += m.nh || 0; t.cost += m.cost || 0; t.cf += m.cf || 0; t.weightPct += m.weightPct || 0; });
+  t.cost = eqRound(t.cost); t.cf = eqRound(t.cf); t.weightPct = eqRound(t.weightPct);
   return t;
 }
+// A cutting or impaling attack ("sw+1 cut", "thr imp").
+function weaponCutImp(dmg) { return /\b(cut|imp)\b/i.test(String(dmg || '')); }
 // "Puissance (dano +1, NH +1, +$300, peso −10%)".
 function weaponAdjText(m) {
   function sg(n) { return n < 0 ? '−' : '+'; }
-  var parts = [m.dmg ? 'dano ' + sg(m.dmg) + Math.abs(m.dmg) : '', m.nh ? 'NH ' + sg(m.nh) + Math.abs(m.nh) : '', m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : ''].filter(Boolean);
+  var dmg = (m.dmg || 0) + (m.dmgCutImp || 0), ci = m.cutImp || (m.dmgCutImp && !m.dmg);
+  var parts = [dmg ? 'dano ' + sg(dmg) + Math.abs(dmg) + (ci ? ' (corte/perf.)' : '') : '', m.nh ? 'NH ' + sg(m.nh) + Math.abs(m.nh) : '', m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', adjCfText(m), m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : ''].filter(Boolean);
   return m.name + (parts.length ? ' (' + parts.join(', ') + ')' : '');
 }
-// The weapon with its adjustments, in this order: the book's cost and weight; the cost plus the
-// adjustments' $; the weight times (1 + their % / 100) (the % add up); every attack's damage plus
-// their damage. Never below 0. odd: the attacks whose damage takes no plus (left as in the book).
+// The weapon with its adjustments, in this order: the book's cost and weight; the cost times (1 + the
+// CFs added up), plus the adjustments' $; the weight times (1 + their % / 100) (the % add up); every
+// attack's damage plus their damage (the cutting and impaling ones also plus dmgCutImp). Never below
+// 0. odd: the attacks whose damage takes no plus (left as in the book).
 function weaponCalc(base, attacks, mods) {
   var t = weaponAdjTotal(mods), odd = [];
   var out = attacks.map(function (a) {
-    var dmg = dmgPlus(a.baseDamage, t.dmg);
+    var dmg = dmgPlus(a.baseDamage, t.dmg + (weaponCutImp(a.baseDamage) ? t.dmgCutImp : 0));
     if (dmg == null) { odd.push(a.baseDamage); dmg = a.baseDamage; }
     return Object.assign({}, a, { damage: dmg });
   });
-  return { attacks: out, cost: Math.max(0, eqRound(base.cost + t.cost)), weight: Math.max(0, eqRound(base.weight * (1 + t.weightPct / 100))), odd: odd };
+  return { attacks: out, cost: Math.max(0, eqRound(cfCost(base.cost, t.cf) + t.cost)), weight: Math.max(0, eqRound(base.weight * (1 + t.weightPct / 100))), odd: odd };
 }
-var WEAPON_ADJ = { p: 'wb', nums: [['dmg', 'Dano', '1'], ['nh', 'NH', '1'], ['cost', 'Custo ($)', 'any'], ['weightPct', 'Peso (%)', 'any']], blank: { name: '', dmg: 0, nh: 0, cost: 0, weightPct: 0 },
+var WEAPON_ADJ = { p: 'wb', kind: 'Arma', nums: [['dmg', 'Dano', '1'], ['nh', 'NH', '1'], ['cost', 'Custo ($)', 'any'], ['cf', 'CF', 'any'], ['weightPct', 'Peso (%)', 'any']], blank: { name: '', dmg: 0, nh: 0, cost: 0, cf: 0, weightPct: 0 },
   clean: function (m) { return cleanWeaponAdj(m); }, total: function (l) { return weaponAdjTotal(l); }, text: function (m) { return weaponAdjText(m); },
-  hint: 'Escreva o ajuste ou busque uma magia. Ex.: Fine, Puissance, Keen',
-  help: 'Cada ajuste soma (ou, negativo, tira): o dano de todos os ataques (+1 faz sw+1 cut virar sw+2 cut), o NH com esta arma (somado ao NH da perícia do ataque na ficha; a perícia não muda), o custo em $ e o peso em % do peso da arma. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a arma.' };
+  hint: 'Escreva o ajuste ou busque um melhoramento ou uma magia. Ex.: Fine, Balanced, Puissance',
+  help: 'Cada ajuste soma (ou, negativo, tira): o dano de todos os ataques (+1 faz sw+1 cut virar sw+2 cut), o NH com esta arma (somado ao NH da perícia do ataque na ficha; a perícia não muda), o custo em $, o CF (fator de custo: o custo da arma vezes 1 + a soma dos CF, B274) e o peso em % do peso da arma. ' +
+    'Um melhoramento de Mundo › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, dano e NH; o dano de Fine e Very Fine só nos ataques de corte e perfuração). Quando o custo depende do tipo de arma, escolha a opção certa na lista. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a arma.' };
 
 // The NH of an attack on this sheet: the sheet's level in the attack's skill (Combate or Perícias,
 // with the talents), or the best of the book's defaults ("DX-5, Force Sword-4": an attribute, or a
@@ -146,7 +154,7 @@ function weaponDraftResult(d) { return weaponCalc(d.base, d.attacks, d.adj.map(c
 function weaponDraftErrors(d) {
   var out = [];
   if (!d.base) out.push('Escolha a arma.');
-  if (d.adj.some(function (m) { var c = cleanWeaponAdj(m); return !c.name && (c.dmg || c.nh || c.cost || c.weightPct); })) out.push('Dê um nome a cada ajuste com valores.');
+  if (d.adj.some(function (m) { var c = cleanWeaponAdj(m); return !c.name && (c.dmg || c.nh || c.cost || c.cf || c.weightPct); })) out.push('Dê um nome a cada ajuste com valores.');
   return out;
 }
 // The Notas of a new weapon: the description and the book's notes ("[3] An arrow ... is $2.").
@@ -164,20 +172,19 @@ Ops.saveCustomWeapon = function (s, d) {
   var r = weaponDraftResult(d), equip = g.equip.slice(), lines = gearIndex(equip);
   var cw = { id: prev ? prev.id : gearNewId('w', gearIndex(g.customWeapons)), baseId: d.baseId, base: d.base, description: String(d.description || '').trim(),
     mods: d.adj.map(cleanWeaponAdj).filter(function (m) { return m.name; }), attacks: r.attacks, cost: r.cost, weight: r.weight, equipId: null };
-  var fields = { kind: 'weapon', name: d.base.name, qty: 1, weight: r.weight, cost: r.cost }, line = prev && prev.equipId ? lines[prev.equipId] : null;
+  var fields = { kind: 'weapon', name: gearOwnName(d.name) || d.base.name, qty: 1, weight: r.weight, cost: r.cost }, line = prev && prev.equipId ? lines[prev.equipId] : null;
   if (line) { line = Object.assign({}, line, fields); delete line.refId; equip[equip.indexOf(lines[line.id])] = line; }
   else { line = Object.assign({ id: gearNewId('e', lines), notes: weaponPieceNotes(d) }, fields); equip.push(line); }
   cw.equipId = line.id;
   var list = prev ? g.customWeapons.map(function (w) { return w.id === cw.id ? cw : w; }) : g.customWeapons.concat([cw]);
   return saveGearLists(s, { equip: equip, customWeapons: list }).then(function () { return cw; });
 };
-// withLine: the line leaves Meus Itens too (and so the body and the packs); without it, it stays as a
-// common weapon.
-Ops.deleteCustomWeapon = function (s, id, withLine) {
+// The line leaves Meus Itens too (and so the body and the packs).
+Ops.deleteCustomWeapon = function (s, id) {
   var g = sheetGear(sheetById(s.id) || s), cw = g.customWeapons.filter(function (w) { return w.id === id; })[0];
   if (!cw) return Promise.resolve();
   var ch = { customWeapons: g.customWeapons.filter(function (w) { return w.id !== id; }) };
-  if (withLine && cw.equipId) ch.equip = g.equip.filter(function (e) { return e.id !== cw.equipId; });
+  if (cw.equipId) ch.equip = g.equip.filter(function (e) { return e.id !== cw.equipId; });
   return saveGearLists(s, ch);
 };
 
@@ -200,8 +207,9 @@ function weaponBuilderHtml(s, d) {
   return '<div class="box sk-edit"><div class="ab-grid">' +
     '<label class="sc-f"><span>Arma</span><div class="sk-pick"><input type="text" id="wbBase" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="wbBaseSug"' +
     ' placeholder="' + (W.loaded.weapons ? 'Digite para buscar. Ex.: espada larga, Broadsword, arco' : 'Carregando armas…') + '" value="' + esc(d.base ? d.base.name : '') + '"><div class="suggest" id="wbBaseSug" role="listbox" hidden></div></div></label>' +
-    '<label class="sc-f"><span>Descrição</span><textarea id="wbDesc" rows="2" maxlength="2000" placeholder="Opcional">' + esc(d.description) + '</textarea></label></div>' +
-    '<p class="hint-text" style="margin:0">Ficha <b>' + esc(s.name) + '</b>: a arma entra em Meus Itens.' + (d.id ? ' Editando: a arma mantém a linha na lista (e onde está no Corpo e nas Mochilas).' : '') + '</p>' +
+    gearNameFieldHtml('wbName', d.name, d.base ? d.base.name : '') +
+    '<label class="sc-f ab-wide"><span>Descrição</span><textarea id="wbDesc" rows="2" maxlength="2000" placeholder="Opcional">' + esc(d.description) + '</textarea></label></div>' +
+    '<p class="hint-text" style="margin:0">Ficha <b>' + esc(s.name) + '</b>: a arma entra em Meus Itens com o <b>Nome</b> dado ou, sem ele, com o nome do livro.' + (d.id ? ' Editando: a arma mantém a linha na lista (e onde está no Corpo e nas Mochilas).' : '') + '</p>' +
     '<div id="wbBaseBox">' + weaponBaseBoxHtml(s, d) + '</div></div>' +
     '<div class="box sk-edit" id="wbModsBox"' + (d.base ? '' : ' hidden') + '><h3 class="sec-title" style="margin:0">Ajustes</h3><div class="ab-mods" id="wbMods">' + adjListHtml(WEAPON_ADJ, d.adj) + '</div></div>' +
     (d.impact ? '<div class="confirm" role="alert"><span>Esta arma está em uso (' + esc(d.impact) + '), e salvar muda o custo, o peso ou o dano dela.</span><div class="btn-row">' +
@@ -230,7 +238,7 @@ function weaponItemsHtml(lines, g, L, can) {
     var html = atk.map(function (a, i) {
       var first = i === 0;
       return '<tr' + (counted ? '' : ' class="eq-stored"') + '>' +
-        (first ? span('<td class="wb-name"><b>' + gearKindTag('weapon') + esc(x.name) + '</b><small class="eq-where">' + esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>') : '') +
+        (first ? span('<td class="wb-name"><b>' + gearKindTag('weapon') + esc(x.name) + '</b>' + gearAutoSub(x, cw.base.name) + '<small class="eq-where">' + esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>') : '') +
         '<td class="wmode">' + esc(weaponModeText(a.mode)) + '</td>' +
         weaponDmgCell(s, a) + weaponNhCell(s, a, nhPlus) +
         '<td>' + esc(a.reach || a.range || '—') + '</td>' +
@@ -243,7 +251,6 @@ function weaponItemsHtml(lines, g, L, can) {
     if (can && ui.weaponDel === cw.id) {
       html += '<tr><td colspan="8"><div class="confirm" role="alert"><span>Excluir <b>' + esc(x.name) + '</b>?' + (where.length ? ' Em uso: ' + esc(where.join(' · ')) + '. Excluir tira de lá também.' : '') + '</span>' +
         '<div class="btn-row"><button class="btn danger solid" type="button" data-wb-delall="' + esc(cw.id) + '">Excluir</button>' +
-        '<button class="btn" type="button" data-wb-delset="' + esc(cw.id) + '" title="A linha continua na lista, como uma arma comum, sem os dados de Criar Arma">Manter como item comum</button>' +
         '<button class="btn ghost" type="button" data-wb-delno="1">Cancelar</button></div></div></td></tr>';
     }
     return html;
@@ -253,13 +260,14 @@ function weaponItemsHtml(lines, g, L, can) {
 }
 
 /* ---------- wiring ---------- */
-function weaponDraftFrom(cw, mode) {
-  var d = { id: null, baseId: null, base: null, attacks: [], description: '', adj: [], impact: null };
+// g: the sheet's lists, for the name of the weapon being edited (its line's, when it was given).
+function weaponDraftFrom(cw, mode, g) {
+  var d = { id: null, baseId: null, base: null, attacks: [], name: '', description: '', adj: [], impact: null };
   if (!cw) return d;
   d.baseId = cw.baseId; d.base = Object.assign({}, cw.base); d.description = cw.description;
   d.attacks = cw.attacks.map(function (a) { return Object.assign({}, a); });
   d.adj = cw.mods.map(function (m) { return Object.assign({}, m); });
-  if (mode === 'edit') d.id = cw.id;
+  if (mode === 'edit') { d.id = cw.id; if (g && cw.equipId) d.name = gearGivenName(gearIndex(g.equip)[cw.equipId], cw.base.name); }
   return d;
 }
 function wireWeaponSec(s) {
@@ -269,23 +277,26 @@ function wireWeaponSec(s) {
   if (!d) {
     var items = $('equip'); if (!items) return;
     items.addEventListener('click', function (e) {
-      var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-wb-edit], [data-wb-copy], [data-wb-del], [data-wb-delall], [data-wb-delset], [data-wb-delno]'); if (!b) return;
+      var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-wb-edit], [data-wb-copy], [data-wb-del], [data-wb-delall], [data-wb-delno]'); if (!b) return;
       var g = sheetGear(s), find = function (attr) { var id = b.getAttribute(attr); return g.customWeapons.filter(function (w) { return w.id === id; })[0]; };
-      if (b.hasAttribute('data-wb-edit')) { ui.weaponDraft = weaponDraftFrom(find('data-wb-edit'), 'edit'); loadCatalog('weapons'); renderSheetPage(); return; }
-      if (b.hasAttribute('data-wb-copy')) { ui.weaponDraft = weaponDraftFrom(find('data-wb-copy'), 'copy'); loadCatalog('weapons'); renderSheetPage(); return; }
+      if (b.hasAttribute('data-wb-edit')) { ui.weaponDraft = weaponDraftFrom(find('data-wb-edit'), 'edit', g); loadCatalog('weapons'); renderSheetPage(); return; }
+      if (b.hasAttribute('data-wb-copy')) { ui.weaponDraft = weaponDraftFrom(find('data-wb-copy'), 'copy', g); loadCatalog('weapons'); renderSheetPage(); return; }
       if (b.hasAttribute('data-wb-del')) { ui.weaponDel = b.getAttribute('data-wb-del'); renderSheetPage(); return; }
       if (b.hasAttribute('data-wb-delno')) { ui.weaponDel = null; renderSheetPage(); return; }
-      var all = b.hasAttribute('data-wb-delall'), cw = find(all ? 'data-wb-delall' : 'data-wb-delset');
+      var cw = find('data-wb-delall');
       b.disabled = true;
-      Ops.deleteCustomWeapon(s, cw.id, all).then(function () { ui.weaponDel = null; toast(all ? 'Arma excluída.' : 'A arma continua em Meus Itens como um item comum.'); renderSheetPage(); },
+      Ops.deleteCustomWeapon(s, cw.id).then(function () { ui.weaponDel = null; toast('Arma excluída.'); renderSheetPage(); },
         function (er) { b.disabled = false; toast(errorText(er), true); });
     });
     return;
   }
   // The data and attacks redraw with the adjustments; the adjustment rows themselves stay.
   function paint() { d.impact = null; $('wbBaseBox').innerHTML = weaponBaseBoxHtml(s, d); $('wbErr').textContent = ''; var c = box.querySelector('.confirm'); if (c) c.remove(); }
+  $('wbName').addEventListener('input', function () { d.name = $('wbName').value; });
   $('wbDesc').addEventListener('input', function () { d.description = $('wbDesc').value; });
-  wireAdjList(WEAPON_ADJ, $('wbMods'), d.adj, paint);
+  wireAdjList(WEAPON_ADJ, $('wbMods'), d.adj, paint, function () {
+    return { weight: d.base ? d.base.weight : 0, ranged: d.attacks.some(function (a) { return /bow|crossbow|blowpipe/i.test(a.skill || ''); }) };
+  });
   // The weapon: Mundo › Armas, found by name in English or Portuguese.
   var pick = $('wbBase'), sug = $('wbBaseSug'), opts = [], act = 0;
   function hide() { sug.hidden = true; sug.innerHTML = ''; pick.setAttribute('aria-expanded', 'false'); }
@@ -305,6 +316,7 @@ function wireWeaponSec(s) {
     var w = opts[n]; if (!w) return;
     var b = weaponBaseOf(w);
     d.baseId = w.id; d.base = b.base; d.attacks = b.attacks; d.others = b.others; pick.value = w.name; hide();
+    $('wbName').setAttribute('placeholder', gearAutoHint(d.base.name));
     $('wbModsBox').hidden = false; paint();
   }
   pick.addEventListener('input', function () { act = 0; show(); });
@@ -333,7 +345,7 @@ function wireWeaponSec(s) {
     var btns = box.querySelectorAll('.btn'); btns.forEach(function (b) { b.disabled = true; });
     Ops.saveCustomWeapon(s, d).then(function (cw) {
       ui.weaponDraft = null;
-      toast(prev ? 'Arma salva; a linha em Meus Itens foi atualizada.' : '“' + cw.base.name + '” adicionada a Meus Itens.');
+      toast(prev ? 'Arma salva; a linha em Meus Itens foi atualizada.' : '“' + (gearOwnName(d.name) || cw.base.name) + '” adicionada a Meus Itens.');
       renderSheetPage();
     }, function (er) { btns.forEach(function (b) { b.disabled = false; }); $('wbErr').textContent = errorText(er); });
   }

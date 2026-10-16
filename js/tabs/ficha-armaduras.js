@@ -81,11 +81,21 @@ function drAdd(dr, n) { dr = String(dr == null ? '' : dr); return n ? dr.replace
 // The adjustments of a set added up: DR on every piece; cost ($) on the set's total; weight (%) on
 // every piece. The percentages add up (+50% and −15% are +35%).
 function armorAdjTotal(mods) {
-  var t = { dr: 0, cost: 0, weightPct: 0 };
-  mods.forEach(function (m) { t.dr += m.dr || 0; t.cost += m.cost || 0; t.weightPct += m.weightPct || 0; });
-  t.cost = eqRound(t.cost); t.weightPct = eqRound(t.weightPct);
+  var t = { dr: 0, cost: 0, cf: 0, weightPct: 0 };
+  mods.forEach(function (m) { t.dr += m.dr || 0; t.cost += m.cost || 0; t.cf += m.cf || 0; t.weightPct += m.weightPct || 0; });
+  t.cost = eqRound(t.cost); t.cf = eqRound(t.cf); t.weightPct = eqRound(t.weightPct);
   return t;
 }
+// A cost times (1 + the CFs added up), as the books do (B274); never below 0.
+function cfCost(cost, cf) { return Math.max(0, eqRound(cost * (1 + (cf || 0)))); }
+// The CF and the improvement of an adjustment (the same in Criar Armadura, Arma and Escudo): o.cf (−1
+// to 1000, cents), o.improvementId.
+function cleanAdjCf(o, m) {
+  o.cf = Math.round((abNum(m.cf, -1, 1000) || 0) * 100) / 100;
+  var im = gearId(m.improvementId, 200); if (im) o.improvementId = im;
+  return o;
+}
+function adjCfText(m) { return m.cf ? 'CF ' + (m.cf < 0 ? '−' : '+') + eqNum(Math.abs(m.cf)) : ''; }
 // One piece from the base model, in this order:
 //   1. the base model's torso: cost, weight, DR and time to don (100%);
 //   2. the location's percentage of the torso, on cost, weight and time to don;
@@ -100,7 +110,7 @@ function armorPieceCalc(base, loc, cover, dr) {
     don: base.don == null ? null : Math.round(base.don * pct / 100 * 10) / 10 };
 }
 // The pieces of a set (sel: { location id: cover }): each one by armorPieceCalc, then the adjustments:
-// the weight % on each piece's weight; the cost, which changes the set's total, shared among the
+// the CFs on each piece's cost (× (1 + their sum)); the weight % on each piece's weight; the cost, which changes the set's total, shared among the
 // pieces by their percentage (the last one takes what rounding left, so the total moves by exactly
 // what was typed; one piece takes it all). A piece never goes below 0.
 function armorSetPieces(base, mods, sel) {
@@ -108,6 +118,7 @@ function armorSetPieces(base, mods, sel) {
     return Object.assign({ id: '', loc: l.id }, armorPieceCalc(base, l, sel[l.id], adj.dr), { equipId: null });
   });
   var sum = pieces.reduce(function (n, p) { return n + p.pct; }, 0), left = adj.cost;
+  if (adj.cf) pieces.forEach(function (p) { p.cost = cfCost(p.cost, adj.cf); });
   if (adj.weightPct) pieces.forEach(function (p) { p.weight = Math.max(0, eqRound(p.weight * (1 + adj.weightPct / 100))); });
   if (left && sum) pieces.forEach(function (p, i) {
     var part = i === pieces.length - 1 ? left : eqRound(adj.cost * p.pct / sum);
@@ -116,7 +127,13 @@ function armorSetPieces(base, mods, sel) {
   return pieces;
 }
 // A piece in the list: the location, then the base model ("Cabeça (frontal) — Plate, Medium").
-function armorPieceName(set, loc, cover) { return (loc.name + (cover === 'front' ? ' (frontal)' : '') + ' — ' + (set.base ? set.base.name : 'Armadura')).slice(0, 120); }
+function armorPieceName(set, loc, cover) { return ((loc ? loc.name : 'Peça') + (cover === 'front' ? ' (frontal)' : '') + ' — ' + (set.base ? set.base.name : 'Armadura')).slice(0, 120); }
+// A piece's line in Meus Itens: the name given in Criar Armadura (set.label; with several pieces, one
+// per location: "Elmo do Pai — Cabeça"), or else armorPieceName.
+function armorLineName(set, pc) {
+  var l = armorLocById(pc.loc), own = gearOwnName(set.label);
+  return own ? (set.pieces.length > 1 ? own + ' — ' + (l ? l.name : pc.loc) : own).slice(0, 120) : armorPieceName(set, l, pc.cover);
+}
 // A set: the locations chosen, in the table's order ("Cabeça + Pescoço + Mãos, ambas").
 function armorSetName(locIds) { return armorLocs().filter(function (l) { return locIds.indexOf(l.id) >= 0; }).map(function (l) { return l.name; }).join(' + ').slice(0, 80); }
 
@@ -144,12 +161,13 @@ function cleanArmorAdj(m) {
   var o = { name: String(m.name || '').trim().slice(0, 120), dr: cleanInt(m.dr, -50, 50, 0), cost: abNum(m.cost, -9999999, 9999999) || 0, weightPct: abNum(m.weightPct, -100, 1000) || 0 };
   o.cost = Math.round(o.cost * 100) / 100; o.weightPct = Math.round(o.weightPct * 100) / 100;
   var sp = gearId(m.spellId, 200); if (sp) o.spellId = sp;
-  return o;
+  return cleanAdjCf(o, m);
 }
-// The set a draft gives, with its adjustments (rows left blank are dropped), named by its locations.
+// The set a draft gives, with its adjustments (rows left blank are dropped), named by its locations;
+// label: the name given to the piece (only for its line in Meus Itens, armorLineName; not saved in the set).
 function armorDraftSet(d) {
   var mods = d.adj.map(cleanArmorAdj).filter(function (m) { return m.name; });
-  var set = { id: d.setId, name: armorSetName(Object.keys(d.locs)), description: String(d.description || '').trim(), baseId: d.baseId, base: d.base, version: d.version || 1, originId: d.originId || null, mods: mods, pieces: [] };
+  var set = { id: d.setId, name: armorSetName(Object.keys(d.locs)), label: gearOwnName(d.name), description: String(d.description || '').trim(), baseId: d.baseId, base: d.base, version: d.version || 1, originId: d.originId || null, mods: mods, pieces: [] };
   if (d.base) set.pieces = armorSetPieces(d.base, mods, d.locs);
   return set;
 }
@@ -159,7 +177,7 @@ function armorDraftErrors(d) {
   if (!d.base) out.push('Escolha o modelo base (uma armadura de tronco).');
   else if (d.custom && !String(d.base.name || '').trim()) out.push('Dê um nome ao modelo personalizado.');
   if (!sel.length) out.push('Escolha a parte do corpo.');
-  if (d.adj.some(function (m) { var c = cleanArmorAdj(m); return !c.name && (c.dr || c.cost || c.weightPct); })) out.push('Dê um nome a cada ajuste com valores.');
+  if (d.adj.some(function (m) { var c = cleanArmorAdj(m); return !c.name && (c.dr || c.cost || c.cf || c.weightPct); })) out.push('Dê um nome a cada ajuste com valores.');
   sel.forEach(function (a) { sel.forEach(function (b) { if (a < b && armorLocsClash(a, b)) out.push(armorLocName(a) + ' e ' + armorLocName(b) + ' cobrem a mesma área: escolha uma das duas.'); }); });
   return out;
 }
@@ -195,7 +213,7 @@ Ops.saveArmorSet = function (s, d, asNew) {
     if (old) kept.push(old);
     if (line && old.loc !== pc.loc) drop = drop.concat(armorDroppedSlots(g, line.id, pc.loc));
     pc.id = old ? old.id : gearNewId('q', pieceIds); pieceIds[pc.id] = true;
-    var fields = { kind: 'armor', name: armorPieceName(set, armorLocById(pc.loc), pc.cover), qty: 1, weight: pc.weight, cost: pc.cost };
+    var fields = { kind: 'armor', name: armorLineName(set, pc), qty: 1, weight: pc.weight, cost: pc.cost };
     if (line) { line = Object.assign({}, line, fields); delete line.refId; equip[equip.indexOf(lines[line.id])] = line; }
     else { line = Object.assign({ id: gearNewId('e', lines), notes: armorPieceNotes(d) }, fields); equip.push(line); }
     lines[line.id] = line; pc.equipId = line.id;
@@ -211,14 +229,13 @@ Ops.saveArmorSet = function (s, d, asNew) {
 // ("[5] -2 DR vs. crushing."). They stay in the piece's line, editable in Meus Itens.
 function armorBaseNotes(d) { var c = d.baseId ? armorById(d.baseId) : null; return c && c.footnotes ? String(c.footnotes).replace(/\s*\n\s*/g, ' ').trim() : ''; }
 function armorPieceNotes(d) { return [String(d.description || '').trim(), armorBaseNotes(d)].filter(Boolean).join(' ').slice(0, 400); }
-// withPieces: the pieces leave the list too (and so the body and the packs); without it they stay in
-// the list as armors of their own.
-Ops.deleteArmorSet = function (s, setId, withPieces) {
+// The pieces leave the list too (and so the body and the packs).
+Ops.deleteArmorSet = function (s, setId) {
   var g = sheetGear(sheetById(s.id) || s), set = g.armorSets.filter(function (a) { return a.id === setId; })[0];
   if (!set) return Promise.resolve();
   var gone = set.pieces.map(function (p) { return p.equipId; }).filter(Boolean);
   var ch = { armorSets: g.armorSets.filter(function (a) { return a.id !== setId; }) };
-  if (withPieces) ch.equip = g.equip.filter(function (e) { return gone.indexOf(e.id) < 0; });
+  ch.equip = g.equip.filter(function (e) { return gone.indexOf(e.id) < 0; });
   return saveGearLists(s, ch);
 };
 // Lines in use (body or packs) that an edit would change or take out of the list.
@@ -229,7 +246,7 @@ function armorEditImpact(g, prev, set) {
     if (!where.length) return;
     var now = set.pieces.filter(function (p) { return armorPieceFrom(prev, p, set) === old; })[0];
     if (!now) { out.push('“' + e.name + '” sai da lista (está em ' + where.join(' · ') + ')'); return; }
-    var name = armorPieceName(set, armorLocById(now.loc), now.cover), ch = [];
+    var name = armorLineName(set, now), ch = [];
     if (name !== e.name) ch.push('nome');
     if (now.dr !== old.dr) ch.push('RD ' + old.dr + ' → ' + now.dr);
     if (now.cost !== old.cost) ch.push('custo ' + eqMoney(old.cost) + ' → ' + eqMoney(now.cost));
@@ -261,7 +278,7 @@ function armorSetTotals(set) {
 // "Fortify (RD +1, +$500, peso −15%)".
 function armorAdjText(m) {
   function sg(n) { return n < 0 ? '−' : '+'; }
-  var parts = [m.dr ? 'RD ' + sg(m.dr) + Math.abs(m.dr) : '', m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : ''].filter(Boolean);
+  var parts = [m.dr ? 'RD ' + sg(m.dr) + Math.abs(m.dr) : '', m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', adjCfText(m), m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : ''].filter(Boolean);
   return m.name + (parts.length ? ' (' + parts.join(', ') + ')' : '');
 }
 // The DR on each part of the body, from the pieces that cover it.
@@ -280,7 +297,7 @@ function armorItemsHtml(lines, g, L, can) {
     var pc = g.pieces[x.id], set = pc.set, counted = L.counted[x.id] || 0, where = gearWhere(g, x.id);
     var adj = set.mods.length ? set.mods.map(armorAdjText).join('; ') : '';
     weight += x.qty * x.weight;
-    var row = '<tr' + (counted ? '' : ' class="eq-stored"') + '><td><b>' + gearKindTag('armor') + esc(x.name) + '</b>' +
+    var row = '<tr' + (counted ? '' : ' class="eq-stored"') + '><td><b>' + gearKindTag('armor') + esc(x.name) + '</b>' + gearAutoSub(x, armorPieceName(set, armorLocById(pc.piece.loc), pc.piece.cover)) +
       '<small class="eq-where">' + esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>' +
       '<td class="gval">' + esc(pc.piece.dr) + (pc.piece.cover === 'front' ? '<small>frontal</small>' : '') + '</td>' +
       '<td>' + esc(eqLbs(x.weight)) + '</td>' +
@@ -296,7 +313,6 @@ function armorItemsHtml(lines, g, L, can) {
       row += '<tr><td colspan="6"><div class="confirm" role="alert"><span>Excluir <b>' + esc(set.pieces.length > 1 ? set.name + ' (' + plural(set.pieces.length, 'peça', 'peças') + ')' : x.name) + '</b>?' +
         (used.length ? ' Em uso: ' + esc(used.map(function (q) { return armorLocName(q.loc) + ' (' + armorPieceStatus(g, q) + ')'; }).join('; ')) + '. Excluir tira de lá também.' : '') + '</span>' +
         '<div class="btn-row"><button class="btn danger solid" type="button" data-ab-delall="' + esc(set.id) + '">Excluir</button>' +
-        '<button class="btn" type="button" data-ab-delset="' + esc(set.id) + '" title="A linha continua na lista, como uma armadura comum, sem os dados de Criar Armadura">Manter como item comum</button>' +
         '<button class="btn ghost" type="button" data-ab-delno="1">Cancelar</button></div></div></td></tr>';
     }
     return row;
@@ -353,20 +369,89 @@ function armorFlexHtml(dr) {
     'Ela deixa passar <b>trauma contundente</b> (p. B379): quando um golpe de contusão (cr) não atravessa a RD, o personagem ainda sofre 1 ponto de dano para cada 5 pontos que a armadura segurou. ' +
     'Armaduras rígidas (sem *), como placa, não têm esse efeito. A ficha não calcula isso sozinha: aplique na hora do dano.</span></p>';
 }
-/* ---------- adjustments (Criar Armadura and Criar Arma) ----------
-   Free rows, each a name (typed, or a spell picked from Mundo › Magias, in English or Portuguese)
-   and numbers that add to or take from the result. cfg: { p: the prefix of the ids ('ab', 'wb'),
-   nums: [[field, label, step]], blank: a new row, clean(m), total(list): the sum as one row,
-   text(m): "Nome (RD +1, +$5)", hint: the name's placeholder, help: the line below }. */
+/* ---------- improvements (Mundo › Melhoramentos) as adjustments ----------
+   An improvement picked as an adjustment fills its row with what the rule says: the cost factor (CF;
+   the book's "×4" is +3 CF), a fixed cost ("+$20"), the weight ("×3/4" is −25%, "+10%"; "+5 lbs." is a
+   % of the base's weight) and, from IMPROVEMENT_EFFECTS, the numbers the description gives (DR,
+   damage, skill). An improvement with options ("+2/+3/+9 CF", by the kind of weapon; Dragonhide's
+   +1 to +4 DR) is offered once per option. */
+// What the descriptions give in numbers, by improvement id: one object, or one per option (in the
+// order of the cost's options). dmg with cutImp: only the cutting and impaling attacks (Fine, Very
+// Fine; a bow gets range instead, which the sheet does not model).
+var IMPROVEMENT_EFFECTS = (function () {
+  var fine = { dmg: 1, cutImp: true }, vfine = { dmg: 2, cutImp: true }, bal = { nh: 1 }, unbal = { nh: -1 };
+  return {
+    'impr_fine_b274': fine, 'impr_fine_lt59': fine, 'impr_fine_df126': fine, 'impr_fine_df833': fine,
+    'impr_very-fine_b274': vfine, 'impr_very-fine_lt59': vfine, 'impr_very-fine_df127': vfine, 'impr_very-fine_df833': vfine,
+    'impr_balanced_lt59': bal, 'impr_balanced_df126': bal, 'impr_balanced_df833': bal, 'impr_fine-balance_ma216': bal,
+    'impr_poorly-balanced_lt59': unbal, 'impr_cheap-balance_ma216': unbal,
+    'impr_balanced_df127': bal, 'impr_balanced_df835': bal,
+    'impr_leather-of-quality_lt105': { dr: 1 }, 'impr_cheap-quality_lt109': { dr: -1 }, 'impr_hardened-steel_lt110': { dr: 1 },
+    'impr_duplex-plate_lt110': { dr: 1 }, 'impr_giant-spider-silk_df127': { dr: 1 }, 'impr_giant-spider-silk_df835': { dr: 1 },
+    'impr_reinforced_lt105': { weightPct: 25 }, 'impr_spangenhelms-vs-single-piece-helmets_lt112': { weightPct: -25 },
+    'impr_dwarven_df127_2': [{ dr: 1 }, { dr: 2 }, { dr: 3 }], 'impr_dragonhide_df127': [{ dr: 1 }, { dr: 2 }, { dr: 3 }, { dr: 4 }],
+    'impr_dwarven-1_df835': { dr: 1 }, 'impr_dwarven-2_df835': { dr: 2 }, 'impr_dwarven-3_df835': { dr: 3 },
+    'impr_dragonhide-1_df835': { dr: 1 }, 'impr_dragonhide-2_df835': { dr: 2 }, 'impr_dragonhide-3_df835': { dr: 3 }, 'impr_dragonhide-4_df835': { dr: 4 }
+  };
+})();
+// "2/3" or "1.5" as a number; NaN when not one.
+function imprNum(t) { var m = /^(\d+(?:\.\d+)?)(?:\/(\d+(?:\.\d+)?))?$/.exec(String(t).replace(/,/g, '').trim()); return m ? (m[2] ? +m[1] / +m[2] : +m[1]) : NaN; }
+// The cost's options: [{ cf, cost, text }] ("+2/+3/+9 CF", "×4/×3/×10", "×0.4; -0.6 CF", "+$2,000").
+function imprCostOptions(v) {
+  var t = String(v || '').replace(/\s+/g, ' ').trim(), m = /((?:[+-]?\d+(?:\.\d+)?\/)*[+-]?\d+(?:\.\d+)?)\s*CF/i.exec(t);
+  if (m) return m[1].split('/').map(function (x) { var n = +x; return { cf: n, cost: 0, text: (n >= 0 ? '+' : '') + eqNum(n) + ' CF' }; });
+  if (/^[×x]/i.test(t)) return t.split('/').map(function (x) { var n = imprNum(x.replace(/^[×x]/i, '')); return isFinite(n) ? { cf: eqRound(n - 1), cost: 0, text: '×' + eqNum(n) } : null; }).filter(Boolean);
+  var d = /([+-])\s*\$\s*([\d,]+(?:\.\d+)?)/.exec(t);
+  return d ? [{ cf: 0, cost: (d[1] === '-' ? -1 : 1) * +d[2].replace(/,/g, ''), text: d[1] + '$' + d[2] }] : [];
+}
+// The weight's options: [{ pct } or { lbs }] ("×3/4", "×1.5 / ×2/3.", "+10% / +20%", "+6 lbs.").
+function imprWeightOptions(v) {
+  var t = String(v || '').trim(); if (!t) return [];
+  return t.split(/\s+\/\s+/).map(function (x) {
+    x = x.replace(/\.\s*$/, '').trim();
+    var p = /^([+-]?\d+(?:\.\d+)?)\s*%$/.exec(x); if (p) return { pct: +p[1] };
+    var l = /^([+-]?\d+(?:\.\d+)?)\s*lbs?$/i.exec(x); if (l) return { lbs: +l[1] };
+    var n = /^[×x]\s*(.+)$/i.test(x) ? imprNum(x.replace(/^[×x]\s*/i, '')) : NaN;
+    return isFinite(n) ? { pct: eqRound((n - 1) * 100) } : null;
+  }).filter(Boolean);
+}
+// An improvement as the rows it can fill: [{ c, label, row }] (row: the adjustment, without the name's
+// suffix when there is a single option). kind: the gear of the builder ('Arma', 'Armadura', 'Escudo');
+// ctx: { weight: the base's weight (for "+5 lbs."), ranged: a bow, crossbow or blowpipe }.
+function improvementRows(c, ctx) {
+  var costs = imprCostOptions(c.cost), weights = imprWeightOptions(c.weight), fx = IMPROVEMENT_EFFECTS[c.id];
+  if (!costs.length) costs = [{ cf: 0, cost: 0, text: '' }];
+  var parts = String(c.restriction || '').split(/\s*;\s*|\s+\/\s+/).filter(Boolean), many = costs.length > 1;
+  return costs.map(function (o, k) {
+    var w = weights.length === costs.length ? weights[k] : weights.length === 1 ? weights[0] : null;
+    var e = Array.isArray(fx) ? fx[k] || {} : fx || {}, row = { name: (c.name + (many ? ' (' + o.text + ')' : '')).slice(0, 120), improvementId: c.id, cf: o.cf, cost: o.cost, weightPct: 0 };
+    if (w) row.weightPct = w.pct != null ? w.pct : ctx.weight ? eqRound(w.lbs / ctx.weight * 100) : 0;
+    if (e.weightPct) row.weightPct = eqRound(row.weightPct + e.weightPct);
+    ['dr', 'db', 'nh'].forEach(function (f) { if (e[f]) row[f] = e[f]; });
+    if (e.dmg && !ctx.ranged) { row.dmg = e.dmg; if (e.cutImp) row.cutImp = true; }
+    return { c: c, row: row, label: many && parts.length === costs.length ? parts[k].replace(/\s*\([^)]*CF\)\s*$/i, '') : '', text: o.text, weight: w };
+  });
+}
+function improvementsFor(kind) { return (W.improvements || []).filter(function (x) { return x.appliesTo === kind; }); }
+
+/* ---------- adjustments (Criar Armadura, Arma and Escudo) ----------
+   Free rows, each a name (typed, or a spell of Mundo › Magias or an improvement of Mundo ›
+   Melhoramentos, in English or Portuguese) and numbers that add to or take from the result; cf: the
+   cost factor (Basic Set, p. B274: the cost is the base's × (1 + the CFs added up), plus the $).
+   cfg: { p: the prefix of the ids ('ab', 'wb'), kind: the improvements offered, nums: [[field, label,
+   step]], blank: a new row, clean(m), total(list): the sum as one row, text(m): "Nome (RD +1, +$5)",
+   hint: the name's placeholder, help: the line below }. */
 function adjRowHtml(cfg, m, i) {
-  var sp = m.spellId ? spellById(m.spellId) : null;
+  var sp = m.spellId ? spellById(m.spellId) : null, im = m.improvementId ? improvementById(m.improvementId) : null;
   function num(f) {
     return '<label class="ab-lv">' + f[1] + ' <input type="number" data-adj-f="' + i + ':' + f[0] + '" step="' + f[2] + '" placeholder="0" value="' + (m[f[0]] == null || m[f[0]] === 0 ? '' : m[f[0]]) + '" aria-label="' + f[1] + ' do ajuste"></label>';
   }
   return '<div class="ab-adj" data-adj="' + i + '"><div class="sk-pick ab-adj-name"><input type="text" data-adj-f="' + i + ':name" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + cfg.p + 'AdjSug' + i + '"' +
     ' placeholder="' + esc(cfg.hint) + '" value="' + esc(m.name || '') + '" aria-label="Ajuste">' +
     '<div class="suggest" id="' + cfg.p + 'AdjSug' + i + '" role="listbox" hidden></div>' +
-    (sp ? '<small><a href="' + spellHref(sp.id) + '" target="_blank" rel="noopener">' + svg(ICON.spell, 12, 2.2) + 'Magia: ' + esc(sp.name) + (sp.page ? ' · ' + esc(sp.page) : '') + '</a></small>' : '') + '</div>' +
+    (sp ? '<small><a href="' + spellHref(sp.id) + '" target="_blank" rel="noopener">' + svg(ICON.spell, 12, 2.2) + 'Magia: ' + esc(sp.name) + (sp.page ? ' · ' + esc(sp.page) : '') + '</a></small>' : '') +
+    (im ? '<small><a href="' + improvementHref(im.id) + '" target="_blank" rel="noopener" title="' + esc(clip(im.description || '', 300)) + '">' + svg(ICON.improvement, 12, 2.2) + 'Melhoramento: ' + esc(im.name) +
+      (im.page ? ' · ' + esc(im.page) : '') + '</a>' + (m.cutImp ? ' · dano só nos ataques de corte e perfuração' : '') + '</small>' : '') + '</div>' +
     cfg.nums.map(num).join('') +
     '<button class="icon-btn" type="button" data-adj-del="' + i + '" aria-label="Remover ajuste" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
 }
@@ -381,8 +466,9 @@ function adjListHtml(cfg, list) {
     '<p class="hint-text" style="margin:0">' + cfg.help + '</p>';
 }
 // box: the element that holds the list (it stays; its content is redrawn when a row comes or goes).
-// changed(): after every change, to redraw what depends on the adjustments.
-function wireAdjList(cfg, box, list, changed) {
+// changed(): after every change, to redraw what depends on the adjustments. ctx(): what an
+// improvement needs of the builder ({ weight, ranged }, improvementRows).
+function wireAdjList(cfg, box, list, changed, ctx) {
   var sug = { i: -1, list: null, input: null, options: [], active: 0 };
   function redraw(focusLast) {
     hide(); box.innerHTML = adjListHtml(cfg, list); changed();
@@ -395,18 +481,28 @@ function wireAdjList(cfg, box, list, changed) {
   function show(input) {
     var i = +input.getAttribute('data-adj-f').split(':')[0], el = $(cfg.p + 'AdjSug' + i);
     if (sug.list && sug.list !== el) hide();
-    var q = input.value, options = norm(q).trim() ? searchCatalog(W.spells || [], q, null).slice(0, 8) : [];
-    if (!el || !options.length || (options.length === 1 && options[0].id === list[i].spellId)) { sug.list = el; sug.input = input; hide(); return; }
+    // The improvements of this kind of gear first (one option per line), then the spells.
+    var q = input.value, has = !!norm(q).trim(), cur = list[i], info = ctx ? ctx() : {}, options = [];
+    if (has) searchCatalog(improvementsFor(cfg.kind), q, null).slice(0, 6).forEach(function (c) {
+      improvementRows(c, info).forEach(function (r) { options.push({ impr: r }); });
+    });
+    if (has) searchCatalog(W.spells || [], q, null).slice(0, 6).forEach(function (c) { options.push({ spell: c }); });
+    options = options.filter(function (o) { return !(o.spell && o.spell.id === cur.spellId && norm(q) === norm(o.spell.name)) && !(o.impr && o.impr.row.improvementId === cur.improvementId && norm(q) === norm(o.impr.row.name)); }).slice(0, 14);
+    if (!el || !options.length) { sug.list = el; sug.input = input; hide(); return; }
     sug.i = i; sug.list = el; sug.input = input; sug.options = options; sug.active = Math.min(sug.active, options.length - 1);
-    el.innerHTML = options.map(function (c, n) {
-      return '<button type="button" role="option" data-o="' + n + '" class="' + (n === sug.active ? 'act' : '') + '" aria-selected="' + (n === sug.active) + '"><span>' + esc(c.name) + ptNameHtml(c) + '</span>' +
-        '<small>' + esc(['Magia', c.college, c.page].filter(Boolean).join(' · ')) + '</small></button>';
+    el.innerHTML = options.map(function (o, n) {
+      var a = '<button type="button" role="option" data-o="' + n + '" class="' + (n === sug.active ? 'act' : '') + '" aria-selected="' + (n === sug.active) + '">';
+      if (o.spell) return a + '<span>' + esc(o.spell.name) + ptNameHtml(o.spell) + '</span><small>' + esc(['Magia', o.spell.college, o.spell.page].filter(Boolean).join(' · ')) + '</small></button>';
+      var r = o.impr, x = r.row, eff = cfg.text(Object.assign(cfg.clean(x), { name: '' })).replace(/^\s*\(|\)\s*$/g, '');
+      return a + '<span>' + esc(x.name) + ptNameHtml(r.c) + '</span><small>' + esc(['Melhoramento', r.label, eff, r.c.page].filter(Boolean).join(' · ')) + '</small></button>';
     }).join('');
     el.hidden = false; input.setAttribute('aria-expanded', 'true');
   }
   function pick(n) {
-    var c = sug.options[n], i = sug.i; if (!c || i < 0) return;
-    list[i].name = c.name; list[i].spellId = c.id;
+    var o = sug.options[n], i = sug.i; if (!o || i < 0) return;
+    // A spell keeps the numbers typed; an improvement puts the rule's (the row starts over).
+    if (o.spell) { list[i].name = o.spell.name; list[i].spellId = o.spell.id; delete list[i].improvementId; }
+    else list[i] = Object.assign({}, cfg.blank, o.impr.row);
     redraw(false);
     var f = box.querySelector('[data-adj-f="' + i + ':' + cfg.nums[0][0] + '"]'); if (f instanceof HTMLElement) f.focus();
   }
@@ -420,12 +516,15 @@ function wireAdjList(cfg, box, list, changed) {
       // Another name than the spell picked: the link goes.
       var sp = m.spellId ? spellById(m.spellId) : null;
       if (sp && norm(t.value).trim() !== norm(sp.name)) { delete m.spellId; var a = t.closest('.ab-adj-name').querySelector('small'); if (a) a.remove(); }
+      // An improvement's link stays while the name still starts with the improvement's; its numbers stay.
+      var im = m.improvementId ? improvementById(m.improvementId) : null;
+      if (m.improvementId && (!im || norm(t.value).trim().indexOf(norm(im.name)) !== 0)) { delete m.improvementId; delete m.cutImp; var b = t.closest('.ab-adj-name').querySelector('small'); if (b) b.remove(); }
       sug.active = 0; show(t);
     } else if (t.value === '' || isFinite(Number(t.value))) m[k[1]] = t.value === '' ? 0 : Number(t.value);
     $(cfg.p + 'AdjSum').innerHTML = adjSumHtml(cfg, list);
     changed();
   });
-  box.addEventListener('focusin', function (e) { var t = nameField(e); if (t) { loadCatalog('spells'); sug.active = 0; show(t); } });
+  box.addEventListener('focusin', function (e) { var t = nameField(e); if (t) { loadCatalog('spells'); loadCatalog('improvements'); sug.active = 0; show(t); } });
   box.addEventListener('focusout', function (e) { var t = nameField(e); if (t) setTimeout(function () { if (sug.input === t && document.activeElement !== t) hide(); }, 150); });
   box.addEventListener('keydown', function (e) {
     var t = nameField(e); if (!t || sug.input !== t || !sug.options.length) return;
@@ -442,11 +541,12 @@ function wireAdjList(cfg, box, list, changed) {
     else if (add) { list.push(Object.assign({}, cfg.blank)); redraw(true); }
   });
 }
-// Criar Armadura's adjustments: DR (points), cost ($), weight (% of the piece's).
-var ARMOR_ADJ = { p: 'ab', nums: [['dr', 'RD', '1'], ['cost', 'Custo ($)', 'any'], ['weightPct', 'Peso (%)', 'any']], blank: { name: '', dr: 0, cost: 0, weightPct: 0 },
+// Criar Armadura's adjustments: DR (points), cost ($), CF, weight (% of the piece's).
+var ARMOR_ADJ = { p: 'ab', kind: 'Armadura', nums: [['dr', 'RD', '1'], ['cost', 'Custo ($)', 'any'], ['cf', 'CF', 'any'], ['weightPct', 'Peso (%)', 'any']], blank: { name: '', dr: 0, cost: 0, cf: 0, weightPct: 0 },
   clean: function (m) { return cleanArmorAdj(m); }, total: function (l) { return armorAdjTotal(l); }, text: function (m) { return armorAdjText(m); },
-  hint: 'Escreva o ajuste ou busque uma magia. Ex.: Fortify, sob medida',
-  help: 'Cada ajuste soma (ou, negativo, tira): a RD em pontos, o custo em $ e o peso em % do peso da peça (ex.: −15 para sob medida Expert). Com vários ajustes, as porcentagens se somam. Os ajustes ficam guardados com a peça.' };
+  hint: 'Escreva o ajuste ou busque um melhoramento ou uma magia. Ex.: Fine, Dwarven, Fortify',
+  help: 'Cada ajuste soma (ou, negativo, tira): a RD em pontos, o custo em $, o CF (fator de custo: o custo da peça vezes 1 + a soma dos CF, B274) e o peso em % do peso da peça. ' +
+    'Um melhoramento de Mundo › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, RD); confira a descrição no link. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a peça.' };
 // The part of the body, picked from a list: grouped by the larger locations (Cabeça, then Crânio and
 // Rosto inside it), each with its percentage of the torso. Once picked: its coverage and the piece's
 // values.
@@ -469,7 +569,7 @@ function armorSummaryHtml(set) {
   return '<h3 class="sec-title" style="margin:0">' + (set.pieces.length > 1 ? 'Resumo das peças' : 'Resumo da peça') + '</h3><div class="wtab-wrap"><table class="gtab ab-tab"><thead><tr><th>Localização</th><th>Peça</th><th>Cobertura</th><th>%</th><th>RD</th><th>Peso</th><th>Vestir</th></tr></thead><tbody>' +
     set.pieces.map(function (p) {
       var l = armorLocById(p.loc);
-      return '<tr><td><b>' + esc(l.name) + '</b></td><td>' + esc(armorPieceName(set, l, p.cover)) + '</td><td>' + (p.cover === 'front' ? 'Frontal' : 'Completa') + '</td><td>' + esc(eqNum(p.pct)) + '%</td>' +
+      return '<tr><td><b>' + esc(l.name) + '</b></td><td>' + esc(armorLineName(set, p)) + '</td><td>' + (p.cover === 'front' ? 'Frontal' : 'Completa') + '</td><td>' + esc(eqNum(p.pct)) + '%</td>' +
         '<td class="gval">' + esc(p.dr) + '</td><td>' + esc(eqLbs(p.weight)) + '</td><td>' + armorDon(p.don) + '</td></tr>';
     }).join('') + '</tbody><tfoot><tr><td colspan="5">' + plural(set.pieces.length, 'peça', 'peças') + '</td><td>' + esc(eqLbs(t.weight)) + '</td><td>' +
     (t.donAll ? esc(eqNum(t.don) + ' s') : '<span class="eq-none">—</span>') + '</td></tr></tfoot></table></div>' +
@@ -490,8 +590,9 @@ function armorBuilderHtml(s, g, d) {
   return '<div class="box sk-edit"><div class="ab-grid">' +
     '<label class="sc-f"><span>Modelo base (armadura de tronco)</span><div class="sk-pick"><input type="text" id="abBase" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="abBaseSug"' +
     ' placeholder="' + (W.loaded.armors ? 'Digite para buscar. Ex.: placa, Plate, malha' : 'Carregando armaduras…') + '" value="' + esc(d.base ? d.base.name : '') + '"><div class="suggest" id="abBaseSug" role="listbox" hidden></div></div></label>' +
-    '<label class="sc-f"><span>Descrição</span><textarea id="abDesc" rows="2" maxlength="2000" placeholder="Opcional">' + esc(d.description) + '</textarea></label></div>' +
-    '<p class="hint-text" style="margin:0">Ficha <b>' + esc(s.name) + '</b>' + (chars.length ? ', de ' + esc(chars.map(function (c) { return c.name; }).join(', ')) : '') + ': a peça entra na lista de itens desta ficha, com o nome da parte do corpo escolhida.' +
+    gearNameFieldHtml('abName', d.name, armorAutoName(d)) +
+    '<label class="sc-f ab-wide"><span>Descrição</span><textarea id="abDesc" rows="2" maxlength="2000" placeholder="Opcional">' + esc(d.description) + '</textarea></label></div>' +
+    '<p class="hint-text" style="margin:0">Ficha <b>' + esc(s.name) + '</b>' + (chars.length ? ', de ' + esc(chars.map(function (c) { return c.name; }).join(', ')) : '') + ': a peça entra na lista de itens desta ficha com o <b>Nome</b> dado ou, sem ele, com o nome da parte do corpo e do modelo.' +
     (editing ? ' Editando “' + esc(d.origName || '') + '”: a peça mantém a linha na lista (e onde está no Corpo e nas Mochilas).' : '') + '</p>' +
     '<div id="abBaseBox">' + armorBaseBoxHtml(d) + '</div></div>' +
     '<div class="box sk-edit" id="abModsBox"' + (d.base ? '' : ' hidden') + '><h3 class="sec-title" style="margin:0">Ajustes</h3><div class="ab-mods" id="abMods">' + adjListHtml(ARMOR_ADJ, d.adj) + '</div></div>' +
@@ -502,14 +603,23 @@ function armorBuilderHtml(s, g, d) {
       : '<button class="btn primary" type="button" id="abSave">Criar peça e adicionar aos itens</button>') + '</div>';
 }
 
+// The name a piece gets without a Nome ("Cabeça — Plate, Medium"); '' before the model and the part.
+function armorAutoName(d) {
+  var set = armorDraftSet(d), pc = set.pieces[0];
+  return pc && set.pieces.length === 1 ? armorPieceName(set, armorLocById(pc.loc), pc.cover) : '';
+}
+
 /* ---------- wiring ---------- */
-function armorDraftFrom(set, mode) {
-  var d = { setId: null, origName: '', originId: null, version: 1, description: '', baseId: null, base: null, custom: false, adj: [], locs: {}, impact: null };
+// g: the sheet's lists, for the name of the piece being edited (its line's, when it was given).
+function armorDraftFrom(set, mode, g) {
+  var d = { setId: null, origName: '', originId: null, version: 1, name: '', description: '', baseId: null, base: null, custom: false, adj: [], locs: {}, impact: null };
   if (!set) return d;
   d.description = set.description; d.baseId = set.baseId; d.base = Object.assign({}, set.base); d.custom = !set.baseId;
   d.adj = set.mods.map(function (m) { return Object.assign({}, m); });
   if (mode === 'edit') set.pieces.forEach(function (p) { d.locs[p.loc] = p.cover; });
   if (mode === 'edit') { d.setId = set.id; d.origName = set.name; d.originId = set.originId; d.version = set.version; } else d.originId = set.id;
+  var pc = set.pieces[0], line = mode === 'edit' && g && set.pieces.length === 1 && pc.equipId ? gearIndex(g.equip)[pc.equipId] : null;
+  if (line) d.name = gearGivenName(line, armorPieceName(set, armorLocById(pc.loc), pc.cover));
   return d;
 }
 function wireArmorSec(s) {
@@ -519,20 +629,21 @@ function wireArmorSec(s) {
   if (!d) {
     var items = $('equip'); if (!items) return;
     items.addEventListener('click', function (e) {
-      var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-ab-edit], [data-ab-copy], [data-ab-del], [data-ab-delall], [data-ab-delset], [data-ab-delno]'); if (!b) return;
+      var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-ab-edit], [data-ab-copy], [data-ab-del], [data-ab-delall], [data-ab-delno]'); if (!b) return;
       var g = sheetGear(s), find = function (attr) { var id = b.getAttribute(attr); return g.armorSets.filter(function (a) { return a.id === id; })[0]; };
-      if (b.hasAttribute('data-ab-edit')) { ui.armorDraft = armorDraftFrom(find('data-ab-edit'), 'edit'); loadCatalog('armors'); renderSheetPage(); return; }
-      if (b.hasAttribute('data-ab-copy')) { ui.armorDraft = armorDraftFrom(find('data-ab-copy'), 'copy'); loadCatalog('armors'); renderSheetPage(); return; }
+      if (b.hasAttribute('data-ab-edit')) { ui.armorDraft = armorDraftFrom(find('data-ab-edit'), 'edit', g); loadCatalog('armors'); renderSheetPage(); return; }
+      if (b.hasAttribute('data-ab-copy')) { ui.armorDraft = armorDraftFrom(find('data-ab-copy'), 'copy', g); loadCatalog('armors'); renderSheetPage(); return; }
       if (b.hasAttribute('data-ab-del')) { ui.armorDel = b.getAttribute('data-ab-del'); renderSheetPage(); return; }
       if (b.hasAttribute('data-ab-delno')) { ui.armorDel = null; renderSheetPage(); return; }
-      var all = b.hasAttribute('data-ab-delall'), set = find(all ? 'data-ab-delall' : 'data-ab-delset');
+      var set = find('data-ab-delall');
       b.disabled = true;
-      Ops.deleteArmorSet(s, set.id, all).then(function () { ui.armorDel = null; toast(all ? 'Armadura excluída.' : 'A peça continua em Meus Itens como um item comum.'); renderSheetPage(); },
+      Ops.deleteArmorSet(s, set.id).then(function () { ui.armorDel = null; toast('Armadura excluída.'); renderSheetPage(); },
         function (er) { b.disabled = false; toast(errorText(er), true); });
     });
     return;
   }
-  function paint() { d.impact = null; $('abDyn').innerHTML = armorDynHtml(d); $('abErr').textContent = ''; }
+  function paint() { d.impact = null; $('abDyn').innerHTML = armorDynHtml(d); $('abErr').textContent = ''; $('abName').setAttribute('placeholder', gearAutoHint(armorAutoName(d))); }
+  $('abName').addEventListener('input', function () { d.name = $('abName').value; paint(); });
   $('abDesc').addEventListener('input', function () { d.description = $('abDesc').value; });
   box.addEventListener('input', function (e) {
     var t = /** @type {AnyEl} */ (e.target);
@@ -599,7 +710,7 @@ function wireArmorSec(s) {
   sug.addEventListener('mousedown', function (e) { e.preventDefault(); });
   sug.addEventListener('click', function (e) { var b = e.target.closest('[data-o]'); if (b) choose(+b.getAttribute('data-o')); });
 
-  wireAdjList(ARMOR_ADJ, $('abMods'), d.adj, paint);
+  wireAdjList(ARMOR_ADJ, $('abMods'), d.adj, paint, function () { return { weight: d.base ? d.base.weight : 0, ranged: false }; });
 
   function save(asNew, confirmed) {
     var errs = armorDraftErrors(d); if (errs.length) { $('abErr').textContent = errs.join(' '); return; }

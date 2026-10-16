@@ -285,6 +285,8 @@ section.gurps.folded > :not(.gurps-head) { display: none; }
 .gtab tr.gcult td:first-child { box-shadow: inset 3px 0 0 #a855f7; }
 .gtab tr.gcult td small { color: #a855f7; font-weight: 600; }
 .gtab tr.gcult .gnh.none { color: var(--faint); }
+/* Perícias: a Familiaridade Cultural numa tabela própria, depois das perícias */
+.gcult-tab thead th:first-child { color: #a855f7; }
 /* Pontos de perícia editáveis direto na tabela da ficha */
 .gtab .gpts-in { width: 56px; box-sizing: border-box; padding: 4px 6px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--well); color: var(--text); font: inherit; text-align: right; font-variant-numeric: tabular-nums; }
 .gtab .gpts-in:hover { border-color: var(--muted); }
@@ -456,13 +458,41 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 /* Danos: armas do Corpo em uso, sem arma e outros ataques; o que veio das vantagens em destaque */
 .dm-tab tr.dm-group th { text-align: left; background: var(--surface); color: var(--accent); border-top: 1px solid var(--line); }
 .dm-tab tbody tr.dm-group:first-child th { border-top: 0; }
+/* Defesas: cada grupo nomeia as colunas (Valor, Recuando); recolhido, os nomes saem com as linhas */
+.dm-tab tr.dm-group th.df-col { color: var(--muted); font-size: 11px; font-weight: 600; }
+.dm-tab tr.dm-group:has(.dm-fold[aria-expanded="false"]) th.df-col { visibility: hidden; }
+/* Danos e Defesas: os grupos (Armas em uso, Sem arma...) recolhem ao cabeçalho */
+.dm-fold { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.dm-fold .chev { color: inherit; }
+.dm-fold:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.dm-fold-sum { color: var(--muted); font-weight: 400; }
+.dm-fold[aria-expanded="true"] .dm-fold-sum { display: none; }
+/* Danos: o dano e o NH abrem a conta num modal */
+.dm-why { padding: 0; border: 0; border-bottom: 1px dotted currentColor; background: none; color: inherit; font: inherit; cursor: pointer; }
+.dm-why:hover { color: var(--accent); }
+.dm-why:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.dm-why-sec { display: flex; flex-direction: column; gap: 10px; }
+.dm-why-sec .sec-title { margin: 0; }
+.dm-why-sec .hint-text { margin: 0; }
+.dm-why-big { font-size: 28px; font-weight: 700; line-height: 1.1; }
+.dm-why-big.bonus { color: var(--accent); }
+.dm-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.dm-steps li { padding-left: 4px; }
+.dm-steps li span + b { margin-left: 8px; white-space: nowrap; }
+.dm-steps li:last-child:has(b) { font-weight: 600; }
+/* Defesas: a tabela como a de Danos; a defesa que conta fica marcada */
+.df-tab td.df-best { color: var(--accent); }
+.df-used { display: inline-block; margin-left: 8px; vertical-align: 1px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
+.df-used.df-off { color: var(--danger); }
+.df-tab td.df-offv { color: var(--faint); text-decoration: line-through; }
 .dm-tab td.gval.bonus { color: var(--accent); }
 /* Danos e Defesas dividem a linha ao meio; a tabela ocupa a sua metade (rola de lado se não couber).
    As colunas de dados centradas, também na 2ª linha de uma arma, onde a 1ª célula é a do Modo */
 .dm-wrap { display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-x: auto; }
 .dm-tab { width: 100%; }
-/* A coluna Arma cresce com o nome (e a legenda) da arma, sem quebrar linha */
-.dm-tab td.dm-name:not(.gnone), .dm-tab tr.dm-group th { white-space: nowrap; }
+/* O nome e o texto embaixo dele quebram linha: a tabela cabe na metade da tela sem barra de rolagem */
+.dm-tab tr.dm-group th { white-space: nowrap; }
+.dm-tab td.dm-name:not(.gnone) { white-space: normal; min-width: 130px; overflow-wrap: break-word; }
 .dm-tab thead th:not(:first-child), .dm-tab tbody td:not(.dm-name) { white-space: nowrap; padding-left: 12px; padding-right: 12px; text-align: center; }
 .dm-tab td.dm-name { text-align: left; }
 .dm-tab td[title] { cursor: help; }

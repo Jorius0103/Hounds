@@ -133,8 +133,9 @@ function scEnhanced(c, kind) {
   return n;
 }
 function scAllItems(c) { var l = []; c.styles.forEach(function (st) { l = l.concat(st.items); }); return l.concat(c.general); }
-// "2d-1" plus 2 is "2d+1". An add of +4 or more becomes dice: every +4 is +1d ("2d+4" is "3d",
-// "2d+7" is "3d+3"). dmgAddRaw keeps the add as it is ("2d+7").
+// "2d-1" plus 2 is "2d+1". An add of +4 or more becomes dice (Modifying Dice + Adds, B269): +7 is
+// +2d and +4 is +1d ("2d+4" is "3d", "2d+5" is "3d+1", "2d+7" is "4d", "2d+8" is "4d+1").
+// dmgAddRaw keeps the add as it is ("2d+7").
 function dmgAddRaw(dice, add) {
   var m = /^(\d+)d([+-]\d+)?$/.exec(dice); if (!m) return dice;
   var k = (+m[2] || 0) + add;
@@ -143,7 +144,7 @@ function dmgAddRaw(dice, add) {
 function dmgAdd(dice, add) {
   var m = /^(\d+)d([+-]\d+)?$/.exec(dice); if (!m) return dice;
   var n = +m[1], k = (+m[2] || 0) + add;
-  if (k >= 4) { n += Math.floor(k / 4); k %= 4; }
+  while (k >= 4) { if (k >= 7) { n += 2; k -= 7; } else { n += 1; k -= 4; } }
   return n + 'd' + (k > 0 ? '+' + k : k < 0 ? String(k) : '');
 }
 function weaponDamage(w, st) {
@@ -403,8 +404,8 @@ function combatOrder(c) { return c.styles.map(function (st, i) { return 's' + i;
 function scDmgLabel(t) { var x = SC_DMG_TYPES.filter(function (y) { return y[0] === t; })[0]; return x ? x[1] : t; }
 // Parry by skill (Basic Set): [modifier of the Parry column of the Melee Weapon Table (pp. B271-273)
 // for the skill's usual weapon, kind]. Kind: 'U' unbalanced (cannot parry after attacking with
-// it), 'F' fencing (+3 retreating, parry at -encumbrance, p. B208), 'K' Boxing/Judo/Karate
-// (+3 retreating, p. B377), 'H' one-handed unarmed, 'W' Sumo Wrestling/Wrestling (both hands).
+// it), 'F' fencing (parry at -encumbrance, p. B208), 'K' Boxing/Judo/Karate
+// (Judo and Karate at -encumbrance, p. B203), 'H' one-handed unarmed, 'W' Sumo Wrestling/Wrestling (both hands).
 // Unarmed parries use the skill or DX, if higher (p. B376). Lance cannot parry.
 var SC_PARRY = { 'axe/mace': [0, 'U'], 'two-handed axe/mace': [0, 'U'], 'broadsword': [0, ''], 'flail': [0, 'U'], 'two-handed flail': [0, 'U'],
   'knife': [-1, ''], 'kusari': [-2, 'U'], 'main-gauche': [0, 'F'], 'rapier': [0, 'F'], 'saber': [0, 'F'], 'smallsword': [0, 'F'], 'shortsword': [0, ''],
@@ -424,8 +425,11 @@ function scHasTrait(c, re) { return scAllItems(c).some(function (x) { return x.k
 // The active defenses as the Basic Set has them (pp. B374-377):
 //   Dodge = Basic Speed + 3 - encumbrance; Parry = 3 + skill/2 (+ weapon modifier); Block = 3 + Shield or Cloak/2;
 //   Combat Reflexes (or Enhanced Time Sense, which includes it) +1 to all; Enhanced Dodge/Parry/Block;
-//   a ready shield's DB adds to all three (shown in parentheses); retreating gives +3 to Dodge,
-//   +1 to Parry and Block, +3 to Parry with Boxing, Judo, Karate and fencing weapons.
+//   a ready shield's or cloak's DB adds to Parry and Block against attacks from the front or the
+//   shield side (pp. B374-375, B287): the DB of the one that blocks, in the values. By the table's
+//   rule it never adds to Dodge (the Basic Set adds it there too). By the table's rule only Dodge
+//   has a value retreating (+3, p. B377); Parry and Block have none.
+//   With a shield or cloak in a hand, Wrestling and Sumo Wrestling cannot parry (both hands).
 // Like Danos, only what is in use counts (defCarried): Parry with the weapons carried in the Corpo
 // configuration in use (each with its parry modifier and its NH, adjustments included) and the unarmed
 // skills, which need no weapon; Block with the shields and cloaks carried, whose DB is the one shown.
@@ -445,77 +449,159 @@ function combatDefenses(c, pool, av, r, a, s) {
     if (nh && nh.abs != null) skills.push({ name: k.name, abs: nh.abs, key: combatKey(k.name) });
   });
   var parries = [], blocks = [], gear = s ? defCarried(s) : null;
+  // The one chosen in the editor (by skill; with two weapons of it, the better), or the best; one
+  // that cannot be used (off) only when chosen.
+  var best = function (l, chosen) {
+    var hits = chosen ? l.filter(function (x) { return x.name === chosen; }) : [];
+    return (hits.length ? hits : l.filter(function (x) { return !x.off; })).slice().sort(function (x, y) { return y.value - x.value; })[0] || null;
+  };
+  // Shields and cloaks first: the DB of the one that blocks goes in every defense. A DB not known
+  // (written out, or none) is the editor's.
+  (gear ? gear.shields : []).forEach(function (h) {
+    var nh = h.nh.v, hdb = h.db != null ? h.db : d.db, b = 3 + Math.floor(nh / 2) + hdb + eb + cr + fb[0] + d.blockBonus;
+    blocks.push({ name: h.skill, weapon: h.name, db: hdb, dbKnown: h.db != null, value: b, notes: fxCondNotes(fd.block), nh: nh,
+      nhText: h.skill + ' ' + nh + (h.nh.adj ? ', com os ajustes do escudo' : ''),
+      calc: scCalc([[3, ''], [Math.floor(nh / 2), h.skill + ' ' + nh + (h.nh.adj ? ', com os ajustes do escudo' : '') + ' ÷ 2'], [hdb, 'DB de ' + h.name + (h.db != null ? '' : ', do editor')],
+        [cr, 'Combat Reflexes'], [eb, 'Enhanced Block'], fb, [d.blockBonus, scBonusLabel(d.blockNote)]], b) });
+  });
+  var block = best(blocks, d.block), sdb = block ? block.db : 0, dbPart = [sdb, block ? 'DB de ' + block.weapon : ''];
   skills.forEach(function (k) {
     var p = SC_PARRY[k.key];
     // Unarmed: always; a weapon skill only with a weapon in use (below).
     if (p && /[KHW]/.test(p[1])) {
       var base = p[1] === 'K' || p[1] === 'H' ? Math.max(k.abs, av.DX) : k.abs;
-      var notes = [], pEnc = (p[1] === 'F' || k.key === 'karate') ? enc : 0;
-      var v = 3 + Math.floor(base / 2) + p[0] + ep + cr + fp[0] + d.parryBonus - pEnc;
+      var notes = [], pEnc = (p[1] === 'F' || k.key === 'karate' || k.key === 'judo') ? enc : 0;
+      var v = 3 + Math.floor(base / 2) + p[0] + sdb + ep + cr + fp[0] + d.parryBonus - pEnc;
       var calc = scCalc([[3, ''], [Math.floor(base / 2), (base > k.abs ? 'DX ' + base + ', maior que ' + k.name + ' ' + k.abs : k.name + ' ' + base) + ' ÷ 2'],
-        [p[0], 'arma'], [cr, 'Combat Reflexes'], [ep, 'Enhanced Parry'], fp, [d.parryBonus, scBonusLabel(d.parryNote)], [-pEnc, 'carga']], v);
+        [p[0], 'arma'], dbPart, [cr, 'Combat Reflexes'], [ep, 'Enhanced Parry'], fp, [d.parryBonus, scBonusLabel(d.parryNote)], [-pEnc, 'Peso']], v);
+      var off = p[1] === 'W' && block ? 'com ' + block.weapon + ' numa mão não apara: ' + k.name + ' usa as duas mãos' : '';
       if (p[0]) notes.push('arma ' + (p[0] > 0 ? '+' : '') + p[0]);
       if (p[1] === 'U') notes.push('desbalanceada: não apara se atacou com ela no turno');
       if (p[1] === 'H') notes.push('-3 contra armas, exceto golpes de ponta');
-      if (p[1] === 'W') notes.push('usa as duas mãos');
-      if ((p[1] === 'F' || k.key === 'karate') && enc) notes.push('-' + enc + ' de carga');
+      if (p[1] === 'W') notes.push(off || 'usa as duas mãos');
+      if ((p[1] === 'F' || k.key === 'karate' || k.key === 'judo') && enc) notes.push('-' + enc + ' de Peso');
       notes = notes.concat(fxCondNotes(fd.parry));
-      var rp = p[1] === 'F' || p[1] === 'K' ? 3 : 1;
-      parries.push({ name: k.name, value: v, retreat: v + rp, retreatBonus: rp, notes: notes, calc: calc });
+      parries.push({ name: k.name, value: v, notes: notes, calc: calc, nh: base, off: off,
+        nhText: base > k.abs ? 'DX ' + base + ', maior que ' + k.name + ' ' + k.abs : k.name + ' ' + base });
     }
   });
   (gear ? gear.weapons : []).forEach(function (w) {
     var nh = w.nh.v, fen = w.flags.indexOf('F') >= 0, pEnc = fen ? enc : 0, notes = [];
-    var v = 3 + Math.floor(nh / 2) + w.mod + ep + cr + fp[0] + d.parryBonus - pEnc;
-    var calc = scCalc([[3, ''], [Math.floor(nh / 2), w.skill + ' ' + nh + (w.nh.adj ? ', com os ajustes da arma' : '') + ' ÷ 2'], [w.mod, 'arma'], [cr, 'Combat Reflexes'],
-      [ep, 'Enhanced Parry'], fp, [d.parryBonus, scBonusLabel(d.parryNote)], [-pEnc, 'carga']], v);
+    var v = 3 + Math.floor(nh / 2) + w.mod + sdb + ep + cr + fp[0] + d.parryBonus - pEnc;
+    var calc = scCalc([[3, ''], [Math.floor(nh / 2), w.skill + ' ' + nh + (w.nh.adj ? ', com os ajustes da arma' : '') + ' ÷ 2'], [w.mod, 'arma'], dbPart, [cr, 'Combat Reflexes'],
+      [ep, 'Enhanced Parry'], fp, [d.parryBonus, scBonusLabel(d.parryNote)], [-pEnc, 'Peso']], v);
     if (w.mod) notes.push('arma ' + (w.mod > 0 ? '+' : '') + w.mod);
     if (w.flags.indexOf('U') >= 0) notes.push('desbalanceada: não apara se atacou com ela no turno');
-    if (pEnc) notes.push('-' + enc + ' de carga');
+    if (pEnc) notes.push('-' + enc + ' de Peso');
     notes = notes.concat(fxCondNotes(fd.parry));
-    var rp = fen ? 3 : 1;
-    parries.push({ name: w.skill, weapon: w.name, value: v, retreat: v + rp, retreatBonus: rp, notes: notes, calc: calc });
+    parries.push({ name: w.skill, weapon: w.name, value: v, notes: notes, calc: calc, nh: nh,
+      nhText: w.skill + ' ' + nh + (w.nh.adj ? ', com os ajustes da arma' : '') });
   });
-  (gear ? gear.shields : []).forEach(function (h) {
-    var nh = h.nh.v, b = 3 + Math.floor(nh / 2) + eb + cr + fb[0] + d.blockBonus;
-    blocks.push({ name: h.skill, weapon: h.name, db: h.db, value: b, retreat: b + 1, retreatBonus: 1, notes: fxCondNotes(fd.block),
-      calc: scCalc([[3, ''], [Math.floor(nh / 2), h.skill + ' ' + nh + (h.nh.adj ? ', com os ajustes do escudo' : '') + ' ÷ 2'], [cr, 'Combat Reflexes'], [eb, 'Enhanced Block'], fb,
-        [d.blockBonus, scBonusLabel(d.blockNote)]], b) });
-  });
-  // The one chosen in the editor (by skill; with two weapons of it, the better), or the best.
-  var best = function (l, chosen) {
-    var hits = chosen ? l.filter(function (x) { return x.name === chosen; }) : [];
-    return (hits.length ? hits : l).slice().sort(function (x, y) { return y.value - x.value; })[0] || null;
-  };
-  var block = best(blocks, d.block);
-  var dodge = r.dodge + ed + cr + fdo[0] + d.dodgeBonus;
-  var dcalc = scCalc([[3, ''], [Math.floor(r.speed), 'Velocidade Básica ' + fmtDec(r.speed, 2) + ', sem a fração'], [-enc, 'carga'], [cr, 'Combat Reflexes'], [ed, 'Enhanced Dodge'], fdo, [d.dodgeBonus, scBonusLabel(d.dodgeNote)]], dodge) +
-    fxCondNotes(fd.dodge).map(function (t) { return ' · ' + t; }).join('');
-  // DB: the one of the shield or cloak that blocks, in use; the editor's DB when its DB is not known.
+  var dodge = r.dodge + ed + cr + fdo[0] + d.dodgeBonus, dnotes = fxCondNotes(fd.dodge);
+  var dparts = [[3, ''], [Math.floor(r.speed), 'Velocidade Básica ' + fmtDec(r.speed, 2) + ', sem a fração'], [-enc, 'Peso'], [cr, 'Combat Reflexes'], [ed, 'Enhanced Dodge'], fdo, [d.dodgeBonus, scBonusLabel(d.dodgeNote)]];
+  var dcalc = scCalc(dparts, dodge) + dnotes.map(function (t) { return ' · ' + t; }).join('');
+  // Its parts in short, under its name: "Velocidade Básica 5 + 3 · −1 de Peso · +3 de DB de Kite Shield".
+  var dsum = ['Velocidade Básica ' + Math.floor(r.speed) + ' + 3'].concat(dparts.slice(2).filter(function (p) { return p[0]; }).map(function (p) {
+    return (p[0] > 0 ? '+' : '−') + Math.abs(p[0]) + ' de ' + p[1];
+  })).join(' · ');
+  var dodges = [{ name: 'Esquiva', value: dodge, retreat: dodge + 3, retreatBonus: 3, calc: dcalc, notes: dnotes, parts: dsum }];
+  // Acrobatic Dodge (p. B375): an Acrobatics roll before dodging, +2 on a success, -2 on a failure.
+  var acro = skills.filter(function (k) { return k.key === 'acrobatics'; })[0];
+  if (acro) dodges.push({ name: 'Acrobatic Dodge', value: dodge + 2, retreat: dodge + 5, retreatBonus: 3, nh: acro.abs, nhText: acro.name + ' ' + acro.abs + ', o teste antes de esquivar',
+    calc: scCalc(dparts.concat([[2, 'Acrobatic Dodge, passando no teste de ' + acro.name]]), dodge + 2) + dnotes.map(function (t) { return ' · ' + t; }).join(''),
+    notes: ['teste de ' + acro.name + ' ' + acro.abs + ' antes de esquivar: passa, ' + (dodge + 2) + '; falha, ' + (dodge - 2)].concat(dnotes), parts: dsum });
+  // db: the DB of the shield or cloak that blocks (already in the values), dbFrom its name.
   // inUse: whether there is a Corpo configuration in use (for the messages).
   return { parry: best(parries, d.parry), parries: parries, block: block, blocks: blocks, parryAuto: !d.parry, blockAuto: !d.block,
-    dodge: { value: dodge, retreat: dodge + 3, retreatBonus: 3, calc: dcalc }, cr: cr, ep: ep, eb: eb, ed: ed, enc: enc,
-    db: block ? (block.db != null ? block.db : d.db) : 0, inUse: !!gear };
+    dodge: dodges[0], dodges: dodges, cr: cr, ep: ep, eb: eb, ed: ed, enc: enc,
+    db: sdb, dbFrom: block ? block.weapon : '', inUse: !!gear, body: gear ? gear.body : '' };
 }
-// Each defense with the weapon it uses and how its value is reached; the other skills that could
-// parry or block are not listed (the weapon is chosen in the editor).
+// The defenses in three groups, each folding as Danos's: Esquiva (Dodge with its parts, and
+// Acrobatic Dodge with Acrobatics), Aparar (each weapon of the Corpo configuration in use, then each
+// unarmed skill) and Bloqueio (each shield and cloak in use). The parry and the block that count (the
+// editor's choice, or the best) are marked. The value opens how it was reached, the NH used included (scDefWhyModal).
+var DF_VIEW = /** @type {any[]} */ ([]);
 function scDefHtml(c, dv) {
   var db = dv.db;
-  function val(v) { return v == null ? '—' : v + (db ? ' <span class="gnote">(' + (v + db) + ' com escudo)</span>' : ''); }
-  function row(label, x, weapon, empty) {
-    var lines = x ? [weapon, x.calc, 'Recuando: ' + x.retreat + ' (+' + x.retreatBonus + ')' + (db ? ' · com escudo: ' + (x.value + db) + ', recuando ' + (x.retreat + db) + ' (DB ' + db + ')' : '')] : [empty];
-    return '<tr><td><b>' + label + '</b>' + lines.filter(Boolean).map(function (l, i) { return '<small' + (i === 1 && x ? ' class="sc-calc"' : '') + '>' + esc(l) + '</small>'; }).join('') +
-      '</td><td class="gval"' + (x ? ' title="' + esc(x.calc) + '"' : '') + '>' + val(x ? x.value : null) + '</td></tr>';
+  DF_VIEW = [];
+  function why(i, html, title, part) {
+    return '<button class="dm-why" type="button" data-dfwhy="' + i + (part ? ':' + part : '') + '" title="' + esc(title + ' · clique para ver a conta') + '">' + html + '</button>';
   }
-  function weapon(x, auto) {
-    return x ? 'Com ' + (x.weapon ? x.weapon + ' (' + x.name + ')' : x.name + ' (desarmado)') + (auto ? ', a melhor em uso' : '') + (x.notes.length ? ' · ' + x.notes.join(' · ') : '') : '';
+  function row(x, kind, name, sub, used, fold) {
+    var i = DF_VIEW.push({ x: x, kind: kind, name: name, sub: sub, used: used, db: kind === 'Bloqueio' ? x.db : kind === 'Esquivar' ? 0 : db, dbFrom: kind === 'Bloqueio' ? x.weapon : dv.dbFrom }) - 1;
+    var tag = used ? '<span class="df-used">' + (used === 'chosen' ? 'escolhida' : 'a melhor') + '</span>' : x.off ? '<span class="df-used df-off">não apara</span>' : '';
+    return '<tr data-dmin="' + fold + '"' + (dmFoldOpen(fold) ? '' : ' hidden') + '><td class="dm-name"><b>' + esc(name) + '</b>' + tag + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</td>' +
+      '<td class="gval' + (used ? ' df-best' : x.off ? ' df-offv' : '') + '">' + why(i, String(x.value), x.calc) + '</td><td>' +
+        (x.retreat != null ? why(i, x.retreat + ' <span class="gnote">(+' + x.retreatBonus + ')</span>', x.value + ' + ' + x.retreatBonus + ' recuando = ' + x.retreat, 'ret') : '') + '</td></tr>';
   }
-  var none = dv.inUse ? '' : ' Nenhuma configuração do Corpo em uso (Equip. › Corpo).';
-  return '<table class="gtab sc-def"><thead><tr><th>Defesa</th><th>Valor</th></tr></thead><tbody>' +
-    row('Aparar', dv.parry, weapon(dv.parry, dv.parryAuto), 'Nenhuma arma em uso que apare, nem perícia desarmada.' + none) +
-    row('Esquiva', dv.dodge, '', '') +
-    row('Bloqueio', dv.block, weapon(dv.block, dv.blockAuto), 'Nenhum escudo ou capa em uso.' + none) +
-    '<tr><td colspan="2" class="gnone">Basic Set, pp. B374-377</td></tr></tbody></table>';
+  // retreat: the group has a value retreating (only Esquiva).
+  function group(title, fold, rows, empty, retreat) {
+    var open = dmFoldOpen(fold);
+    // Each group names its columns (Valor; Recuando only on Esquiva): with a group open further down, the table's top is out of sight.
+    return '<tr class="dm-group"><th scope="colgroup"><button class="dm-fold" type="button" data-dmfold="' + fold + '" aria-expanded="' + open + '" aria-label="Mostrar ou recolher ' + esc(title) + '">' +
+      CHEV + esc(title) + '<span class="dm-fold-sum">· ' + (rows.length ? plural(rows.length, 'opção', 'opções') : 'nenhuma') + '</span></button></th>' +
+      '<th class="df-col" scope="col">Valor</th>' + (retreat ? '<th class="df-col" scope="col" title="Esquivando e recuando um passo (B377)">Recuando</th>' : '<th></th>') + '</tr>' +
+      (rows.length ? rows.join('') : '<tr data-dmin="' + fold + '"' + (open ? '' : ' hidden') + '><td colspan="3" class="gnone dm-name">' + esc(empty) + '</td></tr>');
+  }
+  function usedOf(x, chosen, auto) { return x === chosen ? (auto ? 'best' : 'chosen') : ''; }
+  var corpo = dv.inUse ? '' : ' Nenhuma configuração do Corpo em uso (Equip. › Corpo).';
+  var dodge = dv.dodges.map(function (x) { return row(x, 'Esquivar', x.name, [x.parts].concat(x.name === 'Esquiva' ? x.notes : x.notes.slice(0, 1)).join(' · '), '', 'dfdodge'); });
+  var parry = dv.parries.filter(function (x) { return x.weapon; }).map(function (x) {
+    return row(x, 'Aparar', x.weapon, [x.name].concat(x.notes).join(' · '), usedOf(x, dv.parry, dv.parryAuto), 'dfparry');
+  }).concat(dv.parries.filter(function (x) { return !x.weapon; }).map(function (x) {
+    return row(x, 'Aparar', x.name, ['desarmado'].concat(x.notes).join(' · '), usedOf(x, dv.parry, dv.parryAuto), 'dfparry');
+  }));
+  var block = dv.blocks.map(function (x) {
+    return row(x, 'Bloqueio', x.weapon, [x.name, 'DB ' + x.db + (x.dbKnown ? '' : ' (do editor)')].concat(x.notes).join(' · '), usedOf(x, dv.block, dv.blockAuto), 'dfblock');
+  });
+  var body = group('Esquiva', 'dfdodge', dodge, '', true) +
+    group('Aparar', 'dfparry', parry, 'Nenhuma arma em uso que apare, nem perícia desarmada.' + corpo) +
+    group('Bloqueio', 'dfblock', block, 'Nenhum escudo ou capa em uso.' + corpo);
+  return '<div class="dm-wrap"><table class="gtab sc-def df-tab dm-tab"><tbody>' + body +
+    '<tr><td colspan="3" class="gnone dm-name">' + (db ? 'O DB ' + db + ' de ' + esc(dv.dbFrom) + ' já está somado em Aparar e Bloqueio (na Esquiva, não): vale contra ataques pela frente ou do lado do escudo; por trás ou do outro lado, tire ' + db + '. ' : '') + 'Basic Set, pp. B374-377</td></tr></tbody></table></div>';
+}
+// "3 + 6 (Wrestling 13 ÷ 2) + 1 (Combat Reflexes) = 10" → [['Base de toda defesa ativa', '3'],
+// ['Wrestling 13 ÷ 2', '+ 6'], ['Combat Reflexes', '+ 1']].
+function scDefTerms(calc) {
+  var t = String(calc).split(' · ')[0].replace(/\s=\s*-?\d+\s*$/, '');
+  return t.split(/\s(?=[+−] \d)/).map(function (p, i) {
+    if (!i) return ['Base de toda defesa ativa', p.trim()];
+    var m = /^([+−] \d+)\s*(?:\((.*)\))?$/.exec(p.trim());
+    return m ? [m[2] || '', m[1]] : [p, ''];
+  });
+}
+// Why Dodge is worth what it is retreating (p. B377): a step back from the attacker, +3.
+function scDefRetreatModal(e) {
+  // Only Esquiva has a value retreating (Aparar and Bloqueio have none).
+  var x = e.x, why = 'Esquivar recuando dá +3 (B377).', what = e.name;
+  showModal('<div class="skill-modal dm-why-modal"><div class="skill-modal-head"><h2 id="dfRetTitle">' + esc(what) + ', recuando</h2>' + (e.sub ? '<p class="lede">' + esc(e.sub) + '</p>' : '') + '</div>' +
+    '<section class="dm-why-sec"><h3 class="sec-title">Recuando</h3><div class="dm-why-big">' + x.retreat + '</div><p class="hint-text">' + esc(why) + '</p>' +
+    dmStepsHtml([[e.name, String(x.value)], ['Recuar', '+ ' + x.retreatBonus], ['Total', String(x.retreat)]]) +
+    '<p class="hint-text">Para defender recuando, role 3 dados e tire ' + x.retreat + ' ou menos.' + (x.off ? ' Mas agora não vale: ' + x.off + '.' : '') + '</p></section>' +
+    '<section class="dm-why-sec"><h3 class="sec-title">Como funciona</h3><ul class="dm-fx">' + [
+      'Recuar é dar um passo para trás, afastando-se do atacante (1 metro, um hexágono), ao mesmo tempo em que se defende.',
+      'Só pode recuar uma vez por turno.',
+      'Não dá para recuar depois de um Committed Attack; depois de um All-Out Attack não há defesa nenhuma.',
+      'É preciso ter espaço para trás: encurralado contra uma parede ou outra pessoa, não dá para recuar.',
+    ].filter(Boolean).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></section></div>');
+  modal.setAttribute('aria-labelledby', 'dfRetTitle');
+}
+function scDefWhyModal(e) {
+  var x = e.x, conds = String(x.calc).split(' · ').slice(1).concat(x.notes || []);
+  var what = e.kind === 'Esquivar' ? e.name : e.kind + ' com ' + e.name;
+  var dbr = e.db ? ' + DB do escudo' : '';
+  var rule = e.kind === 'Esquivar' ? 'Esquiva = Velocidade Básica (sem a fração) + 3 − Peso; o DB do escudo não entra.' : e.kind === 'Bloqueio' ? 'Bloqueio = 3 + NH ÷ 2 (arredondado para baixo) + DB do escudo.' :
+    'Aparar = 3 + NH ÷ 2 (arredondado para baixo), mais o modificador da arma' + dbr + '.';
+  var tag = e.used === 'chosen' ? ' É a escolhida no editor de Defesas.' : e.used === 'best' ? ' É a melhor em uso: é a que conta.' : x.off ? ' Não vale agora: ' + x.off + '.' : '';
+  showModal('<div class="skill-modal dm-why-modal"><div class="skill-modal-head"><h2 id="dfWhyTitle">' + esc(what) + '</h2>' + (e.sub ? '<p class="lede">' + esc(e.sub) + '</p>' : '') + '</div>' +
+    '<section class="dm-why-sec"><h3 class="sec-title">Valor</h3><div class="dm-why-big">' + x.value + '</div><p class="hint-text">' + esc(rule + tag) + '</p>' +
+    dmStepsHtml(scDefTerms(x.calc).concat([['Total', String(x.value)]])) +
+    '<p class="hint-text">Para defender, role 3 dados e tire ' + x.value + ' ou menos.' + (x.retreat != null ? ' Recuando (um passo para trás), +' + x.retreatBonus + ': ' + x.retreat + '.' : '') +
+    (e.db ? ' Já inclui o DB ' + e.db + ' de ' + e.dbFrom + ', que vale contra ataques pela frente ou do lado do escudo; por trás ou do outro lado, a defesa é ' + (x.value - e.db) + '.' : '') + '</p>' +
+    (conds.length ? '<ul class="dm-fx">' + conds.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '') + '</section>' +
+    (x.nh != null ? '<section class="dm-why-sec"><h3 class="sec-title">NH usado</h3><div class="dm-why-big">' + x.nh + '</div><p class="hint-text">' + esc(x.nhText) +
+      (e.kind === 'Aparar' && !x.weapon && /maior que/.test(x.nhText || '') ? '. Desarmado, apara com a perícia ou com DX, o que for maior (B376).' : '.') + '</p></section>' : '') + '</div>');
+  modal.setAttribute('aria-labelledby', 'dfWhyTitle');
 }
 // What a style is worth: the points in the skills that meet its prerequisites (where they are on
 // the sheet) plus its own rows, without perks and advantages (Style Familiarity among them).
@@ -539,12 +625,12 @@ function sheetDraftOpen() { var ui = S.ui; return !!(ui.skillDraft || ui.combatD
 function sheetCombatHtml(s, editing) {
   var ui = S.ui, c = editing ? ui.combatDraft.c : sheetCombat(s), a = sheetAttrsNow(s), av = attrValues(a);
   var pool = combatSkillPool(c, s), can = canWrite();
-  var head = '<div class="gurps-head"><h2 class="sec-title">Combate</h2><span class="gurps-total" id="scTotal">' + combatTotal(c) + ' pts</span>' +
-    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="scCancel">Cancelar</button><button class="btn primary" type="button" id="scSave">Salvar combate</button></div>'
-      : can && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="scEdit">' + svg(ICON.edit, 15) + 'Editar combate</button></div>' : '') + '</div>';
-  if (editing) return '<section class="gurps" id="combat">' + head + scEditHtml(s, c, pool, av) + '</section>';
+  var head = '<div class="gurps-head">' + gearFoldTitle('combat', 'Combate', editing) + '<span class="gurps-total" id="scTotal">' + combatTotal(c) + ' pts</span>' +
+    (editing ? secSaveBtnsHtml('scCancel', 'scSave', 'combate')
+      : can && !sheetDraftOpen() ? secEditBtnHtml('scEdit', 'combate') : '') + '</div>';
+  if (editing) return '<section class="gurps' + gearFoldClass('combat', editing) + '" id="combat">' + head + scEditHtml(s, c, pool, av) + '</section>';
   var empty = !c.styles.length && !c.general.length;
-  if (empty) return '<section class="gurps" id="combat">' + head + '<p class="long none">Nenhum estilo ou perícia de combate.' + (can ? ' Use <b>Editar combate</b> para adicionar.' : '') + '</p></section>';
+  if (empty) return '<section class="gurps' + gearFoldClass('combat', editing) + '" id="combat">' + head + '<p class="long none">Nenhum estilo ou perícia de combate.' + (can ? ' Use <b>Editar</b> para adicionar.' : '') + '</p></section>';
   var drag = can && !ui.skillDraft && !ui.attrDraft && !ui.advDraft;
   // Links to the catalogs (see scLink): they arrive once and the page redraws with them.
   // The styles too, for their prerequisites (see scStyleReqs).
@@ -553,7 +639,7 @@ function sheetCombatHtml(s, editing) {
     var st = c.styles[+k.slice(1)];
     return scGroupHtml(st.name || 'Estilo sem nome', st.items, pool, av, st.styleId ? styleHref(st.styleId) : '', k, drag, scStyleReqs(st, pool));
   });
-  return '<section class="gurps" id="combat">' + head +
+  return '<section class="gurps' + gearFoldClass('combat', editing) + '" id="combat">' + head +
     // The other skills first (the main table, not dragged), then the points per style above the
     // tables they sum up.
     (scShown(c.general).length ? scMainHtml(c.general, pool, av) : '') +
@@ -805,7 +891,7 @@ function wireSheetCombat(s) {
     // Danos and Defesas are edited in their own sections: theirs as they are now.
     var cur = sheetCombat(sheetById(s.id) || s);
     Ops.saveSheetCombat(s, Object.assign({}, c, { weapons: cur.weapons, def: cur.def }), d.moved).then(function () { ui.combatDraft = null; toast('Combate salvo.'); renderSheetPage(); }, function (er) {
-      btn.disabled = false; btn.textContent = 'Salvar combate'; $('scCancel').disabled = false; $('scErr').textContent = errorText(er);
+      btn.disabled = false; btn.textContent = 'Salvar'; $('scCancel').disabled = false; $('scErr').textContent = errorText(er);
     });
   };
 }
@@ -820,8 +906,7 @@ Ops.saveSheetCombatPart = function (s, part) {
 };
 function scSectionHead(title, editing, id, label) {
   return '<div class="gurps-head"><h2 class="sec-title">' + title + '</h2>' +
-    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="' + id + 'Cancel">Cancelar</button><button class="btn primary" type="button" id="' + id + 'Save">Salvar ' + label + '</button></div>'
-      : canWrite() && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="' + id + 'Edit">' + svg(ICON.edit, 15) + 'Editar ' + label + '</button></div>' : '') + '</div>';
+    (editing ? secSaveBtnsHtml(id + 'Cancel', id + 'Save', label) : canWrite() && !sheetDraftOpen() ? secEditBtnHtml(id + 'Edit', label) : '') + '</div>';
 }
 function sheetDefenseHtml(s, editing) {
   var ui = S.ui, c = sheetCombat(s), a = sheetAttrsNow(s), pool = combatSkillPool(c, s), head = scSectionHead('Defesas', editing, 'df', 'defesas');
@@ -836,7 +921,7 @@ function sheetDefenseHtml(s, editing) {
     scField('Bônus', '<input type="number" data-f="blockBonus" min="-20" max="20" value="' + dd.blockBonus + '">') + scDefNote('block', dd.blockNote, dd.blockBonus) + '</div><div class="sc-row">' +
     scField('Esquiva: bônus', '<input type="number" data-f="dodgeBonus" min="-20" max="20" value="' + dd.dodgeBonus + '">') +
     scField('DB do escudo', '<input type="number" data-f="db" min="0" max="10" value="' + dd.db + '">') + scDefNote('dodge', dd.dodgeNote, dd.dodgeBonus) + '</div>' +
-    '<p class="hint-text" style="margin:0">Pelas regras do Basic Set (pp. B374-377): Aparar = 3 + NH/2 com a arma (bastão +2, faca -1); Bloqueio = 3 + Shield ou Cloak/2; Esquiva = VB + 3 - carga. Como em Danos, só vale o que está em uso: Aparar com as armas e Bloqueio com os escudos e capas da configuração do Corpo em uso (Equip. › Corpo); desarmado (Boxing, Judo, Karate, Brawling, Wrestling) sempre. Combat Reflexes e Enhanced Block, Parry e Dodge comprados em Combate ou Vantagens entram sozinhos. O DB é o do escudo ou capa em uso e soma nas três defesas; o campo DB vale só para um escudo em uso sem DB conhecido. Outros bônus vão nos campos Bônus, com o motivo, que aparece ao passar o mouse.</p></div>' +
+    '<p class="hint-text" style="margin:0">Pelas regras do Basic Set (pp. B374-377): Aparar = 3 + NH/2 com a arma (bastão +2, faca -1); Bloqueio = 3 + Shield ou Cloak/2 + DB; Esquiva = VB + 3 - carga, sem o DB do escudo. Como em Danos, só vale o que está em uso: Aparar com as armas e Bloqueio com os escudos e capas da configuração do Corpo em uso (Equip. › Corpo); desarmado (Boxing, Judo, Karate, Brawling, Wrestling) sempre. Combat Reflexes e Enhanced Block, Parry e Dodge comprados em Combate ou Vantagens entram sozinhos. O DB é o do escudo ou capa em uso e soma em Aparar e Bloqueio (não na Esquiva), contra ataques pela frente ou do lado do escudo; com escudo ou capa numa mão, Wrestling e Sumo Wrestling não aparam (usam as duas mãos); o campo DB vale só para um escudo em uso sem DB conhecido. Outros bônus vão nos campos Bônus, com o motivo, que aparece ao passar o mouse.</p></div>' +
     '<div class="form-err" id="dfErr" role="alert"></div></section>';
 }
 // Side by side, as in the spreadsheet; one below the other while one is edited.
@@ -845,11 +930,28 @@ function sheetDmgDefHtml(s) {
   return '<div class="sc-pair' + (dm || df ? ' editing' : '') + '">' + sheetDamageHtml(s, dm) + sheetDefenseHtml(s, df) + '</div>';
 }
 function scSaving(id, label, on) {
-  var btn = $(id + 'Save'); btn.disabled = on; btn.textContent = on ? 'Salvando…' : 'Salvar ' + label; $(id + 'Cancel').disabled = on;
+  var btn = $(id + 'Save'); btn.disabled = on; btn.textContent = on ? 'Salvando…' : 'Salvar'; $(id + 'Cancel').disabled = on;
 }
 function wireSheetDefense(s) {
   var ui = S.ui, ed = $('dfEdit');
   if (ed) ed.onclick = function () { ui.defDraft = sheetCombat(s).def; renderSheetPage(); };
+  // Fold "Sem arma" in place, and open how a value was reached.
+  var sec = $('defense');
+  if (sec) {
+    sec.querySelectorAll('[data-dmfold]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var key = b.getAttribute('data-dmfold'), open = b.getAttribute('aria-expanded') !== 'true';
+        b.setAttribute('aria-expanded', String(open)); lstore('hounds_dm_fold_' + key, open ? '1' : '0');
+        sec.querySelectorAll('[data-dmin="' + key + '"]').forEach(function (r) { /** @type {HTMLElement} */ (r).hidden = !open; });
+      });
+    });
+    sec.querySelectorAll('[data-dfwhy]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var p = b.getAttribute('data-dfwhy').split(':'), e = DF_VIEW[+p[0]]; if (!e) return;
+        if (p[1] === 'ret') scDefRetreatModal(e); else scDefWhyModal(e);
+      });
+    });
+  }
   var d = ui.defDraft, box = $('defense'); if (!d || !box || !$('dfSave')) return;
   function onEdit(e) {
     var el = /** @type {AnyEl} */ (e.target), f = el && el.dataset && el.dataset.f; if (!f || !(f in d)) return;

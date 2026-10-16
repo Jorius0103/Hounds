@@ -195,12 +195,12 @@ function advRowHtml(x, inCombat, onSheet, fastDraws) {
 }
 function sheetAdvsHtml(s, editing) {
   var ui = S.ui, can = canWrite(), list = editing ? ui.advDraft : sheetAdvs(s);
-  var head = '<div class="gurps-head"><h2 class="sec-title">Vantagens</h2><span class="gurps-total" id="avTotal">' + advsTotal(list) + ' pts</span>' +
-    (editing ? '<div class="btn-row"><button class="btn ghost" type="button" id="avCancel">Cancelar</button><button class="btn primary" type="button" id="avSave">Salvar vantagens</button></div>'
-      : can && !sheetDraftOpen() ? '<div class="btn-row"><button class="btn" type="button" id="avEdit">' + svg(ICON.edit, 15) + 'Editar vantagens</button></div>' : '') + '</div>';
+  var head = '<div class="gurps-head">' + gearFoldTitle('advs', 'Vantagens', editing) + '<span class="gurps-total" id="avTotal">' + advsTotal(list) + ' pts</span>' +
+    (editing ? secSaveBtnsHtml('avCancel', 'avSave', 'vantagens')
+      : can && !sheetDraftOpen() ? secEditBtnHtml('avEdit', 'vantagens') : '') + '</div>';
   if (editing) {
     var choices = advSkillChoices(s);
-    return '<section class="gurps" id="advs">' + head +
+    return '<section class="gurps' + gearFoldClass('advs', editing) + '" id="advs">' + head +
       // New advantages go on top, under the button.
       '<div class="box sk-edit"><div><button class="btn" type="button" id="avAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar vantagem</button></div>' +
       '<div class="sk-row av-row sk-labels" aria-hidden="true"><span>Vantagem</span><span>Custo</span><span>Níveis</span><span>Mod. %</span><span>Pts</span><span>Observações</span><span></span></div>' +
@@ -211,14 +211,14 @@ function sheetAdvsHtml(s, editing) {
       'cada nível, até 4, soma +1 no NH delas (Basic Set, p. B89). Ao escolher da lista, custo e níveis vêm do livro.</p></div>' +
       '<div class="form-err" id="avErr" role="alert"></div></section>';
   }
-  if (!list.length) return '<section class="gurps" id="advs">' + head + '<p class="long none">Nenhuma vantagem cadastrada.' + (can ? ' Use <b>Editar vantagens</b> para adicionar.' : '') + '</p></section>';
+  if (!list.length) return '<section class="gurps' + gearFoldClass('advs', editing) + '" id="advs">' + head + '<p class="long none">Nenhuma vantagem cadastrada.' + (can ? ' Use <b>Editar</b> para adicionar.' : '') + '</p></section>';
   // Links to the catalog: it arrives once and the page redraws with it.
   loadCatalog('advantages');
   var combat = {}, onSheet = {};
   scAllItems(sheetCombat(s)).forEach(function (x) { if (x.kind === 'trait') combat[norm(x.name)] = true; });
   var fastDraws = advSkillChoices(s).filter(isFastDraw);
   advSkillChoices(s).forEach(function (n) { onSheet[norm(n)] = true; });
-  return '<section class="gurps" id="advs">' + head +
+  return '<section class="gurps' + gearFoldClass('advs', editing) + '" id="advs">' + head +
     '<table class="gtab av-tab"><thead><tr><th>Vantagem</th><th>Pts</th><th>Observações</th></tr></thead><tbody>' +
     list.map(function (x) { return advRowHtml(x, !!combat[norm(x.name)], onSheet, fastDraws); }).join('') + '</tbody>' +
     '<tfoot><tr><td>Total pontos vantagens</td><td class="gpts">' + advsTotal(list) + '</td><td></td></tr></tfoot></table></section>';
@@ -392,7 +392,7 @@ function wireSheetAdvs(s) {
   $('avSave').onclick = function () {
     var btn = $('avSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('avCancel').disabled = true;
     Ops.saveSheetAdvs(s, d).then(function () { ui.advDraft = null; toast('Vantagens salvas.'); renderSheetPage(); }, function (er) {
-      btn.disabled = false; btn.textContent = 'Salvar vantagens'; $('avCancel').disabled = false;
+      btn.disabled = false; btn.textContent = 'Salvar'; $('avCancel').disabled = false;
       $('avErr').textContent = errorText(er);
     });
   };

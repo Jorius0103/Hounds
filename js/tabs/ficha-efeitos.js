@@ -168,6 +168,8 @@ function withAdvFx(s, a) {
     var x = fxSum(fx.filter(function (m) { return m.e.target === 'def' && (m.e.key === k || m.e.key === 'all'); }));
     if (!fxEmpty(x)) def[k] = x;
   });
+  // Peso from the ST the effects leave (Basic Lift), as sheetAttrs does from the base.
+  out.enc = sheetEncLevel(s, out.st);
   out.fx = { base: a, b: b, def: def };
   return out;
 }

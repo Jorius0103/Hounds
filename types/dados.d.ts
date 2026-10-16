@@ -96,7 +96,7 @@ interface SheetAttrs {
 /** Coleção `sheets` (fichas) de GURPS. Ligada a personagens por `Character.sheetId`. */
 interface Sheet extends Doc {
   name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[];
-  equip?: SheetEquip[]; bodies?: SheetBody[]; packs?: SheetPack[]; armorSets?: ArmorSet[]; customWeapons?: CustomWeapon[]; customShields?: CustomShield[];
+  equip?: SheetEquip[]; bodies?: SheetBody[]; packs?: SheetPack[]; homes?: SheetHome[]; armorSets?: ArmorSet[]; customWeapons?: CustomWeapon[]; customShields?: CustomShield[];
   spells?: SheetSpell[];
 }
 /** Magia da aba Magia da ficha (veja js/tabs/ficha-magias.js): perícia de IQ, H ou VH, mostrada na tabela da escola `college` ('' : Sem escola). */
@@ -113,7 +113,7 @@ interface CustomShield {
   base: { name: string; tl: string; db: string; dr: string; hp: string; cost: number; weight: number; skill: string; defaults: string };
   description: string;
   /** Ajustes: somam ou tiram do BD, da RD, do NH com o escudo, do custo ($) e do peso (%). */
-  mods: { name: string; spellId?: string; db: number; dr: number; nh: number; cost: number; weightPct: number }[];
+  mods: { name: string; spellId?: string; improvementId?: string; db: number; dr: number; nh: number; cost: number; cf: number; weightPct: number }[];
   db: string; dr: string; hp: string; cost: number; weight: number;
   /** A linha de Meus Itens que é o escudo (null: saiu da lista). */
   equipId: string | null;
@@ -122,7 +122,7 @@ interface CustomShield {
 interface CustomWeapon {
   id: string; baseId: string | null; base: { name: string; tl: string; type: string; cost: number; weight: number }; description: string;
   /** Ajustes: texto livre ou uma magia (spellId); somam ou tiram do dano de todos os ataques, do NH com a arma, do custo ($) e do peso (%). */
-  mods: { name: string; spellId?: string; dmg: number; nh: number; cost: number; weightPct: number }[];
+  mods: { name: string; spellId?: string; improvementId?: string; dmg: number; cutImp?: boolean; nh: number; cost: number; cf: number; weightPct: number }[];
   /** Os ataques do livro, com o dano do livro (baseDamage) e o ajustado (damage). */
   attacks: (Omit<WeaponAttack, 'damage'> & { baseDamage: string; damage: string })[];
   cost: number; weight: number;
@@ -135,7 +135,7 @@ interface ArmorSet {
   base: { name: string; dr: string; cost: number; weight: number; don: number | null; tl: string };
   version: number; originId: string | null;
   /** Ajustes: texto livre ou uma magia (spellId); somam ou tiram da RD de cada peça (pontos), do custo do conjunto ($) e do peso de cada peça (%). */
-  mods: { name: string; spellId?: string; dr: number; cost: number; weightPct: number }[];
+  mods: { name: string; spellId?: string; improvementId?: string; dr: number; cost: number; cf: number; weightPct: number }[];
   /** equipId: a linha da lista que é a peça (null: saiu da lista). pct: o percentual final sobre o tronco, com a cobertura. */
   pieces: { id: string; loc: string; cover: 'full' | 'front'; pct: number; dr: string; cost: number; weight: number; don: number | null; equipId: string | null }[];
 }
@@ -162,6 +162,8 @@ type GearPart = 'eyes' | 'skull' | 'face' | 'neck' | 'torso' | 'groin' | 'right_
 interface SheetBody { id: string; name: string; active: boolean; slots: { part: GearPart; equipId: string; qty: number }[] }
 /** Mochila: o que ela leva e, em `equipId`, a linha da lista que é a própria mochila (o peso próprio; null: sem). */
 interface SheetPack { id: string; name: string; inUse: boolean; equipId: string | null; items: { equipId: string; qty: number }[] }
+/** Casa: o que o personagem guarda e não leva (nunca entra na carga). Somando as casas e as mochilas, não mais do que a lista tem. */
+interface SheetHome { id: string; name: string; items: { equipId: string; qty: number }[] }
 /** Linha da seção Vantagens da ficha (veja js/tabs/ficha-vantagens.js): custo por nível, níveis (0: sem níveis), modificador em %. */
 interface SheetAdv {
   name: string; advId?: string; cost: number; levels: number; mod: number; notes: string;
