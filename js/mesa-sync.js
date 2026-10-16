@@ -16,11 +16,20 @@
      mesa_chunks/{rev_i} { rev, i, part }   (state JSON split in pieces)
    With a store that can broadcast (Supabase), each state and each
    single-character update (SYNC_NPC) also goes straight to the other
-   browsers, and the state is saved inline 0.3 s after the last change.
+   browsers, compressed (gzip, see zip()), and the state is saved 1 s
+   after the last change. With Supabase the state is saved in pieces and
+   the head row stays small, so the database's notice of each save is a
+   few hundred bytes; a browser downloads the pieces only for a revision
+   it didn't get by broadcast.
+   The Mesa sends each change twice (straight and through its own sync
+   client, 150 ms later); the copy is skipped here.
    The Mesa merges what it receives character by character (newest
    updatedAt wins). When someone else's state arrives while this browser
    has edits not saved yet, the Mesa is asked for its merged state
    (REQUEST_SYNC), so the save carries both.
+   A Mesa already loaded but hidden (the person is on another page) gets
+   the state kept here at most once a second, and at once when it shows
+   again, instead of being loaded again.
    deletedCombatIds lists deleted combats, so a Mesa still holding one
    drops it on merge instead of saving it back.
    Images the Mesa embeds as text (avatars) are sent once to the image
@@ -29,8 +38,8 @@
 var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1', editors: 'gurps_combat_master_editors_v1' };
 var MesaSync = (function () {
   var CH = 60000, head = null, loadedRev = null, state = null, listeners = [], timer = null, pending = null, writing = false;
-  var readyRes, ready = new Promise(function (r) { readyRes = r; }), gotHead = false, lastJson = null, askTimer = null;
-  var cid = 'hub-' + uid(), seq = 0, known = {}, knownList = [];
+  var readyRes, ready = new Promise(function (r) { readyRes = r; }), gotHead = false, lastJson = null, lastRaw = null, askTimer = null, hiddenTimer = 0;
+  var cid = 'hub-' + uid(), seq = 0, known = {}, knownList = [], npcSeen = {}, npcSeenList = [];
   // Revisions this browser wrote or already applied: their echoes are skipped.
   function remember(rev) { if (!rev || known[rev]) return; known[rev] = 1; knownList.push(rev); if (knownList.length > 400) delete known[knownList.shift()]; }
   function newRev() { var r = cid + '-' + Date.now() + '-' + (++seq); remember(r); return r; }
@@ -122,22 +131,118 @@ var MesaSync = (function () {
       }, function (e) { imgFailed[k] = Date.now(); console.warn('Hounds: não foi possível enviar uma imagem da Mesa.', e); }).then(function () { delete imgJobs[k]; }));
     }));
   }
-  function mesaOpen() { return location.hash === '#mesa' && listeners.length > 0; }
+  /* Messages to the other browsers: the state is very repetitive JSON (the armor of every character,
+     the log) and gzip makes it about 12 times smaller, for ~1 ms. Sent and received in order, each
+     through one queue (compressing is asynchronous). A browser without CompressionStream sends the
+     JSON as it is; small messages too. Older versions of the site read only the JSON fields
+     (state, npc) and skip the compressed ones; they still get every change from the database. */
+  var ZIP = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function', ZIP_MIN = 2000, BCAST_MAX = 240000;
+  var sendQ = /** @type {Promise<unknown>} */ (Promise.resolve()), recvQ = /** @type {Promise<unknown>} */ (Promise.resolve());
+  function b64(buf) { var b = new Uint8Array(buf), s = ''; for (var i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); }
+  function unb64(s) { var bin = atob(s), b = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i); return b; }
+  function zip(text) { return new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer().then(b64); }
+  function unzip(z) { return new Response(new Blob([unb64(z)]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); }
+  // Sends value (its JSON is json) in the field key of a message of this kind, with the fields of extra.
+  // bcastFail: when a message last didn't go (channel closed, or too large: the others get it from the
+  // database); until 10 s after it, an answer to REQUEST_SYNC is sent too (see publish).
+  var bcastFail = 0;
+  function send(kind, key, value, json, extra) {
+    if (!canSave()) return;
+    if (!rt()) { bcastFail = Date.now(); return; }
+    var job = function () {
+      var body = Object.assign({}, extra);
+      var packed = ZIP && json.length > ZIP_MIN ? zip(json).then(function (z) { body.z = z; }, function () { body[key] = value; }) : Promise.resolve(body[key] = value);
+      return packed.then(function () {
+        if ((body.z || json).length >= BCAST_MAX) { bcastFail = Date.now(); return; }
+        return rt().send(kind, body).then(function (r) { if (r === 'closed' || r === 'error') bcastFail = Date.now(); });
+      });
+    };
+    sendQ = sendQ.then(job, job);
+  }
+  // Promise of the field key of a message received, compressed or not.
+  function unpack(m, key) { return typeof m.z === 'string' ? unzip(m.z).then(JSON.parse) : Promise.resolve(m[key]); }
+  function inOrder(fn) { recvQ = recvQ.then(fn).catch(function (e) { console.warn('Hounds: mensagem da Mesa ignorada.', e); }); }
+
+  function loaded() { return listeners.length > 0; }
+  function shown() { return loaded() && location.hash === '#mesa'; }
   function push(obj) { var msg = JSON.stringify(obj); listeners.slice().forEach(function (fn) { try { fn(msg); } catch (e) {} }); }
-  // Someone else's state: into the open Mesa, or loaded fresh when it opens.
+  function pushState() { push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, state)); }
+  // With edits of this browser not saved yet, the Mesa answers with its merged state (see publish).
+  // asked: when it was asked; mergedRevs: the revisions received meanwhile, which the answer covers.
+  var asked = 0, mergedRevs = [], lastSentRev = null;
+  function askIfPending() {
+    if (!pending && !writing) return;
+    clearTimeout(askTimer); askTimer = setTimeout(function () { asked = Date.now(); push({ type: 'REQUEST_SYNC', clientId: 'hub', timestamp: Date.now() }); }, 150);
+  }
+  // The hidden Mesa: one push of the state kept here, at most once a second (at once when it shows).
+  function pushHidden() { if (!hiddenTimer) hiddenTimer = setTimeout(flushHidden, 1000); }
+  function flushHidden() {
+    clearTimeout(hiddenTimer); hiddenTimer = 0;
+    if (!state || !loaded()) return;
+    pushState(); askIfPending();
+  }
+  window.addEventListener('hashchange', function () { if (hiddenTimer && location.hash === '#mesa') flushHidden(); });
+  // Someone else's state: into the Mesa (open or hidden), or loaded fresh when it opens. The state
+  // kept here merges it, as the Mesa does: a state that arrives late doesn't undo newer changes.
   function applyRemote(rev, st) {
-    remember(rev); loadedRev = rev; state = st;
-    if (mesaOpen()) {
-      push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, st));
-      if (pending || writing) { clearTimeout(askTimer); askTimer = setTimeout(function () { push({ type: 'REQUEST_SYNC', clientId: 'hub', timestamp: Date.now() }); }, 150); }
-    } else if (window.hubMesaStale) window.hubMesaStale();
+    remember(rev); loadedRev = rev;
+    if (pending || writing) mergedRevs = mergedRevs.concat([rev]).slice(-50);
+    var open = shown();
+    if (open) push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, st));
+    state = mergeState(state, st);
+    if (open) askIfPending();
+    else if (loaded()) pushHidden();
+    else if (window.hubMesaStale) window.hubMesaStale();
+  }
+  /* The Mesa's merge (Xr and l4 in mesa.html), for the state kept here: a character (saved player or
+     NPC) replaces the copy here unless that one is newer; a combat takes the fields received and
+     merges its NPCs the same way; deleted combats go. */
+  function mergeList(a, b) {
+    var out = (a || []).slice(), at = {};
+    out.forEach(function (x, i) { at[x.id] = i; });
+    (b || []).forEach(function (x) {
+      var i = at[x.id];
+      if (i == null) { at[x.id] = out.length; out.push(x); }
+      else if ((x.updatedAt || 0) >= (out[i].updatedAt || 0)) out[i] = x;
+    });
+    return out;
+  }
+  function mergeState(base, inc) {
+    if (!base) return inc;
+    var del = (base.deletedCombatIds || []).concat(inc.deletedCombatIds || []).filter(function (x, i, a) { return a.indexOf(x) === i; });
+    var combats = (base.combats || []).slice(), at = {};
+    combats.forEach(function (c, i) { at[c.id] = i; });
+    (inc.combats || []).forEach(function (c) {
+      var i = at[c.id];
+      if (i == null) { at[c.id] = combats.length; combats.push(c); }
+      else combats[i] = Object.assign({}, combats[i], c, { npcs: mergeList(combats[i].npcs, c.npcs) });
+    });
+    return {
+      combats: combats.filter(function (c) { return del.indexOf(c.id) < 0; }),
+      conditions: inc.conditions && inc.conditions.length ? inc.conditions : base.conditions,
+      players: mergeList(base.players, inc.players),
+      activeCombatId: inc.activeCombatId || base.activeCombatId,
+      deletedCombatIds: del,
+      editors: inc.editors || base.editors
+    };
+  }
+  // One character in a copy of the state (a saved player and/or an NPC of a combat). Someone else's
+  // only replaces a copy not newer than it, as the Mesa does; this browser's own always does.
+  function withNpc(st, npc, own) {
+    var put = function (x) { return x.id === npc.id && (own || (npc.updatedAt || 0) >= (x.updatedAt || 0)) ? Object.assign({}, x, npc) : x; };
+    return Object.assign({}, st, {
+      players: (st.players || []).map(put),
+      combats: (st.combats || []).map(function (cb) { return Object.assign({}, cb, { npcs: (cb.npcs || []).map(put) }); })
+    });
   }
   function onHead(rows) {
     var h0 = rows.filter(function (r) { return r.id === 'state'; })[0] || null;
     var first = !gotHead; gotHead = true;
     head = h0;
     if (!h0) { if (first) readyRes(); return; }
-    if (h0.rev === loadedRev || known[h0.rev]) { loadedRev = h0.rev; if (first) readyRes(); return; }
+    // A head that covers only revisions received here (an answer to REQUEST_SYNC) needs no download either.
+    var covered = !first && Array.isArray(h0.covers) && h0.covers.length > 0 && h0.covers.every(function (r) { return known[r]; });
+    if (h0.rev === loadedRev || known[h0.rev] || covered) { remember(h0.rev); loadedRev = h0.rev; if (first) readyRes(); return; }
     var rev = h0.rev;
     fetchRev(h0).then(function (st) {
       if (!st || known[rev]) { if (first) readyRes(); return; }
@@ -145,8 +250,25 @@ var MesaSync = (function () {
       applyRemote(rev, st);
     }, function () { if (first) readyRes(); });
   }
-  function onBroadcast(m) { if (m && m.rev && m.state && !known[m.rev]) applyRemote(m.rev, m.state); }
-  function onNpc(m) { if (m && m.npc && mesaOpen()) push({ type: 'SYNC_NPC', clientId: 'hub', timestamp: m.ts || Date.now(), npc: m.npc }); }
+  function onBroadcast(m) {
+    if (!m || !m.rev || !(m.state || m.z) || known[m.rev]) return;
+    var rev = m.rev;
+    remember(rev); // its head, from the database, needs no download
+    inOrder(function () {
+      return unpack(m, 'state').then(function (st) { if (st) applyRemote(rev, st); }, function (e) { delete known[rev]; throw e; });
+    });
+  }
+  function onNpc(m) {
+    if (!m || !(m.npc || m.z)) return;
+    inOrder(function () {
+      return unpack(m, 'npc').then(function (npc) {
+        if (!npc || !npc.id) return;
+        if (state) state = withNpc(state, npc, false);
+        if (shown()) push({ type: 'SYNC_NPC', clientId: 'hub', timestamp: m.ts || Date.now(), npc: npc });
+        else if (loaded()) pushHidden();
+      });
+    });
+  }
   function canSave() {
     var u = window.hubUser; if (!u || !W.store || !canWrite()) return false;
     if (u.role === 'mestre') return true;
@@ -173,25 +295,49 @@ var MesaSync = (function () {
   function save(p) {
     if (!canSave()) return Promise.resolve();
     // The embedded images go to the image storage first; the state saved carries their addresses.
-    return hostImgs(p.st).then(function () { return write(swapImgs(p.st), p.rev); });
+    // p.imgs false: publish() saw no embedded image, and p.json is the state's JSON already.
+    if (p.imgs === false) return write(p.st, p.rev, p.json, p.covers);
+    return hostImgs(p.st).then(function () { return write(swapImgs(p.st), p.rev, null, p.covers); });
   }
-  function write(st, rev) {
-    var json = JSON.stringify(st), prev = head && head.n > 0 ? head.rev : null, t = now();
+  function write(st, rev, json, covers) {
+    json = json || JSON.stringify(st);
+    var prev = head && head.n > 0 ? head.rev : null, t = now(), size = W.store.chunkSize || CH;
     var meta = { rev: rev, by: (window.hubUser && window.hubUser.id) || null, createdAt: (head && head.createdAt) || t, updatedAt: t };
+    if (covers && covers.length) meta.covers = covers;
     var w;
     if (json.length <= (W.store.inlineMax || 0)) {
       w = W.store.put('mesa', 'state', Object.assign({ n: 0 }, meta, st));
     } else {
       var parts = [];
-      for (var i = 0; i < json.length; i += CH) parts.push(json.slice(i, i + CH));
+      for (var i = 0; i < json.length; i += size) parts.push(json.slice(i, i + size));
       w = Promise.resolve();
-      parts.forEach(function (part, i) { w = w.then(function () { return W.store.put('mesa_chunks', rev + '_' + i, { rev: rev, i: i, part: part, createdAt: t }); }); });
+      // The id ends in the time of the save (see cleanChunks); the pieces are read by their rev field.
+      parts.forEach(function (part, i) { w = w.then(function () { return W.store.put('mesa_chunks', rev + '_' + i + (W.store.ids ? '_' + Date.now() : ''), { rev: rev, i: i, part: part, createdAt: t }); }); });
       w = w.then(function () { return W.store.put('mesa', 'state', Object.assign({ n: parts.length }, meta)); });
     }
     return w.then(function () {
-      loadedRev = rev; state = st;
-      if (prev && prev !== rev) W.store.query('mesa_chunks', 'rev', prev).then(function (old) { old.forEach(function (o) { W.store.remove('mesa_chunks', o.id).catch(function () {}); }); }).catch(function () {});
+      loadedRev = rev; if (!state) state = st;
+      if (W.store.ids) cleanChunks(rev);
+      else if (prev && prev !== rev) W.store.query('mesa_chunks', 'rev', prev).then(function (old) { old.forEach(function (o) { W.store.remove('mesa_chunks', o.id).catch(function () {}); }); }).catch(function () {});
     });
+  }
+  /* Pieces of old revisions, with a store that lists ids alone (Supabase). Several browsers save, so
+     the pieces of the previous head are not the only old ones. Kept: the revision just saved and any
+     piece saved less than 20 s ago (another browser's save whose head may still be on the way). The
+     time is at the end of the id (rev_i_time; older pieces, rev_i, have the time of the revision,
+     from newRev). At most once every 10 s. */
+  var lastClean = 0;
+  function cleanChunks(rev) {
+    if (Date.now() - lastClean < 10000) return;
+    lastClean = Date.now();
+    W.store.ids('mesa_chunks').then(function (ids) {
+      var limit = Date.now() - 20000, old = ids.filter(function (id) {
+        if (id.indexOf(rev + '_') === 0) return false;
+        var m = /_\d+_(\d{12,})$/.exec(id) || /-(\d{12,})-\d+_\d+$/.exec(id);
+        return !m || Number(m[1]) < limit;
+      });
+      if (old.length) return W.store.removeMany('mesa_chunks', old);
+    }).catch(function () {});
   }
   function delay() { return (W.store && W.store.saveDelay) || 1200; }
   function flush() {
@@ -209,7 +355,8 @@ var MesaSync = (function () {
         rt().on('mesa-editors', function (m) {
           if (m && Array.isArray(m.editorUserIds)) {
             try { localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(m.editorUserIds)); } catch (e) {}
-            if (mesaOpen()) push({ type: 'SYNC_EDITORS', editorUserIds: m.editorUserIds, timestamp: m.ts || Date.now() });
+            if (state) state = Object.assign({}, state, { editors: m.editorUserIds }); // a later push of the state carries them
+            if (loaded()) push({ type: 'SYNC_EDITORS', editorUserIds: m.editorUserIds, timestamp: m.ts || Date.now() });
           }
         });
       }
@@ -225,8 +372,17 @@ var MesaSync = (function () {
       });
     },
     publish: function (str) {
+      // The copy of a state the Mesa sent through its sync client: the same text plus clientId at the end.
+      var viaClient = false;
+      if (str.lastIndexOf('{"type":"SYNC_FULL"', 0) === 0) {
+        var raw = str.replace(/,"clientId":"[^"]*"\}$/, '}');
+        if (raw === lastRaw) return;
+        lastRaw = raw; viaClient = raw !== str;
+      }
       var m; try { m = JSON.parse(str); } catch (e) { return; }
       if (!m) return;
+      // Without embedded images there is nothing to send to the image storage nor to swap.
+      var imgs = str.indexOf('data:image/') >= 0;
       if (m.type === 'SYNC_EDITORS' && Array.isArray(m.editorUserIds)) {
         try { localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(m.editorUserIds)); } catch (e) {}
         if (rt() && canSave()) rt().send('mesa-editors', { editorUserIds: m.editorUserIds, ts: Date.now() });
@@ -239,28 +395,22 @@ var MesaSync = (function () {
       }
       // One character changed: straight to the other browsers (the full state follows).
       if (m.type === 'SYNC_NPC') {
-        if (m.npc && canSave()) {
-          var npcObj = swapImgs(m.npc);
-          if (rt()) {
-            hostImgs(m.npc);
-            rt().send('mesa-npc', { npc: npcObj, ts: m.timestamp });
-          }
-          var curSt = state || localState();
-          if (curSt) {
-            var nId = npcObj.id;
-            var updatedP = (curSt.players || []).map(function (p) { return p.id === nId ? Object.assign({}, p, npcObj) : p; });
-            var updatedC = (curSt.combats || []).map(function (cb) {
-              return Object.assign({}, cb, {
-                npcs: (cb.npcs || []).map(function (n) { return n.id === nId ? Object.assign({}, n, npcObj) : n; })
-              });
-            });
-            curSt.players = updatedP;
-            curSt.combats = updatedC;
-            state = curSt;
-            var r0 = newRev();
-            pending = { st: curSt, rev: r0 };
-            if (!timer) timer = setTimeout(flush, delay());
-          }
+        if (!m.npc || !m.npc.id || !canSave()) return;
+        // The Mesa sends each one twice, with the same timestamp: the copy is skipped.
+        if (m.timestamp != null) {
+          var nk = m.npc.id + '|' + m.timestamp;
+          if (npcSeen[nk]) return;
+          npcSeen[nk] = 1; npcSeenList.push(nk);
+          if (npcSeenList.length > 100) delete npcSeen[npcSeenList.shift()];
+        }
+        var npcObj = imgs ? swapImgs(m.npc) : m.npc;
+        if (imgs) hostImgs(m.npc);
+        send('mesa-npc', 'npc', npcObj, JSON.stringify(npcObj), { ts: m.timestamp });
+        var curSt = state || localState();
+        if (curSt) {
+          state = withNpc(curSt, npcObj, true);
+          pending = { st: state, rev: newRev() };
+          if (!timer) timer = setTimeout(flush, delay());
         }
         return;
       }
@@ -271,14 +421,23 @@ var MesaSync = (function () {
       if (!eds) {
         try { eds = JSON.parse(localStorage.getItem('gurps_combat_master_editors_v1') || '[]'); } catch (e) {}
       }
-      var st = swapImgs({ combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del, editors: eds || [] });
+      var st = { combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del, editors: eds || [] };
+      if (imgs) st = swapImgs(st);
       var json = JSON.stringify(st);
       if (json === lastJson) return;
       lastJson = json;
       var rev = newRev();
-      if (rt() && canSave() && json.length < 240000) rt().send('mesa', { rev: rev, state: st });
-      hostImgs(st); // new images start going now; the save waits for them
-      pending = { st: st, rev: rev };
+      state = st; // the newest state here: a push to the hidden Mesa and the next merges start from it
+      /* The Mesa's answer to REQUEST_SYNC (it comes only through its sync client): the states received
+         merged with this browser's edits, all of which went by broadcast already. Sending it again
+         would make every browser with a save on the way ask its Mesa in turn; it is only saved, and
+         its head lists the revisions it covers (see onHead). Not after a message that didn't go. */
+      var answer = viaClient && asked && Date.now() - asked < 3000 && Date.now() - bcastFail > 10000;
+      var covers = null;
+      if (answer) { asked = 0; covers = mergedRevs.concat(lastSentRev ? [lastSentRev] : []); mergedRevs = []; }
+      else { send('mesa', 'state', st, json, { rev: rev }); lastSentRev = rev; }
+      if (imgs) hostImgs(st); // new images start going now; the save waits for them
+      pending = { st: st, rev: rev, imgs: imgs, json: imgs ? null : json, covers: covers };
       if (!timer) timer = setTimeout(flush, delay());
     },
     // Save now (used by the Mesa's "Sair" button) and confirm to the person.

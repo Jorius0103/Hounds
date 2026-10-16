@@ -14,9 +14,33 @@
    sheet of more than one character (a template for a group of guards).
    ===================================================================== */
 ICON.sheet = '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>';
-function indexSheets() { var idx = /** @type {Record<string, Sheet>} */ ({}); W.sheets.forEach(function (s) { idx[s.id] = s; }); W.sheetIdx = idx; }
+// An ally (sheet.allyOf: the main sheet that created it) is a sheet of its own, shown only in a tab of
+// its main sheet's page. Whoever sees the main sheet sees its allies (the database gives them its
+// visibility), so they are indexed with it, from W.raw, even before their own copy catches up.
+function indexSheets() {
+  var idx = /** @type {Record<string, Sheet>} */ ({});
+  W.sheets.forEach(function (s) { idx[s.id] = s; });
+  W.raw.sheets.forEach(function (s) { var m = s.allyOf && idx[s.allyOf]; if (m && !m.allyOf) idx[s.id] = s; });
+  W.sheetIdx = idx;
+}
 function sheetById(id) { return (id && W.sheetIdx[id]) || null; }
 function sheetHref(id) { return hrefFor('sheet:' + id); }
+function allyHref(mainId, allyId) { return sheetHref(mainId) + '~' + encodeURIComponent(allyId); }
+// The sheets that are not allies: the ones listed in Fichas, the menu and the forms.
+function mainSheets() { return W.sheets.filter(function (s) { return !s.allyOf; }); }
+// The allies of a main sheet, in the order they were created.
+function sheetAllies(id) {
+  return W.raw.sheets.filter(function (s) { return s.allyOf === id && W.sheetIdx[s.id]; })
+    .sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0) || (a.id < b.id ? -1 : 1); });
+}
+function allyLabel(s) { return s.allyName || s.name; }
+// While an ally is open, the content pane takes the ally colors (#view-page.ally-view, in paginas.css).
+function paintAllyView(on) { var v = $('view-page'); if (v) v.classList.toggle('ally-view', !!on); }
+// The sheet whose tabs (Ficha, Equip., Magia) the page shows: the main one or the open ally.
+function pageSheet() {
+  var main = sheetById(S.route && S.route.sheetId), ally = main && S.route.allyId ? sheetById(S.route.allyId) : null;
+  return ally && ally.allyOf === main.id ? ally : main;
+}
 // Characters whose sheet this is.
 function sheetChars(id) { return W.characters.filter(function (c) { return c.sheetId === id; }).sort(byName); }
 // The sheet's picture is its character's: the first linked character (by name) that has
@@ -48,8 +72,28 @@ Ops.saveSheet = function (s, fields) {
   var body = { v: 1, name: name, description: (fields.description || '').trim(), visible: fields.visible !== false, sharedWith: fields.sharedWith || (s && s.sharedWith) || [],
     createdBy: owner(s), createdAt: (s && s.createdAt) || t, updatedAt: t };
   // put replaces the whole document: attributes and skills are edited apart and must survive a rename.
-  ['attrs', 'skills', 'cultures', 'spells', 'combat', 'advs', 'equip', 'bodies', 'packs', 'homes', 'armorSets', 'customWeapons', 'customShields'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  ['attrs', 'skills', 'cultures', 'spells', 'combat', 'advs', 'equip', 'bodies', 'packs', 'homes', 'armorSets', 'customWeapons', 'customShields', 'allyOf', 'allyName'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  // An ally sees and is seen as its main sheet: it keeps the main one's visibility.
+  if (s && s.allyOf) { body.visible = s.visible !== false; body.sharedWith = s.sharedWith || []; }
   return W.store.put('sheets', s ? s.id : null, body);
+};
+// A new ally of the main sheet m: a sheet of its own (attributes at 10, nothing else), named like its
+// tab, "Aliado 1", "Aliado 2"... (the first number no ally of m uses). Resolves to its id.
+Ops.createAlly = function (m) {
+  if (!rawHas('sheets', m.id) || m.allyOf) return Promise.reject({ message: 'Essa ficha não existe mais.' });
+  var used = {}, n = sheetAllies(m.id).length + 1, t = now();
+  sheetAllies(m.id).forEach(function (a) { used[norm(allyLabel(a))] = true; });
+  while (used[norm('Aliado ' + n)]) n++;
+  var name = 'Aliado ' + n;
+  return W.store.put('sheets', null, { v: 1, name: name, description: '', allyOf: m.id, allyName: name, visible: m.visible !== false, sharedWith: m.sharedWith || [],
+    createdBy: owner(null), createdAt: t, updatedAt: t });
+};
+// The name of an ally's tab; the name of its sheet does not change.
+Ops.renameAlly = function (a, name) {
+  name = String(name || '').trim();
+  if (!name) return Promise.reject({ message: 'Informe o nome do aliado.' });
+  if (!rawHas('sheets', a.id)) return Promise.reject({ message: 'Esse aliado não existe mais.' });
+  return W.store.patch('sheets', a.id, { allyName: name.slice(0, 100), updatedAt: now() });
 };
 Ops.saveSheetAttrs = function (s, a) {
   if (!rawHas('sheets', s.id)) return Promise.reject({ message: 'Essa ficha não existe mais.' });
@@ -57,13 +101,17 @@ Ops.saveSheetAttrs = function (s, a) {
   Object.keys(SHEET_ATTRS0).forEach(function (k) { clean[k] = cleanAttr(k, a[k]); });
   return W.store.patch('sheets', s.id, { attrs: clean, updatedAt: now() });
 };
-// Characters linked to it lose the link; they stay as they are otherwise.
+// Characters linked to it lose the link; they stay as they are otherwise. Its allies go with it.
 Ops.deleteSheet = function (s) {
-  // A relational database unlinks the characters itself, in one transaction (hounds_remove).
+  // A relational database unlinks the characters and removes the allies itself, in one transaction (hounds_remove).
   if (W.store.relational) return W.store.remove('sheets', s.id);
   return W.raw.characters.filter(function (c) { return c.sheetId === s.id; }).reduce(function (q, c) {
     return q.then(function () { return W.store.patch('characters', c.id, { sheetId: null, updatedAt: now() }); });
-  }, Promise.resolve()).then(function () { return W.store.remove('sheets', s.id); });
+  }, Promise.resolve()).then(function () {
+    return W.raw.sheets.filter(function (a) { return a.allyOf === s.id; }).reduce(function (q, a) {
+      return q.then(function () { return W.store.remove('sheets', a.id); });
+    }, Promise.resolve());
+  }).then(function () { return W.store.remove('sheets', s.id); });
 };
 // The one sheet of a character (null removes the link). A single field holds it, so linking
 // another sheet replaces the current one; a list or a sheet that no longer exists is refused.
@@ -73,6 +121,7 @@ Ops.setCharSheet = function (charId, sheetId, justCreated) {
   if (!rawHas('characters', charId)) return Promise.reject({ message: 'Esse personagem não existe mais.' });
   if (sheetId != null && typeof sheetId !== 'string') return Promise.reject({ message: 'Um personagem só pode ter uma ficha.' });
   if (sheetId && !justCreated && !rawHas('sheets', sheetId)) return Promise.reject({ message: 'Essa ficha não existe mais. Escolha outra.' });
+  if (sheetId && (rawGet('sheets', sheetId) || {}).allyOf) return Promise.reject({ message: 'A ficha de um aliado não pode ser vinculada a um personagem. Vincule a ficha principal.' });
   var others = sheetId ? W.raw.characters.filter(function (c) { return c.sheetId === sheetId && c.id !== charId; }) : [];
   return others.reduce(function (p, c) {
     return p.then(function () { return W.store.patch('characters', c.id, { sheetId: null, updatedAt: now() }); });
@@ -438,9 +487,10 @@ function sheetSkillsHtml(s, editing) {
       : can && !sheetDraftOpen() ? secEditBtnHtml('skEdit', 'perícias') : '') + '</div>';
   if (editing) {
     return '<section class="gurps' + gearFoldClass('skills', editing) + '" id="skills">' + head +
-      '<div class="box sk-edit"><div class="sk-row sk-labels" aria-hidden="true"><span>Perícia</span><span>Atributo</span><span>Dif.</span><span>Pontos</span><span>Bônus</span><span>NH</span><span></span></div>' +
+      // A new skill goes on top, under the button, where it is seen without scrolling down a long list.
+      '<div class="box sk-edit"><div><button class="btn" type="button" id="skAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar perícia</button></div>' +
+      '<div class="sk-row sk-labels" aria-hidden="true"><span>Perícia</span><span>Atributo</span><span>Dif.</span><span>Pontos</span><span>Bônus</span><span>NH</span><span></span></div>' +
       '<div id="skRows">' + applyTalents(skills, s).map(function (k, i) { return skillEditRow(k, i, av); }).join('') + '</div>' +
-      '<div><button class="btn" type="button" id="skAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar perícia</button></div>' +
       '<p class="hint-text">Dificuldade: E fácil, A média, H difícil, VH muito difícil. Bônus é o que vantagens, talentos ou equipamentos somam ao NH; com bônus, escreva o motivo, que aparece ao passar o mouse no NH. Com 0 pontos vale o nível padrão.</p></div>' +
       '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Familiaridade Cultural</h3>' +
       '<p class="hint-text" style="margin:0">Aparece junto com as perícias fáceis, destacada, e os pontos entram no total delas.</p>' +
@@ -522,8 +572,11 @@ function wireSheetSkills(s) {
   function focusLast(sel) { var l = document.querySelectorAll(sel); var f = l[l.length - 1]; if (f instanceof HTMLElement) f.focus(); }
   var ed = $('skEdit'); if (ed) ed.onclick = function () {
     ui.skillDraft = { skills: sheetSkills(s), cultures: sheetCultures(s) };
-    if (!ui.skillDraft.skills.length) ui.skillDraft.skills.push(cleanSkill({ name: '', attr: 'IQ', diff: 'A', pts: 1 }));
-    renderSheetPage(); focusLast('#skRows .sk-name');
+    // No field gets the focus (it would open the suggestions over a filled name), only the empty row
+    // of a sheet without skills.
+    var none = !ui.skillDraft.skills.length;
+    if (none) ui.skillDraft.skills.push(cleanSkill({ name: '', attr: 'IQ', diff: 'A', pts: 1 }));
+    renderSheetPage(); if (none) focusLast('#skRows .sk-name');
   };
   if (!ui.skillDraft && $('skills')) wireQuickPts(s, $('skills'));
   var d = ui.skillDraft, box = $('skills'); if (!d || !box || !$('skSave')) return;
@@ -605,7 +658,10 @@ function wireSheetSkills(s) {
     if (b.hasAttribute('data-del')) d.skills.splice(+b.getAttribute('data-del'), 1); else d.cultures.splice(+b.getAttribute('data-cdel'), 1);
     renderSheetPage();
   });
-  $('skAdd').onclick = function () { d.skills.push(cleanSkill({ name: '', attr: 'IQ', diff: 'A', pts: 1 })); renderSheetPage(); focusLast('#skRows .sk-name'); };
+  $('skAdd').onclick = function () {
+    d.skills.unshift(cleanSkill({ name: '', attr: 'IQ', diff: 'A', pts: 1 })); renderSheetPage();
+    var f = document.querySelector('#skRows .sk-name'); if (f instanceof HTMLElement) f.focus();
+  };
   $('cuAdd').onclick = function () { d.cultures.push({ name: '', pts: 1 }); renderSheetPage(); focusLast('#cuRows .sk-name'); };
   $('skCancel').onclick = function () { ui.skillDraft = null; renderSheetPage(); };
   $('skSave').onclick = function () {
@@ -627,7 +683,7 @@ function renderSheetsPage() {
   pageRoot.innerHTML =
     '<div class="head-row"><div>' + crumbsHtml('sheets') + '<h1>Fichas</h1><p class="lede">As fichas dos personagens. Cada personagem pode ser vinculado a uma ficha, na página dele.</p></div>' +
     (can ? '<button class="btn primary" type="button" id="newSheetBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova ficha</button>' : '') + '</div>' + notice() +
-    (W.sheets.length ? '<div class="toolbar"><label for="sheetSearch" style="position:absolute;left:-9999px">Buscar fichas</label><input class="search" id="sheetSearch" type="search" placeholder="Buscar por nome ou personagem" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="sheetCount"></span></div>' : '') +
+    (mainSheets().length ? '<div class="toolbar"><label for="sheetSearch" style="position:absolute;left:-9999px">Buscar fichas</label><input class="search" id="sheetSearch" type="search" placeholder="Buscar por nome ou personagem" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="sheetCount"></span></div>' : '') +
     '<div id="sheetList"></div>';
   var b = $('newSheetBtn'); if (b) b.onclick = function () { openSheetForm(null); };
   var s = $('sheetSearch'); if (s) s.addEventListener('input', function () { S.ui.q = s.value; renderSheetList(); });
@@ -636,20 +692,21 @@ function renderSheetsPage() {
 function renderSheetList() {
   var el = $('sheetList'); if (!el) return;
   if (!W.loaded.sheets) { el.innerHTML = '<p class="lede">Carregando fichas…</p>'; return; }
-  if (!W.sheets.length) {
+  var all = mainSheets();
+  if (!all.length) {
     el.innerHTML = '<div class="empty-state">' + svg(ICON.sheet, 34, 1.6) + '<strong>Nenhuma ficha cadastrada</strong><span>' + (canWrite() ? 'Crie a primeira com <b>Nova ficha</b>.' : 'As fichas criadas vão aparecer aqui.') + '</span></div>';
     return;
   }
   var q = norm(S.ui.q);
-  var list = W.sheets.slice().sort(byName).filter(function (s) {
+  var list = all.slice().sort(byName).filter(function (s) {
     return !q || norm(s.name + ' ' + (s.description || '') + ' ' + sheetChars(s.id).map(function (c) { return c.name; }).join(' ')).indexOf(q) >= 0;
   });
-  var cnt = $('sheetCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.sheets.length : plural(W.sheets.length, 'ficha', 'fichas');
+  var cnt = $('sheetCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + all.length : plural(all.length, 'ficha', 'fichas');
   el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (s) {
-    var chars = sheetChars(s.id), p = sheetPortrait(s);
+    var chars = sheetChars(s.id), p = sheetPortrait(s), allies = sheetAllies(s.id).length;
     return '<a class="loc-card" href="' + sheetHref(s.id) + '"><div class="thumb sheet-thumb"' + (p ? ' data-img="' + esc(p.ref) + '"' : '') + '>' + svg(ICON.sheet, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(s.name) + '</strong>' +
       '<span class="where">' + (chars.length ? esc(chars.map(function (c) { return c.name; }).join(', ')) : 'Sem personagem vinculado') + '</span>' +
-      (s.attrs ? '<span class="meta">' + gurpsStats(sheetAttrs(s)).total + ' pts</span>' : '') + '</div></a>';
+      (s.attrs || allies ? '<span class="meta">' + [s.attrs ? gurpsStats(sheetAttrs(s)).total + ' pts' : '', allies ? plural(allies, 'aliado', 'aliados') : ''].filter(Boolean).join(' · ') + '</span>' : '') + '</div></a>';
   }).join('') + '</div>' : '<p class="lede">Nenhuma ficha encontrada para essa busca.</p>';
   fillImages(el);
 }
@@ -657,26 +714,12 @@ function renderSheetList() {
 /* =====================================================================
    Page: single sheet
    ===================================================================== */
-var SHEET_TABS = [{ key: 'sheet', label: 'Ficha' }, { key: 'equip', label: 'Equip.' }, { key: 'magic', label: 'Magia' }];
-function renderSheetPage() {
-  var s = sheetById(S.route.sheetId), ui = S.ui;
-  if (!s) {
-    pageRoot.innerHTML = crumbsHtml('sheets') + (W.loaded.sheets ? '<h1>Ficha não encontrada</h1><p class="lede">Essa ficha foi excluída ou o link está incompleto.</p><div><a class="btn" href="#fichas">Voltar para Fichas</a></div>' : '<p class="lede">Carregando ficha…</p>');
-    return;
-  }
-  var can = canWrite(), chars = sheetChars(s.id), portrait = sheetPortrait(s);
-  var head = crumbsHtml('sheet:' + s.id) + '<div class="head-row"><div class="sheet-title">' +
-    (portrait ? '<div class="sheet-portrait" id="sheetPortrait">' + svg(ICON.user, 28, 1.6) + '</div>' : '') +
-    '<div><span class="badge">' + svg(ICON.sheet, 12, 2.4) + 'Ficha</span><h1>' + esc(s.name) + '</h1>' +
-    '<p class="lede">' + (chars.length ? 'Ficha de ' + esc(chars.map(function (c) { return c.name; }).join(', ')) : 'Nenhum personagem vinculado') + '</p></div></div>' +
-    (can ? '<div class="btn-row"><button class="btn" type="button" id="editSheetBtn">' + svg(ICON.edit, 15) + 'Editar ficha</button><button class="btn danger" type="button" id="delSheetBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
-    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a ficha <b>' + esc(s.name) + '</b>?' + (chars.length ? ' ' + plural(chars.length, 'personagem fica', 'personagens ficam') + ' sem ficha; os personagens continuam cadastrados.' : '') + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSheetYes">Excluir ficha</button><button class="btn ghost" type="button" id="delSheetNo">Cancelar</button></div></div>' : '');
-  var main = '<section><h2 class="sec-title">Observações</h2>' + (s.description ? '<p class="long">' + esc(s.description) + '</p>' : '<p class="long none">Sem observações.</p>') + '</section>';
-  // Closed until its title is clicked (see foldBox). At the top, above the attributes. As the Ficha box
-  // of the character's page: the character, Trocar (or Vincular) and Remover vínculo, which asks first
-  // (the box stays open while it asks). hidden: a character this account cannot see is on the sheet.
-  var hidden = !chars.length && W.raw.characters.some(function (c) { return c.sheetId === s.id; }), unlink = can && !!ui.confirmUnlink && chars.length > 0;
-  var side = foldBox('chars', 'Personagem', null,
+// The Personagem box of a main sheet s. Closed until its title is clicked (see foldBox). At the top, above the attributes. As the Ficha box
+// of the character's page: the character, Trocar (or Vincular) and Remover vínculo, which asks first
+// (the box stays open while it asks). hidden: a character this account cannot see is on the sheet.
+function sheetCharsBoxHtml(s, chars, can, confirmUnlink) {
+  var hidden = !chars.length && W.raw.characters.some(function (c) { return c.sheetId === s.id; }), unlink = can && !!confirmUnlink && chars.length > 0;
+  return foldBox('chars', 'Personagem', null,
     (chars.length ? '<ul class="links">' + chars.map(function (c) {
       return '<li><a class="row-link" href="' + charHref(c.id) + '">' + thumbSlot(c.image && c.image.ref, ICON.user) + '<span class="mtext"><b>' + esc(c.name) + '</b>' +
         '<span class="where">' + esc(charSubtitle(c) || 'Personagem') + '</span></span></a></li>';
@@ -688,6 +731,59 @@ function renderSheetPage() {
       (chars.length > 1 ? 'Os personagens continuam' : 'O personagem continua') + ' cadastrado' + (chars.length > 1 ? 's' : '') + '.</span><div class="btn-row"><button class="btn danger solid" type="button" id="sheetCharsRmYes">Remover vínculo</button>' +
       '<button class="btn ghost" type="button" id="sheetCharsRmNo">Cancelar</button></div></div>' : ''),
     unlink);
+}
+// In an ally's tab, in the place of the Personagem box: the name of its tab and of its sheet, and
+// Renomear, Editar ficha and Excluir aliado, which asks first.
+function allyBoxHtml(a, can, confirmDel) {
+  return '<div class="box ally-box"><div class="ally-name"><b>' + esc(allyLabel(a)) + '</b><small>ficha “' + esc(a.name) + '”</small></div>' +
+    (can ? '<div class="btn-row"><button class="btn" type="button" id="allyRename" title="Renomear a aba do aliado">' + svg(ICON.edit, 14) + 'Renomear</button>' +
+      '<button class="btn" type="button" id="allyEdit" title="Editar o nome e as observações da ficha do aliado">' + svg(ICON.sheet, 14) + 'Editar ficha</button>' +
+      '<button class="btn danger" type="button" id="allyDel" aria-label="Excluir aliado" title="Excluir aliado">' + svg(ICON.trash, 14) + 'Excluir</button></div>' : '') +
+    (can && confirmDel ? '<div class="confirm" role="alert"><span>Excluir o aliado <b>' + esc(allyLabel(a)) + '</b>? A ficha dele, com equipamentos, corpo, mochilas e magias, é excluída. ' +
+      'A ficha principal e os outros aliados não mudam. Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="allyDelYes">Excluir aliado</button>' +
+      '<button class="btn ghost" type="button" id="allyDelNo">Cancelar</button></div></div>' : '') + '</div>';
+}
+var SHEET_TABS = [{ key: 'sheet', label: 'Ficha' }, { key: 'equip', label: 'Equip.' }, { key: 'magic', label: 'Magia' }];
+// The page of a main sheet (m): its head, a tab for it and one for each ally (#ficha~<id>~<ally id>), and
+// below them the tabs Ficha, Equip. and Magia of the one open (s), the same sections for both.
+function renderSheetPage() {
+  var m = sheetById(S.route.sheetId), ui = S.ui;
+  paintAllyView(false);
+  // An ally's own link opens it in its main sheet's page.
+  if (m && m.allyOf) { if (sheetById(m.allyOf)) { go(allyHref(m.allyOf, m.id), true); return; } m = null; }
+  if (!m) {
+    pageRoot.innerHTML = crumbsHtml('sheets') + (W.loaded.sheets ? '<h1>Ficha não encontrada</h1><p class="lede">Essa ficha foi excluída ou o link está incompleto.</p><div><a class="btn" href="#fichas">Voltar para Fichas</a></div>' : '<p class="lede">Carregando ficha…</p>');
+    return;
+  }
+  // An ally just created may not have arrived yet (S.pendingAlly); any other ally that is not there was
+  // excluded meanwhile: back to the main sheet.
+  var s = pageSheet();
+  if (S.route.allyId && s === m) {
+    if (S.pendingAlly === S.route.allyId) { pageRoot.innerHTML = crumbsHtml('sheet:' + m.id) + '<p class="lede">Abrindo o aliado…</p>'; return; }
+    go(sheetHref(m.id), true); return;
+  }
+  if (S.pendingAlly && S.pendingAlly === S.route.allyId) S.pendingAlly = null;
+  var ally = s !== m ? s : null, allies = sheetAllies(m.id);
+  paintAllyView(ally);
+  var can = canWrite(), chars = sheetChars(m.id), portrait = sheetPortrait(m);
+  var head = crumbsHtml('sheet:' + m.id) + '<div class="head-row"><div class="sheet-title">' +
+    (portrait ? '<div class="sheet-portrait" id="sheetPortrait">' + svg(ICON.user, 28, 1.6) + '</div>' : '') +
+    '<div><span class="badge">' + svg(ICON.sheet, 12, 2.4) + 'Ficha</span><h1>' + esc(m.name) + '</h1>' +
+    '<p class="lede">' + (chars.length ? 'Ficha de ' + esc(chars.map(function (c) { return c.name; }).join(', ')) : 'Nenhum personagem vinculado') + '</p></div></div>' +
+    (can ? '<div class="btn-row"><button class="btn" type="button" id="editSheetBtn">' + svg(ICON.edit, 15) + 'Editar ficha</button><button class="btn danger" type="button" id="delSheetBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
+    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a ficha <b>' + esc(m.name) + '</b>?' + (chars.length ? ' ' + plural(chars.length, 'personagem fica', 'personagens ficam') + ' sem ficha; os personagens continuam cadastrados.' : '') +
+      (allies.length ? ' ' + (allies.length > 1 ? 'Os ' + allies.length + ' aliados dela também são excluídos.' : 'O aliado dela também é excluído.') : '') +
+      ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSheetYes">Excluir ficha</button><button class="btn ghost" type="button" id="delSheetNo">Cancelar</button></div></div>' : '');
+  // The main sheet and its allies. While a section is being edited they stay put: Salvar or Cancelar first.
+  var editing = !!ui.attrDraft || sheetDraftOpen() || gearEditing();
+  var people = allies.length || can ? '<div class="sheet-allies"><div class="seg" role="tablist" aria-label="Personagem e aliados">' + [m].concat(allies).map(function (x) {
+    var on = x === s;
+    return '<button type="button" role="tab" data-ally="' + (x === m ? '' : esc(x.id)) + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '"' +
+      (editing && !on ? ' disabled title="Salve ou cancele a edição antes de trocar"' : '') + '>' + (x === m ? svg(ICON.user, 14, 2.2) + esc(m.name) : esc(allyLabel(x))) + '</button>';
+  }).join('') + '</div>' +
+    (can ? '<button class="btn" type="button" id="allyNew"' + (editing ? ' disabled title="Salve ou cancele a edição antes"' : '') + '>' + svg(ICON.plus, 15, 2.4) + 'Criar Aliado</button>' : '') + '</div>' : '';
+  var main = '<section><h2 class="sec-title">Observações</h2>' + (s.description ? '<p class="long">' + esc(s.description) + '</p>' : '<p class="long none">Sem observações.</p>') + '</section>';
+  var side = ally ? allyBoxHtml(ally, can && !editing, ui.confirmAllyDelete) : sheetCharsBoxHtml(m, chars, can, ui.confirmUnlink);
   // Three tabs: everything but the equipment and the spells, the equipment, and the spells. Only the
   // open one is drawn (the wire* functions skip a section that isn't there); a draft in another survives the switch.
   var tab = ui.sheetTab === 'equip' || ui.sheetTab === 'magic' ? ui.sheetTab : 'sheet';
@@ -695,7 +791,7 @@ function renderSheetPage() {
     var on = t.key === tab;
     return '<button type="button" role="tab" data-stab="' + t.key + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '">' + t.label + '</button>';
   }).join('') + '</div>';
-  pageRoot.innerHTML = head + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetGearHtml(s) : tab === 'magic' ? sheetSpellsHtml(s, !!ui.spellDraft && can)
+  pageRoot.innerHTML = head + people + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetGearHtml(s) : tab === 'magic' ? sheetSpellsHtml(s, !!ui.spellDraft && can)
     : sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
       sheetCombatHtml(s, !!ui.combatDraft && can) + sheetDmgDefHtml(s) + sheetAdvsHtml(s, !!ui.advDraft && can) + main);
   pageRoot.querySelectorAll('[data-stab]').forEach(function (b) {
@@ -718,7 +814,24 @@ function renderSheetPage() {
   wireSheetAdvs(s);
   wireSheetEquip(s);
   wireSheetSpells(s);
-  var cb = $('sheetCharsBtn'); if (cb) cb.onclick = function () { openSheetCharsForm(s); };
+  pageRoot.querySelectorAll('[data-ally]').forEach(function (b) {
+    b.onclick = function () { var id = b.getAttribute('data-ally'); if (id !== (ally ? ally.id : '')) go(id ? allyHref(m.id, id) : sheetHref(m.id)); };
+  });
+  var an = $('allyNew'); if (an) an.onclick = function () {
+    an.disabled = true;
+    Ops.createAlly(m).then(function (id) { S.pendingAlly = id; toast('Aliado criado.'); go(allyHref(m.id, id)); }, function (er) { an.disabled = false; toast('Não foi possível criar o aliado: ' + errorText(er), true); });
+  };
+  if (ally) {
+    var ar = $('allyRename'); if (ar) ar.onclick = function () { openAllyNameForm(ally); };
+    var ae = $('allyEdit'); if (ae) ae.onclick = function () { openSheetForm(ally); };
+    var ad = $('allyDel'); if (ad) ad.onclick = function () { ui.confirmAllyDelete = true; renderSheetPage(); };
+    var adn = $('allyDelNo'); if (adn) adn.onclick = function () { ui.confirmAllyDelete = false; renderSheetPage(); };
+    var ady = $('allyDelYes'); if (ady) ady.onclick = function () {
+      ady.disabled = true;
+      Ops.deleteSheet(ally).then(function () { toast('Aliado excluído.'); go(sheetHref(m.id), true); }, function (er) { ady.disabled = false; toast('Não foi possível excluir o aliado: ' + errorText(er), true); });
+    };
+  }
+  var cb = $('sheetCharsBtn'); if (cb) cb.onclick = function () { openSheetCharsForm(m); };
   var cr = $('sheetCharsRm'); if (cr) cr.onclick = function () { ui.confirmUnlink = true; renderSheetPage(); };
   var crn = $('sheetCharsRmNo'); if (crn) crn.onclick = function () { ui.confirmUnlink = false; renderSheetPage(); };
   var cry = $('sheetCharsRmYes'); if (cry) cry.onclick = function () {
@@ -726,12 +839,12 @@ function renderSheetPage() {
     chars.reduce(function (p, c) { return p.then(function () { return Ops.setCharSheet(c.id, null); }); }, Promise.resolve())
       .then(function () { ui.confirmUnlink = false; toast('Vínculo com o personagem removido.'); renderSheetPage(); }, function (er) { cry.disabled = false; toast(errorText(er), true); });
   };
-  var e = $('editSheetBtn'); if (e) e.onclick = function () { openSheetForm(s); };
+  var e = $('editSheetBtn'); if (e) e.onclick = function () { openSheetForm(m); };
   var d = $('delSheetBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderSheetPage(); };
   var dn = $('delSheetNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderSheetPage(); };
   var dy = $('delSheetYes'); if (dy) dy.onclick = function () {
     dy.disabled = true;
-    Ops.deleteSheet(s).then(function () { toast('Ficha excluída.'); go('#fichas', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
+    Ops.deleteSheet(m).then(function () { toast('Ficha excluída.'); go('#fichas', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
   };
 }
 
@@ -739,11 +852,13 @@ function renderSheetPage() {
    Form: sheet (name and notes for now)
    ===================================================================== */
 function openSheetForm(s, then) {
-  var editing = !!s;
-  var html = '<form id="sheetForm" novalidate><h2 id="sfTitle">' + (editing ? 'Editar ficha' : 'Nova ficha') + '</h2>' +
+  // An ally's sheet: its name and notes; it is seen by whoever sees its main sheet (no visibility here).
+  var editing = !!s, ally = !!(s && s.allyOf);
+  var html = '<form id="sheetForm" novalidate><h2 id="sfTitle">' + (ally ? 'Editar ficha de ' + esc(allyLabel(s)) : editing ? 'Editar ficha' : 'Nova ficha') + '</h2>' +
+    (ally ? '<p class="lede" style="margin:0">O nome da ficha do aliado é independente do nome da aba (<b>Renomear</b>).</p>' : '') +
     '<div class="field" id="f_sname"><label for="sname">Nome da ficha</label><input type="text" id="sname" maxlength="100" autocomplete="off" placeholder="Ex.: Brynhild — nível 150" value="' + esc(editing ? s.name : '') + '"><div class="err" id="err_sname"></div></div>' +
     '<div class="field"><label for="sdesc">Observações</label><textarea id="sdesc" rows="6" maxlength="20000" placeholder="Anotações sobre a ficha.">' + esc(editing ? s.description || '' : '') + '</textarea></div>' +
-    flagHtml('svis', s, true) +
+    (ally ? '' : flagHtml('svis', s, true)) +
     '<div class="form-err" id="sfErr" role="alert"></div>' +
     '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="sfCancel">Cancelar</button><button class="btn primary" type="submit" id="sfSave">' + (editing ? 'Salvar ficha' : 'Criar ficha') + '</button></div></form>';
   showModal(html);
@@ -756,7 +871,8 @@ function openSheetForm(s, then) {
     if (modalOpen.busy) return;
     var n = name.value.trim();
     if (!n) { $('err_sname').textContent = 'Informe o nome da ficha.'; $('f_sname').classList.add('invalid'); name.focus(); return; }
-    if (W.sheets.some(function (x) { return (!editing || x.id !== s.id) && norm(x.name) === norm(n); }) && !$('sfErr').dataset.warned) {
+    // Allies are told apart by their tab, not by the name of their sheet.
+    if (!ally && mainSheets().some(function (x) { return (!editing || x.id !== s.id) && norm(x.name) === norm(n); }) && !$('sfErr').dataset.warned) {
       $('sfErr').textContent = 'Já existe uma ficha com esse nome. Clique em ' + (editing ? 'Salvar' : 'Criar') + ' ficha de novo para continuar mesmo assim.'; $('sfErr').dataset.warned = '1'; return;
     }
     modalOpen.busy = true;
@@ -769,6 +885,36 @@ function openSheetForm(s, then) {
       if (!modalOpen) return;
       modalOpen.busy = false; btn.disabled = false; btn.textContent = editing ? 'Salvar ficha' : 'Criar ficha'; $('sfCancel').disabled = false;
       $('sfErr').textContent = errorText(er);
+    });
+  };
+}
+
+/* =====================================================================
+   Form: the name of an ally's tab (its sheet keeps its own name)
+   ===================================================================== */
+function openAllyNameForm(a) {
+  var html = '<form id="allyForm" novalidate><h2 id="afTitle">Renomear aliado</h2>' +
+    '<div class="field" id="f_aname"><label for="aname">Nome da aba</label><input type="text" id="aname" maxlength="100" autocomplete="off" placeholder="Ex.: Lobo, Escudeiro" value="' + esc(allyLabel(a)) + '"><div class="err" id="err_aname"></div></div>' +
+    '<p class="hint-text" style="margin:0">Muda só o nome da aba. O nome da ficha do aliado (“' + esc(a.name) + '”) muda em <b>Editar ficha</b>.</p>' +
+    '<div class="form-err" id="afErr" role="alert"></div>' +
+    '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="afCancel">Cancelar</button><button class="btn primary" type="submit" id="afSave">Salvar</button></div></form>';
+  showModal(html);
+  modal.setAttribute('aria-labelledby', 'afTitle');
+  var name = $('aname'); name.select();
+  name.addEventListener('input', function () { if (name.value.trim()) { $('err_aname').textContent = ''; $('f_aname').classList.remove('invalid'); } });
+  $('afCancel').onclick = function () { closeModal(); };
+  $('allyForm').onsubmit = function (e) {
+    e.preventDefault();
+    if (modalOpen.busy) return;
+    var n = name.value.trim();
+    if (!n) { $('err_aname').textContent = 'Informe o nome do aliado.'; $('f_aname').classList.add('invalid'); name.focus(); return; }
+    if (n === allyLabel(a)) { closeModal(); return; }
+    modalOpen.busy = true;
+    var btn = $('afSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('afCancel').disabled = true; $('afErr').textContent = '';
+    Ops.renameAlly(a, n).then(function () { closeModal(true); toast('Aliado renomeado.'); }, function (er) {
+      if (!modalOpen) return;
+      modalOpen.busy = false; btn.disabled = false; btn.textContent = 'Salvar'; $('afCancel').disabled = false;
+      $('afErr').textContent = errorText(er);
     });
   };
 }
@@ -820,7 +966,7 @@ function openSheetCharsForm(s) {
    Form: the sheet of a character (one at most; picking another replaces it)
    ===================================================================== */
 function openSheetLinkForm(c) {
-  var cur = c.sheetId || '', list = W.sheets.slice().sort(byName);
+  var cur = c.sheetId || '', list = mainSheets().sort(byName);
   var opts = '<option value="">Nenhuma ficha</option>' + list.map(function (s) {
     var others = sheetChars(s.id).filter(function (x) { return x.id !== c.id; });
     return '<option value="' + esc(s.id) + '"' + (s.id === cur ? ' selected' : '') + '>' + esc(s.name) + (others.length ? ' (hoje de ' + esc(others.map(function (x) { return x.name; }).join(', ')) + ', que fica sem ficha)' : '') + '</option>';

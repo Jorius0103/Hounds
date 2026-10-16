@@ -22,23 +22,24 @@
        skip their own cascade when the store is `relational`.
      Everything needs a logged-in account linked to a hub user (sbSignIn,
        below); the database checks each role's permissions itself.
-     Two realtime channels:
-       "hounds"          postgres_changes of every table: a row changed,
-                         the item is downloaded again from its view, a few
-                         at once (a changed link also marks the item it
-                         belongs to). The Mesa's state comes whole in the
-                         notice and is not downloaded.
+     Only the Mesa de Combate is kept in sync between browsers. The rest
+     of the site is loaded when it opens: what another browser changes
+     shows here on the next load of the page.
+     Two realtime channels, both for the Mesa:
+       "hounds"          postgres_changes of the Mesa's head row (LIVE),
+                         which comes whole in the notice and is not
+                         downloaded; it is small, as the state is saved in
+                         pieces (mesa_partes): MesaSync reads the pieces
+                         only of a revision it didn't get by broadcast.
        "hounds-mesa"     private; broadcast messages straight to the other
-                         browsers, ahead of the database (the Mesa uses
-                         it; see MesaSync).
+                         browsers, ahead of the database (see MesaSync).
      Writes show on this screen at once and the answer of the database
      replaces that copy; notices about an item with a write of this
      browser still on the way wait for it. A failed write downloads the
-     item again. Watched collections are checked again after every
-     (re)connection, when the tab comes back and every 60 s (15 s while
-     the realtime is down): only each row's id and updated_at, then the
-     rows that changed (see check()). Channels that drop are made again
-     (see revive()).
+     item again. The Mesa is checked again after every (re)connection,
+     when the tab comes back and every 60 s (15 s while the realtime is
+     down): only the row's id and updated_at, then the row if it changed
+     (see check()). Channels that drop are made again (see revive()).
    ===================================================================== */
 function SupabaseStore(client, bucket) {
   var bName = bucket || 'hounds-images', BATCH = 100;
@@ -47,6 +48,9 @@ function SupabaseStore(client, bucket) {
     skills: 'pericias', techniques: 'tecnicas', styles: 'estilos', weapons: 'armas', armors: 'armaduras', items: 'itens', improvements: 'melhoramentos',
     armorLocs: 'armadura_localizacoes', mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
   var COL_OF = {}; Object.keys(TABLES).forEach(function (k) { COL_OF[TABLES[k]] = k; });
+  // The tables kept in sync between browsers: only the Mesa's head row. Not its pieces (each save
+  // would bring the whole state to every browser) nor the rest of the site, loaded when it opens.
+  var LIVE = { mesa_estado: true };
   var MARKERS = /^maps\/([^/]+)\/markers$/;
   var cols = {}, channel = null, live = false, mesaChannel = null, mesaLive = false, bcast = {};
   // mesaOk: the Mesa's channel connected once (so a drop of it is worth reconnecting). chGen
@@ -150,7 +154,7 @@ function SupabaseStore(client, bucket) {
       if (changed) emit(c);
     }).catch(function (e) { console.warn('Hounds: não foi possível conferir ' + c.col + ' com o banco.', e); });
   }
-  function resync() { Object.keys(cols).forEach(function (k) { check(cols[k]); }); }
+  function resync() { Object.keys(LIVE).forEach(function (t) { var c = cols[COL_OF[t]]; if (c) check(c); }); }
 
   // Items to download again, a few at once (one request for the ones asked for within 30 ms).
   function want(c, id) {
@@ -210,7 +214,7 @@ function SupabaseStore(client, bucket) {
     var gen = ++chGen;
     // The tables' notices follow each table's RLS (only accounts linked to a user get them).
     channel = client.channel('hounds');
-    Object.keys(COL_OF).concat(['marcadores']).forEach(function (t) {
+    Object.keys(LIVE).forEach(function (t) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, onChange);
     });
     channel.subscribe(function (status) {
@@ -292,6 +296,8 @@ function SupabaseStore(client, bucket) {
     if (c && c.ready) return Promise.resolve(list(c));
     return fetchRows(col).then(function (d) { return d.map(doc).sort(byCreated); });
   }
+  // Only the ids of a collection (for MesaSync's cleanup of old pieces, without their text).
+  function ids(col) { return select(col, 'id').then(rows).then(function (d) { return d.map(function (r) { return r.id; }); }); }
   function query(col, field, value) {
     var c = cols[col];
     if (c && c.ready) return Promise.resolve(list(c).filter(function (d) { return d[field] === value; }));
@@ -412,12 +418,15 @@ function SupabaseStore(client, bucket) {
     canUpload: true,
     canWrite: function () { return true; },
     init: function () { return Promise.resolve(); },
-    watch: watch, all: all, query: query, put: put, patch: patch, remove: remove, removeMany: removeMany,
+    watch: watch, all: all, ids: ids, query: query, put: put, patch: patch, remove: remove, removeMany: removeMany,
     replaceMapImage: replaceMapImage, account: account,
     upload: upload, imageUrl: imageUrl, dropImage: dropImage,
-    // For MesaSync: save soon and in one row, and reach the others directly.
-    saveDelay: 300,
-    inlineMax: 5000000,
+    // For MesaSync: save 1 s after the last change (the others get each change by broadcast; the
+    // database keeps it and covers a message lost), always in pieces (a small head row: its notice
+    // goes to every browser on every save), usually in one piece, and reach the others directly.
+    saveDelay: 1000,
+    inlineMax: 0,
+    chunkSize: 1000000,
     realtime: {
       send: function (kind, data) {
         if (!mesaChannel || !mesaLive) return Promise.resolve('closed');

@@ -17,6 +17,7 @@
      characters           { name, source, mesaId, createdAt, updatedAt }
      organizations        { v, name, description, reputation, members[{ charId, rank }], locationIds[], mapIds[], createdAt, updatedAt }
      sheets               { v, name, description, attrs{ st, dx, iq, ht, per, will, hp, fp, speed, move, enc, metal, spellPenalty }, createdAt, updatedAt }   (characters[].sheetId points here)
+                          an ally also has allyOf (its main sheet) and allyName (the name of its tab)
      spells, advantages,  only the Mestre's work: entries he created, and for an entry of the books
      disadvantages,       (dados/magias.json, dados/vantagens.json, dados/desvantagens.json, dados/pericias.json,
      skills, techniques,  dados/tecnicas.json, dados/estilos.json, dados/armas.json, dados/armaduras.json,

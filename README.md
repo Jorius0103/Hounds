@@ -49,7 +49,7 @@ Com o `supabase-config.js` preenchido, o site local usa o **mesmo banco de produ
 O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. A página escolhe onde guardar os dados, nesta ordem:
 
 1. **Artifact do claude.ai:** usa o banco de dados e o armazenamento de imagens da plataforma.
-2. **Supabase:** quando `supabase-config.js` está preenchido. Dados em tabelas relacionais do PostgreSQL, imagens no Storage e mudanças em tempo real pelo Realtime: cada mudança aparece na hora para quem altera e em uma fração de segundo nos outros navegadores. Configuração e detalhes da sincronização em [SUPABASE.md](SUPABASE.md).
+2. **Supabase:** quando `supabase-config.js` está preenchido. Dados em tabelas relacionais do PostgreSQL e imagens no Storage. Cada mudança aparece na hora para quem altera; nos outros navegadores, as da Mesa de Combate chegam em uma fração de segundo, pelo Realtime, e as do resto do site ao recarregar a página. Configuração e detalhes da sincronização em [SUPABASE.md](SUPABASE.md).
 3. **Firebase:** quando `firebase-config.js` está preenchido. Todos veem os mesmos dados, em tempo real, e o grupo entra com a senha da campanha. Configuração em [FIREBASE.md](FIREBASE.md).
 4. **Só o navegador:** sem nenhum dos dois, a página funciona, mas os dados ficam só no navegador de quem usa e começam vazios.
 

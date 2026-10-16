@@ -145,7 +145,8 @@ for (const ref of refs) {
 }
 console.log(`✓ imagens enviadas para storage: ${sentImgs} de ${refs.size}`);
 
-// 6. Importa a Mesa de Combate (o estado inteiro num registro só, como o site grava)
+// 6. Importa a Mesa de Combate (o estado inteiro num registro só; o site lê assim e, na primeira
+//    mudança, passa a gravar em partes, em mesa_partes)
 const mesa = await readJson('mesa-de-combate.json');
 if (mesa) {
   const t = Date.now();

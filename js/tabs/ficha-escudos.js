@@ -153,7 +153,7 @@ function sheetShieldHtml(s, g) {
 }
 // The shields of Criar Escudo in Meus Itens: Escudo | BD | RD | PV | NH | Custo | Peso | Ajustes.
 function shieldItemsHtml(lines, g, L, can) {
-  var ui = S.ui, weight = 0, s = sheetById(S.route && S.route.sheetId);
+  var ui = S.ui, weight = 0, s = pageSheet();
   var rows = lines.map(function (x) {
     var cw = g.shieldLines[x.id], counted = L.counted[x.id] || 0, where = gearWhere(g, x.id), adj = cw.mods.length ? cw.mods.map(shieldAdjText).join('; ') : '';
     var nh = weaponNh(s, { skill: cw.base.skill, defaults: cw.base.defaults }, shieldAdjTotal(cw.mods).nh);

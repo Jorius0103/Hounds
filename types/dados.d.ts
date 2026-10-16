@@ -98,6 +98,10 @@ interface Sheet extends Doc {
   name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[];
   equip?: SheetEquip[]; bodies?: SheetBody[]; packs?: SheetPack[]; homes?: SheetHome[]; armorSets?: ArmorSet[]; customWeapons?: CustomWeapon[]; customShields?: CustomShield[];
   spells?: SheetSpell[];
+  /** Só nos aliados: a ficha principal que criou o aliado (fixa; veja a migration 29). O aliado aparece numa aba dela, não nas listas. */
+  allyOf?: string | null;
+  /** Só nos aliados: o nome da aba, independente de `name` (o nome da ficha do aliado). */
+  allyName?: string | null;
 }
 /** Magia da aba Magia da ficha (veja js/tabs/ficha-magias.js): perícia de IQ, H ou VH, mostrada na tabela da escola `college` ('' : Sem escola). */
 interface SheetSpell {
@@ -476,8 +480,12 @@ interface Store {
   account?(acao: 'criar' | 'senha' | 'excluir', dados: object): Promise<any>;
   /** Supabase: atraso para salvar a Mesa (ms). */
   saveDelay?: number;
-  /** Supabase: tamanho máximo do estado da Mesa salvo numa linha só. */
+  /** Supabase: tamanho máximo do estado da Mesa salvo numa linha só (0: sempre em partes). */
   inlineMax?: number;
+  /** Supabase: tamanho de cada parte do estado da Mesa (caracteres). */
+  chunkSize?: number;
+  /** Supabase: só os ids de uma coleção, sem os dados. */
+  ids?(col: string): Promise<string[]>;
   /** Supabase: canal de broadcast entre navegadores. */
   realtime?: { send(kind: string, data: unknown): Promise<unknown>; on(kind: string, fn: (data: any) => void): void };
 }
@@ -553,6 +561,8 @@ interface Route {
   itemId?: string;
   improvementId?: string;
   sheetId?: string;
+  /** Na página de uma ficha, o aliado aberto (null: a ficha principal). */
+  allyId?: string | null;
   eventId?: string;
   nbId?: string;
   noteId?: string;
@@ -569,4 +579,6 @@ interface PageState {
   ui: Record<string, any>;
   /** Anotação recém-criada que deve abrir já em edição. */
   pendingEdit?: string | null;
+  /** Aliado recém-criado, aberto antes de chegar à lista de fichas (veja renderSheetPage). */
+  pendingAlly?: string | null;
 }

@@ -1,6 +1,6 @@
 # Banco de dados no Supabase
 
-Com o Supabase configurado, o Hounds guarda mapas, marcadores, locais, personagens, fichas, organizações, eventos, anotações, usuários, os catálogos de GURPS e a Mesa de Combate em **tabelas relacionais do PostgreSQL**. As imagens ficam no **Supabase Storage** e as mudanças chegam aos outros navegadores pelo **Realtime**.
+Com o Supabase configurado, o Hounds guarda mapas, marcadores, locais, personagens, fichas, organizações, eventos, anotações, usuários, os catálogos de GURPS e a Mesa de Combate em **tabelas relacionais do PostgreSQL**. As imagens ficam no **Supabase Storage**, e as mudanças da Mesa de Combate chegam aos outros navegadores pelo **Realtime**.
 
 A estrutura do banco está nas migrations versionadas de [supabase/migrations/](supabase/migrations/), que são executadas em ordem.
 
@@ -17,13 +17,13 @@ A estrutura do banco está nas migrations versionadas de [supabase/migrations/](
 | `marcadores` | Marcadores sobre a imagem de um mapa (`x`, `y` de 0 a 1). | `mapa_id` → `mapas` (exclusão em cascata), `local_id` → `locais`, `mapa_vinculado_id` → `mapas`. |
 | `locais` | Locais, com até duas imagens. | `mapa_id` → `mapas`, `local_pai_id` → `locais` (hierarquia, sem ciclo). |
 | `personagens` | Personagens. | `ficha_id` → `fichas`, **UNIQUE**: no máximo uma ficha por personagem e cada ficha em um personagem só. |
-| `fichas` | Fichas de GURPS: atributos e defesas em colunas. | Perícias, culturas, vantagens, estilos, itens de combate e armas em `ficha_*`. |
+| `fichas` | Fichas de GURPS: atributos e defesas em colunas. `tipo` é `principal` ou `aliado`: um aliado é uma ficha completa, mostrada numa aba da ficha principal, com o nome da aba em `aliado_nome`. | Perícias, culturas, vantagens, estilos, itens de combate e armas em `ficha_*`. `ficha_principal_id` → `fichas` (só nos aliados, exclusão em cascata): o vínculo não muda depois de criado, não existe aliado de aliado e a ficha de um aliado não é vinculada a personagem. |
 | `organizacoes` | Organizações. | — |
 | `eventos` | Eventos. A data é `data_texto` (texto livre, no calendário da campanha). | `local_id` → `locais`. |
 | `cadernos`, `anotacoes` | Títulos e anotações. | `anotacoes.caderno_id` → `cadernos` (exclusão em cascata). |
 | `magias`, `vantagens`, `desvantagens`, `pericias`, `tecnicas`, `estilos`, `armas`, `armaduras`, `itens`, `melhoramentos` | O que o Mestre criou ou mudou nos catálogos (os livros continuam em `dados/*.json`). | Os ataques de cada arma em `arma_ataque`. |
 | `armadura_localizacoes` | Dados de referência de Criar Armadura (GURPS Low-Tech, pp. 100-101): as localizações com o percentual do tronco, as subdivisões e as partes do corpo. Vêm da migration; só o Mestre pode mudá-las. | `pai` → `armadura_localizacoes`; as peças apontam para a localização. |
-| `mesa_estado`, `mesa_partes` | Estado da Mesa de Combate, num registro só (veja a seção 6). | — |
+| `mesa_estado`, `mesa_partes` | Estado da Mesa de Combate: o registro da revisão e o estado em partes (veja a seção 6). | — |
 
 ### Tabelas de vínculo
 
@@ -89,6 +89,9 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | 26 | `20261103120000_melhoramentos.sql` | Catálogo de melhoramentos (modificadores de armas, escudos, armaduras, roupas e equipamentos: Balanced, Fine, Dwarven, Ornate...): tabela `melhoramentos`, view e gravação. **Rode antes de publicar** a versão do site com a aba Melhoramentos, que lê essa tabela. |
 | 27 | `20261104120000_ficha_casas.sql` | Aba Equip. › Casa: tabelas `ficha_casa` e `ficha_casa_item` (como as mochilas, sem a própria e sem em uso), view `fichas_doc` e `salvar_ficha` com as casas; somando mochilas e casas, ninguém guarda mais do que a lista tem. **Rode antes de publicar** a versão do site com a Casa. |
 | 28 | `20261105120000_ajustes_melhoramentos.sql` | Ajustes de Criar Armadura, Arma e Escudo com melhoramentos: colunas `cf` (fator de custo, B274), `melhoramento_id` e, nas armas, `so_corte_perf` (dano só nos ataques de corte e perfuração); view `fichas_doc` e `salvar_ficha` com elas. Os ajustes gravados antes ficam com CF 0 e o resultado não muda. **Rode antes de publicar** a versão do site com os melhoramentos nos ajustes. |
+
+| 29 | `20261106120000_ficha_aliados.sql` | Aliados da ficha (botão **Criar Aliado**): colunas `tipo`, `ficha_principal_id` e `aliado_nome` em `fichas`, com as restrições e os triggers do vínculo; view `fichas_doc` (com `allyOf` e `allyName`; um aliado tem a visibilidade, o compartilhamento e o dono da ficha principal, e as permissões seguem as dela) e `salvar_ficha` (criar um aliado exige poder ver a ficha principal). As fichas que já existem ficam como principais. Excluir uma ficha principal exclui os aliados dela. **Rode antes de publicar** a versão do site com os aliados. |
+| 30 | `20261107120000_realtime_so_mesa.sql` | Realtime só da Mesa: tira da publicação `supabase_realtime` todas as tabelas menos `mesa_estado` (veja a seção 5). **Rode depois de publicar** a versão do site que só sincroniza a Mesa; antes disso, quem estiver com a versão anterior aberta deixa de ver na hora as mudanças dos outros fora da Mesa. Pode rodar de novo sem efeito. |
 
 **Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
 
@@ -198,9 +201,11 @@ Itens ocultos ainda chegam ao navegador dos jogadores logados, e o site os escon
 
 ## 5. Sincronização entre navegadores
 
-- **Mapas, locais, personagens e o resto:** quem altera vê na hora, e a resposta do banco substitui essa cópia. Os outros navegadores recebem o aviso do Realtime e baixam de novo só o item que mudou, pela view. Mudar um vínculo também marca como alterado o item a que ele pertence: tirar um personagem de uma organização avisa a organização.
-- **Quedas de conexão:** ao reconectar, ao voltar para a aba e a cada 60 s, a página confere tudo com o banco. Ela baixa só o `id` e o `updated_at` de cada item e depois só os itens que mudaram.
-- **Realtime:** as tabelas principais estão na publicação `supabase_realtime`, com `REPLICA IDENTITY DEFAULT`, então numa exclusão o aviso leva só o id. As tabelas de vínculo não precisam estar na publicação.
+Só a Mesa de Combate fica sincronizada entre os navegadores (veja a seção 6).
+
+- **Mapas, locais, personagens, fichas e o resto:** são carregados quando o site abre. Quem altera vê na hora, e a resposta do banco substitui essa cópia. O que outra pessoa alterar aparece ao recarregar a página; a página não pede avisos do Realtime dessas tabelas.
+- **Quedas de conexão:** ao reconectar, ao voltar para a aba e a cada 60 s, a página confere a Mesa com o banco. Ela baixa só o `id` e o `updated_at` e depois só o que mudou.
+- **Realtime:** só `mesa_estado` está na publicação `supabase_realtime` (migration 30), com `REPLICA IDENTITY DEFAULT`, e é a única tabela que a página assina.
 
 Limites do plano gratuito que importam aqui: 100 mensagens por segundo no projeto, 200 conexões ao mesmo tempo e 256 KB por mensagem direta. Se a Mesa só atualizar com cerca de 1 s de atraso, confira nas configurações de Realtime do projeto se o acesso a canais públicos está permitido.
 
@@ -208,8 +213,9 @@ Limites do plano gratuito que importam aqui: 100 mensagens por segundo no projet
 
 ## 6. Mesa de Combate
 
-O estado da Mesa (combates, NPCs, personagens salvos, condições, rounds e log) é o estado do app da Mesa, que ele lê e grava inteiro. Por isso fica num registro só, `mesa_estado` (metadados em colunas e o estado em `estado`). Normalizar a Mesa em tabelas próprias é uma etapa separada, que exige mudar o app React da Mesa.
+O estado da Mesa (combates, NPCs, personagens salvos, condições, rounds e log) é o estado do app da Mesa, que ele lê e grava inteiro. Por isso fica inteiro num lugar só: `mesa_estado` tem um registro pequeno (a revisão, quem gravou e em quantas partes) e o estado, em texto JSON, fica em `mesa_partes`, normalmente numa parte só. Normalizar a Mesa em tabelas próprias é uma etapa separada, que exige mudar o app React da Mesa.
 
-- Cada mudança vai direto para os outros navegadores pelo canal `hounds`, antes de passar pelo banco. O banco salva o estado 0,3 s depois da última mudança, e é de lá que lê quem abre o site depois. O aviso do Realtime já traz o estado inteiro, e a página não baixa de novo.
+- Cada mudança vai direto para os outros navegadores pelo canal `hounds-mesa`, compactada com gzip (o estado fica cerca de 12 vezes menor), antes de passar pelo banco. O banco salva o estado 1 s depois da última mudança, e é de lá que lê quem abre o site depois.
+- O aviso do Realtime de cada gravação traz só o registro pequeno de `mesa_estado`; a página não pede os avisos de `mesa_partes`. Só baixa as partes quem não recebeu aquela revisão pelo canal (uma mensagem perdida, ou o canal fora do ar). As partes de revisões antigas são apagadas pela própria página, alguns segundos depois.
 - Os avatares que a Mesa guarda como texto são enviados uma vez para o bucket de imagens, e o estado fica com o endereço deles.
 - Se duas pessoas mexem no mesmo personagem no mesmo instante, fica a última mudança.

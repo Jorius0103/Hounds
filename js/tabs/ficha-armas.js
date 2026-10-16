@@ -229,7 +229,7 @@ function sheetWeaponHtml(s, g) {
 // Aparar, ST and the notes stay in Criar Arma, Mundo › Armas and Editar equipamentos): one row per attack (the weapon's name, cost, weight,
 // adjustments and actions once, over its attacks).
 function weaponItemsHtml(lines, g, L, can) {
-  var ui = S.ui, weight = 0, s = sheetById(S.route && S.route.sheetId);
+  var ui = S.ui, weight = 0, s = pageSheet();
   var rows = lines.map(function (x) {
     var cw = g.weaponLines[x.id], nhPlus = weaponAdjTotal(cw.mods).nh, counted = L.counted[x.id] || 0, where = gearWhere(g, x.id), atk = cw.attacks.length ? cw.attacks : [{ damage: '' }], n = atk.length;
     var adj = cw.mods.length ? cw.mods.map(weaponAdjText).join('; ') : '';

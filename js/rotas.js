@@ -9,7 +9,7 @@
 /* =====================================================================
    Routing
      #mesa · #maps · #map~<id> · #map~<id>~explorar · #locais · #local~<id>
-     #fichas · #ficha~<id> · #eventos · #evento~<id>
+     #fichas · #ficha~<id> · #ficha~<id>~<ally id> (an ally, in its main sheet's page) · #eventos · #evento~<id>
      #pericia~<id> is a skill under Perícias; #pericia-combate~<id> the same page under Combate
      #desvantagens · #desvantagem~<id> · #armas · #arma~<id> · #armaduras · #armadura~<id> · #itens · #item~<id>
      #melhoramentos · #melhoramento~<id>
@@ -24,7 +24,7 @@ function parseRoute() {
   if (p[0] === 'personagens') return { page: 'chars', node: 'chars' };
   if (p[0] === 'personagem' && p[1]) return { page: 'char', charId: p[1], node: 'char:' + p[1] };
   if (p[0] === 'fichas') return { page: 'sheets', node: 'sheets' };
-  if (p[0] === 'ficha' && p[1]) return { page: 'sheet', sheetId: p[1], node: 'sheet:' + p[1] };
+  if (p[0] === 'ficha' && p[1]) return { page: 'sheet', sheetId: p[1], allyId: p[2] || null, node: 'sheet:' + p[1] };
   if (p[0] === 'eventos') return { page: 'events', node: 'events' };
   if (p[0] === 'evento' && p[1]) return { page: 'event', eventId: p[1], node: 'event:' + p[1] };
   if (p[0] === 'organizacoes') return { page: 'orgs', node: 'orgs' };

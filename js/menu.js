@@ -43,7 +43,7 @@ function buildMenu() {
       { id: 'chars', label: 'Personagens', icon: ICON.user, route: true, hideKids: true,
         children: W.characters.slice().sort(byName).map(function (c) { return { id: 'char:' + c.id, label: c.name, icon: ICON.user, route: true, secret: isSecret(c) }; }) },
       { id: 'sheets', label: 'Fichas', icon: ICON.sheet, route: true, hideKids: true,
-        children: W.sheets.slice().sort(byName).map(function (s) { return { id: 'sheet:' + s.id, label: s.name, icon: ICON.sheet, route: true, secret: isSecret(s) }; }) },
+        children: mainSheets().sort(byName).map(function (s) { return { id: 'sheet:' + s.id, label: s.name, icon: ICON.sheet, route: true, secret: isSecret(s) }; }) },
       { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, hideKids: true,
         children: W.organizations.slice().sort(byName).map(function (o) { return { id: 'org:' + o.id, label: o.name, icon: ICON.org, route: true, secret: isSecret(o) }; }) },
       { id: 'events', label: 'Eventos', icon: ICON.event, route: true, hideKids: true,
@@ -75,7 +75,7 @@ function buildMenu() {
   ].concat(canManageUsers() ? [{ id: 'users', label: 'Usuários', icon: ICON.users, route: true }] : []);
 }
 var menuEl = $('menu'), app = $('app');
-var byId = {}, parentOf = {}, expanded = {};
+var byId = {}, parentOf = {}, expanded = {}, menuHtml = '';
 function index(list, parent) { list.forEach(function (n) { byId[n.id] = n; parentOf[n.id] = parent; if (n.children) index(n.children, n.id); }); }
 function ancestors(id) { var out = [], p = parentOf[id]; while (p) { out.unshift(p); p = parentOf[p]; } return out; }
 function descendants(id) { var out = []; ((byId[id] && byId[id].children) || []).forEach(function (c) { out.push(c.id); out = out.concat(descendants(c.id)); }); return out; }
@@ -100,7 +100,9 @@ function renderMenu() {
   var menu = buildMenu();
   byId = {}; parentOf = {}; index(menu, null);
   Object.keys(expanded).forEach(function (k) { if (!byId[k]) delete expanded[k]; });
-  menuEl.innerHTML = renderNodes(menu, 0);
+  // Drawn again only when it changed (every change of data passes here); paintMenu sets the rest.
+  var html = renderNodes(menu, 0);
+  if (html !== menuHtml) { menuEl.innerHTML = html; menuHtml = html; }
   if (S.route && byId[S.route.node]) revealPath(S.route.node);
   paintMenu();
 }

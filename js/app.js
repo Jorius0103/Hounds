@@ -105,6 +105,7 @@ window.addEventListener('hub:user', function () {
 
 function renderPage() {
   var r = S.route; if (!r) return;
+  if (r.page !== 'sheet') paintAllyView(false);
   if (r.page === 'mesa') return;
   // The long card lists use the width of the screen; the other pages keep a reading width.
   pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
@@ -151,6 +152,8 @@ function onRoute() {
   if (!r) r = { page: 'home', node: null };
   var prev = S.route;
   if (!prev || prev.node !== r.node) S.ui = { q: prev && prev.page === r.page ? S.ui.q : '' };
+  // Another ally of the same sheet: its own drafts and choices, in the same tab (Ficha, Equip. or Magia).
+  else if (r.page === 'sheet' && prev.allyId !== r.allyId) S.ui = { q: '', sheetTab: S.ui.sheetTab };
   S.route = r;
   if (r.node && !byId[r.node] && /^(spell|adv|disadv|c?skill|tech|style|weapon|armor|item):/.test(r.node)) renderMenu(); // the menu lists only the open one
   var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa';
@@ -161,7 +164,7 @@ function onRoute() {
   if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
   paintMenu();
   topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
-  if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : r.page === 'spell' ? spellHref(r.spellId) : hrefFor(r.node));
+  if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : r.page === 'spell' ? spellHref(r.spellId) : r.page === 'sheet' && r.allyId ? allyHref(r.sheetId, r.allyId) : hrefFor(r.node));
   if (!(r.page === 'map' && r.explore)) Explorer.close();
   if (prev && prev.node !== r.node) { var pg = $('view-page'); if (pg) pg.scrollTop = 0; }
   renderPage();

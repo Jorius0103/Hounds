@@ -22,7 +22,7 @@ function renderHomePage() {
     card('#maps', ICON.maps, 'Maps', count('maps', W.maps.length, 'mapa', 'mapas')),
     card('#locais', ICON.pin, 'Locais', count('locations', W.locations.length, 'local', 'locais')),
     card('#personagens', ICON.user, 'Personagens', count('characters', W.characters.length, 'personagem', 'personagens')),
-    card('#fichas', ICON.sheet, 'Fichas', count('sheets', W.sheets.length, 'ficha', 'fichas')),
+    card('#fichas', ICON.sheet, 'Fichas', count('sheets', mainSheets().length, 'ficha', 'fichas')),
     card('#organizacoes', ICON.org, 'Organizações', count('organizations', W.organizations.length, 'organização', 'organizações')),
     card('#eventos', ICON.event, 'Eventos', count('events', W.events.length, 'evento', 'eventos')),
     card('#magias', ICON.spell, 'Magias', (W.loaded.spells ? plural(W.spells.length, 'magia', 'magias') : 'Grimório de GURPS')),
@@ -44,7 +44,7 @@ function renderHomePage() {
     W.locations.map(function (l) { return { t: l.updatedAt || l.createdAt, href: locHref(l.id), icon: ICON.pin, name: l.name, kind: 'Local', item: l }; }),
     W.characters.map(function (c) { return { t: c.updatedAt || c.createdAt, href: charHref(c.id), icon: ICON.user, name: c.name, kind: 'Personagem', item: c }; }),
     W.organizations.map(function (o) { return { t: o.updatedAt || o.createdAt, href: orgHref(o.id), icon: ICON.org, name: o.name, kind: 'Organização', item: o }; }),
-    W.sheets.map(function (s) { return { t: s.updatedAt || s.createdAt, href: sheetHref(s.id), icon: ICON.sheet, name: s.name, kind: 'Ficha', item: s }; }),
+    mainSheets().map(function (s) { return { t: s.updatedAt || s.createdAt, href: sheetHref(s.id), icon: ICON.sheet, name: s.name, kind: 'Ficha', item: s }; }),
     W.events.map(function (ev) { return { t: ev.updatedAt || ev.createdAt, href: eventHref(ev.id), icon: ICON.event, name: ev.name, kind: 'Evento', item: ev }; }),
     (W.spells || []).filter(function (s) { return !s.catalog || s.updatedAt; }).map(function (s) { return { t: s.updatedAt || s.createdAt, href: spellHref(s.id), icon: ICON.spell, name: s.name, kind: 'Magia', item: s }; }),
     W.notes.map(function (n) { return { t: n.updatedAt || n.createdAt, href: hrefFor('note:' + n.id), icon: ICON.note, name: n.title, kind: 'Anotação', item: n }; })

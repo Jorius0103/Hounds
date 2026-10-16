@@ -436,6 +436,34 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sheet-chars > .fold { width: 320px; max-width: 100%; margin-left: auto; }
 @media (max-width: 760px) { .sheet-chars > .fold { width: 100%; } }
 
+/* Ficha: a principal e os aliados, cada um numa aba, acima das abas Ficha / Equip. / Magia;
+   no lugar da caixa Personagem, a do aliado aberto (nome da aba, da ficha e as ações) */
+.sheet-allies { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.sheet-allies > .seg { flex-wrap: wrap; margin-bottom: 0; }
+.sheet-allies .seg button svg { vertical-align: -2px; margin-right: 5px; }
+.sheet-allies .seg button:disabled { opacity: .5; cursor: not-allowed; }
+.sheet-chars > .ally-box { max-width: 100%; margin-left: auto; padding: 6px 6px 6px 12px; border-radius: 12px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.ally-box > .confirm { flex-basis: 100%; }
+.ally-box .btn-row { gap: 4px; flex-wrap: nowrap; }
+.ally-box .btn { padding: 5px 9px; gap: 5px; font-size: 12.5px; border-radius: 8px; }
+.ally-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1 1 auto; }
+.ally-name b { overflow-wrap: anywhere; }
+.ally-name small { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 760px) { .sheet-chars > .ally-box { width: 100%; } }
+
+/* Ficha › aliado aberto: o painel de conteúdo troca o âmbar pelo violeta (destaques, fundos e
+   linhas), para não confundir com a ficha principal. O menu e os modais não mudam. */
+#view-page.ally-view {
+  --ground: #0b0720; --surface: #150f2e; --surface-2: #1b1439; --well: #100a26; --line: #2a2150; --line-2: #3f3470;
+  --accent: #a78bfa; --accent-ink: #12082a; --accent-soft: rgba(167, 139, 250, .14);
+  background: var(--ground); box-shadow: inset 4px 0 0 var(--accent);
+}
+:root[data-theme="light"] #view-page.ally-view {
+  --ground: #f5f3ff; --surface: #ffffff; --surface-2: #f1edfe; --well: #f1edfe; --line: #e4defc; --line-2: #cfc4f5;
+  --accent: #6d28d9; --accent-ink: #ffffff; --accent-soft: rgba(124, 58, 237, .1);
+}
+#view-page.ally-view .sheet-allies .seg button.on { background: var(--accent); color: var(--accent-ink); }
+
 /* Ficha: retrato do personagem vinculado */
 .sheet-title { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .sheet-title > div:last-child { min-width: 0; }
