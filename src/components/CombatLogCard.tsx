@@ -399,8 +399,8 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       <ConfirmModal
         isOpen={deleteConfirmOpen}
         title="Excluir Registro de Combate"
-        message="Deseja excluir este registro do histórico de combate?"
-        confirmText="Excluir"
+        message="Deseja excluir este registro do histórico de combate? Os valores lançados por este registro serão restaurados no personagem."
+        confirmText="Excluir e Restaurar"
         cancelText="Cancelar"
         isDanger={true}
         onConfirm={() => {

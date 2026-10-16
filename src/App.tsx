@@ -1622,6 +1622,8 @@ export default function App() {
       amount: number;
     }
   ) => {
+    const now = Date.now();
+    const spellInstanceId = `spell-${now}-${Math.random().toString(36).slice(2, 6)}`;
     const roundNumber = logEntry.round !== undefined 
       ? logEntry.round 
       : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
@@ -1630,10 +1632,9 @@ export default function App() {
       round: roundNumber,
       authorName: logEntry.authorName || currentUser?.name,
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      ...(manaStoneUsage?.itemId ? { itemId: manaStoneUsage.itemId } : {}),
+      ...(spellData && spellData.isActiveSpell ? { spellId: spellInstanceId } : {}),
     };
-
-    const now = Date.now();
-    const spellInstanceId = `spell-${now}-${Math.random().toString(36).slice(2, 6)}`;
 
     // Busca o conjurador
     const caster = allCharacters.find((c: NPC) => c.id === npcId);
@@ -1955,41 +1956,405 @@ export default function App() {
     broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
   };
 
+  // Função de reversão completa do estado alterado por um registro do log
+  const revertCharacterFromLogEntry = (
+    npc: NPC,
+    entry: ActionLogEntry
+  ): { revertedNpc: NPC; spellInstanceIdToRemove?: string } => {
+    const updated: NPC = {
+      ...npc,
+      turnActions: { ...npc.turnActions },
+      extraItems: npc.extraItems ? [...npc.extraItems] : undefined,
+      armorLocations: npc.armorLocations ? [...npc.armorLocations] : undefined,
+      armorKits: npc.armorKits ? [...npc.armorKits] : undefined,
+      activeSpells: npc.activeSpells ? [...npc.activeSpells] : undefined,
+      affectedSpells: npc.affectedSpells ? [...npc.affectedSpells] : undefined,
+      statusConditions: npc.statusConditions ? [...npc.statusConditions] : [],
+    };
+
+    let spellInstanceIdToRemove: string | undefined;
+
+    const revertDamageLocations = (locs: NPC['armorLocations'] = [], locName: string, dmg: number) => {
+      if (!locName || locName.toLowerCase().includes('sem parte') || dmg <= 0) return locs;
+      return locs.map((loc) => {
+        if (isSameLocation(loc.location, locName)) {
+          return {
+            ...loc,
+            damageTaken: Math.max(0, (loc.damageTaken || 0) - dmg),
+          };
+        }
+        return loc;
+      });
+    };
+
+    const type = entry.type || '';
+    const desc = entry.description || '';
+    const vk = entry.variableKey || (entry as any).keys || '';
+
+    // 1. DANO (type === 'damage' ou indícios claros de dano aos PV)
+    const isDamageEvent =
+      type === 'damage' ||
+      (entry.finalDamage !== undefined && entry.finalDamage > 0) ||
+      (entry.rawDamage !== undefined && entry.rawDamage > 0) ||
+      (type !== 'heal' && type !== 'rest' && desc.includes('Final: -') && desc.includes('PV'));
+
+    if (isDamageEvent) {
+      let dmg = entry.finalDamage ?? entry.amount;
+      if (dmg === undefined && entry.hpBefore !== undefined && entry.hpAfter !== undefined) {
+        dmg = entry.hpBefore - entry.hpAfter;
+      }
+      if (dmg === undefined || isNaN(dmg) || dmg <= 0) {
+        const match = desc.match(/Final:\s*-?(\d+)\s*PV|-\s*(\d+)\s*PV/i);
+        if (match) {
+          dmg = parseInt(match[1] || match[2], 10);
+        }
+      }
+      dmg = typeof dmg === 'number' && !isNaN(dmg) ? Math.max(0, dmg) : 0;
+
+      if (dmg > 0) {
+        const maxHp = Math.max(updated.hpMax, updated.hpCurrent);
+        updated.hpCurrent = Math.min(maxHp, updated.hpCurrent + dmg);
+
+        if (entry.hitLocation) {
+          updated.armorLocations = revertDamageLocations(updated.armorLocations, entry.hitLocation, dmg);
+          if (updated.armorKits) {
+            updated.armorKits = updated.armorKits.map((kit) => ({
+              ...kit,
+              locations: revertDamageLocations(kit.locations, entry.hitLocation!, dmg),
+            }));
+          }
+        }
+      }
+    }
+
+    // 2. CURA (type === 'heal' ou indícios claros de recuperação de PV)
+    else if (type === 'heal' || desc.includes('Recuperação de PV:') || (desc.startsWith('PV:') && desc.includes('+'))) {
+      let heal = entry.amount;
+      if (heal === undefined && entry.hpAfter !== undefined && entry.hpBefore !== undefined) {
+        heal = entry.hpAfter - entry.hpBefore;
+      }
+      if (heal === undefined || isNaN(heal) || heal <= 0) {
+        const match = desc.match(/\+\s*(\d+)\s*PV/i);
+        if (match) {
+          heal = parseInt(match[1], 10);
+        }
+      }
+      heal = typeof heal === 'number' && !isNaN(heal) ? Math.max(0, heal) : 0;
+      if (heal > 0) {
+        updated.hpCurrent = updated.hpCurrent - heal;
+      }
+    }
+
+    // 3. FADIGA (type === 'fatigue' ou indícios de gasto de fadiga)
+    else if (type === 'fatigue' || desc.startsWith('Gasto de fadiga:') || desc.includes('FP: -')) {
+      let fpSpent: number | undefined = undefined;
+      if (entry.fpBefore !== undefined && entry.fpAfter !== undefined) {
+        fpSpent = entry.fpBefore - entry.fpAfter;
+      } else if (entry.amount !== undefined && !desc.includes('Mana [')) {
+        fpSpent = entry.amount;
+      }
+      if (fpSpent === undefined || isNaN(fpSpent) || fpSpent <= 0) {
+        const match = desc.match(/-\s*(\d+)\s*FP/i);
+        if (match) {
+          fpSpent = parseInt(match[1], 10);
+        }
+      }
+      fpSpent = typeof fpSpent === 'number' && !isNaN(fpSpent) ? Math.max(0, fpSpent) : 0;
+
+      if (fpSpent > 0) {
+        const maxFp = Math.max(updated.fpMax, updated.fpCurrent);
+        updated.fpCurrent = Math.min(maxFp, updated.fpCurrent + fpSpent);
+      }
+
+      // Restaura pedra de mana caso o gasto tenha sido via pedra
+      let targetStone = entry.itemId
+        ? (updated.extraItems || []).find((it) => it.id === entry.itemId)
+        : undefined;
+      if (!targetStone && desc) {
+        targetStone = (updated.extraItems || []).find((it) => desc.includes(`[${it.name}]`));
+      }
+      if (targetStone) {
+        const stoneAmt = entry.amount || (entry.itemBefore !== undefined && entry.itemAfter !== undefined ? entry.itemBefore - entry.itemAfter : 0) || 0;
+        if (stoneAmt > 0) {
+          updated.extraItems = (updated.extraItems || []).map((it) => {
+            if (it.id === targetStone!.id) {
+              return {
+                ...it,
+                current: Math.min(it.max, (it.current ?? 0) + stoneAmt),
+              };
+            }
+            return it;
+          });
+        }
+      }
+
+      // Se lançou magia ativa associada a esta fadiga, remove dos activeSpells do conjurador e affectedSpells do alvo
+      let spellInstanceId: string | undefined = entry.spellId || (entry as any).spellInstanceId;
+      if (!spellInstanceId && desc.includes('Magia Ativa [')) {
+        const match = desc.match(/Magia Ativa \[(.*?)\]/i);
+        if (match) {
+          const spellName = match[1];
+          const activeSp = (updated.activeSpells || []).find(
+            (s) => s.spellName === spellName && (entry.round === undefined || s.round === entry.round)
+          );
+          if (activeSp) {
+            spellInstanceId = activeSp.id;
+          }
+        }
+      }
+      if (spellInstanceId) {
+        spellInstanceIdToRemove = spellInstanceId;
+        updated.activeSpells = (updated.activeSpells || []).filter((s) => s.id !== spellInstanceId);
+      }
+    }
+
+    // 4. DESCANSO / RESTAURAÇÃO DE FADIGA (type === 'rest' ou indícios)
+    else if (type === 'rest' || desc.includes('Descanso / Recuperação de Fadiga:') || (desc.startsWith('FP:') && desc.includes('+'))) {
+      let fpGained = entry.amount;
+      if (fpGained === undefined && entry.fpAfter !== undefined && entry.fpBefore !== undefined) {
+        fpGained = entry.fpAfter - entry.fpBefore;
+      }
+      if (fpGained === undefined || isNaN(fpGained) || fpGained <= 0) {
+        const match = desc.match(/\+\s*(\d+)\s*FP/i);
+        if (match) {
+          fpGained = parseInt(match[1], 10);
+        }
+      }
+      fpGained = typeof fpGained === 'number' && !isNaN(fpGained) ? Math.max(0, fpGained) : 0;
+      if (fpGained > 0) {
+        updated.fpCurrent = updated.fpCurrent - fpGained;
+      }
+    }
+
+    // 5. ITENS EXTRAS (type === 'item')
+    else if (type === 'item') {
+      let targetItem = entry.itemId
+        ? (updated.extraItems || []).find((it) => it.id === entry.itemId)
+        : undefined;
+      if (!targetItem && entry.itemName) {
+        targetItem = (updated.extraItems || []).find((it) => it.name === entry.itemName);
+      }
+      let delta = entry.amount;
+      if (delta === undefined && entry.itemAfter !== undefined && entry.itemBefore !== undefined) {
+        delta = entry.itemAfter - entry.itemBefore;
+      }
+      if (targetItem && delta !== undefined && delta !== 0) {
+        updated.extraItems = (updated.extraItems || []).map((it) => {
+          if (it.id === targetItem!.id) {
+            return {
+              ...it,
+              current: Math.max(0, Math.min(it.max, (it.current ?? 0) - delta!)),
+            };
+          }
+          return it;
+        });
+      }
+    }
+
+    // 6. EDIÇÕES VIA hubAuto (type === 'edit' ou variableKey presente)
+    else if (type === 'edit' || vk) {
+      const revertMap: Record<string, any> = {};
+      if (entry.initialValues) {
+        Object.assign(revertMap, entry.initialValues);
+      }
+      if (vk && entry.initialValue !== undefined) {
+        revertMap[vk] = entry.initialValue;
+      }
+
+      const keys = (vk ? vk.split(',') : Object.keys(revertMap)).filter(Boolean);
+
+      for (const k of keys) {
+        if (k === 'hpCurrent') {
+          if (revertMap['hpCurrent'] !== undefined) {
+            updated.hpCurrent = Number(revertMap['hpCurrent']);
+          } else {
+            const m = desc.match(/PV:\s*(-?\d+)\s*→/);
+            if (m) updated.hpCurrent = Number(m[1]);
+          }
+        } else if (k === 'hpMax') {
+          if (revertMap['hpMax'] !== undefined) {
+            updated.hpMax = Number(revertMap['hpMax']);
+          } else {
+            const m = desc.match(/PV máx\.:\s*(-?\d+)\s*→/);
+            if (m) updated.hpMax = Number(m[1]);
+          }
+        } else if (k === 'fpCurrent') {
+          if (revertMap['fpCurrent'] !== undefined) {
+            updated.fpCurrent = Number(revertMap['fpCurrent']);
+          } else {
+            const m = desc.match(/FP:\s*(-?\d+)\s*→/);
+            if (m) updated.fpCurrent = Number(m[1]);
+          }
+        } else if (k === 'fpMax') {
+          if (revertMap['fpMax'] !== undefined) {
+            updated.fpMax = Number(revertMap['fpMax']);
+          } else {
+            const m = desc.match(/FP máx\.:\s*(-?\d+)\s*→/);
+            if (m) updated.fpMax = Number(m[1]);
+          }
+        } else if (k === 'isDead') {
+          if (revertMap['isDead'] !== undefined) {
+            updated.isDead = Boolean(revertMap['isDead']);
+          } else if (desc.includes('Marcado como morto')) {
+            updated.isDead = false;
+          } else if (desc.includes('Marcado como vivo')) {
+            updated.isDead = true;
+          }
+        } else if (k === 'combatManeuver') {
+          if (revertMap['combatManeuver'] !== undefined) {
+            updated.combatManeuver = String(revertMap['combatManeuver']);
+          } else if (desc.includes('Manobra:')) {
+            const m = desc.match(/Manobra:\s*(.*?)\s*→/);
+            if (m) {
+              const manObj = COMBAT_MANEUVERS.find((z) => z.name.toLowerCase() === m[1].trim().toLowerCase());
+              updated.combatManeuver = manObj ? manObj.id : (m[1].trim() === 'Nenhuma' ? '' : m[1].trim());
+            }
+          }
+        } else if (k === 'cond') {
+          if (revertMap['cond'] !== undefined) {
+            updated.statusConditions = String(revertMap['cond']).split('|').filter(Boolean);
+          } else {
+            if (desc.includes('Condição adicionada:')) {
+              const m = desc.match(/Condição adicionada:\s*([^·—]+)/);
+              if (m) {
+                const addedList = m[1].split(',').map((s) => s.trim().toLowerCase());
+                updated.statusConditions = (updated.statusConditions || []).filter(
+                  (c) => !addedList.includes(c.toLowerCase())
+                );
+              }
+            }
+            if (desc.includes('Condição removida:')) {
+              const m = desc.match(/Condição removida:\s*([^·—]+)/);
+              if (m) {
+                const removedList = m[1].split(',').map((s) => s.trim());
+                updated.statusConditions = [...new Set([...(updated.statusConditions || []), ...removedList])];
+              }
+            }
+          }
+        } else if (k.startsWith('ta.')) {
+          const field = k.slice(3);
+          if (revertMap[k] !== undefined) {
+            (updated.turnActions as any)[field] = revertMap[k];
+          } else {
+            const m = desc.match(new RegExp(`${field}:\\s*(-?\\d+)\\s*→`, 'i'));
+            if (m) {
+              (updated.turnActions as any)[field] = Number(m[1]);
+            }
+          }
+        } else if (k.startsWith('item.')) {
+          const itemId = k.slice(5);
+          if (revertMap[k] !== undefined) {
+            const parts = String(revertMap[k]).split('\x01');
+            const itemName = parts[0];
+            const itemCur = parts[1];
+            const itemMax = parts[2];
+            updated.extraItems = (updated.extraItems || []).map((it) => {
+              if (it.id === itemId) {
+                return {
+                  ...it,
+                  name: itemName || it.name,
+                  current: itemCur !== '' && itemCur !== undefined ? Number(itemCur) : it.current,
+                  max: itemMax !== '' && itemMax !== undefined ? Number(itemMax) : it.max,
+                };
+              }
+              return it;
+            });
+          }
+        } else if (k in updated && revertMap[k] !== undefined) {
+          (updated as any)[k] = revertMap[k];
+        }
+      }
+
+      // Checagens adicionais por descrição para 'ta.' caso não tenha vindo em keys
+      if (!keys.some((k) => k.startsWith('ta.'))) {
+        const nextTa = { ...updated.turnActions };
+        let taUpdated = false;
+        if (desc.includes('Recuo utilizado no turno')) {
+          nextTa.usedRetreat = false;
+          taUpdated = true;
+        } else if (desc.includes('Recuo desmarcado')) {
+          nextTa.usedRetreat = true;
+          taUpdated = true;
+        }
+        if (desc.includes('Fadiga utilizada no turno')) {
+          nextTa.usedFatigueThisTurn = false;
+          taUpdated = true;
+        } else if (desc.includes('Fadiga do turno zerada')) {
+          nextTa.usedFatigueThisTurn = true;
+          taUpdated = true;
+        }
+        const mChoque = desc.match(/Choque:\s*(-?\d+)\s*→/);
+        if (mChoque) {
+          nextTa.shock = Number(mChoque[1]);
+          taUpdated = true;
+        }
+        const mAparar = desc.match(/Aparar no turno:\s*(-?\d+)\s*→/);
+        if (mAparar) {
+          nextTa.parryCount = Number(mAparar[1]);
+          taUpdated = true;
+        }
+        const mEsquiva = desc.match(/Esquiva no turno:\s*(-?\d+)\s*→/);
+        if (mEsquiva) {
+          nextTa.dodgeCount = Number(mEsquiva[1]);
+          taUpdated = true;
+        }
+        const mBloqueio = desc.match(/Bloqueio no turno:\s*(-?\d+)\s*→/);
+        if (mBloqueio) {
+          nextTa.blockCount = Number(mBloqueio[1]);
+          taUpdated = true;
+        }
+        if (taUpdated) {
+          updated.turnActions = nextTa;
+        }
+      }
+    }
+
+    // 7. FALLBACK GERAL (se não caiu em nenhum acima, mas tem valores antes e depois de PV ou FP)
+    else {
+      if (entry.hpBefore !== undefined && entry.hpAfter !== undefined) {
+        const hpDelta = entry.hpBefore - entry.hpAfter;
+        if (hpDelta > 0) {
+          const maxHp = Math.max(updated.hpMax, updated.hpCurrent);
+          updated.hpCurrent = Math.min(maxHp, updated.hpCurrent + hpDelta);
+        } else if (hpDelta < 0) {
+          updated.hpCurrent = updated.hpCurrent + hpDelta;
+        }
+      }
+      if (entry.fpBefore !== undefined && entry.fpAfter !== undefined) {
+        const fpDelta = entry.fpBefore - entry.fpAfter;
+        if (fpDelta > 0) {
+          const maxFp = Math.max(updated.fpMax, updated.fpCurrent);
+          updated.fpCurrent = Math.min(maxFp, updated.fpCurrent + fpDelta);
+        } else if (fpDelta < 0) {
+          updated.fpCurrent = updated.fpCurrent + fpDelta;
+        }
+      }
+    }
+
+    // Remove o registro do histórico do personagem
+    updated.history = (updated.history || []).filter((h) => h.id !== entry.id);
+
+    return {
+      revertedNpc: updated,
+      spellInstanceIdToRemove,
+    };
+  };
+
   const handleDeleteLogEntry = (entryId: string, npcId?: string) => {
     const now = Date.now();
-    if (npcId) {
-      const isPlayer = players.some((p) => p.id === npcId);
-      if (isPlayer) {
-        const updatedPlayers = players.map((p) =>
-          p.id === npcId
-            ? { ...p, history: (p.history || []).filter((h) => h.id !== entryId), updatedAt: now }
-            : p
-        );
-        stateRef.current.players = updatedPlayers;
-        setPlayers(updatedPlayers);
-        broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
-      } else {
-        const updatedCombats = combats.map((c) => ({
-          ...c,
-          npcs: c.npcs.map((n) =>
-            n.id === npcId
-              ? { ...n, history: (n.history || []).filter((h) => h.id !== entryId), updatedAt: now }
-              : n
-          ),
-        }));
-        stateRef.current.combats = updatedCombats;
-        setCombats(updatedCombats);
-        broadcastSync(updatedCombats);
-      }
-    } else {
+
+    // 1. Identifica o personagem que contém o registro
+    const targetCharacter =
+      (npcId ? (players.find((p) => p.id === npcId) || combats.flatMap((c) => c.npcs || []).find((n) => n.id === npcId)) : undefined) ||
+      allCharacters.find((c) => (c.history || []).some((h) => h.id === entryId));
+
+    if (!targetCharacter) {
+      // Se não encontrou o combatente dono, apenas filtra o histórico em todos por segurança
       const updatedPlayers = players.map((p) => ({
         ...p,
         history: (p.history || []).filter((h) => h.id !== entryId),
         updatedAt: now,
       }));
-      stateRef.current.players = updatedPlayers;
-      setPlayers(updatedPlayers);
-
       const updatedCombats = combats.map((c) => ({
         ...c,
         npcs: c.npcs.map((n) => ({
@@ -1998,10 +2363,95 @@ export default function App() {
           updatedAt: now,
         })),
       }));
+      stateRef.current.players = updatedPlayers;
       stateRef.current.combats = updatedCombats;
+      setPlayers(updatedPlayers);
       setCombats(updatedCombats);
       broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
+      return;
     }
+
+    const entryToDelete = (targetCharacter.history || []).find((h) => h.id === entryId);
+    if (!entryToDelete) return;
+
+    // 2. Reverte os valores e status lançados por este registro
+    const { revertedNpc, spellInstanceIdToRemove } = revertCharacterFromLogEntry(
+      targetCharacter,
+      entryToDelete
+    );
+    revertedNpc.updatedAt = now;
+
+    const isPlayer = players.some((p) => p.id === revertedNpc.id);
+    let nextPlayers = [...players];
+    let nextCombats = [...combats];
+    let playersChanged = false;
+    let combatsChanged = false;
+
+    if (isPlayer) {
+      nextPlayers = nextPlayers.map((p) => (p.id === revertedNpc.id ? revertedNpc : p));
+      playersChanged = true;
+    } else {
+      nextCombats = nextCombats.map((c) => ({
+        ...c,
+        npcs: c.npcs.map((n) => (n.id === revertedNpc.id ? revertedNpc : n)),
+      }));
+      combatsChanged = true;
+    }
+
+    // 3. Se havia magia ativa associada, limpa também de affectedSpells nos alvos
+    if (spellInstanceIdToRemove) {
+      const cleanAffected = (list: NPC[]) =>
+        list.map((n) => {
+          if (n.affectedSpells?.some((s) => s.id === spellInstanceIdToRemove)) {
+            return {
+              ...n,
+              affectedSpells: n.affectedSpells.filter((s) => s.id !== spellInstanceIdToRemove),
+              updatedAt: now,
+            };
+          }
+          return n;
+        });
+
+      if (nextPlayers.some((p) => p.affectedSpells?.some((s) => s.id === spellInstanceIdToRemove))) {
+        nextPlayers = cleanAffected(nextPlayers);
+        playersChanged = true;
+      }
+      if (nextCombats.some((c) => c.npcs.some((n) => n.affectedSpells?.some((s) => s.id === spellInstanceIdToRemove)))) {
+        nextCombats = nextCombats.map((c) => ({
+          ...c,
+          npcs: cleanAffected(c.npcs),
+        }));
+        combatsChanged = true;
+      }
+    }
+
+    // 4. Aplica atualizações de estado síncronas e assíncronas
+    stateRef.current.players = nextPlayers;
+    stateRef.current.combats = nextCombats;
+    if (playersChanged) setPlayers(nextPlayers);
+    if (combatsChanged) setCombats(nextCombats);
+
+    systemLogger.addLog(
+      'LOG_REVERT',
+      `Registro "${entryId}" excluído do log de ${revertedNpc.name}. Status restaurados no aplicativo.`,
+      {
+        entryId,
+        npcId: revertedNpc.id,
+        npcName: revertedNpc.name,
+        type: entryToDelete.type,
+        hpCurrent: revertedNpc.hpCurrent,
+        fpCurrent: revertedNpc.fpCurrent,
+      }
+    );
+
+    broadcastSync(
+      combatsChanged ? nextCombats : undefined,
+      undefined,
+      undefined,
+      undefined,
+      playersChanged ? nextPlayers : undefined,
+      revertedNpc
+    );
   };
 
   // Export & Import

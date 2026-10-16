@@ -329,6 +329,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcCharacterType: npc.characterType,
         fpBefore: npc.fpCurrent,
         fpAfter: npc.fpCurrent - personalFpSpend,
+        itemId: targetStone?.id,
+        itemName: targetStone?.name,
       },
       spellData,
       manaStoneUsage
