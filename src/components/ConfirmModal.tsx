@@ -7,9 +7,11 @@ export interface ConfirmModalProps {
   message: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
+  secondaryConfirmText?: string;
   isDanger?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  onSecondaryConfirm?: () => void;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -18,9 +20,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   message,
   confirmText = 'Confirmar Exclusão',
   cancelText = 'Cancelar',
+  secondaryConfirmText,
   isDanger = true,
   onConfirm,
   onCancel,
+  onSecondaryConfirm,
 }) => {
   if (!isOpen) return null;
 
@@ -32,7 +36,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       }}
     >
       <div
-        className="relative w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+        className={`relative w-full ${secondaryConfirmText ? 'max-w-md' : 'max-w-sm'} bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150`}
         role="dialog"
         aria-modal="true"
       >
@@ -63,7 +67,16 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80 flex-wrap">
+          {secondaryConfirmText && onSecondaryConfirm && (
+            <button
+              type="button"
+              onClick={onSecondaryConfirm}
+              className="mr-auto px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-transparent hover:bg-slate-800/80 border border-slate-750 rounded-xl transition-colors"
+            >
+              {secondaryConfirmText}
+            </button>
+          )}
           <button
             type="button"
             onClick={onCancel}

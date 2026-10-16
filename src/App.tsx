@@ -2340,7 +2340,7 @@ export default function App() {
     };
   };
 
-  const handleDeleteLogEntry = (entryId: string, npcId?: string) => {
+  const handleDeleteLogEntry = (entryId: string, npcId?: string, revertValues: boolean = true) => {
     const now = Date.now();
 
     // 1. Identifica o personagem que contém o registro
@@ -2374,31 +2374,40 @@ export default function App() {
     const entryToDelete = (targetCharacter.history || []).find((h) => h.id === entryId);
     if (!entryToDelete) return;
 
-    // 2. Reverte os valores e status lançados por este registro
-    const { revertedNpc, spellInstanceIdToRemove } = revertCharacterFromLogEntry(
-      targetCharacter,
-      entryToDelete
-    );
-    revertedNpc.updatedAt = now;
+    // 2. Se revertValues for true, reverte status/atributos. Se false ("Confirmar sem Registrar"), apenas remove do histórico sem alterar valores
+    let finalNpc: NPC;
+    let spellInstanceIdToRemove: string | undefined;
 
-    const isPlayer = players.some((p) => p.id === revertedNpc.id);
+    if (revertValues) {
+      const res = revertCharacterFromLogEntry(targetCharacter, entryToDelete);
+      finalNpc = res.revertedNpc;
+      spellInstanceIdToRemove = res.spellInstanceIdToRemove;
+    } else {
+      finalNpc = {
+        ...targetCharacter,
+        history: (targetCharacter.history || []).filter((h) => h.id !== entryId),
+      };
+    }
+    finalNpc.updatedAt = now;
+
+    const isPlayer = players.some((p) => p.id === finalNpc.id);
     let nextPlayers = [...players];
     let nextCombats = [...combats];
     let playersChanged = false;
     let combatsChanged = false;
 
     if (isPlayer) {
-      nextPlayers = nextPlayers.map((p) => (p.id === revertedNpc.id ? revertedNpc : p));
+      nextPlayers = nextPlayers.map((p) => (p.id === finalNpc.id ? finalNpc : p));
       playersChanged = true;
     } else {
       nextCombats = nextCombats.map((c) => ({
         ...c,
-        npcs: c.npcs.map((n) => (n.id === revertedNpc.id ? revertedNpc : n)),
+        npcs: c.npcs.map((n) => (n.id === finalNpc.id ? finalNpc : n)),
       }));
       combatsChanged = true;
     }
 
-    // 3. Se havia magia ativa associada, limpa também de affectedSpells nos alvos
+    // 3. Se havia magia ativa associada e revertValues é true, limpa também de affectedSpells nos alvos
     if (spellInstanceIdToRemove) {
       const cleanAffected = (list: NPC[]) =>
         list.map((n) => {
@@ -2433,14 +2442,17 @@ export default function App() {
 
     systemLogger.addLog(
       'LOG_REVERT',
-      `Registro "${entryId}" excluído do log de ${revertedNpc.name}. Status restaurados no aplicativo.`,
+      revertValues
+        ? `Registro "${entryId}" excluído do log de ${finalNpc.name}. Status restaurados no aplicativo.`
+        : `Registro "${entryId}" excluído do log de ${finalNpc.name} sem restaurar valores.`,
       {
         entryId,
-        npcId: revertedNpc.id,
-        npcName: revertedNpc.name,
+        npcId: finalNpc.id,
+        npcName: finalNpc.name,
         type: entryToDelete.type,
-        hpCurrent: revertedNpc.hpCurrent,
-        fpCurrent: revertedNpc.fpCurrent,
+        revertedValues: revertValues,
+        hpCurrent: finalNpc.hpCurrent,
+        fpCurrent: finalNpc.fpCurrent,
       }
     );
 
@@ -2450,7 +2462,7 @@ export default function App() {
       undefined,
       undefined,
       playersChanged ? nextPlayers : undefined,
-      revertedNpc
+      finalNpc
     );
   };
 

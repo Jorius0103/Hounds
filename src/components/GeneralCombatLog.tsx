@@ -12,7 +12,7 @@ interface GeneralCombatLogProps {
   currentUserRole: UserRole;
   currentUserName?: string;
   onClearHistory?: () => void;
-  onDeleteEntry?: (entryId: string, npcId?: string) => void;
+  onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
 }
 
 export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({

@@ -12,7 +12,7 @@ interface CombatLogCardProps {
   currentUserRole?: UserRole;
   currentUserName?: string;
   isPlayer?: boolean;
-  onDeleteEntry?: (entryId: string, npcId?: string) => void;
+  onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
 }
 
 export const CombatLogCard: React.FC<CombatLogCardProps> = ({
@@ -399,12 +399,17 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       <ConfirmModal
         isOpen={deleteConfirmOpen}
         title="Excluir Registro de Combate"
-        message="Deseja excluir este registro do histórico de combate? Os valores lançados por este registro serão restaurados no personagem."
-        confirmText="Excluir e Restaurar"
+        message="Deseja excluir este registro do histórico de combate? Clique em Confirmar para restaurar os valores no personagem, ou em &quot;Confirmar sem Registrar&quot; para apagar apenas o histórico."
+        confirmText="Confirmar"
         cancelText="Cancelar"
+        secondaryConfirmText="Confirmar sem Registrar"
         isDanger={true}
         onConfirm={() => {
-          onDeleteEntry?.(entry.id, entry.npcId);
+          onDeleteEntry?.(entry.id, entry.npcId, true);
+          setDeleteConfirmOpen(false);
+        }}
+        onSecondaryConfirm={() => {
+          onDeleteEntry?.(entry.id, entry.npcId, false);
           setDeleteConfirmOpen(false);
         }}
         onCancel={() => setDeleteConfirmOpen(false)}
