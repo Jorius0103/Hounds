@@ -11,7 +11,7 @@
      levels  0: no levels; 1-99 otherwise. The view shows them after the name ("Talent (Soldier) 2")
      mod     enhancements and limitations summed, in %
      notes   the Observações column
-     advId   the entry of Mundo › Vantagens it was picked from
+     advId   the entry of Regras › Vantagens it was picked from
      size    talents only: 'S', 'M' or 'L' (TALENT_SIZES), which sets the cost of a level
      skills  talents only: the names of the sheet's skills that get its bonus
    Points (Basic Set, pp. B101-102): cost × levels, with the modifiers applied to that and the
@@ -107,7 +107,7 @@ Ops.saveSheetAdvs = function (s, list) {
   return W.store.patch('sheets', s.id, { advs: clean, updatedAt: now() });
 };
 
-/* ---------- the catalog (Mundo › Vantagens) ---------- */
+/* ---------- the catalog (Regras › Vantagens) ---------- */
 // The entry a name is about: the name itself; without the specialty in parentheses and the level
 // ("Talent (Soldier) 2" is Talent); singular or plural ("Contact" is Contacts); Enhanced
 // Block/Parry/Dodge are Enhanced Defenses, Acute Hearing and the others Acute Senses. The
@@ -324,7 +324,7 @@ function wireSheetAdvs(s) {
   }
   box.addEventListener('input', onEdit); box.addEventListener('change', onEdit);
   loadCatalog('advantages').then(function () { if (ui.advDraft === d) d.forEach(function (x, i) { paintRow(i); }); });
-  // Suggestions from Mundo › Vantagens under the name being typed; picking one fills the name,
+  // Suggestions from Regras › Vantagens under the name being typed; picking one fills the name,
   // cost and levels and links the row to the entry.
   var sug = { i: -1, list: null, input: null, options: [], active: 0 };
   function hideSug() {

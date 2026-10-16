@@ -1,5 +1,5 @@
 /* =====================================================================
-   Hounds — Aba Melhoramentos (Mundo › Melhoramentos)
+   Hounds — Aba Melhoramentos (Regras › Melhoramentos)
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.

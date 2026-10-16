@@ -9,7 +9,7 @@
 /* Data (see types/dados.d.ts):
    sheet.equip  = [{ id, kind, refId?, name, qty, weight, cost, notes }]
      Everything the character owns, in the player's order; Corpo and Mochilas point to a line by its
-     id. kind 'item' | 'armor' | 'weapon'; refId: the entry of Mundo › Itens, Armaduras or Armas it
+     id. kind 'item' | 'armor' | 'weapon'; refId: the entry of Regras › Itens, Armaduras or Armas it
      was picked from. qty 0 keeps the line (what ran out and is to be bought again); weight (lbs) and
      cost ($) are of one. The list alone is not carried weight.
    sheet.bodies = [{ id, name, active, slots: [{ part, equipId, qty }] }]
@@ -42,7 +42,7 @@ var GEAR_CARRY = 'carry';
 // same (migration 21).
 var GEAR_OLD_PARTS = { eyes: 'head', skull: 'head', face: 'head', right_arm: 'arms', left_arm: 'arms', right_leg: 'legs', left_leg: 'legs' };
 function gearPartKey(k) { k = GEAR_OLD_PARTS[k] || k; return GEAR_PART_KEYS.indexOf(k) >= 0 || k === GEAR_CARRY ? k : null; }
-// The words of an armor's Local in Mundo › Armaduras and the parts they are; "limbs" are the arms and
+// The words of an armor's Local in Regras › Armaduras and the parts they are; "limbs" are the arms and
 // legs (p. B398). A word not here ("body", "full suit") is not defined by the catalog: such an armor
 // goes on any part, and the player chooses.
 var GEAR_LOC_WORDS = { eyes: ['head'], eye: ['head'], skull: ['head'], face: ['head'], head: ['head'], neck: ['neck'], torso: ['torso'], groin: ['groin'],
@@ -453,7 +453,7 @@ function eqEach(x, total, one, fmt) { return total ? esc(fmt(total)) + (x.qty > 
 function invRowHtml(x, g, L, can) {
   var c = gearLink(x), where = gearWhere(g, x.id), counted = L.counted[x.id] || 0, pc = g.pieces[x.id];
   var sub = [pc ? 'Criar Armadura: ' + armorLocName(pc.piece.loc) + ' · ' + gearArmorDr(x, g) : c ? gearCatLine(x.kind, c) : '', x.qty === 0 ? 'acabou' : ''].filter(Boolean).join(' · ');
-  var name = c ? '<a href="' + gearCatHref(x.kind, c.id) + '" title="Ver em Mundo › ' + (x.kind === 'armor' ? 'Armaduras' : x.kind === 'weapon' ? 'Armas' : 'Itens') + '">' + esc(x.name) + '</a>' : esc(x.name);
+  var name = c ? '<a href="' + gearCatHref(x.kind, c.id) + '" title="Ver em Regras › ' + (x.kind === 'armor' ? 'Armaduras' : x.kind === 'weapon' ? 'Armas' : 'Itens') + '">' + esc(x.name) + '</a>' : esc(x.name);
   var load = counted ? (counted < x.qty ? counted + ' de ' + x.qty + ' na carga' : 'na carga') : 'fora da carga';
   // The notes show under the name (the table is half the width: no column of its own).
   return '<tr' + (counted ? '' : ' class="eq-stored"') + '><td><b>' + gearKindTag(x.kind) + name + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') +

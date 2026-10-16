@@ -47,7 +47,9 @@ function buildMenu() {
       { id: 'orgs', label: 'Organizações', icon: ICON.org, route: true, hideKids: true,
         children: W.organizations.slice().sort(byName).map(function (o) { return { id: 'org:' + o.id, label: o.name, icon: ICON.org, route: true, secret: isSecret(o) }; }) },
       { id: 'events', label: 'Eventos', icon: ICON.event, route: true, hideKids: true,
-        children: W.events.slice().sort(byName).map(function (ev) { return { id: 'event:' + ev.id, label: ev.name, icon: ICON.event, route: true, secret: isSecret(ev) }; }) },
+        children: W.events.slice().sort(byName).map(function (ev) { return { id: 'event:' + ev.id, label: ev.name, icon: ICON.event, route: true, secret: isSecret(ev) }; }) }
+    ] },
+    { id: 'regras', label: 'Regras', icon: ICON.regras, children: [
       { id: 'spells', label: 'Magias', icon: ICON.spell, route: true, hideKids: true,
         children: openLeaf('spell:', ICON.spell, spellById, 'Magia') },
       { id: 'advs', label: 'Vantagens', icon: ICON.advantage, route: true, hideKids: true,

@@ -15,7 +15,7 @@
        encumbrance penalty (Peso) of Judo and Karate; DX for what none covers; and the Strikers;
      the other attacks, typed by the player (sheet.combat.weapons, the editor), with the ST.
    The advantages that count are the sheet's (Vantagens, and the perks and advantages of Combate with
-   points) that change damage or NH, from Mundo › Vantagens (dmEffects). Talents already count in the
+   points) that change damage or NH, from Regras › Vantagens (dmEffects). Talents already count in the
    skills' NH (applyTalents). */
 
 /* ---------- the sheet's advantages ---------- */

@@ -7,14 +7,14 @@
 'use strict';
 
 /* Armor by locations (GURPS Low-Tech, pp. 100-101). A set starts from a base model, a torso armor of
-   Mundo › Armaduras (100% of the cost, weight and time to don); each piece uses its location's
+   Regras › Armaduras (100% of the cost, weight and time to don); each piece uses its location's
    percentage of the torso. Creating a set adds each piece to the sheet's list (Meus Itens) as an
    armor line; wearing it is up to Corpo, and the load counts it as any other line.
    sheet.armorSets = [{ id, name, description, baseId, base: { name, dr, cost, weight, don, tl },
        version, originId, mods: [{ name, spellId?, dr, cost, weightPct }],
        pieces: [{ id, loc, cover, pct, dr, cost, weight, don, equipId }] }]
      base: the model as it was when the set was made; mods: the adjustments, free text or a spell of
-     Mundo › Magias, each adding to (or, negative, taking from) the DR of every piece, the set's total
+     Regras › Magias, each adding to (or, negative, taking from) the DR of every piece, the set's total
      cost ($) and the weight of every piece (%); pieces: the results (armorSetPieces) and equipId, the line of
      the list that is the piece (null: it left the list). originId: the set this one is a copy or a
      new version of.
@@ -332,12 +332,12 @@ function sheetArmorHtml(s, g) {
 }
 
 /* ---------- view: the builder ---------- */
-// Torso armors of Mundo › Armaduras with a cost and a weight in numbers: the base models. Only a Local
+// Torso armors of Regras › Armaduras with a cost and a weight in numbers: the base models. Only a Local
 // of exactly the torso: one that also covers the groin or is partial (†) is not 100% of a torso.
 function armorBases() { return (W.armors || []).filter(function (a) { return a.type !== 'Shield' && /^\s*torso\s*$/i.test(a.location || '') && catNum(a.cost) != null && catNum(a.weight) != null; }); }
 function armorBaseOf(a) { return { name: a.name, dr: String(a.dr || '0'), cost: catNum(a.cost), weight: catNum(a.weight), don: catNum(a.don), tl: String(a.tl || '') }; }
 function armorBaseBoxHtml(d) {
-  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha o modelo base: uma armadura de tronco de Mundo › Armaduras (o Local dela é só o tronco). Ela vale 100% do custo, do peso e do tempo para vestir; cada peça usa o percentual da localização. Um nome que não está no catálogo vira um modelo personalizado.</p>';
+  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha o modelo base: uma armadura de tronco de Regras › Armaduras (o Local dela é só o tronco). Ela vale 100% do custo, do peso e do tempo para vestir; cada peça usa o percentual da localização. Um nome que não está no catálogo vira um modelo personalizado.</p>';
   if (d.custom) return armorCustomBaseHtml(d);
   var cat = d.baseId ? armorById(d.baseId) : null, catDon = cat ? catNum(cat.don) : null;
   return '<div class="gurps-derived">' + gearStat('Modelo base', esc(d.base.name), cat ? ptNameHtml(cat) || esc(cat.page || '') : 'como gravado na peça') +
@@ -352,7 +352,7 @@ function armorCustomBaseHtml(d) {
   var b = d.base;
   function field(k, label, input, note) { return '<div class="gstat"><span>' + label + '</span>' + input + (note ? '<small>' + note + '</small>' : '') + '</div>'; }
   function num(k, step, label) { return '<input type="number" data-ab-base="' + k + '" min="0" step="' + step + '" inputmode="decimal" placeholder="—" aria-label="' + label + '" value="' + (b[k] == null || (k !== 'don' && !b[k]) ? '' : b[k]) + '">'; }
-  return '<p class="hint-text" style="margin:0"><b>Modelo personalizado</b>: não está em Mundo › Armaduras. Preencha os valores do tronco (100%); cada peça usa o percentual da localização.</p>' +
+  return '<p class="hint-text" style="margin:0"><b>Modelo personalizado</b>: não está em Regras › Armaduras. Preencha os valores do tronco (100%); cada peça usa o percentual da localização.</p>' +
     '<div class="gurps-derived ab-custom">' +
     field('name', 'Nome do modelo', '<input type="text" data-ab-base="name" maxlength="120" aria-label="Nome do modelo" value="' + esc(b.name) + '">', '') +
     field('dr', 'RD', '<input type="text" data-ab-base="dr" maxlength="40" placeholder="Ex.: 4, 4/2*, 3F" aria-label="RD" value="' + esc(b.dr) + '">', '* flexível, / dividida, F só frente') +
@@ -369,7 +369,7 @@ function armorFlexHtml(dr) {
     'Ela deixa passar <b>trauma contundente</b> (p. B379): quando um golpe de contusão (cr) não atravessa a RD, o personagem ainda sofre 1 ponto de dano para cada 5 pontos que a armadura segurou. ' +
     'Armaduras rígidas (sem *), como placa, não têm esse efeito. A ficha não calcula isso sozinha: aplique na hora do dano.</span></p>';
 }
-/* ---------- improvements (Mundo › Melhoramentos) as adjustments ----------
+/* ---------- improvements (Regras › Melhoramentos) as adjustments ----------
    An improvement picked as an adjustment fills its row with what the rule says: the cost factor (CF;
    the book's "×4" is +3 CF), a fixed cost ("+$20"), the weight ("×3/4" is −25%, "+10%"; "+5 lbs." is a
    % of the base's weight) and, from IMPROVEMENT_EFFECTS, the numbers the description gives (DR,
@@ -435,7 +435,7 @@ function improvementRows(c, ctx) {
 function improvementsFor(kind) { return (W.improvements || []).filter(function (x) { return x.appliesTo === kind; }); }
 
 /* ---------- adjustments (Criar Armadura, Arma and Escudo) ----------
-   Free rows, each a name (typed, or a spell of Mundo › Magias or an improvement of Mundo ›
+   Free rows, each a name (typed, or a spell of Regras › Magias or an improvement of Regras ›
    Melhoramentos, in English or Portuguese) and numbers that add to or take from the result; cf: the
    cost factor (Basic Set, p. B274: the cost is the base's × (1 + the CFs added up), plus the $).
    cfg: { p: the prefix of the ids ('ab', 'wb'), kind: the improvements offered, nums: [[field, label,
@@ -546,7 +546,7 @@ var ARMOR_ADJ = { p: 'ab', kind: 'Armadura', nums: [['dr', 'RD', '1'], ['cost', 
   clean: function (m) { return cleanArmorAdj(m); }, total: function (l) { return armorAdjTotal(l); }, text: function (m) { return armorAdjText(m); },
   hint: 'Escreva o ajuste ou busque um melhoramento ou uma magia. Ex.: Fine, Dwarven, Fortify',
   help: 'Cada ajuste soma (ou, negativo, tira): a RD em pontos, o custo em $, o CF (fator de custo: o custo da peça vezes 1 + a soma dos CF, B274) e o peso em % do peso da peça. ' +
-    'Um melhoramento de Mundo › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, RD); confira a descrição no link. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a peça.' };
+    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, RD); confira a descrição no link. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a peça.' };
 // The part of the body, picked from a list: grouped by the larger locations (Cabeça, then Crânio and
 // Rosto inside it), each with its percentage of the torso. Once picked: its coverage and the piece's
 // values.

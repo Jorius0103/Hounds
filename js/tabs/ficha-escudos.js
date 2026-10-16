@@ -6,7 +6,7 @@
    ===================================================================== */
 'use strict';
 
-/* A shield or cloak of Mundo › Armaduras (type Shield), or one of the player's, with adjustments (as in
+/* A shield or cloak of Regras › Armaduras (type Shield), or one of the player's, with adjustments (as in
    Criar Arma), added to Meus Itens as an armor line that is carried (Corpo › Armas e itens).
    sheet.customShields = [{ id, baseId, base: { name, tl, db, dr, hp, cost, weight, skill, defaults },
        description, mods: [{ name, spellId?, db, dr, nh, cost, weightPct }], db, dr, hp, cost, weight, equipId }]
@@ -47,7 +47,7 @@ var SHIELD_ADJ = { p: 'sb', kind: 'Escudo', nums: [['db', 'BD', '1'], ['dr', 'RD
   clean: function (m) { return cleanShieldAdj(m); }, total: function (l) { return shieldAdjTotal(l); }, text: function (m) { return shieldAdjText(m); },
   hint: 'Escreva o ajuste ou busque um melhoramento ou uma magia. Ex.: Fine, Dwarven, Fortify',
   help: 'Cada ajuste soma (ou, negativo, tira): o BD e a RD do escudo, o NH com ele (somado ao NH da perícia na ficha; a perícia não muda), o custo em $, o CF (fator de custo: o custo do escudo vezes 1 + a soma dos CF, B274) e o peso em % do peso do escudo. ' +
-    'Um melhoramento de Mundo › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, NH). Com vários ajustes, os valores se somam.' };
+    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, NH). Com vários ajustes, os valores se somam.' };
 
 /* ---------- data of the sheet ---------- */
 function cleanShieldBase(b) {
@@ -107,12 +107,12 @@ Ops.deleteCustomShield = function (s, id) {
 
 /* ---------- view ---------- */
 function shieldBaseBoxHtml(s, d) {
-  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha o escudo ou a capa em Mundo › Armaduras. Um nome que não está no catálogo vira um escudo personalizado.</p>';
+  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha o escudo ou a capa em Regras › Armaduras. Um nome que não está no catálogo vira um escudo personalizado.</p>';
   var b = d.base, r = shieldCalc(b, shieldDraftMods(d)), nh = weaponNh(s, { skill: b.skill, defaults: b.defaults }, r.nh);
   if (d.custom) {
     function field(label, input, note) { return '<div class="gstat"><span>' + label + '</span>' + input + (note ? '<small>' + note + '</small>' : '') + '</div>'; }
     function inp(k, type, label, ph) { return '<input type="' + type + '" data-sh-base="' + k + '"' + (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : ' maxlength="60"') + ' placeholder="' + (ph || '—') + '" aria-label="' + label + '" value="' + esc(b[k] === 0 && type === 'number' ? '' : b[k]) + '">'; }
-    return '<p class="hint-text" style="margin:0"><b>Escudo personalizado</b>: não está em Mundo › Armaduras. Preencha os valores.</p>' +
+    return '<p class="hint-text" style="margin:0"><b>Escudo personalizado</b>: não está em Regras › Armaduras. Preencha os valores.</p>' +
       '<div class="gurps-derived ab-custom">' + field('Nome', inp('name', 'text', 'Nome do escudo')) + field('BD', inp('db', 'text', 'BD', 'Ex.: 2')) + field('RD', inp('dr', 'text', 'RD', 'Ex.: 7')) +
       field('PV', inp('hp', 'text', 'PV', 'Ex.: 40')) + field('Custo ($)', inp('cost', 'number', 'Custo')) + field('Peso (lbs)', inp('weight', 'number', 'Peso')) +
       field('TL', inp('tl', 'text', 'TL', 'Ex.: 1')) + field('Perícia', inp('skill', 'text', 'Perícia', 'Shield')) + '</div>' +
@@ -229,7 +229,7 @@ function wireShieldSec(s) {
     paintResult();
   });
   wireAdjList(SHIELD_ADJ, $('sbMods'), d.adj, paintResult, function () { return { weight: d.base ? d.base.weight : 0, ranged: false }; });
-  // The shield: Mundo › Armaduras (type Shield), by name in English or Portuguese; a name the catalog
+  // The shield: Regras › Armaduras (type Shield), by name in English or Portuguese; a name the catalog
   // does not have (exactly) is offered as a custom one, at the end.
   var pick = $('sbBase'), sug = $('sbBaseSug'), opts = [], act = 0;
   function hide() { sug.hidden = true; sug.innerHTML = ''; pick.setAttribute('aria-expanded', 'false'); }

@@ -350,7 +350,7 @@ p.pt-name { font-size: 15px; margin: -2px 0 4px; }
 .sk-nh { font-weight: 700; font-size: 14px; padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
 .sk-nh small { font-weight: 500; font-size: 11px; color: var(--faint); }
 .sk-nh .sk-waste { display: block; white-space: normal; line-height: 1.3; color: var(--accent); }
-/* Nome da perícia: a busca em Mundo › Perícias abre embaixo do campo; a perícia vinculada mostra
+/* Nome da perícia: a busca em Regras › Perícias abre embaixo do campo; a perícia vinculada mostra
    a página e as regras em uma linha curta. Com essa linha, os campos da linha ficam no topo. */
 #skRows .sk-row { align-items: start; }
 .sk-namecell { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -607,14 +607,23 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sk-row.av-row { grid-template-columns: minmax(0, 1.2fr) 76px 66px 76px 70px minmax(0, 1fr) 32px; }
 .sk-labels.av-row span:nth-child(n+2):nth-child(-n+5) { text-align: center; }
 .sk-labels.av-row span:nth-child(6) { padding-left: 0; }
-#avRows { display: flex; flex-direction: column; gap: 8px; }
-#avRows .sk-row { align-items: start; }
+#avRows, #dvRows, #pqRows { display: flex; flex-direction: column; gap: 8px; }
+#avRows .sk-row, #dvRows .sk-row { align-items: start; }
 .av-pts { text-align: center; }
 .av-warn { color: var(--accent); font-weight: 600; }
 @media (max-width: 760px) {
   .sk-row.av-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .sk-row.av-row .sk-nh { grid-column: auto; }
   .sk-row.av-row [data-f="notes"] { grid-column: 1 / 4; }
+}
+
+/* Ficha › Peculiaridades: peculiaridade, pontos (−1 cada) e observações */
+.sk-row.pq-row { grid-template-columns: minmax(0, 1.2fr) 70px minmax(0, 1fr) 32px; }
+.sk-labels.pq-row span:nth-child(3) { text-align: left; }
+.av-tab tfoot small.av-warn { display: block; font-size: 11.5px; }
+@media (max-width: 760px) {
+  .sk-row.pq-row { grid-template-columns: 70px minmax(0, 1fr) 32px; }
+  .sk-row.pq-row .sk-nh { grid-column: auto; }
 }
 
 /* Ficha › Vantagens: tamanho e perícias de um talento, embaixo da linha dele */

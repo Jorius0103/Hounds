@@ -11,7 +11,7 @@
    sheet.spells is a list of { name, college, diff, pts, bonus, bonusNote?, spellId? }, like the
    skills (see tab-fichas.js): a spell is an IQ skill, Hard or Very Hard, bought with the same
    table (Basic Set, p. 170), with no default (B235): with 0 points it has no level. college is
-   the school the spell is shown under (the first of the book's when picked from Mundo › Magias);
+   the school the spell is shown under (the first of the book's when picked from Regras › Magias);
    empty, it goes to "Sem escola". Magery adds its level to every spell (B66): it comes from the
    sheet's Vantagens or Combate's traits, like the talents' bonus (k.tbonus, never saved).
    ===================================================================== */
@@ -83,7 +83,7 @@ Ops.saveSheetSpells = function (s, list) {
   return W.store.patch('sheets', s.id, { spells: list.map(cleanSheetSpell).filter(function (k) { return k.name; }).sort(byName), updatedAt: now() });
 };
 
-// The entry of Mundo › Magias a sheet spell was picked from, while its name still starts with the entry's.
+// The entry of Regras › Magias a sheet spell was picked from, while its name still starts with the entry's.
 function sheetSpellLink(k) {
   var c = k && k.spellId ? spellById(k.spellId) : null;
   return c && norm(k.name).indexOf(norm(c.name)) === 0 ? c : null;
@@ -248,7 +248,7 @@ function wireSheetSpells(s) {
     paintRow(i);
     $('spTotal').textContent = sumPts(d.map(cleanSheetSpell)) + ' pts';
   }
-  // Suggestions from Mundo › Magias under the name being typed; picking one fills the name, school
+  // Suggestions from Regras › Magias under the name being typed; picking one fills the name, school
   // and difficulty and links the row to the entry.
   loadCatalog('spells').then(function () { if (ui.spellDraft === d) d.forEach(function (k, i) { paintRow(i); }); });
   var sug = { i: -1, list: null, input: null, options: [], active: 0 };

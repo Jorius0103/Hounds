@@ -6,7 +6,7 @@
    ===================================================================== */
 'use strict';
 
-/* A weapon of Mundo › Armas with adjustments (free text or a spell, as in Criar Armadura), added to
+/* A weapon of Regras › Armas with adjustments (free text or a spell, as in Criar Armadura), added to
    the sheet's list (Meus Itens) as a weapon line.
    sheet.customWeapons = [{ id, baseId, base: { name, tl, type, cost, weight }, description,
        mods: [{ name, spellId?, dmg, nh, cost, weightPct }], attacks: [attack], cost, weight, equipId }]
@@ -69,7 +69,7 @@ var WEAPON_ADJ = { p: 'wb', kind: 'Arma', nums: [['dmg', 'Dano', '1'], ['nh', 'N
   clean: function (m) { return cleanWeaponAdj(m); }, total: function (l) { return weaponAdjTotal(l); }, text: function (m) { return weaponAdjText(m); },
   hint: 'Escreva o ajuste ou busque um melhoramento ou uma magia. Ex.: Fine, Balanced, Puissance',
   help: 'Cada ajuste soma (ou, negativo, tira): o dano de todos os ataques (+1 faz sw+1 cut virar sw+2 cut), o NH com esta arma (somado ao NH da perícia do ataque na ficha; a perícia não muda), o custo em $, o CF (fator de custo: o custo da arma vezes 1 + a soma dos CF, B274) e o peso em % do peso da arma. ' +
-    'Um melhoramento de Mundo › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, dano e NH; o dano de Fine e Very Fine só nos ataques de corte e perfuração). Quando o custo depende do tipo de arma, escolha a opção certa na lista. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a arma.' };
+    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, dano e NH; o dano de Fine e Very Fine só nos ataques de corte e perfuração). Quando o custo depende do tipo de arma, escolha a opção certa na lista. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a arma.' };
 
 // The NH of an attack on this sheet: the sheet's level in the attack's skill (Combate or Perícias,
 // with the talents), or the best of the book's defaults ("DX-5, Force Sword-4": an attribute, or a
@@ -127,7 +127,7 @@ function cleanCustomWeapon(w, i, by) {
     attacks: (Array.isArray(w.attacks) ? w.attacks : []).map(cleanWeaponAttack).slice(0, 30), cost: cleanDec(w.cost, 9999999, 0), weight: cleanDec(w.weight, 99999, 0),
     equipId: w.equipId && by[w.equipId] ? w.equipId : null };
 }
-// Weapons of Mundo › Armas that can be made: with attacks.
+// Weapons of Regras › Armas that can be made: with attacks.
 function weaponBases() { return (W.weapons || []).filter(function (w) { return (w.attacks || []).length; }); }
 // The one skill a weapon of more than one is made with: the skill named in the weapon's name
 // ("Main-Gauche", "Long Knife" → Knife, "Quarterstaff" → Staff); else the first of the book, the
@@ -190,12 +190,12 @@ Ops.deleteCustomWeapon = function (s, id) {
 
 /* ---------- view ---------- */
 function weaponBaseBoxHtml(s, d) {
-  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha a arma em Mundo › Armas: os dados e os ataques dela aparecem aqui.</p>';
+  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha a arma em Regras › Armas: os dados e os ataques dela aparecem aqui.</p>';
   var cat = d.baseId ? weaponById(d.baseId) : null, r = weaponDraftResult(d), nhPlus = weaponAdjTotal(d.adj.map(cleanWeaponAdj).filter(function (m) { return m.name; })).nh;
   return '<div class="gurps-derived">' + gearStat('Arma', esc(d.base.name), cat ? ptNameHtml(cat) || esc(cat.page || '') : 'como gravada') +
     gearStat('Tipo', esc(weaponTypeLabel(d.base.type)), '') + gearStat('Custo', esc(eqMoney(r.cost)), r.cost !== d.base.cost ? 'livro: ' + esc(eqMoney(d.base.cost)) : 'do livro') +
     gearStat('Peso', esc(eqLbs(r.weight)), r.weight !== d.base.weight ? 'livro: ' + esc(eqLbs(d.base.weight)) : 'do livro') + gearStat('TL', esc(d.base.tl || '—'), '') + '</div>' +
-    // The attacks as Mundo › Armas shows them (Perícia, Modo, Dano, Alcance, Aparar, ST...), with the adjusted damage.
+    // The attacks as Regras › Armas shows them (Perícia, Modo, Dano, Alcance, Aparar, ST...), with the adjusted damage.
     // The damage shown with the dice for the sheet's ST ("sw+2 cut = 1d+4 cut").
     '<div id="wbAttacks">' + weaponAttacksHtml({ attacks: r.attacks.map(function (a) { var x = weaponDice(a.damage, weaponSt(s)); return Object.assign({}, a, { damage: x !== a.damage ? a.damage + ' = ' + x : a.damage }); }) },
       function (a) { return weaponNhCell(s, a, nhPlus); }) + '</div>' +
@@ -223,10 +223,10 @@ function sheetWeaponHtml(s, g) {
   var head = '<div class="gurps-head"><h2 class="sec-title">Criar Arma</h2>' + (n ? '<span class="gurps-total">' + plural(n, 'arma', 'armas') + '</span>' : '') +
     (!d ? '<div class="btn-row">' + (can && !gearEditing() ? '<button class="btn primary" type="button" id="wbNew">' + svg(ICON.plus, 15, 2.4) + 'Criar arma</button>' : '') + '</div>' : '') + '</div>';
   if (d) return '<section class="gurps" id="weaponSec">' + head + weaponBuilderHtml(s, d) + '</section>';
-  return gearCreateTile('weaponSec', 'wbNew', ICON.weapon, 'Arma', n ? plural(n, 'arma', 'armas') : '', 'De Mundo › Armas, com ajustes');
+  return gearCreateTile('weaponSec', 'wbNew', ICON.weapon, 'Arma', n ? plural(n, 'arma', 'armas') : '', 'De Regras › Armas, com ajustes');
 }
 // The weapons of Criar Arma in Meus Itens (Arma | Modo | Dano | NH | Alcance | Custo | Peso | Ajustes;
-// Aparar, ST and the notes stay in Criar Arma, Mundo › Armas and Editar equipamentos): one row per attack (the weapon's name, cost, weight,
+// Aparar, ST and the notes stay in Criar Arma, Regras › Armas and Editar equipamentos): one row per attack (the weapon's name, cost, weight,
 // adjustments and actions once, over its attacks).
 function weaponItemsHtml(lines, g, L, can) {
   var ui = S.ui, weight = 0, s = pageSheet();
@@ -297,7 +297,7 @@ function wireWeaponSec(s) {
   wireAdjList(WEAPON_ADJ, $('wbMods'), d.adj, paint, function () {
     return { weight: d.base ? d.base.weight : 0, ranged: d.attacks.some(function (a) { return /bow|crossbow|blowpipe/i.test(a.skill || ''); }) };
   });
-  // The weapon: Mundo › Armas, found by name in English or Portuguese.
+  // The weapon: Regras › Armas, found by name in English or Portuguese.
   var pick = $('wbBase'), sug = $('wbBaseSug'), opts = [], act = 0;
   function hide() { sug.hidden = true; sug.innerHTML = ''; pick.setAttribute('aria-expanded', 'false'); }
   function show() {

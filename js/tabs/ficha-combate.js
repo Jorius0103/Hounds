@@ -9,7 +9,7 @@
 /* =====================================================================
    sheet.combat = {
      styles:  [{ name, styleId?, items: [item] }]   fighting styles, each a group as in the
-                                                    player's spreadsheet (styleId: Mundo › Combate)
+                                                    player's spreadsheet (styleId: Regras › Combate)
      general: [item]                                combat skills outside any style
    generalPos: n                                  where its table went among the styles'; no longer
                                                   used: it is the main table, always first (the
@@ -153,7 +153,7 @@ function weaponDamage(w, st) {
   return dmgAdd(base, add);
 }
 
-/* ---------- catalog helpers (Mundo › Combate) ---------- */
+/* ---------- catalog helpers (Regras › Combate) ---------- */
 // "Counterattack (Broadsword)" -> technique Counterattack on Broadsword.
 function scSplitTech(name) { var m = /^(.*?)\s*\(([^()]*)\)\s*$/.exec(name); return m ? { tech: m[1], base: m[2] } : { tech: name, base: '' }; }
 // The default of a technique on a given base skill: "Judo-2 or Wrestling-3", "prerequisite skill-5".
@@ -330,9 +330,9 @@ function scNhCell(x, pool, av) {
   return '<td class="gnh' + (bonus ? ' bonus' : '') + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' +
     esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small></td>';
 }
-// The catalog entry of a row, shown in a modal on click: the skills of Mundo › Combate (the
+// The catalog entry of a row, shown in a modal on click: the skills of Regras › Combate (the
 // melee weapon skills point to "Melee Weapon", which describes them all), the techniques, and
-// the perks and advantages of Mundo › Vantagens (Enhanced Block/Parry/Dodge are "Enhanced
+// the perks and advantages of Regras › Vantagens (Enhanced Block/Parry/Dodge are "Enhanced
 // Defenses"; the advantage itself before the books' expansions of it). Null when not there.
 function scLink(x) {
   if (x.kind === 'skill') {
@@ -621,7 +621,7 @@ function scTotalsHtml(c, pool) {
     '<div class="sc-tot-grid">' + rows.map(function (r) { return '<div class="sc-tot-item" role="row"><span role="cell">' + esc(r[0]) + '</span><b class="gpts" role="cell">' + r[1] + '</b></div>'; }).join('') + '</div></div>';
 }
 // Whether a section of the sheet that edits in place is being edited: only one at a time.
-function sheetDraftOpen() { var ui = S.ui; return !!(ui.skillDraft || ui.combatDraft || ui.advDraft || ui.dmgDraft || ui.defDraft || ui.spellDraft); }
+function sheetDraftOpen() { var ui = S.ui; return !!(ui.skillDraft || ui.combatDraft || ui.advDraft || ui.disadvDraft || ui.quirkDraft || ui.dmgDraft || ui.defDraft || ui.spellDraft); }
 function sheetCombatHtml(s, editing) {
   var ui = S.ui, c = editing ? ui.combatDraft.c : sheetCombat(s), a = sheetAttrsNow(s), av = attrValues(a);
   var pool = combatSkillPool(c, s), can = canWrite();
@@ -631,7 +631,7 @@ function sheetCombatHtml(s, editing) {
   if (editing) return '<section class="gurps' + gearFoldClass('combat', editing) + '" id="combat">' + head + scEditHtml(s, c, pool, av) + '</section>';
   var empty = !c.styles.length && !c.general.length;
   if (empty) return '<section class="gurps' + gearFoldClass('combat', editing) + '" id="combat">' + head + '<p class="long none">Nenhum estilo ou perícia de combate.' + (can ? ' Use <b>Editar</b> para adicionar.' : '') + '</p></section>';
-  var drag = can && !ui.skillDraft && !ui.attrDraft && !ui.advDraft;
+  var drag = can && !ui.skillDraft && !ui.attrDraft && !ui.advDraft && !ui.disadvDraft && !ui.quirkDraft;
   // Links to the catalogs (see scLink): they arrive once and the page redraws with them.
   // The styles too, for their prerequisites (see scStyleReqs).
   ['skills', 'techniques', 'advantages', 'styles'].forEach(function (k) { loadCatalog(k); });
@@ -742,7 +742,7 @@ function wireSheetCombat(s) {
   if (ed) ed.onclick = function () {
     ui.combatDraft = { c: sheetCombat(s), moved: [] };
     renderSheetPage();
-    // Suggestions and autofill come from Mundo › Combate; the editor redraws once they arrive.
+    // Suggestions and autofill come from Regras › Combate; the editor redraws once they arrive.
     var d = ui.combatDraft;
     Promise.all(['styles', 'techniques', 'skills', 'advantages'].map(loadCatalog)).then(function () {
       if (ui.combatDraft !== d) return;

@@ -72,7 +72,7 @@ Ops.saveSheet = function (s, fields) {
   var body = { v: 1, name: name, description: (fields.description || '').trim(), visible: fields.visible !== false, sharedWith: fields.sharedWith || (s && s.sharedWith) || [],
     createdBy: owner(s), createdAt: (s && s.createdAt) || t, updatedAt: t };
   // put replaces the whole document: attributes and skills are edited apart and must survive a rename.
-  ['attrs', 'skills', 'cultures', 'spells', 'combat', 'advs', 'equip', 'bodies', 'packs', 'homes', 'armorSets', 'customWeapons', 'customShields', 'allyOf', 'allyName'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  ['attrs', 'skills', 'cultures', 'spells', 'combat', 'advs', 'disadvs', 'quirks', 'equip', 'bodies', 'packs', 'homes', 'armorSets', 'customWeapons', 'customShields', 'allyOf', 'allyName'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
   // An ally sees and is seen as its main sheet: it keeps the main one's visibility.
   if (s && s.allyOf) { body.visible = s.visible !== false; body.sharedWith = s.sharedWith || []; }
   return W.store.put('sheets', s ? s.id : null, body);
@@ -337,7 +337,7 @@ function wireSheetAttrs(s) {
    sheet.skills is a list of { name, attr, diff, pts, bonus, bonusNote?, skillId? }: the level
    comes from the points spent (Basic Set, p. 170), bonus is what an
    advantage or talent adds on top and bonusNote why (asked for when the bonus is
-   not 0, shown when hovering the NH), skillId the entry of Mundo › Perícias
+   not 0, shown when hovering the NH), skillId the entry of Regras › Perícias
    it was picked from (the name may add a specialty). sheet.cultures is the Cultural
    Familiarity list { name, pts }, shown with the Easy skills (set apart) and counted in their total.
    ===================================================================== */
@@ -438,7 +438,7 @@ function skillEditNhHtml(k, av) {
   var nh = skillNh(k, av), w = skillWaste(k);
   return esc(nh.rel) + ' <small>' + esc(nh.lvl) + '</small>' + (w ? '<small class="sk-waste">' + w + ' pt sem efeito</small>' : '');
 }
-// The entry of Mundo › Perícias a sheet skill was picked from, while its name still starts with
+// The entry of Regras › Perícias a sheet skill was picked from, while its name still starts with
 // that entry's (a specialty may follow: "Animal Handling (Dogs)").
 function skillLink(k) {
   var c = k && k.skillId ? skillById(k.skillId) : null;
@@ -601,7 +601,7 @@ function wireSheetSkills(s) {
     }
     $('skTotal').textContent = skillsTotal(d.skills.map(cleanSkill), d.cultures.map(cleanCulture)) + ' pts';
   }
-  // Suggestions from Mundo › Perícias under the name being typed; picking one fills the name,
+  // Suggestions from Regras › Perícias under the name being typed; picking one fills the name,
   // attribute and difficulty and links the row to the entry.
   loadCatalog('skills').then(function () { if (ui.skillDraft === d) d.skills.forEach(function (k, i) { paintRow(i); }); });
   var sug = { i: -1, list: null, input: null, options: [], active: 0 };
@@ -793,7 +793,8 @@ function renderSheetPage() {
   }).join('') + '</div>';
   pageRoot.innerHTML = head + people + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetGearHtml(s) : tab === 'magic' ? sheetSpellsHtml(s, !!ui.spellDraft && can)
     : sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
-      sheetCombatHtml(s, !!ui.combatDraft && can) + sheetDmgDefHtml(s) + sheetAdvsHtml(s, !!ui.advDraft && can) + main);
+      sheetCombatHtml(s, !!ui.combatDraft && can) + sheetDmgDefHtml(s) + sheetAdvsHtml(s, !!ui.advDraft && can) + sheetDisadvsHtml(s, !!ui.disadvDraft && can) +
+      sheetQuirksHtml(s, !!ui.quirkDraft && can) + main);
   pageRoot.querySelectorAll('[data-stab]').forEach(function (b) {
     b.onclick = function () { var t = b.getAttribute('data-stab'); if (t !== tab) { ui.sheetTab = t; renderSheetPage(); } };
   });
@@ -804,7 +805,7 @@ function renderSheetPage() {
     h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, portrait.name); };
   });
   wireFolds(pageRoot);
-  // Atributos, Perícias, Combate, Vantagens and the lists of Equip. fold (gearFoldTitle).
+  // Atributos, Perícias, Combate, Vantagens, Desvantagens, Peculiaridades and the lists of Equip. fold (gearFoldTitle).
   wireGearFold();
   wireSheetAttrs(s);
   wireSheetSkills(s);
@@ -812,6 +813,8 @@ function renderSheetPage() {
   wireSheetDamage(s);
   wireSheetDefense(s);
   wireSheetAdvs(s);
+  wireSheetDisadvs(s);
+  wireSheetQuirks(s);
   wireSheetEquip(s);
   wireSheetSpells(s);
   pageRoot.querySelectorAll('[data-ally]').forEach(function (b) {

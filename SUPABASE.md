@@ -17,7 +17,7 @@ A estrutura do banco está nas migrations versionadas de [supabase/migrations/](
 | `marcadores` | Marcadores sobre a imagem de um mapa (`x`, `y` de 0 a 1). | `mapa_id` → `mapas` (exclusão em cascata), `local_id` → `locais`, `mapa_vinculado_id` → `mapas`. |
 | `locais` | Locais, com até duas imagens. | `mapa_id` → `mapas`, `local_pai_id` → `locais` (hierarquia, sem ciclo). |
 | `personagens` | Personagens. | `ficha_id` → `fichas`, **UNIQUE**: no máximo uma ficha por personagem e cada ficha em um personagem só. |
-| `fichas` | Fichas de GURPS: atributos e defesas em colunas. `tipo` é `principal` ou `aliado`: um aliado é uma ficha completa, mostrada numa aba da ficha principal, com o nome da aba em `aliado_nome`. | Perícias, culturas, vantagens, estilos, itens de combate e armas em `ficha_*`. `ficha_principal_id` → `fichas` (só nos aliados, exclusão em cascata): o vínculo não muda depois de criado, não existe aliado de aliado e a ficha de um aliado não é vinculada a personagem. |
+| `fichas` | Fichas de GURPS: atributos e defesas em colunas. `tipo` é `principal` ou `aliado`: um aliado é uma ficha completa, mostrada numa aba da ficha principal, com o nome da aba em `aliado_nome`. | Perícias, culturas, vantagens, desvantagens, peculiaridades, estilos, itens de combate e armas em `ficha_*`. `ficha_principal_id` → `fichas` (só nos aliados, exclusão em cascata): o vínculo não muda depois de criado, não existe aliado de aliado e a ficha de um aliado não é vinculada a personagem. |
 | `organizacoes` | Organizações. | — |
 | `eventos` | Eventos. A data é `data_texto` (texto livre, no calendário da campanha). | `local_id` → `locais`. |
 | `cadernos`, `anotacoes` | Títulos e anotações. | `anotacoes.caderno_id` → `cadernos` (exclusão em cascata). |
@@ -39,7 +39,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | `personagem_mapa` | Personagem ↔ mapas onde aparece. |
 | `personagem_relacao` | Personagem ↔ personagem, com o `tipo` (não pode ser consigo mesmo). |
 | `<entidade>_compartilhamento` | Contas que veem um item oculto (`visivel = false`). |
-| `ficha_pericia`, `ficha_cultura`, `ficha_vantagem`, `ficha_vantagem_pericia`, `ficha_estilo`, `ficha_item_combate`, `ficha_arma`, `ficha_equipamento` | Seções da ficha, na ordem em que aparecem. |
+| `ficha_pericia`, `ficha_cultura`, `ficha_vantagem`, `ficha_vantagem_pericia`, `ficha_desvantagem`, `ficha_peculiaridade`, `ficha_estilo`, `ficha_item_combate`, `ficha_arma`, `ficha_equipamento` | Seções da ficha, na ordem em que aparecem. |
 | `ficha_corpo`, `ficha_corpo_item` | Configurações de corpo da ficha (no máximo uma `em_uso`, por índice único) e o que cada uma tem em cada parte do corpo. |
 | `ficha_mochila`, `ficha_mochila_item` | Mochilas da ficha (no máximo uma `em_uso`, por índice único), a linha da lista que é a própria mochila e o que cada uma leva, com a quantidade. |
 | `ficha_casa`, `ficha_casa_item` | Casas da ficha (o que o personagem guarda e não leva; nunca entra na carga) e o que cada uma guarda, com a quantidade. Somando as casas e as mochilas, não mais do que a lista tem. |
@@ -92,6 +92,8 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 
 | 29 | `20261106120000_ficha_aliados.sql` | Aliados da ficha (botão **Criar Aliado**): colunas `tipo`, `ficha_principal_id` e `aliado_nome` em `fichas`, com as restrições e os triggers do vínculo; view `fichas_doc` (com `allyOf` e `allyName`; um aliado tem a visibilidade, o compartilhamento e o dono da ficha principal, e as permissões seguem as dela) e `salvar_ficha` (criar um aliado exige poder ver a ficha principal). As fichas que já existem ficam como principais. Excluir uma ficha principal exclui os aliados dela. **Rode antes de publicar** a versão do site com os aliados. |
 | 30 | `20261107120000_realtime_so_mesa.sql` | Realtime só da Mesa: tira da publicação `supabase_realtime` todas as tabelas menos `mesa_estado` (veja a seção 5). **Rode depois de publicar** a versão do site que só sincroniza a Mesa; antes disso, quem estiver com a versão anterior aberta deixa de ver na hora as mudanças dos outros fora da Mesa. Pode rodar de novo sem efeito. |
+| 31 | `20261108120000_ficha_desvantagens.sql` | Aba Ficha › Desvantagens: tabela `ficha_desvantagem` (como `ficha_vantagem`, sem talentos; o custo é 0 ou negativo), view `fichas_doc` e `salvar_ficha` com as desvantagens. **Rode antes de publicar** a versão do site com as desvantagens na ficha; sem ela, o banco não guarda as desvantagens salvas. |
+| 32 | `20261109120000_ficha_peculiaridades.sql` | Aba Ficha › Peculiaridades: tabela `ficha_peculiaridade` (nome e observações, na ordem; os pontos, −1 cada e só 5 contando, são calculados pelo site), view `fichas_doc` e `salvar_ficha` com as peculiaridades. Rode depois da 31. **Rode antes de publicar** a versão do site com as peculiaridades na ficha; sem ela, o banco não guarda as peculiaridades salvas. |
 
 **Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
 

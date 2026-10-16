@@ -1,5 +1,5 @@
 /* =====================================================================
-   Hounds — Aba Itens (Mundo › Itens)
+   Hounds — Aba Itens (Regras › Itens)
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.

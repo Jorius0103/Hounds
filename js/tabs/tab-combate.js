@@ -1,5 +1,5 @@
 /* =====================================================================
-   Hounds — Aba Combate (Mundo › Combate): perícias de combate, técnicas e estilos
+   Hounds — Aba Combate (Regras › Combate): perícias de combate, técnicas e estilos
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
@@ -9,7 +9,7 @@
 /* =====================================================================
    Combate de GURPS
    Três listas na mesma página:
-     - Perícias de combate: as entradas de Mundo › Perícias (dados/pericias.json)
+     - Perícias de combate: as entradas de Regras › Perícias (dados/pericias.json)
        que são de armas, combate desarmado e luta (COMBAT_SKILLS), mais as de
        imbuement (tipo "Melee; DX/Very Hard"). Abrem a página da perícia dentro de
        Combate (#pericia-combate~id), como as técnicas e os estilos.
@@ -28,7 +28,7 @@ function techById(id) { return (id && W.techIdx[id]) || null; }
 function techHref(id) { return hrefFor('tech:' + id); }
 function combatSkillHref(id) { return hrefFor('cskill:' + id); }
 
-// The skills of Mundo › Perícias that count as combat skills, by name without "/TL" and
+// The skills of Regras › Perícias that count as combat skills, by name without "/TL" and
 // without a specialty ("Guns/TL (Pistol)" is Guns).
 var COMBAT_SKILLS = ['melee weapon', 'axe/mace', 'two-handed axe/mace', 'broadsword', 'flail', 'two-handed flail', 'force sword', 'force whip',
   'jitte/sai', 'knife', 'kusari', 'main-gauche', 'monowire whip', 'polearm', 'rapier', 'saber', 'shortsword', 'smallsword', 'spear', 'staff',

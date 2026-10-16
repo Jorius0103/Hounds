@@ -95,7 +95,7 @@ interface SheetAttrs {
 
 /** Coleção `sheets` (fichas) de GURPS. Ligada a personagens por `Character.sheetId`. */
 interface Sheet extends Doc {
-  name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[];
+  name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[]; disadvs?: SheetDisadv[]; quirks?: SheetQuirk[];
   equip?: SheetEquip[]; bodies?: SheetBody[]; packs?: SheetPack[]; homes?: SheetHome[]; armorSets?: ArmorSet[]; customWeapons?: CustomWeapon[]; customShields?: CustomShield[];
   spells?: SheetSpell[];
   /** Só nos aliados: a ficha principal que criou o aliado (fixa; veja a migration 29). O aliado aparece numa aba dela, não nas listas. */
@@ -108,7 +108,7 @@ interface SheetSpell {
   name: string; college: string; diff: 'H' | 'VH'; pts: number; bonus: number;
   /** Por que o bônus (só com bônus diferente de 0). */
   bonusNote?: string;
-  /** Entrada de Mundo › Magias de onde a magia veio. */
+  /** Entrada de Regras › Magias de onde a magia veio. */
   spellId?: string;
 }
 /** Escudo de Criar Escudo (veja js/tabs/ficha-escudos.js): o escudo do livro (ou digitado) como era ao criar, os ajustes e o resultado. */
@@ -154,7 +154,7 @@ interface SheetEquip {
   /** Fixo na ficha; o Corpo e as Mochilas apontam para ele. Linhas antigas, sem id, são 'e1', 'e2'… pela posição. */
   id: string;
   kind: 'item' | 'armor' | 'weapon';
-  /** A entrada de Mundo › Itens, Armaduras ou Armas de onde veio. */
+  /** A entrada de Regras › Itens, Armaduras ou Armas de onde veio. */
   refId?: string;
   name: string; qty: number; weight: number; cost: number; notes: string;
   /** Só em fichas antigas: false ficava guardado, fora da carga (veja sheetGear). */
@@ -174,6 +174,12 @@ interface SheetAdv {
   /** Só talentos: tamanho (S 5 pts/nível, M 10, L 15) e as perícias da ficha que recebem +1 por nível. */
   size?: 'S' | 'M' | 'L'; skills?: string[];
 }
+/** Desvantagem da ficha (veja js/tabs/ficha-desvantagens.js): como SheetAdv, sem talentos; o custo é 0 ou negativo. */
+interface SheetDisadv {
+  name: string; disadvId?: string; cost: number; levels: number; mod: number; notes: string;
+}
+/** Peculiaridade da ficha (veja js/tabs/ficha-peculiaridades.js): digitada, sem catálogo; vale −1 ponto, e só 5 contam. */
+interface SheetQuirk { name: string; notes: string; }
 
 /** Item da seção Combate da ficha: perícia, técnica ou perk/vantagem (veja js/tabs/ficha-combate.js). */
 interface CombatItem {

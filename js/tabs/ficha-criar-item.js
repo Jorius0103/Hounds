@@ -6,7 +6,7 @@
    ===================================================================== */
 'use strict';
 
-/* An item of Mundo › Itens (or a name of the player's, not in the catalog), added to Meus Itens as an
+/* An item of Regras › Itens (or a name of the player's, not in the catalog), added to Meus Itens as an
    item line. The line is an ordinary one: after created, it changes with Editar on its row in Meus Itens.
    S.ui.itemDraft = { editId, kind, refId, custom, name, qty, weight, cost, notes } while the form is
    open; weight and cost are of one unit, as in the list. editId: the line being edited (Editar in Meus
@@ -36,12 +36,12 @@ Ops.createSheetItem = function (s, d) {
 
 /* ---------- view ---------- */
 function itemFieldsHtml(d) {
-  if (!d.chosen) return '<p class="hint-text" style="margin:0">Escolha o item em Mundo › Itens. Um nome que não está no catálogo vira um item personalizado.</p>';
+  if (!d.chosen) return '<p class="hint-text" style="margin:0">Escolha o item em Regras › Itens. Um nome que não está no catálogo vira um item personalizado.</p>';
   var c = d.refId ? itemById(d.refId) : null;
   function num(f, label, step, hi) { return '<label class="sc-f"><span>' + label + '</span><input type="number" data-ib="' + f + '" min="0" max="' + hi + '" step="' + step + '" inputmode="decimal" value="' + d[f] + '"></label>'; }
   return (c ? '<p class="hint-text" style="margin:0">' + esc([c.category, c.tl ? 'TL ' + c.tl : '', c.cost, c.weight, c.book, c.page ? 'p. ' + c.page : ''].filter(Boolean).join(' · ')) + '</p>' +
       (c.description ? '<p class="hint-text ib-desc" style="margin:0">' + esc(clip(c.description, 400)) + '</p>' : '')
-    : '<p class="hint-text" style="margin:0"><b>Item personalizado</b>: não está em Mundo › Itens. Preencha os valores.</p>') +
+    : '<p class="hint-text" style="margin:0"><b>Item personalizado</b>: não está em Regras › Itens. Preencha os valores.</p>') +
     '<div class="ib-grid">' +
     '<label class="sc-f ib-name"><span>Nome</span><input type="text" data-ib="name" maxlength="120" value="' + esc(d.name) + '"></label>' +
     num('qty', 'Qtd.', '1', 9999) + num('weight', 'Peso de um (lbs)', 'any', 99999) + num('cost', 'Custo de um ($)', 'any', 9999999) +
@@ -53,7 +53,7 @@ function sheetItemHtml(s) {
   var ui = S.ui, can = canWrite(), d = can ? ui.itemDraft : null;
   var head = '<div class="gurps-head"><h2 class="sec-title">Criar Item</h2>' +
     (!d ? '<div class="btn-row">' + (can && !gearEditing() ? '<button class="btn primary" type="button" id="ibNew">' + svg(ICON.plus, 15, 2.4) + 'Criar item</button>' : '') + '</div>' : '') + '</div>';
-  if (!d) return gearCreateTile('itemSec', 'ibNew', ICON.item, 'Item', '', 'De Mundo › Itens ou personalizado');
+  if (!d) return gearCreateTile('itemSec', 'ibNew', ICON.item, 'Item', '', 'De Regras › Itens ou personalizado');
   return '<section class="gurps" id="itemSec">' + head + '<div class="box sk-edit">' +
     (d.editId ? '<p class="hint-text" style="margin:0">Editando um item de Meus Itens: ele continua onde está no Corpo e nas Mochilas.</p>' : '') +
     '<label class="sc-f"><span>Item</span><div class="sk-pick"><input type="text" id="ibBase" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ibBaseSug"' +
@@ -75,7 +75,7 @@ function wireItemSec(s) {
     else if (t.value !== '') d[f] = f === 'qty' ? cleanInt(t.value, 0, 9999, 1) : cleanDec(t.value, f === 'cost' ? 9999999 : 99999, 0);
     $('ibTotal').innerHTML = itemTotalText(d);
   });
-  // The item: Mundo › Itens, found by name in English or Portuguese; a name the catalog does not have
+  // The item: Regras › Itens, found by name in English or Portuguese; a name the catalog does not have
   // (exactly) is offered as a custom item, at the end.
   var pick = $('ibBase'), sug = $('ibBaseSug'), opts = [], act = 0;
   function hide() { sug.hidden = true; sug.innerHTML = ''; pick.setAttribute('aria-expanded', 'false'); }

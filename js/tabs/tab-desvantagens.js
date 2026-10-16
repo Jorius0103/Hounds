@@ -1,5 +1,5 @@
 /* =====================================================================
-   Hounds — Aba Desvantagens (Mundo › Desvantagens)
+   Hounds — Aba Desvantagens (Regras › Desvantagens)
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
@@ -241,3 +241,28 @@ function openDisadvantageForm(d) {
     });
   };
 }
+
+/* ---------- A disadvantage in a modal (from a sheet, like the advantages' openAdvModal) ---------- */
+function openDisadvModal(id) {
+  showModal('<div class="skill-modal" id="disadvModal"><p class="lede">Carregando desvantagem…</p></div>');
+  function paint() {
+    var box = $('disadvModal'); if (!box) return;
+    var d = disadvById(id);
+    if (!d) { box.innerHTML = '<h2>Desvantagem não encontrada</h2><p class="lede">Essa desvantagem pode ter sido excluída ou ocultada.</p>'; return; }
+    var away = S.ui && sheetDraftOpen() ? ' target="_blank" rel="noopener"' : '';
+    box.innerHTML = '<div class="skill-modal-head"><div style="display:flex;align-items:center;gap:8px"><span class="badge">' + svg(ICON.disadvantage, 12, 2.4) + ' Desvantagem</span>' +
+      '<span class="spell-badge ' + disadvTypeClass(d.type) + '">' + esc(disadvTypeLabel(d.type)) + '</span></div>' +
+      '<h2 id="disadvModalTitle">' + esc(d.name) + '</h2><p class="lede">' + (d.cost ? esc(d.cost) : 'Custo não informado') + (d.selfControl ? ' · teste de autocontrole' : '') + '</p></div>' +
+      '<h3 class="sec-title">Descrição</h3>' + (d.description ? '<p class="long">' + esc(d.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') +
+      '<p class="hint-text">' + esc([d.book, d.page ? 'p. ' + d.page : ''].filter(Boolean).join(' · ')) + '</p>' +
+      '<div class="btn-row" style="justify-content:flex-end"><a class="btn" href="' + disadvHref(d.id) + '"' + away + ' id="disadvModalPage">Abrir página da desvantagem</a></div>';
+    modal.setAttribute('aria-labelledby', 'disadvModalTitle');
+    var pg = $('disadvModalPage'); if (pg && !away) pg.onclick = function () { closeModal(); };
+  }
+  loadCatalog('disadvantages').then(paint, paint);
+}
+document.addEventListener('click', function (e) {
+  if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  var t = /** @type {AnyEl} */ (e.target), a = t && t.closest && t.closest('[data-disadv-modal]'); if (!a) return;
+  e.preventDefault(); openDisadvModal(a.getAttribute('data-disadv-modal'));
+});

@@ -7,7 +7,7 @@
 'use strict';
 
 /* =====================================================================
-   An entry of Mundo › Vantagens (from the books or the Mestre's) may have
+   An entry of Regras › Vantagens (from the books or the Mestre's) may have
    effects: advantage.effects = [{ target, key, names, op, value, perLevel,
    max, stacks, cond, note }], set by the Mestre in its form.
      target   what it changes (ADV_FX_TARGETS): an attribute, an active
