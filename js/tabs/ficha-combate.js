@@ -267,7 +267,7 @@ function scCatalogName(n, learned) {
 function scTechOnLearned(name, learned) {
   if (/\(.*\)\s*$/.test(name)) return name;
   var t = /** @type {any} */ (styleFind('tech', name)); if (!t) return name;
-  var hit = null;
+  var hit = /** @type {{ name: string } | null} */ (null);
   String(t.defaults || '').split(/\s*,\s*(?:or\s+)?|\s+or\s+/).some(function (d) {
     d = d.replace(/\s*[+-]\d+\s*$/, '').trim();
     hit = d && !/prerequisite|skill$/i.test(d) ? scFindSkill(learned, d) : null; return !!hit;

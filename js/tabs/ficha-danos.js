@@ -67,7 +67,7 @@ function dmMasterItems(sp, lvl) {
   dmSpecItems(sp).forEach(function (it) {
     var one = DM_WM_ONE.filter(function (c) { return c[0].test(norm(it).trim()); })[0];
     if (!one) { items.push(it); return; }
-    var best = null;
+    var best = /** @type {{ name: string, v: number } | null} */ (null);
     one[2].forEach(function (k) { var x = lvl(k); if (x && (!best || x.v > best.v)) best = x; });
     if (best) { items.push(best.name); notes.push(it + ' = ' + best.name + ' (' + one[1] + ' com maior NH na ficha, ' + best.v + ')'); }
     else notes.push(it + ': nenhuma perícia de ' + one[1].replace(/^(a|o) /, '') + ' na ficha');
