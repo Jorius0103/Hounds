@@ -41,6 +41,11 @@ export interface Spell {
   notes?: string; // Efeitos / anotações
 }
 
+export interface ArmorDrModifier {
+  drModifier: number; // Modificador de RD (ex: -2, +1)
+  modifierDamageType: string; // Tipo de dano afetado (ex: contusao, corte)
+}
+
 export interface BodyArmorLocation {
   id: string;
   location: string; // Eye, Head, Face, Right Leg, Right Arm, Torso, Groin, Left Arm, Left Leg, Hand, Foot, Neck, Vitals
@@ -48,8 +53,9 @@ export interface BodyArmorLocation {
   penalty?: string; // -9, -7, -5, 0, etc.
   armorName: string; // Peça de armadura
   dr: number; // Resistência a Dano (RD)
-  drModifier?: number; // Modificador de RD (ex: -2, +1) contra tipo de dano específico
-  modifierDamageType?: string; // Qual o tipo de dano afetado pelo modificador (ex: contusao, corte)
+  drModifier?: number; // Modificador de RD legado / primário (ex: -2, +1) contra tipo de dano específico
+  modifierDamageType?: string; // Qual o tipo de dano afetado pelo modificador legado / primário (ex: contusao, corte)
+  drModifiers?: ArmorDrModifier[]; // Lista de múltiplos modificadores de RD por tipo de dano
   damageTaken?: number; // Dano tomado nesta parte do corpo
   additionalRule?: string; // Regra adicional específica da parte do corpo
   notes?: string; // Observações legadas opcionais

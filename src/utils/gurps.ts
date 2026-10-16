@@ -278,6 +278,7 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
         dr: legacyLeg.dr || 0,
         drModifier: legacyLeg.drModifier || 0,
         modifierDamageType: legacyLeg.modifierDamageType || '',
+        drModifiers: legacyLeg.drModifiers,
       };
     }
     if ((norm === 'left_shins' || norm === 'right_shins') && legacyShins) {
@@ -287,6 +288,7 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
         dr: legacyShins.dr || 0,
         drModifier: legacyShins.drModifier || 0,
         modifierDamageType: legacyShins.modifierDamageType || '',
+        drModifiers: legacyShins.drModifiers,
       };
     }
     if ((norm === 'left_arm' || norm === 'right_arm') && legacyArm) {
@@ -296,6 +298,7 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
         dr: legacyArm.dr || 0,
         drModifier: legacyArm.drModifier || 0,
         modifierDamageType: legacyArm.modifierDamageType || '',
+        drModifiers: legacyArm.drModifiers,
       };
     }
     if ((norm === 'left_forearm' || norm === 'right_forearm') && legacyForearms) {
@@ -305,6 +308,7 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
         dr: legacyForearms.dr || 0,
         drModifier: legacyForearms.drModifier || 0,
         modifierDamageType: legacyForearms.modifierDamageType || '',
+        drModifiers: legacyForearms.drModifiers,
       };
     }
 

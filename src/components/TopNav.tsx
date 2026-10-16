@@ -74,6 +74,9 @@ export const TopNav: React.FC<TopNavProps> = ({
             <span className="text-sm font-bold tracking-tight text-white whitespace-nowrap sm:hidden">
               GURPS
             </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-1.5 shadow-xs">
+              v1.2.0
+            </span>
           </div>
 
           {/* Combat selector & CRUD de combates: Apenas o Mestre escolhe combate; Jogador apenas visualiza */}

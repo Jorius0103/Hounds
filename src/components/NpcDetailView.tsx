@@ -422,6 +422,90 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     }
   };
 
+  const handleUpdateArmorModifier = (
+    locIndex: number,
+    modIndex: number,
+    field: 'drModifier' | 'modifierDamageType',
+    value: any
+  ) => {
+    if (isViewer) return;
+    const loc = currentLocations[locIndex];
+    const mods = (loc.drModifiers && loc.drModifiers.length > 0)
+      ? [...loc.drModifiers.map((m) => ({ ...m }))]
+      : [
+          { drModifier: loc.drModifier || 0, modifierDamageType: loc.modifierDamageType || '' },
+          { drModifier: 0, modifierDamageType: '' },
+        ];
+
+    while (mods.length <= modIndex) {
+      mods.push({ drModifier: 0, modifierDamageType: '' });
+    }
+
+    mods[modIndex] = {
+      ...mods[modIndex],
+      [field]: field === 'drModifier'
+        ? (value === '' ? 0 : parseInt(value, 10) || 0)
+        : value,
+    };
+
+    handleUpdateArmorLocation(locIndex, {
+      ...loc,
+      drModifier: mods[0]?.drModifier || 0,
+      modifierDamageType: mods[0]?.modifierDamageType || '',
+      drModifiers: mods,
+    });
+  };
+
+  const handleAddArmorModifier = (locIndex: number) => {
+    if (isViewer) return;
+    const loc = currentLocations[locIndex];
+    const mods = (loc.drModifiers && loc.drModifiers.length > 0)
+      ? [...loc.drModifiers.map((m) => ({ ...m }))]
+      : [
+          { drModifier: loc.drModifier || 0, modifierDamageType: loc.modifierDamageType || '' },
+          { drModifier: 0, modifierDamageType: '' },
+        ];
+
+    mods.push({ drModifier: 0, modifierDamageType: '' });
+
+    handleUpdateArmorLocation(locIndex, {
+      ...loc,
+      drModifier: mods[0]?.drModifier || 0,
+      modifierDamageType: mods[0]?.modifierDamageType || '',
+      drModifiers: mods,
+    });
+  };
+
+  const handleRemoveArmorModifier = (locIndex: number, modIndex: number) => {
+    if (isViewer) return;
+    const loc = currentLocations[locIndex];
+    const currentMods = (loc.drModifiers && loc.drModifiers.length > 0)
+      ? [...loc.drModifiers.map((m) => ({ ...m }))]
+      : [
+          { drModifier: loc.drModifier || 0, modifierDamageType: loc.modifierDamageType || '' },
+          { drModifier: 0, modifierDamageType: '' },
+        ];
+
+    const nextMods = currentMods.filter((_, i) => i !== modIndex);
+
+    handleUpdateArmorLocation(locIndex, {
+      ...loc,
+      drModifier: nextMods[0]?.drModifier || 0,
+      modifierDamageType: nextMods[0]?.modifierDamageType || '',
+      drModifiers: nextMods,
+    });
+  };
+
+  const maxModifierSlots = useMemo(() => {
+    const counts = currentLocations.map((l) => {
+      if (Array.isArray(l.drModifiers) && l.drModifiers.length > 0) {
+        return l.drModifiers.length;
+      }
+      return 1;
+    });
+    return Math.max(2, ...counts);
+  }, [currentLocations]);
+
 
 
   // Handlers para a aba Partes do Corpo (Dano Tomado e Regras Adicionais)
@@ -2405,7 +2489,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           }`}
         >
           <Shield size={14} />
-          <span>Armadura por Localização ({currentLocations.length})</span>
+          <span>Armadura por Localização</span>
         </button>
 
         <button
@@ -2833,30 +2917,48 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px] bg-slate-950/80">
-                  <th className="py-2.5 px-2 min-w-[140px] text-center whitespace-nowrap">Roll</th>
-                  <th className="py-2.5 px-3 w-28">Parte do Corpo</th>
-                  <th className="py-2.5 px-3 min-w-[150px]">Armadura</th>
-                  <th className="py-2.5 px-3 w-20 text-center">RD Base</th>
-                  <th className="py-2.5 px-3 w-20 text-center">Modif. RD</th>
-                  <th className="py-2.5 px-3 min-w-[140px]">Dano que Interfere</th>
+                  <th className="py-2 px-1 w-12 text-center whitespace-nowrap">Roll</th>
+                  <th className="py-2 px-1.5 w-24 whitespace-nowrap">Parte do Corpo</th>
+                  <th className="py-2 px-1.5 min-w-[120px]">Armadura</th>
+                  <th className="py-2 px-1 w-14 text-center whitespace-nowrap">RD Base</th>
+                  {Array.from({ length: maxModifierSlots }).map((_, s) => (
+                    <React.Fragment key={s}>
+                      <th className="py-2 px-1 w-14 text-center whitespace-nowrap">
+                        {maxModifierSlots > 2 ? `Modif. RD ${s + 1}` : (s === 0 ? 'Modif. RD' : 'Modif. RD 2')}
+                      </th>
+                      <th className="py-2 px-1.5 w-28 whitespace-nowrap">
+                        {maxModifierSlots > 2 ? `Dano Interf. ${s + 1}` : (s === 0 ? 'Dano que Interfere' : 'Dano Interfere 2')}
+                      </th>
+                    </React.Fragment>
+                  ))}
+                  {!isViewer && (
+                    <th className="py-2 px-1 w-9 text-center whitespace-nowrap" title="Adicionar mais modificadores">+</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {currentLocations.map((loc, idx) => {
+                  const locMods = (loc.drModifiers && loc.drModifiers.length > 0)
+                    ? loc.drModifiers
+                    : [
+                        { drModifier: loc.drModifier || 0, modifierDamageType: loc.modifierDamageType || '' },
+                        { drModifier: 0, modifierDamageType: '' },
+                      ];
+
                   return (
                     <tr key={loc.id || `${loc.location}-${idx}`} className="hover:bg-slate-850/50 transition-colors">
-                      {/* 1. Roll (Fixa, não edita - espaço ampliado e fonte ajustada para linha única) */}
-                      <td className="py-2.5 px-2 text-center font-mono font-bold text-amber-400 text-[10px] leading-tight whitespace-nowrap bg-slate-950/30">
+                      {/* 1. Roll (Fixa, não edita) */}
+                      <td className="py-1.5 px-1 text-center font-mono font-bold text-amber-400 text-[10px] leading-tight whitespace-nowrap bg-slate-950/30">
                         {loc.rollTarget || '—'}
                       </td>
 
                       {/* 2. Parte do Corpo (Fixa, não edita) */}
-                      <td className="py-2.5 px-3 font-bold text-slate-100 text-xs whitespace-nowrap">
+                      <td className="py-1.5 px-1.5 font-bold text-slate-100 text-xs whitespace-nowrap">
                         {loc.location}
                       </td>
 
                       {/* 3. Armadura (Editável) */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-1.5 px-1.5">
                         <input
                           type="text"
                           disabled={isViewer}
@@ -2865,15 +2967,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           onChange={(e) =>
                             handleUpdateArmorLocation(idx, { ...loc, armorName: e.target.value })
                           }
-                          className={`w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs ${
+                          className={`w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs ${
                             isViewer ? 'cursor-default opacity-90' : ''
                           }`}
                         />
                       </td>
 
-                      {/* 4. RD Base (Editável - sem acréscimo de RD natural) */}
-                      <td className="py-2.5 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1 font-mono">
+                      {/* 4. RD Base (Editável) */}
+                      <td className="py-1.5 px-1 text-center">
+                        <div className="flex items-center justify-center font-mono">
                           <input
                             type="number"
                             min="0"
@@ -2886,64 +2988,94 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                                 dr: e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10)),
                               })
                             }
-                            className={`w-14 bg-slate-950 border border-amber-600/60 rounded px-1 py-1 text-center font-bold text-amber-300 text-xs focus:outline-none ${
+                            className={`w-12 bg-slate-950 border border-amber-600/60 rounded px-1 py-1 text-center font-bold text-amber-300 text-xs focus:outline-none ${
                               isViewer ? 'opacity-90' : ''
                             }`}
                           />
                         </div>
                       </td>
 
-                      {/* 5. Modif. RD (Editável) */}
-                      <td className="py-2.5 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1 font-mono">
-                          <input
-                            type="number"
-                            disabled={isViewer}
-                            value={loc.drModifier !== undefined && loc.drModifier !== 0 ? loc.drModifier : ''}
-                            placeholder="0"
-                            onChange={(e) =>
-                              handleUpdateArmorLocation(idx, {
-                                ...loc,
-                                drModifier: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
-                              })
-                            }
-                            className={`w-14 bg-slate-950 border rounded px-1 py-1 text-center font-bold text-xs focus:outline-none ${
-                              (loc.drModifier || 0) < 0
-                                ? 'text-rose-400 border-rose-800/80 bg-rose-950/20'
-                                : (loc.drModifier || 0) > 0
-                                ? 'text-emerald-400 border-emerald-800/80 bg-emerald-950/20'
-                                : 'text-slate-400 border-slate-800'
-                            } ${isViewer ? 'opacity-90' : ''}`}
-                            title="Modificador de RD (ex: -2 para -2 RD, +1 para +1 RD)"
-                          />
-                        </div>
-                      </td>
+                      {/* 5 & 6. Modif. RD e Dano que Interfere (Pelo menos 2 colunas, expansível via +) */}
+                      {Array.from({ length: maxModifierSlots }).map((_, s) => {
+                        const curMod = locMods[s] || { drModifier: 0, modifierDamageType: '' };
 
-                      {/* 6. Dano que Interfere (Editável) */}
-                      <td className="py-2.5 px-3">
-                        <select
-                          disabled={isViewer}
-                          value={loc.modifierDamageType || ''}
-                          onChange={(e) =>
-                            handleUpdateArmorLocation(idx, {
-                              ...loc,
-                              modifierDamageType: e.target.value,
-                            })
-                          }
-                          className={`w-full bg-slate-950 border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 ${
-                            loc.modifierDamageType
-                              ? 'text-amber-300 border-amber-600/70 font-semibold'
-                              : 'text-slate-500 border-slate-800'
-                          } ${isViewer ? 'cursor-default opacity-90' : ''}`}
-                        >
-                          <option value="" className="bg-slate-900 text-slate-400">-- Nenhum --</option>
-                          <option value="contusao" className="bg-slate-900 text-amber-200">Contusão (crushing)</option>
-                          <option value="corte" className="bg-slate-900 text-amber-200">Corte (cutting)</option>
-                          <option value="empalamento" className="bg-slate-900 text-amber-200">Empalamento (impaling)</option>
-                          <option value="perfurante" className="bg-slate-900 text-amber-200">Perfurante (piercing)</option>
-                          <option value="queima" className="bg-slate-900 text-amber-200">Queimadura (burning)</option>
-                        </select>
-                      </td>
+                        return (
+                          <React.Fragment key={s}>
+                            {/* Modif. RD */}
+                            <td className="py-1.5 px-1 text-center">
+                              <div className="flex items-center justify-center font-mono">
+                                <input
+                                  type="number"
+                                  disabled={isViewer}
+                                  value={curMod.drModifier !== undefined && curMod.drModifier !== 0 ? curMod.drModifier : ''}
+                                  placeholder="0"
+                                  onChange={(e) =>
+                                    handleUpdateArmorModifier(idx, s, 'drModifier', e.target.value)
+                                  }
+                                  className={`w-12 bg-slate-950 border rounded px-1 py-1 text-center font-bold text-xs focus:outline-none ${
+                                    (curMod.drModifier || 0) < 0
+                                      ? 'text-rose-400 border-rose-800/80 bg-rose-950/20'
+                                      : (curMod.drModifier || 0) > 0
+                                      ? 'text-emerald-400 border-emerald-800/80 bg-emerald-950/20'
+                                      : 'text-slate-400 border-slate-800'
+                                  } ${isViewer ? 'opacity-90' : ''}`}
+                                  title={`Modificador de RD ${s + 1} (ex: -2 para -2 RD, +1 para +1 RD)`}
+                                />
+                              </div>
+                            </td>
+
+                            {/* Dano que Interfere */}
+                            <td className="py-1.5 px-1.5">
+                              <div className="flex items-center gap-1">
+                                <select
+                                  disabled={isViewer}
+                                  value={curMod.modifierDamageType || ''}
+                                  onChange={(e) =>
+                                    handleUpdateArmorModifier(idx, s, 'modifierDamageType', e.target.value)
+                                  }
+                                  className={`w-full bg-slate-950 border rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+                                    curMod.modifierDamageType
+                                      ? 'text-amber-300 border-amber-600/70 font-semibold'
+                                      : 'text-slate-500 border-slate-800'
+                                  } ${isViewer ? 'cursor-default opacity-90' : ''}`}
+                                >
+                                  <option value="" className="bg-slate-900 text-slate-400">-- Nenhum --</option>
+                                  <option value="contusao" className="bg-slate-900 text-amber-200">Contusão</option>
+                                  <option value="corte" className="bg-slate-900 text-amber-200">Corte</option>
+                                  <option value="empalamento" className="bg-slate-900 text-amber-200">Empalamento</option>
+                                  <option value="perfurante" className="bg-slate-900 text-amber-200">Perfurante</option>
+                                  <option value="queima" className="bg-slate-900 text-amber-200">Queimadura</option>
+                                </select>
+
+                                {s >= 2 && !isViewer && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveArmorModifier(idx, s)}
+                                    className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-850 rounded transition-colors shrink-0"
+                                    title="Remover este modificador extra"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
+
+                      {/* Botão de + para cadastrar mais modificadores nesta linha */}
+                      {!isViewer && (
+                        <td className="py-1.5 px-1 text-center w-9">
+                          <button
+                            type="button"
+                            onClick={() => handleAddArmorModifier(idx)}
+                            className="p-1 rounded bg-slate-800/80 hover:bg-amber-500 hover:text-slate-950 text-slate-400 transition-colors inline-flex items-center justify-center border border-slate-700/60 shadow-sm"
+                            title="Adicionar mais um Modif. RD e Dano que Interfere nesta parte"
+                          >
+                            <Plus size={13} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

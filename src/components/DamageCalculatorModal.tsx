@@ -137,22 +137,38 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const selectedLoc = isNoLocation ? undefined : effectiveLocations.find((l) => l.id === selectedLocationId);
   const baseArmorDr = selectedLoc ? selectedLoc.dr : 0;
 
-  // Verifica se a armadura possui modificador de RD contra este tipo de dano
-  const appliesArmorModifier = Boolean(
-    selectedLoc &&
-    selectedLoc.drModifier !== undefined &&
-    selectedLoc.drModifier !== 0 &&
-    selectedLoc.modifierDamageType &&
-    damageType &&
-    (
-      selectedLoc.modifierDamageType.toLowerCase() === damageType.toLowerCase() ||
-      (selectedLoc.modifierDamageType === 'contusao' && (damageType === 'contusao' || damageType === 'crushing')) ||
-      (selectedLoc.modifierDamageType === 'corte' && (damageType === 'corte' || damageType === 'cutting')) ||
-      (selectedLoc.modifierDamageType === 'empalamento' && (damageType === 'empalamento' || damageType === 'impaling')) ||
-      (selectedLoc.modifierDamageType === 'perfurante' && (damageType.startsWith('perfurante') || damageType === 'piercing')) ||
-      (selectedLoc.modifierDamageType === 'queima' && (damageType === 'queima' || damageType === 'burning'))
-    )
-  );
+  const isDamageTypeMatch = (modType?: string, incomingType?: string): boolean => {
+    if (!modType || !incomingType) return false;
+    const m = modType.toLowerCase().trim();
+    const d = incomingType.toLowerCase().trim();
+    if (m === d) return true;
+    if ((m === 'contusao' || m === 'crushing') && (d === 'contusao' || d === 'crushing')) return true;
+    if ((m === 'corte' || m === 'cutting') && (d === 'corte' || d === 'cutting')) return true;
+    if ((m === 'empalamento' || m === 'impaling') && (d === 'empalamento' || d === 'impaling')) return true;
+    if ((m.startsWith('perfurante') || m === 'piercing') && (d.startsWith('perfurante') || d === 'piercing')) return true;
+    if ((m === 'queima' || m === 'burning' || m === 'queimadura') && (d === 'queima' || d === 'burning' || d === 'queimadura')) return true;
+    return false;
+  };
+
+  const getEffectiveLocModifiers = (loc?: BodyArmorLocation) => {
+    if (!loc) return [];
+    if (Array.isArray(loc.drModifiers) && loc.drModifiers.length > 0) {
+      return loc.drModifiers
+        .filter((m) => m && (Number(m.drModifier) || 0) !== 0 && m.modifierDamageType?.trim())
+        .map((m) => ({ drModifier: Number(m.drModifier) || 0, modifierDamageType: m.modifierDamageType.trim() }));
+    }
+    if (loc.drModifier !== undefined && (Number(loc.drModifier) || 0) !== 0 && loc.modifierDamageType?.trim()) {
+      return [{ drModifier: Number(loc.drModifier) || 0, modifierDamageType: loc.modifierDamageType.trim() }];
+    }
+    return [];
+  };
+
+  const matchingLocModifiers = selectedLoc
+    ? getEffectiveLocModifiers(selectedLoc).filter((m) => isDamageTypeMatch(m.modifierDamageType, damageType))
+    : [];
+
+  const appliedArmorDrModifier = matchingLocModifiers.reduce((sum, m) => sum + m.drModifier, 0);
+  const appliesArmorModifier = matchingLocModifiers.length > 0;
 
   const numericRawDamage = typeof rawDamage === 'number' ? rawDamage : 0;
 
@@ -161,7 +177,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     damageType,
     rawDamage: numericRawDamage,
     baseArmorDr,
-    armorDrModifier: selectedLoc?.drModifier || 0,
+    armorDrModifier: appliedArmorDrModifier,
     naturalDr: npc.naturalDr || 0,
     appliesArmorModifier,
     bypassDr,
@@ -195,10 +211,13 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     const locName = isNoLocation
       ? 'Sem parte do Corpo'
       : (selectedLoc ? selectedLoc.location : 'Geral');
+    const matchingModText = matchingLocModifiers
+      .map((m) => `${m.drModifier >= 0 ? `+${m.drModifier}` : m.drModifier} vs ${m.modifierDamageType}`)
+      .join(', ');
     const armorNotes = isNoLocation
       ? 'Sem armadura (RD 0)'
       : appliesArmorModifier
-      ? `${armorDr} arm (${baseArmorDr}${selectedLoc?.drModifier && selectedLoc.drModifier >= 0 ? `+${selectedLoc.drModifier}` : selectedLoc?.drModifier} vs ${selectedLoc?.modifierDamageType})`
+      ? `${armorDr} arm (${baseArmorDr}${matchingModText ? ` [${matchingModText}]` : ''})`
       : `${armorDr} arm`;
     const effectiveTypeLabel = damageType === 'personalizado'
       ? `Personalizado (x${multiplier})`
@@ -482,8 +501,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   ⚡ Sem parte do Corpo (Dano Direto / Sem Armadura)
                 </option>
                 {effectiveLocations.map((loc) => {
-                  const modText = loc.drModifier && loc.modifierDamageType
-                    ? ` [${loc.drModifier >= 0 ? `+${loc.drModifier}` : loc.drModifier} vs ${loc.modifierDamageType}]`
+                  const locMods = getEffectiveLocModifiers(loc);
+                  const modText = locMods.length > 0
+                    ? ` [${locMods.map((m) => `${m.drModifier >= 0 ? `+${m.drModifier}` : m.drModifier} vs ${m.modifierDamageType}`).join(', ')}]`
                     : '';
                   const rollPrefix = loc.rollTarget ? `[${loc.rollTarget}] ` : '';
                   return (
@@ -644,11 +664,11 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                         <span className="text-amber-400">{armorDr}</span>
                         {appliesArmorModifier && (
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal border ${
-                            (selectedLoc?.drModifier || 0) < 0
+                            appliedArmorDrModifier < 0
                               ? 'bg-rose-950/70 border-rose-800 text-rose-300'
                               : 'bg-emerald-950/70 border-emerald-800 text-emerald-300'
                           }`}>
-                            ({baseArmorDr} {(selectedLoc?.drModifier || 0) >= 0 ? `+${selectedLoc?.drModifier}` : selectedLoc?.drModifier} vs {selectedLoc?.modifierDamageType})
+                            ({baseArmorDr} {appliedArmorDrModifier >= 0 ? `+${appliedArmorDrModifier}` : appliedArmorDrModifier} vs {matchingLocModifiers.map((m) => m.modifierDamageType).join(', ')})
                           </span>
                         )}
                       </>
