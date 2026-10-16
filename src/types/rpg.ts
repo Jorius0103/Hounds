@@ -146,6 +146,7 @@ export interface ActionLogEntry {
   penetratingDamage?: number; // Dano penetrante após superar a RD
   woundMultiplier?: number; // Multiplicador de ferimento (ex: 1.5, 2.0)
   finalDamage?: number; // Dano final aos PV
+  bodyPartDamage?: number; // Dano total sofrido pela parte do corpo (ex: membros)
   hpBefore?: number;
   hpAfter?: number;
   fpBefore?: number;

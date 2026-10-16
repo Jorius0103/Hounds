@@ -461,7 +461,7 @@ export function calculateLogDamageForBodyPart(history: any[] = [], logKeys: stri
     .reduce((sum, h) => {
       const locKey = normalizeLocationKey(h.hitLocation || '');
       if (logKeys.includes(locKey)) {
-        return sum + (h.finalDamage ?? h.amount ?? 0);
+        return sum + (h.bodyPartDamage ?? h.finalDamage ?? h.amount ?? 0);
       }
       return sum;
     }, 0);
@@ -473,6 +473,86 @@ export function createDefaultArmorKit(name: string = 'Kit Padrão', ownerId: str
     name,
     isActive,
     locations: createDefaultArmorLocations(ownerId),
+  };
+}
+
+export function isLimbOrExtremity(locationName: string): boolean {
+  if (!locationName) return false;
+  const norm = normalizeLocationKey(locationName);
+  return (
+    norm === 'left_arm' ||
+    norm === 'right_arm' ||
+    norm === 'left_leg' ||
+    norm === 'right_leg' ||
+    norm === 'hand' ||
+    norm === 'feet' ||
+    norm === 'foot' ||
+    norm === 'arm' ||
+    norm === 'leg' ||
+    norm === 'left_forearm' ||
+    norm === 'right_forearm' ||
+    norm === 'left_shins' ||
+    norm === 'right_shins' ||
+    norm === 'forearms' ||
+    norm === 'shins'
+  );
+}
+
+export type BodyPartStatus = 'normal' | 'inutilizado' | 'inutilizado_permanentemente' | 'desmembrado';
+
+export function getBodyPartStatus(locationName: string, damage: number, partHp: number | null): {
+  status: BodyPartStatus;
+  label: string | null;
+  badgeClass?: string;
+} {
+  if (!partHp || partHp <= 0 || damage < partHp) {
+    return { status: 'normal', label: null };
+  }
+
+  const norm = normalizeLocationKey(locationName);
+
+  // Regra 4: Eye e Groin se tomarem dano total de vida (dano >= vida) geram alerta de "Inutilizado".
+  // Não tem outro status para eles além desse independente do dano.
+  if (norm === 'eye' || norm === 'groin') {
+    return {
+      status: 'inutilizado',
+      label: 'Inutilizado',
+      badgeClass: 'bg-rose-950/80 text-rose-300 border border-rose-800/80 font-bold',
+    };
+  }
+
+  // Regra 2: Left Arm, Right Arm, Left Leg, Right Leg, Hand e Feet:
+  // Se entre 1 e V-1: nenhum alerta
+  // Se entre V e 2V-1: "Inutilizado"
+  // Se entre 2V e 3V-1: "Inutilizado Permanentemente"
+  // Se >= 3V: "Desmembrado"
+  if (isLimbOrExtremity(locationName)) {
+    if (damage >= 3 * partHp) {
+      return {
+        status: 'desmembrado',
+        label: 'Desmembrado',
+        badgeClass: 'bg-red-950 text-red-300 border border-red-600 font-extrabold',
+      };
+    }
+    if (damage >= 2 * partHp) {
+      return {
+        status: 'inutilizado_permanentemente',
+        label: 'Inutilizado Permanentemente',
+        badgeClass: 'bg-purple-950/90 text-purple-300 border border-purple-700 font-bold',
+      };
+    }
+    return {
+      status: 'inutilizado',
+      label: 'Inutilizado',
+      badgeClass: 'bg-amber-950/80 text-amber-300 border border-amber-800/80 font-bold',
+    };
+  }
+
+  // Para qualquer outra parte com HP se houver
+  return {
+    status: 'inutilizado',
+    label: 'Inutilizado',
+    badgeClass: 'bg-rose-950/80 text-rose-300 border border-rose-800/80 font-bold',
   };
 }
 
@@ -489,29 +569,47 @@ export function calculateLocationHp(locationName: string, hpMax: number): { valu
   }
 
   const rawVal = hpMax / found.hpDivisor;
-  const display = rawVal.toFixed(1);
+  // Regra 1: Não teremos mais vida quebrada em decimal. Sempre inteiro seguindo:
+  // Se for 7.0 vira 8, de 7.1 a 7.9 continua 8, se chegar a 8.0 vira 9.
+  // Fórmula: Math.floor(rawVal) + 1
+  const integerVal = Math.floor(rawVal) + 1;
+  const display = String(integerVal);
   return {
-    value: Number(display),
+    value: integerVal,
     display,
     formulaLabel: found.hpFormulaLabel,
   };
 }
 
-export function getCrippledBodyParts(npc: NPC): { part: BodyPartConfig; effectiveDmg: number; maxHp: number; formulaLabel: string }[] {
+export interface CrippledBodyPartInfo {
+  part: BodyPartConfig;
+  effectiveDmg: number;
+  maxHp: number;
+  formulaLabel: string;
+  status: BodyPartStatus;
+  statusLabel: string;
+  badgeClass: string;
+}
+
+export function getCrippledBodyParts(npc: NPC): CrippledBodyPartInfo[] {
   if (!npc || !npc.hpMax || npc.hpMax <= 0) return [];
-  const crippled: { part: BodyPartConfig; effectiveDmg: number; maxHp: number; formulaLabel: string }[] = [];
+  const crippled: CrippledBodyPartInfo[] = [];
   BODY_PARTS_CONFIG.forEach((part) => {
     const hpInfo = calculateLocationHp(part.name, npc.hpMax);
     if (hpInfo.value !== null && hpInfo.value > 0) {
       const logDmg = calculateLogDamageForBodyPart(npc.history || [], part.logKeys);
       const isOverridden = npc.bodyPartDamageOverrides?.[part.key] !== undefined;
       const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[part.key] ?? 0) : logDmg;
-      if (effectiveDmg >= hpInfo.value) {
+      const statusInfo = getBodyPartStatus(part.name, effectiveDmg, hpInfo.value);
+      if (statusInfo.label !== null) {
         crippled.push({
           part,
           effectiveDmg,
           maxHp: hpInfo.value,
           formulaLabel: hpInfo.formulaLabel,
+          status: statusInfo.status,
+          statusLabel: statusInfo.label,
+          badgeClass: statusInfo.badgeClass || 'bg-rose-950/80 text-rose-300 border border-rose-800/80',
         });
       }
     }
@@ -552,6 +650,14 @@ export interface DamageCalculationResult {
   penetratingDamage: number;
   woundMultiplier: number;
   finalDamage: number;
+  bodyPartDamage: number;
+  isDamageCapped?: boolean;
+  partHp?: number | null;
+  bodyPartStatusAlert?: {
+    status: BodyPartStatus;
+    label: string | null;
+    badgeClass?: string;
+  };
   appliedRules: string[];
   requiresEyeConfirmation?: boolean;
   eyeWarningMessage?: string;
@@ -583,6 +689,7 @@ export function calculateLocationDamage(params: {
   bypassDr: boolean;
   isNoLocation?: boolean;
   customMultiplier?: number;
+  hpMax?: number;
 }): DamageCalculationResult {
   const {
     locationName,
@@ -595,6 +702,7 @@ export function calculateLocationDamage(params: {
     bypassDr,
     isNoLocation,
     customMultiplier,
+    hpMax,
   } = params;
 
   if (isNoLocation) {
@@ -611,6 +719,7 @@ export function calculateLocationDamage(params: {
       penetratingDamage: rawDamage,
       woundMultiplier: defaultMult,
       finalDamage,
+      bodyPartDamage: finalDamage,
       appliedRules: [],
     };
   }
@@ -725,7 +834,27 @@ export function calculateLocationDamage(params: {
     appliedRules.push(`Multiplicador Personalizado: x${customMultiplier}`);
   }
 
-  const finalDamage = Math.floor(penetratingDamage * woundMultiplier);
+  const fullDamage = Math.floor(penetratingDamage * woundMultiplier);
+  const partHpInfo = hpMax ? calculateLocationHp(locationName, hpMax) : { value: null };
+  const partHp = partHpInfo.value;
+
+  let finalDamage = fullDamage;
+  let bodyPartDamage = fullDamage;
+  let isDamageCapped = false;
+
+  // Regra 3: Se a parte do corpo for Left Arm, Right Arm, Left Leg, Right Leg, Hand ou Feet,
+  // o dano nos PV do Personagem/NPC não pode ultrapassar o total de vida da parte do corpo
+  if (isLimbOrExtremity(locationName) && partHp !== null && partHp > 0) {
+    if (fullDamage > partHp) {
+      isDamageCapped = true;
+      finalDamage = partHp;
+      bodyPartDamage = fullDamage;
+      appliedRules.push(`${locationName}: Dano nos PV limitado a ${partHp} PV (Vida da parte). Dano no membro: ${fullDamage} PV`);
+    }
+  }
+
+  // Regras 2 e 4: Alerta de status resultante para a parte do corpo
+  const bodyPartStatusAlert = getBodyPartStatus(locationName, bodyPartDamage, partHp);
 
   return {
     armorDr: effectiveArmorDr,
@@ -735,6 +864,10 @@ export function calculateLocationDamage(params: {
     penetratingDamage,
     woundMultiplier,
     finalDamage,
+    bodyPartDamage,
+    isDamageCapped,
+    partHp,
+    bodyPartStatusAlert,
     appliedRules,
     requiresEyeConfirmation,
     eyeWarningMessage,

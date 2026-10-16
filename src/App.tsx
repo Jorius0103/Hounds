@@ -1532,11 +1532,12 @@ export default function App() {
       if (!entryWithId.hitLocation || entryWithId.hitLocation.toLowerCase().includes('sem parte')) {
         return locs;
       }
+      const partDamage = entryWithId.bodyPartDamage ?? finalDamage;
       return locs.map((loc) => {
         if (isSameLocation(loc.location, entryWithId.hitLocation || '')) {
           return {
             ...loc,
-            damageTaken: (loc.damageTaken || 0) + finalDamage,
+            damageTaken: (loc.damageTaken || 0) + partDamage,
           };
         }
         return loc;
@@ -2016,11 +2017,12 @@ export default function App() {
         updated.hpCurrent = Math.min(maxHp, updated.hpCurrent + dmg);
 
         if (entry.hitLocation) {
-          updated.armorLocations = revertDamageLocations(updated.armorLocations, entry.hitLocation, dmg);
+          const partDmg = entry.bodyPartDamage ?? dmg;
+          updated.armorLocations = revertDamageLocations(updated.armorLocations, entry.hitLocation, partDmg);
           if (updated.armorKits) {
             updated.armorKits = updated.armorKits.map((kit) => ({
               ...kit,
-              locations: revertDamageLocations(kit.locations, entry.hitLocation!, dmg),
+              locations: revertDamageLocations(kit.locations, entry.hitLocation!, partDmg),
             }));
           }
         }

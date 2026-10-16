@@ -183,6 +183,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     bypassDr,
     isNoLocation,
     customMultiplier: typeof customMultiplier === 'number' ? customMultiplier : 1.0,
+    hpMax: npc.hpMax,
   });
 
   const {
@@ -193,6 +194,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     penetratingDamage,
     woundMultiplier: multiplier,
     finalDamage,
+    bodyPartDamage,
+    isDamageCapped,
+    partHp,
+    bodyPartStatusAlert,
     appliedRules,
     requiresEyeConfirmation,
     eyeWarningMessage,
@@ -233,6 +238,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       ? `${attackerPrefix}${customDescription.trim()}`
       : (isNoLocation
         ? `${attackerPrefix}Dano Direto (Sem parte do corpo) | Dano: ${numericRawDamage}${damageType ? ` (${descDamageTypeLabel})` : ''} | RD: 0 | Final: -${finalDamage} PV`
+        : isDamageCapped
+        ? `${attackerPrefix}Local: ${locName} | Dano: ${numericRawDamage} (${descDamageTypeLabel}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Dano no Membro: ${bodyPartDamage} PV | Final nos PV: -${finalDamage} PV (Limitado pela Vida da Parte)`
         : `${attackerPrefix}Local: ${locName} | Dano: ${numericRawDamage} (${descDamageTypeLabel}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Final: -${finalDamage} PV`);
 
     onApplyDamage(npc.id, finalDamage, {
@@ -259,6 +266,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       penetratingDamage,
       woundMultiplier: multiplier,
       finalDamage,
+      bodyPartDamage,
       hpBefore: npc.hpCurrent,
       hpAfter: npc.hpCurrent - finalDamage,
     });
@@ -733,6 +741,22 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   <span className="text-white">x{multiplier} {damageType ? `(${damageType})` : '(Direto)'}</span>
                 </div>
 
+                {isDamageCapped && (
+                  <div className="flex items-center justify-between text-amber-300 font-bold bg-amber-950/40 border border-amber-600/40 rounded-lg p-2 text-xs font-sans">
+                    <span>Limite de Dano do Membro ({partHp} PV):</span>
+                    <span>{bodyPartDamage} no membro &rarr; -{finalDamage} PV nos PV</span>
+                  </div>
+                )}
+
+                {bodyPartStatusAlert?.label && (
+                  <div className="flex items-center justify-between text-xs p-2 bg-slate-900 border border-slate-800 rounded-lg font-sans">
+                    <span className="text-slate-300 font-medium">Status resultante ({selectedLoc?.location}):</span>
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${bodyPartStatusAlert.badgeClass}`}>
+                      {bodyPartStatusAlert.label}
+                    </span>
+                  </div>
+                )}
+
                 {appliedRules.length > 0 && (
                   <div className="pt-1 flex flex-wrap gap-1 font-sans">
                     {appliedRules.map((rule, idx) => (
@@ -745,7 +769,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
                 <div className="border-t border-slate-800 pt-2 flex justify-between text-sm font-bold text-rose-400">
                   <span>Dano Final nos PV:</span>
-                  <span className="text-base font-black">-{finalDamage} PV</span>
+                  <span className="text-base font-black">
+                    -{finalDamage} PV {isDamageCapped ? `(de ${bodyPartDamage} no membro)` : ''}
+                  </span>
                 </div>
               </div>
             )}

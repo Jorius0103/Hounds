@@ -17,6 +17,7 @@ import {
   migrateArmorLocations,
   getCrippledBodyParts,
   sanitizeHitLocationRule,
+  getBodyPartStatus,
 } from '../utils/gurps';
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { SpellsModal } from './SpellsModal';
@@ -636,12 +637,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     // 5. Partes do Corpo Inutilizadas (quando o dano tomado na parte supera a vida total calculada)
     if (isMaster || npc.characterType === 'player') {
       const crippledParts = getCrippledBodyParts(npc);
-      crippledParts.forEach(({ part, effectiveDmg, maxHp }) => {
+      crippledParts.forEach(({ part, effectiveDmg, maxHp, statusLabel, badgeClass }) => {
         alerts.push({
           id: `crippled-${part.key}`,
-          badgeClass: 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
-          text: `${part.name}: Inutilizado`,
-          tooltip: `${part.name} Inutilizado: Dano acumulado (${effectiveDmg}) atingiu ou superou a vida do membro (${maxHp} PV)!`,
+          badgeClass: badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
+          text: `${part.name}: ${statusLabel}`,
+          tooltip: `${part.name} ${statusLabel}: Dano acumulado (${effectiveDmg}) em relação à vida da parte (${maxHp} PV)!`,
           icon: AlertTriangle,
         });
       });
@@ -3121,7 +3122,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     const logDmg = calculateLogDamageForBodyPart(npc.history || [], part.logKeys);
                     const isOverridden = npc.bodyPartDamageOverrides?.[part.key] !== undefined;
                     const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[part.key] ?? 0) : logDmg;
-                    const isCrippled = hpInfo.value !== null && effectiveDmg >= hpInfo.value;
+                    const partStatus = getBodyPartStatus(part.name, effectiveDmg, hpInfo.value);
                     const customRule = npc.bodyPartCustomRules?.[part.key];
                     const activeRule = sanitizeHitLocationRule(customRule !== undefined ? customRule : part.defaultRule);
 
@@ -3193,9 +3194,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                               </button>
                             )}
 
-                            {isCrippled && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-950/80 text-rose-300 border border-rose-800/80" title="Dano igual ou superior à vida total do membro!">
-                                Inutilizado
+                            {partStatus.label && (
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${partStatus.badgeClass}`}
+                                title={`Dano acumulado (${effectiveDmg}) em relação à vida da parte (${hpInfo.value} PV)!`}
+                              >
+                                {partStatus.label}
                               </span>
                             )}
                           </div>
