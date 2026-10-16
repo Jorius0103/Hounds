@@ -741,18 +741,13 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   <span className="text-white">x{multiplier} {damageType ? `(${damageType})` : '(Direto)'}</span>
                 </div>
 
-                {isDamageCapped && (
-                  <div className="flex items-center justify-between text-amber-300 font-bold bg-amber-950/40 border border-amber-600/40 rounded-lg p-2 text-xs font-sans">
-                    <span>Limite de Dano do Membro ({partHp} PV):</span>
-                    <span>{bodyPartDamage} no membro &rarr; -{finalDamage} PV nos PV</span>
-                  </div>
-                )}
-
-                {bodyPartStatusAlert?.label && (
-                  <div className="flex items-center justify-between text-xs p-2 bg-slate-900 border border-slate-800 rounded-lg font-sans">
-                    <span className="text-slate-300 font-medium">Status resultante ({selectedLoc?.location}):</span>
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${bodyPartStatusAlert.badgeClass}`}>
-                      {bodyPartStatusAlert.label}
+                {!isNoLocation && selectedLoc && (
+                  <div className={`flex justify-between text-xs font-mono ${
+                    isDamageCapped ? 'text-amber-300 bg-amber-950/40 p-2 rounded-lg border border-amber-600/40 font-sans' : 'text-slate-400'
+                  }`}>
+                    <span>Dano Total no Membro ({selectedLoc.location}):</span>
+                    <span className="text-white font-bold">
+                      {bodyPartDamage} PV{isDamageCapped ? ` (Limite PV do Membro: ${partHp} PV)` : (partHp ? ` (Vida: ${partHp} PV)` : '')}
                     </span>
                   </div>
                 )}
