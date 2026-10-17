@@ -366,12 +366,18 @@ function gearLoadCatalogs(g) {
 function sheetGearHtml(s) {
   var ui = S.ui, can = canWrite(), g = gearNow(s), saved = sheetGear(s), L = gearLoad(g), a = sheetAttrsNow(s);
   gearLoadCatalogs(saved);
-  // Criar (Armadura, Arma, Escudo, Item) first, then the list (Meus Itens), the body, the packs and the
-  // house; the load they give last.
-  return sheetCreateHtml(s, saved) + sheetInvHtml(g, L, can && !gearEditing()) +
-    sheetBodyHtml(g, L, can && !!ui.bodyDraft, can && !!ui.packDraft) +
-    sheetPacksHtml(g, L, can && !!ui.packDraft, can && !!ui.bodyDraft) + sheetHomesHtml(g, can && !!ui.homeDraft) + sheetLoadHtml(L, a);
+  // Criar (Armadura, Arma, Escudo, Item) first and the load last, always; between them the list
+  // (Meus Itens), the body, the packs and the house, in the order chosen (sortSecsHtml).
+  return '<div class="gear-tab">' + sheetCreateHtml(s, saved) + sortSecsHtml('gearSecs', GEAR_ORDER_KEY, {
+    equip: function () { return sheetInvHtml(g, L, can && !gearEditing()); },
+    body: function () { return sheetBodyHtml(g, L, can && !!ui.bodyDraft, can && !!ui.packDraft); },
+    packs: function () { return sheetPacksHtml(g, L, can && !!ui.packDraft, can && !!ui.bodyDraft); },
+    homes: function () { return sheetHomesHtml(g, can && !!ui.homeDraft); } }) + sheetLoadHtml(L, a) + '</div>';
 }
+// Meus Itens, Corpo, Mochilas and Casa are dragged into any order among them (wireSecSort); not while
+// something of the tab is being edited.
+var GEAR_ORDER_KEY = 'hounds_equip_order';
+function gearGripHtml(name) { return gearEditing() ? '' : secGripHtml('a seção ' + name); }
 // The four Criar: closed, one row of cards (a card opens its builder); one open, only its builder, the
 // whole width (the others wait while it is open, as Meus Itens does).
 function sheetCreateHtml(s, g) {
@@ -393,10 +399,11 @@ function gearCreateTile(sec, btn, icon, title, count, hint) {
 var GEAR_FOLD_KEY = 'hounds_equip_folded';
 function gearFolded() { try { var v = JSON.parse(lstore(GEAR_FOLD_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
 function gearFoldClass(key, editing) { return !editing && gearFolded().indexOf(key) >= 0 ? ' folded' : ''; }
-function gearFoldTitle(key, title, editing) {
-  var open = !!editing || gearFolded().indexOf(key) < 0;
-  return '<h2 class="sec-title"><button class="fold-btn" type="button" data-fold="' + key + '" aria-expanded="' + open + '" title="' + (open ? 'Recolher' : 'Mostrar') + '"' + (editing ? ' disabled' : '') + '>' +
-    svg('<path d="m6 9 6 6 6-6"/>', 14, 2.4) + title + '</button></h2>';
+// tag: the title's heading, h2 unless a part of a section (h3, as Combate's).
+function gearFoldTitle(key, title, editing, tag) {
+  var open = !!editing || gearFolded().indexOf(key) < 0, h = tag || 'h2';
+  return '<' + h + ' class="sec-title"><button class="fold-btn" type="button" data-fold="' + key + '" aria-expanded="' + open + '" title="' + (open ? 'Recolher' : 'Mostrar') + '"' + (editing ? ' disabled' : '') + '>' +
+    svg('<path d="m6 9 6 6 6-6"/>', 14, 2.4) + title + '</button></' + h + '>';
 }
 function wireGearFold() {
   // Only its own buttons: Combate's editor and the pages' <details> use data-fold too.
@@ -468,7 +475,7 @@ function invRowHtml(x, g, L, can) {
 }
 // can: the actions of the lines (not while something else is being edited).
 function sheetInvHtml(g, L, can) {
-  var head = '<div class="gurps-head">' + gearFoldTitle('equip', 'Meus Itens', false) + '<span class="gurps-total" id="eqTotal" title="Peso de tudo o que o personagem tem (não é a carga)">' + esc(eqLbs(L.owned)) + '</span></div>';
+  var head = '<div class="gurps-head">' + gearGripHtml('Meus Itens') + gearFoldTitle('equip', 'Meus Itens', false) + '<span class="gurps-total" id="eqTotal" title="Peso de tudo o que o personagem tem (não é a carga)">' + esc(eqLbs(L.owned)) + '</span></div>';
   if (!g.equip.length) return '<section class="gurps' + gearFoldClass('equip', false) + '" id="equip">' + head + '<p class="long none">Nenhum equipamento.' + (canWrite() ? ' Use os cartões de <b>Criar</b> acima.' : '') + '</p></section>';
   // The pieces of Criar Armadura, the weapons and the shields in their own tables; the rest below, in
   // two tables side by side (half each; one under the other on a narrow screen); the total of everything last.
@@ -494,7 +501,7 @@ function gearChip(e, qty, g) {
 }
 function sheetBodyHtml(g, L, editing, busy) {
   var ui = S.ui, can = canWrite(), quick = can && !gearEditing(), by = gearIndex(g.equip);
-  var head = '<div class="gurps-head">' + gearFoldTitle('body', 'Corpo', editing) + '<span class="gurps-total" id="bodyTotal" title="Peso da configuração em uso">' + (L.active ? esc(eqLbs(L.body)) : '—') + '</span>' +
+  var head = '<div class="gurps-head">' + gearGripHtml('Corpo') + gearFoldTitle('body', 'Corpo', editing) + '<span class="gurps-total" id="bodyTotal" title="Peso da configuração em uso">' + (L.active ? esc(eqLbs(L.body)) : '—') + '</span>' +
     (editing ? secSaveBtnsHtml('bodyCancel', 'bodySave', 'corpo')
       : can && !busy && !gearEditing() ? secEditBtnHtml('bodyEdit', 'corpo') : '') + '</div>';
   if (editing) return '<section class="gurps' + gearFoldClass('body', editing) + '" id="gearBody">' + head + bodyEditHtml(g) + '</section>';
@@ -627,7 +634,7 @@ function packCardHtml(x, by, g) {
 // As the Corpo: a tab per pack (the one in use marked), the bar to use it (only one at a time), its content.
 function sheetPacksHtml(g, L, editing, busy) {
   var ui = S.ui, can = canWrite(), quick = can && !gearEditing(), by = gearIndex(g.equip);
-  var head = '<div class="gurps-head">' + gearFoldTitle('packs', 'Mochilas', editing) + '<span class="gurps-total" id="packTotal" title="Peso da mochila em uso">' + esc(eqLbs(L.inUse)) + '</span>' +
+  var head = '<div class="gurps-head">' + gearGripHtml('Mochilas') + gearFoldTitle('packs', 'Mochilas', editing) + '<span class="gurps-total" id="packTotal" title="Peso da mochila em uso">' + esc(eqLbs(L.inUse)) + '</span>' +
     (editing ? secSaveBtnsHtml('packCancel', 'packSave', 'mochilas')
       : can && !busy && !gearEditing() ? secEditBtnHtml('packEdit', 'mochilas') : '') + '</div>';
   if (editing) return '<section class="gurps' + gearFoldClass('packs', editing) + '" id="gearPacks">' + head + packEditHtml(g) + '</section>';
@@ -705,7 +712,7 @@ function homeCardHtml(h, by, g) {
 function sheetHomesHtml(g, editing) {
   var ui = S.ui, can = canWrite(), by = gearIndex(g.equip), all = 0;
   g.homes.forEach(function (h) { all += homeLbs(h, by); });
-  var head = '<div class="gurps-head">' + gearFoldTitle('homes', 'Casa', editing) + '<span class="gurps-total" id="homeTotal" title="Peso do que está guardado em casa (não é a carga)">' + esc(eqLbs(eqRound(all))) + '</span>' +
+  var head = '<div class="gurps-head">' + gearGripHtml('Casa') + gearFoldTitle('homes', 'Casa', editing) + '<span class="gurps-total" id="homeTotal" title="Peso do que está guardado em casa (não é a carga)">' + esc(eqLbs(eqRound(all))) + '</span>' +
     (editing ? secSaveBtnsHtml('homeCancel', 'homeSave', 'casa')
       : can && !gearEditing() ? secEditBtnHtml('homeEdit', 'casa') : '') + '</div>';
   var open = '<section class="gurps' + gearFoldClass('homes', editing) + '" id="gearHomes">' + head;
@@ -748,6 +755,7 @@ function homeEditHtml(g) {
 /* ---------- wiring ---------- */
 function wireSheetEquip(s) {
   var ui = S.ui;
+  wireSecSort('gearSecs', GEAR_ORDER_KEY);
   // The common lines of Meus Itens: Editar opens Criar Item's form with the line; Excluir asks first.
   var items = $('equip'); if (items && !gearEditing()) items.addEventListener('click', function (e) {
     var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-it-edit], [data-it-del], [data-it-delyes], [data-it-delno]'); if (!b) return;

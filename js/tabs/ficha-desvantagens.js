@@ -96,7 +96,7 @@ function disadvRowHtml(x) {
 }
 function sheetDisadvsHtml(s, editing) {
   var ui = S.ui, can = canWrite(), list = editing ? ui.disadvDraft : sheetDisadvs(s);
-  var head = '<div class="gurps-head">' + gearFoldTitle('disadvs', 'Desvantagens', editing) + '<span class="gurps-total" id="dvTotal">' + advsTotal(list) + ' pts</span>' +
+  var head = '<div class="gurps-head">' + sheetGripHtml('Desvantagens') + gearFoldTitle('disadvs', 'Desvantagens', editing) + '<span class="gurps-total" id="dvTotal">' + advsTotal(list) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('dvCancel', 'dvSave', 'desvantagens')
       : can && !sheetDraftOpen() ? secEditBtnHtml('dvEdit', 'desvantagens') : '') + '</div>';
   if (editing) {

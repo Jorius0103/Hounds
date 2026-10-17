@@ -326,7 +326,6 @@ p.pt-name { font-size: 15px; margin: -2px 0 4px; }
 .spell-badge.adv-ref { background: var(--well); color: var(--muted); border: 1px solid var(--line-2); }
 
 /* Ficha GURPS: perícias */
-#skills { margin-top: 22px; }
 .gtab .gnh { width: 74px; font-weight: 700; white-space: nowrap; }
 .gtab .gnh small { display: inline; margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--faint); }
 .gtab .gnh.bonus, .sk-nh.bonus { background: rgba(34, 197, 94, .14); color: #16a34a; }
@@ -474,10 +473,9 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 @media (max-width: 760px) { .sheet-portrait { width: 64px; height: 64px; border-radius: 12px; } .sheet-title { gap: 12px; } }
 
 /* Ficha › Combate: estilos lado a lado; embaixo, Danos e Defesas (seções próprias) lado a lado, como na planilha */
-#combat { margin-top: 22px; }
 .sc-tab th a { color: inherit; text-decoration: none; }
 .sc-tab th a:hover { color: var(--accent); }
-.sc-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px 14px; align-items: start; margin-top: 22px; }
+.sc-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px 14px; align-items: start; }
 .sc-pair > section { min-width: 0; }
 .sc-pair.editing { grid-template-columns: minmax(0, 1fr); }
 .sc-dmg td, .sc-dmg th { text-align: center; }
@@ -572,7 +570,13 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sc-req.miss td b, .sc-req.miss .gnh { color: var(--danger); }
 .sc-req-line.miss b { color: var(--danger); }
 /* Perícias de Combate: a tabela principal, em três lado a lado, com o total embaixo */
+/* Combate em duas partes, Perícias de Combate e Estilos: cada uma com título, pontos e recolhível */
+.sc-part { padding-top: 12px; border-top: 1px solid var(--line); }
+.sc-part + .sc-part { margin-top: 10px; }
+.sc-part-title { margin: 10px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
 .sc-main { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+/* A cópia das perícias dos estilos, sem os pontos (contam no estilo) */
+.sc-copies .gpts { color: var(--faint); }
 .sc-main .gtab { margin: 0; }
 .sc-tab th:first-child { display: flex; align-items: center; gap: 6px; }
 .sc-grip { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; margin: -4px 0 -4px -6px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); cursor: grab; touch-action: none; }
@@ -582,6 +586,16 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sc-card.dragging .sc-grip { cursor: grabbing; }
 .sc-ph { break-inside: avoid; margin-bottom: 14px; border: 2px dashed var(--accent); border-radius: 14px; background: var(--accent-soft); }
 @media (prefers-reduced-motion: reduce) { .sc-card.dragging { transform: none; } }
+
+/* Ficha e Equip.: as seções na ordem escolhida (arrastando pela alça do cabeçalho). O espaço entre
+   elas é do contêiner, não de cada uma; enquanto uma é arrastada, todas mostram só o cabeçalho. */
+.sort-secs { display: flex; flex-direction: column; gap: 44px; }
+.sort-secs.sorting { gap: 12px; }
+.sort-secs.sorting .sort-sec section.gurps > :not(.gurps-head) { display: none; }
+.sort-sec.dragging { position: fixed; z-index: 60; pointer-events: none; margin: 0; box-sizing: border-box; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: 0 16px 40px var(--shadow); transform: rotate(.6deg); }
+.sort-sec.dragging .sc-grip { cursor: grabbing; }
+.sort-ph { box-sizing: border-box; border: 2px dashed var(--accent); border-radius: 12px; background: var(--accent-soft); }
+@media (prefers-reduced-motion: reduce) { .sort-sec.dragging { transform: none; } }
 
 /* Ficha › Combate: pontos por estilo em grade, 3 por linha; cada célula com o nome e uma coluna Pts.
    A grade passa 1px da borda da caixa (que corta o que sobra), escondendo as linhas da última coluna
@@ -647,8 +661,8 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 
 /* Ficha › Equip.: a carga no alto; a lista de equipamentos (tipo, item, quantidade, peso, custo,
    observações e onde está); o corpo, por configuração e parte; as mochilas */
-#gearLoad { margin-top: 22px; }
-#equip, #gearBody, #gearPacks { margin-top: 26px; }
+/* Criar no alto, Carga no fim e, entre elas, as seções na ordem escolhida (.sort-secs, mais acima). */
+.gear-tab { display: flex; flex-direction: column; gap: 44px; margin-top: 22px; }
 .gear-notes { display: flex; flex-direction: column; gap: 8px; }
 .gear-notes:empty { display: none; }
 /* Meus Itens, os itens comuns: duas tabelas lado a lado (uma embaixo da outra em tela estreita) */
@@ -765,7 +779,6 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .gear-ptot { margin: 0; font-size: 13px; color: var(--muted); }
 
 /* Criar Armadura: os conjuntos em cartões; o construtor com modelo base, qualidade, localizações e resumo */
-section#armorSec { margin-top: 22px; }
 .ab-tab th, .ab-tab td { white-space: nowrap; }
 .ab-tab th:first-child, .ab-tab td:first-child, .ab-tab th:nth-child(2), .ab-tab td:nth-child(2) { text-align: left; }
 .ab-tab tr.on td { background: var(--accent-soft); }
@@ -785,9 +798,8 @@ section#armorSec { margin-top: 22px; }
 .gstat input { width: 100%; box-sizing: border-box; margin-top: 2px; }
 /* Meus Itens: as armaduras de Criar Armadura (Armadura | RD | Custo | Peso | Ajustes | Notas) */
 #equip .wtab-wrap + .eq-split, #equip .wtab-wrap + .wtab-wrap, #equip .wtab-wrap + .eq-grand, #equip .eq-split + .eq-grand { margin-top: 12px; }
-section#weaponSec, section#shieldSec, section#itemSec { margin-top: 22px; }
 /* Criar: os quatro cartões numa linha (dois em telas médias, um no celular) */
-#createSec { margin-top: 22px; gap: 10px; }
+#createSec { gap: 10px; }
 #createSec .gurps-head .hint-text { margin: 0; }
 .cr-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .cr-grid > .cr-cell { margin: 0; display: flex; }

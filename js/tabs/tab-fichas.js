@@ -271,7 +271,7 @@ function gurpsDerivedHtml(a, r) {
 }
 function sheetAttrsHtml(s, a, editing) {
   var r = gurpsStats(a), e = withAdvFx(s, a), re = gurpsStats(e), can = canWrite();
-  return '<section class="gurps' + gearFoldClass('attrs', editing) + '" id="gurps"><div class="gurps-head">' + gearFoldTitle('attrs', 'Atributos', editing) + '<span class="gurps-total" id="gTotal">' + r.total + ' pts</span>' +
+  return '<section class="gurps' + gearFoldClass('attrs', editing) + '" id="gurps"><div class="gurps-head">' + sheetGripHtml('Atributos') + gearFoldTitle('attrs', 'Atributos', editing) + '<span class="gurps-total" id="gTotal">' + r.total + ' pts</span>' +
     (editing ? secSaveBtnsHtml('attrCancel', 'attrSave', 'atributos')
       : can ? secEditBtnHtml('attrEdit', 'atributos') : '') + '</div>' +
     '<div class="gurps-grid">' +
@@ -482,7 +482,7 @@ function cultureEditRow(c, i) {
 function sheetSkillsHtml(s, editing) {
   var d = S.ui.skillDraft, skills = editing ? d.skills : sheetSkills(s), cultures = editing ? d.cultures : sheetCultures(s);
   var av = attrValues(sheetAttrsNow(s)), can = canWrite();
-  var head = '<div class="gurps-head">' + gearFoldTitle('skills', 'Perícias', editing) + '<span class="gurps-total" id="skTotal">' + skillsTotal(skills, cultures) + ' pts</span>' +
+  var head = '<div class="gurps-head">' + sheetGripHtml('Perícias') + gearFoldTitle('skills', 'Perícias', editing) + '<span class="gurps-total" id="skTotal">' + skillsTotal(skills, cultures) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('skCancel', 'skSave', 'perícias')
       : can && !sheetDraftOpen() ? secEditBtnHtml('skEdit', 'perícias') : '') + '</div>';
   if (editing) {
@@ -744,6 +744,21 @@ function allyBoxHtml(a, can, confirmDel) {
       '<button class="btn ghost" type="button" id="allyDelNo">Cancelar</button></div></div>' : '') + '</div>';
 }
 var SHEET_TABS = [{ key: 'sheet', label: 'Ficha' }, { key: 'equip', label: 'Equip.' }, { key: 'magic', label: 'Magia' }];
+// The sections of the Ficha tab, dragged into any order (wireSecSort; Danos and Defesas, side by side,
+// go together); Observações stays last. Not while one of them is being edited.
+var SHEET_ORDER_KEY = 'hounds_sheet_order';
+function sheetSecsHtml(s, can) {
+  var ui = S.ui;
+  return sortSecsHtml('sheetSecs', SHEET_ORDER_KEY, {
+    attrs: function () { return sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can); },
+    skills: function () { return sheetSkillsHtml(s, !!ui.skillDraft && can); },
+    combat: function () { return sheetCombatHtml(s, !!ui.combatDraft && can); },
+    dmgdef: function () { return sheetDmgDefHtml(s); },
+    advs: function () { return sheetAdvsHtml(s, !!ui.advDraft && can); },
+    disadvs: function () { return sheetDisadvsHtml(s, !!ui.disadvDraft && can); },
+    quirks: function () { return sheetQuirksHtml(s, !!ui.quirkDraft && can); } });
+}
+function sheetGripHtml(name) { return S.ui.attrDraft || sheetDraftOpen() ? '' : secGripHtml('a seção ' + name); }
 // The page of a main sheet (m): its head, a tab for it and one for each ally (#ficha~<id>~<ally id>), and
 // below them the tabs Ficha, Equip. and Magia of the one open (s), the same sections for both.
 function renderSheetPage() {
@@ -792,9 +807,7 @@ function renderSheetPage() {
     return '<button type="button" role="tab" data-stab="' + t.key + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '">' + t.label + '</button>';
   }).join('') + '</div>';
   pageRoot.innerHTML = head + people + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetGearHtml(s) : tab === 'magic' ? sheetSpellsHtml(s, !!ui.spellDraft && can)
-    : sheetAttrsHtml(s, ui.attrDraft || sheetAttrs(s), !!ui.attrDraft && can) + sheetSkillsHtml(s, !!ui.skillDraft && can) +
-      sheetCombatHtml(s, !!ui.combatDraft && can) + sheetDmgDefHtml(s) + sheetAdvsHtml(s, !!ui.advDraft && can) + sheetDisadvsHtml(s, !!ui.disadvDraft && can) +
-      sheetQuirksHtml(s, !!ui.quirkDraft && can) + main);
+    : sheetSecsHtml(s, can) + main);
   pageRoot.querySelectorAll('[data-stab]').forEach(function (b) {
     b.onclick = function () { var t = b.getAttribute('data-stab'); if (t !== tab) { ui.sheetTab = t; renderSheetPage(); } };
   });
@@ -807,6 +820,7 @@ function renderSheetPage() {
   wireFolds(pageRoot);
   // Atributos, Perícias, Combate, Vantagens, Desvantagens, Peculiaridades and the lists of Equip. fold (gearFoldTitle).
   wireGearFold();
+  wireSecSort('sheetSecs', SHEET_ORDER_KEY);
   wireSheetAttrs(s);
   wireSheetSkills(s);
   wireSheetCombat(s);

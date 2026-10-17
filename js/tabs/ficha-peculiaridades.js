@@ -31,7 +31,7 @@ Ops.saveSheetQuirks = function (s, list) {
 /* ---------- view ---------- */
 function sheetQuirksHtml(s, editing) {
   var ui = S.ui, can = canWrite(), list = editing ? ui.quirkDraft : sheetQuirks(s), warn = quirksWarn(list);
-  var head = '<div class="gurps-head">' + gearFoldTitle('quirks', 'Peculiaridades', editing) + '<span class="gurps-total" id="pqTotal">' + quirksTotal(list) + ' pts</span>' +
+  var head = '<div class="gurps-head">' + sheetGripHtml('Peculiaridades') + gearFoldTitle('quirks', 'Peculiaridades', editing) + '<span class="gurps-total" id="pqTotal">' + quirksTotal(list) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('pqCancel', 'pqSave', 'peculiaridades')
       : can && !sheetDraftOpen() ? secEditBtnHtml('pqEdit', 'peculiaridades') : '') + '</div>';
   if (editing) {

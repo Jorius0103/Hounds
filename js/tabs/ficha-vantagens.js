@@ -195,7 +195,7 @@ function advRowHtml(x, inCombat, onSheet, fastDraws) {
 }
 function sheetAdvsHtml(s, editing) {
   var ui = S.ui, can = canWrite(), list = editing ? ui.advDraft : sheetAdvs(s);
-  var head = '<div class="gurps-head">' + gearFoldTitle('advs', 'Vantagens', editing) + '<span class="gurps-total" id="avTotal">' + advsTotal(list) + ' pts</span>' +
+  var head = '<div class="gurps-head">' + sheetGripHtml('Vantagens') + gearFoldTitle('advs', 'Vantagens', editing) + '<span class="gurps-total" id="avTotal">' + advsTotal(list) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('avCancel', 'avSave', 'vantagens')
       : can && !sheetDraftOpen() ? secEditBtnHtml('avEdit', 'vantagens') : '') + '</div>';
   if (editing) {

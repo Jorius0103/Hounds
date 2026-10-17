@@ -91,6 +91,7 @@ function combatForSave(c) {
   return out;
 }
 function combatTotal(c) { return c.styles.reduce(function (n, st) { return n + sumPts(st.items); }, sumPts(c.general)); }
+function scStylesTotal(c) { return combatTotal(c) - sumPts(c.general); }
 
 /* ---------- levels ---------- */
 // Every skill the sheet knows (Combate and Perícias), for the techniques' base skills.
@@ -354,8 +355,10 @@ function scLink(x) {
     list.filter(function (y) { return combatKey(y.name) === k; })[0];
   return a ? { attr: 'data-adv-modal', id: a.id, href: advHref(a.id), title: 'Ver ' + (/^perk$/i.test(a.type || '') ? 'o perk' : 'a vantagem') } : null;
 }
-function scItemName(x) {
+// extra: more to say under the name, after the kind ("de Knightly Mounted Combat").
+function scItemName(x, extra) {
   var tag = x.kind === 'skill' ? x.attr + '/' + x.diff : x.kind === 'tech' ? 'Técnica ' + (x.diff === 'A' ? 'Média' : 'Difícil') : '';
+  if (extra) tag += (tag ? ' · ' : '') + esc(extra);
   var l = scLink(x);
   var name = l ? '<a href="' + l.href + '" ' + l.attr + '="' + esc(l.id) + '" title="' + l.title + '">' + esc(x.name) + '</a>' : esc(x.name);
   return '<td><b>' + name + '</b>' + (tag ? '<small>' + tag + '</small>' : '') + '</td>';
@@ -388,15 +391,48 @@ function scGroupHtml(title, items, pool, av, href, key, drag, reqs) {
       : '<tr><td colspan="3" class="gnone">Nada ainda.</td></tr>') +
     '</tbody></table></div>';
 }
-// The main table (the skills outside styles), in name order, split in three side by side, down each
-// column; the title over the first, the total once below them.
+// A list split in three, down each column.
+function scThirds(list) {
+  var per = Math.ceil(list.length / 3), cols = [];
+  for (var i = 0; i < list.length; i += per) cols.push(list.slice(i, i + per));
+  return cols;
+}
+// The main table (the skills outside styles), in name order, split in three side by side; the total
+// once below them.
 function scMainHtml(all, pool, av) {
-  var items = scShown(all).sort(byName), per = Math.ceil(items.length / 3), cols = [];
-  for (var i = 0; i < items.length; i += per) cols.push(items.slice(i, i + per));
-  return '<div class="sc-main"><div class="gurps-grid">' + cols.map(function (col, j) {
-    return '<table class="gtab sc-tab"><thead><tr><th>' + (j ? '&nbsp;' : 'Perícias de Combate') + '</th><th>Pts</th><th>NH</th></tr></thead><tbody>' +
+  var items = scShown(all).sort(byName);
+  return '<div class="sc-main"><div class="gurps-grid">' + scThirds(items).map(function (col, j) {
+    return '<table class="gtab sc-tab"><thead><tr><th>' + (j ? '&nbsp;' : 'Nome') + '</th><th>Pts</th><th>NH</th></tr></thead><tbody>' +
       col.map(function (x) { return '<tr>' + scItemName(x) + '<td class="gpts">' + x.pts + '</td>' + scNhCell(x, pool, av) + '</tr>'; }).join('') + '</tbody></table>';
   }).join('') + '</div><table class="gtab sc-tab"><tfoot><tr><td colspan="2">Total perícias de combate</td><td class="gpts">' + sumPts(items) + '</td></tr></tfoot></table></div>';
+}
+// The skills and techniques with points in a style that the main table does not show, by kind and
+// name: once each, with the styles they are in and the row with the most points (its NH).
+// [{ x, from: [style name] }], in name order.
+function scStyleCopies(c) {
+  var have = {}, by = {}, out = [];
+  function key(x) { return x.kind === 'trait' || !norm(x.name) ? '' : x.kind + ':' + norm(x.name); }
+  scShown(c.general).forEach(function (x) { if (key(x)) have[key(x)] = true; });
+  c.styles.forEach(function (st) {
+    scShown(st.items).forEach(function (x) {
+      var k = key(x); if (!k || have[k]) return;
+      var o = by[k], from = st.name || 'Estilo sem nome';
+      if (!o) { o = by[k] = { x: x, from: [] }; out.push(o); } else if (x.pts > o.x.pts) o.x = x;
+      if (o.from.indexOf(from) < 0) o.from.push(from);
+    });
+  });
+  return out.sort(function (a, b) { return byName(a.x, b.x); });
+}
+// Their copy below the main table, apart: the points count in the style, not here (as a style's
+// prerequisites, see scReqRow).
+function scCopiesHtml(list, pool, av) {
+  return '<div class="sc-main sc-copies"><div class="gurps-grid">' + scThirds(list).map(function (col, j) {
+    return '<table class="gtab sc-tab"><thead><tr><th>' + (j ? '&nbsp;' : 'Dos estilos') + '</th><th>Pts</th><th>NH</th></tr></thead><tbody>' +
+      col.map(function (o) {
+        var from = 'de ' + joinE(o.from);
+        return '<tr>' + scItemName(o.x, from) + '<td class="gpts" title="Os pontos contam no estilo (' + esc(joinE(o.from)) + '), não aqui">—</td>' + scNhCell(o.x, pool, av) + '</tr>';
+      }).join('') + '</tbody></table>';
+  }).join('') + '</div><p class="hint-text" style="margin:0">Cópia das perícias e técnicas com pontos nos estilos que não estão nas Perícias de Combate. Os pontos contam no estilo, não no total daqui.</p></div>';
 }
 // The style tables in the order the player left them ('s<i>'). The other skills' table is not
 // among them: it is the main one, always first, above the points per style.
@@ -625,7 +661,7 @@ function sheetDraftOpen() { var ui = S.ui; return !!(ui.skillDraft || ui.combatD
 function sheetCombatHtml(s, editing) {
   var ui = S.ui, c = editing ? ui.combatDraft.c : sheetCombat(s), a = sheetAttrsNow(s), av = attrValues(a);
   var pool = combatSkillPool(c, s), can = canWrite();
-  var head = '<div class="gurps-head">' + gearFoldTitle('combat', 'Combate', editing) + '<span class="gurps-total" id="scTotal">' + combatTotal(c) + ' pts</span>' +
+  var head = '<div class="gurps-head">' + sheetGripHtml('Combate') + gearFoldTitle('combat', 'Combate', editing) + '<span class="gurps-total" id="scTotal">' + combatTotal(c) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('scCancel', 'scSave', 'combate')
       : can && !sheetDraftOpen() ? secEditBtnHtml('scEdit', 'combate') : '') + '</div>';
   if (editing) return '<section class="gurps' + gearFoldClass('combat', editing) + '" id="combat">' + head + scEditHtml(s, c, pool, av) + '</section>';
@@ -639,12 +675,21 @@ function sheetCombatHtml(s, editing) {
     var st = c.styles[+k.slice(1)];
     return scGroupHtml(st.name || 'Estilo sem nome', st.items, pool, av, st.styleId ? styleHref(st.styleId) : '', k, drag, scStyleReqs(st, pool));
   });
+  var copies = scStyleCopies(c);
   return '<section class="gurps' + gearFoldClass('combat', editing) + '" id="combat">' + head +
-    // The other skills first (the main table, not dragged), then the points per style above the
-    // tables they sum up.
-    (scShown(c.general).length ? scMainHtml(c.general, pool, av) : '') +
-    scTotalsHtml(c, pool) +
-    '<div class="sc-masonry" id="scGroups">' + groups.join('') + '</div></section>';
+    // Two parts: the skills outside styles (the main table, not dragged; below it, apart and without
+    // their points, a copy of the styles' skills and techniques it does not have), then the styles, with the points
+    // per style above the tables they sum up.
+    scPartHtml('combatSkills', 'Perícias de Combate', sumPts(c.general),
+      (scShown(c.general).length ? scMainHtml(c.general, pool, av) : '<p class="long none">Nenhuma perícia de combate fora dos estilos.</p>') +
+      (copies.length ? scCopiesHtml(copies, pool, av) : '')) +
+    scPartHtml('combatStyles', 'Estilos', scStylesTotal(c),
+      c.styles.length ? scTotalsHtml(c, pool) + '<div class="sc-masonry" id="scGroups">' + groups.join('') + '</div>' : '<p class="long none">Nenhum estilo.</p>') + '</section>';
+}
+// A part of Combate: its title with its points, folding as the sections do.
+function scPartHtml(key, title, pts, body) {
+  return '<section class="gurps sc-part' + gearFoldClass(key, false) + '" id="' + key + '"><div class="gurps-head">' + gearFoldTitle(key, title, false, 'h3') +
+    '<span class="gurps-total">' + pts + ' pts</span></div>' + body + '</section>';
 }
 
 /* ---------- editor ---------- */
@@ -707,6 +752,7 @@ function scEditHtml(s, c, pool, av) {
   var targets = [['g', 'Perícias de Combate']].concat(c.styles.map(function (x, i) { return ['s' + i, x.name || 'Estilo ' + (i + 1)]; }));
   return lists +
     scGroupEditHtml('Perícias de Combate', c.general, 'g', pool, av, 'scListG', null) +
+    '<h3 class="sec-title sc-part-title">Estilos</h3>' +
     c.styles.map(function (x, i) { return scGroupEditHtml('', x.items, 's' + i, pool, av, 'scList' + i, x); }).join('') +
     '<div class="box sc-edit"><h3 class="sec-title" style="margin:0">Adicionar estilo</h3><div class="sc-row">' +
       scField('Estilo do catálogo', '<div class="sk-pick"><input type="text" id="scStylePick" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scStyleSug" placeholder="' +
@@ -905,7 +951,7 @@ Ops.saveSheetCombatPart = function (s, part) {
   return Ops.saveSheetCombat(cur, Object.assign(sheetCombat(cur), part));
 };
 function scSectionHead(title, editing, id, label) {
-  return '<div class="gurps-head"><h2 class="sec-title">' + title + '</h2>' +
+  return '<div class="gurps-head">' + sheetGripHtml('Danos e Defesas') + '<h2 class="sec-title">' + title + '</h2>' +
     (editing ? secSaveBtnsHtml(id + 'Cancel', id + 'Save', label) : canWrite() && !sheetDraftOpen() ? secEditBtnHtml(id + 'Edit', label) : '') + '</div>';
 }
 function sheetDefenseHtml(s, editing) {
@@ -973,8 +1019,7 @@ function wireSheetDefense(s) {
 
 /* ---------- arranging the tables ----------
    Out of the editor, a table is dragged by the handle in its header (mouse, finger or pen) or
-   moved with the arrow keys on it; the new order is saved at once. While a table is being
-   dragged, data that arrives does not redraw the page (S.ui.scDragging, see onData). */
+   moved with the arrow keys on it (wireDragSort); the new order is saved at once. */
 function saveCombatOrder(s, keys) {
   var cur = sheetById(s.id) || s, c = sheetCombat(cur), styles = [];
   keys.forEach(function (k) { if (c.styles[+k.slice(1)]) styles.push(c.styles[+k.slice(1)]); });
@@ -985,63 +1030,14 @@ function saveCombatOrder(s, keys) {
 function wireCombatDrag(s) {
   var box = $('scGroups'); if (!box || !box.querySelector('.sc-grip')) return;
   var ui = S.ui;
-  function keys() { return [].map.call(box.querySelectorAll('.sc-card'), function (el) { return el.getAttribute('data-key'); }); }
   // After the page redraws (the save arrives), the moved table keeps the focus.
   if (ui.scFocus != null) {
     var g = box.querySelectorAll('.sc-grip')[ui.scFocus]; ui.scFocus = null;
     if (g instanceof HTMLElement) g.focus();
   }
-  box.addEventListener('keydown', function (e) {
-    var grip = e.target.closest && e.target.closest('.sc-grip'); if (!grip) return;
-    var card = grip.closest('.sc-card'), back = e.key === 'ArrowUp' || e.key === 'ArrowLeft', fwd = e.key === 'ArrowDown' || e.key === 'ArrowRight';
-    if (!back && !fwd) return;
-    e.preventDefault();
-    var other = back ? card.previousElementSibling : card.nextElementSibling; if (!other) return;
-    if (back) box.insertBefore(card, other); else box.insertBefore(other, card);
-    grip.focus();
-    ui.scFocus = keys().indexOf(card.getAttribute('data-key'));
-    saveCombatOrder(s, keys());
-  });
-  box.addEventListener('pointerdown', function (e) {
-    var grip = e.target.closest && e.target.closest('.sc-grip'); if (!grip || e.button > 0) return;
-    e.preventDefault();
-    var card = grip.closest('.sc-card'), start = keys().join(), sx = e.clientX, sy = e.clientY, moving = false, ph = null, dx = 0, dy = 0;
-    grip.setPointerCapture(e.pointerId);
-    function begin() {
-      var r = card.getBoundingClientRect();
-      dx = sx - r.left; dy = sy - r.top;
-      ph = document.createElement('div'); ph.className = 'sc-ph'; ph.style.height = r.height + 'px';
-      box.insertBefore(ph, card);
-      card.classList.add('dragging'); card.style.width = r.width + 'px';
-      ui.scDragging = true; moving = true;
-    }
-    function move(ev) {
-      if (!moving) { if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return; begin(); }
-      card.style.left = (ev.clientX - dx) + 'px'; card.style.top = (ev.clientY - dy) + 'px';
-      // The table under the finger: the placeholder goes before it (upper half) or after it.
-      /** @type {{ el: Element, r: DOMRect }} */
-      var over = null;
-      [].forEach.call(box.querySelectorAll('.sc-card'), function (el) {
-        if (el === card) return;
-        var r = el.getBoundingClientRect();
-        if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) over = { el: el, r: r };
-      });
-      if (over) box.insertBefore(ph, ev.clientY < over.r.top + over.r.height / 2 ? over.el : over.el.nextSibling);
-      else {
-        var b = box.getBoundingClientRect();
-        if (ev.clientY > b.bottom) box.appendChild(ph);
-        else if (ev.clientY < b.top) box.insertBefore(ph, box.firstChild);
-      }
-    }
-    function end() {
-      grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', end); grip.removeEventListener('pointercancel', end);
-      if (!moving) return;
-      box.insertBefore(card, ph); ph.remove();
-      card.classList.remove('dragging'); card.style.width = card.style.left = card.style.top = '';
-      ui.scDragging = false;
-      if (keys().join() !== start) saveCombatOrder(s, keys());
-    }
-    grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
-  });
+  wireDragSort(box, { item: '.sc-card', grip: '.sc-grip', ph: 'sc-ph', done: function (keys, card, byKey) {
+    if (byKey) ui.scFocus = keys.indexOf(card.getAttribute('data-key'));
+    saveCombatOrder(s, keys);
+  } });
 }
 

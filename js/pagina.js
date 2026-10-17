@@ -97,6 +97,97 @@ function wireFolds(root) {
   });
 }
 /* =====================================================================
+   Arranging by dragging (the tables of Combate, the sections of Equip.)
+     The items of box (opts.item, each with its data-key) are dragged by their handle (opts.grip) with
+     the mouse, a finger or a pen, or moved with the arrow keys on it. While one is dragged it floats
+     (class dragging) and a placeholder (class opts.ph) shows where it goes; data that arrives does not
+     redraw the page (S.ui.dragging, see onData). opts.start(item) and opts.end(item) run when a drag
+     begins and ends; opts.done(keys, item, byKey) gets the new order, only when it changed.
+   ===================================================================== */
+function wireDragSort(box, opts) {
+  function keys() { return [].map.call(box.querySelectorAll(opts.item), function (el) { return el.getAttribute('data-key'); }); }
+  box.addEventListener('keydown', function (e) {
+    var grip = e.target.closest && e.target.closest(opts.grip); if (!grip) return;
+    var card = grip.closest(opts.item), back = e.key === 'ArrowUp' || e.key === 'ArrowLeft', fwd = e.key === 'ArrowDown' || e.key === 'ArrowRight';
+    if (!back && !fwd) return;
+    e.preventDefault();
+    var other = back ? card.previousElementSibling : card.nextElementSibling; if (!other) return;
+    if (back) box.insertBefore(card, other); else box.insertBefore(other, card);
+    grip.focus();
+    opts.done(keys(), card, true);
+  });
+  box.addEventListener('pointerdown', function (e) {
+    var grip = e.target.closest && e.target.closest(opts.grip); if (!grip || e.button > 0) return;
+    e.preventDefault();
+    var card = grip.closest(opts.item), start = keys().join(), sx = e.clientX, sy = e.clientY, moving = false, ph = null, dx = 0, dy = 0;
+    grip.setPointerCapture(e.pointerId);
+    function begin() {
+      // Where the handle was grabbed, before opts.start changes the layout (the handle stays at the top).
+      var r = card.getBoundingClientRect();
+      dx = sx - r.left; dy = sy - r.top;
+      if (opts.start) { opts.start(card); r = card.getBoundingClientRect(); }
+      ph = document.createElement('div'); ph.className = opts.ph; ph.style.height = r.height + 'px';
+      box.insertBefore(ph, card);
+      card.classList.add('dragging'); card.style.width = r.width + 'px';
+      // The layout changed: the place left by the item stays in view.
+      if (opts.start) ph.scrollIntoView({ block: 'nearest' });
+      S.ui.dragging = true; moving = true;
+    }
+    function move(ev) {
+      if (!moving) { if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return; begin(); }
+      card.style.left = (ev.clientX - dx) + 'px'; card.style.top = (ev.clientY - dy) + 'px';
+      // The item under the finger: the placeholder goes before it (upper half) or after it.
+      /** @type {{ el: Element, r: DOMRect }} */
+      var over = null;
+      [].forEach.call(box.querySelectorAll(opts.item), function (el) {
+        if (el === card) return;
+        var r = el.getBoundingClientRect();
+        if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) over = { el: el, r: r };
+      });
+      if (over) box.insertBefore(ph, ev.clientY < over.r.top + over.r.height / 2 ? over.el : over.el.nextSibling);
+      else {
+        var b = box.getBoundingClientRect();
+        if (ev.clientY > b.bottom) box.appendChild(ph);
+        else if (ev.clientY < b.top) box.insertBefore(ph, box.firstChild);
+      }
+    }
+    function end() {
+      grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', end); grip.removeEventListener('pointercancel', end);
+      if (!moving) return;
+      box.insertBefore(card, ph); ph.remove();
+      card.classList.remove('dragging'); card.style.width = card.style.left = card.style.top = '';
+      S.ui.dragging = false;
+      if (opts.end) opts.end(card);
+      if (keys().join() !== start) opts.done(keys(), card, false);
+    }
+    grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
+  });
+}
+// Sections dragged into any order by the handle in their header (the tabs Ficha and Equip. of a
+// sheet). The order is a way of seeing the page, like the folded sections: remembered in this
+// browser under key, the same for every sheet. html: { key: function drawing the section }, in the
+// order they start in; the saved order loses what it does not know, and a section it does not have
+// yet goes last.
+function sortSecsHtml(id, key, html) {
+  var all = Object.keys(html), v;
+  try { v = JSON.parse(lstore(key) || '[]'); } catch (e) { v = []; }
+  var order = (Array.isArray(v) ? v : []).filter(function (k, i, list) { return all.indexOf(k) >= 0 && list.indexOf(k) === i; });
+  order = order.concat(all.filter(function (k) { return order.indexOf(k) < 0; }));
+  return '<div class="sort-secs" id="' + id + '">' + order.map(function (k) { return '<div class="sort-sec" data-key="' + k + '">' + html[k]() + '</div>'; }).join('') + '</div>';
+}
+// The handle in a section's header.
+function secGripHtml(name) {
+  return '<button class="sc-grip sec-grip" type="button" aria-label="Mover ' + esc(name) + ' (arraste, ou use as setas)" title="Arraste para mudar a ordem">' + svg(SC_GRIP, 14, 2.4) + '</button>';
+}
+// While one is dragged, the sections show only their headers: all of them fit on the screen.
+function wireSecSort(id, key) {
+  var box = $(id); if (!box || !box.querySelector('.sec-grip')) return;
+  wireDragSort(box, { item: '.sort-sec', grip: '.sec-grip', ph: 'sort-ph',
+    start: function () { box.classList.add('sorting'); },
+    end: function () { box.classList.remove('sorting'); },
+    done: function (keys) { lstore(key, JSON.stringify(keys)); } });
+}
+/* =====================================================================
    Pages of a long list (spells, advantages)
    ===================================================================== */
 var PAGE_SIZE = 30;
