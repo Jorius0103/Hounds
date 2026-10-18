@@ -290,22 +290,22 @@ export default function App() {
     return players.map((p) => p.id);
   }, [activeCombat, players]);
 
-  // Lista unificada: Personagens Visíveis no Combate + NPCs específicos do combate ativo
+  // Lista unificada: Personagens Habilitados na Mesa + NPCs específicos do combate ativo
   const allCharacters = useMemo(() => {
     const list: NPC[] = [];
     const seen = new Set<string>();
     const activePlayerSet = new Set(activeCombatPlayerIds);
 
-    // Todos os personagens criados no sistema sempre entram nos combates
+    // Apenas os personagens habilitados na mesa entram na barra do combate ativo
     for (const p of players) {
-      if (!seen.has(p.id)) {
+      if (activePlayerSet.has(p.id) && !seen.has(p.id)) {
         seen.add(p.id);
         list.push(p);
       }
     }
     for (const c of combats) {
       for (const n of c.npcs || []) {
-        if (n.characterType === 'player' && !seen.has(n.id)) {
+        if (n.characterType === 'player' && activePlayerSet.has(n.id) && !seen.has(n.id)) {
           seen.add(n.id);
           list.push({ ...n, isVisibleToPlayer: true });
         }

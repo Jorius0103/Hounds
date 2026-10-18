@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Combat, UserRole, NPC } from '../types/rpg';
 import { CombatLogCard } from './CombatLogCard';
-import { ScrollText, Trash2, Search, X, SlidersHorizontal } from 'lucide-react';
+import { ScrollText, Trash2, Search, X, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
+
+const PAGE_SIZE = 10;
 
 interface GeneralCombatLogProps {
   activeCombat: Combat | undefined;
@@ -34,6 +36,11 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   // Filtro 3: Busca Livre
   const [searchTerm, setSearchTerm] = useState('');
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedRoundFilter, characterFilter, searchTerm, activeCombat?.id]);
 
   // Collect and sort all logs across all active combat NPCs and Personagens
   const allLogs = useMemo(() => {
@@ -147,6 +154,14 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
       return true;
     });
   }, [allLogs, selectedRoundFilter, characterFilter, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const paginatedLogs = useMemo(
+    () => filteredLogs.slice(startIdx, startIdx + PAGE_SIZE),
+    [filteredLogs, startIdx]
+  );
 
   return (
     <div className="bg-slate-900/95 border border-slate-800 rounded-2xl shadow-xl flex flex-col h-[calc(100vh-140px)] min-h-[500px] overflow-hidden">
@@ -307,8 +322,8 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
             )}
           </div>
         ) : (
-          filteredLogs.map((entry, ix) => {
-            const prevRound = ix > 0 ? (filteredLogs[ix - 1].round ?? 0) : null;
+          paginatedLogs.map((entry, ix) => {
+            const prevRound = ix > 0 ? (paginatedLogs[ix - 1].round ?? 0) : null;
             const currentEntryRound = entry.round ?? 0;
             const isNewRound = ix === 0 || prevRound !== currentEntryRound;
             const curRound = activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0;
@@ -345,6 +360,40 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
           })
         )}
       </div>
+
+      {/* Pagination Bar (10 em 10) */}
+      {filteredLogs.length > 0 && (
+        <div className="px-3 py-2 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between gap-2 text-[11px]">
+          <span className="text-slate-400 font-mono text-[10px]">
+            {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filteredLogs.length)} de {filteredLogs.length}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={safePage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, Math.min(p, totalPages) - 1))}
+              className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold flex items-center gap-0.5 transition-colors"
+              title="Página anterior"
+            >
+              <ChevronLeft size={12} />
+              <span>Ant.</span>
+            </button>
+            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-300 font-mono font-bold text-[10px]">
+              Pág. {safePage}/{totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={safePage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, Math.min(p, totalPages) + 1))}
+              className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold flex items-center gap-0.5 transition-colors"
+              title="Próxima página"
+            >
+              <span>Próx.</span>
+              <ChevronRight size={12} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer Info */}
       <div className="p-2 border-t border-slate-800 bg-slate-950/70 text-[10px] text-slate-500 flex items-center justify-between px-3">

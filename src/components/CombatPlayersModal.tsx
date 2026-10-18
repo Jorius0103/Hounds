@@ -51,9 +51,9 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
               <Users size={18} />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Personagens no Combate</h3>
+              <h3 className="text-base font-bold text-white">Personagens na Mesa de Combate</h3>
               <p className="text-[11px] text-slate-400">
-                Escolha quais personagens participam deste combate ou cadastre novos
+                Habilite ou desabilite quais personagens aparecem na mesa de combate ou cadastre novos
               </p>
             </div>
           </div>
@@ -70,7 +70,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
         <div className="space-y-2 shrink-0">
           <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
             <span className="text-slate-400 text-[11px]">
-              Por padrão, todos os personagens são exibidos ao iniciar o combate.
+              {activePlayerIds.length} de {players.length} personagens habilitados na mesa
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -79,7 +79,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                 className="px-2 py-1 text-[11px] font-semibold bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 rounded-lg transition-colors flex items-center gap-1"
               >
                 <Eye size={12} />
-                <span>Exibir Todos</span>
+                <span>Habilitar Todos</span>
               </button>
               <button
                 type="button"
@@ -87,7 +87,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                 className="px-2 py-1 text-[11px] font-semibold bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg transition-colors flex items-center gap-1"
               >
                 <EyeOff size={12} />
-                <span>Ocultar Todos</span>
+                <span>Desabilitar Todos</span>
               </button>
             </div>
           </div>
@@ -145,7 +145,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                       </div>
                       <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
                         <span className={isInCombat ? 'text-emerald-400 font-semibold' : 'text-slate-500'}>
-                          {isInCombat ? 'Visível no Combate' : 'Oculto deste Combate'}
+                          {isInCombat ? 'Habilitado na Mesa' : 'Desabilitado'}
                         </span>
                         <span>•</span>
                         <span>PV {player.hpCurrent ?? '?'}/{player.hpMax ?? '?'}</span>
@@ -158,12 +158,12 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                     onClick={() => onTogglePlayer(player.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
                       isInCombat
-                        ? 'bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-slate-950'
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-950'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
                     }`}
                   >
-                    {isInCombat ? <EyeOff size={13} /> : <Eye size={13} />}
-                    <span>{isInCombat ? 'Ocultar' : 'Exibir'}</span>
+                    {isInCombat ? <Eye size={13} /> : <EyeOff size={13} />}
+                    <span>{isInCombat ? 'Habilitado' : 'Desabilitado'}</span>
                   </button>
                 </div>
               );
