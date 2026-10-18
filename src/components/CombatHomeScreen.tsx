@@ -11,6 +11,7 @@ import {
   EyeOff,
   Users,
   Target,
+  Star,
 } from 'lucide-react';
 import {
   NPC,
@@ -68,39 +69,16 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
           const fpStatus = getFpStatus(npc.fpCurrent, npc.fpMax);
           const maneuver = getCombatManeuver(npc.combatManeuver);
 
-          // Itens Extras: Escudos, Flechas e Pedras de Mana
-          const extraItems = npc.extraItems || [];
-          const shieldItems = extraItems.filter(
-            (it) =>
-              it &&
-              (it.category === 'shield' ||
-                (it.name || '').toLowerCase().includes('escudo') ||
-                (it.name || '').toLowerCase().includes('shield'))
-          );
-          const arrowItems = extraItems.filter(
-            (it) =>
-              it &&
-              (it.category === 'arrows' ||
-                (it.name || '').toLowerCase().includes('flecha') ||
-                (it.name || '').toLowerCase().includes('arco') ||
-                (it.name || '').toLowerCase().includes('muni'))
-          );
-          const manaStones = extraItems.filter(isExtraManaItem);
-          const totalManaStonesCurrent = manaStones.reduce(
-            (sum, it) => sum + (Number(it.current) || 0),
-            0
-          );
-          const totalManaStonesMax = manaStones.reduce(
-            (sum, it) => sum + (Number(it.max) || 0),
-            0
-          );
-          const hasManaStones = manaStones.length > 0;
+          // Recursos e Equipamentos Favoritados (listados individualmente, sem somar pedras)
+          const favoriteItems = (npc.extraItems || []).filter((it) => it && it.isFavorite);
 
           // Defesas Ativas
           const parryList =
             npc.parries && npc.parries.length > 0
               ? npc.parries
               : [{ id: 'parry-default', weaponName: '', parryType: '', value: 0, notes: '' }];
+          const parry1 = parryList[0];
+          const parry2 = parryList.length > 1 ? parryList[1] : null;
 
           // Magias Ativas e Sob Efeito
           const activeSpells = npc.activeSpells || [];
@@ -279,7 +257,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
                       <h3
                         className={`text-sm font-black truncate leading-tight ${
                           isDead
@@ -292,19 +270,17 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       >
                         {npc.name || '(Sem Nome)'}
                       </h3>
-                      {npc.title && (
-                        <span className="text-[10px] text-amber-400/90 font-medium truncate max-w-[120px]">
-                          • {npc.title}
+                      {isPlayerChar && npc.playerName && (
+                        <span
+                          className="text-xs font-semibold text-emerald-400 truncate max-w-[130px]"
+                          title={`Jogador: ${npc.playerName}`}
+                        >
+                          ({npc.playerName})
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-1 flex-wrap mt-0.5">
-                      {isPlayerChar ? (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-300 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-700/60">
-                          <Shield size={9} className="text-emerald-400" />
-                          {npc.playerName ? `PC • ${npc.playerName}` : 'Personagem'}
-                        </span>
-                      ) : (
+                      {!isPlayerChar && (
                         <span className="inline-flex items-center gap-1 text-[9px] font-bold text-purple-300 bg-purple-950/80 px-1.5 py-0.2 rounded border border-purple-700/60">
                           <Users size={9} className="text-purple-400" />
                           NPC
@@ -358,80 +334,128 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
 
               {showDetailedStats ? (
                 <>
-                  {/* LINHA 2: PONTOS DE VIDA E FADIGA (VALORES DESTACADOS E COMPACTOS) */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {/* Pontos de Vida */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 space-y-0.5">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="inline-flex items-center gap-1 font-bold text-rose-400 text-xs">
-                          <Heart size={12} className="text-rose-500 fill-rose-500/20" />
-                          PV
-                        </span>
-                        <span className="font-mono font-black text-sm">
-                          <span
-                            className={
-                              npc.hpCurrent <= 0
-                                ? 'text-red-400'
-                                : npc.hpCurrent < npc.hpMax
-                                ? 'text-yellow-400'
-                                : 'text-emerald-400'
-                            }
-                          >
-                            {npc.hpCurrent}
+                  {/* LINHA 2: PV & FP (EM UMA ÚNICA DIV) & RECURSOS FAVORITADOS (ACIMA NA DIREITA) */}
+                  <div className="grid grid-cols-2 gap-1.5 items-stretch">
+                    {/* COLUNA ESQUERDA: PV e FP na mesma div, um embaixo do outro */}
+                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
+                      {/* Pontos de Vida (PV) */}
+                      <div>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="inline-flex items-center gap-1 font-bold text-rose-400 text-xs">
+                            <Heart size={11} className="text-rose-500 fill-rose-500/20" />
+                            PV
                           </span>
-                          <span className="text-slate-500 text-xs mx-0.5">/</span>
-                          <span className="text-slate-300 text-xs">{npc.hpMax}</span>
-                        </span>
-                      </div>
-                      {npc.hpMax > 0 && (
-                        <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-300 ${
-                              npc.hpCurrent <= 0
-                                ? 'bg-red-600'
-                                : npc.hpCurrent < npc.hpMax * 0.33
-                                ? 'bg-rose-500'
-                                : npc.hpCurrent < npc.hpMax
-                                ? 'bg-yellow-500'
-                                : 'bg-emerald-500'
-                            }`}
-                            style={{
-                              width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
-                            }}
-                          />
+                          <span className="font-mono font-black text-sm">
+                            <span
+                              className={
+                                npc.hpCurrent <= 0
+                                  ? 'text-red-400'
+                                  : npc.hpCurrent < npc.hpMax
+                                  ? 'text-yellow-400'
+                                  : 'text-emerald-400'
+                              }
+                            >
+                              {npc.hpCurrent}
+                            </span>
+                            <span className="text-slate-500 text-xs mx-0.5">/</span>
+                            <span className="text-slate-300 text-xs">{npc.hpMax}</span>
+                          </span>
                         </div>
-                      )}
+                        {npc.hpMax > 0 && (
+                          <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden mt-0.5">
+                            <div
+                              className={`h-full transition-all duration-300 ${
+                                npc.hpCurrent <= 0
+                                  ? 'bg-red-600'
+                                  : npc.hpCurrent < npc.hpMax * 0.33
+                                  ? 'bg-rose-500'
+                                  : npc.hpCurrent < npc.hpMax
+                                  ? 'bg-yellow-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                              style={{
+                                width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border-t border-slate-800/60 my-1" />
+
+                      {/* Pontos de Fadiga (FP) */}
+                      <div>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="inline-flex items-center gap-1 font-bold text-cyan-300 text-xs">
+                            <Zap size={11} className="text-cyan-400 fill-cyan-400/20" />
+                            FP
+                          </span>
+                          <span className="font-mono font-black text-sm">
+                            <span className="text-cyan-300">{npc.fpCurrent}</span>
+                            <span className="text-slate-500 text-xs mx-0.5">/</span>
+                            <span className="text-slate-300 text-xs">{npc.fpMax}</span>
+                          </span>
+                        </div>
+                        {npc.fpMax > 0 && (
+                          <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden mt-0.5">
+                            <div
+                              className="h-full bg-cyan-500 transition-all duration-300"
+                              style={{
+                                width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Fadiga */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 space-y-0.5">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="inline-flex items-center gap-1 font-bold text-cyan-300 text-xs">
-                          <Zap size={12} className="text-cyan-400 fill-cyan-400/20" />
-                          FP
-                        </span>
-                        <span className="font-mono font-black text-sm">
-                          <span className="text-cyan-300">{npc.fpCurrent}</span>
-                          <span className="text-slate-500 text-xs mx-0.5">/</span>
-                          <span className="text-slate-300 text-xs">{npc.fpMax}</span>
+                    {/* COLUNA DIREITA (ACIMA NA DIREITA): Recursos e Equipamentos Favoritados (listados individualmente) */}
+                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
+                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <Star size={10} className="text-amber-400 fill-amber-400/30" />
+                          Recursos Favoritados
                         </span>
                       </div>
-                      {npc.fpMax > 0 && (
-                        <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden">
-                          <div
-                            className="h-full bg-cyan-500 transition-all duration-300"
-                            style={{
-                              width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
-                            }}
-                          />
-                        </div>
-                      )}
+                      <div className="space-y-1 flex-1 flex flex-col justify-center">
+                        {favoriteItems.length > 0 ? (
+                          favoriteItems.map((it) => (
+                            <div
+                              key={it.id}
+                              className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5 text-[9px]"
+                              title={`${it.name} (${it.category || 'Recurso'})`}
+                            >
+                              <span className="font-bold text-slate-200 flex items-center gap-1 truncate max-w-[90px]">
+                                {it.category === 'mana_stone' ? (
+                                  <Sparkles size={9} className="text-cyan-400 shrink-0" />
+                                ) : it.category === 'shield' ? (
+                                  <Shield size={9} className="text-emerald-400 shrink-0" />
+                                ) : it.category === 'arrow' ? (
+                                  <Target size={9} className="text-amber-400 shrink-0" />
+                                ) : (
+                                  <Star size={9} className="text-amber-400 shrink-0" />
+                                )}
+                                <span className="truncate">{it.name || 'Recurso'}</span>
+                              </span>
+                              <span className="font-mono font-black text-[10px] text-white shrink-0">
+                                <span className="text-emerald-300">{it.current ?? 0}</span>
+                                <span className="text-slate-500 mx-0.5">/</span>
+                                <span className="text-slate-300">{it.max ?? 0}</span>
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex items-center justify-center h-full min-h-[36px] text-[9px] text-slate-600 italic">
+                            Nenhum recurso favoritado
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* LINHA 3: DEFESAS ATIVAS (50%) & ITENS / RECURSOS EQUIPADOS (50%) */}
+                  {/* LINHA 3: DEFESAS ATIVAS (2x2) & MAGIAS ATIVAS / SOB EFEITO */}
                   <div className="grid grid-cols-2 gap-1.5 items-stretch">
-                    {/* METADE ESQUERDA: Defesas Ativas (grid 2x2: dois em cima, até dois embaixo) */}
+                    {/* METADE ESQUERDA: Defesas Ativas (grid 2x2: Esq, Bloq, Ap 1, Ap 2 / vazio) */}
                     <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
                       <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
                         <span className="flex items-center gap-1 text-slate-300">
@@ -461,189 +485,101 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                         {/* Aparar 1 */}
                         <div
                           className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                          title={parryList[0]?.weaponName ? `Aparar: ${parryList[0].weaponName} ${parryList[0].notes || ''}` : 'Aparar'}
+                          title={parry1?.weaponName ? `Aparar: ${parry1.weaponName} ${parry1.notes || ''}` : 'Aparar'}
                         >
                           <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
-                            {parryList[0]?.weaponName ? `Ap (${parryList[0].weaponName})` : 'Aparar'}
+                            {parry1?.weaponName ? `Ap (${parry1.weaponName})` : 'Aparar'}
                           </span>
                           <span className="font-mono font-black text-xs text-amber-300 shrink-0">
-                            {parryList[0]?.value ?? 0}
+                            {parry1?.value ?? 0}
                           </span>
                         </div>
 
-                        {/* Aparar 2 (ou indicador) */}
-                        <div
-                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                          title={parryList[1]?.weaponName ? `Aparar 2: ${parryList[1].weaponName} ${parryList[1].notes || ''}` : 'Segundo Aparar'}
-                        >
-                          <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
-                            {parryList[1]?.weaponName ? `Ap (${parryList[1].weaponName})` : 'Ap 2'}
-                          </span>
-                          <span className="font-mono font-black text-xs text-amber-300 shrink-0">
-                            {parryList[1] ? parryList[1].value : '-'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* METADE DIREITA: Escudos, Flechas e Pedras de Mana */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
-                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <Sparkles size={10} className="text-amber-400" />
-                          Recursos / Equipados
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        {/* Escudo(s) */}
-                        {shieldItems.length > 0 ? (
-                          shieldItems.slice(0, 2).map((sh) => (
-                            <div
-                              key={sh.id}
-                              className="flex items-center justify-between bg-slate-900/90 border border-emerald-900/50 rounded px-1.5 py-0.5 text-[9px]"
-                              title={`Escudo: ${sh.name} (PV Atual/Total)`}
-                            >
-                              <span className="font-bold text-emerald-300 flex items-center gap-1 truncate max-w-[70px]">
-                                <Shield size={9} className="text-emerald-400 shrink-0" />
-                                <span className="truncate">{sh.name || 'Escudo'}</span>
-                              </span>
-                              <span className="font-mono font-black text-[10px] text-white shrink-0">
-                                <span className="text-emerald-300">{sh.current ?? 0}</span>
-                                <span className="text-slate-500 mx-0.5">/</span>
-                                <span className="text-slate-300">{sh.max ?? 0}</span>
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="flex items-center justify-between bg-slate-900/50 border border-slate-800/60 rounded px-1.5 py-0.5 text-[9px]">
-                            <span className="text-slate-500 flex items-center gap-1">
-                              <Shield size={9} className="text-slate-600 shrink-0" />
-                              Escudo
-                            </span>
-                            <span className="font-mono text-slate-600 text-[10px]">-</span>
-                          </div>
-                        )}
-
-                        {/* Flechas */}
-                        {arrowItems.length > 0 ? (
-                          arrowItems.slice(0, 2).map((ar) => (
-                            <div
-                              key={ar.id}
-                              className="flex items-center justify-between bg-slate-900/90 border border-amber-900/50 rounded px-1.5 py-0.5 text-[9px]"
-                              title={`Munição / Flechas: ${ar.name}`}
-                            >
-                              <span className="font-bold text-amber-300 flex items-center gap-1 truncate max-w-[70px]">
-                                <Target size={9} className="text-amber-400 shrink-0" />
-                                <span className="truncate">{ar.name || 'Flechas'}</span>
-                              </span>
-                              <span className="font-mono font-black text-[10px] text-white shrink-0">
-                                <span className="text-amber-300">{ar.current ?? 0}</span>
-                                <span className="text-slate-500 mx-0.5">/</span>
-                                <span className="text-slate-300">{ar.max ?? 0}</span>
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="flex items-center justify-between bg-slate-900/50 border border-slate-800/60 rounded px-1.5 py-0.5 text-[9px]">
-                            <span className="text-slate-500 flex items-center gap-1">
-                              <Target size={9} className="text-slate-600 shrink-0" />
-                              Flechas
-                            </span>
-                            <span className="font-mono text-slate-600 text-[10px]">-</span>
-                          </div>
-                        )}
-
-                        {/* Pedras de Mana (Soma Total de todas as pedras se houver) */}
-                        {hasManaStones && (
+                        {/* Aparar 2 (se não houver, deixa o campo vazio mantendo o layout) */}
+                        {parry2 ? (
                           <div
-                            className="flex items-center justify-between bg-cyan-950/60 border border-cyan-800/70 rounded px-1.5 py-0.5 text-[9px]"
-                            title={`Soma de todas as ${manaStones.length} Pedras de Mana (${totalManaStonesCurrent} disp. de ${totalManaStonesMax} total)`}
+                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                            title={`Aparar 2: ${parry2.weaponName} ${parry2.notes || ''}`}
                           >
-                            <span className="font-bold text-cyan-300 flex items-center gap-1 truncate max-w-[85px]">
-                              <Sparkles size={9} className="text-cyan-400 shrink-0" />
-                              Pedras Mana
+                            <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
+                              {parry2.weaponName ? `Ap (${parry2.weaponName})` : 'Ap 2'}
                             </span>
-                            <span className="font-mono font-black text-[10px] text-cyan-200 shrink-0">
-                              <strong className="text-cyan-300">{totalManaStonesCurrent}</strong>
-                              <span className="text-slate-500 mx-0.5">/</span>
-                              <span className="text-slate-300">{totalManaStonesMax}</span>
+                            <span className="font-mono font-black text-xs text-amber-300 shrink-0">
+                              {parry2.value}
                             </span>
                           </div>
+                        ) : (
+                          <div className="bg-slate-900/30 border border-slate-800/40 rounded px-1.5 py-0.5 min-h-[22px]" />
                         )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* LINHA 4: MAGIAS ATIVAS E MAGIAS SOB EFEITO */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {/* Magias Ativas */}
-                    <div className="bg-slate-950/90 border border-purple-900/40 rounded-lg px-2 py-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-300">
-                          <Sparkles size={10} className="text-purple-400" />
-                          Magias Ativas ({activeSpells.length})
-                        </span>
+                    {/* METADE DIREITA: Magias Ativas & Magias Sob Efeito */}
+                    <div className="bg-slate-950/90 border border-purple-900/40 rounded-lg p-1.5 flex flex-col justify-between">
+                      {/* Magias Ativas */}
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-purple-300">
+                            <Sparkles size={9} className="text-purple-400" />
+                            Magias Ativas ({activeSpells.length})
+                          </span>
+                        </div>
+                        {activeSpells.length === 0 ? (
+                          <div className="text-[8px] text-slate-600 italic">Nenhuma ativa</div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1 max-h-10 overflow-y-auto">
+                            {activeSpells.map((sp) => {
+                              const isExpired =
+                                sp.duration !== undefined &&
+                                sp.duration > 0 &&
+                                (currentRound ?? 0) >= (sp.round ?? 0) + sp.duration;
+                              return (
+                                <span
+                                  key={sp.id}
+                                  className="inline-flex items-center gap-1 bg-slate-900 border border-purple-800/50 rounded px-1 py-0.2 text-[8px] text-purple-100"
+                                  title={`Alvo: ${sp.targetName || 'Geral'} | R${sp.round}`}
+                                >
+                                  <strong className="truncate max-w-[65px]">{sp.spellName}</strong>
+                                  <span className="text-slate-400 truncate max-w-[45px]">
+                                    →{sp.targetName || 'Geral'}
+                                  </span>
+                                  {isExpired && <span className="text-amber-300 font-bold">⚠️</span>}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                      {activeSpells.length === 0 ? (
-                        <div className="text-[9px] text-slate-600 italic truncate">Nenhuma ativa</div>
-                      ) : (
-                        <div className="flex flex-wrap gap-1 mt-0.5 max-h-14 overflow-y-auto">
-                          {activeSpells.map((sp) => {
-                            const isExpired =
-                              sp.duration !== undefined &&
-                              sp.duration > 0 &&
-                              (currentRound ?? 0) >= (sp.round ?? 0) + sp.duration;
-                            return (
+
+                      <div className="border-t border-slate-800/60 my-1" />
+
+                      {/* Magias sob Efeito */}
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-cyan-300">
+                            <Zap size={9} className="text-cyan-400" />
+                            Sob Efeito ({affectedSpells.length})
+                          </span>
+                        </div>
+                        {affectedSpells.length === 0 ? (
+                          <div className="text-[8px] text-slate-600 italic">Nenhum efeito</div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1 max-h-10 overflow-y-auto">
+                            {affectedSpells.map((sp) => (
                               <span
                                 key={sp.id}
-                                className="inline-flex items-center gap-1 bg-slate-900 border border-purple-800/50 rounded px-1.5 py-0.2 text-[9px] text-purple-100"
-                                title={`Alvo: ${sp.targetName || 'Geral'} | R${sp.round}`}
+                                className="inline-flex items-center gap-1 bg-slate-900 border border-cyan-800/50 rounded px-1 py-0.2 text-[8px] text-cyan-100"
+                                title={`Conjurador: ${sp.casterName || 'Desconhecido'}`}
                               >
-                                <strong className="truncate max-w-[85px]">{sp.spellName}</strong>
-                                <span className="text-slate-400 truncate max-w-[60px]">
-                                  →{sp.targetName || 'Geral'}
+                                <strong className="truncate max-w-[65px]">{sp.spellName}</strong>
+                                <span className="text-slate-400 truncate max-w-[45px]">
+                                  por {sp.casterName || 'Outro'}
                                 </span>
-                                {isExpired && <span className="text-amber-300 font-bold">⚠️</span>}
                               </span>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Magias sob Efeito */}
-                    <div className="bg-slate-950/90 border border-cyan-900/40 rounded-lg px-2 py-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-300">
-                          <Zap size={10} className="text-cyan-400" />
-                          Sob Efeito ({affectedSpells.length})
-                        </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {affectedSpells.length === 0 ? (
-                        <div className="text-[9px] text-slate-600 italic truncate">Nenhum efeito</div>
-                      ) : (
-                        <div className="flex flex-wrap gap-1 mt-0.5 max-h-14 overflow-y-auto">
-                          {affectedSpells.map((sp) => {
-                            const isExpired =
-                              sp.duration !== undefined &&
-                              sp.duration > 0 &&
-                              (currentRound ?? 0) >= (sp.round ?? 0) + sp.duration;
-                            return (
-                              <span
-                                key={sp.id}
-                                className="inline-flex items-center gap-1 bg-slate-900 border border-cyan-800/50 rounded px-1.5 py-0.2 text-[9px] text-cyan-100"
-                                title={`Conjurador: ${sp.casterName || 'Desconhecido'} | R${sp.round}`}
-                              >
-                                <strong className="truncate max-w-[85px]">{sp.spellName}</strong>
-                                <span className="text-slate-400 truncate max-w-[60px]">
-                                  ({sp.casterName || '?'})
-                                </span>
-                                {isExpired && <span className="text-amber-300 font-bold">⚠️</span>}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </>
