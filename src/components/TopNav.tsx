@@ -137,23 +137,6 @@ export const TopNav: React.FC<TopNavProps> = ({
             </div>
           )}
 
-          {/* Botão TELA INICIAL */}
-          {onOpenHomeScreen && (
-            <button
-              type="button"
-              onClick={onOpenHomeScreen}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-bold border ${
-                isHomeScreen
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-amber-500/20'
-                  : 'bg-slate-900 hover:bg-slate-800 border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-amber-200'
-              }`}
-              title="Voltar para a Tela Inicial da Mesa de Combate"
-            >
-              <LayoutGrid size={13} className={isHomeScreen ? 'text-slate-950' : 'text-amber-400'} />
-              <span className="text-[11px] tracking-wide uppercase font-extrabold">TELA INICIAL</span>
-            </button>
-          )}
-
           {/* Botão Mestre: Permissões de Edição dos Jogadores */}
           {currentUser?.role === 'mestre' && onOpenPlayerPermissions && (
             <button
@@ -176,6 +159,23 @@ export const TopNav: React.FC<TopNavProps> = ({
               >
                 {editorCount}
               </span>
+            </button>
+          )}
+
+          {/* Botão Tela Inicial (após Jogadores) */}
+          {onOpenHomeScreen && (
+            <button
+              type="button"
+              onClick={onOpenHomeScreen}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border ${
+                isHomeScreen
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-white'
+              }`}
+              title="Voltar para a Tela Inicial da Mesa de Combate"
+            >
+              <LayoutGrid size={13} className="text-amber-400" />
+              <span className="text-[11px] font-semibold">Tela Inicial</span>
             </button>
           )}
 
