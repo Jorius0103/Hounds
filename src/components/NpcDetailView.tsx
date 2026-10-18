@@ -110,7 +110,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   currentRound = 0,
   conditions = [],
 }) => {
-  const [activeTab, setActiveTab] = useState<'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits'>('weapons');
+  const [activeTab, setActiveTab] = useState<'overview' | 'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits'>('overview');
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
@@ -133,6 +133,22 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   useEffect(() => {
     currentNpcRef.current = npc;
   }, [npc]);
+
+  useEffect(() => {
+    const el = document.querySelector('header');
+    if (!el) return;
+    const updateOffset = () => {
+      document.documentElement.style.setProperty('--mesa-top-offset', `${el.offsetHeight}px`);
+    };
+    updateOffset();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateOffset) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', updateOffset);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', updateOffset);
+    };
+  }, []);
 
   // Estados para lançamento manual rápido de Magias Ativas
   const [isAddingActiveSpell, setIsAddingActiveSpell] = useState(false);
@@ -1262,9 +1278,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   if (isPlayerUser && !isPlayerChar) {
     return (
       <div className="space-y-4">
-        {/* Identidade do NPC + Botão Lançar Dano */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 transition-all">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+        {/* Identidade do NPC + Botão Lançar Dano (Fixo ao rolar) */}
+        <div
+          style={{ position: 'sticky', top: 'var(--mesa-top-offset, 48px)', zIndex: 30 }}
+          className="sticky z-30 bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg transition-all"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <NpcAvatar
                 avatar={npc.avatar}
@@ -1371,7 +1390,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
           </div>
+        </div>
 
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 transition-all">
           {/* Campo de Anotações Compartilhado (Jogador e Mestre podem editar) */}
           <div className="bg-slate-950/70 border border-blue-900/40 rounded-xl p-3.5 space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
@@ -1483,10 +1504,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   return (
     <div className="space-y-4">
-      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas */}
-      <div className={`bg-slate-900 border rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 transition-all ${
-        npc.isDead ? 'border-red-900/60 bg-slate-950/90' : 'border-slate-800'
-      }`}>
+      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas (Fixo ao rolar) */}
+      <div
+        style={{ position: 'sticky', top: 'var(--mesa-top-offset, 48px)', zIndex: 30 }}
+        className={`sticky z-30 bg-slate-900/95 backdrop-blur-md border rounded-2xl p-4 sm:p-5 shadow-lg space-y-4 transition-all ${
+          npc.isDead ? 'border-red-900/60 bg-slate-950/95' : 'border-slate-800'
+        }`}
+      >
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           {/* Esquerda: Avatar + Identidade */}
           <div className="flex items-center gap-3.5 w-full lg:w-auto min-w-0">
@@ -1720,8 +1744,86 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 2. OBSERVAÇÕES: Duas Colunas (Mestre e Compartilhadas) */}
-      <div className={`grid grid-cols-1 ${isMaster ? 'md:grid-cols-2' : ''} gap-3`}>
+      {/* 2. TABS NAVIGATION (SUBIU PARA LOGO ABAIXO DO CABEÇALHO) */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto text-xs font-semibold">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            activeTab === 'overview'
+              ? 'bg-amber-500 text-slate-950 font-bold shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Users size={14} />
+          <span>Dados &amp; Status</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('weapons')}
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            activeTab === 'weapons'
+              ? 'bg-amber-500 text-slate-950 font-bold shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Sword size={14} />
+          <span>Armas &amp; Ataques ({npc.weapons.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('spells')}
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            activeTab === 'spells'
+              ? 'bg-amber-500 text-slate-950 font-bold shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Sparkles size={14} />
+          <span>Magias ({npc.spells.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('armor')}
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            activeTab === 'armor'
+              ? 'bg-amber-500 text-slate-950 font-bold shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Shield size={14} />
+          <span>Armadura por Localização</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('bodyParts')}
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            activeTab === 'bodyParts'
+              ? 'bg-amber-500 text-slate-950 font-bold shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Heart size={14} />
+          <span>Partes do Corpo</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('traits')}
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+            activeTab === 'traits'
+              ? 'bg-amber-500 text-slate-950 font-bold shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Info size={14} />
+          <span>Traços &amp; Equipamentos</span>
+        </button>
+      </div>
+
+      {/* 3. TAB CONTENT: DADOS & STATUS (PRIMEIRA ABA) */}
+      {activeTab === 'overview' && (
+        <div className="space-y-4">
+          {/* OBSERVAÇÕES: Duas Colunas (Mestre e Compartilhadas) */}
+          <div className={`grid grid-cols-1 ${isMaster ? 'md:grid-cols-2' : ''} gap-3`}>
         {/* Observações Privadas do Mestre */}
         {isMaster && (
           <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 space-y-1.5">
@@ -2455,69 +2557,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           </div>
         </div>
       </div>
-
-      {/* 7. TABS NAVIGATION */}
-      <div className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto text-xs font-semibold">
-        <button
-          onClick={() => setActiveTab('weapons')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-            activeTab === 'weapons'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Sword size={14} />
-          <span>Armas & Ataques ({npc.weapons.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('spells')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-            activeTab === 'spells'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Sparkles size={14} />
-          <span>Magias ({npc.spells.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('armor')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-            activeTab === 'armor'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Shield size={14} />
-          <span>Armadura por Localização</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('bodyParts')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-            activeTab === 'bodyParts'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Heart size={14} />
-          <span>Partes do Corpo</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('traits')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-            activeTab === 'traits'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Info size={14} />
-          <span>Traços & Equipamentos</span>
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* 8. TAB CONTENT: ARMAS & ATAQUES (NH MAIOR + PERÍCIAS E PERKS DE COMBATE ABAIXO) */}
       {activeTab === 'weapons' && (
