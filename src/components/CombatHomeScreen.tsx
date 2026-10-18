@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Users,
+  Target,
 } from 'lucide-react';
 import {
   NPC,
@@ -67,12 +68,33 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
           const fpStatus = getFpStatus(npc.fpCurrent, npc.fpMax);
           const maneuver = getCombatManeuver(npc.combatManeuver);
 
-          // Cálculo de Fadiga Total e Fadiga Total Disponível (Fadiga + Itens Extras de Mana)
-          const manaItems = (npc.extraItems || []).filter(isExtraManaItem);
-          const extraManaMax = manaItems.reduce((sum, it) => sum + (Number(it.max) || 0), 0);
-          const extraManaCurrent = manaItems.reduce((sum, it) => sum + (Number(it.current) || 0), 0);
-          const totalFatigueMax = (Number(npc.fpMax) || 0) + extraManaMax;
-          const totalFatigueAvailable = (Number(npc.fpCurrent) || 0) + extraManaCurrent;
+          // Itens Extras: Escudos, Flechas e Pedras de Mana
+          const extraItems = npc.extraItems || [];
+          const shieldItems = extraItems.filter(
+            (it) =>
+              it &&
+              (it.category === 'shield' ||
+                (it.name || '').toLowerCase().includes('escudo') ||
+                (it.name || '').toLowerCase().includes('shield'))
+          );
+          const arrowItems = extraItems.filter(
+            (it) =>
+              it &&
+              (it.category === 'arrows' ||
+                (it.name || '').toLowerCase().includes('flecha') ||
+                (it.name || '').toLowerCase().includes('arco') ||
+                (it.name || '').toLowerCase().includes('muni'))
+          );
+          const manaStones = extraItems.filter(isExtraManaItem);
+          const totalManaStonesCurrent = manaStones.reduce(
+            (sum, it) => sum + (Number(it.current) || 0),
+            0
+          );
+          const totalManaStonesMax = manaStones.reduce(
+            (sum, it) => sum + (Number(it.max) || 0),
+            0
+          );
+          const hasManaStones = manaStones.length > 0;
 
           // Defesas Ativas
           const parryList =
@@ -336,39 +358,30 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
 
               {showDetailedStats ? (
                 <>
-                  {/* LINHA 2: PONTOS DE VIDA E FADIGA (+ FADIGA TOTAL E DISPONÍVEL) */}
+                  {/* LINHA 2: PONTOS DE VIDA E FADIGA (VALORES DESTACADOS E COMPACTOS) */}
                   <div className="grid grid-cols-2 gap-1.5">
                     {/* Pontos de Vida */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 space-y-1">
-                      <div className="flex items-center justify-between gap-1 text-[10px]">
-                        <span className="inline-flex items-center gap-1 font-bold text-rose-300">
-                          <Heart size={10} className="text-rose-500" />
+                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 space-y-0.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="inline-flex items-center gap-1 font-bold text-rose-400 text-xs">
+                          <Heart size={12} className="text-rose-500 fill-rose-500/20" />
                           PV
                         </span>
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono font-black text-xs">
-                            <span
-                              className={
-                                npc.hpCurrent <= 0
-                                  ? 'text-red-400'
-                                  : npc.hpCurrent < npc.hpMax
-                                  ? 'text-yellow-400'
-                                  : 'text-emerald-400'
-                              }
-                            >
-                              {npc.hpCurrent}
-                            </span>
-                            <span className="text-slate-500 text-[10px] mx-0.5">/</span>
-                            <span className="text-slate-300 text-[11px]">{npc.hpMax}</span>
+                        <span className="font-mono font-black text-sm">
+                          <span
+                            className={
+                              npc.hpCurrent <= 0
+                                ? 'text-red-400'
+                                : npc.hpCurrent < npc.hpMax
+                                ? 'text-yellow-400'
+                                : 'text-emerald-400'
+                            }
+                          >
+                            {npc.hpCurrent}
                           </span>
-                          {npc.hpMax > 0 && (
-                            <span
-                              className={`text-[8px] font-bold px-1 py-0.2 rounded border ${hpStatus.badgeBg}`}
-                            >
-                              {hpStatus.label}
-                            </span>
-                          )}
-                        </div>
+                          <span className="text-slate-500 text-xs mx-0.5">/</span>
+                          <span className="text-slate-300 text-xs">{npc.hpMax}</span>
+                        </span>
                       </div>
                       {npc.hpMax > 0 && (
                         <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden">
@@ -390,32 +403,18 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       )}
                     </div>
 
-                    {/* Fadiga + Fadiga Total + Total Disponível */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 space-y-1">
-                      <div className="flex items-center justify-between gap-1 text-[10px]">
-                        <span className="inline-flex items-center gap-1 font-bold text-cyan-300">
-                          <Zap size={10} className="text-cyan-400" />
+                    {/* Fadiga */}
+                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 space-y-0.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="inline-flex items-center gap-1 font-bold text-cyan-300 text-xs">
+                          <Zap size={12} className="text-cyan-400 fill-cyan-400/20" />
                           FP
                         </span>
-                        <div className="flex items-center gap-1 flex-wrap justify-end">
-                          <span className="font-mono font-black text-xs">
-                            <span className="text-cyan-300">{npc.fpCurrent}</span>
-                            <span className="text-slate-500 text-[10px] mx-0.5">/</span>
-                            <span className="text-slate-300 text-[11px]">{npc.fpMax}</span>
-                          </span>
-                          <span
-                            className="text-[9px] font-mono bg-slate-900 border border-slate-800 px-1 rounded text-cyan-200"
-                            title="Fadiga Total (Fadiga Máx + Mana Extra Máx)"
-                          >
-                            Tot:<strong className="ml-0.5">{totalFatigueMax}</strong>
-                          </span>
-                          <span
-                            className="text-[9px] font-mono bg-slate-900 border border-cyan-900/60 px-1 rounded text-emerald-300"
-                            title="Fadiga Total Disponível (Fadiga Atual + Mana Extra Atual)"
-                          >
-                            Disp:<strong className="ml-0.5">{totalFatigueAvailable}</strong>
-                          </span>
-                        </div>
+                        <span className="font-mono font-black text-sm">
+                          <span className="text-cyan-300">{npc.fpCurrent}</span>
+                          <span className="text-slate-500 text-xs mx-0.5">/</span>
+                          <span className="text-slate-300 text-xs">{npc.fpMax}</span>
+                        </span>
                       </div>
                       {npc.fpMax > 0 && (
                         <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden">
@@ -430,77 +429,149 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* LINHA 3: DEFESAS ATIVAS E COMENTÁRIOS */}
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {/* Esquiva */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] font-bold text-cyan-300">Esquiva</span>
-                        <span className="font-mono font-black text-xs text-cyan-300 bg-slate-900 px-1.5 rounded border border-cyan-800/60">
-                          {npc.dodge ?? 0}
+                  {/* LINHA 3: DEFESAS ATIVAS (50%) & ITENS / RECURSOS EQUIPADOS (50%) */}
+                  <div className="grid grid-cols-2 gap-1.5 items-stretch">
+                    {/* METADE ESQUERDA: Defesas Ativas (grid 2x2: dois em cima, até dois embaixo) */}
+                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
+                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <Shield size={10} className="text-amber-400" />
+                          Defesas Ativas
                         </span>
                       </div>
-                      <div
-                        className="text-[9px] text-slate-400 truncate mt-0.5"
-                        title={npc.dodgeNotes || 'Sem comentário'}
-                      >
-                        {npc.dodgeNotes && npc.dodgeNotes.trim() !== '' ? (
-                          npc.dodgeNotes
-                        ) : (
-                          <span className="italic text-slate-600">Sem comentário</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Bloqueio */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] font-bold text-emerald-300">Bloqueio</span>
-                        <span className="font-mono font-black text-xs text-emerald-300 bg-slate-900 px-1.5 rounded border border-emerald-800/60">
-                          {npc.block ?? 0}
-                        </span>
-                      </div>
-                      <div
-                        className="text-[9px] text-slate-400 truncate mt-0.5"
-                        title={npc.blockNotes || 'Sem comentário'}
-                      >
-                        {npc.blockNotes && npc.blockNotes.trim() !== '' ? (
-                          npc.blockNotes
-                        ) : (
-                          <span className="italic text-slate-600">Sem comentário</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Aparar */}
-                    {parryList.map((parry, idx) => (
-                      <div
-                        key={parry.id || idx}
-                        className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1"
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <span
-                            className="text-[10px] font-bold text-amber-400 truncate"
-                            title={parry.weaponName ? `Aparar: ${parry.weaponName}` : 'Aparar'}
-                          >
-                            Aparar{parry.weaponName ? ` (${parry.weaponName})` : ''}
-                          </span>
-                          <span className="font-mono font-black text-xs text-amber-300 bg-slate-900 px-1.5 rounded border border-amber-500/50 shrink-0">
-                            {parry.value ?? 0}
-                          </span>
-                        </div>
+                      <div className="grid grid-cols-2 gap-1">
+                        {/* Esquiva */}
                         <div
-                          className="text-[9px] text-slate-400 truncate mt-0.5"
-                          title={parry.notes || 'Sem comentário'}
+                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                          title={npc.dodgeNotes || 'Esquiva'}
                         >
-                          {parry.notes && parry.notes.trim() !== '' ? (
-                            parry.notes
-                          ) : (
-                            <span className="italic text-slate-600">Sem comentário</span>
-                          )}
+                          <span className="text-[9px] font-bold text-cyan-400">Esq</span>
+                          <span className="font-mono font-black text-xs text-cyan-300">{npc.dodge ?? 0}</span>
+                        </div>
+
+                        {/* Bloqueio */}
+                        <div
+                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                          title={npc.blockNotes || 'Bloqueio'}
+                        >
+                          <span className="text-[9px] font-bold text-emerald-400">Bloq</span>
+                          <span className="font-mono font-black text-xs text-emerald-300">{npc.block ?? 0}</span>
+                        </div>
+
+                        {/* Aparar 1 */}
+                        <div
+                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                          title={parryList[0]?.weaponName ? `Aparar: ${parryList[0].weaponName} ${parryList[0].notes || ''}` : 'Aparar'}
+                        >
+                          <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
+                            {parryList[0]?.weaponName ? `Ap (${parryList[0].weaponName})` : 'Aparar'}
+                          </span>
+                          <span className="font-mono font-black text-xs text-amber-300 shrink-0">
+                            {parryList[0]?.value ?? 0}
+                          </span>
+                        </div>
+
+                        {/* Aparar 2 (ou indicador) */}
+                        <div
+                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                          title={parryList[1]?.weaponName ? `Aparar 2: ${parryList[1].weaponName} ${parryList[1].notes || ''}` : 'Segundo Aparar'}
+                        >
+                          <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
+                            {parryList[1]?.weaponName ? `Ap (${parryList[1].weaponName})` : 'Ap 2'}
+                          </span>
+                          <span className="font-mono font-black text-xs text-amber-300 shrink-0">
+                            {parryList[1] ? parryList[1].value : '-'}
+                          </span>
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* METADE DIREITA: Escudos, Flechas e Pedras de Mana */}
+                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
+                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <Sparkles size={10} className="text-amber-400" />
+                          Recursos / Equipados
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {/* Escudo(s) */}
+                        {shieldItems.length > 0 ? (
+                          shieldItems.slice(0, 2).map((sh) => (
+                            <div
+                              key={sh.id}
+                              className="flex items-center justify-between bg-slate-900/90 border border-emerald-900/50 rounded px-1.5 py-0.5 text-[9px]"
+                              title={`Escudo: ${sh.name} (PV Atual/Total)`}
+                            >
+                              <span className="font-bold text-emerald-300 flex items-center gap-1 truncate max-w-[70px]">
+                                <Shield size={9} className="text-emerald-400 shrink-0" />
+                                <span className="truncate">{sh.name || 'Escudo'}</span>
+                              </span>
+                              <span className="font-mono font-black text-[10px] text-white shrink-0">
+                                <span className="text-emerald-300">{sh.current ?? 0}</span>
+                                <span className="text-slate-500 mx-0.5">/</span>
+                                <span className="text-slate-300">{sh.max ?? 0}</span>
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex items-center justify-between bg-slate-900/50 border border-slate-800/60 rounded px-1.5 py-0.5 text-[9px]">
+                            <span className="text-slate-500 flex items-center gap-1">
+                              <Shield size={9} className="text-slate-600 shrink-0" />
+                              Escudo
+                            </span>
+                            <span className="font-mono text-slate-600 text-[10px]">-</span>
+                          </div>
+                        )}
+
+                        {/* Flechas */}
+                        {arrowItems.length > 0 ? (
+                          arrowItems.slice(0, 2).map((ar) => (
+                            <div
+                              key={ar.id}
+                              className="flex items-center justify-between bg-slate-900/90 border border-amber-900/50 rounded px-1.5 py-0.5 text-[9px]"
+                              title={`Munição / Flechas: ${ar.name}`}
+                            >
+                              <span className="font-bold text-amber-300 flex items-center gap-1 truncate max-w-[70px]">
+                                <Target size={9} className="text-amber-400 shrink-0" />
+                                <span className="truncate">{ar.name || 'Flechas'}</span>
+                              </span>
+                              <span className="font-mono font-black text-[10px] text-white shrink-0">
+                                <span className="text-amber-300">{ar.current ?? 0}</span>
+                                <span className="text-slate-500 mx-0.5">/</span>
+                                <span className="text-slate-300">{ar.max ?? 0}</span>
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex items-center justify-between bg-slate-900/50 border border-slate-800/60 rounded px-1.5 py-0.5 text-[9px]">
+                            <span className="text-slate-500 flex items-center gap-1">
+                              <Target size={9} className="text-slate-600 shrink-0" />
+                              Flechas
+                            </span>
+                            <span className="font-mono text-slate-600 text-[10px]">-</span>
+                          </div>
+                        )}
+
+                        {/* Pedras de Mana (Soma Total de todas as pedras se houver) */}
+                        {hasManaStones && (
+                          <div
+                            className="flex items-center justify-between bg-cyan-950/60 border border-cyan-800/70 rounded px-1.5 py-0.5 text-[9px]"
+                            title={`Soma de todas as ${manaStones.length} Pedras de Mana (${totalManaStonesCurrent} disp. de ${totalManaStonesMax} total)`}
+                          >
+                            <span className="font-bold text-cyan-300 flex items-center gap-1 truncate max-w-[85px]">
+                              <Sparkles size={9} className="text-cyan-400 shrink-0" />
+                              Pedras Mana
+                            </span>
+                            <span className="font-mono font-black text-[10px] text-cyan-200 shrink-0">
+                              <strong className="text-cyan-300">{totalManaStonesCurrent}</strong>
+                              <span className="text-slate-500 mx-0.5">/</span>
+                              <span className="text-slate-300">{totalManaStonesMax}</span>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* LINHA 4: MAGIAS ATIVAS E MAGIAS SOB EFEITO */}
