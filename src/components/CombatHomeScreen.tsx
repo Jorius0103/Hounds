@@ -71,6 +71,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
 
           // Recursos e Equipamentos Favoritados (listados individualmente, sem somar pedras)
           const favoriteItems = (npc.extraItems || []).filter((it) => it && it.isFavorite);
+          const hasFavoriteItems = favoriteItems.length > 0;
 
           // Defesas Ativas
           const parryList =
@@ -79,10 +80,21 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
               : [{ id: 'parry-default', weaponName: '', parryType: '', value: 0, notes: '' }];
           const parry1 = parryList[0];
           const parry2 = parryList.length > 1 ? parryList[1] : null;
+          const hasDefenses =
+            (npc.dodge ?? 0) > 0 || (npc.block ?? 0) > 0 || parryList.some((p) => (p.value ?? 0) > 0);
 
           // Magias Ativas e Sob Efeito
           const activeSpells = npc.activeSpells || [];
           const affectedSpells = npc.affectedSpells || [];
+          const hasSpells = activeSpells.length > 0 || affectedSpells.length > 0;
+
+          // Observações Gerais (assistantNotes / masterNotes)
+          const generalNotes = (
+            (npc.assistantNotes || '') +
+            (isMaster && npc.masterNotes ? `${npc.assistantNotes ? ' • ' : ''}[Mestre] ${npc.masterNotes}` : '') ||
+            (npc as any).notes ||
+            ''
+          ).trim();
 
           // Alertas de Defesas & Ações do Turno
           const ta = npc.turnActions || DEFAULT_TURN_ACTIONS;
@@ -333,11 +345,11 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
               </div>
 
               {showDetailedStats ? (
-                <>
-                  {/* LINHA 2: PV & FP (EM UMA ÚNICA DIV) & RECURSOS FAVORITADOS (ACIMA NA DIREITA) */}
-                  <div className="grid grid-cols-2 gap-1.5 items-stretch">
-                    {/* COLUNA ESQUERDA: PV e FP na mesma div, um embaixo do outro */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
+                <div className="grid grid-cols-2 gap-1.5 items-start">
+                  {/* COLUNA ESQUERDA: PV/FP + Defesas Ativas */}
+                  <div className="space-y-1.5">
+                    {/* Pontos de Vida & Fadiga (mesma div, altura natural compacta sem esticar) */}
+                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
                       {/* Pontos de Vida (PV) */}
                       <div>
                         <div className="flex items-center justify-between gap-1">
@@ -409,17 +421,81 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       </div>
                     </div>
 
-                    {/* COLUNA DIREITA (ACIMA NA DIREITA): Recursos e Equipamentos Favoritados (listados individualmente) */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
-                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <Star size={10} className="text-amber-400 fill-amber-400/30" />
-                          Recursos Favoritados
-                        </span>
+                    {/* Defesas Ativas (SÓ EXIBE SE HOUVER DEFESAS) */}
+                    {hasDefenses && (
+                      <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <Shield size={10} className="text-amber-400" />
+                            Defesas Ativas
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {/* Esquiva */}
+                          <div
+                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                            title={npc.dodgeNotes || 'Esquiva'}
+                          >
+                            <span className="text-[9px] font-bold text-cyan-400">Esq</span>
+                            <span className="font-mono font-black text-xs text-cyan-300">{npc.dodge ?? 0}</span>
+                          </div>
+
+                          {/* Bloqueio */}
+                          <div
+                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                            title={npc.blockNotes || 'Bloqueio'}
+                          >
+                            <span className="text-[9px] font-bold text-emerald-400">Bloq</span>
+                            <span className="font-mono font-black text-xs text-emerald-300">{npc.block ?? 0}</span>
+                          </div>
+
+                          {/* Aparar 1 */}
+                          <div
+                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                            title={parry1?.weaponName ? `Aparar: ${parry1.weaponName} ${parry1.notes || ''}` : 'Aparar'}
+                          >
+                            <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
+                              {parry1?.weaponName ? `Ap (${parry1.weaponName})` : 'Aparar'}
+                            </span>
+                            <span className="font-mono font-black text-xs text-amber-300 shrink-0">
+                              {parry1?.value ?? 0}
+                            </span>
+                          </div>
+
+                          {/* Aparar 2 (se não houver, slot vazio sem borda) */}
+                          {parry2 ? (
+                            <div
+                              className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                              title={`Aparar 2: ${parry2.weaponName} ${parry2.notes || ''}`}
+                            >
+                              <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
+                                {parry2.weaponName ? `Ap (${parry2.weaponName})` : 'Ap 2'}
+                              </span>
+                              <span className="font-mono font-black text-xs text-amber-300 shrink-0">
+                                {parry2.value}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="min-h-[22px]" />
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-1 flex-1 flex flex-col justify-center">
-                        {favoriteItems.length > 0 ? (
-                          favoriteItems.map((it) => (
+                    )}
+                  </div>
+
+                  {/* COLUNA DIREITA: Recursos Favoritados + Magias */}
+                  <div className="space-y-1.5">
+                    {/* Recursos e Equipamentos Favoritados (SÓ EXIBE SE HOUVER ITENS FAVORITADOS) */}
+                    {hasFavoriteItems && (
+                      <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <Star size={10} className="text-amber-400 fill-amber-400/30" />
+                            Recursos Favoritados
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          {favoriteItems.map((it) => (
                             <div
                               key={it.id}
                               className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5 text-[9px]"
@@ -430,7 +506,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                                   <Sparkles size={9} className="text-cyan-400 shrink-0" />
                                 ) : it.category === 'shield' ? (
                                   <Shield size={9} className="text-emerald-400 shrink-0" />
-                                ) : it.category === 'arrow' ? (
+                                ) : it.category === 'arrows' || it.category === ('arrow' as any) ? (
                                   <Target size={9} className="text-amber-400 shrink-0" />
                                 ) : (
                                   <Star size={9} className="text-amber-400 shrink-0" />
@@ -443,197 +519,133 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                                 <span className="text-slate-300">{it.max ?? 0}</span>
                               </span>
                             </div>
-                          ))
-                        ) : (
-                          <div className="flex items-center justify-center h-full min-h-[36px] text-[9px] text-slate-600 italic">
-                            Nenhum recurso favoritado
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Magias Ativas & Magias Sob Efeito (SÓ EXIBE SE HOUVER MAGIAS) */}
+                    {hasSpells && (
+                      <div className="bg-slate-950/90 border border-purple-900/40 rounded-lg p-1.5">
+                        {/* Magias Ativas */}
+                        {activeSpells.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-purple-300">
+                                <Sparkles size={9} className="text-purple-400" />
+                                Magias Ativas ({activeSpells.length})
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
+                              {activeSpells.map((sp) => {
+                                const isExpired =
+                                  sp.duration !== undefined &&
+                                  sp.duration > 0 &&
+                                  (currentRound ?? 0) >= (sp.round ?? 0) + sp.duration;
+                                return (
+                                  <span
+                                    key={sp.id}
+                                    className="inline-flex items-center gap-1 bg-slate-900 border border-purple-800/50 rounded px-1 py-0.2 text-[8px] text-purple-100"
+                                    title={`Alvo: ${sp.targetName || 'Geral'} | R${sp.round}`}
+                                  >
+                                    <strong className="truncate max-w-[65px]">{sp.spellName}</strong>
+                                    <span className="text-slate-400 truncate max-w-[45px]">
+                                      →{sp.targetName || 'Geral'}
+                                    </span>
+                                    {isExpired && <span className="text-amber-300 font-bold">⚠️</span>}
+                                  </span>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* LINHA 3: DEFESAS ATIVAS (2x2) & MAGIAS ATIVAS / SOB EFEITO */}
-                  <div className="grid grid-cols-2 gap-1.5 items-stretch">
-                    {/* METADE ESQUERDA: Defesas Ativas (grid 2x2: Esq, Bloq, Ap 1, Ap 2 / vazio) */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 flex flex-col justify-between">
-                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <Shield size={10} className="text-amber-400" />
-                          Defesas Ativas
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1">
-                        {/* Esquiva */}
-                        <div
-                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                          title={npc.dodgeNotes || 'Esquiva'}
-                        >
-                          <span className="text-[9px] font-bold text-cyan-400">Esq</span>
-                          <span className="font-mono font-black text-xs text-cyan-300">{npc.dodge ?? 0}</span>
-                        </div>
-
-                        {/* Bloqueio */}
-                        <div
-                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                          title={npc.blockNotes || 'Bloqueio'}
-                        >
-                          <span className="text-[9px] font-bold text-emerald-400">Bloq</span>
-                          <span className="font-mono font-black text-xs text-emerald-300">{npc.block ?? 0}</span>
-                        </div>
-
-                        {/* Aparar 1 */}
-                        <div
-                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                          title={parry1?.weaponName ? `Aparar: ${parry1.weaponName} ${parry1.notes || ''}` : 'Aparar'}
-                        >
-                          <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
-                            {parry1?.weaponName ? `Ap (${parry1.weaponName})` : 'Aparar'}
-                          </span>
-                          <span className="font-mono font-black text-xs text-amber-300 shrink-0">
-                            {parry1?.value ?? 0}
-                          </span>
-                        </div>
-
-                        {/* Aparar 2 (se não houver, deixa o campo vazio mantendo o layout) */}
-                        {parry2 ? (
-                          <div
-                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                            title={`Aparar 2: ${parry2.weaponName} ${parry2.notes || ''}`}
-                          >
-                            <span className="text-[9px] font-bold text-amber-400 truncate max-w-[45px]">
-                              {parry2.weaponName ? `Ap (${parry2.weaponName})` : 'Ap 2'}
-                            </span>
-                            <span className="font-mono font-black text-xs text-amber-300 shrink-0">
-                              {parry2.value}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="bg-slate-900/30 border border-slate-800/40 rounded px-1.5 py-0.5 min-h-[22px]" />
+                        {activeSpells.length > 0 && affectedSpells.length > 0 && (
+                          <div className="border-t border-purple-900/40 my-1" />
                         )}
-                      </div>
-                    </div>
 
-                    {/* METADE DIREITA: Magias Ativas & Magias Sob Efeito */}
-                    <div className="bg-slate-950/90 border border-purple-900/40 rounded-lg p-1.5 flex flex-col justify-between">
-                      {/* Magias Ativas */}
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-purple-300">
-                            <Sparkles size={9} className="text-purple-400" />
-                            Magias Ativas ({activeSpells.length})
-                          </span>
-                        </div>
-                        {activeSpells.length === 0 ? (
-                          <div className="text-[8px] text-slate-600 italic">Nenhuma ativa</div>
-                        ) : (
-                          <div className="flex flex-wrap gap-1 max-h-10 overflow-y-auto">
-                            {activeSpells.map((sp) => {
-                              const isExpired =
-                                sp.duration !== undefined &&
-                                sp.duration > 0 &&
-                                (currentRound ?? 0) >= (sp.round ?? 0) + sp.duration;
-                              return (
+                        {/* Magias sob Efeito */}
+                        {affectedSpells.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-cyan-300">
+                                <Zap size={9} className="text-cyan-400" />
+                                Sob Efeito ({affectedSpells.length})
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
+                              {affectedSpells.map((sp) => (
                                 <span
                                   key={sp.id}
-                                  className="inline-flex items-center gap-1 bg-slate-900 border border-purple-800/50 rounded px-1 py-0.2 text-[8px] text-purple-100"
-                                  title={`Alvo: ${sp.targetName || 'Geral'} | R${sp.round}`}
+                                  className="inline-flex items-center gap-1 bg-slate-900 border border-cyan-800/50 rounded px-1 py-0.2 text-[8px] text-cyan-100"
+                                  title={`Conjurador: ${sp.casterName || 'Desconhecido'}`}
                                 >
                                   <strong className="truncate max-w-[65px]">{sp.spellName}</strong>
                                   <span className="text-slate-400 truncate max-w-[45px]">
-                                    →{sp.targetName || 'Geral'}
+                                    por {sp.casterName || 'Outro'}
                                   </span>
-                                  {isExpired && <span className="text-amber-300 font-bold">⚠️</span>}
                                 </span>
-                              );
-                            })}
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      <div className="border-t border-slate-800/60 my-1" />
-
-                      {/* Magias sob Efeito */}
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-cyan-300">
-                            <Zap size={9} className="text-cyan-400" />
-                            Sob Efeito ({affectedSpells.length})
-                          </span>
-                        </div>
-                        {affectedSpells.length === 0 ? (
-                          <div className="text-[8px] text-slate-600 italic">Nenhum efeito</div>
-                        ) : (
-                          <div className="flex flex-wrap gap-1 max-h-10 overflow-y-auto">
-                            {affectedSpells.map((sp) => (
-                              <span
-                                key={sp.id}
-                                className="inline-flex items-center gap-1 bg-slate-900 border border-cyan-800/50 rounded px-1 py-0.2 text-[8px] text-cyan-100"
-                                title={`Conjurador: ${sp.casterName || 'Desconhecido'}`}
-                              >
-                                <strong className="truncate max-w-[65px]">{sp.spellName}</strong>
-                                <span className="text-slate-400 truncate max-w-[45px]">
-                                  por {sp.casterName || 'Outro'}
-                                </span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    )}
                   </div>
-                </>
+                </div>
               ) : (
                 <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg px-2 py-1 text-center text-[10px] text-slate-500 italic">
                   Estatísticas detalhadas do NPC ocultas para jogadores.
                 </div>
               )}
 
-              {/* LINHA 5: ALERTAS DE DEFESAS & AÇÕES DO TURNO */}
-              <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center gap-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 shrink-0">
-                  <Shield size={10} className="text-amber-400" />
-                  Turno/Alertas:
-                </span>
-                {turnAlerts.length === 0 &&
-                criticalAlerts.length === 0 &&
-                !(ta.notes && ta.notes.trim() !== '') ? (
-                  <span className="text-[9px] text-slate-600 italic">Sem alertas no turno</span>
-                ) : (
-                  <>
-                    {turnAlerts.map((alert) => {
-                      const IconComp = alert.icon;
-                      return (
-                        <span
-                          key={alert.id}
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] border ${alert.badgeClass}`}
-                        >
-                          {IconComp && <IconComp size={9} className="shrink-0" />}
-                          <span>{alert.text}</span>
-                        </span>
-                      );
-                    })}
-                    {criticalAlerts.map((alert) => {
-                      const IconComp = alert.icon;
-                      return (
-                        <span
-                          key={alert.id}
-                          title={alert.tooltip || alert.text}
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] border ${alert.badgeClass}`}
-                        >
-                          {IconComp && <IconComp size={9} className="shrink-0" />}
-                          <span>{alert.text}</span>
-                        </span>
-                      );
-                    })}
-                    {ta.notes && ta.notes.trim() !== '' && (
-                      <span className="text-[9px] text-slate-300 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.2 italic truncate max-w-[180px]">
-                        Nota: {ta.notes}
+              {/* OBSERVAÇÕES GERAIS (SÓ EXIBE SE EXISTIR) */}
+              {generalNotes && (
+                <div className="bg-slate-950/80 border border-slate-800/80 rounded-lg px-2 py-1 text-[9px] text-slate-300 flex items-start gap-1">
+                  <span className="font-bold text-amber-400 shrink-0">Obs:</span>
+                  <span className="truncate italic">{generalNotes}</span>
+                </div>
+              )}
+
+              {/* LINHA DE ALERTAS DE DEFESAS & AÇÕES DO TURNO (SÓ EXIBE SE EXISTIR ALGUM ALERTA) */}
+              {hasAlerts && (
+                <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center gap-1.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 shrink-0">
+                    <Shield size={10} className="text-amber-400" />
+                    Turno:
+                  </span>
+                  {turnAlerts.map((alert) => {
+                    const IconComp = alert.icon;
+                    return (
+                      <span
+                        key={alert.id}
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] border ${alert.badgeClass}`}
+                      >
+                        {IconComp && <IconComp size={9} className="shrink-0" />}
+                        <span>{alert.text}</span>
                       </span>
-                    )}
-                  </>
-                )}
-              </div>
+                    );
+                  })}
+                  {criticalAlerts.map((alert) => {
+                    const IconComp = alert.icon;
+                    return (
+                      <span
+                        key={alert.id}
+                        title={alert.tooltip || alert.text}
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] border ${alert.badgeClass}`}
+                      >
+                        {IconComp && <IconComp size={9} className="shrink-0" />}
+                        <span>{alert.text}</span>
+                      </span>
+                    );
+                  })}
+                  {ta.notes && ta.notes.trim() !== '' && (
+                    <span className="text-[9px] text-slate-300 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.2 italic truncate max-w-[180px]">
+                      Nota: {ta.notes}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
