@@ -110,11 +110,11 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   });
 
   return (
-    <div className="bg-slate-900/95 border-b border-slate-800/80 px-3 py-2 w-full">
-      <div className="w-full flex flex-col md:flex-row items-start md:items-center gap-3">
-        {/* PAINEL DA ESQUERDA: Filtros em cima e Criação embaixo (economizando espaço horizontal) */}
-        <div className="flex flex-col items-start gap-1.5 shrink-0 md:border-r border-slate-800/80 md:pr-3">
-          {/* EM CIMA: FILTROS DE VISUALIZAÇÃO + DIV DE ORDENAÇÃO */}
+    <div className="bg-slate-900/95 border-b border-slate-800/80 px-3 py-1.5 w-full">
+      <div className="w-full flex flex-col items-start gap-2">
+        {/* BARRA DO TOPO: Filtros, Ordenação, Botões de Adição e Controle de Rodadas em uma única linha compacta */}
+        <div className="w-full flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-slate-800/60">
+          {/* ESQUERDA: FILTROS DE VISUALIZAÇÃO + DIV DE ORDENAÇÃO */}
           <div className="flex items-center flex-wrap gap-1.5">
             <div className="flex items-center flex-wrap bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner">
               <button
@@ -216,14 +216,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             </div>
           </div>
 
-          {/* EMBAIXO: BOTÕES DE ADIÇÃO / CADASTRO E CONTROLE DE RODADAS */}
-          <div className="flex items-center gap-1.5 text-xs w-full flex-wrap">
+          {/* DIREITA: BOTÕES DE ADIÇÃO / CADASTRO E CONTROLE DE RODADAS */}
+          <div className="flex items-center gap-1.5 text-xs flex-wrap">
             {currentUserRole === 'mestre' && (
               <>
                 {onAddNewPlayer && (
                   <button
                     onClick={onAddNewPlayer}
-                    className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-800 hover:bg-emerald-700 text-emerald-100 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap border border-emerald-600/50"
+                    className="flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-800 hover:bg-emerald-700 text-emerald-100 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap border border-emerald-600/50"
                     title="Gerenciar personagens no combate ativo ou cadastrar novo"
                   >
                     <UserPlus size={12} className="text-emerald-300" />
@@ -234,7 +234,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 <button
                   onClick={onAddNewNpc}
                   disabled={isNoCombat}
-                  className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg shadow-sm transition-all whitespace-nowrap border ${
+                  className={`flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg shadow-sm transition-all whitespace-nowrap border ${
                     isNoCombat
                       ? 'bg-slate-850 text-slate-500 border-slate-750/60 cursor-not-allowed opacity-50'
                       : 'bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400/60 active:scale-95'
@@ -252,7 +252,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               return (
                 <div
                   className={`flex items-center bg-slate-900 border border-slate-750 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0 ${
-                    canEditRound ? 'ml-auto sm:ml-2' : ''
+                    canEditRound ? 'sm:ml-1' : ''
                   }`}
                 >
                   {canEditRound && (
@@ -292,7 +292,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
           </div>
         </div>
 
-        {/* LISTA DE CARDS: Espalha até o final à direita com preenchimento completo */}
+        {/* LISTA DE CARDS: Espalha até o final à direita com preenchimento completo (9 cards por linha) */}
         <div className="flex-1 min-w-0 w-full overflow-x-auto py-0.5 scrollbar-thin">
           {displayedNpcs.length === 0 ? (
             <div className="py-2.5 text-xs text-slate-400 italic">
@@ -309,7 +309,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 : 'Nenhum registro encontrado neste filtro.'}
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5" style={{ gap: '6px' }}>
               {displayedNpcs.map((npc) => {
                 const isSelected = npc.id === selectedNpcId;
                 const hpStat = getHpStatus(npc.hpCurrent, npc.hpMax);
@@ -367,8 +367,13 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                   <button
                     key={npc.id}
                     onClick={() => onSelectNpc(npc.id)}
-                    style={{ borderWidth: '2px', borderStyle: 'solid' }}
-                    className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all border-2 shrink-0 w-[195px] sm:w-[215px] ${cardColorClasses}`}
+                    style={{
+                      borderWidth: '2px',
+                      borderStyle: 'solid',
+                      width: 'calc((100% - 50px) / 9)',
+                      minWidth: '150px',
+                    }}
+                    className={`group relative flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all border-2 shrink-0 ${cardColorClasses}`}
                     title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'}${
                       showSpeed ? ` | Speed: ${npc.basicSpeed ?? 0}` : ''
                     }${isDeadChar ? ' | MORTO' : ''}${
@@ -490,7 +495,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                               color: activeManeuver.textHex,
                               borderColor: activeManeuver.borderHex,
                             }}
-                            className="text-[9px] font-bold px-1.5 py-0.5 rounded border truncate max-w-[105px] shadow-xs"
+                            className="text-[9px] font-bold px-1 py-0.5 rounded border truncate max-w-[80px] shadow-xs"
                             title={`Manobra de Combate: ${activeManeuver.name}`}
                           >
                             {activeManeuver.name}

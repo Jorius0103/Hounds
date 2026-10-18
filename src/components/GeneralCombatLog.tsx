@@ -44,9 +44,14 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
 
   // Collect and sort all logs across all active combat NPCs and Personagens
   const allLogs = useMemo(() => {
+    const isNoCombat =
+      !activeCombat ||
+      activeCombat.id === 'combat-vazio' ||
+      activeCombat.name?.toLowerCase().includes('vazio') ||
+      activeCombat.name?.toLowerCase().trim() === 'sem combate';
     const combinedCharacters = [
       ...(additionalCharacters || []),
-      ...(activeCombat?.npcs?.filter((n) => !additionalCharacters?.some((p) => p.id === n.id)) || [])
+      ...(isNoCombat ? [] : activeCombat?.npcs?.filter((n) => !additionalCharacters?.some((p) => p.id === n.id)) || [])
     ];
     if (combinedCharacters.length === 0) return [];
 

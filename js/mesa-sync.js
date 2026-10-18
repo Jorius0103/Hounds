@@ -49,14 +49,19 @@ var MesaSync = (function () {
     Object.keys(MESA_LS).forEach(function (k) { try { var v = JSON.parse(localStorage.getItem(MESA_LS[k]) || 'null'); if (v != null) { out[k] = v; any = true; } } catch (e) {} });
     return any ? out : null;
   }
+  function isSemCombate(c) {
+    if (!c) return false;
+    var nm = String(c.name || '').toLowerCase().trim();
+    return c.id === 'combat-vazio' || nm.indexOf('vazio') !== -1 || nm === 'sem combate';
+  }
   function ensureSemCombateFirst(combats) {
     if (!Array.isArray(combats) || combats.length === 0) return combats;
     var empty = null, others = [];
     for (var i = 0; i < combats.length; i++) {
       var c = combats[i];
       if (!c) continue;
-      if (!empty && (c.id === 'combat-vazio' || (c.name && c.name.toLowerCase().indexOf('vazio') !== -1) || (c.name && c.name.toLowerCase().trim() === 'sem combate'))) {
-        empty = Object.assign({}, c, { name: 'Sem combate' });
+      if (isSemCombate(c)) {
+        if (!empty) empty = Object.assign({}, c, { id: 'combat-vazio', name: 'Sem combate', npcs: [] });
       } else {
         others.push(c);
       }
@@ -69,6 +74,7 @@ var MesaSync = (function () {
       if (!localStorage.getItem('hounds_mesa_backup_v1')) { var b = localState(); if (b) localStorage.setItem('hounds_mesa_backup_v1', JSON.stringify({ at: Date.now(), data: b })); }
     } catch (e) {}
     if (st.combats) st.combats = ensureSemCombateFirst(st.combats);
+    if (Array.isArray(st.players)) st.players = st.players.filter(function (p) { return p && p.characterType !== 'npc'; });
     Object.keys(MESA_LS).forEach(function (k) { if (st[k] != null) { try { localStorage.setItem(MESA_LS[k], JSON.stringify(st[k])); } catch (e) {} } });
   }
   function fetchRev(h) {
@@ -214,13 +220,18 @@ var MesaSync = (function () {
     combats.forEach(function (c, i) { at[c.id] = i; });
     (inc.combats || []).forEach(function (c) {
       var i = at[c.id];
-      if (i == null) { at[c.id] = combats.length; combats.push(c); }
-      else combats[i] = Object.assign({}, combats[i], c, { npcs: mergeList(combats[i].npcs, c.npcs) });
+      if (i == null) {
+        at[c.id] = combats.length;
+        combats.push(isSemCombate(c) ? Object.assign({}, c, { npcs: [] }) : c);
+      } else {
+        var isEmpty = isSemCombate(combats[i]) || isSemCombate(c);
+        combats[i] = Object.assign({}, combats[i], c, { npcs: isEmpty ? [] : mergeList(combats[i].npcs, c.npcs) });
+      }
     });
     return {
       combats: combats.filter(function (c) { return del.indexOf(c.id) < 0; }),
       conditions: inc.conditions && inc.conditions.length ? inc.conditions : base.conditions,
-      players: mergeList(base.players, inc.players),
+      players: mergeList(base.players, inc.players).filter(function (p) { return p && p.characterType !== 'npc'; }),
       activeCombatId: inc.activeCombatId || base.activeCombatId,
       deletedCombatIds: del,
       editors: inc.editors || base.editors
@@ -231,8 +242,8 @@ var MesaSync = (function () {
   function withNpc(st, npc, own) {
     var put = function (x) { return x.id === npc.id && (own || (npc.updatedAt || 0) >= (x.updatedAt || 0)) ? Object.assign({}, x, npc) : x; };
     return Object.assign({}, st, {
-      players: (st.players || []).map(put),
-      combats: (st.combats || []).map(function (cb) { return Object.assign({}, cb, { npcs: (cb.npcs || []).map(put) }); })
+      players: (st.players || []).map(put).filter(function (p) { return p && p.characterType !== 'npc'; }),
+      combats: (st.combats || []).map(function (cb) { return Object.assign({}, cb, { npcs: isSemCombate(cb) ? [] : (cb.npcs || []).map(put) }); })
     });
   }
   function onHead(rows) {
@@ -246,7 +257,17 @@ var MesaSync = (function () {
     var rev = h0.rev;
     fetchRev(h0).then(function (st) {
       if (!st || known[rev]) { if (first) readyRes(); return; }
-      if (first) { remember(rev); loadedRev = rev; state = st; readyRes(); return; }
+      if (first) {
+        var hadEmptyNpcs = Array.isArray(st.combats) && st.combats.some(function (c) { return isSemCombate(c) && Array.isArray(c.npcs) && c.npcs.length > 0; });
+        var cleanedCombats = Array.isArray(st.combats) ? st.combats.map(function (c) { return isSemCombate(c) ? Object.assign({}, c, { npcs: [] }) : c; }) : st.combats;
+        var cleanedPlayers = Array.isArray(st.players) ? st.players.filter(function (p) { return p && p.characterType !== 'npc'; }) : st.players;
+        remember(rev);
+        loadedRev = rev;
+        state = Object.assign({}, st, { combats: cleanedCombats, players: cleanedPlayers });
+        readyRes();
+        if (hadEmptyNpcs && canSave()) queueSave();
+        return;
+      }
       applyRemote(rev, st);
     }, function () { if (first) readyRes(); });
   }
