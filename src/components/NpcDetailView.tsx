@@ -279,6 +279,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   // Remove single condition
   const removeCondition = (condLabel: string) => {
+    if (isViewer) return;
     const updated = (npc.statusConditions || []).filter((c) => c !== condLabel);
     const meta = { ...(npc.conditionMetadata || {}) };
     delete meta[condLabel];
@@ -609,34 +610,32 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 2. Pontos de Vida & 3. Pontos de Fadiga (visíveis para o Mestre e para jogadores quando for Personagem)
-    if (isMaster || npc.characterType === 'player') {
-      const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
-        ? hpStat.warningTexts
-        : (hpStat.warningText ? [hpStat.warningText] : []);
+    // 2. Pontos de Vida & 3. Pontos de Fadiga (visíveis para Mestre e Jogadores em todos os personagens/NPCs)
+    const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
+      ? hpStat.warningTexts
+      : (hpStat.warningText ? [hpStat.warningText] : []);
 
-      hpWarnings.forEach((warn, idx) => {
-        alerts.push({
-          id: `hp-warn-${idx}`,
-          badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
-          text: `PV: ${warn}`,
-          icon: AlertTriangle,
-        });
+    hpWarnings.forEach((warn, idx) => {
+      alerts.push({
+        id: `hp-warn-${idx}`,
+        badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
+        text: `PV: ${warn}`,
+        icon: AlertTriangle,
       });
+    });
 
-      const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
-        ? fpStat.warningTexts
-        : (fpStat.warningText ? [fpStat.warningText] : []);
+    const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
+      ? fpStat.warningTexts
+      : (fpStat.warningText ? [fpStat.warningText] : []);
 
-      fpWarnings.forEach((warn, idx) => {
-        alerts.push({
-          id: `fp-warn-${idx}`,
-          badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-          text: `Fadiga: ${warn}`,
-          icon: Zap,
-        });
+    fpWarnings.forEach((warn, idx) => {
+      alerts.push({
+        id: `fp-warn-${idx}`,
+        badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
+        text: `Fadiga: ${warn}`,
+        icon: Zap,
       });
-    }
+    });
 
     // 4. Lista todas as Condições & Estados Críticos
     if (npc.statusConditions && npc.statusConditions.length > 0) {
@@ -2043,19 +2042,19 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
 
-            {/* Grid de Defesas: Esquiva, Bloqueio e Aparar todos do mesmo tamanho compacto */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* Grid de Defesas em 3 colunas com números no tamanho de Pontos de Vida e Fadiga */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {/* Card Esquiva */}
-              <div className="bg-slate-950/90 border border-slate-800 rounded-lg p-1.5 px-2 flex items-center justify-between gap-1.5">
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-bold text-cyan-300 leading-tight">Esquiva</div>
+                  <div className="text-xs sm:text-sm font-bold text-cyan-300 leading-tight">Esquiva</div>
                   <input
                     type="text"
                     disabled={!isMaster}
                     value={npc.dodgeNotes ?? ''}
                     placeholder="Comentário..."
                     onChange={(e) => updateField('dodgeNotes', e.target.value)}
-                    className="w-full bg-transparent text-[9px] text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                    className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
                     title="Comentário sobre Esquiva (ex: Speed + 3)"
                   />
                 </div>
@@ -2065,22 +2064,22 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   value={npc.dodge ?? ''}
                   placeholder="-"
                   onChange={(e) => updateField('dodge', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                  className={`w-11 bg-slate-900 border border-cyan-800/50 rounded-md text-center font-mono font-black text-xs text-cyan-300 py-0.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                  className={`w-12 sm:w-14 bg-slate-900 border border-cyan-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-cyan-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                   title="Valor da Esquiva"
                 />
               </div>
 
               {/* Card Bloqueio */}
-              <div className="bg-slate-950/90 border border-slate-800 rounded-lg p-1.5 px-2 flex items-center justify-between gap-1.5">
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-bold text-emerald-300 leading-tight">Bloqueio</div>
+                  <div className="text-xs sm:text-sm font-bold text-emerald-300 leading-tight">Bloqueio</div>
                   <input
                     type="text"
                     disabled={!isMaster}
                     value={npc.blockNotes ?? ''}
                     placeholder="Comentário..."
                     onChange={(e) => updateField('blockNotes', e.target.value)}
-                    className="w-full bg-transparent text-[9px] text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                    className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
                     title="Comentário sobre Bloqueio (ex: Escudo / 2 + 3)"
                   />
                 </div>
@@ -2090,7 +2089,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   value={npc.block ?? ''}
                   placeholder="-"
                   onChange={(e) => updateField('block', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                  className={`w-11 bg-slate-900 border border-emerald-800/50 rounded-md text-center font-mono font-black text-xs text-emerald-300 py-0.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                  className={`w-12 sm:w-14 bg-slate-900 border border-emerald-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-emerald-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                   title="Valor do Bloqueio"
                 />
               </div>
@@ -2099,18 +2098,18 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               {parriesList.map((parry, idx) => (
                 <div
                   key={parry.id}
-                  className="bg-slate-950/90 border border-slate-800 rounded-lg p-1.5 px-2 flex items-center justify-between gap-1.5"
+                  className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 min-w-0">
-                      <span className="text-[10px] font-bold text-amber-400 shrink-0">Aparar:</span>
+                      <span className="text-xs sm:text-sm font-bold text-amber-400 shrink-0">Aparar:</span>
                       <input
                         type="text"
                         disabled={!isMaster}
                         value={parry.weaponName}
                         onChange={(e) => handleUpdateParry(idx, { ...parry, weaponName: e.target.value })}
-                        placeholder="Nome da arma..."
-                        className="w-full bg-transparent text-[11px] font-bold text-amber-200 placeholder-slate-600 focus:outline-none truncate"
+                        placeholder="Arma..."
+                        className="w-full bg-transparent text-xs sm:text-sm font-bold text-amber-200 placeholder-slate-600 focus:outline-none truncate"
                         title="Nome da arma de Aparar"
                       />
                     </div>
@@ -2120,7 +2119,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       value={parry.notes ?? ''}
                       placeholder="Comentário..."
                       onChange={(e) => handleUpdateParry(idx, { ...parry, notes: e.target.value })}
-                      className="w-full bg-transparent text-[9px] text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                      className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
                       title="Comentário sobre Aparar"
                     />
                   </div>
@@ -2137,7 +2136,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           value: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
                         })
                       }
-                      className={`w-11 bg-slate-900 border border-amber-500/40 rounded-md text-center font-mono font-black text-xs text-amber-300 py-0.5 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      className={`w-12 sm:w-14 bg-slate-900 border border-amber-500/50 rounded-lg text-center font-mono font-black text-base sm:text-lg text-amber-300 py-1 sm:py-1.5 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                       title="Valor do Aparar"
                     />
                     {isMaster && parriesList.length > 1 && (

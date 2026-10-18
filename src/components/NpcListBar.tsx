@@ -31,6 +31,20 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   isNoCombat = false,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs' | 'alive' | 'dead'>('all');
+  const [sortMode, setSortMode] = useState<'speed' | 'alpha'>(() => {
+    try {
+      const saved = localStorage.getItem('gurps_combat_sort_mode_v1');
+      if (saved === 'alpha' || saved === 'speed') return saved;
+    } catch {}
+    return 'speed';
+  });
+
+  const handleSelectSortMode = (mode: 'speed' | 'alpha') => {
+    setSortMode(mode);
+    try {
+      localStorage.setItem('gurps_combat_sort_mode_v1', mode);
+    } catch {}
+  };
 
   // Se jogador ou visualizador, exibe apenas os que estão visíveis (personagens são sempre visíveis)
   const rawDisplayedNpcs =
@@ -52,28 +66,20 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   });
 
   // Ordenação:
-  // Para o Mestre: Por ordem de Speed decrescente (desempate por nome alfabético)
-  // Para os Jogadores: Personagens primeiro (ordenar por Speed decrescente, desempate por nome),
-  // seguidos por todos os NPCs (ordenados por ordem alfabética de Nome)
+  // Cada usuário escolhe ordenar por Speed ou por Ordem Alfabética.
+  // Para os Jogadores: Personagens vêm primeiro (ordenados pela escolha do usuário: Speed ou A-Z),
+  // e os NPCs são sempre listados no final da lista por ordem alfabética.
   const displayedNpcs = [...filteredNpcs].sort((a, b) => {
-    if (currentUserRole === 'mestre') {
-      const speedA = a.basicSpeed ?? 0;
-      const speedB = b.basicSpeed ?? 0;
-      if (speedB !== speedA) {
-        return speedB - speedA;
-      }
-      return (a.name || '').localeCompare(b.name || '', 'pt-BR');
-    }
-
     const isPlayerA = a.characterType === 'player';
     const isPlayerB = b.characterType === 'player';
 
-    // Personagens vêm primeiro, NPCs depois
-    if (isPlayerA && !isPlayerB) return -1;
-    if (!isPlayerA && isPlayerB) return 1;
-
-    // Se ambos forem Personagens: manter ordem por Speed decrescente (e desempate por nome)
-    if (isPlayerA && isPlayerB) {
+    if (currentUserRole === 'mestre') {
+      if (sortMode === 'alpha') {
+        if (isPlayerA && isPlayerB) {
+          return (a.name || '').localeCompare(b.name || '', 'pt-BR');
+        }
+        return (a.name || '').localeCompare(b.name || '', 'pt-BR');
+      }
       const speedA = a.basicSpeed ?? 0;
       const speedB = b.basicSpeed ?? 0;
       if (speedB !== speedA) {
@@ -82,7 +88,24 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
       return (a.name || '').localeCompare(b.name || '', 'pt-BR');
     }
 
-    // Se ambos forem NPCs: listar por ordem alfabética de Nome
+    // Para Jogadores: Personagens vêm primeiro, NPCs sempre no final
+    if (isPlayerA && !isPlayerB) return -1;
+    if (!isPlayerA && isPlayerB) return 1;
+
+    // Se ambos forem Personagens: aplica a ordenação escolhida pelo usuário (Speed ou Ordem Alfabética)
+    if (isPlayerA && isPlayerB) {
+      if (sortMode === 'alpha') {
+        return (a.name || '').localeCompare(b.name || '', 'pt-BR');
+      }
+      const speedA = a.basicSpeed ?? 0;
+      const speedB = b.basicSpeed ?? 0;
+      if (speedB !== speedA) {
+        return speedB - speedA;
+      }
+      return (a.name || '').localeCompare(b.name || '', 'pt-BR');
+    }
+
+    // Se ambos forem NPCs: sempre listados no final por ordem alfabética
     return (a.name || '').localeCompare(b.name || '', 'pt-BR');
   });
 
@@ -91,73 +114,106 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
       <div className="w-full flex flex-col md:flex-row items-start md:items-center gap-3">
         {/* PAINEL DA ESQUERDA: Filtros em cima e Criação embaixo (economizando espaço horizontal) */}
         <div className="flex flex-col items-start gap-1.5 shrink-0 md:border-r border-slate-800/80 md:pr-3">
-          {/* EM CIMA: FILTROS DE VISUALIZAÇÃO */}
-          <div className="flex items-center flex-wrap bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner">
-            <button
-              type="button"
-              onClick={() => setFilterType('all')}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
-                filterType === 'all'
-                  ? 'bg-slate-800 text-amber-400 shadow-sm border border-amber-500/40'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <Users size={11} />
-              <span>Todos ({rawDisplayedNpcs.length})</span>
-            </button>
+          {/* EM CIMA: FILTROS DE VISUALIZAÇÃO + DIV DE ORDENAÇÃO */}
+          <div className="flex items-center flex-wrap gap-1.5">
+            <div className="flex items-center flex-wrap bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner">
+              <button
+                type="button"
+                onClick={() => setFilterType('all')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                  filterType === 'all'
+                    ? 'bg-slate-800 text-amber-400 shadow-sm border border-amber-500/40'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <Users size={11} />
+                <span>Todos ({rawDisplayedNpcs.length})</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setFilterType('players')}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
-                filterType === 'players'
-                  ? 'bg-emerald-950 text-emerald-300 shadow-sm border border-emerald-600/70'
-                  : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900'
-              }`}
-            >
-              <Shield size={11} />
-              <span>Personagens ({playersCount})</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('players')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                  filterType === 'players'
+                    ? 'bg-emerald-950 text-emerald-300 shadow-sm border border-emerald-600/70'
+                    : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900'
+                }`}
+              >
+                <Shield size={11} />
+                <span>Personagens ({playersCount})</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setFilterType('npcs')}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
-                filterType === 'npcs'
-                  ? 'bg-purple-950 text-purple-300 shadow-sm border border-purple-600/70'
-                  : 'text-slate-400 hover:text-purple-300 hover:bg-slate-900'
-              }`}
-            >
-              <span>NPCs ({npcsCount})</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('npcs')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                  filterType === 'npcs'
+                    ? 'bg-purple-950 text-purple-300 shadow-sm border border-purple-600/70'
+                    : 'text-slate-400 hover:text-purple-300 hover:bg-slate-900'
+                }`}
+              >
+                <span>NPCs ({npcsCount})</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setFilterType('alive')}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
-                filterType === 'alive'
-                  ? 'bg-teal-950 text-teal-300 shadow-sm border border-teal-600/70'
-                  : 'text-slate-400 hover:text-teal-300 hover:bg-slate-900'
-              }`}
-              title="Filtrar apenas Vivos"
-            >
-              <Heart size={11} className="text-teal-400" />
-              <span>Vivos ({aliveCount})</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('alive')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                  filterType === 'alive'
+                    ? 'bg-teal-950 text-teal-300 shadow-sm border border-teal-600/70'
+                    : 'text-slate-400 hover:text-teal-300 hover:bg-slate-900'
+                }`}
+                title="Filtrar apenas Vivos"
+              >
+                <Heart size={11} className="text-teal-400" />
+                <span>Vivos ({aliveCount})</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setFilterType('dead')}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
-                filterType === 'dead'
-                  ? 'bg-red-950 text-red-300 shadow-sm border border-red-600/70'
-                  : 'text-slate-400 hover:text-red-300 hover:bg-slate-900'
-              }`}
-              title="Filtrar apenas Mortos"
-            >
-              <Skull size={11} className="text-red-400" />
-              <span>Mortos ({deadCount})</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('dead')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                  filterType === 'dead'
+                    ? 'bg-red-950 text-red-300 shadow-sm border border-red-600/70'
+                    : 'text-slate-400 hover:text-red-300 hover:bg-slate-900'
+                }`}
+                title="Filtrar apenas Mortos"
+              >
+                <Skull size={11} className="text-red-400" />
+                <span>Mortos ({deadCount})</span>
+              </button>
+            </div>
+
+            {/* NOVA DIV DE ORDENAÇÃO (fora da div de filtros) */}
+            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1.5 select-none">
+                Ordem:
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSelectSortMode('speed')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                  sortMode === 'speed'
+                    ? 'bg-amber-950/90 text-amber-300 shadow-sm border border-amber-500/50'
+                    : 'text-slate-400 hover:text-amber-300 hover:bg-slate-900'
+                }`}
+                title="Ordenar Personagens por Speed (decrescente)"
+              >
+                <span>⚡ Speed</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectSortMode('alpha')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                  sortMode === 'alpha'
+                    ? 'bg-sky-950/90 text-sky-300 shadow-sm border border-sky-500/50'
+                    : 'text-slate-400 hover:text-sky-300 hover:bg-slate-900'
+                }`}
+                title="Ordenar Personagens por Ordem Alfabética (A-Z)"
+              >
+                <span>🔤 A-Z</span>
+              </button>
+            </div>
           </div>
 
           {/* EMBAIXO: BOTÕES DE ADIÇÃO / CADASTRO E CONTROLE DE RODADAS */}
@@ -263,13 +319,10 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const activeManeuver = getCombatManeuver(npc.combatManeuver);
 
                 const hasConditions = Boolean(npc.statusConditions && npc.statusConditions.length > 0);
-                const hasCriticalHpFp =
-                  (isPlayerChar || currentUserRole === 'mestre')
-                    ? Boolean(
-                        (hpStat.warningTexts && hpStat.warningTexts.length > 0) ||
-                        (fpStat.warningTexts && fpStat.warningTexts.length > 0)
-                      )
-                    : false;
+                const hasCriticalHpFp = Boolean(
+                  (hpStat.warningTexts && hpStat.warningTexts.length > 0) ||
+                  (fpStat.warningTexts && fpStat.warningTexts.length > 0)
+                );
                 const hasCrippledParts =
                   (isPlayerChar || currentUserRole === 'mestre')
                     ? getCrippledBodyParts(npc).length > 0
