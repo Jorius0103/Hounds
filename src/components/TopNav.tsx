@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus } from '../utils/onlineSync';
-import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users } from 'lucide-react';
+import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid } from 'lucide-react';
 
 export type ViewMode = 'sheets' | 'tactical' | 'split';
 
@@ -25,6 +25,8 @@ interface TopNavProps {
   onOpenPlayerPermissions?: () => void;
   editorCount?: number;
   canEditCurrent?: boolean;
+  isHomeScreen?: boolean;
+  onOpenHomeScreen?: () => void;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
@@ -38,6 +40,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   onOpenPlayerPermissions,
   editorCount = 0,
   canEditCurrent = false,
+  isHomeScreen = false,
+  onOpenHomeScreen,
 }) => {
   // Filtra combates ativos para exibição na barra principal
   const activeCombats = useMemo(() => {
@@ -131,6 +135,23 @@ export const TopNav: React.FC<TopNavProps> = ({
                 {activeCombats.find((c) => c.id === activeCombatId)?.name || 'Sem combate'}
               </span>
             </div>
+          )}
+
+          {/* Botão TELA INICIAL */}
+          {onOpenHomeScreen && (
+            <button
+              type="button"
+              onClick={onOpenHomeScreen}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-bold border ${
+                isHomeScreen
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-amber-500/20'
+                  : 'bg-slate-900 hover:bg-slate-800 border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-amber-200'
+              }`}
+              title="Voltar para a Tela Inicial da Mesa de Combate"
+            >
+              <LayoutGrid size={13} className={isHomeScreen ? 'text-slate-950' : 'text-amber-400'} />
+              <span className="text-[11px] tracking-wide uppercase font-extrabold">TELA INICIAL</span>
+            </button>
           )}
 
           {/* Botão Mestre: Permissões de Edição dos Jogadores */}

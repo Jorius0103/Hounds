@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NPC, MesaRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
+import { CombatHomeScreen } from './CombatHomeScreen';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
 import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X } from 'lucide-react';
 
@@ -16,6 +17,7 @@ interface NpcListBarProps {
   onUpdateRound?: (round: number) => void;
   canControlRound?: boolean;
   isNoCombat?: boolean;
+  isHomeScreen?: boolean;
 }
 
 export const NpcListBar: React.FC<NpcListBarProps> = ({
@@ -29,6 +31,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   onUpdateRound,
   canControlRound,
   isNoCombat = false,
+  isHomeScreen = false,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs' | 'alive' | 'dead'>('all');
   const [sortMode, setSortMode] = useState<'speed' | 'alpha'>(() => {
@@ -292,7 +295,16 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
           </div>
         </div>
 
-        {/* LISTA DE CARDS: Espalha até o final à direita com preenchimento completo (9 cards por linha) */}
+        {/* LISTA DE CARDS: Na Tela Inicial exibe os cards detalhados (3 por linha); na ficha exibe os cards compactos (9 por linha) */}
+        {isHomeScreen ? (
+          <CombatHomeScreen
+            npcs={displayedNpcs}
+            onSelectNpc={onSelectNpc}
+            currentUserRole={currentUserRole}
+            currentRound={currentRound}
+            filterType={filterType}
+          />
+        ) : (
         <div className="flex-1 min-w-0 w-full overflow-x-auto py-0.5 scrollbar-thin">
           {displayedNpcs.length === 0 ? (
             <div className="py-2.5 text-xs text-slate-400 italic">
@@ -513,6 +525,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

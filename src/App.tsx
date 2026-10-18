@@ -385,7 +385,8 @@ export default function App() {
   });
 
   // View Mode: 'sheets' | 'tactical' | 'split'
-  const [activeViewMode, setActiveViewMode] = useState<ViewMode>('tactical');
+  const [activeViewMode, setActiveViewMode] = useState<ViewMode>('sheets');
+  const [isHomeScreen, setIsHomeScreen] = useState<boolean>(true);
 
   useEffect(() => {
     return systemLogger.subscribe((logs) => {
@@ -967,6 +968,7 @@ export default function App() {
     const updatedPlayers = [...players, newPlayer];
     setPlayers(updatedPlayers);
     setSelectedNpcId(newPlayer.id);
+    setIsHomeScreen(false);
     broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
   };
 
@@ -981,6 +983,7 @@ export default function App() {
     setCombats(updated);
     broadcastSync(updated);
     setSelectedNpcId(newNpc.id);
+    setIsHomeScreen(false);
   };
 
   // Auxiliares de log automático para todas as alterações na ficha (sem apagar ao voltar ao estado inicial)
@@ -1344,6 +1347,7 @@ export default function App() {
       broadcastSync(updated);
     }
     setSelectedNpcId(dupId);
+    setIsHomeScreen(false);
   };
 
   // Weapon Modal Handlers
@@ -2593,17 +2597,30 @@ export default function App() {
         onOpenSystemLog={() => setSystemLogModalOpen(true)}
         systemLogsCount={systemLogsCount}
         activeViewMode={activeViewMode}
-        onSelectViewMode={setActiveViewMode}
+        onSelectViewMode={(mode) => {
+          setActiveViewMode(mode);
+          if (mode !== 'sheets') {
+            setIsHomeScreen(false);
+          }
+        }}
         onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
         editorCount={effectiveEditorIds.length}
         canEditCurrent={canEditCurrent}
+        isHomeScreen={isHomeScreen && activeViewMode === 'sheets'}
+        onOpenHomeScreen={() => {
+          setIsHomeScreen(true);
+          setActiveViewMode('sheets');
+        }}
       />
 
       {/* 2. BARRA DE PERSONAGENS & NPCS (Espalha até a direita, filtros na esquerda) */}
       <NpcListBar
         npcs={allCharacters}
-        selectedNpcId={selectedNpcId}
-        onSelectNpc={setSelectedNpcId}
+        selectedNpcId={isHomeScreen && activeViewMode === 'sheets' ? '' : selectedNpcId}
+        onSelectNpc={(id) => {
+          setSelectedNpcId(id);
+          setIsHomeScreen(false);
+        }}
         onAddNewNpc={handleAddNewNpc}
         onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
         onUpdateNpc={handlePartialUpdateNpc}
@@ -2612,9 +2629,11 @@ export default function App() {
         onUpdateRound={handleUpdateCombatRound}
         canControlRound={canEditCurrent}
         isNoCombat={isNoCombat}
+        isHomeScreen={isHomeScreen && activeViewMode === 'sheets'}
       />
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}
+      {!(isHomeScreen && activeViewMode === 'sheets') && (
       <main className="flex-1 w-full p-2.5 sm:p-3.5 lg:px-5">
         {activeViewMode === 'tactical' ? (
           /* MODO MESA TÁTICA COMPLETA */
@@ -2765,7 +2784,10 @@ export default function App() {
               <GeneralCombatLog
                 activeCombat={activeCombat}
                 additionalCharacters={allCharacters}
-                onSelectNpc={(npcId) => setSelectedNpcId(npcId)}
+                onSelectNpc={(npcId) => {
+                  setSelectedNpcId(npcId);
+                  setIsHomeScreen(false);
+                }}
                 selectedNpcId={selectedNpcId}
                 currentUserRole={currentUser?.role || 'mestre'}
                 currentUserName={currentUser?.name}
@@ -2776,6 +2798,7 @@ export default function App() {
           </div>
         )}
       </main>
+      )}
 
       {/* 4. MODALS */}
       {/* Online Room Sync Modal */}
