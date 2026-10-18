@@ -37,6 +37,8 @@ function openLeaf(prefix, icon, find, label) {
 function buildMenu() {
   return [
     { id: 'mesa', label: 'Mesa de Combate', icon: ICON.mesa, route: true },
+    { id: 'boards', label: 'Tabuleiros', icon: ICON.board, route: true, hideKids: true,
+      children: W.boards.slice().sort(byName).map(function (b) { return { id: 'board:' + b.id, label: b.name, icon: ICON.board, route: true, secret: isSecret(b) }; }) },
     { id: 'mundo', label: 'Mundo', icon: ICON.mundo, children: [
       { id: 'maps', label: 'Maps', icon: ICON.maps, route: true, hideKids: true, children: mapNodes(null) },
       { id: 'locais', label: 'Locais', icon: ICON.pin, route: true, hideKids: true, children: locNodes(null) },

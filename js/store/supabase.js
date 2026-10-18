@@ -22,17 +22,21 @@
        skip their own cascade when the store is `relational`.
      Everything needs a logged-in account linked to a hub user (sbSignIn,
        below); the database checks each role's permissions itself.
-     Only the Mesa de Combate is kept in sync between browsers. The rest
+     Only the Mesa de Combate and the boards (Tabuleiros, with their chat,
+     turn order and campaign) are kept in sync between browsers. The rest
      of the site is loaded when it opens: what another browser changes
      shows here on the next load of the page.
-     Two realtime channels, both for the Mesa:
-       "hounds"          postgres_changes of the Mesa's head row (LIVE),
-                         which comes whole in the notice and is not
-                         downloaded; it is small, as the state is saved in
-                         pieces (mesa_partes): MesaSync reads the pieces
-                         only of a revision it didn't get by broadcast.
+     Two realtime channels:
+       "hounds"          postgres_changes of the tables in LIVE: the Mesa's
+                         head row, which comes whole in the notice and is
+                         not downloaded (it is small, as the state is saved
+                         in pieces, mesa_partes: MesaSync reads the pieces
+                         only of a revision it didn't get by broadcast), and
+                         the boards, tokens, chat messages... downloaded row
+                         by row (a whisper reaches only who reads it: RLS).
        "hounds-mesa"     private; broadcast messages straight to the other
-                         browsers, ahead of the database (see MesaSync).
+                         browsers, ahead of the database (see MesaSync), and
+                         the pings of the boards (tab-ping).
      Writes show on this screen at once and the answer of the database
      replaces that copy; notices about an item with a write of this
      browser still on the way wait for it. A failed write downloads the
@@ -46,11 +50,16 @@ function SupabaseStore(client, bucket) {
   var TABLES = { users: 'usuarios', maps: 'mapas', locations: 'locais', characters: 'personagens', organizations: 'organizacoes',
     sheets: 'fichas', events: 'eventos', notebooks: 'cadernos', notes: 'anotacoes', spells: 'magias', advantages: 'vantagens', disadvantages: 'desvantagens',
     skills: 'pericias', techniques: 'tecnicas', styles: 'estilos', weapons: 'armas', armors: 'armaduras', items: 'itens', improvements: 'melhoramentos',
-    armorLocs: 'armadura_localizacoes', mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
+    armorLocs: 'armadura_localizacoes', boards: 'tabuleiros', boardTokens: 'tabuleiro_tokens', boardDrawings: 'tabuleiro_desenhos',
+    boardTurns: 'tabuleiro_turnos', boardArt: 'tabuleiro_arte', boardCampaign: 'tabuleiro_campanha', chatMessages: 'chat_mensagens',
+    mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
   var COL_OF = {}; Object.keys(TABLES).forEach(function (k) { COL_OF[TABLES[k]] = k; });
-  // The tables kept in sync between browsers: only the Mesa's head row. Not its pieces (each save
-  // would bring the whole state to every browser) nor the rest of the site, loaded when it opens.
-  var LIVE = { mesa_estado: true };
+  // The tables kept in sync between browsers: the Mesa's head row and the boards with their tokens
+  // and drawings (a token that moves, a door that opens), the chat, the turn order and where the
+  // players are (the campaign). Not the Mesa's pieces (each save would bring the whole state to
+  // every browser) nor the rest of the site, loaded when it opens.
+  var LIVE = { mesa_estado: true, tabuleiros: true, tabuleiro_tokens: true, tabuleiro_desenhos: true,
+    tabuleiro_turnos: true, tabuleiro_campanha: true, chat_mensagens: true };
   var MARKERS = /^maps\/([^/]+)\/markers$/;
   var cols = {}, channel = null, live = false, mesaChannel = null, mesaLive = false, bcast = {};
   // mesaOk: the Mesa's channel connected once (so a drop of it is worth reconnecting). chGen
@@ -389,6 +398,16 @@ function SupabaseStore(client, bucket) {
     });
   }
 
+  // The whole chat, by the Mestre: also the whispers between players, which he doesn't read (and so
+  // this browser doesn't have). The notices of the removals empty the chat everywhere.
+  function clearChat() {
+    return client.rpc('hounds_limpar_chat').then(function (res) {
+      if (res.error) throw res.error;
+      var c = cols.chatMessages;
+      if (c && c.ready) { var changed = false; Object.keys(c.rows).forEach(function (id) { if (dropRow(c, id)) changed = true; }); if (changed) emit(c); }
+    });
+  }
+
   function upload(file) {
     var ext = file.name ? file.name.slice(file.name.lastIndexOf('.')) : '';
     if (!ext && file.type) {
@@ -419,7 +438,9 @@ function SupabaseStore(client, bucket) {
     canWrite: function () { return true; },
     init: function () { return Promise.resolve(); },
     watch: watch, all: all, ids: ids, query: query, put: put, patch: patch, remove: remove, removeMany: removeMany,
-    replaceMapImage: replaceMapImage, account: account,
+    replaceMapImage: replaceMapImage, account: account, clearChat: clearChat,
+    // The database rolls the dice of the chat (rolar_dados, migration 34): a roll goes without results.
+    rollsDice: true,
     upload: upload, imageUrl: imageUrl, dropImage: dropImage,
     // For MesaSync: save 1 s after the last change (the others get each change by broadcast; the
     // database keeps it and covers a message lost), always in pieces (a small head row: its notice

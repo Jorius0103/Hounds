@@ -448,6 +448,138 @@ type Role = 'mestre' | 'admin' | 'jogador';
 /** Coleção `users`. Com o Supabase, `email` liga a conta (Supabase Auth) ao usuário e só o Mestre o recebe. */
 interface HubUser extends Doc { name: string; role: Role | string; email?: string | null }
 
+/** Parede ou porta de um tabuleiro, em pixels da imagem. Uma porta aberta não barra a visão nem o caminho. */
+interface BoardWall { x1: number; y1: number; x2: number; y2: number; door?: boolean; open?: boolean }
+/** Retângulo da névoa manual: revela (show) ou esconde, na ordem da lista. */
+interface BoardFogArea { x: number; y: number; w: number; h: number; show: boolean }
+
+/** Coleção `boards` (tabuleiros; veja js/tabs/tab-tabuleiros.js). Medidas em pixels da imagem. */
+interface Board extends Doc {
+  name: string;
+  image?: ImageInfo | null;
+  /** O tamanho do tabuleiro: o da imagem, ou o do fundo liso. */
+  width: number; height: number;
+  /** Cor do fundo liso. */
+  bg?: string;
+  /** hex: hexágonos em fileiras; hexc: em colunas; square; none. */
+  gridType: 'hex' | 'hexc' | 'square' | 'none' | string;
+  /** Distância entre os centros de duas células vizinhas. */
+  gridSize: number; gridX: number; gridY: number; gridColor: string; gridOpacity: number;
+  /** Quanto vale uma célula, na unidade `unit` (1 jd). */
+  scale: number; unit: string;
+  dynamicLight: boolean; globalLight: boolean; explorer: boolean;
+  /** Névoa manual e as áreas reveladas ou escondidas pelo Mestre. */
+  fog: boolean; fogAreas: BoardFogArea[];
+  walls: BoardWall[];
+  /** Áreas já vistas pelos tokens dos jogadores: um bit por meia célula, em base64 (BoardGeo). */
+  explored: string;
+  /** Muda quando o Mestre apaga o explorado ou a grade muda. */
+  exploredEpoch: number;
+}
+
+/** Coleção `boardTokens`: um token de um tabuleiro. x e y são o centro, em pixels da imagem. */
+interface BoardToken extends Doc {
+  boardId: string;
+  name: string;
+  x: number; y: number;
+  /** Em células. */
+  size: number;
+  /** Para onde está virado, em graus no sentido horário: 0 é para cima (norte), 90 para a direita. */
+  rotation?: number;
+  color?: string | null;
+  image?: ImageInfo | null;
+  /** Personagem do Mundo que o token representa (a imagem dele vale quando o token não tem uma). */
+  characterId?: string | null;
+  /** fore: primeiro plano, acima dos tokens (migration 34). */
+  layer: 'map' | 'tokens' | 'gm' | 'fore' | string;
+  /** Contas que controlam o token. */
+  ownerIds: string[];
+  sight: boolean;
+  /** Alcances na unidade do tabuleiro; sightRange 0 é sem limite. */
+  sightRange: number; darkvision: number; lightBright: number; lightDim: number;
+  hp?: number | null; hpMax?: number | null;
+  /** Fadiga (PF), a segunda barra. */
+  fp?: number | null; fpMax?: number | null;
+  /** Marcadores de estado, ids de BOARD_MARKERS (js/tabs/tab-tabuleiros.js). */
+  markers?: string[];
+  showName?: boolean;
+}
+
+/** Os dados que saíram numa rolagem: o formato de rolar_dados (migration 34) e de BoardChat sem o Supabase. */
+interface DiceResult {
+  /** A expressão como é mostrada ("3d6+2"). */
+  ex: string;
+  /** Os grupos de dados: lados (ou 'F', Fudge), sinal e as faces (as de um dado que explodiu vêm em seguida). */
+  g: { s: number | 'F'; sg: number; r: number[] }[];
+  mod: number; tot: number;
+}
+
+/** Coleção `chatMessages`: uma mensagem do chat da mesa (js/tabuleiro-chat.js). Não muda depois de gravada. */
+interface ChatMessage extends Doc {
+  /** say: fala; emote: ação (/em); desc: descrição do Mestre (/desc); roll: rolagem (/r). */
+  kind: 'say' | 'emote' | 'desc' | 'roll' | string;
+  text: string;
+  /** O nome com que aparece: a conta ou um personagem. */
+  as: string;
+  characterId?: string | null;
+  boardId?: string | null;
+  /** Sussurro: quem lê, além de quem escreveu. Vazio: todos. */
+  to: string[];
+  /** Só o Mestre lê (e quem escreveu). */
+  gm: boolean;
+  /** Rolagem secreta: só o Mestre vê o resultado. */
+  secret: boolean;
+  /** Rolagem: sem o resultado ao ser mandada (o banco rola) e com ele depois. */
+  roll?: (Partial<DiceResult> & { expr?: string; nh?: number | null; explode?: boolean; label?: string }) | null;
+  /** Ao mandar, as expressões de [[...]] no texto; gravadas, o que saiu em cada uma (null se não foi entendida). */
+  inline?: (string | DiceResult | null)[];
+}
+
+/** Um item da ordem de turno: um token, ou um item avulso (sem tokenId). */
+interface BoardTurnItem { id: string; tokenId?: string | null; name?: string; value?: number | string }
+
+/** Coleção `boardTurns`: a ordem de turno de um tabuleiro (o id é o do tabuleiro). */
+interface BoardTurns extends Doc {
+  boardId: string;
+  items: BoardTurnItem[];
+  /** O id do item da vez; nulo é o primeiro. */
+  turn?: string | null;
+  round: number;
+  /** O Mestre abriu a janela: os jogadores também a veem. */
+  open: boolean;
+}
+
+/** Coleção `boardArt`: uma imagem da biblioteca de arte do Mestre. */
+interface BoardArt extends Doc { name: string; image: ImageInfo; folder?: string }
+
+/** Coleção `boardCampaign`: um item só, 'mesa'. Onde os jogadores estão e a ordem das páginas. */
+interface BoardCampaign extends Doc {
+  /** A fita: o tabuleiro do grupo. */
+  playersBoardId?: string | null;
+  /** Quem está num tabuleiro diferente do grupo: { idDoUsuario: idDoTabuleiro }. */
+  perPlayer?: Record<string, string>;
+  /** A ordem das páginas na barra de páginas. */
+  order?: string[];
+}
+
+/** Coleção `boardDrawings`: um desenho ou texto de um tabuleiro (ferramentas Desenhar e Texto). */
+interface BoardDrawing extends Doc {
+  boardId: string;
+  kind: 'free' | 'line' | 'rect' | 'ellipse' | 'text' | string;
+  layer: 'map' | 'tokens' | 'gm' | 'fore' | string;
+  /** [x0, y0, x1, y1, ...] em pixels da imagem: o traço, as pontas, os cantos opostos ou onde o texto começa. */
+  points: number[];
+  /** Cor do traço (ou do texto). */
+  stroke: string;
+  /** Preenchimento (ou o fundo do texto); null é transparente. */
+  fill?: string | null;
+  width: number;
+  text?: string | null;
+  font?: 'sans' | 'serif' | 'mono' | 'hand' | string | null;
+  fontSize?: number | null;
+  bold?: boolean; italic?: boolean;
+}
+
 /** API de armazenamento comum aos bancos (js/store/). */
 interface Store {
   kind: 'shared' | 'local' | 'firebase' | 'supabase';
@@ -494,6 +626,10 @@ interface Store {
   ids?(col: string): Promise<string[]>;
   /** Supabase: canal de broadcast entre navegadores. */
   realtime?: { send(kind: string, data: unknown): Promise<unknown>; on(kind: string, fn: (data: any) => void): void };
+  /** Supabase: o Mestre apaga o chat inteiro (hounds_limpar_chat), inclusive os sussurros que não lê. */
+  clearChat?(): Promise<unknown>;
+  /** Supabase: o banco rola os dados do chat; o site manda a rolagem sem o resultado. */
+  rollsDice?: boolean;
 }
 
 /** Estado global `W` (js/mundo.js): listas visíveis ao usuário atual, dados brutos e índices. */
@@ -515,12 +651,13 @@ interface World {
   improvements: Improvement[];
   sheets: Sheet[];
   events: HEvent[];
+  boards: Board[];
   notebooks: Notebook[];
   notes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; improvements: Improvement[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[]; armorLocs: ArmorLoc[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; disadvantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; items: boolean; improvements: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; improvements: Improvement[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[]; armorLocs: ArmorLoc[]; boards: Board[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; disadvantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; items: boolean; improvements: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean; boards: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
@@ -537,6 +674,7 @@ interface World {
   improvementIdx: Record<string, Improvement>;
   sheetIdx: Record<string, Sheet>;
   eventIdx: Record<string, HEvent>;
+  boardIdx: Record<string, Board>;
   /** Pai efetivo de cada mapa. */
   parent: Record<string, string | null>;
   /** Filhos de cada mapa. */
@@ -570,6 +708,7 @@ interface Route {
   /** Na página de uma ficha, o aliado aberto (null: a ficha principal). */
   allyId?: string | null;
   eventId?: string;
+  boardId?: string;
   nbId?: string;
   noteId?: string;
 }

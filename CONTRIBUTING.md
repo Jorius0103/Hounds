@@ -11,6 +11,7 @@
 | O menu lateral ou o tema | `js/menu.js` |
 | Ícones, categorias de marcador, funções pequenas (`esc`, `toast`…) | `js/utils.js` |
 | O explorer de mapas | `js/explorer.js` |
+| Os tabuleiros (a mesa virtual: mapa de batalha com tokens, paredes, luz dinâmica, névoa, as ferramentas e a barra lateral) | `js/tabs/tab-tabuleiros.js` (lista, formulários, o tabuleiro na tela, a barra de ferramentas e as opções de cada uma, as camadas, o HUD do token, os menus, os Ajustes, quem está na mesa e o arrastar para o mapa), `js/tabuleiro-geo.js` (grade, linha de visão, paredes, área explorada e células), `js/tabuleiro-dados.js` (rolagem de dados e o teste de GURPS), `js/tabuleiro-janela.js` (as janelas flutuantes), `js/tabuleiro-chat.js` (o chat e os comandos), `js/tabuleiro-turnos.js` (a ordem de turno), `js/tabuleiro-diario.js` (o Diário), `js/tabuleiro-arte.js` (a biblioteca de arte) e `js/tabuleiro-paginas.js` (a barra de páginas e a fita dos jogadores) |
 | A imagem do mapa na página do mapa (marcadores, zoom, arrastar) | `js/mapa-previa.js` |
 | O editor de texto das anotações | `js/editor-texto.js` |
 | A escolha de usuário | `js/gate.js` |

@@ -107,10 +107,12 @@ function renderPage() {
   var r = S.route; if (!r) return;
   if (r.page !== 'sheet') paintAllyView(false);
   if (r.page === 'mesa') return;
+  if (r.page === 'board') { renderBoardPage(); return; }
   // The long card lists use the width of the screen; the other pages keep a reading width.
   pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
+  else if (r.page === 'boards') renderBoardsPage();
   else if (r.page === 'maps') renderMapsPage();
   else if (r.page === 'map') { watchMarkersFor(r.mapId); renderMapPage(); var m = mapById(r.mapId); if (r.explore && m) Explorer.open(m); }
   else if (r.page === 'locais') renderLocaisPage();
@@ -156,12 +158,14 @@ function onRoute() {
   else if (r.page === 'sheet' && prev.allyId !== r.allyId) S.ui = { q: '', sheetTab: S.ui.sheetTab };
   S.route = r;
   if (r.node && !byId[r.node] && /^(spell|adv|disadv|c?skill|tech|style|weapon|armor|item):/.test(r.node)) renderMenu(); // the menu lists only the open one
-  var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa';
+  // The Mesa and a board use the whole screen: the menu stays collapsed and opens over them.
+  var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa' || r.page === 'board';
   app.classList.toggle('on-mesa', isMesa);
   if (isMesa) setCollapsed(true, true);
   else if (wasMesa) setCollapsed(lstore('hounds_rail_collapsed') === '1', true);
-  document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : 'view-page'); });
-  if (byId[r.node]) { revealPath(r.node); if (r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
+  if (r.page !== 'board') BoardView.close();
+  document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : r.page === 'board' ? 'view-board' : 'view-page'); });
+  if (byId[r.node]) { revealPath(r.node); if (r.page === 'boards' || r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
   paintMenu();
   topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
   if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : r.page === 'spell' ? spellHref(r.spellId) : r.page === 'sheet' && r.allyId ? allyHref(r.sheetId, r.allyId) : hrefFor(r.node));
@@ -189,6 +193,8 @@ function onData(kind) {
   if (kind === 'improvements') indexImprovements();
   if (kind === 'sheets') indexSheets();
   if (kind === 'events') indexEvents();
+  // The open board follows its document even with a form open (the forms below wait).
+  if (kind === 'boards') { indexBoards(); BoardView.sync(); }
   migrateOrganizations();
   renderMenu();
   if (!S.route) return;
@@ -274,7 +280,7 @@ function cleanCatalogCopies(col) {
 window.addEventListener('hub:user', function () { Object.keys(CATALOG).forEach(cleanCatalogCopies); });
 
 connect().then(function (s) {
-  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, advantages: true, disadvantages: true, skills: true, techniques: true, styles: true, weapons: true, armors: true, items: true, improvements: true, sheets: true, events: true, users: true, notebooks: true, notes: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
+  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, advantages: true, disadvantages: true, skills: true, techniques: true, styles: true, weapons: true, armors: true, items: true, improvements: true, sheets: true, events: true, users: true, notebooks: true, notes: true, boards: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
   W.store = s;
   return s.init().then(function () {
     var fail = function () { toast('Não foi possível carregar os dados.', true); };
@@ -284,6 +290,10 @@ connect().then(function (s) {
     s.watch('organizations', function (l) { W.raw.organizations = l; W.organizations = pub(l); W.loaded.organizations = true; onData('organizations'); }, fail);
     s.watch('sheets', function (l) { W.raw.sheets = l; W.sheets = pub(l); W.loaded.sheets = true; onData('sheets'); }, fail);
     s.watch('events', function (l) { W.raw.events = l; W.events = pub(l); W.loaded.events = true; onData('events'); }, fail);
+    // Tabuleiros: the boards always (menu, list); the tokens only while a board is open (BoardView).
+    s.watch('boards', function (l) { W.raw.boards = l; W.boards = pub(l); W.loaded.boards = true; onData('boards'); }, fail);
+    // Where the players are (the ribbon): a player on a board follows the Mestre to another one.
+    BoardPages.start();
     s.watch('users', onUsers, fail);
     MesaSync.start();
     s.watch('notebooks', function (l) { W.raw.notebooks = l; filterNotes(); W.loaded.notebooks = true; onData('notes'); }, fail);

@@ -12,7 +12,7 @@
      #fichas · #ficha~<id> · #ficha~<id>~<ally id> (an ally, in its main sheet's page) · #eventos · #evento~<id>
      #pericia~<id> is a skill under Perícias; #pericia-combate~<id> the same page under Combate
      #desvantagens · #desvantagem~<id> · #armas · #arma~<id> · #armaduras · #armadura~<id> · #itens · #item~<id>
-     #melhoramentos · #melhoramento~<id>
+     #melhoramentos · #melhoramento~<id> · #tabuleiros · #tabuleiro~<id>
    ===================================================================== */
 function parseRoute() {
   var h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
@@ -50,6 +50,8 @@ function parseRoute() {
   if (p[0] === 'melhoramentos') return { page: 'improvements', node: 'improvements' };
   if (p[0] === 'melhoramento' && p[1]) return { page: 'improvement', improvementId: p[1], node: 'impr:' + p[1] };
   if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
+  if (p[0] === 'tabuleiros') return { page: 'boards', node: 'boards' };
+  if (p[0] === 'tabuleiro' && p[1]) return { page: 'board', boardId: p[1], node: 'board:' + p[1] };
   if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
   if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
   if (p[0] === 'caderno' && p[1]) return { page: 'nb', nbId: p[1], node: 'nb:' + p[1] };
@@ -93,6 +95,8 @@ function hrefFor(node) {
   if (node.indexOf('item:') === 0) return '#item~' + encodeURIComponent(node.slice(5));
   if (node === 'improvements') return '#melhoramentos';
   if (node.indexOf('impr:') === 0) return '#melhoramento~' + encodeURIComponent(node.slice(5));
+  if (node === 'boards') return '#tabuleiros';
+  if (node.indexOf('board:') === 0) return '#tabuleiro~' + encodeURIComponent(node.slice(6));
   return '#';
 }
 function mapHref(id) { return hrefFor('map:' + id); }

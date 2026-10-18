@@ -12,10 +12,10 @@
    stored documents, so a change anywhere shows up everywhere.
    ===================================================================== */
 /** @type {World} */
-var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], disadvantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], items: [], improvements: [], sheets: [], events: [],
-          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], disadvantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], items: [], improvements: [], sheets: [], events: [], notebooks: [], notes: [], armorLocs: [] }, notebooks: [], notes: [], users: [],
-          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, advantages: false, disadvantages: false, skills: false, techniques: false, styles: false, weapons: false, armors: false, items: false, improvements: false, sheets: false, events: false, users: false, notebooks: false, notes: false },
-          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, advIdx: {}, disadvIdx: {}, skillIdx: {}, techIdx: {}, styleIdx: {}, weaponIdx: {}, armorIdx: {}, itemIdx: {}, improvementIdx: {}, sheetIdx: {}, eventIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
+var W = { store: null, maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], disadvantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], items: [], improvements: [], sheets: [], events: [], boards: [],
+          raw: { maps: [], locations: [], characters: [], organizations: [], spells: [], advantages: [], disadvantages: [], skills: [], techniques: [], styles: [], weapons: [], armors: [], items: [], improvements: [], sheets: [], events: [], notebooks: [], notes: [], armorLocs: [], boards: [] }, notebooks: [], notes: [], users: [],
+          loaded: { maps: false, locations: false, characters: false, organizations: false, spells: false, advantages: false, disadvantages: false, skills: false, techniques: false, styles: false, weapons: false, armors: false, items: false, improvements: false, sheets: false, events: false, users: false, notebooks: false, notes: false, boards: false },
+          mapIdx: {}, locIdx: {}, charIdx: {}, orgIdx: {}, spellIdx: {}, advIdx: {}, disadvIdx: {}, skillIdx: {}, techIdx: {}, styleIdx: {}, weaponIdx: {}, armorIdx: {}, itemIdx: {}, improvementIdx: {}, sheetIdx: {}, eventIdx: {}, boardIdx: {}, parent: {}, kids: {}, locParent: {}, locKids: {} };
 // The same ids once each, in order: links are lists of ids and must never repeat one.
 function uniqIds(ids) { var seen = {}; return (ids || []).filter(function (id) { if (!id || seen[id]) return false; seen[id] = true; return true; }); }
 // Ids picked in a form plus the ones this user can't see (and so couldn't pick), which are kept.
@@ -314,8 +314,8 @@ function secretTag(item) { return '<span class="secret-tag" title="Não está vi
 function refilter() {
   W.maps = pub(W.raw.maps); W.locations = pub(W.raw.locations); W.characters = pub(W.raw.characters); W.organizations = pub(W.raw.organizations);
   mergeCatalog('spells'); mergeCatalog('advantages'); mergeCatalog('disadvantages'); mergeCatalog('skills'); mergeCatalog('techniques'); mergeCatalog('styles'); mergeCatalog('weapons'); mergeCatalog('armors'); mergeCatalog('items'); mergeCatalog('improvements');
-  W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events);
-  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexAdvantages(); indexDisadvantages(); indexSkills(); indexTechniques(); indexStyles(); indexWeapons(); indexArmors(); indexItems(); indexImprovements(); indexSheets(); indexEvents(); filterNotes();
+  W.sheets = pub(W.raw.sheets); W.events = pub(W.raw.events); W.boards = pub(W.raw.boards);
+  indexMaps(); indexLocations(); indexCharacters(); indexOrgs(); indexSpells(); indexAdvantages(); indexDisadvantages(); indexSkills(); indexTechniques(); indexStyles(); indexWeapons(); indexArmors(); indexItems(); indexImprovements(); indexSheets(); indexEvents(); indexBoards(); filterNotes();
   S.markers = pub(S.rawMarkers || []);
   if (Explorer.isOpen() && S.route && S.route.explore) Explorer.setMarkers(S.markers);
 }
