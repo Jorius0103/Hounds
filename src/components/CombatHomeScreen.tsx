@@ -12,6 +12,7 @@ import {
   Users,
   Target,
   Star,
+  Package,
 } from 'lucide-react';
 import {
   NPC,
@@ -33,11 +34,24 @@ interface CombatHomeScreenProps {
   filterEmptyMessage?: string;
 }
 
-function isExtraManaItem(item: { name?: string; category?: string }): boolean {
-  if (!item) return false;
-  if (item.category) return item.category === 'mana';
-  const name = (item.name || '').toLowerCase();
-  return name.includes('mana') || name.includes('pedra') || name.includes('energia');
+function getItemIcon(name: string, category?: string) {
+  const cat = (category || '').toLowerCase();
+  if (cat === 'mana' || cat === 'mana_stone') return <Sparkles size={11} className="text-cyan-400 shrink-0" />;
+  if (cat === 'shield') return <Shield size={11} className="text-emerald-400 shrink-0" />;
+  if (cat === 'arrows' || cat === 'arrow') return <Target size={11} className="text-amber-400 shrink-0" />;
+  if (cat === 'other') return <Package size={11} className="text-slate-400 shrink-0" />;
+
+  const lower = (name || '').toLowerCase();
+  if (lower.includes('mana') || lower.includes('pedra') || lower.includes('energia')) {
+    return <Sparkles size={11} className="text-cyan-400 shrink-0" />;
+  }
+  if (lower.includes('flecha') || lower.includes('arco') || lower.includes('muni') || lower.includes('tiro')) {
+    return <Target size={11} className="text-amber-400 shrink-0" />;
+  }
+  if (lower.includes('escudo') || lower.includes('shield') || lower.includes('defesa')) {
+    return <Shield size={11} className="text-emerald-400 shrink-0" />;
+  }
+  return <Package size={11} className="text-slate-400 shrink-0" />;
 }
 
 export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
@@ -491,16 +505,8 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                             className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5 text-[11px]"
                             title={`${it.name} (${it.category || 'Recurso'})`}
                           >
-                            <span className="font-bold text-slate-200 flex items-center gap-1 truncate max-w-[110px]">
-                              {it.category === 'mana_stone' ? (
-                                <Sparkles size={11} className="text-cyan-400 shrink-0" />
-                              ) : it.category === 'shield' ? (
-                                <Shield size={11} className="text-emerald-400 shrink-0" />
-                              ) : it.category === 'arrows' || it.category === ('arrow' as any) ? (
-                                <Target size={11} className="text-amber-400 shrink-0" />
-                              ) : (
-                                <Star size={11} className="text-amber-400 shrink-0" />
-                              )}
+                            <span className="font-bold text-slate-200 flex items-center gap-1.5 truncate max-w-[110px]">
+                              {getItemIcon(it.name, it.category)}
                               <span className="truncate">{it.name || 'Recurso'}</span>
                             </span>
                             <span className="font-mono font-black text-xs text-white shrink-0">
