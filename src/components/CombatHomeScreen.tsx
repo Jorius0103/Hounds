@@ -249,8 +249,8 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                   : 'bg-slate-900/95 border-slate-700 hover:border-purple-500/70'
               }`}
             >
-              {/* LINHA 1: CABEÇALHO COMPACTO */}
-              <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-1.5">
+              {/* LINHA 1: CABEÇALHO COMPACTO COM PV E FP */}
+              <div className="flex items-center justify-between gap-1.5 border-b border-slate-800/80 pb-1.5 flex-wrap">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="relative shrink-0">
                     <NpcAvatar
@@ -284,7 +284,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       </h3>
                       {isPlayerChar && npc.playerName && (
                         <span
-                          className="text-xs font-semibold text-emerald-400 truncate max-w-[130px]"
+                          className="text-xs font-semibold text-emerald-400 truncate max-w-[120px]"
                           title={`Jogador: ${npc.playerName}`}
                         >
                           ({npc.playerName})
@@ -322,108 +322,76 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                   </div>
                 </div>
 
-                {/* Manobra */}
-                <div className="shrink-0">
-                  {maneuver ? (
-                    <span
-                      style={{
-                        backgroundColor: maneuver.bgHex,
-                        color: maneuver.textHex,
-                        borderColor: maneuver.borderHex,
-                      }}
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-xs block max-w-[115px] truncate"
-                      title={`Manobra de Combate: ${maneuver.name}`}
-                    >
-                      {maneuver.name}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] text-slate-500 italic bg-slate-950/80 px-1.5 py-0.5 rounded border border-slate-800/80 block">
-                      Sem manobra
-                    </span>
+                {/* LADO DIREITO DO CABEÇALHO: PV/FP + MANOBRA */}
+                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                  {showDetailedStats && (
+                    <div className="flex items-center gap-1.5 bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-0.5 shadow-xs">
+                      {/* PV */}
+                      <div className="flex items-center gap-1" title={`Pontos de Vida: ${npc.hpCurrent} / ${npc.hpMax}`}>
+                        <Heart size={11} className="text-rose-500 fill-rose-500/20 shrink-0" />
+                        <span className="text-[10px] font-bold text-rose-400">PV</span>
+                        <span className="font-mono font-black text-xs leading-none">
+                          <span
+                            className={
+                              npc.hpCurrent <= 0
+                                ? 'text-red-400'
+                                : npc.hpCurrent < npc.hpMax
+                                ? 'text-yellow-400'
+                                : 'text-emerald-400'
+                            }
+                          >
+                            {npc.hpCurrent}
+                          </span>
+                          <span className="text-slate-500 text-[10px] mx-0.5">/</span>
+                          <span className="text-slate-400 text-[10px]">{npc.hpMax}</span>
+                        </span>
+                      </div>
+
+                      <div className="w-px h-3.5 bg-slate-800" />
+
+                      {/* FP */}
+                      <div className="flex items-center gap-1" title={`Pontos de Fadiga: ${npc.fpCurrent} / ${npc.fpMax}`}>
+                        <Zap size={11} className="text-cyan-400 fill-cyan-400/20 shrink-0" />
+                        <span className="text-[10px] font-bold text-cyan-300">FP</span>
+                        <span className="font-mono font-black text-xs leading-none">
+                          <span className="text-cyan-300">{npc.fpCurrent}</span>
+                          <span className="text-slate-500 text-[10px] mx-0.5">/</span>
+                          <span className="text-slate-400 text-[10px]">{npc.fpMax}</span>
+                        </span>
+                      </div>
+                    </div>
                   )}
+
+                  {/* Manobra */}
+                  <div className="shrink-0">
+                    {maneuver ? (
+                      <span
+                        style={{
+                          backgroundColor: maneuver.bgHex,
+                          color: maneuver.textHex,
+                          borderColor: maneuver.borderHex,
+                        }}
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-xs block max-w-[105px] truncate"
+                        title={`Manobra de Combate: ${maneuver.name}`}
+                      >
+                        {maneuver.name}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] text-slate-500 italic bg-slate-950/80 px-1.5 py-0.5 rounded border border-slate-800/80 block">
+                        Sem manobra
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
+              {/* CONTEÚDO PRINCIPAL (DIVS INTERNAS RESPONSIVAS, NÃO FIXAS EM ESQUERDA/DIREITA) */}
               {showDetailedStats ? (
-                <div className="grid grid-cols-2 gap-1.5 items-start">
-                  {/* COLUNA ESQUERDA: PV/FP + Defesas Ativas */}
-                  <div className="space-y-1.5">
-                    {/* Pontos de Vida & Fadiga (mesma div, altura natural compacta sem esticar) */}
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
-                      {/* Pontos de Vida (PV) */}
-                      <div>
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="inline-flex items-center gap-1 font-bold text-rose-400 text-xs">
-                            <Heart size={11} className="text-rose-500 fill-rose-500/20" />
-                            PV
-                          </span>
-                          <span className="font-mono font-black text-sm">
-                            <span
-                              className={
-                                npc.hpCurrent <= 0
-                                  ? 'text-red-400'
-                                  : npc.hpCurrent < npc.hpMax
-                                  ? 'text-yellow-400'
-                                  : 'text-emerald-400'
-                              }
-                            >
-                              {npc.hpCurrent}
-                            </span>
-                            <span className="text-slate-500 text-xs mx-0.5">/</span>
-                            <span className="text-slate-300 text-xs">{npc.hpMax}</span>
-                          </span>
-                        </div>
-                        {npc.hpMax > 0 && (
-                          <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden mt-0.5">
-                            <div
-                              className={`h-full transition-all duration-300 ${
-                                npc.hpCurrent <= 0
-                                  ? 'bg-red-600'
-                                  : npc.hpCurrent < npc.hpMax * 0.33
-                                  ? 'bg-rose-500'
-                                  : npc.hpCurrent < npc.hpMax
-                                  ? 'bg-yellow-500'
-                                  : 'bg-emerald-500'
-                              }`}
-                              style={{
-                                width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="border-t border-slate-800/60 my-1" />
-
-                      {/* Pontos de Fadiga (FP) */}
-                      <div>
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="inline-flex items-center gap-1 font-bold text-cyan-300 text-xs">
-                            <Zap size={11} className="text-cyan-400 fill-cyan-400/20" />
-                            FP
-                          </span>
-                          <span className="font-mono font-black text-sm">
-                            <span className="text-cyan-300">{npc.fpCurrent}</span>
-                            <span className="text-slate-500 text-xs mx-0.5">/</span>
-                            <span className="text-slate-300 text-xs">{npc.fpMax}</span>
-                          </span>
-                        </div>
-                        {npc.fpMax > 0 && (
-                          <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden mt-0.5">
-                            <div
-                              className="h-full bg-cyan-500 transition-all duration-300"
-                              style={{
-                                width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
+                (hasDefenses || hasFavoriteItems || hasSpells) && (
+                  <div className="flex flex-wrap gap-1.5 items-start">
                     {/* Defesas Ativas (SÓ EXIBE SE HOUVER DEFESAS) */}
                     {hasDefenses && (
-                      <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
+                      <div className="flex-1 min-w-[140px] bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
                         <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
                           <span className="flex items-center gap-1 text-slate-300">
                             <Shield size={10} className="text-amber-400" />
@@ -481,13 +449,10 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                         </div>
                       </div>
                     )}
-                  </div>
 
-                  {/* COLUNA DIREITA: Recursos Favoritados + Magias */}
-                  <div className="space-y-1.5">
                     {/* Recursos e Equipamentos Favoritados (SÓ EXIBE SE HOUVER ITENS FAVORITADOS) */}
                     {hasFavoriteItems && (
-                      <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
+                      <div className="flex-1 min-w-[140px] bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
                         <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
                           <span className="flex items-center gap-1 text-slate-300">
                             <Star size={10} className="text-amber-400 fill-amber-400/30" />
@@ -526,7 +491,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
 
                     {/* Magias Ativas & Magias Sob Efeito (SÓ EXIBE SE HOUVER MAGIAS) */}
                     {hasSpells && (
-                      <div className="bg-slate-950/90 border border-purple-900/40 rounded-lg p-1.5">
+                      <div className="flex-1 min-w-[140px] bg-slate-950/90 border border-purple-900/40 rounded-lg p-1.5">
                         {/* Magias Ativas */}
                         {activeSpells.length > 0 && (
                           <div>
@@ -592,57 +557,62 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       </div>
                     )}
                   </div>
-                </div>
+                )
               ) : (
                 <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg px-2 py-1 text-center text-[10px] text-slate-500 italic">
                   Estatísticas detalhadas do NPC ocultas para jogadores.
                 </div>
               )}
 
-              {/* OBSERVAÇÕES GERAIS (SÓ EXIBE SE EXISTIR) */}
-              {generalNotes && (
-                <div className="bg-slate-950/80 border border-slate-800/80 rounded-lg px-2 py-1 text-[9px] text-slate-300 flex items-start gap-1">
-                  <span className="font-bold text-amber-400 shrink-0">Obs:</span>
-                  <span className="truncate italic">{generalNotes}</span>
-                </div>
-              )}
+              {/* OBSERVAÇÃO E ALERTAS (METADE HORIZONTAL CADA, SÓ SE EXISTIREM) */}
+              {(generalNotes || hasAlerts) && (
+                <div className="grid grid-cols-2 gap-1.5 items-start mt-auto">
+                  {generalNotes && (
+                    <div className="col-span-1 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2 py-1 text-[9px] text-slate-300 flex items-start gap-1">
+                      <span className="font-bold text-amber-400 shrink-0">Obs:</span>
+                      <span className="truncate italic" title={generalNotes}>
+                        {generalNotes}
+                      </span>
+                    </div>
+                  )}
 
-              {/* LINHA DE ALERTAS DE DEFESAS & AÇÕES DO TURNO (SÓ EXIBE SE EXISTIR ALGUM ALERTA) */}
-              {hasAlerts && (
-                <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center gap-1.5 flex-wrap">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 shrink-0">
-                    <Shield size={10} className="text-amber-400" />
-                    Turno:
-                  </span>
-                  {turnAlerts.map((alert) => {
-                    const IconComp = alert.icon;
-                    return (
-                      <span
-                        key={alert.id}
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] border ${alert.badgeClass}`}
-                      >
-                        {IconComp && <IconComp size={9} className="shrink-0" />}
-                        <span>{alert.text}</span>
+                  {hasAlerts && (
+                    <div className="col-span-1 bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 shrink-0">
+                        <Shield size={10} className="text-amber-400" />
+                        Turno:
                       </span>
-                    );
-                  })}
-                  {criticalAlerts.map((alert) => {
-                    const IconComp = alert.icon;
-                    return (
-                      <span
-                        key={alert.id}
-                        title={alert.tooltip || alert.text}
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] border ${alert.badgeClass}`}
-                      >
-                        {IconComp && <IconComp size={9} className="shrink-0" />}
-                        <span>{alert.text}</span>
-                      </span>
-                    );
-                  })}
-                  {ta.notes && ta.notes.trim() !== '' && (
-                    <span className="text-[9px] text-slate-300 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.2 italic truncate max-w-[180px]">
-                      Nota: {ta.notes}
-                    </span>
+                      {turnAlerts.map((alert) => {
+                        const IconComp = alert.icon;
+                        return (
+                          <span
+                            key={alert.id}
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] border ${alert.badgeClass}`}
+                          >
+                            {IconComp && <IconComp size={9} className="shrink-0" />}
+                            <span>{alert.text}</span>
+                          </span>
+                        );
+                      })}
+                      {criticalAlerts.map((alert) => {
+                        const IconComp = alert.icon;
+                        return (
+                          <span
+                            key={alert.id}
+                            title={alert.tooltip || alert.text}
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] border ${alert.badgeClass}`}
+                          >
+                            {IconComp && <IconComp size={9} className="shrink-0" />}
+                            <span>{alert.text}</span>
+                          </span>
+                        );
+                      })}
+                      {ta.notes && ta.notes.trim() !== '' && (
+                        <span className="text-[9px] text-slate-300 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.2 italic truncate max-w-[140px]">
+                          Nota: {ta.notes}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
