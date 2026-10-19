@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActionLogEntry, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2, AlertTriangle, RotateCcw, Dices } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 
 interface CombatLogCardProps {
@@ -96,6 +96,14 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
         return {
           icon: <Package size={12} className="text-amber-400" />,
           label: amt !== 0 ? `${sign} ${entry.itemName || 'Item'}` : `${entry.itemName || 'Item'}`,
+          bg: 'bg-amber-950/70 border-amber-800/80 text-amber-300',
+        };
+      }
+      case 'roll': {
+        const is3D = entry.description?.includes('3D6') || (entry as any).rolls?.length === 3;
+        return {
+          icon: <Dices size={12} className="text-amber-400" />,
+          label: is3D ? '3D6' : '1D6',
           bg: 'bg-amber-950/70 border-amber-800/80 text-amber-300',
         };
       }
@@ -389,8 +397,32 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
         </div>
       )}
 
+      {/* Roll result visual block */}
+      {entry.type === 'roll' && (
+        <div className="flex items-center justify-between bg-slate-900/90 border border-amber-500/30 rounded-lg p-2 font-mono">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-amber-400 font-semibold font-sans">
+              {(entry as any).rolls && (entry as any).rolls.length > 1
+                ? `3D6: [ ${(entry as any).rolls.join(' + ')} ]`
+                : '1D6'}
+            </span>
+            {entry.playerName && (
+              <span className="text-[9px] text-slate-400 font-sans italic">
+                Jogador: {entry.playerName}
+              </span>
+            )}
+          </div>
+          <div className="flex items-baseline gap-1 bg-amber-950/60 border border-amber-500/40 px-2.5 py-0.5 rounded-lg">
+            <span className="text-[9px] text-amber-400 uppercase font-sans font-bold">Total</span>
+            <span className="text-base font-black text-amber-300">
+              {entry.amount ?? ((entry as any).rolls ? (entry as any).rolls.reduce((a: number, b: number) => a + b, 0) : 0)}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Description / Custom Note */}
-      {displayDescription && (
+      {displayDescription && entry.type !== 'roll' && (
         <div className="text-[11px] text-slate-300 font-sans leading-relaxed">
           {displayDescription}
         </div>

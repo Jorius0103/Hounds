@@ -20,6 +20,7 @@ import { PlayerPermissionsModal } from './components/PlayerPermissionsModal';
 import { CombatPlayersModal } from './components/CombatPlayersModal';
 import { GeneralCombatLog } from './components/GeneralCombatLog';
 import { SystemLogModal } from './components/SystemLogModal';
+import { DiceRollOverlay, DiceRollResult } from './components/DiceRollOverlay';
 import { systemLogger } from './utils/systemLogger';
 import { Swords, Plus, EyeOff } from 'lucide-react';
 
@@ -373,6 +374,7 @@ export default function App() {
   const [systemLogsCount, setSystemLogsCount] = useState(0);
   const [playerPermsModalOpen, setPlayerPermsModalOpen] = useState(false);
   const [combatPlayersModalOpen, setCombatPlayersModalOpen] = useState(false);
+  const [activeDiceRoll, setActiveDiceRoll] = useState<DiceRollResult | null>(null);
   const [editorUserIds, setEditorUserIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('gurps_combat_master_editors_v1');
@@ -1961,6 +1963,72 @@ export default function App() {
     }
   };
 
+  const handleRollDice = (diceCount: number) => {
+    const rolls: number[] = [];
+    for (let i = 0; i < diceCount; i++) {
+      rolls.push(Math.floor(Math.random() * 6) + 1);
+    }
+    const total = rolls.reduce((acc, val) => acc + val, 0);
+
+    // Identifica o personagem do jogador pelo nome cadastrado
+    const curName = (currentUser?.name || '').trim().toLowerCase();
+    let char = allCharacters.find(
+      (c: NPC) => c.playerName && c.playerName.trim().toLowerCase() === curName
+    );
+    if (!char && selectedNpc) {
+      char = selectedNpc;
+    }
+    if (!char && allCharacters.length > 0) {
+      char = allCharacters[0];
+    }
+
+    const charName = char?.name || currentUser?.name || 'Mestre';
+    const playerName = char?.playerName || (currentUser?.role === 'jogador' ? currentUser?.name : undefined);
+
+    const now = Date.now();
+    const roundNumber = activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0;
+    const logDescription = diceCount === 3
+      ? `Rolou 3D6: [${rolls.join(', ')}] = ${total}`
+      : `Rolou 1D6: [${rolls[0]}] = ${total}`;
+
+    const newEntry: ActionLogEntry = {
+      id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      timestampMs: now,
+      author: currentUser?.role === 'mestre' ? 'mestre' : 'assistente',
+      authorName: currentUser?.name || (currentUser?.role === 'mestre' ? 'Mestre' : 'Jogador'),
+      type: 'roll',
+      combatId: activeCombat?.id,
+      round: roundNumber,
+      description: logDescription,
+      amount: total,
+      rolls: rolls,
+      npcId: char?.id,
+      npcName: charName,
+      npcAvatar: char?.avatar,
+      npcPreset: char?.avatarPreset,
+      npcCharacterType: char?.characterType || 'player',
+      playerName: playerName,
+    } as any;
+
+    if (char) {
+      handleUpdateNpc({
+        ...char,
+        history: [newEntry, ...(char.history || [])],
+      });
+    }
+
+    setActiveDiceRoll({
+      rolls,
+      total,
+      diceCount,
+      characterName: charName,
+      playerName,
+      avatar: char?.avatar,
+      avatarPreset: char?.avatarPreset,
+    });
+  };
+
   const handleClearActiveCombatHistory = () => {
     const now = Date.now();
     const updatedCombats = combats.map((c) => ({
@@ -2611,6 +2679,7 @@ export default function App() {
           setIsHomeScreen(true);
           setActiveViewMode('sheets');
         }}
+        onRollDice={handleRollDice}
       />
 
       {/* 2. BARRA DE PERSONAGENS & NPCS (Espalha até a direita, filtros na esquerda) */}
@@ -2945,6 +3014,12 @@ export default function App() {
       <SystemLogModal
         isOpen={systemLogModalOpen}
         onClose={() => setSystemLogModalOpen(false)}
+      />
+
+      {/* 3D Dice Roll Animation Overlay (Roll20 style) */}
+      <DiceRollOverlay
+        rollData={activeDiceRoll}
+        onClose={() => setActiveDiceRoll(null)}
       />
     </div>
   );

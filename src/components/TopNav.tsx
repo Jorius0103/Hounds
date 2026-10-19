@@ -27,6 +27,7 @@ interface TopNavProps {
   canEditCurrent?: boolean;
   isHomeScreen?: boolean;
   onOpenHomeScreen?: () => void;
+  onRollDice?: (diceCount: number) => void;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
@@ -42,6 +43,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   canEditCurrent = false,
   isHomeScreen = false,
   onOpenHomeScreen,
+  onRollDice,
 }) => {
   // Filtra combates ativos para exibição na barra principal
   const activeCombats = useMemo(() => {
@@ -249,6 +251,38 @@ export const TopNav: React.FC<TopNavProps> = ({
             >
               <Columns size={13} />
               <span className="hidden md:inline">Dividida</span>
+            </button>
+          </div>
+        )}
+
+        {/* Zone 2: Dice Roller (3D6 e 1D6) no topo direito */}
+        {onRollDice && (
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+            <button
+              type="button"
+              onClick={() => onRollDice(3)}
+              className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-black rounded-lg transition-all shadow-md font-mono border border-amber-400/60 cursor-pointer"
+              title="Rolar 3D6 com animação e registrar no log de combate"
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-950">
+                <rect width="18" height="18" x="3" y="3" rx="3" />
+                <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+                <circle cx="16" cy="16" r="1.5" fill="currentColor" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+              </svg>
+              <span>3D6</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRollDice(1)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white text-xs font-black rounded-lg transition-all shadow-sm font-mono border border-slate-750 hover:border-amber-500/50 cursor-pointer"
+              title="Rolar 1D6 com animação e registrar no log de combate"
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-400">
+                <rect width="18" height="18" x="3" y="3" rx="3" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+              </svg>
+              <span>1D6</span>
             </button>
           </div>
         )}
