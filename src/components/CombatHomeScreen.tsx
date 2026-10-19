@@ -322,6 +322,81 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                   </div>
                 </div>
 
+                {/* CENTRO DO CABEÇALHO: PV E FP COM BARRA DE PROGRESSO */}
+                {showDetailedStats && (
+                  <div className="flex items-center gap-2 shrink-0 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2 py-1">
+                    {/* PV */}
+                    <div className="flex flex-col min-w-[70px]">
+                      <div className="flex items-center justify-between gap-1 text-[10px] leading-tight">
+                        <span className="inline-flex items-center gap-0.5 font-bold text-rose-400">
+                          <Heart size={10} className="text-rose-500 fill-rose-500/20 shrink-0" />
+                          PV
+                        </span>
+                        <span className="font-mono font-black">
+                          <span
+                            className={
+                              npc.hpCurrent <= 0
+                                ? 'text-red-400'
+                                : npc.hpCurrent < npc.hpMax
+                                ? 'text-yellow-400'
+                                : 'text-emerald-400'
+                            }
+                          >
+                            {npc.hpCurrent}
+                          </span>
+                          <span className="text-slate-500 text-[9px] mx-0.5">/</span>
+                          <span className="text-slate-300 text-[9px]">{npc.hpMax}</span>
+                        </span>
+                      </div>
+                      {npc.hpMax > 0 && (
+                        <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden mt-0.5">
+                          <div
+                            className={`h-full transition-all duration-300 ${
+                              npc.hpCurrent <= 0
+                                ? 'bg-red-600'
+                                : npc.hpCurrent < npc.hpMax * 0.33
+                                ? 'bg-rose-500'
+                                : npc.hpCurrent < npc.hpMax
+                                ? 'bg-yellow-500'
+                                : 'bg-emerald-500'
+                            }`}
+                            style={{
+                              width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="h-5 w-[1px] bg-slate-800" />
+
+                    {/* FP */}
+                    <div className="flex flex-col min-w-[70px]">
+                      <div className="flex items-center justify-between gap-1 text-[10px] leading-tight">
+                        <span className="inline-flex items-center gap-0.5 font-bold text-cyan-300">
+                          <Zap size={10} className="text-cyan-400 fill-cyan-400/20 shrink-0" />
+                          FP
+                        </span>
+                        <span className="font-mono font-black">
+                          <span className="text-cyan-300">{npc.fpCurrent}</span>
+                          <span className="text-slate-500 text-[9px] mx-0.5">/</span>
+                          <span className="text-slate-300 text-[9px]">{npc.fpMax}</span>
+                        </span>
+                      </div>
+                      {npc.fpMax > 0 && (
+                        <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden mt-0.5">
+                          <div
+                            className="h-full bg-cyan-500 transition-all duration-300"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Manobra */}
                 <div className="shrink-0">
                   {maneuver ? (
@@ -344,153 +419,72 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                 </div>
               </div>
 
-              {/* CONTEÚDO PRINCIPAL (ESTRITAMENTE DUAS COLUNAS COM FONTES AUMENTADAS) */}
+              {/* CONTEÚDO PRINCIPAL (DISTRIBUIÇÃO DINÂMICA EM 2 COLUNAS SEM GAPS VERTICAIS) */}
               {showDetailedStats ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
-                  {/* Pontos de Vida & Fadiga com Barra de Progresso */}
-                  <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-2 space-y-1.5">
-                    {/* Pontos de Vida (PV) */}
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="inline-flex items-center gap-1 font-bold text-rose-400 text-xs">
-                          <Heart size={12} className="text-rose-500 fill-rose-500/20 shrink-0" />
-                          PV
-                        </span>
-                        <span className="font-mono font-black text-sm">
-                          <span
-                            className={
-                              npc.hpCurrent <= 0
-                                ? 'text-red-400'
-                                : npc.hpCurrent < npc.hpMax
-                                ? 'text-yellow-400'
-                                : 'text-emerald-400'
-                            }
-                          >
-                            {npc.hpCurrent}
-                          </span>
-                          <span className="text-slate-500 text-xs mx-0.5">/</span>
-                          <span className="text-slate-300 text-xs">{npc.hpMax}</span>
-                        </span>
-                      </div>
-                      {npc.hpMax > 0 && (
-                        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden mt-1">
-                          <div
-                            className={`h-full transition-all duration-300 ${
-                              npc.hpCurrent <= 0
-                                ? 'bg-red-600'
-                                : npc.hpCurrent < npc.hpMax * 0.33
-                                ? 'bg-rose-500'
-                                : npc.hpCurrent < npc.hpMax
-                                ? 'bg-yellow-500'
-                                : 'bg-emerald-500'
-                            }`}
-                            style={{
-                              width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
+                (() => {
+                  const contentBlocks: React.ReactNode[] = [];
 
-                    <div className="border-t border-slate-800/60 my-1" />
-
-                    {/* Pontos de Fadiga (FP) */}
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="inline-flex items-center gap-1 font-bold text-cyan-300 text-xs">
-                          <Zap size={12} className="text-cyan-400 fill-cyan-400/20 shrink-0" />
-                          FP
-                        </span>
-                        <span className="font-mono font-black text-sm">
-                          <span className="text-cyan-300">{npc.fpCurrent}</span>
-                          <span className="text-slate-500 text-xs mx-0.5">/</span>
-                          <span className="text-slate-300 text-xs">{npc.fpMax}</span>
-                        </span>
-                      </div>
-                      {npc.fpMax > 0 && (
-                        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden mt-1">
-                          <div
-                            className="h-full bg-cyan-500 transition-all duration-300"
-                            style={{
-                              width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Defesas Ativas (SÓ EXIBE SE HOUVER DEFESAS) */}
-                  {hasDefenses && (
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-2">
-                      <div className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <Shield size={11} className="text-amber-400" />
-                          Defesas Ativas
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1">
-                        {/* Esquiva */}
-                        <div
-                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                          title={npc.dodgeNotes || 'Esquiva'}
-                        >
-                          <span className="text-[10px] font-bold text-cyan-400">Esq</span>
-                          <span className="font-mono font-black text-xs text-cyan-300">{npc.dodge ?? 0}</span>
-                        </div>
-
-                        {/* Bloqueio */}
-                        <div
-                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                          title={npc.blockNotes || 'Bloqueio'}
-                        >
-                          <span className="text-[10px] font-bold text-emerald-400">Bloq</span>
-                          <span className="font-mono font-black text-xs text-emerald-300">{npc.block ?? 0}</span>
-                        </div>
-
-                        {/* Aparar 1 */}
-                        <div
-                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                          title={parry1?.weaponName ? `Aparar: ${parry1.weaponName} ${parry1.notes || ''}` : 'Aparar'}
-                        >
-                          <span className="text-[10px] font-bold text-amber-400 truncate max-w-[50px]">
-                            {parry1?.weaponName ? `Ap (${parry1.weaponName})` : 'Aparar'}
-                          </span>
-                          <span className="font-mono font-black text-xs text-amber-300 shrink-0">
-                            {parry1?.value ?? 0}
-                          </span>
-                        </div>
-
-                        {/* Aparar 2 (se não houver, slot vazio sem borda) */}
-                        {parry2 ? (
+                  // 1. Bloco de Defesas Ativas (SEM TÍTULO "DEFESAS ATIVAS")
+                  if (hasDefenses) {
+                    contentBlocks.push(
+                      <div key="defenses" className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
+                        <div className="grid grid-cols-2 gap-1">
+                          {/* Esquiva */}
                           <div
                             className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                            title={`Aparar 2: ${parry2.weaponName} ${parry2.notes || ''}`}
+                            title={npc.dodgeNotes || 'Esquiva'}
+                          >
+                            <span className="text-[10px] font-bold text-cyan-400">Esq</span>
+                            <span className="font-mono font-black text-xs text-cyan-300">{npc.dodge ?? 0}</span>
+                          </div>
+
+                          {/* Bloqueio */}
+                          <div
+                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                            title={npc.blockNotes || 'Bloqueio'}
+                          >
+                            <span className="text-[10px] font-bold text-emerald-400">Bloq</span>
+                            <span className="font-mono font-black text-xs text-emerald-300">{npc.block ?? 0}</span>
+                          </div>
+
+                          {/* Aparar 1 */}
+                          <div
+                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                            title={parry1?.weaponName ? `Aparar: ${parry1.weaponName} ${parry1.notes || ''}` : 'Aparar'}
                           >
                             <span className="text-[10px] font-bold text-amber-400 truncate max-w-[50px]">
-                              {parry2.weaponName ? `Ap (${parry2.weaponName})` : 'Ap 2'}
+                              {parry1?.weaponName ? `Ap (${parry1.weaponName})` : 'Aparar'}
                             </span>
                             <span className="font-mono font-black text-xs text-amber-300 shrink-0">
-                              {parry2.value}
+                              {parry1?.value ?? 0}
                             </span>
                           </div>
-                        ) : (
-                          <div className="min-h-[22px]" />
-                        )}
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Recursos e Equipamentos Favoritados (SÓ EXIBE SE HOUVER ITENS FAVORITADOS) */}
-                  {hasFavoriteItems && (
-                    <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-2">
-                      <div className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <Star size={11} className="text-amber-400 fill-amber-400/30" />
-                          Recursos Favoritados
-                        </span>
+                          {/* Aparar 2 (se não houver, slot vazio sem borda) */}
+                          {parry2 ? (
+                            <div
+                              className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                              title={`Aparar 2: ${parry2.weaponName} ${parry2.notes || ''}`}
+                            >
+                              <span className="text-[10px] font-bold text-amber-400 truncate max-w-[50px]">
+                                {parry2.weaponName ? `Ap (${parry2.weaponName})` : 'Ap 2'}
+                              </span>
+                              <span className="font-mono font-black text-xs text-amber-300 shrink-0">
+                                {parry2.value}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="min-h-[22px]" />
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-1">
+                    );
+                  }
+
+                  // 2. Bloco de Recursos Favoritados (SEM TÍTULO "RECURSOS FAVORITADOS")
+                  if (hasFavoriteItems) {
+                    contentBlocks.push(
+                      <div key="resources" className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 space-y-1">
                         {favoriteItems.map((it) => (
                           <div
                             key={it.id}
@@ -517,133 +511,147 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    );
+                  }
 
-                  {/* Magias Ativas & Magias Sob Efeito (SÓ EXIBE SE HOUVER MAGIAS) */}
-                  {hasSpells && (
-                    <div className="bg-slate-950/90 border border-purple-900/40 rounded-lg p-2">
-                      {/* Magias Ativas */}
-                      {activeSpells.length > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-300">
-                              <Sparkles size={10} className="text-purple-400" />
-                              Magias Ativas ({activeSpells.length})
-                            </span>
+                  // 3. Bloco de Magias (MANTÉM TÍTULOS DE "Magias Ativas" E "Sob Efeito")
+                  if (hasSpells) {
+                    contentBlocks.push(
+                      <div key="spells" className="bg-slate-950/90 border border-purple-900/40 rounded-lg p-1.5">
+                        {/* Magias Ativas */}
+                        {activeSpells.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-300">
+                                <Sparkles size={10} className="text-purple-400" />
+                                Magias Ativas ({activeSpells.length})
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
+                              {activeSpells.map((sp) => {
+                                const isExpired =
+                                  sp.duration !== undefined &&
+                                  sp.duration > 0 &&
+                                  (currentRound ?? 0) >= (sp.round ?? 0) + sp.duration;
+                                return (
+                                  <span
+                                    key={sp.id}
+                                    className="inline-flex items-center gap-1 bg-slate-900 border border-purple-800/50 rounded px-1.5 py-0.5 text-[9px] text-purple-100"
+                                    title={`Alvo: ${sp.targetName || 'Geral'} | R${sp.round}`}
+                                  >
+                                    <strong className="truncate max-w-[70px]">{sp.spellName}</strong>
+                                    <span className="text-slate-400 truncate max-w-[45px]">
+                                      →{sp.targetName || 'Geral'}
+                                    </span>
+                                    {isExpired && <span className="text-amber-300 font-bold">⚠️</span>}
+                                  </span>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                            {activeSpells.map((sp) => {
-                              const isExpired =
-                                sp.duration !== undefined &&
-                                sp.duration > 0 &&
-                                (currentRound ?? 0) >= (sp.round ?? 0) + sp.duration;
-                              return (
+                        )}
+
+                        {activeSpells.length > 0 && affectedSpells.length > 0 && (
+                          <div className="border-t border-purple-900/40 my-1" />
+                        )}
+
+                        {/* Magias sob Efeito */}
+                        {affectedSpells.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-300">
+                                <Zap size={10} className="text-cyan-400" />
+                                Sob Efeito ({affectedSpells.length})
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
+                              {affectedSpells.map((sp) => (
                                 <span
                                   key={sp.id}
-                                  className="inline-flex items-center gap-1 bg-slate-900 border border-purple-800/50 rounded px-1.5 py-0.5 text-[9px] text-purple-100"
-                                  title={`Alvo: ${sp.targetName || 'Geral'} | R${sp.round}`}
+                                  className="inline-flex items-center gap-1 bg-slate-900 border border-cyan-800/50 rounded px-1.5 py-0.5 text-[9px] text-cyan-100"
+                                  title={`Conjurador: ${sp.casterName || 'Desconhecido'}`}
                                 >
                                   <strong className="truncate max-w-[70px]">{sp.spellName}</strong>
                                   <span className="text-slate-400 truncate max-w-[45px]">
-                                    →{sp.targetName || 'Geral'}
+                                    por {sp.casterName || 'Outro'}
                                   </span>
-                                  {isExpired && <span className="text-amber-300 font-bold">⚠️</span>}
                                 </span>
-                              );
-                            })}
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    );
+                  }
 
-                      {activeSpells.length > 0 && affectedSpells.length > 0 && (
-                        <div className="border-t border-purple-900/40 my-1" />
-                      )}
-
-                      {/* Magias sob Efeito */}
-                      {affectedSpells.length > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-300">
-                              <Zap size={10} className="text-cyan-400" />
-                              Sob Efeito ({affectedSpells.length})
+                  // 4. Bloco de Alertas de Turno (SEM TÍTULO "Turno:")
+                  if (hasAlerts) {
+                    contentBlocks.push(
+                      <div key="alerts" className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center gap-1 flex-wrap">
+                        {turnAlerts.map((alert) => {
+                          const IconComp = alert.icon;
+                          return (
+                            <span
+                              key={alert.id}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] border ${alert.badgeClass}`}
+                            >
+                              {IconComp && <IconComp size={10} className="shrink-0" />}
+                              <span>{alert.text}</span>
                             </span>
-                          </div>
-                          <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
-                            {affectedSpells.map((sp) => (
-                              <span
-                                key={sp.id}
-                                className="inline-flex items-center gap-1 bg-slate-900 border border-cyan-800/50 rounded px-1.5 py-0.5 text-[9px] text-cyan-100"
-                                title={`Conjurador: ${sp.casterName || 'Desconhecido'}`}
-                              >
-                                <strong className="truncate max-w-[70px]">{sp.spellName}</strong>
-                                <span className="text-slate-400 truncate max-w-[45px]">
-                                  por {sp.casterName || 'Outro'}
-                                </span>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                          );
+                        })}
+                        {criticalAlerts.map((alert) => {
+                          const IconComp = alert.icon;
+                          return (
+                            <span
+                              key={alert.id}
+                              title={alert.tooltip || alert.text}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] border ${alert.badgeClass}`}
+                            >
+                              {IconComp && <IconComp size={10} className="shrink-0" />}
+                              <span>{alert.text}</span>
+                            </span>
+                          );
+                        })}
+                        {ta.notes && ta.notes.trim() !== '' && (
+                          <span className="text-[10px] text-slate-300 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.2 italic truncate max-w-[140px]">
+                            {ta.notes}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // 5. Bloco de Observações (SEM TÍTULO "Obs:")
+                  if (generalNotes) {
+                    contentBlocks.push(
+                      <div key="obs" className="bg-slate-950/80 border border-slate-800/80 rounded-lg px-2 py-1 text-[10px] text-slate-300">
+                        <span className="italic line-clamp-2" title={generalNotes}>
+                          {generalNotes}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if (contentBlocks.length === 0) return null;
+
+                  if (contentBlocks.length === 1) {
+                    return <div className="w-full">{contentBlocks[0]}</div>;
+                  }
+
+                  const colLeft = contentBlocks.filter((_, i) => i % 2 === 0);
+                  const colRight = contentBlocks.filter((_, i) => i % 2 === 1);
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 items-start">
+                      <div className="space-y-1.5">{colLeft}</div>
+                      <div className="space-y-1.5">{colRight}</div>
                     </div>
-                  )}
-                </div>
+                  );
+                })()
               ) : (
                 <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg px-2 py-1.5 text-center text-xs text-slate-500 italic">
                   Estatísticas detalhadas do NPC ocultas para jogadores.
-                </div>
-              )}
-
-              {/* OBSERVAÇÃO E ALERTAS (METADE HORIZONTAL CADA, SÓ SE EXISTIREM) */}
-              {(generalNotes || hasAlerts) && (
-                <div className="grid grid-cols-2 gap-2 items-start mt-auto">
-                  {generalNotes && (
-                    <div className="col-span-1 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1 text-[10px] text-slate-300 flex items-start gap-1">
-                      <span className="font-bold text-amber-400 shrink-0">Obs:</span>
-                      <span className="truncate italic" title={generalNotes}>
-                        {generalNotes}
-                      </span>
-                    </div>
-                  )}
-
-                  {hasAlerts && (
-                    <div className="col-span-1 bg-slate-950/90 border border-slate-800/90 rounded-lg px-2.5 py-1 flex items-center gap-1.5 flex-wrap">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 shrink-0">
-                        <Shield size={11} className="text-amber-400" />
-                        Turno:
-                      </span>
-                      {turnAlerts.map((alert) => {
-                        const IconComp = alert.icon;
-                        return (
-                          <span
-                            key={alert.id}
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] border ${alert.badgeClass}`}
-                          >
-                            {IconComp && <IconComp size={10} className="shrink-0" />}
-                            <span>{alert.text}</span>
-                          </span>
-                        );
-                      })}
-                      {criticalAlerts.map((alert) => {
-                        const IconComp = alert.icon;
-                        return (
-                          <span
-                            key={alert.id}
-                            title={alert.tooltip || alert.text}
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] border ${alert.badgeClass}`}
-                          >
-                            {IconComp && <IconComp size={10} className="shrink-0" />}
-                            <span>{alert.text}</span>
-                          </span>
-                        );
-                      })}
-                      {ta.notes && ta.notes.trim() !== '' && (
-                        <span className="text-[10px] text-slate-300 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.2 italic truncate max-w-[140px]">
-                          Nota: {ta.notes}
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
