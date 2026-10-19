@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mesa de Combate</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -24,16 +24,16 @@
     --color-orange-300: oklch(83.7% 0.128 66.29);
     --color-orange-500: oklch(70.5% 0.213 47.604);
     --color-orange-950: oklch(26.6% 0.079 36.259);
-    --color-amber-100: oklch(96.2% 0.059 95.617);
-    --color-amber-200: oklch(92.4% 0.12 95.746);
-    --color-amber-300: oklch(87.9% 0.169 91.605);
-    --color-amber-400: oklch(82.8% 0.189 84.429);
-    --color-amber-500: oklch(76.9% 0.188 70.08);
-    --color-amber-600: oklch(66.6% 0.179 58.318);
-    --color-amber-700: oklch(55.5% 0.163 48.998);
-    --color-amber-800: oklch(47.3% 0.137 46.201);
-    --color-amber-900: oklch(41.4% 0.112 45.904);
-    --color-amber-950: oklch(27.9% 0.077 45.635);
+    --color-amber-100: #fdf5e6;
+    --color-amber-200: #fae8c8;
+    --color-amber-300: #f5cf8e;
+    --color-amber-400: #e8a742;
+    --color-amber-500: #d97706;
+    --color-amber-600: #b45309;
+    --color-amber-700: #92400e;
+    --color-amber-800: #78350f;
+    --color-amber-900: #451a03;
+    --color-amber-950: #291104;
     --color-yellow-300: oklch(90.5% 0.182 98.111);
     --color-yellow-400: oklch(85.2% 0.199 91.936);
     --color-yellow-500: oklch(79.5% 0.184 86.047);
@@ -93,22 +93,24 @@
     --color-rose-800: oklch(45.5% 0.188 13.697);
     --color-rose-900: oklch(41% 0.159 10.272);
     --color-rose-950: oklch(27.1% 0.105 12.094);
-    --color-slate-100: oklch(96.8% 0.007 247.896);
-    --color-slate-200: oklch(92.9% 0.013 255.508);
-    --color-slate-300: oklch(86.9% 0.022 252.894);
-    --color-slate-400: oklch(70.4% 0.04 256.788);
-    --color-slate-500: oklch(55.4% 0.046 257.417);
-    --color-slate-600: oklch(44.6% 0.043 257.281);
-    --color-slate-700: oklch(37.2% 0.044 257.287);
-    --color-slate-800: oklch(27.9% 0.041 260.031);
-    --color-slate-900: oklch(20.8% 0.042 265.755);
-    --color-slate-950: oklch(12.9% 0.042 264.695);
-    --color-zinc-950: oklch(14.1% 0.005 285.823);
-    --color-neutral-950: oklch(14.5% 0 none);
-    --color-stone-700: oklch(37.4% 0.01 67.558);
-    --color-stone-950: oklch(14.7% 0.004 49.25);
-    --color-black: #000;
-    --color-white: #fff;
+    --color-slate-100: #f7f3ee;
+    --color-slate-200: #ecdcc9;
+    --color-slate-300: #d4c2aa;
+    --color-slate-400: #b5a28c;
+    --color-slate-500: #8c7b69;
+    --color-slate-600: #665747;
+    --color-slate-700: #4a3d31;
+    --color-slate-750: #3a2e24;
+    --color-slate-800: #2d241c;
+    --color-slate-850: #221b15;
+    --color-slate-900: #1a1410;
+    --color-slate-950: #100d0a;
+    --color-zinc-950: #100d0a;
+    --color-neutral-950: #100d0a;
+    --color-stone-700: #4a3d31;
+    --color-stone-950: #100d0a;
+    --color-black: #080605;
+    --color-white: #fdfaf6;
     --spacing: 0.25rem;
     --container-xs: 20rem;
     --container-md: 28rem;
@@ -151,8 +153,30 @@
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
-    --default-mono-font-family: var(--font-mono);
   }
+}
+html:not([data-theme=light]) body, html:not([data-theme=light]) {
+  background-color: #0d0b09;
+  color: #ecdcc9;
+}
+html:not([data-theme=light]) ::selection {
+  background: #78350f;
+  color: #fef3c7;
+}
+html:not([data-theme=light]) [style*="background: rgb(2, 6, 23)"],
+html:not([data-theme=light]) [style*="background: rgb(1, 4, 13)"] {
+  background: #0d0b09 !important;
+}
+html:not([data-theme=light]) [style*="background: rgb(15, 23, 42)"],
+html:not([data-theme=light]) [style*="background: rgb(11, 18, 34)"] {
+  background: #1a1410 !important;
+}
+html:not([data-theme=light]) [style*="background: rgb(30, 41, 59)"] {
+  background: #241e18 !important;
+}
+html:not([data-theme=light]) [style*="solid rgb(30, 41, 59)"],
+html:not([data-theme=light]) [style*="solid rgb(51, 65, 85)"] {
+  border-color: #3a2e24 !important;
 }
 @layer base {
   *, ::after, ::before, ::backdrop, ::file-selector-button {
