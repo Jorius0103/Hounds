@@ -503,6 +503,11 @@ export default function App() {
     });
 
     const unsubMsg = onlineSyncService.onSyncMessage((payload: RemoteSyncPayload) => {
+      if ((payload as any).type === 'SYNC_DICE_ROLL' && (payload as any).rollData) {
+        setActiveDiceRoll((payload as any).rollData);
+        return;
+      }
+
       if ((payload as any).type === 'SYNC_EDITORS' && Array.isArray((payload as any).editorUserIds)) {
         setEditorUserIds((payload as any).editorUserIds);
         return;
@@ -663,6 +668,11 @@ export default function App() {
 
       channel.onmessage = (event) => {
         if (event.data?.sourceId === onlineSyncService.getClientId()) return;
+
+        if (event.data?.type === 'SYNC_DICE_ROLL' && event.data?.rollData) {
+          setActiveDiceRoll(event.data.rollData);
+          return;
+        }
 
         if (event.data?.type === 'SYNC_EDITORS' && Array.isArray(event.data.editorUserIds)) {
           setEditorUserIds(event.data.editorUserIds);
@@ -2014,11 +2024,13 @@ export default function App() {
     if (char) {
       handleUpdateNpc({
         ...char,
+        updatedAt: now,
         history: [newEntry, ...(char.history || [])],
       });
     }
 
-    setActiveDiceRoll({
+    const rollData: DiceRollResult = {
+      id: `roll-${now}-${Math.random().toString(36).slice(2, 6)}`,
       rolls,
       total,
       diceCount,
@@ -2026,7 +2038,37 @@ export default function App() {
       playerName,
       avatar: char?.avatar,
       avatarPreset: char?.avatarPreset,
+      timestamp: now,
+    };
+
+    // Sincroniza o rolamento de dados em tempo real com todos os outros usuários conectados
+    try {
+      broadcastChannelRef.current?.postMessage({
+        type: 'SYNC_DICE_ROLL',
+        rollData,
+        sourceId: onlineSyncService.getClientId(),
+      });
+    } catch (e) {}
+
+    onlineSyncService.sendPayloadImmediate({
+      type: 'SYNC_DICE_ROLL',
+      rollData,
+      timestamp: now,
     });
+
+    if (typeof (window as any).parent !== 'undefined' && (window as any).parent?.hubMesaBus) {
+      try {
+        (window as any).parent.hubMesaBus.publish(
+          JSON.stringify({
+            type: 'SYNC_DICE_ROLL',
+            rollData,
+            timestamp: now,
+          })
+        );
+      } catch (e) {}
+    }
+
+    setActiveDiceRoll(rollData);
   };
 
   const handleClearActiveCombatHistory = () => {
