@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Dices } from 'lucide-react';
 
 export interface DicePickerModalProps {
@@ -7,8 +7,8 @@ export interface DicePickerModalProps {
   onRoll: (count: number, sides: number) => void;
 }
 
-// Crisp geometric SVG icons for each polyhedral die (matching Roll20 silhouettes)
-const DieIcon: React.FC<{ sides: number; size?: number; className?: string }> = ({ sides, size = 18, className = '' }) => {
+// Crisp geometric SVG icons for each polyhedral die
+const DieIcon: React.FC<{ sides: number; size?: number; className?: string }> = ({ sides, size = 16, className = '' }) => {
   switch (sides) {
     case 4:
       return (
@@ -82,7 +82,7 @@ const DICE_TYPES = [
   { sides: 100, name: 'D100' },
 ];
 
-const QUANTITIES = [2, 3, 4, 5, 6];
+const QUANTITIES = [1, 2, 3, 4, 5, 6];
 
 export const DicePickerModal: React.FC<DicePickerModalProps> = ({
   isOpen,
@@ -91,6 +91,7 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
 }) => {
   const [customCount, setCustomCount] = useState<number>(1);
   const [customSides, setCustomSides] = useState<number>(6);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -117,70 +118,67 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="relative w-full max-w-[340px] bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl overflow-hidden font-sans select-none animate-in fade-in zoom-in-95 duration-150">
+    <>
+      {/* Invisible backdrop to capture clicks outside */}
+      <div
+        className="fixed inset-0 z-40"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Popover Card anchored right below the button */}
+      <div
+        ref={popoverRef}
+        className="absolute right-0 top-full mt-1.5 z-50 w-[300px] bg-slate-900 border border-slate-750 rounded-xl shadow-2xl overflow-hidden font-sans select-none animate-in fade-in zoom-in-95 duration-150"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-slate-950/80 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="text-amber-400">
-              <Dices size={16} />
-            </span>
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+        <div className="flex items-center justify-between px-3 py-2 bg-slate-950/90 border-b border-slate-800">
+          <div className="flex items-center gap-1.5 text-amber-400">
+            <Dices size={14} />
+            <h3 className="text-[11px] font-bold text-white uppercase tracking-wider">
               Rolar Dados
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
             title="Fechar"
           >
-            <X size={16} />
+            <X size={14} />
           </button>
         </div>
 
-        {/* Dice Rows (Roll20 Grid Style) */}
+        {/* Dice Rows */}
         <div className="divide-y divide-slate-800/80 bg-slate-900">
           {DICE_TYPES.map((die) => (
             <div
               key={die.sides}
-              className="flex items-center hover:bg-slate-800/40 transition-colors"
+              className="flex items-center px-2.5 py-1.5 hover:bg-slate-800/40 transition-colors"
             >
-              {/* Left Column: Die Icon + Name (Rolls 1 Die on click) */}
-              <button
-                type="button"
-                onClick={() => handleRollClick(1, die.sides)}
-                className="flex items-center gap-2 px-3.5 py-2.5 text-slate-200 hover:text-amber-300 font-bold text-xs flex-1 transition-colors group cursor-pointer text-left"
-                title={`Rolar 1${die.name}`}
-              >
+              {/* Die Badge */}
+              <div className="flex items-center gap-1.5 w-16 shrink-0">
                 <DieIcon
                   sides={die.sides}
-                  size={18}
-                  className="text-slate-400 group-hover:text-amber-400 transition-colors shrink-0"
+                  size={15}
+                  className="text-amber-400 shrink-0"
                 />
-                <span className="font-mono text-xs tracking-wide">
+                <span className="font-mono text-xs font-bold text-slate-200">
                   {die.name}
                 </span>
-                <span className="text-[10px] text-slate-500 font-normal ml-auto mr-1 group-hover:text-amber-400/80">
-                  (1)
-                </span>
-              </button>
+              </div>
 
-              {/* Right Columns: Quantities 2, 3, 4, 5, 6 with vertical dividers */}
-              <div className="flex items-center shrink-0 border-l border-slate-800">
+              {/* Identical Quantity Buttons 1 to 6 */}
+              <div className="flex items-center gap-1 flex-1 justify-end">
                 {QUANTITIES.map((qty) => (
                   <button
                     key={qty}
                     type="button"
                     onClick={() => handleRollClick(qty, die.sides)}
-                    className="w-8 h-9 flex items-center justify-center text-xs font-mono font-bold text-slate-300 hover:text-slate-950 hover:bg-amber-400 transition-all border-l first:border-l-0 border-slate-800/80 cursor-pointer"
+                    className="w-7 h-7 flex items-center justify-center text-xs font-mono font-bold text-slate-200 bg-slate-950 hover:bg-amber-400 hover:text-slate-950 rounded border border-slate-800 hover:border-amber-400 transition-all cursor-pointer shadow-xs active:scale-95"
                     title={`Rolar ${qty}${die.name}`}
                   >
                     {qty}
@@ -192,42 +190,50 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
         </div>
 
         {/* Custom Roll Bar */}
-        <form
-          onSubmit={handleCustomSubmit}
-          className="p-3 bg-slate-950/90 border-t border-slate-800 flex items-center gap-2"
-        >
-          <span className="text-[11px] font-bold text-slate-400 shrink-0">
-            Outro:
-          </span>
-          <div className="flex items-center gap-1.5 flex-1">
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={customCount}
-              onChange={(e) => setCustomCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="w-12 bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white text-center font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-              title="Quantidade de dados"
-            />
-            <span className="text-xs font-bold text-amber-400 font-mono">D</span>
-            <input
-              type="number"
-              min="2"
-              max="1000"
-              value={customSides}
-              onChange={(e) => setCustomSides(Math.max(2, parseInt(e.target.value, 10) || 2))}
-              className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white text-center font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-              title="Lados do dado (ex: 4, 6, 8, 10, 12, 20, 100)"
-            />
+        <div className="p-2.5 bg-slate-950/90 border-t border-slate-800 space-y-1.5">
+          <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <span>Personalizado</span>
           </div>
-          <button
-            type="submit"
-            className="px-3 py-1 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold rounded-lg transition-all shadow cursor-pointer shrink-0"
-          >
-            Rolar
-          </button>
-        </form>
+          <form onSubmit={handleCustomSubmit} className="flex items-end gap-2">
+            <div className="flex items-center gap-1.5 flex-1">
+              <div className="flex flex-col flex-1">
+                <label className="text-[9px] text-slate-400 font-semibold mb-0.5">Quantidade</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={customCount}
+                  onChange={(e) => setCustomCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white text-center font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  title="Quantidade de dados"
+                />
+              </div>
+              <span className="text-xs font-bold text-slate-500 pb-1.5">×</span>
+              <div className="flex flex-col flex-1">
+                <label className="text-[9px] text-slate-400 font-semibold mb-0.5">Dado</label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-2 text-[11px] font-bold text-amber-400 font-mono">D</span>
+                  <input
+                    type="number"
+                    min="2"
+                    max="1000"
+                    value={customSides}
+                    onChange={(e) => setCustomSides(Math.max(2, parseInt(e.target.value, 10) || 2))}
+                    className="w-full bg-slate-900 border border-slate-750 rounded-lg pl-5 pr-1 py-1 text-xs text-white text-center font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    title="Lados do dado (ex: 4, 6, 8, 10, 12, 20, 100)"
+                  />
+                </div>
+              </div>
+            </div>
+            <button
+              type="submit"
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold rounded-lg transition-all shadow cursor-pointer shrink-0"
+            >
+              Rolar
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 };

@@ -152,6 +152,9 @@ export interface ActionLogEntry {
   fpBefore?: number;
   fpAfter?: number;
 
+  // Comentário ou anotação da rolagem (editável pelo mestre/jogadores autorizados)
+  comment?: string;
+
   // Metadados para agrupamento inteligente de cliques consecutivos na mesma variável
   variableKey?: string;
   initialValue?: any;

@@ -94,45 +94,295 @@
     canvas.height = 256;
     var ctx = canvas.getContext('2d');
 
-    // Warm golden amber gradient
+    // Rich golden amber gradient
     var grad = ctx.createLinearGradient(0, 0, 256, 256);
-    grad.addColorStop(0, '#ffca28');
-    grad.addColorStop(0.5, '#f59e0b');
-    grad.addColorStop(1, '#d97706');
+    grad.addColorStop(0, '#fef3c7');
+    grad.addColorStop(0.2, '#f59e0b');
+    grad.addColorStop(0.75, '#d97706');
+    grad.addColorStop(1, '#b45309');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 256, 256);
 
     // Bevel border
     ctx.lineWidth = 14;
-    ctx.strokeStyle = '#b45309';
+    ctx.strokeStyle = '#78350f';
     ctx.strokeRect(0, 0, 256, 256);
 
-    // Inner bright highlight
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.strokeRect(7, 7, 242, 242);
+    // Inner bright highlight ring
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.strokeRect(8, 8, 240, 240);
 
-    // Die type label
-    ctx.fillStyle = '#78350f';
-    ctx.font = 'bold 26px "Plus Jakarta Sans", Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('D' + sides, 128, 26);
-
-    // Bold result number
-    ctx.fillStyle = '#0a0a0c';
-    var fontSize = String(val).length > 2 ? 96 : 124;
+    // Bold result number centered
+    var str = String(val);
+    var fontSize = str.length > 2 ? 88 : (str.length === 2 ? 104 : 124);
     ctx.font = '900 ' + fontSize + 'px "Plus Jakarta Sans", "JetBrains Mono", Arial, sans-serif';
+    ctx.fillStyle = '#0f172a';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(val), 128, 140);
+    ctx.fillText(str, 128, 128);
 
     if (val === 6 || val === 9) {
-      ctx.fillStyle = '#0a0a0c';
-      ctx.fillRect(96, 204, 64, 10);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(88, 198, 80, 10);
     }
 
-    return new THREE.CanvasTexture(canvas);
+    var texture = new THREE.CanvasTexture(canvas);
+    return texture;
+  }
+
+  // Exact mathematical polyhedral dice definitions (Teal / byWulf algorithm)
+  var DIE_DEFINITIONS = {
+    4: {
+      tab: -0.1,
+      af: Math.PI * 7 / 6,
+      chamfer: 0.96,
+      vertices: [[1, 1, 1], [-1, -1, 1], [-1, 1, -1], [1, -1, -1]],
+      faces: [[1, 0, 2, 1], [0, 1, 3, 2], [0, 3, 2, 3], [1, 2, 3, 4]],
+      scaleFactor: 1.2,
+      values: 4
+    },
+    8: {
+      tab: 0,
+      af: -Math.PI / 4 / 2,
+      chamfer: 0.965,
+      vertices: [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
+      faces: [[0, 2, 4, 1], [0, 4, 3, 2], [0, 3, 5, 3], [0, 5, 2, 4],
+              [1, 3, 4, 5], [1, 4, 2, 6], [1, 2, 5, 7], [1, 5, 3, 8]],
+      scaleFactor: 1.0,
+      values: 8
+    },
+    10: {
+      tab: 0,
+      af: Math.PI * 6 / 5,
+      chamfer: 0.945,
+      vertices: (function () {
+        var v = [];
+        for (var i = 0, b = 0; i < 10; ++i, b += Math.PI * 2 / 10) {
+          v.push([Math.cos(b), Math.sin(b), 0.105 * (i % 2 ? 1 : -1)]);
+        }
+        v.push([0, 0, -1]);
+        v.push([0, 0, 1]);
+        return v;
+      })(),
+      faces: [
+        [5, 7, 11, 10], [4, 2, 10, 1], [1, 3, 11, 2], [0, 8, 10, 3], [7, 9, 11, 4],
+        [8, 6, 10, 5], [9, 1, 11, 6], [2, 0, 10, 7], [3, 5, 11, 8], [6, 4, 10, 9],
+        [1, 0, 2, -1], [1, 2, 3, -1], [3, 2, 4, -1], [3, 4, 5, -1], [5, 4, 6, -1],
+        [5, 6, 7, -1], [7, 6, 8, -1], [7, 8, 9, -1], [9, 8, 0, -1], [9, 0, 1, -1]
+      ],
+      scaleFactor: 0.9,
+      values: 10
+    },
+    12: {
+      tab: 0.2,
+      af: -Math.PI / 4 / 2,
+      chamfer: 0.968,
+      vertices: (function () {
+        var p = (1 + Math.sqrt(5)) / 2;
+        var q = 1 / p;
+        return [
+          [0, q, p], [0, q, -p], [0, -q, p], [0, -q, -p],
+          [p, 0, q], [p, 0, -q], [-p, 0, q], [-p, 0, -q],
+          [q, p, 0], [q, -p, 0], [-q, p, 0], [-q, -p, 0],
+          [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1],
+          [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1]
+        ];
+      })(),
+      faces: [
+        [2, 14, 4, 12, 0, 1], [15, 9, 11, 19, 3, 2], [16, 10, 17, 7, 6, 3], [6, 7, 19, 11, 18, 4],
+        [6, 18, 2, 0, 16, 5], [18, 11, 9, 14, 2, 6], [1, 17, 10, 8, 13, 7], [1, 13, 5, 15, 3, 8],
+        [13, 8, 12, 4, 5, 9], [5, 4, 14, 9, 15, 10], [0, 12, 8, 10, 16, 11], [3, 19, 7, 17, 1, 12]
+      ],
+      scaleFactor: 0.9,
+      values: 12
+    },
+    20: {
+      tab: -0.2,
+      af: -Math.PI / 4 / 2,
+      chamfer: 0.955,
+      vertices: (function () {
+        var t = (1 + Math.sqrt(5)) / 2;
+        return [
+          [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
+          [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
+          [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]
+        ];
+      })(),
+      faces: [
+        [0, 11, 5, 1], [0, 5, 1, 2], [0, 1, 7, 3], [0, 7, 10, 4], [0, 10, 11, 5],
+        [1, 5, 9, 6], [5, 11, 4, 7], [11, 10, 2, 8], [10, 7, 6, 9], [7, 1, 8, 10],
+        [3, 9, 4, 11], [3, 4, 2, 12], [3, 2, 6, 13], [3, 6, 8, 14], [3, 8, 9, 15],
+        [4, 9, 5, 16], [2, 4, 11, 17], [6, 2, 10, 18], [8, 6, 7, 19], [9, 8, 1, 20]
+      ],
+      scaleFactor: 1.0,
+      values: 20
+    }
+  };
+
+  function getChamferGeometry(vectors, faces, chamfer) {
+    var chamfer_vectors = [], chamfer_faces = [], corner_faces = new Array(vectors.length);
+    for (var i = 0; i < vectors.length; ++i) corner_faces[i] = [];
+    for (var i = 0; i < faces.length; ++i) {
+      var ii = faces[i], fl = ii.length - 1;
+      var center_point = new THREE.Vector3();
+      var face = new Array(fl);
+      for (var j = 0; j < fl; ++j) {
+        var vv = vectors[ii[j]].clone();
+        center_point.add(vv);
+        corner_faces[ii[j]].push(face[j] = chamfer_vectors.push(vv) - 1);
+      }
+      center_point.divideScalar(fl);
+      for (var j = 0; j < fl; ++j) {
+        var vv = chamfer_vectors[face[j]];
+        vv.subVectors(vv, center_point).multiplyScalar(chamfer).addVectors(vv, center_point);
+      }
+      face.push(ii[fl]);
+      chamfer_faces.push(face);
+    }
+    for (var i = 0; i < faces.length - 1; ++i) {
+      for (var j = i + 1; j < faces.length; ++j) {
+        var pairs = [], lastm = -1;
+        for (var m = 0; m < faces[i].length - 1; ++m) {
+          var n = faces[j].indexOf(faces[i][m]);
+          if (n >= 0 && n < faces[j].length - 1) {
+            if (lastm >= 0 && m !== lastm + 1) pairs.unshift([i, m], [j, n]);
+            else pairs.push([i, m], [j, n]);
+            lastm = m;
+          }
+        }
+        if (pairs.length !== 4) continue;
+        chamfer_faces.push([
+          chamfer_faces[pairs[0][0]][pairs[0][1]],
+          chamfer_faces[pairs[1][0]][pairs[1][1]],
+          chamfer_faces[pairs[3][0]][pairs[3][1]],
+          chamfer_faces[pairs[2][0]][pairs[2][1]],
+          -1
+        ]);
+      }
+    }
+    for (var i = 0; i < corner_faces.length; ++i) {
+      var cf = corner_faces[i], face = [cf[0]], count = cf.length - 1;
+      while (count) {
+        for (var m = faces.length; m < chamfer_faces.length; ++m) {
+          var index = chamfer_faces[m].indexOf(face[face.length - 1]);
+          if (index >= 0 && index < 4) {
+            if (--index === -1) index = 3;
+            var next_vertex = chamfer_faces[m][index];
+            if (cf.indexOf(next_vertex) >= 0) {
+              face.push(next_vertex);
+              break;
+            }
+          }
+        }
+        --count;
+      }
+      face.push(-1);
+      chamfer_faces.push(face);
+    }
+    return { vectors: chamfer_vectors, faces: chamfer_faces };
+  }
+
+  function makePolyhedronGeometry(vertices, faces, radius, tab, af) {
+    var geom = new THREE.BufferGeometry();
+    var positions = [];
+    var normals = [];
+    var uvs = [];
+    var cb = new THREE.Vector3();
+    var ab = new THREE.Vector3();
+    var faceFirstVertexIndex = 0;
+
+    for (var i = 0; i < faces.length; ++i) {
+      var ii = faces[i], fl = ii.length - 1;
+      var aa = Math.PI * 2 / fl;
+      var materialIndex = ii[fl] === -1 ? 0 : ii[fl];
+
+      for (var j = 0; j < fl - 2; ++j) {
+        var v0 = vertices[ii[0]].clone().multiplyScalar(radius);
+        var v1 = vertices[ii[j + 1]].clone().multiplyScalar(radius);
+        var v2 = vertices[ii[j + 2]].clone().multiplyScalar(radius);
+
+        positions.push(v0.x, v0.y, v0.z);
+        positions.push(v1.x, v1.y, v1.z);
+        positions.push(v2.x, v2.y, v2.z);
+
+        cb.subVectors(v2, v1);
+        ab.subVectors(v0, v1);
+        cb.cross(ab).normalize();
+
+        normals.push(cb.x, cb.y, cb.z);
+        normals.push(cb.x, cb.y, cb.z);
+        normals.push(cb.x, cb.y, cb.z);
+
+        uvs.push((Math.cos(af) + 1 + tab) / 2 / (1 + tab), (Math.sin(af) + 1 + tab) / 2 / (1 + tab));
+        uvs.push((Math.cos(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab), (Math.sin(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab));
+        uvs.push((Math.cos(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab), (Math.sin(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab));
+      }
+
+      var numOfVertices = (fl - 2) * 3;
+      for (var k = 0; k < numOfVertices / 3; k++) {
+        geom.addGroup(faceFirstVertexIndex, 3, materialIndex);
+        faceFirstVertexIndex += 3;
+      }
+    }
+
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(), radius);
+    return geom;
+  }
+
+  var polyGeometryCache = {};
+
+  function getPolyhedronData(sides, dieSize) {
+    var defSides = sides;
+    if (!DIE_DEFINITIONS[defSides]) {
+      if (defSides <= 4) defSides = 4;
+      else if (defSides <= 8) defSides = 8;
+      else if (defSides <= 10) defSides = 10;
+      else if (defSides <= 12) defSides = 12;
+      else defSides = 20;
+    }
+    var cacheKey = defSides + '_' + dieSize;
+    if (polyGeometryCache[cacheKey]) {
+      return polyGeometryCache[cacheKey];
+    }
+
+    var def = DIE_DEFINITIONS[defSides];
+    var vectors = [];
+    for (var i = 0; i < def.vertices.length; ++i) {
+      vectors.push(new THREE.Vector3().fromArray(def.vertices[i]).normalize());
+    }
+
+    var chamferGeom = getChamferGeometry(vectors, def.faces, def.chamfer);
+    var radius = (dieSize / 2) * def.scaleFactor * 1.5;
+    var geom = makePolyhedronGeometry(chamferGeom.vectors, chamferGeom.faces, radius, def.tab, def.af);
+
+    var faceNormals = {};
+    for (var f = 0; f < chamferGeom.faces.length; ++f) {
+      var face = chamferGeom.faces[f];
+      var fl = face.length - 1;
+      var fVal = face[fl];
+      if (fVal >= 0 && !faceNormals[fVal]) {
+        var v0 = chamferGeom.vectors[face[0]];
+        var v1 = chamferGeom.vectors[face[1]];
+        var v2 = chamferGeom.vectors[face[2]];
+        var cb = new THREE.Vector3().subVectors(v2, v1);
+        var ab = new THREE.Vector3().subVectors(v0, v1);
+        var norm = new THREE.Vector3().crossVectors(cb, ab).normalize();
+        faceNormals[fVal] = norm;
+      }
+    }
+
+    var result = {
+      defSides: defSides,
+      geometry: geom,
+      faceNormals: faceNormals,
+      maxVal: def.values
+    };
+    polyGeometryCache[cacheKey] = result;
+    return result;
   }
 
   // Create soft shadow texture
@@ -243,32 +493,6 @@
       new THREE.MeshStandardMaterial({ map: createD6FaceTexture(4), roughness: 0.35, metalness: 0.05 })
     ];
 
-    function createPolyhedralMesh(val) {
-      if (sides === 6) {
-        return new THREE.Mesh(cubeGeo, d6Materials);
-      }
-      var geo;
-      if (sides === 4) {
-        geo = new THREE.TetrahedronGeometry(dieSize * 0.9, 0);
-      } else if (sides === 8) {
-        geo = new THREE.OctahedronGeometry(dieSize * 0.85, 0);
-      } else if (sides === 10 || sides === 100) {
-        geo = new THREE.CylinderGeometry(0, dieSize * 0.85, dieSize * 1.3, 5);
-      } else if (sides === 12) {
-        geo = new THREE.DodecahedronGeometry(dieSize * 0.8, 0);
-      } else if (sides === 20) {
-        geo = new THREE.IcosahedronGeometry(dieSize * 0.82, 0);
-      } else {
-        geo = new THREE.BoxGeometry(dieSize, dieSize, dieSize);
-      }
-      var mat = new THREE.MeshStandardMaterial({
-        map: createPolyhedralFaceTexture(val, sides),
-        roughness: 0.35,
-        metalness: 0.05
-      });
-      return new THREE.Mesh(geo, mat);
-    }
-
     var shadowGeo = new THREE.PlaneGeometry(2.6, 2.6);
     var shadowTex = createShadowTexture();
     var shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.75, depthWrite: false });
@@ -297,21 +521,55 @@
     }
 
     rollData.rolls.forEach(function (val, idx) {
-      var dieMesh = createPolyhedralMesh(val);
+      var dieMesh;
+      var qFinal;
+
+      if (sides === 6) {
+        dieMesh = new THREE.Mesh(cubeGeo, d6Materials);
+        var baseEuler = getBaseEulerForFace(val);
+        var qBase = new THREE.Quaternion().setFromEuler(baseEuler);
+        var yaw = (Math.random() - 0.5) * 0.7 + (idx * 0.8);
+        var qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+        qFinal = qYaw.multiply(qBase);
+      } else {
+        var polyData = getPolyhedronData(sides, dieSize);
+        var targetFaceIndex;
+        if (val >= 1 && val <= polyData.maxVal) {
+          targetFaceIndex = val;
+        } else {
+          targetFaceIndex = ((Math.abs(val) - 1) % polyData.maxVal) + 1;
+        }
+
+        var bodyMat = new THREE.MeshStandardMaterial({
+          color: 0xd97706,
+          roughness: 0.35,
+          metalness: 0.05
+        });
+        var polyMats = [bodyMat];
+        for (var f = 1; f <= polyData.maxVal; f++) {
+          var faceDisplayVal = (f === targetFaceIndex) ? val : f;
+          polyMats.push(new THREE.MeshStandardMaterial({
+            map: createPolyhedralFaceTexture(faceDisplayVal, sides),
+            roughness: 0.35,
+            metalness: 0.05
+          }));
+        }
+
+        dieMesh = new THREE.Mesh(polyData.geometry, polyMats);
+
+        var faceNorm = polyData.faceNormals[targetFaceIndex] || new THREE.Vector3(0, 1, 0);
+        var qAlign = new THREE.Quaternion().setFromUnitVectors(faceNorm, new THREE.Vector3(0, 1, 0));
+        var pYaw = (Math.random() - 0.5) * 0.7 + (idx * 0.8);
+        var qpYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), pYaw);
+        qFinal = qpYaw.multiply(qAlign);
+      }
+
       scene.add(dieMesh);
 
       var shadowMesh = new THREE.Mesh(shadowGeo, shadowMat.clone());
       shadowMesh.rotation.x = -Math.PI / 2;
       shadowMesh.position.y = 0.02;
       scene.add(shadowMesh);
-
-      // Target resting orientation
-      var baseEuler = getBaseEulerForFace(val);
-      var qBase = new THREE.Quaternion().setFromEuler(baseEuler);
-      // Random natural yaw tilt around the vertical Y-axis (preserves top face value!)
-      var yaw = (Math.random() - 0.5) * 0.7 + (idx * 0.8);
-      var qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-      var qFinal = qYaw.multiply(qBase);
 
       // Initial throw position (coming from bottom right/left)
       var throwFromX = 9 + idx * 2;

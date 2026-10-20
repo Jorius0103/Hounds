@@ -15,6 +15,7 @@ interface GeneralCombatLogProps {
   currentUserName?: string;
   onClearHistory?: () => void;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
+  onUpdateEntryComment?: (entryId: string, npcId?: string, comment: string) => void;
 }
 
 export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
@@ -26,6 +27,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   currentUserName,
   onClearHistory,
   onDeleteEntry,
+  onUpdateEntryComment,
 }) => {
   // Filtro 1: Rodada ('all' ou número da rodada)
   const [selectedRoundFilter, setSelectedRoundFilter] = useState<number | 'all'>('all');
@@ -404,6 +406,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                     currentUserName={currentUserName}
                     isPlayer={currentUserRole === 'jogador'}
                     onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
+                    onUpdateEntryComment={onUpdateEntryComment}
                   />
                 </div>
               </React.Fragment>

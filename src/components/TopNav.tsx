@@ -320,24 +320,30 @@ export const TopNav: React.FC<TopNavProps> = ({
               </svg>
               <span>1D6</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setDicePickerOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white text-xs font-black rounded-lg transition-all shadow-sm font-mono border border-slate-750 hover:border-amber-500/50 cursor-pointer"
-              title="Abrir seletor de dados Roll20 (D4, D6, D8, D10, D12, D20, D100)"
-            >
-              <Dices size={13} className="text-amber-400" />
-              <span className="hidden sm:inline">Dados</span>
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setDicePickerOpen((prev) => !prev)}
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-black rounded-lg transition-all shadow-sm font-mono border cursor-pointer ${
+                  dicePickerOpen
+                    ? 'bg-amber-500 text-slate-950 border-amber-400'
+                    : 'bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white border-slate-750 hover:border-amber-500/50'
+                }`}
+                title="Abrir seletor de dados Roll20 (D4, D6, D8, D10, D12, D20, D100)"
+              >
+                <Dices size={13} className={dicePickerOpen ? 'text-slate-950' : 'text-amber-400'} />
+                <span>+ Dados</span>
+              </button>
+
+              <DicePickerModal
+                isOpen={dicePickerOpen}
+                onClose={() => setDicePickerOpen(false)}
+                onRoll={(count, sides) => onRollDice?.(count, sides)}
+              />
+            </div>
           </div>
         )}
       </div>
-
-      <DicePickerModal
-        isOpen={dicePickerOpen}
-        onClose={() => setDicePickerOpen(false)}
-        onRoll={(count, sides) => onRollDice?.(count, sides)}
-      />
     </header>
   );
 };

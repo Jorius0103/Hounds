@@ -2605,6 +2605,79 @@ export default function App() {
     };
   };
 
+  const handleUpdateLogEntryComment = (entryId: string, npcId?: string, comment?: string) => {
+    const now = Date.now();
+    let plChanged = false;
+    let cbChanged = false;
+    let updatedChar: NPC | null = null;
+
+    const nextPlayers = players.map((p) => {
+      const hasEntry = (p.history || []).some((h) => h.id === entryId);
+      if (hasEntry || (npcId && p.id === npcId)) {
+        plChanged = true;
+        const upd = {
+          ...p,
+          history: (p.history || []).map((h) => (h.id === entryId ? { ...h, comment } : h)),
+          updatedAt: now,
+        };
+        updatedChar = upd;
+        return upd;
+      }
+      return p;
+    });
+
+    const nextCombats = combats.map((c) => {
+      let thisCombatChanged = false;
+      let nextEvents = c.events || [];
+      if (nextEvents.some((e) => e.id === entryId)) {
+        nextEvents = nextEvents.map((e) => (e.id === entryId ? { ...e, comment } : e));
+        thisCombatChanged = true;
+      }
+
+      const nextNpcs = (c.npcs || []).map((n) => {
+        if ((n.history || []).some((h) => h.id === entryId) || (npcId && n.id === npcId)) {
+          thisCombatChanged = true;
+          const upd = {
+            ...n,
+            history: (n.history || []).map((h) => (h.id === entryId ? { ...h, comment } : h)),
+            updatedAt: now,
+          };
+          if (!updatedChar) updatedChar = upd;
+          return upd;
+        }
+        return n;
+      });
+
+      if (thisCombatChanged) {
+        cbChanged = true;
+        return {
+          ...c,
+          events: nextEvents,
+          npcs: nextNpcs,
+        };
+      }
+      return c;
+    });
+
+    if (plChanged) {
+      stateRef.current.players = nextPlayers;
+      setPlayers(nextPlayers);
+    }
+    if (cbChanged) {
+      stateRef.current.combats = nextCombats;
+      setCombats(nextCombats);
+    }
+
+    broadcastSync(
+      cbChanged ? nextCombats : undefined,
+      undefined,
+      undefined,
+      undefined,
+      plChanged ? nextPlayers : undefined,
+      updatedChar || undefined
+    );
+  };
+
   const handleDeleteLogEntry = (entryId: string, npcId?: string, revertValues: boolean = true) => {
     const now = Date.now();
 
@@ -3037,6 +3110,7 @@ export default function App() {
                 currentUserName={currentUser?.name}
                 onClearHistory={handleClearActiveCombatHistory}
                 onDeleteEntry={handleDeleteLogEntry}
+                onUpdateEntryComment={handleUpdateLogEntryComment}
               />
             </div>
           </div>

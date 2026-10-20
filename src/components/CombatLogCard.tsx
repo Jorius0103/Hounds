@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ActionLogEntry, UserRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2, AlertTriangle, RotateCcw, Dices } from 'lucide-react';
+import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2, AlertTriangle, RotateCcw, Dices, MessageSquare, Pencil, Check, X } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 
 interface CombatLogCardProps {
@@ -13,6 +13,7 @@ interface CombatLogCardProps {
   currentUserName?: string;
   isPlayer?: boolean;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
+  onUpdateEntryComment?: (entryId: string, npcId?: string, comment: string) => void;
 }
 
 export const CombatLogCard: React.FC<CombatLogCardProps> = ({
@@ -24,6 +25,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   currentUserName,
   isPlayer = false,
   onDeleteEntry,
+  onUpdateEntryComment,
 }) => {
   const isDamage = entry.type === 'damage';
   const isFatigue = entry.type === 'fatigue';
@@ -31,8 +33,15 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   const isRest = entry.type === 'rest';
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isEditingComment, setIsEditingComment] = useState(false);
+  const [commentText, setCommentText] = useState(entry.comment || '');
+
+  useEffect(() => {
+    setCommentText(entry.comment || '');
+  }, [entry.comment]);
 
   const isPlayerView = isPlayer || currentUserRole === 'jogador';
+  const canEditComment = currentUserRole === 'mestre' || currentUserRole === 'jogador';
   const isNpcTarget = (entry as any).npcCharacterType !== 'player';
 
   // Sanitize description for players on NPCs (never leak RD, armor, penetration or formulas)
@@ -437,6 +446,90 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
             </span>
           </div>
         </div>
+      )}
+
+      {/* Roll Comment Section (editable by GM and authorized players) */}
+      {entry.type === 'roll' && (
+        <>
+          {isEditingComment ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateEntryComment?.(entry.id, entry.npcId, commentText.trim());
+                setIsEditingComment(false);
+              }}
+              className="flex items-center gap-1.5 pt-0.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                type="text"
+                autoFocus
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Adicionar anotação (ex: Ataque espada no braço, Teste ST...)"
+                className="flex-1 bg-slate-900 border border-amber-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+              <button
+                type="submit"
+                className="flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
+                title="Salvar anotação"
+              >
+                <Check size={12} />
+                <span>Salvar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommentText(entry.comment || '');
+                  setIsEditingComment(false);
+                }}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                title="Cancelar"
+              >
+                <X size={13} />
+              </button>
+            </form>
+          ) : entry.comment ? (
+            <div className="flex items-start justify-between gap-2 p-1.5 bg-slate-900/60 border border-amber-500/20 rounded-lg text-xs font-sans">
+              <div className="flex items-start gap-1.5 min-w-0">
+                <MessageSquare size={12} className="text-amber-400 shrink-0 mt-0.5" />
+                <span className="text-amber-200/90 italic break-words text-[11px] leading-relaxed">
+                  {entry.comment}
+                </span>
+              </div>
+              {canEditComment && onUpdateEntryComment && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditingComment(true);
+                  }}
+                  className="text-slate-400 hover:text-amber-300 p-0.5 rounded hover:bg-slate-800/60 transition-colors shrink-0 cursor-pointer"
+                  title="Editar comentário da rolagem"
+                >
+                  <Pencil size={11} />
+                </button>
+              )}
+            </div>
+          ) : (
+            canEditComment && onUpdateEntryComment && (
+              <div className="flex justify-end pt-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditingComment(true);
+                  }}
+                  className="inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-amber-300 transition-colors py-0.5 px-2 rounded hover:bg-slate-900 border border-transparent hover:border-slate-800 cursor-pointer"
+                  title="Adicionar anotação / motivo para esta rolagem"
+                >
+                  <MessageSquare size={11} className="text-slate-500" />
+                  <span>+ Comentário</span>
+                </button>
+              </div>
+            )
+          )}
+        </>
       )}
 
       {/* Description / Custom Note */}
