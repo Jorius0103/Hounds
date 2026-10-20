@@ -28,6 +28,9 @@ interface TopNavProps {
   isHomeScreen?: boolean;
   onOpenHomeScreen?: () => void;
   onRollDice?: (diceCount: number) => void;
+  isMestre?: boolean;
+  hideGmRolls?: boolean;
+  onToggleHideGmRolls?: () => void;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
@@ -44,6 +47,9 @@ export const TopNav: React.FC<TopNavProps> = ({
   isHomeScreen = false,
   onOpenHomeScreen,
   onRollDice,
+  isMestre = false,
+  hideGmRolls = false,
+  onToggleHideGmRolls,
 }) => {
   // Filtra combates ativos para exibição na barra principal
   const activeCombats = useMemo(() => {
@@ -255,9 +261,37 @@ export const TopNav: React.FC<TopNavProps> = ({
           </div>
         )}
 
-        {/* Zone 2: Dice Roller (3D6 e 1D6) no topo direito */}
+        {/* Zone 2: Dice Roller (3D6 e 1D6) e Toggle de Ocultar Rolagens para o Mestre */}
         {onRollDice && (
           <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+            {isMestre && onToggleHideGmRolls && (
+              <button
+                type="button"
+                onClick={onToggleHideGmRolls}
+                className={`flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-lg transition-all shadow-xs border cursor-pointer ${
+                  hideGmRolls
+                    ? 'bg-rose-950/80 text-rose-300 border-rose-700/70 hover:bg-rose-900'
+                    : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/70 hover:bg-emerald-900'
+                }`}
+                title={
+                  hideGmRolls
+                    ? 'Rolagens do Mestre Ocultas (apenas você vê a animação e o log). Clique para tornar visível.'
+                    : 'Rolagens do Mestre Visíveis para todos os jogadores. Clique para ocultar.'
+                }
+              >
+                {hideGmRolls ? (
+                  <>
+                    <EyeOff size={13} className="text-rose-400" />
+                    <span className="hidden sm:inline">Oculto</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye size={13} className="text-emerald-400" />
+                    <span className="hidden sm:inline">Visível</span>
+                  </>
+                )}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onRollDice(3)}

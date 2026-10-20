@@ -56,6 +56,20 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
     if (combinedCharacters.length === 0) return [];
 
     const list: any[] = [];
+
+    // 1. Eventos e rolagens gerais do combate (ex: rolagens do Mestre)
+    for (const ev of activeCombat?.events || []) {
+      if (currentUserRole === 'jogador' && (ev.isSecret || (ev as any).hiddenFromPlayers)) {
+        continue;
+      }
+      list.push({
+        ...ev,
+        npcName: ev.npcName || ev.authorName || 'Mestre',
+        npcCharacterType: ev.npcCharacterType || 'npc',
+      });
+    }
+
+    // 2. Histórico individual dos combatentes
     for (const npc of combinedCharacters) {
       const isPlayerChar = npc.characterType === 'player';
 
@@ -67,8 +81,13 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
       }
 
       for (const entry of npc.history || []) {
-        // 2. As alterações feitas pelo mestre nos NPCs não devem refletir para os jogadores
-        if (currentUserRole === 'jogador' && !isPlayerChar && entry.author === 'mestre') {
+        // Se a rolagem ou evento estiver oculto para jogadores, oculta
+        if (currentUserRole === 'jogador' && (entry.isSecret || (entry as any).hiddenFromPlayers)) {
+          continue;
+        }
+
+        // 2. As alterações de status feitas pelo mestre nos NPCs não devem refletir para os jogadores
+        if (currentUserRole === 'jogador' && !isPlayerChar && entry.author === 'mestre' && entry.type !== 'roll') {
           continue;
         }
 
@@ -121,7 +140,10 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         }
       }
 
-      // 2. Filtro de Tipo de Personagem / Rolagens
+      // 2. Filtro de Tipo de Personagem / Rolagens / Status
+      if (characterFilter === 'status' && entry.type === 'roll') {
+        return false;
+      }
       if (characterFilter === 'rolls' && entry.type !== 'roll') {
         return false;
       }
@@ -221,6 +243,17 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               }`}
             >
               Todos
+            </button>
+            <button
+              onClick={() => setCharacterFilter('status')}
+              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
+                characterFilter === 'status'
+                  ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow-xs'
+                  : 'text-slate-400 hover:text-cyan-300'
+              }`}
+              title="Exibe apenas alterações de status (sem rolagens)"
+            >
+              Status
             </button>
             <button
               onClick={() => setCharacterFilter('players')}

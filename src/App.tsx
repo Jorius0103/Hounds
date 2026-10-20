@@ -375,6 +375,23 @@ export default function App() {
   const [playerPermsModalOpen, setPlayerPermsModalOpen] = useState(false);
   const [combatPlayersModalOpen, setCombatPlayersModalOpen] = useState(false);
   const [activeDiceRoll, setActiveDiceRoll] = useState<DiceRollResult | null>(null);
+  const [hideGmRolls, setHideGmRolls] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('gurps_hide_gm_rolls') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleHideGmRolls = () => {
+    setHideGmRolls((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('gurps_hide_gm_rolls', String(next));
+      } catch {}
+      return next;
+    });
+  };
   const [editorUserIds, setEditorUserIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('gurps_combat_master_editors_v1');
@@ -1980,33 +1997,47 @@ export default function App() {
     }
     const total = rolls.reduce((acc, val) => acc + val, 0);
 
-    // Identifica o personagem do jogador pelo nome cadastrado
+    const isMestreUser = currentUser?.role === 'mestre' || !currentUser;
     const curName = (currentUser?.name || '').trim().toLowerCase();
-    let char = allCharacters.find(
-      (c: NPC) => c.playerName && c.playerName.trim().toLowerCase() === curName
-    );
-    if (!char && selectedNpc) {
-      char = selectedNpc;
-    }
-    if (!char && allCharacters.length > 0) {
-      char = allCharacters[0];
+
+    let char: NPC | null = null;
+    let charName = 'Mestre';
+    let playerName = currentUser?.name || 'Mestre';
+
+    if (!isMestreUser) {
+      // Jogador: vincula estritamente ao personagem do usuário logado
+      char =
+        allCharacters.find(
+          (c: NPC) => c.playerName && c.playerName.trim().toLowerCase() === curName
+        ) ||
+        players.find(
+          (p: NPC) => p.playerName && p.playerName.trim().toLowerCase() === curName
+        ) ||
+        null;
+      charName = char?.name || currentUser?.name || 'Jogador';
+      playerName = char?.playerName || currentUser?.name || 'Jogador';
+    } else {
+      // Mestre: NÃO tem personagem, rolamento é do próprio Mestre
+      char = null;
+      charName = 'Mestre';
+      playerName = currentUser?.name || 'Mestre';
     }
 
-    const charName = char?.name || currentUser?.name || 'Mestre';
-    const playerName = char?.playerName || (currentUser?.role === 'jogador' ? currentUser?.name : undefined);
+    const isSecretRoll = isMestreUser && hideGmRolls;
 
     const now = Date.now();
     const roundNumber = activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0;
-    const logDescription = diceCount === 3
-      ? `Rolou 3D6: [${rolls.join(', ')}] = ${total}`
-      : `Rolou 1D6: [${rolls[0]}] = ${total}`;
+    const logDescription =
+      diceCount === 3
+        ? `Rolou 3D6: [${rolls.join(', ')}] = ${total}`
+        : `Rolou 1D6: [${rolls[0]}] = ${total}`;
 
     const newEntry: ActionLogEntry = {
       id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       timestampMs: now,
-      author: currentUser?.role === 'mestre' ? 'mestre' : 'assistente',
-      authorName: currentUser?.name || (currentUser?.role === 'mestre' ? 'Mestre' : 'Jogador'),
+      author: isMestreUser ? 'mestre' : 'assistente',
+      authorName: currentUser?.name || (isMestreUser ? 'Mestre' : 'Jogador'),
       type: 'roll',
       combatId: activeCombat?.id,
       round: roundNumber,
@@ -2014,11 +2045,12 @@ export default function App() {
       amount: total,
       rolls: rolls,
       npcId: char?.id,
-      npcName: charName,
+      npcName: char ? char.name : 'Mestre',
       npcAvatar: char?.avatar,
       npcPreset: char?.avatarPreset,
-      npcCharacterType: char?.characterType || 'player',
+      npcCharacterType: char?.characterType || (isMestreUser ? 'npc' : 'player'),
       playerName: playerName,
+      isSecret: isSecretRoll,
     } as any;
 
     if (char) {
@@ -2027,6 +2059,13 @@ export default function App() {
         updatedAt: now,
         history: [newEntry, ...(char.history || [])],
       });
+    } else if (activeCombat) {
+      // Mestre: vincula aos eventos gerais do combate
+      const updatedCombats = combats.map((c) =>
+        c.id === activeCombat.id ? { ...c, events: [newEntry, ...(c.events || [])] } : c
+      );
+      setCombats(updatedCombats);
+      broadcastSync(updatedCombats);
     }
 
     const rollData: DiceRollResult = {
@@ -2041,31 +2080,33 @@ export default function App() {
       timestamp: now,
     };
 
-    // Sincroniza o rolamento de dados em tempo real com todos os outros usuários conectados
-    try {
-      broadcastChannelRef.current?.postMessage({
+    // Sincroniza o rolamento de dados pela rede apenas se NÃO for rolagem oculta do Mestre
+    if (!isSecretRoll) {
+      try {
+        broadcastChannelRef.current?.postMessage({
+          type: 'SYNC_DICE_ROLL',
+          rollData,
+          sourceId: onlineSyncService.getClientId(),
+        });
+      } catch (e) {}
+
+      onlineSyncService.sendPayloadImmediate({
         type: 'SYNC_DICE_ROLL',
         rollData,
-        sourceId: onlineSyncService.getClientId(),
+        timestamp: now,
       });
-    } catch (e) {}
 
-    onlineSyncService.sendPayloadImmediate({
-      type: 'SYNC_DICE_ROLL',
-      rollData,
-      timestamp: now,
-    });
-
-    if (typeof (window as any).parent !== 'undefined' && (window as any).parent?.hubMesaBus) {
-      try {
-        (window as any).parent.hubMesaBus.publish(
-          JSON.stringify({
-            type: 'SYNC_DICE_ROLL',
-            rollData,
-            timestamp: now,
-          })
-        );
-      } catch (e) {}
+      if (typeof (window as any).parent !== 'undefined' && (window as any).parent?.hubMesaBus) {
+        try {
+          (window as any).parent.hubMesaBus.publish(
+            JSON.stringify({
+              type: 'SYNC_DICE_ROLL',
+              rollData,
+              timestamp: now,
+            })
+          );
+        } catch (e) {}
+      }
     }
 
     setActiveDiceRoll(rollData);
@@ -2722,6 +2763,9 @@ export default function App() {
           setActiveViewMode('sheets');
         }}
         onRollDice={handleRollDice}
+        isMestre={isMaster}
+        hideGmRolls={hideGmRolls}
+        onToggleHideGmRolls={handleToggleHideGmRolls}
       />
 
       {/* 2. BARRA DE PERSONAGENS & NPCS (Espalha até a direita, filtros na esquerda) */}
