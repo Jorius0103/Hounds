@@ -30,8 +30,8 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   // Filtro 1: Rodada ('all' ou número da rodada)
   const [selectedRoundFilter, setSelectedRoundFilter] = useState<number | 'all'>('all');
 
-  // Filtro 2: Tipo de Personagem (Todos | Jogadores | NPCs)
-  const [characterFilter, setCharacterFilter] = useState<'all' | 'players' | 'npcs'>('all');
+  // Filtro 2: Tipo de Personagem / Rolagens (Todos | Jogadores | NPCs | Rolagens)
+  const [characterFilter, setCharacterFilter] = useState<'all' | 'players' | 'npcs' | 'rolls'>('all');
 
   // Filtro 3: Busca Livre
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,7 +121,10 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         }
       }
 
-      // 2. Filtro de Tipo de Personagem
+      // 2. Filtro de Tipo de Personagem / Rolagens
+      if (characterFilter === 'rolls' && entry.type !== 'roll') {
+        return false;
+      }
       if (characterFilter === 'players' && entry.npcCharacterType !== 'player') {
         return false;
       }
@@ -179,7 +182,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
             </div>
             <div>
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Log Geral de Combate
+                Log
               </h3>
               <p className="text-[10px] text-slate-400">
                 Histórico em tempo real
@@ -238,6 +241,16 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               }`}
             >
               NPCs
+            </button>
+            <button
+              onClick={() => setCharacterFilter('rolls')}
+              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
+                characterFilter === 'rolls'
+                  ? 'bg-amber-950 text-amber-300 border border-amber-600/60 shadow-xs'
+                  : 'text-slate-400 hover:text-amber-300'
+              }`}
+            >
+              Rolagens
             </button>
           </div>
         </div>

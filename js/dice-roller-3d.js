@@ -177,8 +177,8 @@
     softFillLight.position.set(15, 20, -10);
     scene.add(softFillLight);
 
-    // 5. Shared Geometries and Materials
-    var dieSize = 3.6;
+    // 5. Shared Geometries and Materials (50% size reduction)
+    var dieSize = 1.8;
     var cubeGeo = new THREE.BoxGeometry(dieSize, dieSize, dieSize);
 
     // Box face order: [+X, -X, +Y, -Y, +Z, -Z] -> [2, 5, 1, 6, 3, 4]
@@ -191,7 +191,7 @@
       new THREE.MeshStandardMaterial({ map: createD6FaceTexture(4), roughness: 0.35, metalness: 0.05 })
     ];
 
-    var shadowGeo = new THREE.PlaneGeometry(5.2, 5.2);
+    var shadowGeo = new THREE.PlaneGeometry(2.6, 2.6);
     var shadowTex = createShadowTexture();
     var shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.75, depthWrite: false });
 
@@ -200,22 +200,22 @@
     var count = rollData.rolls.length;
     var halfDie = dieSize / 2;
 
-    // Resting positions (scattered naturally like in Roll20 and the user's screenshot)
+    // Resting positions (scattered naturally, scaled down by 50%)
     var targetPositions = [];
     if (count === 1) {
       targetPositions = [{ x: 0, z: 0 }];
     } else if (count === 3) {
       targetPositions = [
-        { x: -5.8 + (Math.random() - 0.5) * 1.2, z: -3.2 + (Math.random() - 0.5) * 1.0 },
-        { x: 1.2 + (Math.random() - 0.5) * 1.2, z: 3.2 + (Math.random() - 0.5) * 1.0 },
-        { x: 6.5 + (Math.random() - 0.5) * 1.2, z: -1.8 + (Math.random() - 0.5) * 1.0 }
+        { x: -3.8 + (Math.random() - 0.5) * 0.8, z: -1.8 + (Math.random() - 0.5) * 0.6 },
+        { x: 0.2 + (Math.random() - 0.5) * 0.8, z: 1.8 + (Math.random() - 0.5) * 0.6 },
+        { x: 4.0 + (Math.random() - 0.5) * 0.8, z: -1.0 + (Math.random() - 0.5) * 0.6 }
       ];
     } else {
       for (var i = 0; i < count; i++) {
         var ang = (i / count) * Math.PI * 2;
         targetPositions.push({
-          x: Math.cos(ang) * 4.5 + (Math.random() - 0.5) * 0.8,
-          z: Math.sin(ang) * 4.5 + (Math.random() - 0.5) * 0.8
+          x: Math.cos(ang) * 2.8 + (Math.random() - 0.5) * 0.5,
+          z: Math.sin(ang) * 2.8 + (Math.random() - 0.5) * 0.5
         });
       }
     }
@@ -238,8 +238,8 @@
       var qFinal = qYaw.multiply(qBase);
 
       // Initial throw position (coming from bottom right/left)
-      var throwFromX = 14 + idx * 3;
-      var throwFromZ = 12 + idx * 2;
+      var throwFromX = 9 + idx * 2;
+      var throwFromZ = 8 + idx * 1.5;
       var targetX = targetPositions[idx].x;
       var targetZ = targetPositions[idx].z;
 
@@ -328,24 +328,24 @@
           d.mesh.position.x = d.throwFromX + (d.targetX - d.throwFromX) * easeHoriz;
           d.mesh.position.z = d.throwFromZ + (d.targetZ - d.throwFromZ) * easeHoriz;
 
-          // Vertical bouncing trajectory
+          // Vertical bouncing trajectory (scaled down by 50%)
           var y = halfDie;
           if (t < 0.42) {
             // First drop arc
             var arc = t / 0.42;
-            y = halfDie + (1 - arc * arc) * 14;
+            y = halfDie + (1 - arc * arc) * 7.0;
           } else if (t < 0.78) {
             // First bounce
             var arc1 = (t - 0.42) / 0.36;
-            y = halfDie + Math.sin(arc1 * Math.PI) * 4.8;
+            y = halfDie + Math.sin(arc1 * Math.PI) * 2.4;
           } else if (t < 1.08) {
             // Second bounce
             var arc2 = (t - 0.78) / 0.3;
-            y = halfDie + Math.sin(arc2 * Math.PI) * 1.8;
+            y = halfDie + Math.sin(arc2 * Math.PI) * 0.9;
           } else if (t < 1.3) {
             // Third mini bounce
             var arc3 = (t - 1.08) / 0.22;
-            y = halfDie + Math.sin(arc3 * Math.PI) * 0.6;
+            y = halfDie + Math.sin(arc3 * Math.PI) * 0.3;
           }
           d.mesh.position.y = Math.max(halfDie, y);
 
