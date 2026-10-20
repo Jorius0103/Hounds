@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus } from '../utils/onlineSync';
-import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid } from 'lucide-react';
+import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid, Dices } from 'lucide-react';
+import { DicePickerModal } from './DicePickerModal';
 
 export type ViewMode = 'sheets' | 'tactical' | 'split';
 
@@ -27,7 +28,7 @@ interface TopNavProps {
   canEditCurrent?: boolean;
   isHomeScreen?: boolean;
   onOpenHomeScreen?: () => void;
-  onRollDice?: (diceCount: number) => void;
+  onRollDice?: (diceCount: number, diceSides?: number) => void;
   isMestre?: boolean;
   hideGmRolls?: boolean;
   onToggleHideGmRolls?: () => void;
@@ -51,6 +52,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   hideGmRolls = false,
   onToggleHideGmRolls,
 }) => {
+  const [dicePickerOpen, setDicePickerOpen] = useState(false);
   // Filtra combates ativos para exibição na barra principal
   const activeCombats = useMemo(() => {
     return combats.filter((c) => c.isActive !== false);
@@ -318,9 +320,24 @@ export const TopNav: React.FC<TopNavProps> = ({
               </svg>
               <span>1D6</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setDicePickerOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white text-xs font-black rounded-lg transition-all shadow-sm font-mono border border-slate-750 hover:border-amber-500/50 cursor-pointer"
+              title="Abrir seletor de dados Roll20 (D4, D6, D8, D10, D12, D20, D100)"
+            >
+              <Dices size={13} className="text-amber-400" />
+              <span className="hidden sm:inline">Dados</span>
+            </button>
           </div>
         )}
       </div>
+
+      <DicePickerModal
+        isOpen={dicePickerOpen}
+        onClose={() => setDicePickerOpen(false)}
+        onRoll={(count, sides) => onRollDice?.(count, sides)}
+      />
     </header>
   );
 };

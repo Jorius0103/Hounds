@@ -101,9 +101,11 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       }
       case 'roll': {
         const is3D = entry.description?.includes('3D6') || (entry as any).rolls?.length === 3;
+        const match = entry.description?.match(/(\d+D\d+)/i);
+        const rollLabel = match ? match[1].toUpperCase() : (is3D ? '3D6' : '1D6');
         return {
           icon: <Dices size={12} className="text-amber-400" />,
-          label: is3D ? '3D6' : '1D6',
+          label: rollLabel,
           bg: 'bg-amber-950/70 border-amber-800/80 text-amber-300',
         };
       }
@@ -247,6 +249,18 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           >
             {entry.authorName || (entry.author === 'assistente' ? (currentUserName || 'Jogador') : entry.author)}
           </span>
+          {entry.type === 'roll' && entry.author === 'mestre' && (
+            <span
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-0.5 ${
+                entry.isSecret
+                  ? 'bg-rose-950/80 text-rose-300 border-rose-700/60'
+                  : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+              }`}
+              title={entry.isSecret ? 'Rolagem Oculta do Mestre' : 'Rolagem Visível para todos'}
+            >
+              {entry.isSecret ? '👁️‍🗨️ Oculto' : '👁️ Visível'}
+            </span>
+          )}
           <span className="text-[10px] text-slate-500 font-mono">
             {entry.timestamp}
           </span>
@@ -402,9 +416,13 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
         <div className="flex items-center justify-between bg-slate-900/90 border border-amber-500/30 rounded-lg p-2 font-mono">
           <div className="flex flex-col">
             <span className="text-[10px] text-amber-400 font-semibold font-sans">
-              {(entry as any).rolls && (entry as any).rolls.length > 1
-                ? `3D6: [ ${(entry as any).rolls.join(' + ')} ]`
-                : '1D6'}
+              {(() => {
+                const match = entry.description?.match(/(\d+D\d+)/i);
+                const notation = match ? match[1].toUpperCase() : ((entry as any).rolls?.length > 1 ? `${(entry as any).rolls.length}D6` : '1D6');
+                return (entry as any).rolls && (entry as any).rolls.length > 1
+                  ? `${notation}: [ ${(entry as any).rolls.join(' + ')} ]`
+                  : `${notation}: [ ${(entry as any).rolls?.[0] ?? (entry.amount ?? 0)} ]`;
+              })()}
             </span>
             {entry.playerName && (
               <span className="text-[9px] text-slate-400 font-sans italic">

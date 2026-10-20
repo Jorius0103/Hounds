@@ -114,13 +114,32 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
       const roundChanged = existingRound !== incomingRound;
       const tacticalChanged = JSON.stringify(existing.tacticalState) !== JSON.stringify(incoming.tacticalState);
 
-      if (npcsChanged || playerIdsChanged || editorIdsChanged || nameChanged || isActiveChanged || roundChanged || tacticalChanged) {
+      // Mescla eventos e rolagens gerais do combate
+      const existingEvents = existing.events || [];
+      const incomingEvents = incoming.events || [];
+      const existingEventIds = new Set(existingEvents.map((e) => e.id));
+      let eventsChanged = false;
+      const mergedEvents = [...existingEvents];
+      for (const incEv of incomingEvents) {
+        if (!existingEventIds.has(incEv.id)) {
+          existingEventIds.add(incEv.id);
+          mergedEvents.push(incEv);
+          eventsChanged = true;
+        }
+      }
+      if (existingEvents.length !== incomingEvents.length && incomingEvents.length > 0) {
+        eventsChanged = true;
+      }
+      mergedEvents.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
+
+      if (npcsChanged || playerIdsChanged || editorIdsChanged || nameChanged || isActiveChanged || roundChanged || tacticalChanged || eventsChanged) {
         changed = true;
       }
       merged.push({
         ...existing,
         ...incoming,
         npcs: mergedNpcs,
+        events: mergedEvents,
         currentRound: incoming.currentRound !== undefined ? incoming.currentRound : incomingRound,
         round: incoming.round !== undefined ? incoming.round : incomingRound,
         playerIds: incoming.playerIds !== undefined ? incoming.playerIds : existing.playerIds,
@@ -521,7 +540,38 @@ export default function App() {
 
     const unsubMsg = onlineSyncService.onSyncMessage((payload: RemoteSyncPayload) => {
       if ((payload as any).type === 'SYNC_DICE_ROLL' && (payload as any).rollData) {
-        setActiveDiceRoll((payload as any).rollData);
+        const rollObj = (payload as any).rollData;
+        const entry = (payload as any).logEntry;
+
+        setActiveDiceRoll(rollObj);
+
+        if (entry) {
+          if (entry.npcId) {
+            const charId = entry.npcId;
+            setPlayers((prev) =>
+              prev.map((p) =>
+                p.id === charId ? { ...p, history: [entry, ...(p.history || []).filter((h) => h.id !== entry.id)] } : p
+              )
+            );
+            setCombats((prev) =>
+              prev.map((c) => ({
+                ...c,
+                npcs: (c.npcs || []).map((n) =>
+                  n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)] } : n
+                ),
+              }))
+            );
+          } else {
+            const cId = entry.combatId || stateRef.current.activeCombatId;
+            setCombats((prev) =>
+              prev.map((c) =>
+                (!cId || c.id === cId)
+                  ? { ...c, events: [entry, ...(c.events || []).filter((e) => e.id !== entry.id)] }
+                  : c
+              )
+            );
+          }
+        }
         return;
       }
 
@@ -687,7 +737,38 @@ export default function App() {
         if (event.data?.sourceId === onlineSyncService.getClientId()) return;
 
         if (event.data?.type === 'SYNC_DICE_ROLL' && event.data?.rollData) {
-          setActiveDiceRoll(event.data.rollData);
+          const rollObj = event.data.rollData;
+          const entry = event.data.logEntry;
+
+          setActiveDiceRoll(rollObj);
+
+          if (entry) {
+            if (entry.npcId) {
+              const charId = entry.npcId;
+              setPlayers((prev) =>
+                prev.map((p) =>
+                  p.id === charId ? { ...p, history: [entry, ...(p.history || []).filter((h) => h.id !== entry.id)] } : p
+                )
+              );
+              setCombats((prev) =>
+                prev.map((c) => ({
+                  ...c,
+                  npcs: (c.npcs || []).map((n) =>
+                    n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)] } : n
+                  ),
+                }))
+              );
+            } else {
+              const cId = entry.combatId || stateRef.current.activeCombatId;
+              setCombats((prev) =>
+                prev.map((c) =>
+                  (!cId || c.id === cId)
+                    ? { ...c, events: [entry, ...(c.events || []).filter((e) => e.id !== entry.id)] }
+                    : c
+                )
+              );
+            }
+          }
           return;
         }
 
@@ -1990,10 +2071,10 @@ export default function App() {
     }
   };
 
-  const handleRollDice = (diceCount: number) => {
+  const handleRollDice = (diceCount: number, diceSides: number = 6) => {
     const rolls: number[] = [];
     for (let i = 0; i < diceCount; i++) {
-      rolls.push(Math.floor(Math.random() * 6) + 1);
+      rolls.push(Math.floor(Math.random() * diceSides) + 1);
     }
     const total = rolls.reduce((acc, val) => acc + val, 0);
 
@@ -2028,9 +2109,11 @@ export default function App() {
     const now = Date.now();
     const roundNumber = activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0;
     const logDescription =
-      diceCount === 3
+      diceCount === 3 && diceSides === 6
         ? `Rolou 3D6: [${rolls.join(', ')}] = ${total}`
-        : `Rolou 1D6: [${rolls[0]}] = ${total}`;
+        : diceCount === 1 && diceSides === 6
+        ? `Rolou 1D6: [${rolls[0]}] = ${total}`
+        : `Rolou ${diceCount}D${diceSides}: [${rolls.join(', ')}] = ${total}`;
 
     const newEntry: ActionLogEntry = {
       id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
@@ -2044,6 +2127,8 @@ export default function App() {
       description: logDescription,
       amount: total,
       rolls: rolls,
+      diceCount: diceCount,
+      diceSides: diceSides,
       npcId: char?.id,
       npcName: char ? char.name : 'Mestre',
       npcAvatar: char?.avatar,
@@ -2073,6 +2158,7 @@ export default function App() {
       rolls,
       total,
       diceCount,
+      diceSides,
       characterName: charName,
       playerName,
       avatar: char?.avatar,
@@ -2086,6 +2172,7 @@ export default function App() {
         broadcastChannelRef.current?.postMessage({
           type: 'SYNC_DICE_ROLL',
           rollData,
+          logEntry: newEntry,
           sourceId: onlineSyncService.getClientId(),
         });
       } catch (e) {}
@@ -2093,6 +2180,7 @@ export default function App() {
       onlineSyncService.sendPayloadImmediate({
         type: 'SYNC_DICE_ROLL',
         rollData,
+        logEntry: newEntry,
         timestamp: now,
       });
 
@@ -2102,6 +2190,7 @@ export default function App() {
             JSON.stringify({
               type: 'SYNC_DICE_ROLL',
               rollData,
+              logEntry: newEntry,
               timestamp: now,
             })
           );

@@ -87,6 +87,54 @@
     return texture;
   }
 
+  // Create canvas texture for polyhedral dice
+  function createPolyhedralFaceTexture(val, sides) {
+    var canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    var ctx = canvas.getContext('2d');
+
+    // Warm golden amber gradient
+    var grad = ctx.createLinearGradient(0, 0, 256, 256);
+    grad.addColorStop(0, '#ffca28');
+    grad.addColorStop(0.5, '#f59e0b');
+    grad.addColorStop(1, '#d97706');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Bevel border
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = '#b45309';
+    ctx.strokeRect(0, 0, 256, 256);
+
+    // Inner bright highlight
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.strokeRect(7, 7, 242, 242);
+
+    // Die type label
+    ctx.fillStyle = '#78350f';
+    ctx.font = 'bold 26px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('D' + sides, 128, 26);
+
+    // Bold result number
+    ctx.fillStyle = '#0a0a0c';
+    var fontSize = String(val).length > 2 ? 96 : 124;
+    ctx.font = '900 ' + fontSize + 'px "Plus Jakarta Sans", "JetBrains Mono", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(val), 128, 140);
+
+    if (val === 6 || val === 9) {
+      ctx.fillStyle = '#0a0a0c';
+      ctx.fillRect(96, 204, 64, 10);
+    }
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
   // Create soft shadow texture
   function createShadowTexture() {
     var canvas = document.createElement('canvas');
@@ -179,10 +227,14 @@
 
     // 5. Shared Geometries and Materials (50% size reduction)
     var dieSize = 1.8;
+    var sides = rollData.diceSides || 6;
+    var count = rollData.rolls.length;
+    var halfDie = dieSize / 2;
+
     var cubeGeo = new THREE.BoxGeometry(dieSize, dieSize, dieSize);
 
     // Box face order: [+X, -X, +Y, -Y, +Z, -Z] -> [2, 5, 1, 6, 3, 4]
-    var materials = [
+    var d6Materials = [
       new THREE.MeshStandardMaterial({ map: createD6FaceTexture(2), roughness: 0.35, metalness: 0.05 }),
       new THREE.MeshStandardMaterial({ map: createD6FaceTexture(5), roughness: 0.35, metalness: 0.05 }),
       new THREE.MeshStandardMaterial({ map: createD6FaceTexture(1), roughness: 0.35, metalness: 0.05 }),
@@ -191,14 +243,38 @@
       new THREE.MeshStandardMaterial({ map: createD6FaceTexture(4), roughness: 0.35, metalness: 0.05 })
     ];
 
+    function createPolyhedralMesh(val) {
+      if (sides === 6) {
+        return new THREE.Mesh(cubeGeo, d6Materials);
+      }
+      var geo;
+      if (sides === 4) {
+        geo = new THREE.TetrahedronGeometry(dieSize * 0.9, 0);
+      } else if (sides === 8) {
+        geo = new THREE.OctahedronGeometry(dieSize * 0.85, 0);
+      } else if (sides === 10 || sides === 100) {
+        geo = new THREE.CylinderGeometry(0, dieSize * 0.85, dieSize * 1.3, 5);
+      } else if (sides === 12) {
+        geo = new THREE.DodecahedronGeometry(dieSize * 0.8, 0);
+      } else if (sides === 20) {
+        geo = new THREE.IcosahedronGeometry(dieSize * 0.82, 0);
+      } else {
+        geo = new THREE.BoxGeometry(dieSize, dieSize, dieSize);
+      }
+      var mat = new THREE.MeshStandardMaterial({
+        map: createPolyhedralFaceTexture(val, sides),
+        roughness: 0.35,
+        metalness: 0.05
+      });
+      return new THREE.Mesh(geo, mat);
+    }
+
     var shadowGeo = new THREE.PlaneGeometry(2.6, 2.6);
     var shadowTex = createShadowTexture();
     var shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.75, depthWrite: false });
 
     // 6. Create Dice Meshes & Trajectory Data
     var dice = [];
-    var count = rollData.rolls.length;
-    var halfDie = dieSize / 2;
 
     // Resting positions (scattered naturally, scaled down by 50%)
     var targetPositions = [];
@@ -221,7 +297,7 @@
     }
 
     rollData.rolls.forEach(function (val, idx) {
-      var dieMesh = new THREE.Mesh(cubeGeo, materials);
+      var dieMesh = createPolyhedralMesh(val);
       scene.add(dieMesh);
 
       var shadowMesh = new THREE.Mesh(shadowGeo, shadowMat.clone());
@@ -279,15 +355,18 @@
     resultBadge.style.color = '#fff';
     resultBadge.style.fontFamily = '"Plus Jakarta Sans", system-ui, sans-serif';
 
-    var is3D = count === 3;
-    var isCritSuccess = is3D && rollData.total <= 4;
-    var isCritFail = is3D && rollData.total >= 17;
+    var is3D6 = count === 3 && sides === 6;
+    var isCritSuccess = is3D6 ? rollData.total <= 4 : (sides === 20 && count === 1 && rollData.total === 20);
+    var isCritFail = is3D6 ? rollData.total >= 17 : (sides === 20 && count === 1 && rollData.total === 1);
+
+    var diceNotation = count + 'D' + sides;
+    var rollsFormatted = rollData.rolls.join(' + ');
 
     var badgeHtml = '<div style="display:flex;align-items:center;gap:8px;">';
     badgeHtml += '<span style="font-size:16px;">🎲</span>';
     badgeHtml += '<div style="display:flex;flex-direction:column;line-height:1.1;">';
     badgeHtml += '<div style="font-size:11px;font-weight:700;color:#cbd5e1;">' + (rollData.characterName || 'Mestre') + (rollData.playerName ? ' <span style="color:#fbbf24;font-size:10px;">(' + rollData.playerName + ')</span>' : '') + '</div>';
-    badgeHtml += '<div style="font-size:10px;color:#94a3b8;font-family:monospace;">' + (count === 3 ? '3D6: [' + rollData.rolls.join(' + ') + ']' : '1D6') + '</div>';
+    badgeHtml += '<div style="font-size:10px;color:#94a3b8;font-family:monospace;">' + diceNotation + ': [' + rollsFormatted + ']</div>';
     badgeHtml += '</div>';
     badgeHtml += '</div>';
 
