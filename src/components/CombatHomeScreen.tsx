@@ -169,6 +169,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
           }
 
           // Alertas críticos complementares (Morto, PV/FP, Membros inutilizados, Condições)
+          // Refletem para todos (Mestre e Jogadores) em ambas as visões
           const criticalAlerts: {
             id: string;
             text: string;
@@ -186,47 +187,45 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
             });
           }
 
-          if (showDetailedStats) {
-            const hpWarns =
-              hpStatus.warningTexts && hpStatus.warningTexts.length > 0
-                ? hpStatus.warningTexts
-                : hpStatus.warningText
-                ? [hpStatus.warningText]
-                : [];
-            hpWarns.forEach((w, ix) => {
-              criticalAlerts.push({
-                id: `hp-warn-${ix}`,
-                text: `PV: ${w}`,
-                badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
-                icon: AlertTriangle,
-              });
+          const hpWarns =
+            hpStatus.warningTexts && hpStatus.warningTexts.length > 0
+              ? hpStatus.warningTexts
+              : hpStatus.warningText
+              ? [hpStatus.warningText]
+              : [];
+          hpWarns.forEach((w, ix) => {
+            criticalAlerts.push({
+              id: `hp-warn-${ix}`,
+              text: `PV: ${w}`,
+              badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
+              icon: AlertTriangle,
             });
+          });
 
-            const fpWarns =
-              fpStatus.warningTexts && fpStatus.warningTexts.length > 0
-                ? fpStatus.warningTexts
-                : fpStatus.warningText
-                ? [fpStatus.warningText]
-                : [];
-            fpWarns.forEach((w, ix) => {
-              criticalAlerts.push({
-                id: `fp-warn-${ix}`,
-                text: `Fadiga: ${w}`,
-                badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-                icon: Zap,
-              });
+          const fpWarns =
+            fpStatus.warningTexts && fpStatus.warningTexts.length > 0
+              ? fpStatus.warningTexts
+              : fpStatus.warningText
+              ? [fpStatus.warningText]
+              : [];
+          fpWarns.forEach((w, ix) => {
+            criticalAlerts.push({
+              id: `fp-warn-${ix}`,
+              text: `Fadiga: ${w}`,
+              badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
+              icon: Zap,
             });
+          });
 
-            getCrippledBodyParts(npc).forEach((p) => {
-              criticalAlerts.push({
-                id: `crippled-${p.key}`,
-                text: `${p.name}: ${p.statusLabel || 'Inutilizado'}`,
-                badgeClass: p.badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
-                tooltip: `${p.name} ${p.statusLabel || 'Inutilizado'}: Dano acumulado (${p.damage}) atingiu o limiar (${p.displayHp} PV)!`,
-                icon: AlertTriangle,
-              });
+          getCrippledBodyParts(npc).forEach((p) => {
+            criticalAlerts.push({
+              id: `crippled-${p.key}`,
+              text: `${p.name}: ${p.statusLabel || 'Inutilizado'}`,
+              badgeClass: p.badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
+              tooltip: `${p.name} ${p.statusLabel || 'Inutilizado'}: Dano acumulado (${p.damage}) atingiu o limiar (${p.displayHp} PV)!`,
+              icon: AlertTriangle,
             });
-          }
+          });
 
           if (npc.statusConditions && npc.statusConditions.length > 0) {
             npc.statusConditions.forEach((cond) => {
@@ -435,91 +434,93 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
               </div>
 
               {/* CONTEÚDO PRINCIPAL (DISTRIBUIÇÃO DINÂMICA EM 2 COLUNAS SEM GAPS VERTICAIS) */}
-              {showDetailedStats ? (
-                (() => {
-                  const contentBlocks: React.ReactNode[] = [];
+              {(() => {
+                const contentBlocks: React.ReactNode[] = [];
 
-                  // 1. Bloco de Defesas Ativas (SEM TÍTULO "DEFESAS ATIVAS")
-                  if (hasDefenses) {
-                    contentBlocks.push(
-                      <div key="defenses" className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
-                        <div className="grid grid-cols-2 gap-1">
-                          {/* Esquiva */}
-                          <div
-                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                            title={npc.dodgeNotes || 'Esquiva'}
-                          >
-                            <span className="text-[11px] font-bold text-cyan-400">Esq</span>
-                            <span className="font-mono font-black text-sm text-cyan-300">{npc.dodge ?? 0}</span>
-                          </div>
+                // 1. Bloco de Defesas Ativas (SEM TÍTULO "DEFESAS ATIVAS")
+                if (hasDefenses) {
+                  const hasBlock = (npc.block ?? 0) > 0;
+                  contentBlocks.push(
+                    <div key="defenses" className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
+                      <div className="grid grid-cols-2 gap-1">
+                        {/* Esquiva */}
+                        <div
+                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                          title={npc.dodgeNotes || 'Esquiva'}
+                        >
+                          <span className="text-[11px] font-bold text-cyan-400 truncate mr-1.5">Esquiva</span>
+                          <span className="font-mono font-black text-sm text-cyan-300 shrink-0">{npc.dodge ?? 0}</span>
+                        </div>
 
-                          {/* Bloqueio */}
+                        {/* Bloqueio - Somente exibido quando > 0 */}
+                        {hasBlock && (
                           <div
                             className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
                             title={npc.blockNotes || 'Bloqueio'}
                           >
-                            <span className="text-[11px] font-bold text-emerald-400">Bloq</span>
-                            <span className="font-mono font-black text-sm text-emerald-300">{npc.block ?? 0}</span>
+                            <span className="text-[11px] font-bold text-emerald-400 truncate mr-1.5">Bloqueio</span>
+                            <span className="font-mono font-black text-sm text-emerald-300 shrink-0">{npc.block}</span>
                           </div>
+                        )}
 
-                          {/* Aparar 1 */}
+                        {/* Aparar 1 */}
+                        <div
+                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
+                          title={parry1?.weaponName ? `Aparar: ${parry1.weaponName} ${parry1.notes || ''}` : 'Aparar'}
+                        >
+                          <span className="text-[11px] font-bold text-amber-400 truncate max-w-[65px]">
+                            {parry1?.weaponName ? `Ap (${parry1.weaponName})` : 'Aparar'}
+                          </span>
+                          <span className="font-mono font-black text-sm text-amber-300 shrink-0">
+                            {parry1?.value ?? 0}
+                          </span>
+                        </div>
+
+                        {/* Aparar 2 (se não houver, slot vazio sem borda quando houver bloqueio) */}
+                        {parry2 ? (
                           <div
                             className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                            title={parry1?.weaponName ? `Aparar: ${parry1.weaponName} ${parry1.notes || ''}` : 'Aparar'}
+                            title={`Aparar 2: ${parry2.weaponName} ${parry2.notes || ''}`}
                           >
                             <span className="text-[11px] font-bold text-amber-400 truncate max-w-[65px]">
-                              {parry1?.weaponName ? `Ap (${parry1.weaponName})` : 'Aparar'}
+                              {parry2.weaponName ? `Ap (${parry2.weaponName})` : 'Ap 2'}
                             </span>
                             <span className="font-mono font-black text-sm text-amber-300 shrink-0">
-                              {parry1?.value ?? 0}
+                              {parry2.value}
                             </span>
                           </div>
+                        ) : hasBlock ? (
+                          <div className="min-h-[24px]" />
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                }
 
-                          {/* Aparar 2 (se não houver, slot vazio sem borda) */}
-                          {parry2 ? (
-                            <div
-                              className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5"
-                              title={`Aparar 2: ${parry2.weaponName} ${parry2.notes || ''}`}
-                            >
-                              <span className="text-[11px] font-bold text-amber-400 truncate max-w-[65px]">
-                                {parry2.weaponName ? `Ap (${parry2.weaponName})` : 'Ap 2'}
-                              </span>
-                              <span className="font-mono font-black text-sm text-amber-300 shrink-0">
-                                {parry2.value}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="min-h-[24px]" />
-                          )}
+                // 2. Bloco de Recursos Favoritados (SEM TÍTULO "RECURSOS FAVORITADOS")
+                if (hasFavoriteItems) {
+                  contentBlocks.push(
+                    <div key="resources" className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 space-y-1">
+                      {favoriteItems.map((it) => (
+                        <div
+                          key={it.id}
+                          className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5 text-[11px]"
+                          title={`${it.name} (${it.category || 'Recurso'})`}
+                        >
+                          <span className="font-bold text-slate-200 flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+                            {getItemIcon(it.name, it.category)}
+                            <span className="truncate">{it.name || 'Recurso'}</span>
+                          </span>
+                          <span className="font-mono font-black text-xs text-white shrink-0">
+                            <span className="text-emerald-300">{it.current ?? 0}</span>
+                            <span className="text-slate-500 mx-0.5">/</span>
+                            <span className="text-slate-300">{it.max ?? 0}</span>
+                          </span>
                         </div>
-                      </div>
-                    );
-                  }
-
-                  // 2. Bloco de Recursos Favoritados (SEM TÍTULO "RECURSOS FAVORITADOS")
-                  if (hasFavoriteItems) {
-                    contentBlocks.push(
-                      <div key="resources" className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 space-y-1">
-                        {favoriteItems.map((it) => (
-                          <div
-                            key={it.id}
-                            className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded px-1.5 py-0.5 text-[11px]"
-                            title={`${it.name} (${it.category || 'Recurso'})`}
-                          >
-                            <span className="font-bold text-slate-200 flex items-center gap-1.5 truncate max-w-[110px]">
-                              {getItemIcon(it.name, it.category)}
-                              <span className="truncate">{it.name || 'Recurso'}</span>
-                            </span>
-                            <span className="font-mono font-black text-xs text-white shrink-0">
-                              <span className="text-emerald-300">{it.current ?? 0}</span>
-                              <span className="text-slate-500 mx-0.5">/</span>
-                              <span className="text-slate-300">{it.max ?? 0}</span>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
+                      ))}
+                    </div>
+                  );
+                }
 
                   // 3. Bloco de Magias (MANTÉM TÍTULOS DE "Magias Ativas" E "Sob Efeito")
                   if (hasSpells) {
@@ -651,12 +652,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       <div className="space-y-1.5">{colRight}</div>
                     </div>
                   );
-                })()
-              ) : (
-                <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg px-2 py-1.5 text-center text-xs text-slate-500 italic">
-                  Estatísticas detalhadas do NPC ocultas para jogadores.
-                </div>
-              )}
+                })()}
             </div>
           );
         })}
