@@ -361,6 +361,20 @@ export default function App() {
     return list;
   }, [players, combats, activeCombat, activeCombatPlayerIds, isNoCombat]);
 
+  // Lista unificada de Personagens de Jogadores (para modais e recarga de recursos)
+  const allPlayerCharacters = useMemo(() => {
+    const map = new Map<string, NPC>();
+    (players || []).forEach((p) => {
+      if (p.characterType !== 'npc') map.set(p.id, p);
+    });
+    (allCharacters || []).forEach((c) => {
+      if (c.characterType === 'player' || !c.characterType) {
+        map.set(c.id, c);
+      }
+    });
+    return Array.from(map.values());
+  }, [players, allCharacters]);
+
   const [selectedNpcId, setSelectedNpcId] = useState<string>(() => {
     return allCharacters[0]?.id || '';
   });
@@ -1277,8 +1291,8 @@ export default function App() {
           timestamp: timeStr,
           timestampMs: now,
           round: activeCombat.currentRound ?? 0,
-          author: (currentUser?.role as any) || 'mestre',
-          authorName: currentUser?.name || 'Mestre',
+          author: currentUser?.role === 'jogador' ? 'assistente' : 'mestre',
+          authorName: currentUser?.name || (currentUser?.role === 'jogador' ? 'Jogador' : 'Mestre'),
           type: 'item',
           npcName: 'Personagens',
           npcCharacterType: 'player',
@@ -1286,11 +1300,35 @@ export default function App() {
           amount: 1,
           description: descText,
         };
-        const nextCombats = combats.map((c) =>
-          c.id === activeCombat.id
-            ? { ...c, events: [logEntry, ...(c.events || []).filter((e) => e.id !== logEntry.id)] }
-            : c
-        );
+        const nextCombats = combats.map((c) => {
+          let combatNpcsChanged = false;
+          const nextNpcs = (c.npcs || []).map((npc) => {
+            const selectedItemIds = new Set(selectedByChar[npc.id] || []);
+            if (selectedItemIds.size === 0) return npc;
+            combatNpcsChanged = true;
+            return {
+              ...npc,
+              extraItems: (npc.extraItems || []).map((it) => {
+                if (selectedItemIds.has(it.id)) {
+                  const currentVal = it.current || 0;
+                  const maxVal = it.max || (currentVal + 1);
+                  return { ...it, current: Math.min(currentVal + 1, maxVal) };
+                }
+                return it;
+              }),
+              updatedAt: now,
+            };
+          });
+
+          if (c.id === activeCombat.id) {
+            return {
+              ...c,
+              npcs: combatNpcsChanged ? nextNpcs : c.npcs,
+              events: [logEntry, ...(c.events || []).filter((e) => e.id !== logEntry.id)],
+            };
+          }
+          return combatNpcsChanged ? { ...c, npcs: nextNpcs } : c;
+        });
         setCombats(nextCombats);
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
@@ -3392,7 +3430,7 @@ export default function App() {
       <PassDayModal
         isOpen={passDayModalOpen}
         onClose={() => setPassDayModalOpen(false)}
-        players={players}
+        players={allPlayerCharacters}
         onConfirm={handleConfirmPassDay}
       />
 

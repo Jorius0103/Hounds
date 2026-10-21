@@ -204,8 +204,8 @@ export const TopNav: React.FC<TopNavProps> = ({
             </button>
           )}
 
-          {/* Botão Passar o Dia (entre Tela Inicial e Visível) */}
-          {onOpenPassDayModal && (
+          {/* Botão Passar o Dia (Mestre ou Jogador com Permissão de Edição) */}
+          {(currentUser?.role === 'mestre' || canEditCurrent) && onOpenPassDayModal && (
             <button
               type="button"
               onClick={onOpenPassDayModal}
