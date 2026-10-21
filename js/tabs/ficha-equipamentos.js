@@ -771,7 +771,10 @@ function packEditHtml(g) {
           '<span class="gear-w" data-iw="' + i + ':' + j + '">' + esc(eqLbs(eqRound(it.qty * e.weight))) + '</span>' +
           '<button class="icon-btn" type="button" data-idel="' + j + '" aria-label="Tirar ' + esc(e.name) + ' da mochila" title="Tirar">' + svg(ICON.x, 14, 2.4) + '</button></div>';
       }).join('') +
-      '<select data-f="padd" aria-label="Adicionar à mochila"><option value="">+ Adicionar da lista…</option>' + g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) { return opt(e, false, left, also); }).join('') + '</select></div>' +
+      gearPickerHtml('padd', '+ Adicionar da lista… (digite o nome)', 'Adicionar à mochila', g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) {
+        var n = left[e.id], where = also[e.id], body = gearOnBody(g, e.id);
+        return { id: e.id, name: e.name, off: !(n > 0), note: [eqLbs(e.weight), n > 0 ? '' : packFullText(e).replace(/^ \(|\)$/g, ''), where ? '⚠ já está ' + where : body ? '⚠ no corpo em uso' : ''].filter(Boolean).join(' · ') };
+      })) + '</div>' +
       '<p class="gear-ptot" data-ptot="' + i + '">' + packTotalText(own, content) + '</p></div>';
   }).join('') +
     '<div class="btn-row"><button class="btn" type="button" id="packAdd">' + svg(ICON.plus, 15, 2.4) + 'Nova mochila</button>' +
@@ -779,6 +782,49 @@ function packEditHtml(g) {
     '<p class="hint-text" style="margin:0">Só entram equipamentos da lista acima, e cada mochila guarda no máximo o que a lista tem; o mesmo item pode estar em várias mochilas. A mochila <b>Em uso</b> não deveria dividir um item com o corpo em uso nem com as casas: a lista avisa (⚠), mas não impede. Ao adicionar, o item vem com a quantidade da lista. A própria mochila, se estiver na lista (ex.: Backpack, Small), dá o peso próprio dela. ' +
     'Só a mochila <b>Em uso</b> entra na carga (uma por vez); as outras continuam guardadas com o que têm.</p>' +
     '<div class="form-err" id="packErr" role="alert"></div>';
+}
+/* ---------- picking a line of the list by typing (Mochilas and Casa) ----------
+   A field with the list under it: a click (or ArrowDown) opens it whole, typing filters it by name
+   (accents and case aside); a line picked (click or Enter) calls onPick(field, line id, the field).
+   opts: [{ id, name, note, off }] (off: shown, can't be picked). */
+function gearPickerHtml(field, placeholder, label, opts) {
+  return '<div class="sk-pick gear-picker"><input type="text" data-pick="' + field + '" placeholder="' + esc(placeholder) + '" aria-label="' + esc(label) + '"' +
+    ' autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"><div class="suggest" role="listbox" hidden>' + opts.map(function (o) {
+      return '<button type="button" role="option" data-pv="' + esc(o.id) + '" data-pn="' + esc(norm(o.name)) + '"' + (o.off ? ' disabled' : '') + '><span>' + esc(o.name) + '</span>' +
+        (o.note ? '<small>' + esc(o.note) + '</small>' : '') + '</button>';
+    }).join('') + '<p class="gear-picker-none"' + (opts.length ? ' hidden' : '') + '>' + (opts.length ? 'Nenhum item com esse nome.' : 'Nada mais na lista.') + '</p></div></div>';
+}
+function wireGearPickers(box, onPick) {
+  var act = 0;
+  function parts(el) { var w = el.closest && el.closest('.gear-picker'); return w ? { input: w.querySelector('[data-pick]'), list: w.querySelector('.suggest') } : null; }
+  function field(e) { var t = /** @type {AnyEl} */ (e.target); return t && t.hasAttribute && t.hasAttribute('data-pick') ? t : null; }
+  function shown(x) { return [].filter.call(x.list.querySelectorAll('[data-pv]'), function (b) { return !b.hidden && !b.disabled; }); }
+  function paint(x) {
+    var q = norm(x.input.value).trim(), all = x.list.querySelectorAll('[data-pv]'), any = false;
+    all.forEach(function (b) { var ok = !q || b.getAttribute('data-pn').indexOf(q) >= 0; b.hidden = !ok; b.classList.remove('act'); if (ok) any = true; });
+    if (all.length) x.list.querySelector('.gear-picker-none').hidden = any;
+    var v = shown(x); act = Math.max(0, Math.min(act, v.length - 1));
+    if (v[act]) { v[act].classList.add('act'); v[act].scrollIntoView({ block: 'nearest' }); }
+    x.list.hidden = false; x.input.setAttribute('aria-expanded', 'true');
+  }
+  function close(x) { x.list.hidden = true; x.input.setAttribute('aria-expanded', 'false'); }
+  function pick(x, b) { close(x); onPick(x.input.getAttribute('data-pick'), b.getAttribute('data-pv'), x.input); }
+  box.addEventListener('click', function (e) {
+    var t = /** @type {AnyEl} */ (e.target), x = parts(t); if (!x) return;
+    var b = t.closest('[data-pv]'); if (b) { if (!b.disabled) pick(x, b); return; }
+    if (t === x.input && x.list.hidden) { act = 0; paint(x); }
+  });
+  box.addEventListener('input', function (e) { var t = field(e); if (t) { act = 0; paint(parts(t)); } });
+  box.addEventListener('keydown', function (e) {
+    var t = field(e); if (!t) return;
+    var x = parts(t), v = shown(x);
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (!x.list.hidden) act++; paint(x); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); act--; paint(x); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (!x.list.hidden && v[act]) pick(x, v[act]); }
+    else if (e.key === 'Escape' && !x.list.hidden) { e.stopPropagation(); close(x); }
+  });
+  box.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('.gear-picker .suggest')) e.preventDefault(); });
+  box.addEventListener('focusout', function (e) { var t = field(e); if (t) setTimeout(function () { if (document.activeElement !== t) close(parts(t)); }, 150); });
 }
 function packTotalText(own, content) { return 'Peso: ' + esc(eqLbs(eqRound(own + content))) + (own ? ' (' + esc(eqLbs(eqRound(own))) + ' da mochila + ' + esc(eqLbs(eqRound(content))) + ' de conteúdo)' : ''); }
 
@@ -817,11 +863,6 @@ function sheetHomesHtml(g, editing) {
 }
 function homeEditHtml(g) {
   var d = S.ui.homeDraft, by = gearIndex(g.equip);
-  function opt(e, left, also) {
-    var n = left[e.id];
-    return '<option value="' + esc(e.id) + '"' + (n > 0 ? '' : ' disabled') + '>' + esc(e.name) + ' · ' + esc(eqLbs(e.weight)) +
-      (n > 0 ? '' : packFullText(e)) + (also[e.id] ? ' · ⚠ já está ' + esc(also[e.id]) : '') + '</option>';
-  }
   return d.homes.map(function (h, i) {
     // A house shouldn't share a line with another house, the body in use or the pack in use: the list warns.
     var left = packLeft(g, h), also = gearBlocked(g, 'home', h, null, null, d.homes);
@@ -835,7 +876,10 @@ function homeEditHtml(g) {
           '<span class="gear-w" data-hw="' + i + ':' + j + '">' + esc(eqLbs(eqRound(it.qty * e.weight))) + '</span>' +
           '<button class="icon-btn" type="button" data-hidel="' + j + '" aria-label="Tirar ' + esc(e.name) + ' da casa" title="Tirar">' + svg(ICON.x, 14, 2.4) + '</button></div>';
       }).join('') +
-      '<select data-f="hadd" aria-label="Guardar na casa"><option value="">+ Guardar da lista…</option>' + g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) { return opt(e, left, also); }).join('') + '</select></div>' +
+      gearPickerHtml('hadd', '+ Guardar da lista… (digite o nome)', 'Guardar na casa', g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) {
+        var n = left[e.id];
+        return { id: e.id, name: e.name, off: !(n > 0), note: [eqLbs(e.weight), n > 0 ? '' : packFullText(e).replace(/^ \(|\)$/g, ''), also[e.id] ? '⚠ já está ' + also[e.id] : ''].filter(Boolean).join(' · ') };
+      })) + '</div>' +
       '<p class="gear-ptot" data-htot="' + i + '">' + packTotalText(0, homeLbs(cleanHome(h, i, by), by)) + ' · fora da carga</p></div>';
   }).join('') +
     '<div class="btn-row"><button class="btn" type="button" id="homeAdd">' + svg(ICON.plus, 15, 2.4) + 'Nova casa</button></div>' +
@@ -1015,13 +1059,15 @@ function wirePackEdit(s) {
     var p = pack(el); if (!p) return;
     if (f === 'iqty' && el.value === '') el.value = String(p.items[+el.getAttribute('data-j')].qty);
     else if (f === 'pown') { p.equipId = el.value || null; renderSheetPage(); }
-    else if (f === 'padd' && el.value) {
-      // With the list's quantity (less the pack itself, when it is the same line).
-      var gn = gearNow(s), ln = gearIndex(gn.equip)[el.value];
-      p.items.push({ equipId: el.value, qty: ln ? Math.max(1, Math.min(9999, packLeft(gn, p)[el.value])) : 1 }); renderSheetPage();
-      var on = gearIndex(gearNow(s).equip)[el.value];
-      if (on && gearOnBody(gearNow(s), on.id)) toast('“' + on.name + '” também está no corpo em uso. Na carga conta uma vez só.');
-    }
+  });
+  // A line picked (typed or from the list): with the list's quantity (less the pack itself, when it is
+  // the same line).
+  wireGearPickers(box, function (f, id, el) {
+    var p = pack(el); if (!p || f !== 'padd') return;
+    var gn = gearNow(s), ln = gearIndex(gn.equip)[id];
+    p.items.push({ equipId: id, qty: ln ? Math.max(1, Math.min(9999, packLeft(gn, p)[id])) : 1 }); renderSheetPage();
+    if (ln && gearOnBody(gn, ln.id)) toast('“' + ln.name + '” também está no corpo em uso. Na carga conta uma vez só.');
+    var nx = document.querySelector('#gearPacks [data-p="' + d.packs.indexOf(p) + '"] [data-pick]'); if (nx instanceof HTMLElement) nx.focus();
   });
   box.addEventListener('click', function (e) {
     var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-pdel], [data-idel]'); if (!b) return;
@@ -1068,7 +1114,12 @@ function wireHomeEdit(s) {
   box.addEventListener('change', function (e) {
     var el = /** @type {AnyEl} */ (e.target), f = el.dataset && el.dataset.f, h = home(el); if (!h) return;
     if (f === 'hqty' && el.value === '') el.value = String(h.items[+el.getAttribute('data-j')].qty);
-    else if (f === 'hadd' && el.value) { var lh = by[el.value]; h.items.push({ equipId: el.value, qty: lh ? Math.max(1, Math.min(9999, lh.qty)) : 1 }); renderSheetPage(); }
+  });
+  // A line picked (typed or from the list): with the list's quantity.
+  wireGearPickers(box, function (f, id, el) {
+    var h = home(el); if (!h || f !== 'hadd') return;
+    var lh = by[id]; h.items.push({ equipId: id, qty: lh ? Math.max(1, Math.min(9999, lh.qty)) : 1 }); renderSheetPage();
+    var nx = document.querySelector('#gearHomes [data-h="' + d.homes.indexOf(h) + '"] [data-pick]'); if (nx instanceof HTMLElement) nx.focus();
   });
   box.addEventListener('click', function (e) {
     var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-hdel], [data-hidel]'); if (!b) return;

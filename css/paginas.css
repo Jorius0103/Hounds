@@ -1018,3 +1018,13 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 }
 /* Meus Itens: a given name and, on the same line, the model it is ("Reserva — Kite Shield") */
 .gear-model { font-weight: 500; color: var(--muted); }
+/* Mochilas and Casa: a line of the list picked by typing its name (gearPickerHtml) */
+/* In .gear-slots, a column: no flex-basis (it would be a height), the width of the column. */
+.gear-picker { flex: none; width: 100%; min-width: 0; }
+.gear-picker input { width: 100%; box-sizing: border-box; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 10px; color: var(--text); font: inherit; font-size: 13px; }
+.gear-picker input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.gear-picker .suggest { max-height: 300px; }
+.gear-picker .suggest button[disabled] { opacity: .5; cursor: not-allowed; }
+.gear-picker .suggest button[hidden] { display: none; }
+.gear-picker-none { margin: 0; padding: 8px 10px; font-size: 12.5px; color: var(--faint); }
+.gear-picker-none[hidden] { display: none; }
