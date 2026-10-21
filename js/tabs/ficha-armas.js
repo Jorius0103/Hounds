@@ -125,7 +125,7 @@ function cleanCustomWeapon(w, i, by) {
   return { id: gearId(w.id) || 'w' + (i + 1), baseId: gearId(w.baseId, 200) || null,
     base: { name: String(b.name || '').trim().slice(0, 120) || '—', tl: String(b.tl || '').slice(0, 20), type: String(b.type || '').slice(0, 20), cost: cleanDec(b.cost, 9999999, 0), weight: cleanDec(b.weight, 99999, 0) },
     description: String(w.description || '').trim().slice(0, 2000), mods: (Array.isArray(w.mods) ? w.mods : []).map(cleanWeaponAdj).filter(function (m) { return m.name; }),
-    attacks: (Array.isArray(w.attacks) ? w.attacks : []).map(cleanWeaponAttack).slice(0, 30), cost: cleanDec(w.cost, 9999999, 0), weight: eqWeight(cleanDec(w.weight, 99999, 0)),
+    attacks: (Array.isArray(w.attacks) ? w.attacks : []).map(cleanWeaponAttack).slice(0, 30), cost: cleanDec(w.cost, 9999999, 0), weight: eqRound(cleanDec(w.weight, 99999, 0)),
     equipId: w.equipId && by[w.equipId] ? w.equipId : null };
 }
 // Weapons of Regras › Armas that can be made: with attacks.

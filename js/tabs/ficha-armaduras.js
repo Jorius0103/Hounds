@@ -149,7 +149,7 @@ function cleanArmorSet(a, i, by) {
     if (!p || typeof p.loc !== 'string' || !p.loc || locs[p.loc]) return;
     locs[p.loc] = true;
     pieces.push({ id: gearId(p.id) || 'q' + (j + 1), loc: p.loc, cover: p.cover === 'front' ? 'front' : 'full', pct: abNum(p.pct, 0.001, 1000) || 0.001, dr: String(p.dr == null ? '' : p.dr),
-      cost: cleanDec(p.cost, 9999999, 0), weight: eqWeight(cleanDec(p.weight, 99999, 0)), don: abNum(p.don, 0, 99999), equipId: p.equipId && by[p.equipId] ? p.equipId : null });
+      cost: cleanDec(p.cost, 9999999, 0), weight: eqRound(cleanDec(p.weight, 99999, 0)), don: abNum(p.don, 0, 99999), equipId: p.equipId && by[p.equipId] ? p.equipId : null });
   });
   return { id: gearId(a.id) || 'a' + (i + 1), name: String(a.name || '').trim().slice(0, 80) || 'Armadura ' + (i + 1), description: String(a.description || '').trim().slice(0, 2000),
     baseId: gearId(a.baseId, 200) || null,

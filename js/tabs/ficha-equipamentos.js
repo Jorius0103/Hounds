@@ -60,7 +60,7 @@ function gearId(v, n) { return typeof v === 'string' ? v.trim().slice(0, n || 60
 function cleanEquip(x, i) {
   x = x || {};
   var o = { id: gearId(x.id) || (typeof i === 'number' ? 'e' + (i + 1) : ''), kind: x.kind === 'armor' || x.kind === 'weapon' ? x.kind : 'item',
-    name: String(x.name || '').trim().slice(0, 120), qty: cleanInt(x.qty, 0, 9999, 1), weight: eqWeight(cleanDec(x.weight, 99999, 0)),
+    name: String(x.name || '').trim().slice(0, 120), qty: cleanInt(x.qty, 0, 9999, 1), weight: eqRound(cleanDec(x.weight, 99999, 0)),
     cost: cleanDec(x.cost, 9999999, 0), notes: String(x.notes || '').trim().slice(0, 400) };
   var ref = gearId(x.refId, 200); if (ref) o.refId = ref;
   return o;

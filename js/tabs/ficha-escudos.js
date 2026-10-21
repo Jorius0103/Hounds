@@ -61,7 +61,7 @@ function cleanCustomShield(w, i, by) {
   return { id: gearId(w.id) || 'h' + (i + 1), baseId: gearId(w.baseId, 200) || null, base: cleanShieldBase(w.base), description: String(w.description || '').trim().slice(0, 2000),
     mods: (Array.isArray(w.mods) ? w.mods : []).map(cleanShieldAdj).filter(function (m) { return m.name; }),
     db: String(w.db == null ? '' : w.db).slice(0, 20), dr: String(w.dr == null ? '' : w.dr).slice(0, 40), hp: String(w.hp == null ? '' : w.hp).slice(0, 20),
-    cost: cleanDec(w.cost, 9999999, 0), weight: eqWeight(cleanDec(w.weight, 99999, 0)), equipId: w.equipId && by[w.equipId] ? w.equipId : null };
+    cost: cleanDec(w.cost, 9999999, 0), weight: eqRound(cleanDec(w.weight, 99999, 0)), equipId: w.equipId && by[w.equipId] ? w.equipId : null };
 }
 function shieldBases() { return (W.armors || []).filter(function (a) { return a.type === 'Shield'; }); }
 // The book's shield; a Cloak is used with Cloak, the others with Shield (their defaults when the table gives none).

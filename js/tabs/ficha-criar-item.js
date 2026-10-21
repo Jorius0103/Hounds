@@ -8,16 +8,19 @@
 
 /* An item of Regras › Itens (or a name of the player's, not in the catalog), added to Meus Itens as an
    item line. The line is an ordinary one: after created, it changes with Editar on its row in Meus Itens.
-   S.ui.itemDraft = { editId, kind, refId, custom, name, qty, weight, cost, notes } while the form is
-   open; weight and cost are of one unit, as in the list. editId: the line being edited (Editar in Meus
-   Itens), which keeps its id, so the body and the packs keep it. */
+   S.ui.itemDraft = { editId, kind, refId, custom, name, qty, wtotal, cost, notes } while the form is
+   open. wtotal is the weight of the whole quantity, as typed (10 bolts weigh 1 lb together); the list
+   keeps the weight of one (wtotal ÷ qty, on saving). cost is of one unit. editId: the line being edited
+   (Editar in Meus Itens), which keeps its id, so the body and the packs keep it. */
 function itemDraftFrom(c) {
-  if (!c) return { refId: null, custom: false, chosen: false, name: '', qty: 1, weight: 0, cost: 0, notes: '' };
-  return { refId: c.id, custom: false, chosen: true, name: c.name, qty: 1, weight: eqWeight(cleanDec(catNum(c.weight), 99999, 0)), cost: cleanDec(catNum(c.cost), 9999999, 0), notes: '' };
+  if (!c) return { refId: null, custom: false, chosen: false, name: '', qty: 1, wtotal: 0, cost: 0, notes: '' };
+  return { refId: c.id, custom: false, chosen: true, name: c.name, qty: 1, wtotal: cleanDec(catNum(c.weight), 99999, 0), cost: cleanDec(catNum(c.cost), 9999999, 0), notes: '' };
 }
 function itemDraftFromLine(x) {
-  return { editId: x.id, kind: x.kind, refId: x.refId || null, custom: !x.refId, chosen: true, name: x.name, qty: x.qty, weight: x.weight, cost: x.cost, notes: x.notes };
+  return { editId: x.id, kind: x.kind, refId: x.refId || null, custom: !x.refId, chosen: true, name: x.name, qty: x.qty, wtotal: eqRound(x.qty * x.weight), cost: x.cost, notes: x.notes };
 }
+// The weight of one unit, from the total (a quantity of 0 keeps the total as the weight of one).
+function itemUnitWeight(d) { var q = cleanInt(d.qty, 0, 9999, 1), t = d.wtotal || 0; return q > 0 ? t / q : t; }
 function itemDraftErrors(d) {
   var out = [];
   if (!d.chosen) out.push('Escolha o item (ou digite um nome e use-o como item personalizado).');
@@ -29,7 +32,7 @@ Ops.createSheetItem = function (s, d) {
   var errs = itemDraftErrors(d); if (errs.length) return Promise.reject({ message: errs.join(' ') });
   var g = sheetGear(sheetById(s.id) || s), old = d.editId ? g.equip.filter(function (x) { return x.id === d.editId; })[0] : null;
   if (d.editId && !old) return Promise.reject({ message: 'Esse item não está mais em Meus Itens.' });
-  var line = cleanEquip({ id: old ? old.id : gearNewId('e', gearIndex(g.equip)), kind: d.kind || 'item', refId: d.refId || undefined, name: d.name, qty: d.qty, weight: d.weight, cost: d.cost, notes: d.notes });
+  var line = cleanEquip({ id: old ? old.id : gearNewId('e', gearIndex(g.equip)), kind: d.kind || 'item', refId: d.refId || undefined, name: d.name, qty: d.qty, weight: itemUnitWeight(d), cost: d.cost, notes: d.notes });
   var list = old ? g.equip.map(function (x) { return x.id === old.id ? line : x; }) : g.equip.concat([line]);
   return saveGearLists(s, { equip: list }).then(function () { return line; });
 };
@@ -44,11 +47,16 @@ function itemFieldsHtml(d) {
     : '<p class="hint-text" style="margin:0"><b>Item personalizado</b>: não está em Regras › Itens. Preencha os valores.</p>') +
     '<div class="ib-grid">' +
     '<label class="sc-f ib-name"><span>Nome</span><input type="text" data-ib="name" maxlength="120" value="' + esc(d.name) + '"></label>' +
-    num('qty', 'Qtd.', '1', 9999) + num('weight', 'Peso de um (lbs)', 'any', 99999) + num('cost', 'Custo de um ($)', 'any', 9999999) +
+    num('qty', 'Qtd.', '1', 9999) + num('wtotal', 'Peso total (lbs)', 'any', 99999) + num('cost', 'Custo de um ($)', 'any', 9999999) +
     '<label class="sc-f ib-notes"><span>Observações</span><input type="text" data-ib="notes" maxlength="400" placeholder="Opcional" value="' + esc(d.notes) + '"></label></div>' +
     '<p class="hint-text" style="margin:0" id="ibTotal">' + itemTotalText(d) + '</p>';
 }
-function itemTotalText(d) { var q = cleanInt(d.qty, 0, 9999, 1); return 'Total: ' + esc(eqLbs(eqRound(q * (d.weight || 0)))) + ' · ' + esc(eqMoney(eqRound(q * (d.cost || 0)))) + ' (' + plural(q, 'unidade', 'unidades') + ')'; }
+// The weight is the total typed (not multiplied by the quantity); under it, what one unit weighs.
+function itemTotalText(d) {
+  var q = cleanInt(d.qty, 0, 9999, 1);
+  return 'Total: ' + esc(eqLbs(d.wtotal || 0)) + ' · ' + esc(eqMoney(eqRound(q * (d.cost || 0)))) + ' (' + plural(q, 'unidade', 'unidades') +
+    (q > 1 && d.wtotal ? ', ' + esc(eqNum(eqRound(itemUnitWeight(d)))) + ' lbs cada' : '') + ')';
+}
 function sheetItemHtml(s) {
   var ui = S.ui, can = canWrite(), d = can ? ui.itemDraft : null;
   var head = '<div class="gurps-head"><h2 class="sec-title">Criar Item</h2>' +
@@ -96,9 +104,11 @@ function wireItemSec(s) {
   function choose(n) {
     var c = opts[n]; if (!c) return;
     var keep = { qty: d.qty, notes: d.notes };
-    Object.assign(d, c.custom ? { refId: null, custom: true, chosen: true, name: c.name, weight: 0, cost: 0 } : itemDraftFrom(c), keep, { kind: 'item' });
+    Object.assign(d, c.custom ? { refId: null, custom: true, chosen: true, name: c.name, wtotal: 0, cost: 0 } : itemDraftFrom(c), keep, { kind: 'item' });
+    // The book's weight is of one: with a quantity already typed, the total is that many.
+    if (!c.custom) d.wtotal = eqRound(d.wtotal * Math.max(1, cleanInt(d.qty, 0, 9999, 1)));
     pick.value = d.name; hide(); paintFields();
-    var f = box.querySelector(c.custom ? '[data-ib="weight"]' : '[data-ib="qty"]'); if (f instanceof HTMLInputElement) { f.focus(); f.select(); }
+    var f = box.querySelector(c.custom ? '[data-ib="wtotal"]' : '[data-ib="qty"]'); if (f instanceof HTMLInputElement) { f.focus(); f.select(); }
   }
   pick.addEventListener('input', function () { act = 0; show(); });
   pick.addEventListener('focus', function () { loadCatalog('items'); });
