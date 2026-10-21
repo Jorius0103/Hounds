@@ -10,7 +10,12 @@
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' }
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'stun:stun.services.mozilla.com' },
+      { urls: 'stun:stun.sipgate.net:3478' }
     ]
   };
 
@@ -19,12 +24,15 @@
     hasActiveBroadcast: false,
     broadcasterName: null,
     broadcasterClientId: null,
+    trackTitle: null,
     volume: 80,
-    isMuted: false
+    isMuted: false,
+    needsInteraction: false // Verdadeiro se o navegador bloqueou o autoplay
   };
 
   var localStream = null;
-  var peerConnections = {}; // listenerClientId -> RTCPeerConnection
+  var peerConnections = {};      // listenerClientId -> RTCPeerConnection
+  var pendingCandidates = {};    // peerId -> [RTCIceCandidateInit, ...]
   var receiverPc = null;
   var audioElement = null;
   var myClientId = '';
@@ -41,6 +49,15 @@
     var m = localStorage.getItem('gurps_music_muted');
     if (m !== null) state.isMuted = (m === 'true');
   } catch (e) {}
+
+  function cleanTrackTitle(label) {
+    if (!label) return 'Spotify / Música';
+    var t = String(label).trim();
+    // Limpa sufixos e prefixos de navegador e player
+    t = t.replace(/\s*[-–—|]\s*(Spotify|YouTube|Web Player|Brave|Google Chrome|Microsoft Edge).*$/i, '');
+    t = t.replace(/^(Spotify|YouTube)\s*[-–—|]\s*(Web Player:\s*)?/i, '');
+    return t.trim() || label;
+  }
 
   function ensureAudio() {
     if (typeof document === 'undefined') return null;
@@ -74,6 +91,18 @@
         senderClientId: myClientId,
         timestamp: Date.now()
       }));
+    }
+  }
+
+  async function flushCandidates(peerId, pc) {
+    var q = pendingCandidates[peerId] || [];
+    pendingCandidates[peerId] = [];
+    for (var i = 0; i < q.length; i++) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(q[i]));
+      } catch (e) {
+        console.warn('Erro ao aplicar candidato ICE enfileirado:', e);
+      }
     }
   }
 
@@ -123,6 +152,33 @@
       AudioStreamSync.setMuted(!state.isMuted);
     },
 
+    // Desbloqueia áudio se o navegador tiver bloqueado por autoplay
+    unlockAudio: function () {
+      var el = ensureAudio();
+      if (el) {
+        el.play().then(function () {
+          state.needsInteraction = false;
+          notify();
+        }).catch(function (e) {
+          console.warn('Falha ao desbloquear áudio:', e);
+        });
+      }
+    },
+
+    setTrackTitle: function (title) {
+      state.trackTitle = title;
+      notify();
+      if (state.isBroadcasting) {
+        sendSignal({
+          type: 'AUDIO_STREAM_ANNOUNCE',
+          active: true,
+          broadcasterClientId: myClientId,
+          broadcasterName: state.broadcasterName || 'Mestre',
+          trackTitle: state.trackTitle
+        });
+      }
+    },
+
     startBroadcasting: async function (broadcasterName) {
       if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
         alert('Seu navegador não suporta compartilhamento de áudio por getDisplayMedia.');
@@ -146,31 +202,39 @@
           return false;
         }
 
-        // Para os tracks de vídeo para economizar CPU e banda
-        stream.getVideoTracks().forEach(function (t) {
-          t.stop();
-          stream.removeTrack(t);
-        });
+        // Obtém o nome da aba selecionada (ex: "Black • Pearl Jam - Spotify")
+        var videoTrack = stream.getVideoTracks()[0];
+        var tabTitle = videoTrack && videoTrack.label ? cleanTrackTitle(videoTrack.label) : 'Música / Spotify';
 
         localStream = stream;
 
+        // Ao encerrar o compartilhamento pelo banner do navegador
         audioTracks[0].onended = function () {
           AudioStreamSync.stopBroadcasting();
         };
+        if (videoTrack) {
+          videoTrack.onended = function () {
+            AudioStreamSync.stopBroadcasting();
+          };
+        }
 
         state.isBroadcasting = true;
         state.hasActiveBroadcast = true;
         state.broadcasterName = broadcasterName || 'Mestre';
         state.broadcasterClientId = myClientId;
+        state.trackTitle = tabTitle;
         notify();
 
+        // Anuncia para todos na sala
         sendSignal({
           type: 'AUDIO_STREAM_ANNOUNCE',
           active: true,
           broadcasterClientId: myClientId,
-          broadcasterName: state.broadcasterName
+          broadcasterName: state.broadcasterName,
+          trackTitle: state.trackTitle
         });
 
+        // Reanuncia a cada 5s para novos jogadores que abrirem a página
         if (announceInterval) clearInterval(announceInterval);
         announceInterval = setInterval(function () {
           if (state.isBroadcasting && localStream && localStream.active) {
@@ -178,10 +242,11 @@
               type: 'AUDIO_STREAM_ANNOUNCE',
               active: true,
               broadcasterClientId: myClientId,
-              broadcasterName: state.broadcasterName || 'Mestre'
+              broadcasterName: state.broadcasterName || 'Mestre',
+              trackTitle: state.trackTitle || 'Música / Spotify'
             });
           }
-        }, 10000);
+        }, 5000);
 
         return true;
       } catch (err) {
@@ -208,12 +273,14 @@
         try { peerConnections[pid].close(); } catch (e) {}
       });
       peerConnections = {};
+      pendingCandidates = {};
 
       var was = state.isBroadcasting;
       state.isBroadcasting = false;
       state.hasActiveBroadcast = false;
       state.broadcasterName = null;
       state.broadcasterClientId = null;
+      state.trackTitle = null;
       notify();
 
       if (was) {
@@ -234,19 +301,25 @@
             state.hasActiveBroadcast = true;
             state.broadcasterClientId = payload.broadcasterClientId;
             state.broadcasterName = payload.broadcasterName || 'Mestre';
+            if (payload.trackTitle) state.trackTitle = payload.trackTitle;
             notify();
 
+            // Se não sou o streamer e ainda não estabeleci áudio ativo, solicita conexão
             if (!state.isBroadcasting && payload.broadcasterClientId !== myClientId) {
-              sendSignal({
-                type: 'AUDIO_STREAM_REQUEST',
-                targetClientId: payload.broadcasterClientId
-              });
+              if (!receiverPc || receiverPc.connectionState === 'disconnected' || receiverPc.connectionState === 'failed') {
+                sendSignal({
+                  type: 'AUDIO_STREAM_REQUEST',
+                  targetClientId: payload.broadcasterClientId
+                });
+              }
             }
           } else {
             if (state.broadcasterClientId === payload.broadcasterClientId) {
               state.hasActiveBroadcast = false;
               state.broadcasterClientId = null;
               state.broadcasterName = null;
+              state.trackTitle = null;
+              state.needsInteraction = false;
               if (receiverPc) {
                 try { receiverPc.close(); } catch (e) {}
                 receiverPc = null;
@@ -275,8 +348,10 @@
           if (payload.targetClientId === myClientId && state.isBroadcasting) {
             var pc = peerConnections[payload.senderClientId];
             if (pc) {
-              pc.setRemoteDescription(new RTCSessionDescription(payload.answer)).catch(function (e) {
-                console.warn('Erro ao aplicar RTC_ANSWER', e);
+              pc.setRemoteDescription(new RTCSessionDescription(payload.answer)).then(function () {
+                flushCandidates(payload.senderClientId, pc);
+              }).catch(function (e) {
+                console.warn('Erro ao aplicar RTC_ANSWER:', e);
               });
             }
           }
@@ -284,9 +359,16 @@
 
         case 'RTC_ICE_CANDIDATE':
           if (payload.targetClientId === myClientId && payload.candidate) {
-            var conn = state.isBroadcasting ? peerConnections[payload.senderClientId] : receiverPc;
-            if (conn && conn.remoteDescription) {
-              conn.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(function () {});
+            var targetPc = state.isBroadcasting ? peerConnections[payload.senderClientId] : receiverPc;
+            if (targetPc && targetPc.remoteDescription && targetPc.remoteDescription.type) {
+              targetPc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(function (e) {
+                console.warn('Erro ao adicionar ICE Candidate:', e);
+              });
+            } else {
+              // Enfileira candidato para quando remoteDescription for setada
+              var sid = payload.senderClientId;
+              if (!pendingCandidates[sid]) pendingCandidates[sid] = [];
+              pendingCandidates[sid].push(payload.candidate);
             }
           }
           break;
@@ -302,6 +384,7 @@
       var pc = new RTCPeerConnection(ICE_SERVERS);
       peerConnections[listenerId] = pc;
 
+      // Adiciona APENAS as faixas de áudio para economizar banda
       localStream.getAudioTracks().forEach(function (track) {
         pc.addTrack(track, localStream);
       });
@@ -332,7 +415,7 @@
           offer: offer
         });
       } catch (e) {
-        console.warn('Erro ao criar RTC Offer', e);
+        console.warn('Erro ao criar RTC Offer:', e);
       }
     },
 
@@ -351,9 +434,17 @@
           el.srcObject = evt.streams[0];
           el.volume = state.volume / 100;
           el.muted = state.isMuted;
-          el.play().catch(function (err) {
-            console.warn('Reprodução de áudio aguardando interação do usuário', err);
-          });
+          var p = el.play();
+          if (p !== undefined) {
+            p.then(function () {
+              state.needsInteraction = false;
+              notify();
+            }).catch(function (err) {
+              console.warn('Autoplay bloqueado pelo navegador, aguardando clique do usuário:', err);
+              state.needsInteraction = true;
+              notify();
+            });
+          }
         }
       };
 
@@ -369,15 +460,18 @@
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        await flushCandidates(broadcasterId, pc);
+
         var answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
+
         sendSignal({
           type: 'RTC_ANSWER',
           targetClientId: broadcasterId,
           answer: answer
         });
       } catch (e) {
-        console.warn('Erro ao responder RTC Offer', e);
+        console.warn('Erro ao responder RTC Offer:', e);
       }
     }
   };
@@ -387,4 +481,3 @@
     window.audioStreamSync = AudioStreamSync;
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-

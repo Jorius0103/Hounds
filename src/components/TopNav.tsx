@@ -299,7 +299,7 @@ export const TopNav: React.FC<TopNavProps> = ({
 
         {/* Zone 2: Dice Roller (3D6 e 1D6) e Toggle de Ocultar Rolagens para o Mestre */}
         {onRollDice && (
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {isMestre && onToggleHideGmRolls && (
               <button
                 type="button"
@@ -375,85 +375,105 @@ export const TopNav: React.FC<TopNavProps> = ({
                 onRoll={(count, sides) => onRollDice?.(count, sides)}
               />
             </div>
-
-            {/* Bloco de Trilha Sonora / Spotify Stream com Volume e Mute */}
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-900/90 border border-slate-750 rounded-lg shadow-inner shrink-0">
-              {/* Indicador de Transmissão */}
-              {audioState.hasActiveBroadcast ? (
-                <div className="flex items-center gap-1.5" title={`Trilha Sonora transmitida por: ${audioState.broadcasterName || 'Mestre'}`}>
-                  <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <Music size={13} className="text-emerald-400 shrink-0" />
-                  <span className="text-[11px] font-semibold text-emerald-300 hidden md:inline truncate max-w-[90px]">
-                    {audioState.isBroadcasting ? 'Transmitindo' : audioState.broadcasterName || 'Trilha'}
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 text-slate-400" title="Trilha Sonora (Inativa)">
-                  <Music size={13} className="shrink-0 text-slate-500" />
-                  <span className="text-[11px] text-slate-400 hidden xl:inline">Música</span>
-                </div>
-              )}
-
-              {/* Botão de Mute */}
-              <button
-                type="button"
-                onClick={() => audioStreamSync.toggleMute()}
-                className={`p-1 rounded-md transition-all cursor-pointer ${
-                  audioState.isMuted
-                    ? 'text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/50'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                }`}
-                title={audioState.isMuted ? 'Música mutada (clique para ativar áudio)' : 'Mutar música'}
-              >
-                {audioState.isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
-              </button>
-
-              {/* Slider de Volume */}
-              <div className="flex items-center gap-1">
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={audioState.isMuted ? 0 : audioState.volume}
-                  onChange={(e) => audioStreamSync.setVolume(Number(e.target.value))}
-                  className="w-14 sm:w-18 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                  title={`Volume: ${audioState.isMuted ? 'Mutado' : `${audioState.volume}%`}`}
-                />
-                <span className="text-[10px] font-mono font-bold text-slate-400 w-6 text-right hidden sm:inline">
-                  {audioState.isMuted ? '0%' : `${audioState.volume}%`}
-                </span>
-              </div>
-
-              {/* Botão de Transmitir / Parar (para Mestre ou quem tem permissão de edição) */}
-              {(isMestre || canEditCurrent) && (
-                audioState.isBroadcasting ? (
-                  <button
-                    type="button"
-                    onClick={() => audioStreamSync.stopBroadcasting()}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-[11px] font-bold rounded border border-rose-700/60 transition-all cursor-pointer shadow-xs ml-0.5"
-                    title="Encerrar transmissão da trilha sonora"
-                  >
-                    <Square size={11} className="fill-rose-400 text-rose-400" />
-                    <span className="hidden sm:inline">Parar</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => audioStreamSync.startBroadcasting(currentUser?.name || (isMestre ? 'Mestre' : 'Jogador'))}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-[11px] font-bold rounded border border-slate-700 hover:border-emerald-600/60 transition-all cursor-pointer shadow-xs ml-0.5"
-                    title="Transmitir áudio de uma aba do Spotify, YouTube ou do sistema para todos os jogadores"
-                  >
-                    <Radio size={11} className="text-emerald-400" />
-                    <span className="hidden sm:inline">Transmitir</span>
-                  </button>
-                )
-              )}
-            </div>
           </div>
         )}
+
+        {/* Zone 3: Bloco de Trilha Sonora / Spotify Stream alinhado à DIREITA da barra */}
+        <div className="ml-auto flex items-center gap-1.5 px-2 py-1 bg-slate-900/95 border border-slate-750 rounded-lg shadow-inner shrink-0">
+          {/* Botão de desbloqueio para Autoplay bloqueado */}
+          {audioState.needsInteraction && !audioState.isBroadcasting && (
+            <button
+              type="button"
+              onClick={() => audioStreamSync.unlockAudio()}
+              className="flex items-center gap-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded shadow-md animate-pulse cursor-pointer shrink-0"
+              title="Clique para habilitar a reprodução do áudio no seu navegador"
+            >
+              <span>▶ Ouvir Trilha</span>
+            </button>
+          )}
+
+          {/* Indicador de Transmissão com Música, Artista e DJ */}
+          {audioState.hasActiveBroadcast ? (
+            <div
+              className="flex items-center gap-1.5 max-w-[160px] sm:max-w-[240px] md:max-w-[300px] truncate"
+              title={`Música: ${audioState.trackTitle || 'Trilha'} | DJ: ${audioState.broadcasterName || 'Mestre'}`}
+            >
+              <span className="flex h-2 w-2 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <Music size={13} className="text-emerald-400 shrink-0" />
+              <div className="flex flex-col min-w-0 leading-tight">
+                <span className="text-[11px] font-bold text-white truncate">
+                  {audioState.trackTitle || 'Trilha Sonora'}
+                </span>
+                <span className="text-[9px] text-amber-300/90 truncate font-mono">
+                  DJ: {audioState.isBroadcasting ? 'Você' : audioState.broadcasterName || 'Mestre'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-slate-400 shrink-0" title="Trilha Sonora (Inativa)">
+              <Music size={13} className="shrink-0 text-slate-500" />
+              <span className="text-[11px] text-slate-400 hidden xl:inline">Música</span>
+            </div>
+          )}
+
+          {/* Botão de Mute */}
+          <button
+            type="button"
+            onClick={() => audioStreamSync.toggleMute()}
+            className={`p-1 rounded-md transition-all cursor-pointer shrink-0 ${
+              audioState.isMuted
+                ? 'text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/50'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+            title={audioState.isMuted ? 'Música mutada (clique para ativar áudio)' : 'Mutar música'}
+          >
+            {audioState.isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+          </button>
+
+          {/* Slider de Volume */}
+          <div className="flex items-center gap-1 shrink-0">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={audioState.isMuted ? 0 : audioState.volume}
+              onChange={(e) => audioStreamSync.setVolume(Number(e.target.value))}
+              className="w-12 sm:w-16 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              title={`Volume: ${audioState.isMuted ? 'Mutado' : `${audioState.volume}%`}`}
+            />
+            <span className="text-[10px] font-mono font-bold text-slate-400 w-6 text-right hidden sm:inline">
+              {audioState.isMuted ? '0%' : `${audioState.volume}%`}
+            </span>
+          </div>
+
+          {/* Botão de Transmitir / Parar (para Mestre ou quem tem permissão de edição) */}
+          {(isMestre || canEditCurrent) && (
+            audioState.isBroadcasting ? (
+              <button
+                type="button"
+                onClick={() => audioStreamSync.stopBroadcasting()}
+                className="flex items-center gap-1 px-2 py-0.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-[11px] font-bold rounded border border-rose-700/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0"
+                title="Encerrar transmissão da trilha sonora"
+              >
+                <Square size={11} className="fill-rose-400 text-rose-400" />
+                <span className="hidden sm:inline">Parar</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => audioStreamSync.startBroadcasting(currentUser?.name || (isMestre ? 'Mestre' : 'Jogador'))}
+                className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-[11px] font-bold rounded border border-slate-700 hover:border-emerald-600/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0"
+                title="Transmitir áudio de uma aba do Spotify, YouTube ou do sistema para todos os jogadores"
+              >
+                <Radio size={11} className="text-emerald-400" />
+                <span className="hidden sm:inline">Transmitir</span>
+              </button>
+            )
+          )}
+        </div>
       </div>
     </header>
   );

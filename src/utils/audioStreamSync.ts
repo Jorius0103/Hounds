@@ -6,8 +6,10 @@ export interface AudioStreamState {
   hasActiveBroadcast: boolean;  // Se há alguma transmissão ativa na sala
   broadcasterName: string | null;
   broadcasterClientId: string | null;
+  trackTitle: string | null;    // Nome da música/artista capturado da aba (ex: "Black • Pearl Jam")
   volume: number;               // 0 a 100
   isMuted: boolean;
+  needsInteraction: boolean;    // Verdadeiro se o navegador bloqueou o autoplay
 }
 
 const ICE_SERVERS: RTCConfiguration = {
@@ -15,13 +17,27 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:stun.sipgate.net:3478' },
   ],
 };
 
+function cleanTrackTitle(label?: string): string {
+  if (!label) return 'Spotify / Música';
+  let t = String(label).trim();
+  t = t.replace(/\s*[-–—|]\s*(Spotify|YouTube|Web Player|Brave|Google Chrome|Microsoft Edge).*$/i, '');
+  t = t.replace(/^(Spotify|YouTube)\s*[-–—|]\s*(Web Player:\s*)?/i, '');
+  return t.trim() || label;
+}
+
 class AudioStreamSyncService {
   private localStream: MediaStream | null = null;
-  private peerConnections: Map<string, RTCPeerConnection> = new Map(); // Para transmissor: targetClientId -> RTCPeerConnection
-  private receiverPc: RTCPeerConnection | null = null;                 // Para receptor: conexão com o transmissor
+  private peerConnections: Map<string, RTCPeerConnection> = new Map();
+  private pendingCandidates: Map<string, RTCIceCandidateInit[]> = new Map();
+  private receiverPc: RTCPeerConnection | null = null;
   private audioElement: HTMLAudioElement | null = null;
   private myClientId: string = '';
   private sendSignalCallback: ((payload: any) => void) | null = null;
@@ -33,8 +49,10 @@ class AudioStreamSyncService {
     hasActiveBroadcast: false,
     broadcasterName: null,
     broadcasterClientId: null,
+    trackTitle: null,
     volume: 80,
     isMuted: false,
+    needsInteraction: false,
   };
 
   constructor() {
@@ -61,6 +79,7 @@ class AudioStreamSyncService {
   public init(myClientId: string, sendSignal: (payload: any) => void) {
     this.myClientId = myClientId;
     this.sendSignalCallback = sendSignal;
+    this.ensureAudioElement();
   }
 
   private ensureAudioElement(): HTMLAudioElement | null {
@@ -131,6 +150,34 @@ class AudioStreamSyncService {
     this.setMuted(!this.state.isMuted);
   }
 
+  public unlockAudio() {
+    const el = this.ensureAudioElement();
+    if (el) {
+      el.play()
+        .then(() => {
+          this.state.needsInteraction = false;
+          this.notify();
+        })
+        .catch((e) => {
+          console.warn('Falha ao desbloquear áudio:', e);
+        });
+    }
+  }
+
+  public setTrackTitle(title: string) {
+    this.state.trackTitle = title;
+    this.notify();
+    if (this.state.isBroadcasting) {
+      this.sendSignal({
+        type: 'AUDIO_STREAM_ANNOUNCE',
+        active: true,
+        broadcasterClientId: this.myClientId,
+        broadcasterName: this.state.broadcasterName || 'Mestre',
+        trackTitle: this.state.trackTitle,
+      });
+    }
+  }
+
   // Inicia a captura de áudio da aba (Spotify, YouTube, etc.)
   public async startBroadcasting(broadcasterName: string = 'Mestre'): Promise<boolean> {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getDisplayMedia) {
@@ -139,9 +186,8 @@ class AudioStreamSyncService {
     }
 
     try {
-      // Solicita captura de tela/aba com áudio
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true, // Necessário na maioria dos navegadores para selecionar abas
+        video: true,
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
@@ -158,34 +204,35 @@ class AudioStreamSyncService {
         return false;
       }
 
-      // Desativa os tracks de vídeo imediatamente para economizar banda e CPU
-      stream.getVideoTracks().forEach((t) => {
-        t.stop();
-        stream.removeTrack(t);
-      });
+      const videoTrack = stream.getVideoTracks()[0];
+      const tabTitle = videoTrack && videoTrack.label ? cleanTrackTitle(videoTrack.label) : 'Música / Spotify';
 
       this.localStream = stream;
 
-      // Monitora o encerramento do compartilhamento (ex: botão "Parar compartilhamento" do navegador)
       audioTracks[0].onended = () => {
         this.stopBroadcasting();
       };
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          this.stopBroadcasting();
+        };
+      }
 
       this.state.isBroadcasting = true;
       this.state.hasActiveBroadcast = true;
       this.state.broadcasterName = broadcasterName;
       this.state.broadcasterClientId = this.myClientId;
+      this.state.trackTitle = tabTitle;
       this.notify();
 
-      // Anuncia aos outros clientes que a transmissão iniciou
       this.sendSignal({
         type: 'AUDIO_STREAM_ANNOUNCE',
         active: true,
         broadcasterClientId: this.myClientId,
         broadcasterName,
+        trackTitle: this.state.trackTitle,
       });
 
-      // Re-anuncia periodicamente a cada 10s para novos jogadores que entrarem na sala
       if (this.announceInterval) clearInterval(this.announceInterval);
       this.announceInterval = setInterval(() => {
         if (this.state.isBroadcasting && this.localStream?.active) {
@@ -194,9 +241,10 @@ class AudioStreamSyncService {
             active: true,
             broadcasterClientId: this.myClientId,
             broadcasterName: this.state.broadcasterName || 'Mestre',
+            trackTitle: this.state.trackTitle || 'Música / Spotify',
           });
         }
-      }, 10000);
+      }, 5000);
 
       return true;
     } catch (err: any) {
@@ -220,19 +268,20 @@ class AudioStreamSyncService {
       this.localStream = null;
     }
 
-    // Fecha todas as conexões P2P ativas de transmissão
     this.peerConnections.forEach((pc) => {
       try {
         pc.close();
       } catch {}
     });
     this.peerConnections.clear();
+    this.pendingCandidates.clear();
 
     const wasBroadcasting = this.state.isBroadcasting;
     this.state.isBroadcasting = false;
     this.state.hasActiveBroadcast = false;
     this.state.broadcasterName = null;
     this.state.broadcasterClientId = null;
+    this.state.trackTitle = null;
     this.notify();
 
     if (wasBroadcasting) {
@@ -254,6 +303,18 @@ class AudioStreamSyncService {
     }
   }
 
+  private async flushCandidates(peerId: string, pc: RTCPeerConnection) {
+    const queue = this.pendingCandidates.get(peerId) || [];
+    this.pendingCandidates.delete(peerId);
+    for (const cand of queue) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(cand));
+      } catch (e) {
+        console.warn('Erro ao aplicar candidato ICE:', e);
+      }
+    }
+  }
+
   // Trata mensagens de sinalização recebidas via MQTT
   public handleSignalMessage(payload: any) {
     if (!payload || payload.senderClientId === this.myClientId) return;
@@ -264,21 +325,24 @@ class AudioStreamSyncService {
           this.state.hasActiveBroadcast = true;
           this.state.broadcasterClientId = payload.broadcasterClientId;
           this.state.broadcasterName = payload.broadcasterName || 'Mestre';
+          if (payload.trackTitle) this.state.trackTitle = payload.trackTitle;
           this.notify();
 
-          // Se não sou o streamer e ainda não conectei o áudio, solicita ao streamer
           if (!this.state.isBroadcasting && payload.broadcasterClientId !== this.myClientId) {
-            this.sendSignal({
-              type: 'AUDIO_STREAM_REQUEST',
-              targetClientId: payload.broadcasterClientId,
-            });
+            if (!this.receiverPc || this.receiverPc.connectionState === 'disconnected' || this.receiverPc.connectionState === 'failed') {
+              this.sendSignal({
+                type: 'AUDIO_STREAM_REQUEST',
+                targetClientId: payload.broadcasterClientId,
+              });
+            }
           }
         } else {
-          // Transmissão foi encerrada
           if (this.state.broadcasterClientId === payload.broadcasterClientId) {
             this.state.hasActiveBroadcast = false;
             this.state.broadcasterClientId = null;
             this.state.broadcasterName = null;
+            this.state.trackTitle = null;
+            this.state.needsInteraction = false;
             if (this.receiverPc) {
               try {
                 this.receiverPc.close();
@@ -295,7 +359,6 @@ class AudioStreamSyncService {
       }
 
       case 'AUDIO_STREAM_REQUEST': {
-        // Recebido pelo streamer quando um ouvinte pede para receber o áudio
         if (this.state.isBroadcasting && this.localStream && payload.targetClientId === this.myClientId) {
           const listenerId = payload.senderClientId;
           this.setupTransmitterConnection(listenerId);
@@ -304,7 +367,6 @@ class AudioStreamSyncService {
       }
 
       case 'RTC_OFFER': {
-        // Recebido pelo ouvinte com a oferta do streamer
         if (payload.targetClientId === this.myClientId) {
           this.handleRtcOffer(payload.senderClientId, payload.offer);
         }
@@ -312,13 +374,16 @@ class AudioStreamSyncService {
       }
 
       case 'RTC_ANSWER': {
-        // Recebido pelo streamer com a resposta do ouvinte
         if (payload.targetClientId === this.myClientId && this.state.isBroadcasting) {
           const pc = this.peerConnections.get(payload.senderClientId);
           if (pc) {
-            pc.setRemoteDescription(new RTCSessionDescription(payload.answer)).catch((e) => {
-              console.warn('Erro ao aplicar RTC_ANSWER:', e);
-            });
+            pc.setRemoteDescription(new RTCSessionDescription(payload.answer))
+              .then(() => {
+                this.flushCandidates(payload.senderClientId, pc);
+              })
+              .catch((e) => {
+                console.warn('Erro ao aplicar RTC_ANSWER:', e);
+              });
           }
         }
         break;
@@ -329,8 +394,14 @@ class AudioStreamSyncService {
           const pc = this.state.isBroadcasting
             ? this.peerConnections.get(payload.senderClientId)
             : this.receiverPc;
-          if (pc && pc.remoteDescription) {
+          if (pc && pc.remoteDescription && pc.remoteDescription.type) {
             pc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(() => {});
+          } else {
+            const sid = payload.senderClientId;
+            if (!this.pendingCandidates.has(sid)) {
+              this.pendingCandidates.set(sid, []);
+            }
+            this.pendingCandidates.get(sid)!.push(payload.candidate);
           }
         }
         break;
@@ -342,7 +413,6 @@ class AudioStreamSyncService {
   private async setupTransmitterConnection(listenerClientId: string) {
     if (!this.localStream) return;
 
-    // Se já existe uma conexão para este ouvinte, encerra a anterior
     const existing = this.peerConnections.get(listenerClientId);
     if (existing) {
       try {
@@ -353,7 +423,7 @@ class AudioStreamSyncService {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     this.peerConnections.set(listenerClientId, pc);
 
-    // Adiciona os tracks de áudio da captura
+    // Apenas áudio
     this.localStream.getAudioTracks().forEach((track) => {
       pc.addTrack(track, this.localStream!);
     });
@@ -409,9 +479,19 @@ class AudioStreamSyncService {
         audioEl.srcObject = event.streams[0];
         audioEl.volume = this.state.volume / 100;
         audioEl.muted = this.state.isMuted;
-        audioEl.play().catch((err) => {
-          console.warn('Reprodução automática de áudio aguardando clique do usuário:', err);
-        });
+        const playPromise = audioEl.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              this.state.needsInteraction = false;
+              this.notify();
+            })
+            .catch((err) => {
+              console.warn('Autoplay bloqueado pelo navegador, aguardando clique do usuário:', err);
+              this.state.needsInteraction = true;
+              this.notify();
+            });
+        }
       }
     };
 
@@ -427,6 +507,8 @@ class AudioStreamSyncService {
 
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      await this.flushCandidates(broadcasterId, pc);
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
@@ -442,4 +524,3 @@ class AudioStreamSyncService {
 }
 
 export const audioStreamSync = new AudioStreamSyncService();
-

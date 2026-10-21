@@ -1,0 +1,36 @@
+import os
+import subprocess
+
+# Reset mesa.html to commit 89d576a first to guarantee clean slate
+subprocess.run(['git', 'checkout', '89d576a', '--', 'mesa.html'], check=True)
+
+file_path = os.path.join(os.path.dirname(__file__), '..', 'mesa.html')
+with open(file_path, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# 1. Update Zone 2 class: remove ml-auto sm:ml-0
+old_z2_start = 'className:"flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0"'
+new_z2_start = 'className:"flex items-center gap-1.5 shrink-0"'
+assert old_z2_start in content, "Zone 2 class not found"
+content = content.replace(old_z2_start, new_z2_start, 1)
+
+# 2. Locate from DicePickerModal to the end of old audio block
+dice_modal_str = '(0,q.jsx)(DicePickerModal,{isOpen:dicePickerOpen,onClose:()=>setDicePickerOpen(!1),onRoll:(cnt,sds)=>onRollDice&&onRollDice(cnt,sds)})]})'
+idx_dice = content.find(dice_modal_str)
+assert idx_dice != -1, "DicePickerModal target not found"
+
+perms_target = ',isMestre&&openPerms?'
+idx_perms = content.find(perms_target, idx_dice)
+assert idx_perms != -1, "perms_target not found"
+
+# In 89d576a, content between idx_dice + len(dice_modal_str) and idx_perms was:
+# audio_jsx + ']})]})'
+# Now we close Zone 2 with `]})`, insert Zone 3, and close TopNav with `]})`:
+new_zone3 = '''])},(0,q.jsxs)("div",{className:"ml-auto flex items-center gap-1.5 px-2 py-1 bg-slate-900/95 border border-slate-750 rounded-lg shadow-inner shrink-0",children:[audioState.needsInteraction&&!audioState.isBroadcasting?(0,q.jsx)("button",{type:"button",onClick:()=>window.audioStreamSync&&window.audioStreamSync.unlockAudio(),className:"flex items-center gap-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded shadow-md animate-pulse cursor-pointer shrink-0",title:"Clique para habilitar a reprodução do áudio no seu navegador",children:(0,q.jsx)("span",{children:"▶ Ouvir Trilha"})}):null,audioState.hasActiveBroadcast?(0,q.jsxs)("div",{className:"flex items-center gap-1.5 max-w-[150px] sm:max-w-[220px] md:max-w-[280px] truncate",title:"Música: "+(audioState.trackTitle||"Trilha")+" | DJ: "+(audioState.broadcasterName||"Mestre"),children:[(0,q.jsxs)("span",{className:"flex h-2 w-2 relative shrink-0",children:[(0,q.jsx)("span",{className:"animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"}),(0,q.jsx)("span",{className:"relative inline-flex rounded-full h-2 w-2 bg-emerald-500"})]}),(0,q.jsxs)("svg",{viewBox:"0 0 24 24",width:13,height:13,fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"text-emerald-400 shrink-0",children:[(0,q.jsx)("path",{d:"M9 18V5l12-2v13"}),(0,q.jsx)("circle",{cx:6,cy:18,r:3}),(0,q.jsx)("circle",{cx:18,cy:16,r:3})]}),(0,q.jsxs)("div",{className:"flex flex-col min-w-0 leading-tight",children:[(0,q.jsx)("span",{className:"text-[11px] font-bold text-white truncate",children:audioState.trackTitle||"Trilha Sonora"}),(0,q.jsxs)("span",{className:"text-[9px] text-amber-300/90 truncate font-mono",children:["DJ: ",audioState.isBroadcasting?"Você":audioState.broadcasterName||"Mestre"]})]})]}):(0,q.jsxs)("div",{className:"flex items-center gap-1 text-slate-400 shrink-0",title:"Trilha Sonora (Inativa)",children:[(0,q.jsxs)("svg",{viewBox:"0 0 24 24",width:13,height:13,fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"text-slate-500 shrink-0",children:[(0,q.jsx)("path",{d:"M9 18V5l12-2v13"}),(0,q.jsx)("circle",{cx:6,cy:18,r:3}),(0,q.jsx)("circle",{cx:18,cy:16,r:3})]}),(0,q.jsx)("span",{className:"text-[11px] text-slate-400 hidden xl:inline",children:"Música"})]}),(0,q.jsx)("button",{type:"button",onClick:()=>window.audioStreamSync&&window.audioStreamSync.toggleMute(),className:"p-1 rounded-md transition-all cursor-pointer shrink-0 "+(audioState.isMuted?"text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/50":"text-slate-300 hover:text-white hover:bg-slate-800"),title:audioState.isMuted?"Música mutada (clique para ativar áudio)":"Mutar música",children:audioState.isMuted?(0,q.jsxs)("svg",{viewBox:"0 0 24 24",width:13,height:13,fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",children:[(0,q.jsx)("polygon",{points:"11 5 6 9 2 9 2 15 6 15 11 19 11 5"}),(0,q.jsx)("line",{x1:22,x2:16,y1:9,y2:15}),(0,q.jsx)("line",{x1:16,x2:22,y1:9,y2:15})]}):(0,q.jsxs)("svg",{viewBox:"0 0 24 24",width:13,height:13,fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",children:[(0,q.jsx)("polygon",{points:"11 5 6 9 2 9 2 15 6 15 11 19 11 5"}),(0,q.jsx)("path",{d:"M15.54 8.46a5 5 0 0 1 0 7.07"}),(0,q.jsx)("path",{d:"M19.07 4.93a10 10 0 0 1 0 14.14"})]})}),(0,q.jsxs)("div",{className:"flex items-center gap-1 shrink-0",children:[(0,q.jsx)("input",{type:"range",min:0,max:100,value:audioState.isMuted?0:audioState.volume,onChange:evt=>window.audioStreamSync&&window.audioStreamSync.setVolume(Number(evt.target.value)),className:"w-12 sm:w-16 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500",title:"Volume: "+(audioState.isMuted?"Mutado":audioState.volume+"%")}),(0,q.jsx)("span",{className:"text-[10px] font-mono font-bold text-slate-400 w-6 text-right hidden sm:inline",children:audioState.isMuted?"0%":audioState.volume+"%"})]}),(isMestre||canEditCurrent)?(audioState.isBroadcasting?(0,q.jsxs)("button",{type:"button",onClick:()=>window.audioStreamSync&&window.audioStreamSync.stopBroadcasting(),className:"flex items-center gap-1 px-2 py-0.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-[11px] font-bold rounded border border-rose-700/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0",title:"Encerrar transmissão da trilha sonora",children:[(0,q.jsxs)("svg",{viewBox:"0 0 24 24",width:11,height:11,fill:"currentColor",className:"text-rose-400",children:[(0,q.jsx)("rect",{width:16,height:16,x:4,y:4,rx:2})]}),(0,q.jsx)("span",{className:"hidden sm:inline",children:"Parar"})]}):(0,q.jsxs)("button",{type:"button",onClick:()=>window.audioStreamSync&&window.audioStreamSync.startBroadcasting(c?.name||(isMestre?"Mestre":"Jogador")),className:"flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-[11px] font-bold rounded border border-slate-700 hover:border-emerald-600/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0",title:"Transmitir áudio de uma aba do Spotify, YouTube ou do sistema para todos os jogadores",children:[(0,q.jsxs)("svg",{viewBox:"0 0 24 24",width:11,height:11,fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"text-emerald-400",children:[(0,q.jsx)("circle",{cx:12,cy:12,r:2}),(0,q.jsx)("path",{d:"M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"})]}),(0,q.jsx)("span",{className:"hidden sm:inline",children:"Transmitir"})]})):null]})]})'''
+
+content = content[:idx_dice + len(dice_modal_str)] + new_zone3 + content[idx_perms:]
+
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("SUCCESS: Clean Zone 3 applied to mesa.html!")
