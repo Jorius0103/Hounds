@@ -66,8 +66,17 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
       }
       if (!seenIds.has(ev.id)) {
         seenIds.add(ev.id);
+        let comment = ev.comment;
+        if (!comment && ev.npcId) {
+          const char = combinedCharacters.find((c) => c.id === ev.npcId);
+          const histEntry = char?.history?.find((h: any) => h.id === ev.id);
+          if (histEntry?.comment) {
+            comment = histEntry.comment;
+          }
+        }
         list.push({
           ...ev,
+          comment,
           npcName: ev.npcName || ev.authorName || 'Mestre',
           npcCharacterType: ev.npcCharacterType || 'npc',
         });
@@ -107,6 +116,11 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
             npcCharacterType: npc.characterType || 'npc',
             playerName: npc.playerName || '',
           });
+        } else {
+          const existing = list.find((x) => x.id === entry.id);
+          if (existing && !existing.comment && entry.comment) {
+            existing.comment = entry.comment;
+          }
         }
       }
     }

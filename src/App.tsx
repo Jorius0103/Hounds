@@ -2872,10 +2872,16 @@ export default function App() {
     if (plChanged) {
       stateRef.current.players = nextPlayers;
       setPlayers(nextPlayers);
+      try {
+        localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(nextPlayers));
+      } catch (e) {}
     }
     if (cbChanged) {
       stateRef.current.combats = nextCombats;
       setCombats(nextCombats);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
+      } catch (e) {}
     }
 
     broadcastSync(
