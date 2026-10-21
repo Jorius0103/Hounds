@@ -89,7 +89,7 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
   onClose,
   onRoll,
 }) => {
-  const [customCount, setCustomCount] = useState<number>(1);
+  const [customCount, setCustomCount] = useState<number | string>(1);
   const [customSides, setCustomSides] = useState<number>(6);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -112,7 +112,7 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const count = Math.max(1, Math.min(100, Number(customCount) || 1));
+    const count = Math.max(1, Math.min(100, parseInt(String(customCount), 10) || 1));
     const sides = Math.max(2, Math.min(1000, Number(customSides) || 6));
     handleRollClick(count, sides);
   };
@@ -195,39 +195,43 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
             <span>Personalizado</span>
           </div>
           <form onSubmit={handleCustomSubmit} className="flex items-end gap-2">
-            <div className="flex items-center gap-1.5 flex-1">
+            <div className="flex items-center gap-2 flex-1">
+              {/* 1º: Seleção de Dados em Lista Suspensa na frente da Quantidade */}
               <div className="flex flex-col flex-1">
+                <label className="text-[9px] text-slate-400 font-semibold mb-0.5">Dado</label>
+                <select
+                  value={customSides}
+                  onChange={(e) => setCustomSides(Number(e.target.value))}
+                  className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-amber-300 font-bold font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                >
+                  {DICE_TYPES.map((die) => (
+                    <option key={die.sides} value={die.sides} className="bg-slate-900 text-white font-mono">
+                      {die.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 2º: Input de Quantidade funcionando livremente */}
+              <div className="flex flex-col w-20 shrink-0">
                 <label className="text-[9px] text-slate-400 font-semibold mb-0.5">Quantidade</label>
                 <input
                   type="number"
                   min="1"
                   max="100"
                   value={customCount}
-                  onChange={(e) => setCustomCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white text-center font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  title="Quantidade de dados"
+                  onChange={(e) => setCustomCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  onBlur={() => {
+                    if (!customCount || Number(customCount) < 1) setCustomCount(1);
+                  }}
+                  className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white text-center font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  title="Quantidade de dados a serem rolados"
                 />
-              </div>
-              <span className="text-xs font-bold text-slate-500 pb-1.5">×</span>
-              <div className="flex flex-col flex-1">
-                <label className="text-[9px] text-slate-400 font-semibold mb-0.5">Dado</label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-2 text-[11px] font-bold text-amber-400 font-mono">D</span>
-                  <input
-                    type="number"
-                    min="2"
-                    max="1000"
-                    value={customSides}
-                    onChange={(e) => setCustomSides(Math.max(2, parseInt(e.target.value, 10) || 2))}
-                    className="w-full bg-slate-900 border border-slate-750 rounded-lg pl-5 pr-1 py-1 text-xs text-white text-center font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-                    title="Lados do dado (ex: 4, 6, 8, 10, 12, 20, 100)"
-                  />
-                </div>
               </div>
             </div>
             <button
               type="submit"
-              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold rounded-lg transition-all shadow cursor-pointer shrink-0"
+              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold rounded-lg transition-all shadow cursor-pointer shrink-0"
             >
               Rolar
             </button>

@@ -555,31 +555,40 @@ export default function App() {
         setActiveDiceRoll(rollObj);
 
         if (entry) {
-          if (entry.npcId) {
-            const charId = entry.npcId;
+          const cId = entry.combatId || stateRef.current.activeCombatId;
+          const charId = entry.npcId;
+
+          if (charId) {
             setPlayers((prev) =>
               prev.map((p) =>
                 p.id === charId ? { ...p, history: [entry, ...(p.history || []).filter((h) => h.id !== entry.id)] } : p
               )
             );
-            setCombats((prev) =>
-              prev.map((c) => ({
-                ...c,
-                npcs: (c.npcs || []).map((n) =>
-                  n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)] } : n
-                ),
-              }))
-            );
-          } else {
-            const cId = entry.combatId || stateRef.current.activeCombatId;
-            setCombats((prev) =>
-              prev.map((c) =>
-                (!cId || c.id === cId)
-                  ? { ...c, events: [entry, ...(c.events || []).filter((e) => e.id !== entry.id)] }
-                  : c
-              )
-            );
           }
+
+          setCombats((prev) =>
+            prev.map((c) => {
+              const matchesCombat = !cId || c.id === cId;
+              const hasNpc = charId && (c.npcs || []).some((n) => n.id === charId);
+              if (!matchesCombat && !hasNpc) return c;
+
+              const updatedNpcs = charId
+                ? (c.npcs || []).map((n) =>
+                    n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)] } : n
+                  )
+                : c.npcs;
+
+              const updatedEvents = matchesCombat
+                ? [entry, ...(c.events || []).filter((e) => e.id !== entry.id)]
+                : (c.events || []);
+
+              return {
+                ...c,
+                npcs: updatedNpcs,
+                events: updatedEvents,
+              };
+            })
+          );
         }
         return;
       }
@@ -801,31 +810,40 @@ export default function App() {
         setActiveDiceRoll(rollObj);
 
           if (entry) {
-            if (entry.npcId) {
-              const charId = entry.npcId;
+            const cId = entry.combatId || stateRef.current.activeCombatId;
+            const charId = entry.npcId;
+
+            if (charId) {
               setPlayers((prev) =>
                 prev.map((p) =>
                   p.id === charId ? { ...p, history: [entry, ...(p.history || []).filter((h) => h.id !== entry.id)] } : p
                 )
               );
-              setCombats((prev) =>
-                prev.map((c) => ({
-                  ...c,
-                  npcs: (c.npcs || []).map((n) =>
-                    n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)] } : n
-                  ),
-                }))
-              );
-            } else {
-              const cId = entry.combatId || stateRef.current.activeCombatId;
-              setCombats((prev) =>
-                prev.map((c) =>
-                  (!cId || c.id === cId)
-                    ? { ...c, events: [entry, ...(c.events || []).filter((e) => e.id !== entry.id)] }
-                    : c
-                )
-              );
             }
+
+            setCombats((prev) =>
+              prev.map((c) => {
+                const matchesCombat = !cId || c.id === cId;
+                const hasNpc = charId && (c.npcs || []).some((n) => n.id === charId);
+                if (!matchesCombat && !hasNpc) return c;
+
+                const updatedNpcs = charId
+                  ? (c.npcs || []).map((n) =>
+                      n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)] } : n
+                    )
+                  : c.npcs;
+
+                const updatedEvents = matchesCombat
+                  ? [entry, ...(c.events || []).filter((e) => e.id !== entry.id)]
+                  : (c.events || []);
+
+                return {
+                  ...c,
+                  npcs: updatedNpcs,
+                  events: updatedEvents,
+                };
+              })
+            );
           }
           return;
         }
@@ -2247,10 +2265,12 @@ export default function App() {
         updatedAt: now,
         history: [newEntry, ...(char.history || [])],
       });
-    } else if (activeCombat) {
-      // Mestre: vincula aos eventos gerais do combate
+    }
+
+    if (activeCombat) {
+      // Vincula SEMPRE aos eventos gerais do combate para que todos os rolamentos de todos os usuários apareçam no log
       const updatedCombats = combats.map((c) =>
-        c.id === activeCombat.id ? { ...c, events: [newEntry, ...(c.events || [])] } : c
+        c.id === activeCombat.id ? { ...c, events: [newEntry, ...(c.events || []).filter((e) => e.id !== newEntry.id)] } : c
       );
       setCombats(updatedCombats);
       broadcastSync(updatedCombats);

@@ -297,10 +297,10 @@ export const TopNav: React.FC<TopNavProps> = ({
             <button
               type="button"
               onClick={() => onRollDice(3)}
-              className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-black rounded-lg transition-all shadow-md font-mono border border-amber-400/60 cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white text-xs font-black rounded-lg transition-all shadow-sm font-mono border border-slate-750 hover:border-amber-500/50 cursor-pointer"
               title="Rolar 3D6 com animação e registrar no log de combate"
             >
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-950">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-400">
                 <rect width="18" height="18" x="3" y="3" rx="3" />
                 <circle cx="8" cy="8" r="1.5" fill="currentColor" />
                 <circle cx="16" cy="16" r="1.5" fill="currentColor" />

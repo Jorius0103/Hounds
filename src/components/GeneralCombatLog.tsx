@@ -55,20 +55,23 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
       ...(additionalCharacters || []),
       ...(isNoCombat ? [] : activeCombat?.npcs?.filter((n) => !additionalCharacters?.some((p) => p.id === n.id)) || [])
     ];
-    if (combinedCharacters.length === 0) return [];
 
     const list: any[] = [];
+    const seenIds = new Set<string>();
 
-    // 1. Eventos e rolagens gerais do combate (ex: rolagens do Mestre)
+    // 1. Eventos e rolagens gerais do combate (rolagens de todos os usuários)
     for (const ev of activeCombat?.events || []) {
       if (currentUserRole === 'jogador' && (ev.isSecret || (ev as any).hiddenFromPlayers)) {
         continue;
       }
-      list.push({
-        ...ev,
-        npcName: ev.npcName || ev.authorName || 'Mestre',
-        npcCharacterType: ev.npcCharacterType || 'npc',
-      });
+      if (!seenIds.has(ev.id)) {
+        seenIds.add(ev.id);
+        list.push({
+          ...ev,
+          npcName: ev.npcName || ev.authorName || 'Mestre',
+          npcCharacterType: ev.npcCharacterType || 'npc',
+        });
+      }
     }
 
     // 2. Histórico individual dos combatentes
@@ -93,15 +96,18 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
           continue;
         }
 
-        list.push({
-          ...entry,
-          npcId: npc.id,
-          npcName: npc.name || 'Personagem',
-          npcAvatar: npc.avatar,
-          npcPreset: npc.avatarPreset,
-          npcCharacterType: npc.characterType || 'npc',
-          playerName: npc.playerName || '',
-        });
+        if (!seenIds.has(entry.id)) {
+          seenIds.add(entry.id);
+          list.push({
+            ...entry,
+            npcId: npc.id,
+            npcName: npc.name || 'Personagem',
+            npcAvatar: npc.avatar,
+            npcPreset: npc.avatarPreset,
+            npcCharacterType: npc.characterType || 'npc',
+            playerName: npc.playerName || '',
+          });
+        }
       }
     }
 

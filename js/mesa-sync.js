@@ -388,7 +388,7 @@ var MesaSync = (function () {
         });
         rt().on('mesa-dice', function (m) {
           if (m && m.rollData) {
-            if (loaded()) push({ type: 'SYNC_DICE_ROLL', rollData: m.rollData, timestamp: m.ts || Date.now() });
+            if (loaded()) push({ type: 'SYNC_DICE_ROLL', rollData: m.rollData, logEntry: m.logEntry, timestamp: m.ts || Date.now() });
           }
         });
       }
@@ -416,7 +416,7 @@ var MesaSync = (function () {
       // Without embedded images there is nothing to send to the image storage nor to swap.
       var imgs = str.indexOf('data:image/') >= 0;
       if (m.type === 'SYNC_DICE_ROLL' && m.rollData) {
-        if (rt()) rt().send('mesa-dice', { rollData: m.rollData, ts: m.timestamp || Date.now() });
+        if (rt()) rt().send('mesa-dice', { rollData: m.rollData, logEntry: m.logEntry, ts: m.timestamp || Date.now() });
         return;
       }
       if (m.type === 'SYNC_EDITORS' && Array.isArray(m.editorUserIds)) {
