@@ -211,7 +211,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
           fpWarns.forEach((w, ix) => {
             criticalAlerts.push({
               id: `fp-warn-${ix}`,
-              text: `Fadiga: ${w}`,
+              text: `FP: ${w}`,
               badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
               icon: Zap,
             });

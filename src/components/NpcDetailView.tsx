@@ -635,7 +635,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       alerts.push({
         id: `fp-warn-${idx}`,
         badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-        text: `Fadiga: ${warn}`,
+        text: `FP: ${warn}`,
         icon: Zap,
       });
     });
