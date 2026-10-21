@@ -40,8 +40,9 @@
    ===================================================================== */
 var ADV_FX_TARGETS = [['attr', 'Atributo'], ['def', 'Defesa ativa'], ['skill', 'Perícias pelo nome'], ['skillAttr', 'Perícias de um atributo'],
   ['skillAll', 'Todas as perícias'], ['spell', 'Magias pelo nome'], ['college', 'Magias de uma escola'], ['spellAll', 'Todas as magias']];
+// liftSt: ST only for Basic Lift (Lifting ST, B65): carrying, lifting, pushing and pulling.
 var ADV_FX_ATTRS = [['st', 'ST'], ['dx', 'DX'], ['iq', 'IQ'], ['ht', 'HT'], ['per', 'Percepção'], ['will', 'Vontade'],
-  ['hp', 'HP'], ['fp', 'Fadiga'], ['speed', 'Velocidade Básica'], ['move', 'Deslocamento']];
+  ['hp', 'HP'], ['fp', 'Fadiga'], ['speed', 'Velocidade Básica'], ['move', 'Deslocamento'], ['liftSt', 'ST para a Carga Básica']];
 var ADV_FX_DEFS = [['dodge', 'Esquiva'], ['parry', 'Aparar'], ['block', 'Bloqueio'], ['all', 'Todas as defesas ativas']];
 // The targets that take names, and the list each key comes from.
 var ADV_FX_NAMED = { skill: 1, spell: 1, college: 1 };
@@ -80,6 +81,87 @@ function advEffectText(e) {
 // The advantages the sheet applies by itself (see the note above).
 var ADV_FX_BUILTIN_RE = /^(Combat Reflexes|Enhanced Time Sense|Enhanced (Block|Parry|Dodge|Defenses)|Magery|Talent)\b/i;
 
+/* ---------- the book's rules ----------
+   An entry the Mestre gave no effects still counts on the sheet when the book says what it adds to
+   a field the sheet has: ADV_BOOK, by the entry's name, gives its effects for the row (r: { spec,
+   the text in parentheses; pts, the points before modifiers }), read from the entry's text in Regras
+   › Vantagens. What depends on the moment ("to resist poison", "when motionless") is a condition:
+   shown beside the field, never added. The Mestre's effects, when there are any, take their place.
+   Striking ST, Weapon Master, Claws, Teeth and the Strikers count in Danos (ficha-danos.js). */
+function bookSkills(names, value, o) { return Object.assign({ target: 'skill', names: names, value: value }, o); }
+function bookAttr(key, value, cond, o) { return Object.assign({ target: 'attr', key: key, value: value, cond: cond }, o); }
+var ADV_HT_ROLLS = 'em testes de HT (consciência, morte, doença, veneno), não no atributo nem nas perícias';
+var ADV_BOOK = {
+  'acute senses': function (r) {
+    var t = norm(r.name + ' ' + r.spec), sense = /vision|visao/.test(t) ? 'a visão' : /hearing|audicao/.test(t) ? 'a audição' :
+      /taste|smell|paladar|olfato/.test(t) ? 'o paladar e o olfato' : /touch|tato/.test(t) ? 'o tato' : 'o sentido escolhido';
+    return [bookAttr('per', 1, 'nos testes de Sentidos com ' + sense, { perLevel: true })];
+  },
+  'fit': function (r) { return [bookAttr('ht', r.pts >= 15 ? 2 : 1, ADV_HT_ROLLS)]; },
+  'very fit': function () { return [bookAttr('ht', 2, ADV_HT_ROLLS)]; },
+  'hard to kill': function () { return [bookAttr('ht', 1, 'para sobreviver abaixo de −PV e quando falhar é morte imediata', { perLevel: true })]; },
+  'hard to subdue': function () { return [bookAttr('ht', 1, 'para não cair inconsciente', { perLevel: true })]; },
+  'high pain threshold': function () { return [bookAttr('ht', 3, 'para não ser derrubado nem atordoado, e para resistir a tortura')]; },
+  'rapid healing': function () { return [bookAttr('ht', 5, 'para recuperar PV perdidos ou se recuperar de lesão incapacitante')]; },
+  'resistant': function (r) {
+    var m = /\+\s*(\d+)/.exec(r.name + ' ' + r.spec);
+    return [bookAttr('ht', m ? +m[1] : 3, 'para resistir a ' + (r.spec || 'o que a vantagem cobre'))];
+  },
+  'fearlessness': function () { return [bookAttr('will', 1, 'em Verificações de Pânico e para resistir a Intimidação e ao medo sobrenatural', { perLevel: true })]; },
+  'magic resistance': function () { return [bookAttr('will', 1, 'para resistir a magias lançadas em você (o teste de resistência, seja de HT, IQ ou Vontade)', { perLevel: true })]; },
+  'mind shield': function () { return [bookAttr('will', 1, 'para resistir a telepatia e às magias de Comunicação e Empatia ou de Controle da Mente', { perLevel: true })]; },
+  'lifting st': function () { return [bookAttr('liftSt', 1, '', { perLevel: true })]; },
+  'charisma': function () { return [bookSkills(['Fortune-Telling', 'Leadership', 'Panhandling', 'Public Speaking'], 1, { perLevel: true })]; },
+  'voice': function () { return [bookSkills(['Diplomacy', 'Fast-Talk', 'Mimicry', 'Performance', 'Politics', 'Public Speaking', 'Sex Appeal', 'Singing'], 2)]; },
+  'empathy': function (r) {
+    var v = r.pts && r.pts < 15 ? 1 : 3;
+    return [bookSkills(['Detect Lies', 'Fortune-Telling'], v), bookSkills(['Psychology'], v, { cond: 'para analisar alguém com quem conversa' })];
+  },
+  'sensitive': function () { return [bookSkills(['Detect Lies', 'Fortune-Telling'], 1), bookSkills(['Psychology'], 1, { cond: 'para analisar alguém com quem conversa' })]; },
+  'flexibility': function (r) {
+    if (r.pts >= 15) return ADV_BOOK['double-jointed']();
+    return [bookSkills(['Climbing', 'Erotic Art'], 3), bookSkills(['Escape'], 3, { cond: 'para se livrar de cordas, algemas e amarras' })];
+  },
+  'double-jointed': function () { return [bookSkills(['Climbing', 'Erotic Art', 'Escape'], 5)]; },
+  'high manual dexterity': function () {
+    return [bookSkills(['Knot-Tying', 'Leatherworking', 'Lockpicking', 'Pickpocket', 'Sewing', 'Sleight of Hand'], 1, { perLevel: true, max: 4 }),
+      bookSkills(['Artist', 'Jeweler', 'Surgery', 'Machinist', 'Mechanic'], 1, { perLevel: true, max: 4, cond: 'nos testes baseados em DX de trabalho delicado' })];
+  },
+  'perfect balance': function () {
+    return [bookSkills(['Acrobatics', 'Climbing', 'Piloting'], 1), bookAttr('dx', 4, 'em combate, para não cair nem ser derrubado (+6 em superfície molhada ou instável)')];
+  },
+  'absolute direction': function () { return [bookSkills(['Body Sense', 'Navigation'], 3)]; },
+  'brachiator': function () { return [bookSkills(['Climbing'], 2)]; },
+  'slippery': function () { return [bookSkills(['Escape'], 1, { perLevel: true, max: 5 })]; },
+  'discriminatory smell': function () { return [bookSkills(['Tracking'], 4), bookAttr('per', 4, 'em tudo que usa o olfato')]; },
+  'discriminatory taste': function () { return [bookAttr('per', 4, 'em tudo que usa o paladar')]; },
+  'sensitive touch': function () { return [bookAttr('per', 4, 'em tudo que usa o tato')]; },
+  'silence': function () {
+    return [bookSkills(['Stealth'], 2, { perLevel: true, cond: 'parado, no escuro ou contra quem depende da audição' }),
+      bookSkills(['Stealth'], 1, { perLevel: true, cond: 'em movimento, no escuro ou contra quem depende da audição' })];
+  },
+  'chameleon': function () {
+    return [bookSkills(['Stealth'], 2, { perLevel: true, cond: 'parado, onde ser visto importa (com roupa, +1 por nível)' }),
+      bookSkills(['Stealth'], 1, { perLevel: true, cond: 'em movimento, onde ser visto importa (com roupa, nada)' })];
+  },
+  'daredevil': function () { return [{ target: 'skillAll', value: 1, cond: 'ao correr um risco desnecessário' }]; },
+  'higher purpose': function (r) { return [{ target: 'skillAll', value: 1, cond: 'no que for direto pelo propósito' + (r.spec ? ' (' + r.spec + ')' : '') }]; },
+  'single-minded': function () { return [{ target: 'skillAll', value: 3, cond: 'em tarefas mentais longas, com toda a concentração' }]; }
+};
+// The book's effects of an entry for a row of the sheet (x: a row of Vantagens, or a trait of Combate).
+function advBookFx(c, x) {
+  var rule = c && ADV_BOOK[norm(c.name).trim()]; if (!rule) return [];
+  var m = /\(([^)]*)\)/.exec(x.name || ''), pts = x.cost != null ? advBaseCost(x) : x.pts || 0;
+  return rule({ name: x.name || '', spec: m ? m[1].trim() : '', pts: pts }).map(cleanAdvEffect).filter(advEffectOk);
+}
+// The effects a row of the sheet gets from its entry: the Mestre's, or without them the book's.
+// { list, book }. None for the ones the sheet applies by itself.
+function advRowFx(c, x) {
+  if (!c || x.size || ADV_FX_BUILTIN_RE.test(x.name)) return { list: [], book: false };
+  var own = advEffects(c);
+  return own.length ? { list: own, book: false } : { list: advBookFx(c, x), book: true };
+}
+
 // The effects of the sheet's advantages, each with its value for the advantage's level:
 // [{ e, v, from }]. Vantagens first, then Combate's traits; a name only once. Kept while the sheet
 // and the list of advantages are the same objects (both are replaced when they change).
@@ -91,11 +173,10 @@ function sheetFx(s) {
   if (advs.length || traits.length) loadCatalog('advantages'); // the page redraws when it arrives
   function add(x, levels) {
     var key = norm(x.name); if (seen[key]) return; seen[key] = true;
-    if (x.size || ADV_FX_BUILTIN_RE.test(x.name)) return;
     var c = advEntryOf(x); if (!c) return;
     // The level: the sheet's levels, or the number after the name ("Acute Vision 2"); 1 without.
     var m = /\s(\d+)$/.exec(x.name), lv = levels || (m ? +m[1] : 0) || 1;
-    advEffects(c).forEach(function (e) {
+    advRowFx(c, x).list.forEach(function (e) {
       var v = e.value * (e.perLevel ? lv : 1);
       if (e.max != null) v = Math.min(v, e.max);
       out.push({ e: e, v: e.op === 'sub' ? -v : v, from: x.name + (levels ? ' ' + levels : '') });
@@ -160,16 +241,17 @@ function withAdvFx(s, a) {
     var k = r[0], x = fxSum(fx.filter(function (m) { return m.e.target === 'attr' && m.e.key === k; }));
     if (fxEmpty(x)) return;
     b[k] = x;
-    out[k] = a[k] + x.n;
+    out[k] = (a[k] || 0) + x.n;
     // ST, DX, IQ and HT stay at 1 or more, like the base (the damage table starts at ST 1).
     if (/^(st|dx|iq|ht)$/.test(k)) out[k] = Math.max(1, out[k]);
   });
+  out.liftSt = Math.max(0, out.liftSt || 0);
   ['dodge', 'parry', 'block'].forEach(function (k) {
     var x = fxSum(fx.filter(function (m) { return m.e.target === 'def' && (m.e.key === k || m.e.key === 'all'); }));
     if (!fxEmpty(x)) def[k] = x;
   });
-  // Peso from the ST the effects leave (Basic Lift), as sheetAttrs does from the base.
-  out.enc = sheetEncLevel(s, out.st);
+  // Peso from the ST the effects leave (Basic Lift, with Lifting ST), as sheetAttrs does from the base.
+  out.enc = sheetEncLevel(s, out.st + out.liftSt);
   out.fx = { base: a, b: b, def: def };
   return out;
 }

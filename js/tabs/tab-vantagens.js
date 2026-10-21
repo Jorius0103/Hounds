@@ -179,6 +179,12 @@ function renderAdvantagePage() {
 // The effects of an entry, for its page and modal: a list, or nothing (the Mestre sees how to add them).
 function advEffectsHtml(a, can, h) {
   var fx = advEffects(a);
+  // Without the Mestre's, the sheet uses the book's (ADV_BOOK, in ficha-efeitos.js), for the version on the sheet.
+  var book = fx.length ? [] : advBookFx(a, { name: a.name, pts: 0 });
+  if (book.length) return '<section><' + h + ' class="sec-title">Efeitos na ficha (do livro)</' + h + '><ul class="fx-list">' + book.map(function (e) {
+    return '<li><b>' + esc(advEffectText(e)) + '</b></li>';
+  }).join('') + '</ul><p class="hint-text">Lidos do texto da vantagem e aplicados na ficha de quem a tem (os de uma versão maior, como Very Fit, seguem os pontos da ficha). ' +
+    'Os que dependem do momento aparecem ao lado do campo, sem somar.' + (can ? ' Cadastrar efeitos em <b>Editar vantagem</b> troca estes.' : '') + '</p></section>';
   if (!fx.length) return can ? '<section><' + h + ' class="sec-title">Efeitos na ficha</' + h + '><p class="long none">Nenhum efeito cadastrado. Use <b>Editar vantagem</b> para dizer o que ela soma na ficha.</p></section>' : '';
   return '<section><' + h + ' class="sec-title">Efeitos na ficha</' + h + '><ul class="fx-list">' + fx.map(function (e) {
     return '<li><b>' + esc(advEffectText(e)) + '</b>' + (e.note ? '<small>' + esc(e.note) + '</small>' : '') + '</li>';

@@ -270,7 +270,8 @@ function gurpsStats(a) {
     per: a.perBase + a.per, will: a.willBase + a.will, hp: a.st + a.hp, fp: a.ht + a.fp, speed: speed, move: move,
     // The table's rule: each level of Peso takes 1 from Move and from Dodge.
     moveNow: Math.max(0, move - a.enc), dodge: Math.floor(speed) + 3 - a.enc,
-    lift: basicLift(a.st), dmg: gurpsDamage(a.st),
+    // Lifting ST (a.liftSt, from the advantages) adds to ST only for Basic Lift.
+    lift: basicLift(a.st + (a.liftSt || 0)), dmg: gurpsDamage(a.st),
     cost: cost, attrPts: attrPts, secPts: secPts, total: attrPts + secPts
   };
 }
@@ -334,7 +335,7 @@ function gurpsDerivedHtml(a, r) {
   function stat(label, val, note) { return '<div class="gstat"><span>' + label + '</span><strong>' + val + '</strong>' + (note ? '<small>' + note + '</small>' : '') + '</div>'; }
   return stat('Esquiva', r.dodge, 'VB + 3' + (a.enc ? ' − ' + a.enc + ' de Peso' : '')) +
     stat('Deslocamento', r.moveNow, a.enc ? r.move + ' − ' + a.enc + ' de Peso' : 'sem Peso') +
-    stat('Carga Básica', String(r.lift).replace('.', ',') + ' lbs', '(ST × ST) ÷ 5') +
+    stat('Carga Básica', String(r.lift).replace('.', ',') + ' lbs', a.liftSt ? '(ST ' + a.st + ' + ' + a.liftSt + ' de Lifting ST)² ÷ 5' : '(ST × ST) ÷ 5') +
     stat('Dano', r.dmg.thr + ' / ' + r.dmg.sw, 'Estocada / Balanço');
 }
 function sheetAttrsHtml(s, a, editing) {

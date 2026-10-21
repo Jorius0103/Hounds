@@ -361,6 +361,12 @@ var MesaSync = (function () {
     }).catch(function () {});
   }
   function delay() { return (W.store && W.store.saveDelay) || 1200; }
+  // Saves the state as it is here (after cleaning it on loading), in the next round of flush.
+  function queueSave() {
+    if (!state) return;
+    pending = { st: state, rev: newRev() };
+    if (!timer) timer = setTimeout(flush, delay());
+  }
   function flush() {
     timer = null;
     if (writing || !pending) { if (pending && !timer) timer = setTimeout(flush, delay()); return; }

@@ -176,6 +176,22 @@ function advRulesHtml(x) {
     (w.length ? '<span class="av-warn">' + esc((c ? ' · ' : '') + w.join(' · ')) + '</span>' : '');
 }
 
+// The advantages Danos reads by itself (see dmEffects in ficha-danos.js).
+var ADV_DM_RE = /^(Striking ST|Weapon Master|Claws|Teeth|Striker|Weapon Bond|Equipment Bond|Biting Mastery)/i;
+// Under the rules of a row being edited: what the advantage does on the sheet, from the moment it is
+// picked (or its name typed).
+function advFxLineText(x) {
+  var c = advEntryOf(x); if (!c) return '';
+  if (x.size) return 'Na ficha: +1 por nível (até 4) no NH das perícias marcadas';
+  if (CR_RE.test(x.name)) return 'Na ficha: +1 nas defesas ativas e em Fast-Draw';
+  if (/^Enhanced (Block|Parry|Dodge|Defenses)/i.test(x.name)) return 'Na ficha: soma na defesa, em Combate › Defesas';
+  if (/^Magery/i.test(x.name)) return 'Na ficha: soma no NH das magias, na aba Magia';
+  if (ADV_DM_RE.test(x.name)) return 'Na ficha: conta no dano e no NH, em Combate › Danos';
+  var fx = advRowFx(c, x);
+  return fx.list.length ? 'Na ficha' + (fx.book ? ' (do livro)' : '') + ': ' + fx.list.map(advEffectText).join('; ')
+    : 'Sem regra automática na ficha: confira o texto da vantagem';
+}
+
 /* ---------- view ---------- */
 // "a, b e c"
 function joinE(list) { return list.length > 1 ? list.slice(0, -1).join(', ') + ' e ' + list[list.length - 1] : list.join(''); }
@@ -194,9 +210,9 @@ function advRowHtml(x, inCombat, onSheet, fastDraws) {
     x.mod ? (x.mod > 0 ? '+' : '') + x.mod + '%' + (x.mod < -80 ? ' (vale -80%)' : '') : '',
     CR_RE.test(x.name) ? '+1 nas defesas ativas e em ' + (fastDraws.length ? joinE(fastDraws) : 'Fast-Draw (nenhuma na ficha)') : '',
     inCombat ? 'também na seção Combate' : ''].filter(Boolean).join(' · ');
-  // The effects the Mestre gave the entry (see ficha-efeitos.js), applied on the sheet.
-  var fx = c && !x.size && !ADV_FX_BUILTIN_RE.test(x.name) ? advEffects(c) : [];
-  if (fx.length) sub += (sub ? ' · ' : '') + 'Efeitos: ' + fx.map(advEffectText).join('; ');
+  // The effects of the entry on the sheet: the Mestre's, or the book's (see ficha-efeitos.js).
+  var fx = advRowFx(c, x);
+  if (fx.list.length) sub += (sub ? ' · ' : '') + (fx.book ? 'Do livro: ' : 'Efeitos: ') + fx.list.map(advEffectText).join('; ');
   return '<tr><td><b>' + label + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</td><td class="gpts">' + advPts(x) + '</td>' +
     '<td class="av-notes">' + esc(obs) + (problem ? '<small class="av-warn">' + esc(problem) + '</small>' : '') + '</td></tr>';
 }
@@ -262,7 +278,8 @@ function advEditRow(x, i, choices) {
     '<input class="sk-name" type="text" data-f="name" maxlength="120" placeholder="Digite para buscar. Ex.: Combat Reflexes" aria-label="Vantagem" value="' + esc(x.name) + '"' +
     ' autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="avSug' + i + '">' +
     '<div class="suggest" id="avSug' + i + '" role="listbox" hidden></div></div>' +
-    '<div class="sk-rules" data-rules="' + i + '">' + advRulesHtml(x) + '</div></div>' +
+    '<div class="sk-rules" data-rules="' + i + '">' + advRulesHtml(x) + '</div>' +
+    '<div class="sk-fx" data-fxline="' + i + '">' + esc(advFxLineText(x)) + '</div></div>' +
     num('cost', 0, 9999, 'Custo') + num('levels', 0, 99, 'Níveis') + num('mod', -500, 1000, 'Modificador em %') +
     '<span class="sk-nh av-pts" data-pts="' + i + '">' + advPts(x) + ' pts</span>' +
     '<input type="text" data-f="notes" maxlength="400" placeholder="Ex.: Shield and Sword" aria-label="Observações" value="' + esc(x.notes) + '">' +
@@ -291,6 +308,7 @@ function wireSheetAdvs(s) {
     var x = d[i], pts = box.querySelector('[data-pts="' + i + '"]'), rules = box.querySelector('[data-rules="' + i + '"]');
     if (pts) pts.textContent = advPts(x) + ' pts';
     if (rules) rules.innerHTML = advRulesHtml(x);
+    var fxl = box.querySelector('[data-fxline="' + i + '"]'); if (fxl) fxl.textContent = advFxLineText(x);
     var cnt = box.querySelector('[data-tcount="' + i + '"]'); if (cnt && x.size) cnt.textContent = talentCountText(x);
     $('avTotal').textContent = advsTotal(d) + ' pts';
   }

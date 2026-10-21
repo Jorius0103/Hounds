@@ -28,7 +28,11 @@ interface Window {
   supabase: any;
   /** Plataforma de artifacts do claude.ai, quando o site roda lá. */
   claude?: { use(name: string): Promise<any> };
+  /** O AudioContext dos Safari antigos (som dos dados, js/dice-roller-3d.js). */
+  webkitAudioContext?: typeof AudioContext;
 }
 
 /** SDK do Firebase, carregado por js/store/firebase.js. */
 declare var firebase: any;
+/** three.js, carregado por js/three.min.js antes de js/dice-roller-3d.js (os dados 3D). */
+declare var THREE: any;

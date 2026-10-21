@@ -264,11 +264,11 @@
     for (var i = 0; i < corner_faces.length; ++i) {
       var cf = corner_faces[i], face = [cf[0]], count = cf.length - 1;
       while (count) {
-        for (var m = faces.length; m < chamfer_faces.length; ++m) {
-          var index = chamfer_faces[m].indexOf(face[face.length - 1]);
+        for (var cm = faces.length; cm < chamfer_faces.length; ++cm) {
+          var index = chamfer_faces[cm].indexOf(face[face.length - 1]);
           if (index >= 0 && index < 4) {
             if (--index === -1) index = 3;
-            var next_vertex = chamfer_faces[m][index];
+            var next_vertex = chamfer_faces[cm][index];
             if (cf.indexOf(next_vertex) >= 0) {
               face.push(next_vertex);
               break;

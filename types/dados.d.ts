@@ -89,6 +89,8 @@ interface SheetAttrs {
   st: number; dx: number; iq: number; ht: number;
   per: number; will: number; perBase: number; willBase: number; hp: number; fp: number; speed: number; move: number;
   enc: number; metal: number; spellPenalty: number;
+  /** Só nos atributos com os efeitos das vantagens: a ST que soma só na Carga Básica (Lifting ST). */
+  liftSt?: number;
   /** Só nos atributos com os efeitos das vantagens (withAdvFx em js/tabs/ficha-efeitos.js): a base e o que cada efeito soma. */
   fx?: { base: SheetAttrs; b: Record<string, any>; def: Record<string, any> };
 }
