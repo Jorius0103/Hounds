@@ -88,43 +88,50 @@
   }
 
   // Create canvas texture for polyhedral dice
-  function createPolyhedralFaceTexture(val, sides) {
+  function createPolyhedralFaceTexture(val, sides, isTargetFace) {
     var canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     var ctx = canvas.getContext('2d');
 
-    // Rich golden amber gradient
+    // Rich golden amber gradient (bright highlight if target face)
     var grad = ctx.createLinearGradient(0, 0, 256, 256);
-    grad.addColorStop(0, '#fef3c7');
-    grad.addColorStop(0.2, '#f59e0b');
-    grad.addColorStop(0.75, '#d97706');
-    grad.addColorStop(1, '#b45309');
+    if (isTargetFace) {
+      grad.addColorStop(0, '#fffbeb');
+      grad.addColorStop(0.25, '#fbbf24');
+      grad.addColorStop(0.7, '#f59e0b');
+      grad.addColorStop(1, '#b45309');
+    } else {
+      grad.addColorStop(0, '#fef3c7');
+      grad.addColorStop(0.2, '#f59e0b');
+      grad.addColorStop(0.75, '#d97706');
+      grad.addColorStop(1, '#92400e');
+    }
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 256, 256);
 
     // Bevel border
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#78350f';
+    ctx.lineWidth = isTargetFace ? 16 : 14;
+    ctx.strokeStyle = isTargetFace ? '#451a03' : '#78350f';
     ctx.strokeRect(0, 0, 256, 256);
 
     // Inner bright highlight ring
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = isTargetFace ? 6 : 4;
+    ctx.strokeStyle = isTargetFace ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.35)';
     ctx.strokeRect(8, 8, 240, 240);
 
     // Bold result number centered
     var str = String(val);
     var fontSize = str.length > 2 ? 88 : (str.length === 2 ? 104 : 124);
     ctx.font = '900 ' + fontSize + 'px "Plus Jakarta Sans", "JetBrains Mono", Arial, sans-serif';
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = isTargetFace ? '#020617' : '#1e1b4b';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(str, 128, 128);
 
     if (val === 6 || val === 9) {
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(88, 198, 80, 10);
+      ctx.fillStyle = isTargetFace ? '#020617' : '#1e1b4b';
+      ctx.fillRect(88, 198, 80, isTargetFace ? 12 : 10);
     }
 
     var texture = new THREE.CanvasTexture(canvas);
@@ -360,6 +367,7 @@
     var geom = makePolyhedronGeometry(chamferGeom.vectors, chamferGeom.faces, radius, def.tab, def.af);
 
     var faceNormals = {};
+    var faceUpVectors = {};
     for (var f = 0; f < chamferGeom.faces.length; ++f) {
       var face = chamferGeom.faces[f];
       var fl = face.length - 1;
@@ -368,10 +376,36 @@
         var v0 = chamferGeom.vectors[face[0]];
         var v1 = chamferGeom.vectors[face[1]];
         var v2 = chamferGeom.vectors[face[2]];
-        var cb = new THREE.Vector3().subVectors(v2, v1);
-        var ab = new THREE.Vector3().subVectors(v0, v1);
-        var norm = new THREE.Vector3().crossVectors(cb, ab).normalize();
-        faceNormals[fVal] = norm;
+
+        // Exact outward face normal computed from polygon centroid
+        var centroid = new THREE.Vector3();
+        for (var j = 0; j < fl; ++j) {
+          centroid.add(chamferGeom.vectors[face[j]]);
+        }
+        centroid.divideScalar(fl).normalize();
+        faceNormals[fVal] = centroid;
+
+        // Exact face local UP vector (bitangent towards top of number in texture space)
+        var af = def.af, tab = def.tab, aa = Math.PI * 2 / fl;
+        var uv0 = new THREE.Vector2((Math.cos(af) + 1 + tab) / 2 / (1 + tab), (Math.sin(af) + 1 + tab) / 2 / (1 + tab));
+        var uv1 = new THREE.Vector2((Math.cos(aa + af) + 1 + tab) / 2 / (1 + tab), (Math.sin(aa + af) + 1 + tab) / 2 / (1 + tab));
+        var uv2 = new THREE.Vector2((Math.cos(2 * aa + af) + 1 + tab) / 2 / (1 + tab), (Math.sin(2 * aa + af) + 1 + tab) / 2 / (1 + tab));
+
+        var dp1 = new THREE.Vector3().subVectors(v1, v0);
+        var dp2 = new THREE.Vector3().subVectors(v2, v0);
+        var du1 = uv1.x - uv0.x;
+        var dv1 = uv1.y - uv0.y;
+        var du2 = uv2.x - uv0.x;
+        var dv2 = uv2.y - uv0.y;
+        var det = du1 * dv2 - du2 * dv1;
+        var bitangent = new THREE.Vector3();
+        if (Math.abs(det) > 1e-6) {
+          bitangent.subVectors(dp2.multiplyScalar(du1), dp1.multiplyScalar(du2)).divideScalar(det);
+        } else {
+          bitangent.set(0, 1, 0);
+        }
+        bitangent.sub(centroid.clone().multiplyScalar(bitangent.dot(centroid))).normalize();
+        faceUpVectors[fVal] = bitangent;
       }
     }
 
@@ -379,10 +413,41 @@
       defSides: defSides,
       geometry: geom,
       faceNormals: faceNormals,
+      faceUpVectors: faceUpVectors,
       maxVal: def.values
     };
     polyGeometryCache[cacheKey] = result;
     return result;
+  }
+
+  // Exact face orientation: aligns faceNormal with targetNormal AND faceUp with targetUp
+  function computeFaceOrientation(faceNormal, localUp, targetNormal, targetUp) {
+    var n_loc = faceNormal.clone().normalize();
+    var u_loc = localUp.clone().sub(n_loc.clone().multiplyScalar(localUp.dot(n_loc))).normalize();
+    var r_loc = new THREE.Vector3().crossVectors(u_loc, n_loc).normalize();
+
+    var n_tgt = targetNormal.clone().normalize();
+    var u_tgt = targetUp.clone().sub(n_tgt.clone().multiplyScalar(targetUp.dot(n_tgt))).normalize();
+    var r_tgt = new THREE.Vector3().crossVectors(u_tgt, n_tgt).normalize();
+
+    var mLoc = new THREE.Matrix4().makeBasis(r_loc, u_loc, n_loc);
+    var mTgt = new THREE.Matrix4().makeBasis(r_tgt, u_tgt, n_tgt);
+    var mLocInv = mLoc.clone().transpose();
+    var mResult = new THREE.Matrix4().multiplyMatrices(mTgt, mLocInv);
+
+    return new THREE.Quaternion().setFromRotationMatrix(mResult);
+  }
+
+  // Unproject screen pixel (px, py) to 3D world ground plane (Y = 0)
+  function screenToGround(px, py, camera) {
+    var ndcX = (px / window.innerWidth) * 2 - 1;
+    var ndcY = -(py / window.innerHeight) * 2 + 1;
+    var raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+    var groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    var pt = new THREE.Vector3();
+    raycaster.ray.intersectPlane(groundPlane, pt);
+    return pt;
   }
 
   // Create soft shadow texture
@@ -500,37 +565,68 @@
     // 6. Create Dice Meshes & Trajectory Data
     var dice = [];
 
-    // Resting positions (scattered naturally, scaled down by 50%)
+    // Resting positions: random landing within a 1000x500px area in the middle of the screen
+    var areaW = Math.min(1000, Math.max(320, window.innerWidth - 120));
+    var areaH = Math.min(500, Math.max(260, window.innerHeight - 160));
+    var minScreenX = (window.innerWidth - areaW) / 2;
+    var minScreenY = (window.innerHeight - areaH) / 2;
+
     var targetPositions = [];
     if (count === 1) {
-      targetPositions = [{ x: 0, z: 0 }];
-    } else if (count === 3) {
-      targetPositions = [
-        { x: -3.8 + (Math.random() - 0.5) * 0.8, z: -1.8 + (Math.random() - 0.5) * 0.6 },
-        { x: 0.2 + (Math.random() - 0.5) * 0.8, z: 1.8 + (Math.random() - 0.5) * 0.6 },
-        { x: 4.0 + (Math.random() - 0.5) * 0.8, z: -1.0 + (Math.random() - 0.5) * 0.6 }
-      ];
+      var rx = minScreenX + 60 + Math.random() * (areaW - 120);
+      var ry = minScreenY + 50 + Math.random() * (areaH - 100);
+      var gpt = screenToGround(rx, ry, camera);
+      targetPositions.push({ x: gpt.x, z: gpt.z });
     } else {
+      var clusterCenterX = minScreenX + 120 + Math.random() * Math.max(10, areaW - 240);
+      var clusterCenterY = minScreenY + 80 + Math.random() * Math.max(10, areaH - 160);
+      var spacing = Math.min(150, Math.max(80, 220 / Math.sqrt(count)));
+
       for (var i = 0; i < count; i++) {
-        var ang = (i / count) * Math.PI * 2;
-        targetPositions.push({
-          x: Math.cos(ang) * 2.8 + (Math.random() - 0.5) * 0.5,
-          z: Math.sin(ang) * 2.8 + (Math.random() - 0.5) * 0.5
-        });
+        var ang = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+        var r = (count === 3 && i === 0) ? 0 : (spacing * (0.65 + Math.random() * 0.45));
+        var sx = clusterCenterX + Math.cos(ang) * r;
+        var sy = clusterCenterY + Math.sin(ang) * r;
+        sx = Math.max(minScreenX + 40, Math.min(minScreenX + areaW - 40, sx));
+        sy = Math.max(minScreenY + 40, Math.min(minScreenY + areaH - 40, sy));
+        var gptMulti = screenToGround(sx, sy, camera);
+        targetPositions.push({ x: gptMulti.x, z: gptMulti.z });
       }
     }
 
     rollData.rolls.forEach(function (val, idx) {
       var dieMesh;
       var qFinal;
+      var targetX = targetPositions[idx].x;
+      var targetZ = targetPositions[idx].z;
+
+      // Vector pointing directly from the resting die position towards the camera
+      var dirToCam = new THREE.Vector3().subVectors(camera.position, new THREE.Vector3(targetX, halfDie, targetZ)).normalize();
+      var camUp = new THREE.Vector3(0, 1, 0);
+      var screenUp = camUp.clone().sub(dirToCam.clone().multiplyScalar(camUp.dot(dirToCam))).normalize();
 
       if (sides === 6) {
         dieMesh = new THREE.Mesh(cubeGeo, d6Materials);
-        var baseEuler = getBaseEulerForFace(val);
-        var qBase = new THREE.Quaternion().setFromEuler(baseEuler);
-        var yaw = (Math.random() - 0.5) * 0.7 + (idx * 0.8);
-        var qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-        qFinal = qYaw.multiply(qBase);
+        // Face normals and local UP vectors for D6 so the rolled face faces directly towards the user
+        var d6FaceNormals = {
+          1: new THREE.Vector3(0, 1, 0),
+          6: new THREE.Vector3(0, -1, 0),
+          2: new THREE.Vector3(1, 0, 0),
+          5: new THREE.Vector3(-1, 0, 0),
+          3: new THREE.Vector3(0, 0, 1),
+          4: new THREE.Vector3(0, 0, -1)
+        };
+        var d6FaceUps = {
+          1: new THREE.Vector3(0, 0, -1),
+          6: new THREE.Vector3(0, 0, 1),
+          2: new THREE.Vector3(0, 1, 0),
+          5: new THREE.Vector3(0, 1, 0),
+          3: new THREE.Vector3(0, 1, 0),
+          4: new THREE.Vector3(0, 1, 0)
+        };
+        var fNorm = d6FaceNormals[val] || new THREE.Vector3(0, 1, 0);
+        var fUp = d6FaceUps[val] || new THREE.Vector3(0, 0, -1);
+        qFinal = computeFaceOrientation(fNorm, fUp, dirToCam, screenUp);
       } else {
         var polyData = getPolyhedronData(sides, dieSize);
         var targetFaceIndex;
@@ -547,10 +643,11 @@
         });
         var polyMats = [bodyMat];
         for (var f = 1; f <= polyData.maxVal; f++) {
-          var faceDisplayVal = (f === targetFaceIndex) ? val : f;
+          var isTgt = (f === targetFaceIndex);
+          var faceDisplayVal = isTgt ? val : f;
           polyMats.push(new THREE.MeshStandardMaterial({
-            map: createPolyhedralFaceTexture(faceDisplayVal, sides),
-            roughness: 0.35,
+            map: createPolyhedralFaceTexture(faceDisplayVal, sides, isTgt),
+            roughness: isTgt ? 0.3 : 0.45,
             metalness: 0.05
           }));
         }
@@ -558,10 +655,8 @@
         dieMesh = new THREE.Mesh(polyData.geometry, polyMats);
 
         var faceNorm = polyData.faceNormals[targetFaceIndex] || new THREE.Vector3(0, 1, 0);
-        var qAlign = new THREE.Quaternion().setFromUnitVectors(faceNorm, new THREE.Vector3(0, 1, 0));
-        var pYaw = (Math.random() - 0.5) * 0.7 + (idx * 0.8);
-        var qpYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), pYaw);
-        qFinal = qpYaw.multiply(qAlign);
+        var faceUp = polyData.faceUpVectors[targetFaceIndex] || new THREE.Vector3(0, 1, 0);
+        qFinal = computeFaceOrientation(faceNorm, faceUp, dirToCam, screenUp);
       }
 
       scene.add(dieMesh);
@@ -571,11 +666,14 @@
       shadowMesh.position.y = 0.02;
       scene.add(shadowMesh);
 
-      // Initial throw position (coming from bottom right/left)
-      var throwFromX = 9 + idx * 2;
-      var throwFromZ = 8 + idx * 1.5;
-      var targetX = targetPositions[idx].x;
-      var targetZ = targetPositions[idx].z;
+      // Dynamic throw origin: comes from the bottom / bottom-corner edge of the screen
+      var throwScreenX = targetX >= 0
+        ? (window.innerWidth * 0.55 + Math.random() * (window.innerWidth * 0.45))
+        : (Math.random() * (window.innerWidth * 0.45));
+      var throwScreenY = window.innerHeight + 160;
+      var throwGpt = screenToGround(throwScreenX, throwScreenY, camera);
+      var throwFromX = throwGpt ? throwGpt.x : (targetX + 8);
+      var throwFromZ = throwGpt ? throwGpt.z : (targetZ + 10);
 
       dice.push({
         mesh: dieMesh,

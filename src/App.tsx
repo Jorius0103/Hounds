@@ -121,8 +121,13 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
       let eventsChanged = false;
       const mergedEvents = [...existingEvents];
       for (const incEv of incomingEvents) {
-        if (!existingEventIds.has(incEv.id)) {
-          existingEventIds.add(incEv.id);
+        const idx = mergedEvents.findIndex((e) => e.id === incEv.id);
+        if (idx >= 0) {
+          if (mergedEvents[idx].comment !== incEv.comment || JSON.stringify(mergedEvents[idx]) !== JSON.stringify(incEv)) {
+            mergedEvents[idx] = { ...mergedEvents[idx], ...incEv };
+            eventsChanged = true;
+          }
+        } else {
           mergedEvents.push(incEv);
           eventsChanged = true;
         }
@@ -575,6 +580,51 @@ export default function App() {
         return;
       }
 
+      if ((payload as any).type === 'SYNC_ENTRY_COMMENT' && (payload as any).entryId) {
+        const { entryId, npcId, comment, timestamp } = payload as any;
+        const now = timestamp || Date.now();
+        setPlayers((prev) =>
+          prev.map((p) => {
+            const has = (p.history || []).some((h) => h.id === entryId) || (npcId && p.id === npcId);
+            return has
+              ? {
+                  ...p,
+                  history: (p.history || []).map((h) => (h.id === entryId ? { ...h, comment } : h)),
+                  updatedAt: now,
+                }
+              : p;
+          })
+        );
+        setCombats((prev) =>
+          prev.map((c) => {
+            const evHas = (c.events || []).some((e) => e.id === entryId);
+            const npcsHas = (c.npcs || []).some(
+              (n) => (n.history || []).some((h) => h.id === entryId) || (npcId && n.id === npcId)
+            );
+            if (!evHas && !npcsHas) return c;
+            return {
+              ...c,
+              events: evHas
+                ? (c.events || []).map((e) => (e.id === entryId ? { ...e, comment } : e))
+                : c.events,
+              npcs: npcsHas
+                ? (c.npcs || []).map((n) => {
+                    const has = (n.history || []).some((h) => h.id === entryId) || (npcId && n.id === npcId);
+                    return has
+                      ? {
+                          ...n,
+                          history: (n.history || []).map((h) => (h.id === entryId ? { ...h, comment } : h)),
+                          updatedAt: now,
+                        }
+                      : n;
+                  })
+                : c.npcs,
+            };
+          })
+        );
+        return;
+      }
+
       if ((payload as any).type === 'SYNC_EDITORS' && Array.isArray((payload as any).editorUserIds)) {
         setEditorUserIds((payload as any).editorUserIds);
         return;
@@ -769,6 +819,51 @@ export default function App() {
               );
             }
           }
+          return;
+        }
+
+        if (event.data?.type === 'SYNC_ENTRY_COMMENT' && event.data.entryId) {
+          const { entryId, npcId, comment, timestamp } = event.data;
+          const now = timestamp || Date.now();
+          setPlayers((prev) =>
+            prev.map((p) => {
+              const has = (p.history || []).some((h) => h.id === entryId) || (npcId && p.id === npcId);
+              return has
+                ? {
+                    ...p,
+                    history: (p.history || []).map((h) => (h.id === entryId ? { ...h, comment } : h)),
+                    updatedAt: now,
+                  }
+                : p;
+            })
+          );
+          setCombats((prev) =>
+            prev.map((c) => {
+              const evHas = (c.events || []).some((e) => e.id === entryId);
+              const npcsHas = (c.npcs || []).some(
+                (n) => (n.history || []).some((h) => h.id === entryId) || (npcId && n.id === npcId)
+              );
+              if (!evHas && !npcsHas) return c;
+              return {
+                ...c,
+                events: evHas
+                  ? (c.events || []).map((e) => (e.id === entryId ? { ...e, comment } : e))
+                  : c.events,
+                npcs: npcsHas
+                  ? (c.npcs || []).map((n) => {
+                      const has = (n.history || []).some((h) => h.id === entryId) || (npcId && n.id === npcId);
+                      return has
+                        ? {
+                            ...n,
+                            history: (n.history || []).map((h) => (h.id === entryId ? { ...h, comment } : h)),
+                            updatedAt: now,
+                          }
+                        : n;
+                    })
+                  : c.npcs,
+              };
+            })
+          );
           return;
         }
 
@@ -2676,6 +2771,25 @@ export default function App() {
       plChanged ? nextPlayers : undefined,
       updatedChar || undefined
     );
+
+    // Envio IMEDIATO dedicado para que todos os clientes vejam o comentário no exato instante do clique em Salvar
+    try {
+      const commentPayload = {
+        type: 'SYNC_ENTRY_COMMENT',
+        entryId,
+        npcId: npcId || updatedChar?.id,
+        comment: comment || '',
+        timestamp: now,
+      };
+      onlineSyncService.sendPayloadImmediate(commentPayload);
+      broadcastChannelRef.current?.postMessage({
+        ...commentPayload,
+        sourceId: onlineSyncService.getClientId(),
+      });
+      if ((window as any).parent?.hubMesaBus) {
+        (window as any).parent.hubMesaBus.publish(JSON.stringify(commentPayload));
+      }
+    } catch (e) {}
   };
 
   const handleDeleteLogEntry = (entryId: string, npcId?: string, revertValues: boolean = true) => {
