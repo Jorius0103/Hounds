@@ -82,10 +82,10 @@ export const TopNav: React.FC<TopNavProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800/80 px-3 lg:px-5 py-2">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 flex-wrap">
+    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800/80 px-2 sm:px-4 py-1.5">
+      <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-2 flex-nowrap overflow-x-auto scrollbar-none">
         {/* Zone 1: Brand title & Combat selector / CRUD */}
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
               <Swords size={16} />
@@ -395,7 +395,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           {/* Indicador de Transmissão com Música, Artista e DJ */}
           {audioState.hasActiveBroadcast ? (
             <div
-              className="flex items-center gap-1.5 max-w-[160px] sm:max-w-[240px] md:max-w-[300px] truncate"
+              className="flex items-center gap-1.5 max-w-[130px] sm:max-w-[200px] md:max-w-[260px] truncate"
               title={`Música: ${audioState.trackTitle || 'Trilha'} | DJ: ${audioState.broadcasterName || 'Mestre'}`}
             >
               <span className="flex h-2 w-2 relative shrink-0">
@@ -403,14 +403,30 @@ export const TopNav: React.FC<TopNavProps> = ({
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
               <Music size={13} className="text-emerald-400 shrink-0" />
-              <div className="flex flex-col min-w-0 leading-tight">
-                <span className="text-[11px] font-bold text-white truncate">
-                  {audioState.trackTitle || 'Trilha Sonora'}
-                </span>
-                <span className="text-[9px] text-amber-300/90 truncate font-mono">
-                  DJ: {audioState.isBroadcasting ? 'Você' : audioState.broadcasterName || 'Mestre'}
-                </span>
-              </div>
+              {audioState.isBroadcasting ? (
+                <button
+                  type="button"
+                  onClick={() => audioStreamSync.promptEditTrackTitle()}
+                  className="flex flex-col min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
+                  title="Clique para editar o nome da música e artista"
+                >
+                  <span className="text-[11px] font-bold text-white truncate max-w-[110px] sm:max-w-[170px] md:max-w-[220px]">
+                    {audioState.trackTitle || 'Trilha Sonora'}
+                  </span>
+                  <span className="text-[9px] text-amber-300/90 truncate font-mono">
+                    DJ: Você ✏️
+                  </span>
+                </button>
+              ) : (
+                <div className="flex flex-col min-w-0 leading-tight">
+                  <span className="text-[11px] font-bold text-white truncate max-w-[110px] sm:max-w-[170px] md:max-w-[220px]">
+                    {audioState.trackTitle || 'Trilha Sonora'}
+                  </span>
+                  <span className="text-[9px] text-amber-300/90 truncate font-mono">
+                    DJ: {audioState.broadcasterName || 'Mestre'}
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-1 text-slate-400 shrink-0" title="Trilha Sonora (Inativa)">
@@ -441,10 +457,10 @@ export const TopNav: React.FC<TopNavProps> = ({
               max={100}
               value={audioState.isMuted ? 0 : audioState.volume}
               onChange={(e) => audioStreamSync.setVolume(Number(e.target.value))}
-              className="w-12 sm:w-16 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              className="w-10 sm:w-14 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
               title={`Volume: ${audioState.isMuted ? 'Mutado' : `${audioState.volume}%`}`}
             />
-            <span className="text-[10px] font-mono font-bold text-slate-400 w-6 text-right hidden sm:inline">
+            <span className="text-[10px] font-mono font-bold text-slate-400 w-5 text-right hidden sm:inline">
               {audioState.isMuted ? '0%' : `${audioState.volume}%`}
             </span>
           </div>

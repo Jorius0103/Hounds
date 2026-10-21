@@ -391,6 +391,9 @@ var MesaSync = (function () {
             if (loaded()) push({ type: 'SYNC_DICE_ROLL', rollData: m.rollData, logEntry: m.logEntry, timestamp: m.ts || Date.now() });
           }
         });
+        rt().on('mesa-audio', function (m) {
+          if (m && loaded()) push(m);
+        });
       }
     },
     // Runs before the Mesa iframe loads: put the saved state where the Mesa reads it.
@@ -417,6 +420,10 @@ var MesaSync = (function () {
       var imgs = str.indexOf('data:image/') >= 0;
       if (m.type === 'SYNC_DICE_ROLL' && m.rollData) {
         if (rt()) rt().send('mesa-dice', { rollData: m.rollData, logEntry: m.logEntry, ts: m.timestamp || Date.now() });
+        return;
+      }
+      if (m.type && (m.type.indexOf('AUDIO_STREAM_') === 0 || m.type.indexOf('RTC_') === 0)) {
+        if (rt()) rt().send('mesa-audio', m);
         return;
       }
       if (m.type === 'SYNC_EDITORS' && Array.isArray(m.editorUserIds)) {

@@ -51,12 +51,15 @@
   } catch (e) {}
 
   function cleanTrackTitle(label) {
-    if (!label) return 'Spotify / Música';
+    if (!label) return '';
     var t = String(label).trim();
+    if (t.indexOf('web-contents-media-stream') >= 0 || t.indexOf('screen:') === 0 || t.indexOf('window:') === 0) {
+      return '';
+    }
     // Limpa sufixos e prefixos de navegador e player
     t = t.replace(/\s*[-–—|]\s*(Spotify|YouTube|Web Player|Brave|Google Chrome|Microsoft Edge).*$/i, '');
     t = t.replace(/^(Spotify|YouTube)\s*[-–—|]\s*(Web Player:\s*)?/i, '');
-    return t.trim() || label;
+    return t.trim();
   }
 
   function ensureAudio() {
@@ -86,12 +89,24 @@
   }
 
   function sendSignal(payload) {
+    var full = Object.assign({}, payload, {
+      clientId: myClientId,
+      senderClientId: myClientId,
+      timestamp: Date.now()
+    });
     if (typeof sendSignalFn === 'function') {
-      sendSignalFn(Object.assign({}, payload, {
-        senderClientId: myClientId,
-        timestamp: Date.now()
-      }));
+      try { sendSignalFn(full); } catch (e) {}
     }
+    try {
+      if (typeof window !== 'undefined' && window.parent && window.parent.hubMesaBus) {
+        window.parent.hubMesaBus.publish(JSON.stringify(full));
+      }
+    } catch (e) {}
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        new BroadcastChannel('gurps_combat_sync_channel_v1').postMessage(full);
+      }
+    } catch (e) {}
   }
 
   async function flushCandidates(peerId, pc) {
@@ -111,6 +126,17 @@
       myClientId = cid;
       sendSignalFn = signalFn;
       ensureAudio();
+      setTimeout(function () {
+        sendSignal({ type: 'AUDIO_STREAM_QUERY' });
+      }, 350);
+    },
+
+    promptEditTrackTitle: function () {
+      var current = state.trackTitle || '';
+      var updated = window.prompt('Nome da música e artista:', current);
+      if (updated !== null && updated.trim()) {
+        AudioStreamSync.setTrackTitle(updated.trim());
+      }
     },
 
     getState: function () {
@@ -204,7 +230,18 @@
 
         // Obtém o nome da aba selecionada (ex: "Black • Pearl Jam - Spotify")
         var videoTrack = stream.getVideoTracks()[0];
-        var tabTitle = videoTrack && videoTrack.label ? cleanTrackTitle(videoTrack.label) : 'Música / Spotify';
+        var rawLabel = videoTrack && videoTrack.label ? videoTrack.label : '';
+        var tabTitle = cleanTrackTitle(rawLabel);
+
+        // Se o navegador escondeu o título da aba por segurança ou se veio vazio, pergunta ao usuário
+        if (!tabTitle || rawLabel.indexOf('web-contents-media-stream') >= 0) {
+          var promptTitle = window.prompt('Nome da música e artista sendo tocados no Spotify / Browser (ex: Black • Pearl Jam):', 'Black • Pearl Jam');
+          if (promptTitle && promptTitle.trim()) {
+            tabTitle = promptTitle.trim();
+          } else {
+            tabTitle = 'Música / Spotify';
+          }
+        }
 
         localStream = stream;
 
@@ -296,6 +333,18 @@
       if (!payload || payload.senderClientId === myClientId) return;
 
       switch (payload.type) {
+        case 'AUDIO_STREAM_QUERY':
+          if (state.isBroadcasting && localStream && localStream.active) {
+            sendSignal({
+              type: 'AUDIO_STREAM_ANNOUNCE',
+              active: true,
+              broadcasterClientId: myClientId,
+              broadcasterName: state.broadcasterName || 'Mestre',
+              trackTitle: state.trackTitle || 'Música / Spotify'
+            });
+          }
+          break;
+
         case 'AUDIO_STREAM_ANNOUNCE':
           if (payload.active) {
             state.hasActiveBroadcast = true;

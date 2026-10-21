@@ -26,11 +26,14 @@ const ICE_SERVERS: RTCConfiguration = {
 };
 
 function cleanTrackTitle(label?: string): string {
-  if (!label) return 'Spotify / Música';
+  if (!label) return '';
   let t = String(label).trim();
+  if (t.indexOf('web-contents-media-stream') >= 0 || t.indexOf('screen:') === 0 || t.indexOf('window:') === 0) {
+    return '';
+  }
   t = t.replace(/\s*[-–—|]\s*(Spotify|YouTube|Web Player|Brave|Google Chrome|Microsoft Edge).*$/i, '');
   t = t.replace(/^(Spotify|YouTube)\s*[-–—|]\s*(Web Player:\s*)?/i, '');
-  return t.trim() || label;
+  return t.trim();
 }
 
 class AudioStreamSyncService {
@@ -80,6 +83,17 @@ class AudioStreamSyncService {
     this.myClientId = myClientId;
     this.sendSignalCallback = sendSignal;
     this.ensureAudioElement();
+    setTimeout(() => {
+      this.sendSignal({ type: 'AUDIO_STREAM_QUERY' });
+    }, 350);
+  }
+
+  public promptEditTrackTitle() {
+    const current = this.state.trackTitle || '';
+    const updated = window.prompt('Nome da música e artista:', current);
+    if (updated !== null && updated.trim()) {
+      this.setTrackTitle(updated.trim());
+    }
   }
 
   private ensureAudioElement(): HTMLAudioElement | null {
@@ -205,7 +219,20 @@ class AudioStreamSyncService {
       }
 
       const videoTrack = stream.getVideoTracks()[0];
-      const tabTitle = videoTrack && videoTrack.label ? cleanTrackTitle(videoTrack.label) : 'Música / Spotify';
+      const rawLabel = videoTrack?.label || '';
+      let tabTitle = cleanTrackTitle(rawLabel);
+
+      if (!tabTitle || rawLabel.indexOf('web-contents-media-stream') >= 0) {
+        const promptTitle = window.prompt(
+          'Nome da música e artista sendo tocados no Spotify / Browser (ex: Black • Pearl Jam):',
+          'Black • Pearl Jam'
+        );
+        if (promptTitle && promptTitle.trim()) {
+          tabTitle = promptTitle.trim();
+        } else {
+          tabTitle = 'Música / Spotify';
+        }
+      }
 
       this.localStream = stream;
 
@@ -294,13 +321,27 @@ class AudioStreamSyncService {
   }
 
   private sendSignal(payload: any) {
+    const full = {
+      ...payload,
+      clientId: this.myClientId,
+      senderClientId: this.myClientId,
+      timestamp: Date.now(),
+    };
     if (this.sendSignalCallback) {
-      this.sendSignalCallback({
-        ...payload,
-        senderClientId: this.myClientId,
-        timestamp: Date.now(),
-      });
+      try {
+        this.sendSignalCallback(full);
+      } catch (e) {}
     }
+    try {
+      if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+        (window as any).parent.hubMesaBus.publish(JSON.stringify(full));
+      }
+    } catch (e) {}
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        new BroadcastChannel('gurps_combat_sync_channel_v1').postMessage(full);
+      }
+    } catch (e) {}
   }
 
   private async flushCandidates(peerId: string, pc: RTCPeerConnection) {
@@ -320,6 +361,19 @@ class AudioStreamSyncService {
     if (!payload || payload.senderClientId === this.myClientId) return;
 
     switch (payload.type) {
+      case 'AUDIO_STREAM_QUERY': {
+        if (this.state.isBroadcasting && this.localStream && this.localStream.active) {
+          this.sendSignal({
+            type: 'AUDIO_STREAM_ANNOUNCE',
+            active: true,
+            broadcasterClientId: this.myClientId,
+            broadcasterName: this.state.broadcasterName || 'Mestre',
+            trackTitle: this.state.trackTitle || 'Música / Spotify',
+          });
+        }
+        break;
+      }
+
       case 'AUDIO_STREAM_ANNOUNCE': {
         if (payload.active) {
           this.state.hasActiveBroadcast = true;
