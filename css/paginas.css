@@ -850,7 +850,12 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 }
 
 /* Corpo: um cartão por parte (4 colunas; 2 no tablet; 1 no celular), depois o que vai fora das partes */
-.gear-body { display: flex; flex-direction: column; gap: 10px; }
+.gear-body { display: flex; flex-direction: column; gap: 0; }
+/* The parts' table and the carried ones touch, as one table: square corners where they meet. */
+.gear-body > .wtab-wrap:has(+ .gb-carry-box .gb-small) .gb-tab { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.gb-carry-box .gb-small { margin-top: -1px; border-top-left-radius: 0; border-top-right-radius: 0; }
+.gb-carry-box > .gb-none { padding-top: 6px; }
+.gear-body > .gb-weight { margin-top: 6px; }
 /* Corpo: the parts in a table (bodyPartsHtml), one row per armor worn */
 .gb-tab td { vertical-align: middle; }
 .gb-tab th.gb-aname-h, .gb-tab td.gb-aname { text-align: left; }
@@ -866,17 +871,10 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .gb-tab tr.gb-empty td { background: transparent; }
 .gb-tab tr.gb-empty td[colspan] { text-align: left; }
 .gb-layers { display: inline-block; margin-left: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 1px 7px; }
-.gb-head { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-.gb-head b { font-size: 14px; }
-.gb-head small { font-size: 11px; color: var(--faint); }
 .gb-none { font-size: 12.5px; color: var(--faint); }
-.gb-carry { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px 14px; min-width: 0; }
-.gb-carry .gb-head { flex-direction: column; gap: 0; }
-.gb-chips { flex: 1; display: flex; flex-wrap: wrap; align-items: center; min-width: 0; }
-.gb-chips .gear-chip { flex-wrap: nowrap; white-space: nowrap; }
 .gb-weight { display: flex; align-items: baseline; gap: 6px; margin-left: auto; font-size: 12px; color: var(--muted); }
 .gb-weight b { font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
-@media (max-width: 560px) { .gb-carry { flex-direction: column; align-items: stretch; } .gb-weight { margin-left: 0; } .gb-tab td.gb-pname { white-space: normal; } }
+@media (max-width: 560px) { .gb-weight { margin-left: 0; } .gb-tab td.gb-pname { white-space: normal; } }
 
 /* Mochilas: um cartão por mochila; as que não estão em uso, apagadas */
 .gear-pack { display: flex; flex-direction: column; gap: 10px; }
@@ -1028,3 +1026,23 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .gear-picker .suggest button[hidden] { display: none; }
 .gear-picker-none { margin: 0; padding: 8px 10px; font-size: 12.5px; color: var(--faint); }
 .gear-picker-none[hidden] { display: none; }
+/* Corpo: what is carried outside the parts, as a table (bodyCarryTableHtml), and the weight of it all */
+.gb-carry-box { display: flex; flex-direction: column; gap: 8px; }
+/* The tables of Meus Itens, smaller, in Corpo */
+/* Stacked with no gap, as one table: no totals, one border between them, rounded only outside. */
+.gb-small { display: flex; flex-direction: column; gap: 0; border-radius: 14px; overflow: hidden; }
+.gb-small tfoot { display: none; }
+.gb-small .gtab { border-radius: 0; }
+.gb-small > * + * { margin-top: -1px; }
+/* The items' two tables side by side touch too (one border between them). */
+.gb-small .eq-split { gap: 0; }
+.gb-small .eq-split > .gtab + .gtab { margin-left: -1px; }
+@media (max-width: 900px) { .gb-small .eq-split > .gtab + .gtab { margin-left: 0; margin-top: -1px; } }
+.gb-small .gtab { font-size: 12.5px; }
+.gb-small .gtab th { font-size: 9.5px; padding: 7px 10px; }
+.gb-small .gtab td { padding: 5px 10px; }
+.gb-small .gtab .gval { font-size: 13px; }
+.gb-small .gtab td small { font-size: 10.5px; }
+.gb-small .gtab td.ab-desc, .gb-small .gtab td.ab-txt { font-size: 11.5px; }
+.gb-small .eq-kind { width: 18px; height: 18px; }
+.gear-body > .gb-weight { justify-content: flex-end; }

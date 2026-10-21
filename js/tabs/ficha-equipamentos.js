@@ -544,6 +544,11 @@ function invRowHtml(x, g, L, can) {
       (where.length ? ' Está em ' + esc(where.join(' · ')) + ': sai de lá também.' : '') + '</span><div class="btn-row"><button class="btn danger solid" type="button" data-it-delyes="' + esc(x.id) + '">Excluir</button>' +
       '<button class="btn ghost" type="button" data-it-delno="1">Cancelar</button></div></div></td></tr>' : '');
 }
+// The table of the items (not made in Criar Armadura, Arma or Escudo): Equipamento | Qtd. | Peso | Descrição.
+function gearItemTableHtml(list, g, L, can) {
+  return '<table class="gtab eq-tab"><thead><tr><th>Equipamento</th><th>Qtd.</th><th>Peso</th><th class="ab-desc-h">Descrição</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' +
+    list.map(function (x) { return invRowHtml(x, g, L, can); }).join('') + '</tbody></table>';
+}
 // can: the actions of the lines (not while something else is being edited).
 function sheetInvHtml(g, L, can) {
   var head = '<div class="gurps-head">' + gearGripHtml('Meus Itens') + gearFoldTitle('equip', 'Meus Itens', false) + '<span class="gurps-total" id="eqTotal" title="Peso de tudo o que o personagem tem (não é a carga)">' + esc(eqLbs(L.owned)) + '</span></div>';
@@ -555,10 +560,7 @@ function sheetInvHtml(g, L, can) {
   var shields = g.equip.filter(function (x) { return g.shieldLines[x.id]; }).sort(byName);
   var rest = g.equip.filter(function (x) { return !g.pieces[x.id] && !g.weaponLines[x.id] && !g.shieldLines[x.id]; }).sort(byName);
   var half = Math.ceil(rest.length / 2);
-  function tab(list) {
-    return '<table class="gtab eq-tab"><thead><tr><th>Equipamento</th><th>Qtd.</th><th>Peso</th><th class="ab-desc-h">Descrição</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' +
-      list.map(function (x) { return invRowHtml(x, g, L, can); }).join('') + '</tbody></table>';
-  }
+  function tab(list) { return gearItemTableHtml(list, g, L, can); }
   return '<section class="gurps' + gearFoldClass('equip', false) + '" id="equip">' + head +
     (armors.length ? armorItemsHtml(armors, g, L, can) : '') +
     (weapons.length ? weaponItemsHtml(weapons, g, L, can) : '') +
@@ -594,13 +596,24 @@ function sheetBodyHtml(g, L, editing, busy) {
   }).join('') + '</div>';
   var bar = '<div class="gear-bar' + (b.active ? ' on' : '') + '"><span>' + (b.active ? svg(ICON.info, 14) + '<b>Em uso</b>: entra na carga.' : '<b>Fora de uso</b>: não entra na carga.') + '</span>' +
     (quick ? (b.active ? '<button class="btn ghost" type="button" data-buse="">Parar de usar</button>' : '<button class="btn" type="button" data-buse="' + esc(b.id) + '">Usar esta configuração</button>') : '') + '</div>';
-  // The parts in a table (bodyPartsHtml), then what is carried.
-  var carried = b.slots.filter(function (sl) { return sl.part === GEAR_CARRY && by[sl.equipId]; });
+  // The parts in a table (bodyPartsHtml), then what is carried (bodyCarryTableHtml), then the weight of it all.
   return '<section class="gurps' + gearFoldClass('body', editing) + '" id="gearBody">' + head + tabs + bar + gearConflictsHtml(g, 'body') +
-    '<div class="gear-body">' + bodyPartsHtml(b, by, g) +
-    '<div class="gb-carry"><div class="gb-head"><b>Armas, escudos e itens</b><small>fora das partes</small></div><div class="gb-chips">' +
-    (carried.length ? carried.map(function (sl) { return gearChip(by[sl.equipId], sl.qty, g); }).join('') : '<span class="gb-none">Nada</span>') + '</div>' +
-    '<div class="gb-weight"><span>Peso</span><b>' + esc(eqLbs(unitsLbs(bodyUnits(b, by), by))) + '</b></div></div></div></section>';
+    '<div class="gear-body">' + bodyPartsHtml(b, by, g) + bodyCarryTableHtml(b, by, g, L) +
+    '<div class="gb-weight"><span>Peso do corpo</span><b>' + esc(eqLbs(unitsLbs(bodyUnits(b, by), by))) + '</b></div></div></section>';
+}
+// What b carries outside the parts, with the tables of Meus Itens (smaller): the weapons of Criar Arma
+// (Modo, Dano, NH, Alcance, Peso, Ajustes, Descrição), the shields of Criar Escudo (BD, RD, PV, NH,
+// Peso, Ajustes, Descrição) and the rest, items and catalog weapons and shields (Qtd., Peso, Descrição).
+// No actions: they are in Meus Itens.
+function bodyCarryTableHtml(b, by, g, L) {
+  var lines = b.slots.filter(function (sl) { return sl.part === GEAR_CARRY && by[sl.equipId]; }).map(function (sl) { return by[sl.equipId]; }).sort(byName);
+  var weapons = lines.filter(function (e) { return g.weaponLines[e.id]; }), shields = lines.filter(function (e) { return g.shieldLines[e.id]; });
+  var rest = lines.filter(function (e) { return !g.weaponLines[e.id] && !g.shieldLines[e.id]; });
+  return '<div class="gb-carry-box">' +
+    (lines.length ? '<div class="gb-small">' + (weapons.length ? weaponItemsHtml(weapons, g, L, false) : '') + (shields.length ? shieldItemsHtml(shields, g, L, false) : '') +
+      // The items in two tables side by side, as in Meus Itens.
+      (rest.length ? '<div class="eq-split">' + gearItemTableHtml(rest.slice(0, Math.ceil(rest.length / 2)), g, L, false) +
+        (rest.length > 1 ? gearItemTableHtml(rest.slice(Math.ceil(rest.length / 2)), g, L, false) : '') + '</div>' : '') + '</div>' : '<p class="gb-none" style="margin:0">Nenhuma arma, escudo ou item fora das partes.</p>') + '</div>';
 }
 // The parts of b as a table, one row per armor worn: Parte do corpo | Acerto (3d) | RD | Armadura | Descrição. The RD
 // as worn ("4*", "6 frontal"; a catalog armor's "4/2* · BD 2"); the description, the adjustments of Criar
