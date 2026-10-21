@@ -425,8 +425,7 @@ function gearLoadStatsHtml(L, a) {
     gearStat('Mochila em uso', on ? esc(eqLbs(L.inUse)) : '—', on ? esc(on.pack.name) : L.packs.length ? 'nenhuma em uso' : 'nenhuma mochila') +
     gearStat('Peso carregado', esc(eqLbs(L.total)), L.once ? esc(eqLbs(L.once)) + ' contados uma vez só' : 'corpo + mochila em uso') +
     gearStat('Nível de carga', over ? 'Acima do limite' : esc(EQ_LEVELS[lv][1]) + ' (' + lv + ')',
-      over ? 'mais de ' + esc(eqLbs(10 * lift)) + ' (' + times(10) + '): não consegue se mover' : 'até ' + esc(eqLbs(EQ_LEVELS[lv][0] * lift)) + ' (' + times(EQ_LEVELS[lv][0]) + ')') +
-    gearStat('Custo total', esc(eqMoney(L.cost)), 'de toda a lista');
+      over ? 'mais de ' + esc(eqLbs(10 * lift)) + ' (' + times(10) + '): não consegue se mover' : 'até ' + esc(eqLbs(EQ_LEVELS[lv][0] * lift)) + ' (' + times(EQ_LEVELS[lv][0]) + ')');
 }
 // A line on the body and in packs in use beyond what the list has: it weighs only what the list has.
 function gearOverHtml(L) {

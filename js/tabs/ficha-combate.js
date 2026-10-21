@@ -951,17 +951,18 @@ Ops.saveSheetCombatPart = function (s, part) {
   var cur = sheetById(s.id) || s;
   return Ops.saveSheetCombat(cur, Object.assign(sheetCombat(cur), part));
 };
+// Danos (id 'dm') and Defesas ('df') fold like the other sections (gearFoldTitle; keys 'dmg' and 'def').
 function scSectionHead(title, editing, id, label) {
-  return '<div class="gurps-head">' + sheetGripHtml('Danos e Defesas') + '<h2 class="sec-title">' + title + '</h2>' +
+  return '<div class="gurps-head">' + sheetGripHtml('Danos e Defesas') + gearFoldTitle(id === 'dm' ? 'dmg' : 'def', title, editing) +
     (editing ? secSaveBtnsHtml(id + 'Cancel', id + 'Save', label) : canWrite() && !sheetDraftOpen() ? secEditBtnHtml(id + 'Edit', label) : '') + '</div>';
 }
 function sheetDefenseHtml(s, editing) {
   var ui = S.ui, c = sheetCombat(s), a = sheetAttrsNow(s), pool = combatSkillPool(c, s), head = scSectionHead('Defesas', editing, 'df', 'defesas');
-  if (!editing) return '<section class="gurps" id="defense">' + head + scDefHtml(c, combatDefenses(scWithAdvs(c, s), pool, attrValues(a), gurpsStats(a), a, s)) + '</section>';
+  if (!editing) return '<section class="gurps' + gearFoldClass('def', editing) + '" id="defense">' + head + scDefHtml(c, combatDefenses(scWithAdvs(c, s), pool, attrValues(a), gurpsStats(a), a, s)) + '</section>';
   var dd = ui.defDraft;
   var parryNames = pool.filter(function (k) { return SC_PARRY[combatKey(k.name)]; }).map(function (k) { return [k.name, k.name]; });
   var blockNames = pool.filter(function (k) { return /^(shield|cloak)\b/.test(combatKey(k.name)); }).map(function (k) { return [k.name, k.name]; });
-  return '<section class="gurps" id="defense">' + head + '<div class="box sc-edit"><div class="sc-row">' +
+  return '<section class="gurps' + gearFoldClass('def', editing) + '" id="defense">' + head + '<div class="box sc-edit"><div class="sc-row">' +
     scField('Aparar com', '<select data-f="parry"><option value="">Automático (a melhor)</option>' + scOpts(parryNames, dd.parry) + '</select>', 'sc-name') +
     scField('Bônus', '<input type="number" data-f="parryBonus" min="-20" max="20" value="' + dd.parryBonus + '">') + scDefNote('parry', dd.parryNote, dd.parryBonus) + '</div><div class="sc-row">' +
     scField('Bloquear com', '<select data-f="block"><option value="">Automático (a melhor)</option>' + scOpts(blockNames, dd.block) + '</select>', 'sc-name') +

@@ -574,14 +574,14 @@ function dmFxHtml(ctx) {
 }
 function sheetDamageHtml(s, editing) {
   var ui = S.ui, ctx = dmContext(s), head = scSectionHead('Danos', editing, 'dm', 'outros ataques');
-  if (editing) return '<section class="gurps" id="damage">' + head + dmEditHtml(ui.dmgDraft, ctx) + '</section>';
+  if (editing) return '<section class="gurps' + gearFoldClass('dmg', editing) + '" id="damage">' + head + dmEditHtml(ui.dmgDraft, ctx) + '</section>';
   var carried = dmCarried(ctx), typed = dmTyped(ctx, sheetCombat(s).weapons);
   DM_VIEW = [];
   var body = dmGroupHtml(carried ? 'Armas em uso · ' + carried.body.name : 'Armas em uso', carried ? carried.weapons : [],
       carried ? 'Nenhuma arma no Corpo em uso (Equip. › Corpo).' : 'Nenhuma configuração do Corpo em uso: as armas aparecem aqui quando uma estiver em uso (Equip. › Corpo).', 'armed') +
     dmGroupHtml('Sem arma', dmUnarmed(ctx), '', 'ua') + dmGroupHtml('Outros ataques', typed);
   // The table and the list of the advantages below it; scrolls sideways when the half is too narrow.
-  return '<section class="gurps" id="damage">' + head + '<div class="dm-wrap"><table class="gtab sc-dmg dm-tab"><thead><tr><th>Arma</th><th>Modo</th><th>Dano</th><th>NH</th><th>Alcance</th><th>Aparar</th></tr></thead><tbody>' + body + '</tbody></table>' +
+  return '<section class="gurps' + gearFoldClass('dmg', editing) + '" id="damage">' + head + '<div class="dm-wrap"><table class="gtab sc-dmg dm-tab"><thead><tr><th>Arma</th><th>Modo</th><th>Dano</th><th>NH</th><th>Alcance</th><th>Aparar</th></tr></thead><tbody>' + body + '</tbody></table>' +
     dmFxHtml(ctx) + '</div></section>';
 }
 
