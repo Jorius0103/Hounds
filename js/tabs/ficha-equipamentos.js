@@ -526,29 +526,40 @@ function sheetBodyHtml(g, L, editing, busy) {
   }).join('') + '</div>';
   var bar = '<div class="gear-bar' + (b.active ? ' on' : '') + '"><span>' + (b.active ? svg(ICON.info, 14) + '<b>Em uso</b>: entra na carga.' : '<b>Fora de uso</b>: não entra na carga.') + '</span>' +
     (quick ? (b.active ? '<button class="btn ghost" type="button" data-buse="">Parar de usar</button>' : '<button class="btn" type="button" data-buse="' + esc(b.id) + '">Usar esta configuração</button>') : '') + '</div>';
-  // A card per part (its armors, layers one under the other; none: faded), then what is carried.
-  var parts = GEAR_PARTS.map(function (p) {
-    var here = b.slots.filter(function (sl) { return sl.part === p[0] && by[sl.equipId]; }), n = here.length;
-    return '<div class="gb-part' + (n ? '' : ' empty') + '" data-part="' + p[0] + '"><div class="gb-head"><b>' + p[1] + '</b><small>' + p[2] + '</small>' +
-      (n > 1 ? '<span class="gb-layers" title="Camadas: sem regra de sobreposição configurada, as RDs não são somadas">' + n + ' camadas</span>' : '') + '</div>' +
-      (n ? here.map(function (sl) { return bodyArmorHtml(by[sl.equipId], sl.qty, g); }).join('') : '<span class="gb-none">Sem armadura</span>') + '</div>';
-  }).join('');
+  // The parts in a table (bodyPartsHtml), then what is carried.
   var carried = b.slots.filter(function (sl) { return sl.part === GEAR_CARRY && by[sl.equipId]; });
   return '<section class="gurps' + gearFoldClass('body', editing) + '" id="gearBody">' + head + tabs + bar +
-    '<div class="gear-body"><div class="gb-grid">' + parts + '</div>' +
+    '<div class="gear-body">' + bodyPartsHtml(b, by, g) +
     '<div class="gb-carry"><div class="gb-head"><b>Armas, escudos e itens</b><small>fora das partes</small></div><div class="gb-chips">' +
     (carried.length ? carried.map(function (sl) { return gearChip(by[sl.equipId], sl.qty, g); }).join('') : '<span class="gb-none">Nada</span>') + '</div>' +
     '<div class="gb-weight"><span>Peso</span><b>' + esc(eqLbs(unitsLbs(bodyUnits(b, by), by))) + '</b></div></div></div></section>';
 }
-// An armor on a part, as worn: the armor and its RD ("RD 4*", "RD 6 frontal"; a catalog armor's
-// "RD 4/2* · BD 2"), under them the adjustments of Criar Armadura and the line's notes. Layers: the RDs
-// are listed and not added, the project has no layering rule configured (Basic Set, p. B286).
-function bodyArmorHtml(e, qty, g) {
-  var pc = g.pieces[e.id], adj = pc && pc.set.mods.length ? pc.set.mods.map(armorAdjText).join('; ') : '', dr = gearArmorDr(e, g);
-  return '<div class="gb-armor"><div class="gb-line"><span class="gb-name">' + gearKindTag(e.kind) + '<span>' + (qty > 1 ? qty + ' × ' : '') + esc(e.name) + '</span></span>' +
-    (dr ? '<span class="gb-dr">' + esc(dr) + '</span>' : '') + '</div>' +
-    (adj ? '<p class="gb-adj" title="Ajustes">' + esc(adj) + '</p>' : '') +
-    (e.notes ? '<p class="gb-note" title="' + esc(e.notes) + '">' + esc(e.notes) + '</p>' : '') + '</div>';
+// The parts of b as a table, one row per armor worn: Parte do corpo | Acerto (3d) | RD | Armadura | Descrição. The RD
+// as worn ("4*", "6 frontal"; a catalog armor's "4/2* · BD 2"); the description, the adjustments of Criar
+// Armadura ("Fortified, RD +1") and the line's notes. A part without armor: one faded row. Layers: the
+// part's cell spans its armors; the RDs are listed and not added, the project has no layering rule
+// configured (Basic Set, p. B286).
+// The rolls of 3d that hit each part (Basic Set, p. B552, Hit Location Table): Skull 3-4 and Face 5 are
+// the head; 6-7 and 13-14 the legs; 8 and 12 the arms; 9-10 the torso (vitals included); 11 the groin.
+var GEAR_PART_ROLLS = { head: '3, 4, 5', neck: '17, 18', torso: '9, 10', groin: '11', arms: '8, 12', hands: '15', legs: '6, 7, 13, 14', feet: '16' };
+function bodyPartsHtml(b, by, g) {
+  var rows = GEAR_PARTS.map(function (p) {
+    var here = b.slots.filter(function (sl) { return sl.part === p[0] && by[sl.equipId]; }), n = here.length;
+    var part = '<td class="gb-pname"' + (n > 1 ? ' rowspan="' + n + '"' : '') + '><b>' + p[1] + '</b><small>' + p[2] + '</small>' +
+      (n > 1 ? '<span class="gb-layers" title="Camadas: sem regra de sobreposição configurada, as RDs não são somadas">' + n + ' camadas</span>' : '') + '</td>' +
+      '<td class="gb-roll"' + (n > 1 ? ' rowspan="' + n + '"' : '') + ' title="Rolagem de 3d da localização (Basic Set, p. B552)">' + esc(GEAR_PART_ROLLS[p[0]] || '—') + '</td>';
+    if (!n) return '<tr class="gb-empty" data-part="' + p[0] + '">' + part + '<td class="gb-dr-cell"><span class="eq-none">—</span></td><td colspan="2"><span class="gb-none">Sem armadura</span></td></tr>';
+    return here.map(function (sl, i) {
+      var e = by[sl.equipId], pc = g.pieces[e.id], adj = pc && pc.set.mods.length ? pc.set.mods.map(armorAdjText).join('; ') : '';
+      var dr = gearArmorDr(e, g).replace(/^RD /, ''), desc = [adj, e.notes].filter(Boolean).join(' · ');
+      return '<tr data-part="' + p[0] + '">' + (i ? '' : part) +
+        '<td class="gval gb-dr-cell">' + esc(dr || '—') + '</td>' +
+        '<td class="gb-aname"><span class="gb-aname-in">' + gearKindTag(e.kind) + '<span>' + (sl.qty > 1 ? sl.qty + ' × ' : '') + esc(e.name) + '</span></span></td>' +
+        '<td class="ab-desc">' + (desc ? esc(desc) : '<span class="eq-none">—</span>') + '</td></tr>';
+    }).join('');
+  }).join('');
+  return '<div class="wtab-wrap"><table class="gtab gb-tab"><thead><tr><th>Parte do corpo</th><th class="gb-roll-h" title="Rolagem de 3d da localização (Basic Set, p. B552)">Acerto (3d)</th><th class="gb-dr-h">RD</th><th class="gb-aname-h">Armadura</th><th class="ab-desc-h">Descrição</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div>';
 }
 // The armors of Meus Itens that can go on a part of b, as options: only the pieces of Criar Armadura
 // made for that part. A part takes several (layers); what is on it already is not offered again.
