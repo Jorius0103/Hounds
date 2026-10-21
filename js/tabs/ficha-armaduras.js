@@ -6,8 +6,9 @@
    ===================================================================== */
 'use strict';
 
-/* Armor by locations (GURPS Low-Tech, pp. 100-101). A set starts from a base model, a torso armor of
-   Regras › Armaduras (100% of the cost, weight and time to don); each piece uses its location's
+/* Armor by locations (GURPS Low-Tech, pp. 100-101). A set starts from a base model, any armor of
+   Regras › Armaduras taken to the torso (100% of the cost, weight and time to don: an armor for another
+   part is divided by that part's percentage, armorBaseOf); each piece uses its location's
    percentage of the torso. Creating a set adds each piece to the sheet's list (Meus Itens) as an
    armor line; wearing it is up to Corpo, and the load counts it as any other line.
    sheet.armorSets = [{ id, name, description, baseId, base: { name, dr, cost, weight, don, tl },
@@ -177,7 +178,7 @@ function armorDraftSet(d) {
 // What stops a draft from being saved.
 function armorDraftErrors(d) {
   var out = [], sel = Object.keys(d.locs);
-  if (!d.base) out.push('Escolha o modelo base (uma armadura de tronco).');
+  if (!d.base) out.push('Escolha o modelo base (uma armadura de Regras › Armaduras ou um modelo personalizado).');
   else if (d.custom && !String(d.base.name || '').trim()) out.push('Dê um nome ao modelo personalizado.');
   if (!sel.length) out.push('Escolha a parte do corpo.');
   if (d.adj.some(function (m) { var c = cleanArmorAdj(m); return !c.name && (c.dr || c.cost || c.weightPct || c.weightLbs); })) out.push('Dê um nome a cada ajuste com valores.');
@@ -335,19 +336,43 @@ function sheetArmorHtml(s, g) {
 }
 
 /* ---------- view: the builder ---------- */
-// Torso armors of Regras › Armaduras with a cost and a weight in numbers: the base models. Only a Local
-// of exactly the torso: one that also covers the groin or is partial (†) is not 100% of a torso.
-function armorBases() { return (W.armors || []).filter(function (a) { return a.type !== 'Shield' && /^\s*torso\s*$/i.test(a.location || '') && catNum(a.cost) != null && catNum(a.weight) != null; }); }
-function armorBaseOf(a) { return { name: a.name, dr: String(a.dr || '0'), cost: catNum(a.cost), weight: catNum(a.weight), don: catNum(a.don), tl: String(a.tl || '') }; }
+// What a catalog armor's Local covers, in % of the torso (the table's percentages): "torso" 100,
+// "skull, face" 30, "torso, groin" 105, "full suit" every location (310). "Eyes" is part of the face;
+// "body" is torso and groin, "limbs" arms and legs; a partial one (†) counts as its location. null:
+// a word the table doesn't know.
+var ARMOR_COVER_PCT = { torso: 100, chest: 75, abdomen: 25, groin: 5, head: 30, skull: 20, face: 10, eyes: 0, neck: 5, arms: 50, hands: 10,
+  legs: 100, feet: 10, body: 105, limbs: 150 };
+function armorCoverWords(loc) { return norm(loc || '').replace(/\u2020/g, '').trim(); }
+function armorCoverPct(loc) {
+  var t = armorCoverWords(loc), sum = 0, ok = true; if (!t) return null;
+  if (/full suit/.test(t)) return 310;
+  t.split(/\s*[,\/]\s*|\s+and\s+/).forEach(function (w) { if (!w) return; if (w in ARMOR_COVER_PCT) sum += ARMOR_COVER_PCT[w]; else ok = false; });
+  return ok && sum > 0 ? sum : null;
+}
+// The location of the table a catalog armor is for, when its Local is exactly one ("skull"): picked
+// when the model is, so the piece comes out as in the book.
+function armorCoverLoc(loc) { var t = armorCoverWords(loc); return /^[a-z_]+$/.test(t) && armorLocById(t) ? t : null; }
+// The armors of Regras › Armaduras (not the shields) with a cost, a weight and a Local in numbers: the
+// base models, of any part of the body.
+function armorBases() { return (W.armors || []).filter(function (a) { return a.type !== 'Shield' && armorCoverPct(a.location) != null && catNum(a.cost) != null && catNum(a.weight) != null; }); }
+// A catalog armor as a base model: its cost, weight and time to don taken to the torso (× 100 / the %
+// its Local covers). A torso armor stays as it is.
+function armorBaseOf(a) {
+  var k = 100 / (armorCoverPct(a.location) || 100), don = catNum(a.don);
+  return { name: a.name, dr: String(a.dr || '0'), cost: eqRound(catNum(a.cost) * k), weight: eqRound(catNum(a.weight) * k),
+    don: don == null ? null : Math.round(don * k * 10) / 10, tl: String(a.tl || '') };
+}
 function armorBaseBoxHtml(d) {
-  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha o modelo base: uma armadura de tronco de Regras › Armaduras (o Local dela é só o tronco). Ela vale 100% do custo, do peso e do tempo para vestir; cada peça usa o percentual da localização. Um nome que não está no catálogo vira um modelo personalizado.</p>';
+  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha o modelo base: qualquer armadura de Regras › Armaduras. O custo, o peso e o tempo para vestir dela são levados ao tronco (100%) e cada peça usa o percentual da localização; uma armadura de outra parte (um elmo de Skull, por exemplo) é dividida pelo percentual dela, e escolhendo essa parte a peça fica como no livro. Um nome que não está no catálogo vira um modelo personalizado.</p>';
   if (d.custom) return armorCustomBaseHtml(d);
-  var cat = d.baseId ? armorById(d.baseId) : null, catDon = cat ? catNum(cat.don) : null;
+  var cat = d.baseId ? armorById(d.baseId) : null, catDon = cat && catNum(cat.don) != null ? d.base.don : null, pct = cat ? armorCoverPct(cat.location) : null;
   return '<div class="gurps-derived">' + gearStat('Modelo base', esc(d.base.name), cat ? ptNameHtml(cat) || esc(cat.page || '') : 'como gravado na peça') +
     gearStat('RD', esc(d.base.dr), 'do material') + gearStat('Custo do tronco', esc(eqMoney(d.base.cost)), '100%') + gearStat('Peso do tronco', esc(eqLbs(d.base.weight)), '100%') +
     gearStat('TL', esc(d.base.tl || '—'), '') +
     '<div class="gstat"><span>Vestir o tronco</span>' + (catDon != null ? '<strong>' + esc(eqNum(catDon)) + ' s</strong><small>do catálogo</small>'
       : '<input type="number" id="abDon" min="0" max="9999" step="1" inputmode="numeric" placeholder="—" aria-label="Segundos para vestir o tronco" value="' + (d.base.don == null ? '' : d.base.don) + '"><small>o catálogo não tem; em segundos, opcional</small>') + '</div></div>' +
+    (pct && pct !== 100 ? '<p class="hint-text ab-flex" style="margin-bottom:0">No livro, ' + esc(cat.name) + ' é para ' + esc(cat.location) + ' (' + esc(eqNum(pct)) + '% do tronco): ' +
+      esc(eqMoney(catNum(cat.cost))) + ' e ' + esc(eqLbs(catNum(cat.weight))) + '. Acima, os valores levados ao tronco.</p>' : '') +
     armorFlexHtml(d.base.dr) + (armorBaseNotes(d) ? '<p class="hint-text ab-flex" style="margin-bottom:0"><b>Notas do modelo:</b> ' + esc(armorBaseNotes(d)) + ' <span>(vão para as Notas da peça)</span></p>' : '');
 }
 // A custom model (not in the catalog): every field of the torso is typed (data-ab-base).
@@ -610,7 +635,7 @@ function armorDynHtml(d) {
 function armorBuilderHtml(s, g, d) {
   var chars = sheetChars(s.id), editing = !!d.setId;
   return '<div class="box sk-edit"><div class="ab-grid">' +
-    '<label class="sc-f"><span>Modelo base (armadura de tronco)</span><div class="sk-pick"><input type="text" id="abBase" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="abBaseSug"' +
+    '<label class="sc-f"><span>Modelo base</span><div class="sk-pick"><input type="text" id="abBase" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="abBaseSug"' +
     ' placeholder="' + (W.loaded.armors ? 'Digite para buscar. Ex.: placa, Plate, malha' : 'Carregando armaduras…') + '" value="' + esc(d.base ? d.base.name : '') + '"><div class="suggest" id="abBaseSug" role="listbox" hidden></div></div></label>' +
     gearNameFieldHtml('abName', d.name, armorAutoName(d)) +
     '<label class="sc-f ab-wide"><span>Descrição</span><textarea id="abDesc" rows="2" maxlength="2000" placeholder="Opcional">' + esc(d.description) + '</textarea></label></div>' +
@@ -710,7 +735,11 @@ function wireArmorSec(s) {
   function choose(n) {
     var a = opts[n]; if (!a) return;
     if (a.custom) { d.custom = true; d.baseId = null; d.base = armorCustomBase(a.name); }
-    else { d.custom = false; d.baseId = a.id; d.base = armorBaseOf(a); }
+    else {
+      d.custom = false; d.baseId = a.id; d.base = armorBaseOf(a);
+      // An armor for one part of the body: that part comes picked (the piece as in the book).
+      var at = armorCoverLoc(a.location); if (at && !Object.keys(d.locs).length) d.locs[at] = 'full';
+    }
     pick.value = d.base.name; hide();
     $('abBaseBox').innerHTML = armorBaseBoxHtml(d); $('abModsBox').hidden = false; paint();
     if (a.custom) { var f = $('abBaseBox').querySelector('[data-ab-base="dr"]'); if (f instanceof HTMLElement) f.focus(); }
