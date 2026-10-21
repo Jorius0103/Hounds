@@ -20,6 +20,7 @@ import { PlayerPermissionsModal } from './components/PlayerPermissionsModal';
 import { CombatPlayersModal } from './components/CombatPlayersModal';
 import { GeneralCombatLog } from './components/GeneralCombatLog';
 import { SystemLogModal } from './components/SystemLogModal';
+import { PassDayModal } from './components/PassDayModal';
 import { DiceRollOverlay, DiceRollResult } from './components/DiceRollOverlay';
 import { systemLogger } from './utils/systemLogger';
 import { Swords, Plus, EyeOff } from 'lucide-react';
@@ -370,6 +371,7 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('disconnected');
   const [currentRoom, setCurrentRoom] = useState<string>(onlineSyncService.getRoom());
   const [onlineRoomModalOpen, setOnlineRoomModalOpen] = useState(false);
+  const [passDayModalOpen, setPassDayModalOpen] = useState(false);
 
   // Modals state
   const [combatManagerOpen, setCombatManagerOpen] = useState(false);
@@ -1215,6 +1217,67 @@ export default function App() {
     broadcastSync(updated);
     setSelectedNpcId(newNpc.id);
     setIsHomeScreen(false);
+  };
+
+  // Passar o Dia: recarrega +1 de mana para os itens de mana selecionados dos personagens
+  const handleConfirmPassDay = (selectedByChar: { [charId: string]: string[] }) => {
+    let anyUpdated = false;
+    const now = Date.now();
+    const updatedPlayers = players.map((p) => {
+      const selectedItemIds = new Set(selectedByChar[p.id] || []);
+      if (selectedItemIds.size === 0) return p;
+
+      let charChanged = false;
+      const nextItems = (p.extraItems || []).map((it) => {
+        if (selectedItemIds.has(it.id)) {
+          anyUpdated = true;
+          charChanged = true;
+          return {
+            ...it,
+            current: Math.min((it.current || 0) + 1, it.max || (it.current || 0) + 1),
+          };
+        }
+        return it;
+      });
+
+      if (!charChanged) return p;
+      return {
+        ...p,
+        extraItems: nextItems,
+        updatedAt: now,
+      };
+    });
+
+    if (anyUpdated) {
+      setPlayers(updatedPlayers);
+      try {
+        localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(updatedPlayers));
+      } catch (e) {}
+
+      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
+
+      if (activeCombat) {
+        const logEntry: ActionLogEntry = {
+          id: `log-passday-${now}`,
+          timestamp: new Date().toISOString(),
+          round: activeCombat.currentRound ?? 0,
+          author: (currentUser?.role as any) || 'mestre',
+          authorName: currentUser?.name || 'Mestre',
+          type: 'item',
+          description: 'Passou o dia: recursos de mana dos Personagens recuperaram +1 ponto.',
+        };
+        const nextCombats = combats.map((c) =>
+          c.id === activeCombat.id
+            ? { ...c, events: [logEntry, ...(c.events || [])] }
+            : c
+        );
+        setCombats(nextCombats);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
+        } catch (e) {}
+        broadcastSync(nextCombats, undefined, undefined, undefined, updatedPlayers);
+      }
+    }
   };
 
   // Auxiliares de log automático para todas as alterações na ficha (sem apagar ao voltar ao estado inicial)
@@ -3078,6 +3141,7 @@ export default function App() {
           }
         }}
         onRollDice={handleRollDice}
+        onOpenPassDayModal={() => setPassDayModalOpen(true)}
         isMestre={isMaster}
         hideGmRolls={hideGmRolls}
         onToggleHideGmRolls={handleToggleHideGmRolls}
@@ -3296,6 +3360,14 @@ export default function App() {
         onUpdateCondition={handleUpdateCondition}
         onDeleteCondition={handleDeleteCondition}
         currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+      />
+
+      {/* Passar o Dia Modal */}
+      <PassDayModal
+        isOpen={passDayModalOpen}
+        onClose={() => setPassDayModalOpen(false)}
+        players={players}
+        onConfirm={handleConfirmPassDay}
       />
 
       {/* Weapon Modal */}

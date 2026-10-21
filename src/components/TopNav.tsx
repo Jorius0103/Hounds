@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus } from '../utils/onlineSync';
-import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid, Dices } from 'lucide-react';
+import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid, Dices, Sun } from 'lucide-react';
 import { DicePickerModal } from './DicePickerModal';
 
 export type ViewMode = 'sheets' | 'tactical' | 'split';
@@ -28,6 +28,7 @@ interface TopNavProps {
   canEditCurrent?: boolean;
   isHomeScreen?: boolean;
   onOpenHomeScreen?: () => void;
+  onOpenPassDayModal?: () => void;
   onRollDice?: (diceCount: number, diceSides?: number) => void;
   isMestre?: boolean;
   hideGmRolls?: boolean;
@@ -47,6 +48,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   canEditCurrent = false,
   isHomeScreen = false,
   onOpenHomeScreen,
+  onOpenPassDayModal,
   onRollDice,
   isMestre = false,
   hideGmRolls = false,
@@ -199,6 +201,19 @@ export const TopNav: React.FC<TopNavProps> = ({
                   <span className="text-[11px] font-semibold">Tela Inicial</span>
                 </>
               )}
+            </button>
+          )}
+
+          {/* Botão Passar o Dia (entre Tela Inicial e Visível) */}
+          {onOpenPassDayModal && (
+            <button
+              type="button"
+              onClick={onOpenPassDayModal}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-amber-300 hover:text-white cursor-pointer"
+              title="Passar o Dia: recarregar +1 de mana nos recursos dos Personagens"
+            >
+              <Sun size={13} className="text-amber-400" />
+              <span className="text-[11px] font-semibold whitespace-nowrap">Passar o Dia</span>
             </button>
           )}
 
