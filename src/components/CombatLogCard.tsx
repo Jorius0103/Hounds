@@ -69,6 +69,20 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       .trim();
   }, [entry.description, isPlayerView]);
 
+  // Formatted timestamp (fallback gracefully for ISO strings)
+  const formattedTimestamp = useMemo(() => {
+    if (!entry.timestamp) return '';
+    if (entry.timestamp.includes('T') && (entry.timestamp.endsWith('Z') || entry.timestamp.includes('+') || entry.timestamp.includes('-'))) {
+      try {
+        const d = new Date(entry.timestamp);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+      } catch (e) {}
+    }
+    return entry.timestamp;
+  }, [entry.timestamp]);
+
   // Badge styles based on type and variableKey
   const getTypeBadge = () => {
     switch (entry.type) {
@@ -102,9 +116,10 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       case 'item': {
         const amt = entry.amount ?? 0;
         const sign = amt > 0 ? `+${amt}` : `${amt}`;
+        const isPassDay = entry.itemName === 'Passar o Dia' || (entry.id && entry.id.includes('passday'));
         return {
           icon: <Package size={12} className="text-amber-400" />,
-          label: amt !== 0 ? `${sign} ${entry.itemName || 'Item'}` : `${entry.itemName || 'Item'}`,
+          label: isPassDay ? '+1 Mana (Dia)' : (amt !== 0 ? `${sign} ${entry.itemName || 'Item'}` : `${entry.itemName || 'Item'}`),
           bg: 'bg-amber-950/70 border-amber-800/80 text-amber-300',
         };
       }
@@ -271,7 +286,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
             </span>
           )}
           <span className="text-[10px] text-slate-500 font-mono">
-            {entry.timestamp}
+            {formattedTimestamp}
           </span>
           {onDeleteEntry && (
             <button

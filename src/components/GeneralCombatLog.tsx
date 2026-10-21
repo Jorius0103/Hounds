@@ -113,8 +113,24 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
 
     // Sort newest to oldest
     return list.sort((a, b) => {
-      const timeA = a.id ? parseInt(a.id.split('-')[1] || '0', 10) : 0;
-      const timeB = b.id ? parseInt(b.id.split('-')[1] || '0', 10) : 0;
+      const getEpoch = (entry: ActionLogEntry): number => {
+        if (entry.timestampMs && typeof entry.timestampMs === 'number') return entry.timestampMs;
+        if (entry.id) {
+          const parts = entry.id.split('-');
+          for (let i = 1; i < parts.length; i++) {
+            const num = parseInt(parts[i], 10);
+            if (!isNaN(num) && num > 1000000000000) return num;
+          }
+        }
+        if (entry.timestamp && entry.timestamp.includes('T')) {
+          const parsed = Date.parse(entry.timestamp);
+          if (!isNaN(parsed)) return parsed;
+        }
+        return 0;
+      };
+
+      const timeA = getEpoch(a);
+      const timeB = getEpoch(b);
       if (timeA && timeB && timeA !== timeB) return timeB - timeA;
       return String(b.timestamp || '').localeCompare(String(a.timestamp || ''));
     });

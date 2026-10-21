@@ -1223,24 +1223,35 @@ export default function App() {
   const handleConfirmPassDay = (selectedByChar: { [charId: string]: string[] }) => {
     let anyUpdated = false;
     const now = Date.now();
+    const summaryDetails: string[] = [];
+
     const updatedPlayers = players.map((p) => {
       const selectedItemIds = new Set(selectedByChar[p.id] || []);
       if (selectedItemIds.size === 0) return p;
 
       let charChanged = false;
+      const charUpdatedItems: string[] = [];
+
       const nextItems = (p.extraItems || []).map((it) => {
         if (selectedItemIds.has(it.id)) {
+          const currentVal = it.current || 0;
+          const maxVal = it.max || (currentVal + 1);
+          const nextVal = Math.min(currentVal + 1, maxVal);
           anyUpdated = true;
           charChanged = true;
+          charUpdatedItems.push(`${it.name} (${currentVal}➔${nextVal})`);
           return {
             ...it,
-            current: Math.min((it.current || 0) + 1, it.max || (it.current || 0) + 1),
+            current: nextVal,
           };
         }
         return it;
       });
 
       if (!charChanged) return p;
+      if (charUpdatedItems.length > 0) {
+        summaryDetails.push(`${p.name}: ${charUpdatedItems.join(', ')}`);
+      }
       return {
         ...p,
         extraItems: nextItems,
@@ -1257,18 +1268,27 @@ export default function App() {
       broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
 
       if (activeCombat) {
+        const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const descText = summaryDetails.length > 0
+          ? `Passar o Dia (+1 Mana): ${summaryDetails.join(' | ')}.`
+          : 'Passar o Dia (+1 Mana): Recursos de mana dos Personagens recuperados em +1 ponto.';
         const logEntry: ActionLogEntry = {
-          id: `log-passday-${now}`,
-          timestamp: new Date().toISOString(),
+          id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+          timestamp: timeStr,
+          timestampMs: now,
           round: activeCombat.currentRound ?? 0,
           author: (currentUser?.role as any) || 'mestre',
           authorName: currentUser?.name || 'Mestre',
           type: 'item',
-          description: 'Passou o dia: recursos de mana dos Personagens recuperaram +1 ponto.',
+          npcName: 'Personagens',
+          npcCharacterType: 'player',
+          itemName: 'Passar o Dia',
+          amount: 1,
+          description: descText,
         };
         const nextCombats = combats.map((c) =>
           c.id === activeCombat.id
-            ? { ...c, events: [logEntry, ...(c.events || [])] }
+            ? { ...c, events: [logEntry, ...(c.events || []).filter((e) => e.id !== logEntry.id)] }
             : c
         );
         setCombats(nextCombats);
