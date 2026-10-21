@@ -365,14 +365,10 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                   cardColorClasses =
                     'bg-amber-950/25 border-amber-400 hover:bg-amber-950/35 text-amber-200';
                   nameColor = 'text-amber-200';
-                } else if (isPlayerChar) {
-                  cardColorClasses =
-                    'bg-emerald-950/30 border-emerald-500 hover:border-emerald-400 hover:bg-emerald-950/40 text-emerald-200';
-                  nameColor = 'text-emerald-200';
                 } else {
                   cardColorClasses =
-                    'bg-slate-950/70 border-slate-600 hover:border-slate-500 hover:bg-slate-850 text-slate-200';
-                  nameColor = 'text-slate-200';
+                    'bg-emerald-950/25 border-emerald-600 hover:border-emerald-500 hover:bg-emerald-950/35 text-emerald-200';
+                  nameColor = isPlayerChar ? 'text-emerald-200' : 'text-slate-200';
                 }
 
                 return (

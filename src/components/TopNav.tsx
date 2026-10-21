@@ -83,7 +83,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               <Swords size={16} />
             </div>
             <span className="text-sm font-bold tracking-tight text-white whitespace-nowrap hidden sm:inline">
-              Mesa de Combate
+              Mesa de RPG
             </span>
             <span className="text-sm font-bold tracking-tight text-white whitespace-nowrap sm:hidden">
               GURPS
@@ -172,20 +172,33 @@ export const TopNav: React.FC<TopNavProps> = ({
             </button>
           )}
 
-          {/* Botão Tela Inicial (após Jogadores) */}
+          {/* Botão Alternar Tela Inicial / Tela Detalhada (após Jogadores) */}
           {onOpenHomeScreen && (
             <button
               type="button"
               onClick={onOpenHomeScreen}
               className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border ${
                 isHomeScreen
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
                   : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-white'
               }`}
-              title="Voltar para a Tela Inicial da Mesa de Combate"
+              title={
+                isHomeScreen
+                  ? 'Ir para a Tela Detalhada dos personagens / NPCs'
+                  : 'Voltar para a Tela Inicial (resumo dos personagens / NPCs)'
+              }
             >
-              <LayoutGrid size={13} className="text-amber-400" />
-              <span className="text-[11px] font-semibold">Tela Inicial</span>
+              {isHomeScreen ? (
+                <>
+                  <FileText size={13} className="text-amber-400" />
+                  <span className="text-[11px] font-semibold">Tela Detalhada</span>
+                </>
+              ) : (
+                <>
+                  <LayoutGrid size={13} className="text-amber-400" />
+                  <span className="text-[11px] font-semibold">Tela Inicial</span>
+                </>
+              )}
             </button>
           )}
 

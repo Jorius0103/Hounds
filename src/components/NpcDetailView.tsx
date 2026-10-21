@@ -164,6 +164,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const [manualAffectedSpellName, setManualAffectedSpellName] = useState('');
   const [manualAffectedSpellCaster, setManualAffectedSpellCaster] = useState('');
   const [manualAffectedSpellRound, setManualAffectedSpellRound] = useState<number>(currentRound ?? 0);
+  const [manualAffectedSpellCost, setManualAffectedSpellCost] = useState<number | ''>('');
   const [manualAffectedSpellDuration, setManualAffectedSpellDuration] = useState<number | ''>('');
 
   // Helper para favoritar / desfavoritar Itens Extras & Recursos
@@ -217,6 +218,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       casterName: manualAffectedSpellCaster.trim() || 'Desconhecido',
       round: manualAffectedSpellRound !== undefined && !isNaN(Number(manualAffectedSpellRound)) ? Number(manualAffectedSpellRound) : (currentRound ?? 0),
       duration: typeof manualAffectedSpellDuration === 'number' && manualAffectedSpellDuration > 0 ? manualAffectedSpellDuration : undefined,
+      cost: typeof manualAffectedSpellCost === 'number' && manualAffectedSpellCost > 0 ? manualAffectedSpellCost : undefined,
       createdAt: new Date().toISOString(),
     };
     const nextList = [...(npc.affectedSpells || []), newEntry];
@@ -224,6 +226,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     setManualAffectedSpellName('');
     setManualAffectedSpellCaster('');
     setManualAffectedSpellRound(currentRound ?? 0);
+    setManualAffectedSpellCost('');
     setManualAffectedSpellDuration('');
     setIsAddingAffectedSpell(false);
   };
@@ -944,37 +947,40 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Custo FP:</label>
+                <div className="flex flex-wrap items-end gap-2.5">
+                  <div className="w-14 shrink-0">
+                    <label className="text-[10px] text-slate-400 block mb-0.5 text-center">FP:</label>
                     <input
                       type="number"
                       min="0"
+                      max="99"
                       value={manualActiveSpellCost}
                       onChange={(e) => setManualActiveSpellCost(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
                       placeholder="0"
-                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                      className="w-14 bg-slate-950 border border-slate-750 rounded px-1.5 py-1 text-xs text-center text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Rodada (R):</label>
+                  <div className="w-14 shrink-0">
+                    <label className="text-[10px] text-slate-400 block mb-0.5 text-center">Rodada:</label>
                     <input
                       type="number"
                       min="0"
+                      max="99"
                       value={manualActiveSpellRound}
                       onChange={(e) => setManualActiveSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                      className="w-14 bg-slate-950 border border-slate-750 rounded px-1.5 py-1 text-xs text-center text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Duração (R):</label>
+                  <div className="w-14 shrink-0">
+                    <label className="text-[10px] text-slate-400 block mb-0.5 text-center">Duração:</label>
                     <input
                       type="number"
                       min="1"
+                      max="99"
                       placeholder="Opc."
                       value={manualActiveSpellDuration}
                       onChange={(e) => setManualActiveSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                      className="w-14 bg-slate-950 border border-slate-750 rounded px-1.5 py-1 text-xs text-center text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
                       title="Quantidade de rodadas que a magia dura (opcional)"
                     />
                   </div>
@@ -1146,8 +1152,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                  <div>
+                <div className="flex flex-wrap items-end gap-2.5">
+                  <div className="flex-1 min-w-[140px]">
                     <label className="text-[10px] text-slate-400 block mb-0.5">Conjurador:</label>
                     <input
                       type="text"
@@ -1157,25 +1163,40 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Rodada (R):</label>
+                  <div className="w-14 shrink-0">
+                    <label className="text-[10px] text-slate-400 block mb-0.5 text-center">Rodada:</label>
                     <input
                       type="number"
                       min="0"
+                      max="99"
                       value={manualAffectedSpellRound}
                       onChange={(e) => setManualAffectedSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
+                      className="w-14 bg-slate-950 border border-slate-750 rounded px-1.5 py-1 text-xs text-center text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Duração (R):</label>
+                  <div className="w-14 shrink-0">
+                    <label className="text-[10px] text-slate-400 block mb-0.5 text-center">FP:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="99"
+                      value={manualAffectedSpellCost}
+                      onChange={(e) => setManualAffectedSpellCost(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      placeholder="0"
+                      className="w-14 bg-slate-950 border border-slate-750 rounded px-1.5 py-1 text-xs text-center text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
+                      title="Custo em FP (opcional)"
+                    />
+                  </div>
+                  <div className="w-14 shrink-0">
+                    <label className="text-[10px] text-slate-400 block mb-0.5 text-center">Duração:</label>
                     <input
                       type="number"
                       min="1"
+                      max="99"
                       placeholder="Opc."
                       value={manualAffectedSpellDuration}
                       onChange={(e) => setManualAffectedSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
+                      className="w-14 bg-slate-950 border border-slate-750 rounded px-1.5 py-1 text-xs text-center text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
                       title="Quantidade de rodadas que o efeito dura (opcional)"
                     />
                   </div>

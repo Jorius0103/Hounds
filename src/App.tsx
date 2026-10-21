@@ -3067,8 +3067,15 @@ export default function App() {
         canEditCurrent={canEditCurrent}
         isHomeScreen={isHomeScreen && activeViewMode === 'sheets'}
         onOpenHomeScreen={() => {
-          setIsHomeScreen(true);
-          setActiveViewMode('sheets');
+          if (isHomeScreen && activeViewMode === 'sheets') {
+            setIsHomeScreen(false);
+            if (!selectedNpcId && allCharacters.length > 0) {
+              setSelectedNpcId(allCharacters[0].id);
+            }
+          } else {
+            setIsHomeScreen(true);
+            setActiveViewMode('sheets');
+          }
         }}
         onRollDice={handleRollDice}
         isMestre={isMaster}

@@ -258,9 +258,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                   ? 'bg-red-950/25 border-red-600/80 hover:border-red-500'
                   : hasWarning
                   ? 'bg-slate-900/95 border-amber-500/70 hover:border-amber-400'
-                  : isPlayerChar
-                  ? 'bg-slate-900/95 border-emerald-500/70 hover:border-emerald-400'
-                  : 'bg-slate-900/95 border-slate-700 hover:border-purple-500/70'
+                  : 'bg-slate-900/95 border-emerald-600/80 hover:border-emerald-500'
               }`}
             >
               {/* CABEÇALHO COMPACTO */}

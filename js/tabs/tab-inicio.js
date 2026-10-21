@@ -18,7 +18,7 @@ function renderHomePage() {
   };
   var notesMeta = !W.loaded.notebooks ? 'Carregando…' : W.notebooks.length ? plural(W.notebooks.length, 'título', 'títulos') + ' · ' + plural(W.notes.length, 'anotação', 'anotações') : 'Nenhum título ainda';
   var cards = [
-    card('#mesa', ICON.mesa, 'Mesa de Combate', 'Combates, NPCs e o log de cada round', 'feature'),
+    card('#mesa', ICON.mesa, 'Mesa de RPG', 'Combates, NPCs e o log de cada round', 'feature'),
     card('#tabuleiros', ICON.board, 'Tabuleiros', count('boards', W.boards.length, 'tabuleiro', 'tabuleiros')),
     card('#maps', ICON.maps, 'Maps', count('maps', W.maps.length, 'mapa', 'mapas')),
     card('#locais', ICON.pin, 'Locais', count('locations', W.locations.length, 'local', 'locais')),
@@ -58,7 +58,7 @@ function renderHomePage() {
 
   pageRoot.innerHTML =
     '<div class="home-hero"><div class="brand-mark" aria-hidden="true">' + BRAND_MARK + '</div><div><span class="badge">Campanha GURPS</span>' +
-      '<h1>' + (u ? 'Olá, ' + esc(u.name) : 'Hounds') + '</h1><p class="lede">Mapas, locais, personagens, anotações e a Mesa de Combate do grupo. Escolha por onde começar.</p></div></div>' +
+      '<h1>' + (u ? 'Olá, ' + esc(u.name) : 'Hounds') + '</h1><p class="lede">Mapas, locais, personagens, anotações e a Mesa de RPG do grupo. Escolha por onde começar.</p></div></div>' +
     notice() +
     '<div class="nb-grid home-grid">' + cards.join('') + '</div>' +
     '<section><h2 class="sec-title">Atualizados recentemente</h2>' + recentHtml + '</section>';

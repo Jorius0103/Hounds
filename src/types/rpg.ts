@@ -182,6 +182,7 @@ export interface AffectedSpell {
   casterName: string;
   round: number;
   duration?: number; // Duração em rodadas (opcional)
+  cost?: number; // Custo em FP (opcional)
   createdAt?: string;
 }
 
