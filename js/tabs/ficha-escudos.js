@@ -158,7 +158,7 @@ function shieldItemsHtml(lines, g, L, can) {
     var cw = g.shieldLines[x.id], counted = L.counted[x.id] || 0, where = gearWhere(g, x.id), adj = cw.mods.length ? cw.mods.map(shieldAdjText).join('; ') : '';
     var nh = weaponNh(s, { skill: cw.base.skill, defaults: cw.base.defaults }, shieldAdjTotal(cw.mods).nh);
     weight += x.qty * x.weight;
-    var html = '<tr' + (counted ? '' : ' class="eq-stored"') + '><td class="wb-name"><b>' + gearKindTag('armor') + esc(x.name) + '</b>' + gearAutoSub(x, cw.base.name) + '<small class="eq-where">' +
+    var html = '<tr' + (counted ? '' : ' class="eq-stored"') + '><td class="wb-name"><b>' + gearKindTag('armor') + esc(x.name) + gearModelHtml(x, cw.base.name) + '</b>' + '<small class="eq-where">' +
       esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>' +
       '<td class="gval">' + esc(cw.db || '—') + '</td><td class="gval">' + esc(cw.dr || '—') + '</td><td>' + esc(cw.hp || '—') + '</td>' +
       (nh ? '<td class="gval" title="' + esc(nh.title) + '">' + nh.v + '</td>' : '<td><span class="eq-none">—</span></td>') +

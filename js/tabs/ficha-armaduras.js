@@ -301,7 +301,7 @@ function armorItemsHtml(lines, g, L, can) {
     var pc = g.pieces[x.id], set = pc.set, counted = L.counted[x.id] || 0, where = gearWhere(g, x.id);
     var adj = set.mods.length ? set.mods.map(armorAdjText).join('; ') : '';
     weight += x.qty * x.weight;
-    var row = '<tr' + (counted ? '' : ' class="eq-stored"') + '><td><b>' + gearKindTag('armor') + esc(x.name) + '</b>' + gearAutoSub(x, armorPieceName(set, armorLocById(pc.piece.loc), pc.piece.cover)) +
+    var row = '<tr' + (counted ? '' : ' class="eq-stored"') + '><td><b>' + gearKindTag('armor') + esc(x.name) + gearModelHtml(x, armorPieceName(set, armorLocById(pc.piece.loc), pc.piece.cover), set.base.name) + '</b>' +
       '<small class="eq-where">' + esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>' +
       '<td class="gval">' + esc(pc.piece.dr) + (pc.piece.cover === 'front' ? '<small>frontal</small>' : '') + '</td>' +
       '<td>' + esc(eqLbs(x.weight)) + '</td>' +

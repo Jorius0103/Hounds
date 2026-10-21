@@ -1016,3 +1016,5 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
   .fx-line [data-x="names"], .fx-line [data-x="key"], .fx-line [data-x="target"] { grid-column: span 2; }
   .fx-line2 { grid-template-columns: 1fr; }
 }
+/* Meus Itens: a given name and, on the same line, the model it is ("Reserva — Kite Shield") */
+.gear-model { font-weight: 500; color: var(--muted); }

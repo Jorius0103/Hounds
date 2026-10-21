@@ -239,7 +239,7 @@ function weaponItemsHtml(lines, g, L, can) {
     var html = atk.map(function (a, i) {
       var first = i === 0;
       return '<tr' + (counted ? '' : ' class="eq-stored"') + '>' +
-        (first ? span('<td class="wb-name"><b>' + gearKindTag('weapon') + esc(x.name) + '</b>' + gearAutoSub(x, cw.base.name) + '<small class="eq-where">' + esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>') : '') +
+        (first ? span('<td class="wb-name"><b>' + gearKindTag('weapon') + esc(x.name) + gearModelHtml(x, cw.base.name) + '</b>' + '<small class="eq-where">' + esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>') : '') +
         '<td class="wmode">' + esc(weaponModeText(a.mode)) + '</td>' +
         weaponDmgCell(s, a) + weaponNhCell(s, a, nhPlus) +
         '<td>' + esc(a.reach || a.range || '—') + '</td>' +

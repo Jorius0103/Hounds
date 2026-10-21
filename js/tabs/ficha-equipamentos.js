@@ -33,8 +33,9 @@ var EQ_KIND_LABEL = { item: 'Item', armor: 'Armadura', weapon: 'Arma' };
 var EQ_KIND_COL = { item: 'items', armor: 'armors', weapon: 'weapons' };
 // The parts of the body where armor is worn, head to feet (the locations of Criar Armadura: Low-Tech,
 // pp. 100-101): [key, name, the book's]. The torso's armor protects the vitals too.
-var GEAR_PARTS = [['head', 'Cabeça', 'Head'], ['neck', 'Pescoço', 'Neck'], ['torso', 'Tronco', 'Torso'], ['groin', 'Virilha', 'Groin'],
-  ['arms', 'Braços', 'Arms'], ['hands', 'Mãos', 'Hands'], ['legs', 'Pernas', 'Legs'], ['feet', 'Pés', 'Feet']];
+// [key, name shown (in English, as the books), the same in English].
+var GEAR_PARTS = [['head', 'Head', 'Head'], ['neck', 'Neck', 'Neck'], ['torso', 'Torso', 'Torso'], ['groin', 'Groin', 'Groin'],
+  ['arms', 'Arms', 'Arms'], ['hands', 'Hands', 'Hands'], ['legs', 'Legs', 'Legs'], ['feet', 'Feet', 'Feet']];
 var GEAR_PART_KEYS = GEAR_PARTS.map(function (p) { return p[0]; });
 // Weapons, shields and items are carried, outside the parts.
 var GEAR_CARRY = 'carry';
@@ -327,8 +328,16 @@ function gearAutoHint(auto) { return auto ? 'Opcional · sem nome: ' + auto : 'O
 function gearOwnName(v) { return String(v || '').trim().slice(0, 120); }
 // The name a builder shows when editing: the line's, when it is not the automatic one (it was given).
 function gearGivenName(line, auto) { return line && line.name !== auto ? line.name : ''; }
-// Under a given name in Meus Itens, the automatic one ("Broadsword"), so what it is still shows.
-function gearAutoSub(x, auto) { return auto && x.name !== auto ? '<small>' + esc(auto) + '</small>' : ''; }
+// After a given name, on the same line, the model it is ("Reserva — Kite Shield"), so what it is still
+// shows: auto is the automatic name (the line has a given one when it differs), model what is shown.
+function gearModelHtml(x, auto, model) { return auto && x.name !== auto ? '<span class="gear-model"> — ' + esc(model || auto) + '</span>' : ''; }
+// The same as text, for where a line's name shows outside the tables (Corpo): "Reserva — Kite Shield".
+function gearShownName(x, g) {
+  var pc = g.pieces[x.id], cw = g.weaponLines[x.id] || g.shieldLines[x.id], c = !pc && !cw ? gearLink(x) : null;
+  var auto = pc ? armorPieceName(pc.set, armorLocById(pc.piece.loc), pc.piece.cover) : cw ? cw.base.name : c ? c.name : '';
+  var model = pc ? pc.set.base.name : auto;
+  return auto && x.name !== auto ? x.name + ' — ' + model : x.name;
+}
 function gearKindTag(kind) { return '<span class="eq-kind k-' + kind + '" title="' + EQ_KIND_LABEL[kind] + '">' + svg(gearKindIcon(kind), 12, 2.2) + '</span>'; }
 
 /* ---------- saving ---------- */
@@ -470,7 +479,8 @@ function eqEach(x, total, one, fmt) { return total ? esc(fmt(total)) + (x.qty > 
 function invRowHtml(x, g, L, can) {
   var c = gearLink(x), where = gearWhere(g, x.id), counted = L.counted[x.id] || 0, pc = g.pieces[x.id];
   var sub = [pc ? 'Criar Armadura: ' + armorLocName(pc.piece.loc) + ' · ' + gearArmorDr(x, g) : c ? gearCatLine(x.kind, c) : '', x.qty === 0 ? 'acabou' : ''].filter(Boolean).join(' · ');
-  var name = c ? '<a href="' + gearCatHref(x.kind, c.id) + '" data-' + (x.kind === 'armor' ? 'armor' : x.kind === 'weapon' ? 'weapon' : 'item') + '-modal="' + esc(c.id) + '" title="Ver em Regras › ' + (x.kind === 'armor' ? 'Armaduras' : x.kind === 'weapon' ? 'Armas' : 'Itens') + '">' + esc(x.name) + '</a>' : esc(x.name);
+  var name = (c ? '<a href="' + gearCatHref(x.kind, c.id) + '" data-' + (x.kind === 'armor' ? 'armor' : x.kind === 'weapon' ? 'weapon' : 'item') + '-modal="' + esc(c.id) + '" title="Ver em Regras › ' + (x.kind === 'armor' ? 'Armaduras' : x.kind === 'weapon' ? 'Armas' : 'Itens') + '">' + esc(x.name) + '</a>' : esc(x.name)) +
+    (c ? gearModelHtml(x, c.name) : '');
   var load = counted ? (counted < x.qty ? counted + ' de ' + x.qty + ' na carga' : 'na carga') : 'fora da carga';
   // The notes show under the name (the table is half the width: no column of its own).
   return '<tr' + (counted ? '' : ' class="eq-stored"') + '><td><b>' + gearKindTag(x.kind) + name + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') +
@@ -545,7 +555,7 @@ var GEAR_PART_ROLLS = { head: '3, 4, 5', neck: '17, 18', torso: '9, 10', groin: 
 function bodyPartsHtml(b, by, g) {
   var rows = GEAR_PARTS.map(function (p) {
     var here = b.slots.filter(function (sl) { return sl.part === p[0] && by[sl.equipId]; }), n = here.length;
-    var part = '<td class="gb-pname"' + (n > 1 ? ' rowspan="' + n + '"' : '') + '><b>' + p[1] + '</b><small>' + p[2] + '</small>' +
+    var part = '<td class="gb-pname"' + (n > 1 ? ' rowspan="' + n + '"' : '') + '><b>' + p[1] + '</b>' +
       (n > 1 ? '<span class="gb-layers" title="Camadas: sem regra de sobreposição configurada, as RDs não são somadas">' + n + ' camadas</span>' : '') + '</td>' +
       '<td class="gb-roll"' + (n > 1 ? ' rowspan="' + n + '"' : '') + ' title="Rolagem de 3d da localização (Basic Set, p. B552)">' + esc(GEAR_PART_ROLLS[p[0]] || '—') + '</td>';
     if (!n) return '<tr class="gb-empty" data-part="' + p[0] + '">' + part + '<td class="gb-dr-cell"><span class="eq-none">—</span></td><td colspan="2"><span class="gb-none">Sem armadura</span></td></tr>';
@@ -554,7 +564,7 @@ function bodyPartsHtml(b, by, g) {
       var dr = gearArmorDr(e, g).replace(/^RD /, ''), desc = [adj, e.notes].filter(Boolean).join(' · ');
       return '<tr data-part="' + p[0] + '">' + (i ? '' : part) +
         '<td class="gval gb-dr-cell">' + esc(dr || '—') + '</td>' +
-        '<td class="gb-aname"><span class="gb-aname-in">' + gearKindTag(e.kind) + '<span>' + (sl.qty > 1 ? sl.qty + ' × ' : '') + esc(e.name) + '</span></span></td>' +
+        '<td class="gb-aname"><span class="gb-aname-in">' + gearKindTag(e.kind) + '<span>' + (sl.qty > 1 ? sl.qty + ' × ' : '') + esc(gearShownName(e, g)) + '</span></span></td>' +
         '<td class="ab-desc">' + (desc ? esc(desc) : '<span class="eq-none">—</span>') + '</td></tr>';
     }).join('');
   }).join('');
@@ -623,7 +633,7 @@ function bodyEditHtml(g) {
   var parts = b ? GEAR_PARTS.map(function (p) {
     // j: the row in the draft. A line that left the list meanwhile is not shown (and goes on save).
     var slots = b.slots.map(function (sl, j) { return { sl: sl, j: j }; }).filter(function (x) { return x.sl.part === p[0] && by[x.sl.equipId]; });
-    return '<div class="gear-part"><div class="gear-part-name"><b>' + p[1] + '</b><small>' + p[2] + '</small></div><div class="gear-slots">' +
+    return '<div class="gear-part"><div class="gear-part-name"><b>' + p[1] + '</b></div><div class="gear-slots">' +
       slots.map(function (x) { return bodySlotHtml(by[x.sl.equipId], x, p[1], g); }).join('') +
       bodyAddHtml(g, b, p[0], p[1]) + '</div></div>';
   }).join('') : '';
