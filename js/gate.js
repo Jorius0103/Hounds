@@ -69,7 +69,10 @@
     var changed = !window.hubUser || window.hubUser.id !== u.id;
     apply(u);
     el('gate').hidden = true;
-    if (changed) mesaFor = null;
+    if (changed) {
+      mesaFor = null;
+      try { sessionStorage.removeItem('hounds_mesa_view_state_v1'); } catch (e) {}
+    }
     syncMesa();
   }
   function openGate() {

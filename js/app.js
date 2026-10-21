@@ -233,6 +233,26 @@ function onRoute() {
   if (isMesa) setCollapsed(true, true);
   else if (wasMesa) setCollapsed(lstore('hounds_rail_collapsed') === '1', true);
   if (r.page !== 'board') BoardView.close();
+
+  // Reset Mesa to Home screen when entering or exiting via route navigation (not F5 reload)
+  if (prev && prev.page !== 'mesa' && r.page === 'mesa') {
+    try { sessionStorage.removeItem('hounds_mesa_view_state_v1'); } catch (e) {}
+    try {
+      var mf = el('mesaFrame');
+      if (mf && mf.contentWindow) {
+        mf.contentWindow.postMessage({ type: 'HOUNDS_RESET_MESA_HOME' }, '*');
+      }
+    } catch (e) {}
+  }
+  if (prev && prev.page === 'mesa' && r.page !== 'mesa') {
+    try { sessionStorage.removeItem('hounds_mesa_view_state_v1'); } catch (e) {}
+    try {
+      var mf = el('mesaFrame');
+      if (mf && mf.contentWindow) {
+        mf.contentWindow.postMessage({ type: 'HOUNDS_RESET_MESA_HOME' }, '*');
+      }
+    } catch (e) {}
+  }
   document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : r.page === 'board' ? 'view-board' : 'view-page'); });
   if (byId[r.node]) { revealPath(r.node); if (r.page === 'boards' || r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
   paintMenu();

@@ -31,6 +31,59 @@ const USERS_STORAGE_KEY = 'gurps_combat_master_users_v2';
 const PLAYERS_STORAGE_KEY = 'gurps_fixed_personagens_v1';
 const ACTIVE_COMBAT_KEY = 'gurps_combat_master_active_combat_id_v1';
 const SYNC_CHANNEL_NAME = 'gurps_combat_realtime_sync_v2';
+const MESA_VIEW_STATE_KEY = 'hounds_mesa_view_state_v1';
+
+function getMesaSessionStorage(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      return window.sessionStorage;
+    }
+  } catch {}
+  try {
+    if (typeof window !== 'undefined' && window.parent && window.parent.sessionStorage) {
+      return window.parent.sessionStorage;
+    }
+  } catch {}
+  return null;
+}
+
+function isMesaPageReload(): boolean {
+  try {
+    const navs = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+    if (navs && navs.length > 0 && navs[0].type === 'reload') return true;
+  } catch {}
+  try {
+    if (performance.navigation && performance.navigation.type === 1) return true;
+  } catch {}
+  try {
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      const pNavs = window.parent.performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+      if (pNavs && pNavs.length > 0 && pNavs[0].type === 'reload') return true;
+      if (window.parent.performance && window.parent.performance.navigation && window.parent.performance.navigation.type === 1) return true;
+    }
+  } catch {}
+  return false;
+}
+
+function getInitialMesaViewState(): { isHomeScreen?: boolean; activeViewMode?: ViewMode; selectedNpcId?: string } | null {
+  if (!isMesaPageReload()) {
+    try {
+      getMesaSessionStorage()?.removeItem(MESA_VIEW_STATE_KEY);
+    } catch {}
+    return null;
+  }
+  try {
+    const storage = getMesaSessionStorage();
+    const raw = storage?.getItem(MESA_VIEW_STATE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+const initialMesaViewState = getInitialMesaViewState();
 
 // Função de fusão granular por personagem (CRDT LWW) com suporte a adições e edições sem perda de registros
 function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]; changed: boolean } {
@@ -376,6 +429,9 @@ export default function App() {
   }, [players, allCharacters]);
 
   const [selectedNpcId, setSelectedNpcId] = useState<string>(() => {
+    if (initialMesaViewState?.selectedNpcId) {
+      return initialMesaViewState.selectedNpcId;
+    }
     return allCharacters[0]?.id || '';
   });
 
@@ -444,8 +500,48 @@ export default function App() {
   });
 
   // View Mode: 'sheets' | 'tactical' | 'split'
-  const [activeViewMode, setActiveViewMode] = useState<ViewMode>('sheets');
-  const [isHomeScreen, setIsHomeScreen] = useState<boolean>(true);
+  const [activeViewMode, setActiveViewMode] = useState<ViewMode>(() => {
+    if (initialMesaViewState?.activeViewMode && ['sheets', 'tactical', 'split'].includes(initialMesaViewState.activeViewMode)) {
+      return initialMesaViewState.activeViewMode;
+    }
+    return 'sheets';
+  });
+  const [isHomeScreen, setIsHomeScreen] = useState<boolean>(() => {
+    if (initialMesaViewState && typeof initialMesaViewState.isHomeScreen === 'boolean') {
+      return initialMesaViewState.isHomeScreen;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    try {
+      const storage = getMesaSessionStorage();
+      if (storage) {
+        storage.setItem(
+          MESA_VIEW_STATE_KEY,
+          JSON.stringify({
+            isHomeScreen,
+            activeViewMode,
+            selectedNpcId,
+          })
+        );
+      }
+    } catch {}
+  }, [isHomeScreen, activeViewMode, selectedNpcId]);
+
+  useEffect(() => {
+    const handleResetHome = (e: MessageEvent) => {
+      if (e.data?.type === 'HOUNDS_RESET_MESA_HOME') {
+        setIsHomeScreen(true);
+        setActiveViewMode('sheets');
+        try {
+          getMesaSessionStorage()?.removeItem(MESA_VIEW_STATE_KEY);
+        } catch {}
+      }
+    };
+    window.addEventListener('message', handleResetHome);
+    return () => window.removeEventListener('message', handleResetHome);
+  }, []);
 
   useEffect(() => {
     return systemLogger.subscribe((logs) => {

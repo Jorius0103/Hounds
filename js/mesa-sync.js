@@ -493,5 +493,10 @@ var MesaSync = (function () {
 window.hubMesaBus = { publish: MesaSync.publish, subscribe: MesaSync.subscribe };
 window.hubMesaPrepare = function () { return MesaSync.prepare(); };
 // The Mesa's exit button: save, then go to the home page.
-window.hubMesaFlush = function () { var saved = MesaSync.flushNow(); go('#inicio'); return saved; };
+window.hubMesaFlush = function () {
+  try { sessionStorage.removeItem('hounds_mesa_view_state_v1'); } catch (e) {}
+  var saved = MesaSync.flushNow();
+  go('#inicio');
+  return saved;
+};
 window.addEventListener('beforeunload', function () { });
