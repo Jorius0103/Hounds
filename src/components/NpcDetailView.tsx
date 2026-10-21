@@ -1152,17 +1152,18 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   />
                 </div>
 
-                <div className="flex flex-wrap items-end gap-2.5">
-                  <div className="flex-1 min-w-[140px]">
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Conjurador:</label>
-                    <input
-                      type="text"
-                      value={manualAffectedSpellCaster}
-                      onChange={(e) => setManualAffectedSpellCaster(e.target.value)}
-                      placeholder="Nome do conjurador..."
-                      className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                    />
-                  </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-0.5">Conjurador:</label>
+                  <input
+                    type="text"
+                    value={manualAffectedSpellCaster}
+                    onChange={(e) => setManualAffectedSpellCaster(e.target.value)}
+                    placeholder="Nome do conjurador..."
+                    className="w-full bg-slate-950 border border-slate-750 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2.5">
                   <div className="w-14 shrink-0">
                     <label className="text-[10px] text-slate-400 block mb-0.5 text-center">Rodada:</label>
                     <input

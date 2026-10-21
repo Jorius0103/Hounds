@@ -367,7 +367,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                   nameColor = 'text-amber-200';
                 } else {
                   cardColorClasses =
-                    'bg-emerald-950/25 border-emerald-600 hover:border-emerald-500 hover:bg-emerald-950/35 text-emerald-200';
+                    'bg-emerald-950/25 border-emerald-700 hover:border-emerald-600 hover:bg-emerald-950/35 text-emerald-200';
                   nameColor = isPlayerChar ? 'text-emerald-200' : 'text-slate-200';
                 }
 
@@ -378,6 +378,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                     style={{
                       borderWidth: '2px',
                       borderStyle: 'solid',
+                      borderColor: isSelected ? '#3b82f6' : isDeadChar ? '#dc2626' : hasAlerts ? '#f59e0b' : '#047857',
                       width: 'calc((100% - 50px) / 9)',
                       minWidth: '150px',
                     }}

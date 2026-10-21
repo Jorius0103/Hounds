@@ -253,12 +253,15 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                   onSelectNpc(npc.id);
                 }
               }}
+              style={{
+                borderColor: isDead ? '#dc2626' : hasWarning ? '#f59e0b' : '#047857',
+              }}
               className={`group relative flex flex-col rounded-xl p-2.5 text-left transition-all cursor-pointer border-2 shadow-md hover:shadow-lg space-y-1.5 ${
                 isDead
                   ? 'bg-red-950/25 border-red-600/80 hover:border-red-500'
                   : hasWarning
                   ? 'bg-slate-900/95 border-amber-500/70 hover:border-amber-400'
-                  : 'bg-slate-900/95 border-emerald-600/80 hover:border-emerald-500'
+                  : 'bg-slate-900/95 border-emerald-700 hover:border-emerald-600'
               }`}
             >
               {/* CABEÇALHO COMPACTO */}

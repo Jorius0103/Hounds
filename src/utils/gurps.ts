@@ -893,9 +893,24 @@ export const DEFAULT_CONDITIONS: ConditionDefinition[] = [
 export function getConditionDescription(conditionNameOrId: string, customConditions?: ConditionDefinition[]): string {
   if (!conditionNameOrId) return '';
   const term = conditionNameOrId.trim().toLowerCase();
-  const allConditions = [...(customConditions || []), ...DEFAULT_CONDITIONS];
+  let list = customConditions;
+  if (!list || list.length === 0) {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('gurps_combat_master_conditions_v2') : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) list = parsed;
+      }
+    } catch (e) {}
+  }
+  const allConditions = [...(list || []), ...DEFAULT_CONDITIONS];
   const found = allConditions.find(
-    (c) => c.label.toLowerCase() === term || c.id.toLowerCase() === term || term.includes(c.label.toLowerCase()) || c.label.toLowerCase().includes(term)
+    (c) =>
+      c.label.toLowerCase() === term ||
+      c.id.toLowerCase() === term ||
+      term === c.label.toLowerCase() ||
+      c.label.toLowerCase().includes(term) ||
+      term.includes(c.label.toLowerCase())
   );
   return found?.description || 'Condição crítica de combate ativa.';
 }
