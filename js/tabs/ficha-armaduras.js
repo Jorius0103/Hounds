@@ -473,6 +473,8 @@ function improvementsFor(kind) { return (W.improvements || []).filter(function (
    hint: the name's placeholder, help: the line below }. */
 function adjRowHtml(cfg, m, i) {
   var sp = m.spellId ? spellById(m.spellId) : null, im = m.improvementId ? improvementById(m.improvementId) : null;
+  // A disadvantage of Regras › Desvantagens: found by the name (the row keeps only the name).
+  var dv = !sp && !im && m.name ? adjDisadv(m.name) : null;
   function num(f) {
     // The weight: one number, in % of the base's weight or in lbs (weightPct or weightLbs), as the unit picked.
     if (f[0] === 'weight') {
@@ -487,7 +489,8 @@ function adjRowHtml(cfg, m, i) {
     '<div class="suggest" id="' + cfg.p + 'AdjSug' + i + '" role="listbox" hidden></div>' +
     (sp ? '<small><a href="' + spellHref(sp.id) + '" data-spell-modal="' + esc(sp.id) + '" target="_blank" rel="noopener">' + svg(ICON.spell, 12, 2.2) + 'Magia: ' + esc(sp.name) + (sp.page ? ' · ' + esc(sp.page) : '') + '</a></small>' : '') +
     (im ? '<small><a href="' + improvementHref(im.id) + '" data-impr-modal="' + esc(im.id) + '" target="_blank" rel="noopener" title="' + esc(clip(im.description || '', 300)) + '">' + svg(ICON.improvement, 12, 2.2) + 'Melhoramento: ' + esc(im.name) +
-      (im.page ? ' · ' + esc(im.page) : '') + '</a>' + (m.cutImp ? ' · dano só nos ataques de corte e perfuração' : '') + '</small>' : '') + '</div>' +
+      (im.page ? ' · ' + esc(im.page) : '') + '</a>' + (m.cutImp ? ' · dano só nos ataques de corte e perfuração' : '') + '</small>' : '') +
+    (dv ? '<small><a href="' + disadvHref(dv.id) + '" data-disadv-modal="' + esc(dv.id) + '" target="_blank" rel="noopener">' + svg(ICON.disadvantage, 12, 2.2) + 'Desvantagem: ' + esc(dv.name) + (dv.page ? ' · ' + esc(dv.page) : '') + '</a></small>' : '') + '</div>' +
     cfg.nums.map(num).join('') +
     '<button class="icon-btn" type="button" data-adj-del="' + i + '" aria-label="Remover ajuste" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
 }
@@ -496,6 +499,9 @@ function adjSumHtml(cfg, list) {
   if (!named.length) return '';
   return 'Total dos ajustes: ' + esc(cfg.text(Object.assign(cfg.total(named), { name: plural(named.length, 'ajuste', 'ajustes') })));
 }
+// The disadvantage of Regras › Desvantagens an adjustment's name is, exactly (with or without a level or
+// a specialty: disadvFind); null otherwise.
+function adjDisadv(name) { var c = disadvFind(name); return c && norm(name).indexOf(norm(c.name)) === 0 ? c : null; }
 function adjListHtml(cfg, list) {
   return '<div class="ab-adjs">' + list.map(function (m, i) { return adjRowHtml(cfg, m, i); }).join('') + '</div>' +
     '<div class="btn-row"><button class="btn" type="button" id="' + cfg.p + 'AdjAdd" data-adj-add="1">' + svg(ICON.plus, 15, 2.4) + 'Adicionar ajuste</button><span class="hint-text" id="' + cfg.p + 'AdjSum">' + adjSumHtml(cfg, list) + '</span></div>' +
@@ -523,12 +529,15 @@ function wireAdjList(cfg, box, list, changed, ctx) {
       improvementRows(c, info).forEach(function (r) { options.push({ impr: r }); });
     });
     if (has) searchCatalog(W.spells || [], q, null).slice(0, 6).forEach(function (c) { options.push({ spell: c }); });
-    options = options.filter(function (o) { return !(o.spell && o.spell.id === cur.spellId && norm(q) === norm(o.spell.name)) && !(o.impr && o.impr.row.improvementId === cur.improvementId && norm(q) === norm(o.impr.row.name)); }).slice(0, 14);
+    if (has) disadvSuggestions(q).slice(0, 6).forEach(function (c) { options.push({ disadv: c }); });
+    options = options.filter(function (o) { return !(o.spell && o.spell.id === cur.spellId && norm(q) === norm(o.spell.name)) && !(o.impr && o.impr.row.improvementId === cur.improvementId && norm(q) === norm(o.impr.row.name)) &&
+      !(o.disadv && norm(q) === norm(o.disadv.name)); }).slice(0, 18);
     if (!el || !options.length) { sug.list = el; sug.input = input; hide(); return; }
     sug.i = i; sug.list = el; sug.input = input; sug.options = options; sug.active = Math.min(sug.active, options.length - 1);
     el.innerHTML = options.map(function (o, n) {
       var a = '<button type="button" role="option" data-o="' + n + '" class="' + (n === sug.active ? 'act' : '') + '" aria-selected="' + (n === sug.active) + '">';
       if (o.spell) return a + '<span>' + esc(o.spell.name) + ptNameHtml(o.spell) + '</span><small>' + esc(['Magia', o.spell.college, o.spell.page].filter(Boolean).join(' · ')) + '</small></button>';
+      if (o.disadv) return a + '<span>' + esc(o.disadv.name) + ptNameHtml(o.disadv) + '</span><small>' + esc(['Desvantagem', o.disadv.cost, o.disadv.page].filter(Boolean).join(' · ')) + '</small></button>';
       var r = o.impr, x = r.row, eff = cfg.text(Object.assign(cfg.clean(x), { name: '' })).replace(/^\s*\(|\)\s*$/g, '');
       return a + '<span>' + esc(x.name) + ptNameHtml(r.c) + '</span><small>' + esc(['Melhoramento', r.label, eff, r.c.page].filter(Boolean).join(' · ')) + '</small></button>';
     }).join('');
@@ -538,6 +547,8 @@ function wireAdjList(cfg, box, list, changed, ctx) {
     var o = sug.options[n], i = sug.i; if (!o || i < 0) return;
     // A spell keeps the numbers typed; an improvement puts the rule's (the row starts over).
     if (o.spell) { list[i].name = o.spell.name; list[i].spellId = o.spell.id; delete list[i].improvementId; }
+    // A disadvantage: its name, the numbers typed stay (the link comes from the name, adjDisadv).
+    else if (o.disadv) { list[i].name = o.disadv.name; delete list[i].spellId; delete list[i].improvementId; }
     else list[i] = Object.assign({}, cfg.blank, o.impr.row);
     redraw(false);
     var f = box.querySelector('[data-adj-f="' + i + ':' + cfg.nums[0][0] + '"]'); if (f instanceof HTMLElement) f.focus();
@@ -564,6 +575,8 @@ function wireAdjList(cfg, box, list, changed, ctx) {
       // An improvement's link stays while the name still starts with the improvement's; its numbers stay.
       var im = m.improvementId ? improvementById(m.improvementId) : null;
       if (m.improvementId && (!im || norm(t.value).trim().indexOf(norm(im.name)) !== 0)) { delete m.improvementId; delete m.cutImp; var b = t.closest('.ab-adj-name').querySelector('small'); if (b) b.remove(); }
+      // A disadvantage's link goes when the name is no longer one (it comes back on the next drawing).
+      var dl = t.closest('.ab-adj-name').querySelector('[data-disadv-modal]'); if (dl && !adjDisadv(t.value)) dl.parentNode.remove();
       sug.active = 0; show(t);
     } else if (k[1] === 'weight') {
       if (t.value === '' || isFinite(Number(t.value))) { var n = t.value === '' ? 0 : Number(t.value), lb = weightUnit(k[0]) === 'lbs'; m.weightPct = lb ? 0 : n; m.weightLbs = lb ? n : 0; }
@@ -571,7 +584,7 @@ function wireAdjList(cfg, box, list, changed, ctx) {
     $(cfg.p + 'AdjSum').innerHTML = adjSumHtml(cfg, list);
     changed();
   });
-  box.addEventListener('focusin', function (e) { var t = nameField(e); if (t) { loadCatalog('spells'); loadCatalog('improvements'); sug.active = 0; show(t); } });
+  box.addEventListener('focusin', function (e) { var t = nameField(e); if (t) { loadCatalog('spells'); loadCatalog('improvements'); loadCatalog('disadvantages'); sug.active = 0; show(t); } });
   box.addEventListener('focusout', function (e) { var t = nameField(e); if (t) setTimeout(function () { if (sug.input === t && document.activeElement !== t) hide(); }, 150); });
   box.addEventListener('keydown', function (e) {
     var t = nameField(e); if (!t || sug.input !== t || !sug.options.length) return;
