@@ -119,7 +119,7 @@ interface CustomShield {
   base: { name: string; tl: string; db: string; dr: string; hp: string; cost: number; weight: number; skill: string; defaults: string };
   description: string;
   /** Ajustes: somam ou tiram do BD, da RD, do NH com o escudo, do custo ($) e do peso (%). */
-  mods: { name: string; spellId?: string; improvementId?: string; db: number; dr: number; nh: number; cost: number; cf: number; weightPct: number }[];
+  mods: { name: string; spellId?: string; improvementId?: string; db: number; dr: number; nh: number; cost: number; weightPct: number; weightLbs?: number }[];
   db: string; dr: string; hp: string; cost: number; weight: number;
   /** A linha de Meus Itens que é o escudo (null: saiu da lista). */
   equipId: string | null;
@@ -128,7 +128,7 @@ interface CustomShield {
 interface CustomWeapon {
   id: string; baseId: string | null; base: { name: string; tl: string; type: string; cost: number; weight: number }; description: string;
   /** Ajustes: texto livre ou uma magia (spellId); somam ou tiram do dano de todos os ataques, do NH com a arma, do custo ($) e do peso (%). */
-  mods: { name: string; spellId?: string; improvementId?: string; dmg: number; cutImp?: boolean; nh: number; cost: number; cf: number; weightPct: number }[];
+  mods: { name: string; spellId?: string; improvementId?: string; dmg: number; cutImp?: boolean; nh: number; cost: number; weightPct: number; weightLbs?: number }[];
   /** Os ataques do livro, com o dano do livro (baseDamage) e o ajustado (damage). */
   attacks: (Omit<WeaponAttack, 'damage'> & { baseDamage: string; damage: string })[];
   cost: number; weight: number;
@@ -141,7 +141,7 @@ interface ArmorSet {
   base: { name: string; dr: string; cost: number; weight: number; don: number | null; tl: string };
   version: number; originId: string | null;
   /** Ajustes: texto livre ou uma magia (spellId); somam ou tiram da RD de cada peça (pontos), do custo do conjunto ($) e do peso de cada peça (%). */
-  mods: { name: string; spellId?: string; improvementId?: string; dr: number; cost: number; cf: number; weightPct: number }[];
+  mods: { name: string; spellId?: string; improvementId?: string; dr: number; cost: number; weightPct: number; weightLbs?: number }[];
   /** equipId: a linha da lista que é a peça (null: saiu da lista). pct: o percentual final sobre o tronco, com a cobertura. */
   pieces: { id: string; loc: string; cover: 'full' | 'front'; pct: number; dr: string; cost: number; weight: number; don: number | null; equipId: string | null }[];
 }

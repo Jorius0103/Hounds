@@ -11,7 +11,7 @@
    percentage of the torso. Creating a set adds each piece to the sheet's list (Meus Itens) as an
    armor line; wearing it is up to Corpo, and the load counts it as any other line.
    sheet.armorSets = [{ id, name, description, baseId, base: { name, dr, cost, weight, don, tl },
-       version, originId, mods: [{ name, spellId?, dr, cost, weightPct }],
+       version, originId, mods: [{ name, spellId?, dr, cost, weightPct, weightLbs }],
        pieces: [{ id, loc, cover, pct, dr, cost, weight, don, equipId }] }]
      base: the model as it was when the set was made; mods: the adjustments, free text or a spell of
      Regras › Magias, each adding to (or, negative, taking from) the DR of every piece, the set's total
@@ -81,21 +81,17 @@ function drAdd(dr, n) { dr = String(dr == null ? '' : dr); return n ? dr.replace
 // The adjustments of a set added up: DR on every piece; cost ($) on the set's total; weight (%) on
 // every piece. The percentages add up (+50% and −15% are +35%).
 function armorAdjTotal(mods) {
-  var t = { dr: 0, cost: 0, cf: 0, weightPct: 0 };
-  mods.forEach(function (m) { t.dr += m.dr || 0; t.cost += m.cost || 0; t.cf += m.cf || 0; t.weightPct += m.weightPct || 0; });
-  t.cost = eqRound(t.cost); t.cf = eqRound(t.cf); t.weightPct = eqRound(t.weightPct);
+  var t = { dr: 0, cost: 0, weightPct: 0, weightLbs: 0 };
+  mods.forEach(function (m) { t.dr += m.dr || 0; t.cost += m.cost || 0; t.weightPct += m.weightPct || 0; t.weightLbs += m.weightLbs || 0; });
+  t.cost = eqRound(t.cost); t.weightPct = eqRound(t.weightPct); t.weightLbs = eqRound(t.weightLbs);
   return t;
 }
-// A cost times (1 + the CFs added up), as the books do (B274); never below 0.
-function cfCost(cost, cf) { return Math.max(0, eqRound(cost * (1 + (cf || 0)))); }
-// The CF and the improvement of an adjustment (the same in Criar Armadura, Arma and Escudo): o.cf (−1
-// to 1000, cents), o.improvementId.
-function cleanAdjCf(o, m) {
-  o.cf = Math.round((abNum(m.cf, -1, 1000) || 0) * 100) / 100;
+// The improvement an adjustment came from (the same in Criar Armadura, Arma and Escudo): o.improvementId.
+// There is no CF (cost factor) any more: an improvement brings only what it costs in $.
+function cleanAdjImprovement(o, m) {
   var im = gearId(m.improvementId, 200); if (im) o.improvementId = im;
   return o;
 }
-function adjCfText(m) { return m.cf ? 'CF ' + (m.cf < 0 ? '−' : '+') + eqNum(Math.abs(m.cf)) : ''; }
 // One piece from the base model, in this order:
 //   1. the base model's torso: cost, weight, DR and time to don (100%);
 //   2. the location's percentage of the torso, on cost, weight and time to don;
@@ -110,20 +106,24 @@ function armorPieceCalc(base, loc, cover, dr) {
     don: base.don == null ? null : Math.round(base.don * pct / 100 * 10) / 10 };
 }
 // The pieces of a set (sel: { location id: cover }): each one by armorPieceCalc, then the adjustments:
-// the CFs on each piece's cost (× (1 + their sum)); the weight % on each piece's weight; the cost, which changes the set's total, shared among the
+// the weight % on each piece's weight; the cost, which changes the set's total, shared among the
 // pieces by their percentage (the last one takes what rounding left, so the total moves by exactly
 // what was typed; one piece takes it all). A piece never goes below 0.
 function armorSetPieces(base, mods, sel) {
   var adj = armorAdjTotal(mods), pieces = armorLocs().filter(function (l) { return sel[l.id]; }).map(function (l) {
     return Object.assign({ id: '', loc: l.id }, armorPieceCalc(base, l, sel[l.id], adj.dr), { equipId: null });
   });
-  var sum = pieces.reduce(function (n, p) { return n + p.pct; }, 0), left = adj.cost;
-  if (adj.cf) pieces.forEach(function (p) { p.cost = cfCost(p.cost, adj.cf); });
+  var sum = pieces.reduce(function (n, p) { return n + p.pct; }, 0);
   if (adj.weightPct) pieces.forEach(function (p) { p.weight = Math.max(0, eqRound(p.weight * (1 + adj.weightPct / 100))); });
-  if (left && sum) pieces.forEach(function (p, i) {
-    var part = i === pieces.length - 1 ? left : eqRound(adj.cost * p.pct / sum);
-    left = eqRound(left - part); p.cost = Math.max(0, eqRound(p.cost + part));
-  });
+  // The cost ($) and the weight in lbs change the set's total: shared among the pieces like the cost.
+  function share(total, f) {
+    var left = total; if (!left || !sum) return;
+    pieces.forEach(function (p, i) {
+      var part = i === pieces.length - 1 ? left : eqRound(total * p.pct / sum);
+      left = eqRound(left - part); p[f] = Math.max(0, eqRound(p[f] + part));
+    });
+  }
+  share(adj.cost, 'cost'); share(adj.weightLbs, 'weight');
   return pieces;
 }
 // A piece in the list: the location, then the base model ("Cabeça (frontal) — Plate, Medium").
@@ -158,10 +158,11 @@ function cleanArmorSet(a, i, by) {
 // points), the cost ($) and the weight (% of the piece's; −100% is the least). Empty numbers are 0.
 function cleanArmorAdj(m) {
   m = m || {};
-  var o = { name: String(m.name || '').trim().slice(0, 120), dr: cleanInt(m.dr, -50, 50, 0), cost: abNum(m.cost, -9999999, 9999999) || 0, weightPct: abNum(m.weightPct, -100, 1000) || 0 };
-  o.cost = Math.round(o.cost * 100) / 100; o.weightPct = Math.round(o.weightPct * 100) / 100;
+  var o = { name: String(m.name || '').trim().slice(0, 120), dr: cleanInt(m.dr, -50, 50, 0), cost: abNum(m.cost, -9999999, 9999999) || 0, weightPct: abNum(m.weightPct, -100, 1000) || 0,
+    weightLbs: abNum(m.weightLbs, -99999, 99999) || 0 };
+  o.cost = Math.round(o.cost * 100) / 100; o.weightPct = Math.round(o.weightPct * 100) / 100; o.weightLbs = Math.round(o.weightLbs * 100) / 100;
   var sp = gearId(m.spellId, 200); if (sp) o.spellId = sp;
-  return cleanAdjCf(o, m);
+  return cleanAdjImprovement(o, m);
 }
 // The set a draft gives, with its adjustments (rows left blank are dropped), named by its locations;
 // label: the name given to the piece (only for its line in Meus Itens, armorLineName; not saved in the set).
@@ -177,7 +178,7 @@ function armorDraftErrors(d) {
   if (!d.base) out.push('Escolha o modelo base (uma armadura de tronco).');
   else if (d.custom && !String(d.base.name || '').trim()) out.push('Dê um nome ao modelo personalizado.');
   if (!sel.length) out.push('Escolha a parte do corpo.');
-  if (d.adj.some(function (m) { var c = cleanArmorAdj(m); return !c.name && (c.dr || c.cost || c.cf || c.weightPct); })) out.push('Dê um nome a cada ajuste com valores.');
+  if (d.adj.some(function (m) { var c = cleanArmorAdj(m); return !c.name && (c.dr || c.cost || c.weightPct || c.weightLbs); })) out.push('Dê um nome a cada ajuste com valores.');
   sel.forEach(function (a) { sel.forEach(function (b) { if (a < b && armorLocsClash(a, b)) out.push(armorLocName(a) + ' e ' + armorLocName(b) + ' cobrem a mesma área: escolha uma das duas.'); }); });
   return out;
 }
@@ -278,7 +279,7 @@ function armorSetTotals(set) {
 // "Fortify (RD +1, +$500, peso −15%)".
 function armorAdjText(m) {
   function sg(n) { return n < 0 ? '−' : '+'; }
-  var parts = [m.dr ? 'RD ' + sg(m.dr) + Math.abs(m.dr) : '', m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', adjCfText(m), m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : ''].filter(Boolean);
+  var parts = [m.dr ? 'RD ' + sg(m.dr) + Math.abs(m.dr) : '', m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : '', m.weightLbs ? 'peso ' + sg(m.weightLbs) + eqLbs(Math.abs(m.weightLbs)) : ''].filter(Boolean);
   return m.name + (parts.length ? ' (' + parts.join(', ') + ')' : '');
 }
 // The DR on each part of the body, from the pieces that cover it.
@@ -370,8 +371,8 @@ function armorFlexHtml(dr) {
     'Armaduras rígidas (sem *), como placa, não têm esse efeito. A ficha não calcula isso sozinha: aplique na hora do dano.</span></p>';
 }
 /* ---------- improvements (Regras › Melhoramentos) as adjustments ----------
-   An improvement picked as an adjustment fills its row with what the rule says: the cost factor (CF;
-   the book's "×4" is +3 CF), a fixed cost ("+$20"), the weight ("×3/4" is −25%, "+10%"; "+5 lbs." is a
+   An improvement picked as an adjustment fills its row with what the rule says: a fixed cost ("+$20";
+   a cost factor, "+2 CF" or "×4", only names the option: there is no CF field), the weight ("×3/4" is −25%, "+10%"; "+5 lbs." is a
    % of the base's weight) and, from IMPROVEMENT_EFFECTS, the numbers the description gives (DR,
    damage, skill). An improvement with options ("+2/+3/+9 CF", by the kind of weapon; Dragonhide's
    +1 to +4 DR) is offered once per option. */
@@ -396,7 +397,8 @@ var IMPROVEMENT_EFFECTS = (function () {
 })();
 // "2/3" or "1.5" as a number; NaN when not one.
 function imprNum(t) { var m = /^(\d+(?:\.\d+)?)(?:\/(\d+(?:\.\d+)?))?$/.exec(String(t).replace(/,/g, '').trim()); return m ? (m[2] ? +m[1] / +m[2] : +m[1]) : NaN; }
-// The cost's options: [{ cf, cost, text }] ("+2/+3/+9 CF", "×4/×3/×10", "×0.4; -0.6 CF", "+$2,000").
+// The cost's options: [{ cf, cost, text }] ("+2/+3/+9 CF", "×4/×3/×10", "×0.4; -0.6 CF", "+$2,000"). The CF
+// only names the option now ("Fine (+2 CF)"); the adjustment takes only the $.
 function imprCostOptions(v) {
   var t = String(v || '').replace(/\s+/g, ' ').trim(), m = /((?:[+-]?\d+(?:\.\d+)?\/)*[+-]?\d+(?:\.\d+)?)\s*CF/i.exec(t);
   if (m) return m[1].split('/').map(function (x) { var n = +x; return { cf: n, cost: 0, text: (n >= 0 ? '+' : '') + eqNum(n) + ' CF' }; });
@@ -424,8 +426,9 @@ function improvementRows(c, ctx) {
   var parts = String(c.restriction || '').split(/\s*;\s*|\s+\/\s+/).filter(Boolean), many = costs.length > 1;
   return costs.map(function (o, k) {
     var w = weights.length === costs.length ? weights[k] : weights.length === 1 ? weights[0] : null;
-    var e = Array.isArray(fx) ? fx[k] || {} : fx || {}, row = { name: (c.name + (many ? ' (' + o.text + ')' : '')).slice(0, 120), improvementId: c.id, cf: o.cf, cost: o.cost, weightPct: 0 };
-    if (w) row.weightPct = w.pct != null ? w.pct : ctx.weight ? eqRound(w.lbs / ctx.weight * 100) : 0;
+    var e = Array.isArray(fx) ? fx[k] || {} : fx || {}, row = { name: (c.name + (many ? ' (' + o.text + ')' : '')).slice(0, 120), improvementId: c.id, cost: o.cost, weightPct: 0 };
+    // "+5 lbs." stays in lbs; "×3/4" or "+10%" in %.
+    if (w) { if (w.pct != null) row.weightPct = w.pct; else row.weightLbs = w.lbs; }
     if (e.weightPct) row.weightPct = eqRound(row.weightPct + e.weightPct);
     ['dr', 'db', 'nh'].forEach(function (f) { if (e[f]) row[f] = e[f]; });
     if (e.dmg && !ctx.ranged) { row.dmg = e.dmg; if (e.cutImp) row.cutImp = true; }
@@ -436,14 +439,20 @@ function improvementsFor(kind) { return (W.improvements || []).filter(function (
 
 /* ---------- adjustments (Criar Armadura, Arma and Escudo) ----------
    Free rows, each a name (typed, or a spell of Regras › Magias or an improvement of Regras ›
-   Melhoramentos, in English or Portuguese) and numbers that add to or take from the result; cf: the
-   cost factor (Basic Set, p. B274: the cost is the base's × (1 + the CFs added up), plus the $).
+   Melhoramentos, in English or Portuguese) and numbers that add to or take from the result (the cost
+   is the base's plus the $ of the adjustments).
    cfg: { p: the prefix of the ids ('ab', 'wb'), kind: the improvements offered, nums: [[field, label,
    step]], blank: a new row, clean(m), total(list): the sum as one row, text(m): "Nome (RD +1, +$5)",
    hint: the name's placeholder, help: the line below }. */
 function adjRowHtml(cfg, m, i) {
   var sp = m.spellId ? spellById(m.spellId) : null, im = m.improvementId ? improvementById(m.improvementId) : null;
   function num(f) {
+    // The weight: one number, in % of the base's weight or in lbs (weightPct or weightLbs), as the unit picked.
+    if (f[0] === 'weight') {
+      var lbs = !!m.weightLbs && !m.weightPct, v = lbs ? m.weightLbs : m.weightPct;
+      return '<label class="ab-lv ab-weight">' + f[1] + ' <input type="number" data-adj-f="' + i + ':weight" step="any" placeholder="0" value="' + (v ? v : '') + '" aria-label="Peso do ajuste">' +
+        '<select data-adj-unit="' + i + '" aria-label="Unidade do peso"><option value="pct"' + (lbs ? '' : ' selected') + '>%</option><option value="lbs"' + (lbs ? ' selected' : '') + '>lbs</option></select></label>';
+    }
     return '<label class="ab-lv">' + f[1] + ' <input type="number" data-adj-f="' + i + ':' + f[0] + '" step="' + f[2] + '" placeholder="0" value="' + (m[f[0]] == null || m[f[0]] === 0 ? '' : m[f[0]]) + '" aria-label="' + f[1] + ' do ajuste"></label>';
   }
   return '<div class="ab-adj" data-adj="' + i + '"><div class="sk-pick ab-adj-name"><input type="text" data-adj-f="' + i + ':name" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + cfg.p + 'AdjSug' + i + '"' +
@@ -507,8 +516,17 @@ function wireAdjList(cfg, box, list, changed, ctx) {
     var f = box.querySelector('[data-adj-f="' + i + ':' + cfg.nums[0][0] + '"]'); if (f instanceof HTMLElement) f.focus();
   }
   function nameField(e) { var t = /** @type {AnyEl} */ (e.target); return t && t.getAttribute && /:name$/.test(t.getAttribute('data-adj-f') || '') ? t : null; }
+  // The weight's unit: the number moves to the other field (% or lbs).
+  function weightUnit(i) { var s = box.querySelector('[data-adj-unit="' + i + '"]'); return s ? s.value : 'pct'; }
   box.addEventListener('input', function (e) {
-    var t = /** @type {AnyEl} */ (e.target), f = t.getAttribute && t.getAttribute('data-adj-f'); if (!f) return;
+    var t = /** @type {AnyEl} */ (e.target), u = t.getAttribute && t.getAttribute('data-adj-unit');
+    if (u != null) {
+      var w = list[+u]; if (!w) return;
+      var val = (w.weightPct || 0) + (w.weightLbs || 0);
+      w.weightPct = t.value === 'pct' ? val : 0; w.weightLbs = t.value === 'lbs' ? val : 0;
+      $(cfg.p + 'AdjSum').innerHTML = adjSumHtml(cfg, list); changed(); return;
+    }
+    var f = t.getAttribute && t.getAttribute('data-adj-f'); if (!f) return;
     // Typing: the row stays as it is (the focus too); the total and what depends on it follow.
     var k = f.split(':'), m = list[+k[0]]; if (!m) return;
     if (k[1] === 'name') {
@@ -520,6 +538,8 @@ function wireAdjList(cfg, box, list, changed, ctx) {
       var im = m.improvementId ? improvementById(m.improvementId) : null;
       if (m.improvementId && (!im || norm(t.value).trim().indexOf(norm(im.name)) !== 0)) { delete m.improvementId; delete m.cutImp; var b = t.closest('.ab-adj-name').querySelector('small'); if (b) b.remove(); }
       sug.active = 0; show(t);
+    } else if (k[1] === 'weight') {
+      if (t.value === '' || isFinite(Number(t.value))) { var n = t.value === '' ? 0 : Number(t.value), lb = weightUnit(k[0]) === 'lbs'; m.weightPct = lb ? 0 : n; m.weightLbs = lb ? n : 0; }
     } else if (t.value === '' || isFinite(Number(t.value))) m[k[1]] = t.value === '' ? 0 : Number(t.value);
     $(cfg.p + 'AdjSum').innerHTML = adjSumHtml(cfg, list);
     changed();
@@ -541,12 +561,12 @@ function wireAdjList(cfg, box, list, changed, ctx) {
     else if (add) { list.push(Object.assign({}, cfg.blank)); redraw(true); }
   });
 }
-// Criar Armadura's adjustments: DR (points), cost ($), CF, weight (% of the piece's).
-var ARMOR_ADJ = { p: 'ab', kind: 'Armadura', nums: [['dr', 'RD', '1'], ['cost', 'Custo ($)', 'any'], ['cf', 'CF', 'any'], ['weightPct', 'Peso (%)', 'any']], blank: { name: '', dr: 0, cost: 0, cf: 0, weightPct: 0 },
+// Criar Armadura's adjustments: DR (points), cost ($), weight (% of each piece's, or lbs on the set's total).
+var ARMOR_ADJ = { p: 'ab', kind: 'Armadura', nums: [['dr', 'RD', '1'], ['cost', 'Custo ($)', 'any'], ['weight', 'Peso', 'any']], blank: { name: '', dr: 0, cost: 0, weightPct: 0, weightLbs: 0 },
   clean: function (m) { return cleanArmorAdj(m); }, total: function (l) { return armorAdjTotal(l); }, text: function (m) { return armorAdjText(m); },
   hint: 'Escreva o ajuste ou busque um melhoramento ou uma magia. Ex.: Fine, Dwarven, Fortify',
-  help: 'Cada ajuste soma (ou, negativo, tira): a RD em pontos, o custo em $, o CF (fator de custo: o custo da peça vezes 1 + a soma dos CF, B274) e o peso em % do peso da peça. ' +
-    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, RD); confira a descrição no link. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a peça.' };
+  help: 'Cada ajuste soma (ou, negativo, tira): a RD em pontos, o custo em $ e o peso, em % do peso de cada peça ou em lbs no total do conjunto (dividido entre as peças). ' +
+    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (custo em $, peso e, quando a descrição dá, RD); confira a descrição no link. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a peça.' };
 // The part of the body, picked from a list: grouped by the larger locations (Cabeça, then Crânio and
 // Rosto inside it), each with its percentage of the torso. Once picked: its coverage and the piece's
 // values.

@@ -9,7 +9,7 @@
 /* A weapon of Regras › Armas with adjustments (free text or a spell, as in Criar Armadura), added to
    the sheet's list (Meus Itens) as a weapon line.
    sheet.customWeapons = [{ id, baseId, base: { name, tl, type, cost, weight }, description,
-       mods: [{ name, spellId?, dmg, nh, cost, weightPct }], attacks: [attack], cost, weight, equipId }]
+       mods: [{ name, spellId?, dmg, nh, cost, weightPct, weightLbs }], attacks: [attack], cost, weight, equipId }]
      base: the weapon as it was when made; mods: the adjustments, each adding to (or, negative,
      taking from) the damage of every attack, the NH with the weapon (on top of the sheet's skill,
      which does not change: weaponNh), the cost ($) and the weight (%); attacks: the book's
@@ -29,18 +29,19 @@ function dmgPlus(dmg, n) {
 }
 function cleanWeaponAdj(m) {
   m = m || {};
-  var o = { name: String(m.name || '').trim().slice(0, 120), dmg: cleanInt(m.dmg, -20, 20, 0), nh: cleanInt(m.nh, -20, 20, 0), cost: abNum(m.cost, -9999999, 9999999) || 0, weightPct: abNum(m.weightPct, -100, 1000) || 0 };
-  o.cost = Math.round(o.cost * 100) / 100; o.weightPct = Math.round(o.weightPct * 100) / 100;
+  var o = { name: String(m.name || '').trim().slice(0, 120), dmg: cleanInt(m.dmg, -20, 20, 0), nh: cleanInt(m.nh, -20, 20, 0), cost: abNum(m.cost, -9999999, 9999999) || 0, weightPct: abNum(m.weightPct, -100, 1000) || 0,
+    weightLbs: abNum(m.weightLbs, -99999, 99999) || 0 };
+  o.cost = Math.round(o.cost * 100) / 100; o.weightPct = Math.round(o.weightPct * 100) / 100; o.weightLbs = Math.round(o.weightLbs * 100) / 100;
   var sp = gearId(m.spellId, 200); if (sp) o.spellId = sp;
   // cutImp: the damage only on the cutting and impaling attacks (Fine, Very Fine).
   if (m.cutImp === true && o.dmg) o.cutImp = true;
-  return cleanAdjCf(o, m);
+  return cleanAdjImprovement(o, m);
 }
 // dmgCutImp: the damage of the adjustments that is only for cutting and impaling attacks.
 function weaponAdjTotal(mods) {
-  var t = { dmg: 0, dmgCutImp: 0, nh: 0, cost: 0, cf: 0, weightPct: 0 };
-  mods.forEach(function (m) { if (m.cutImp) t.dmgCutImp += m.dmg || 0; else t.dmg += m.dmg || 0; t.nh += m.nh || 0; t.cost += m.cost || 0; t.cf += m.cf || 0; t.weightPct += m.weightPct || 0; });
-  t.cost = eqRound(t.cost); t.cf = eqRound(t.cf); t.weightPct = eqRound(t.weightPct);
+  var t = { dmg: 0, dmgCutImp: 0, nh: 0, cost: 0, weightPct: 0, weightLbs: 0 };
+  mods.forEach(function (m) { if (m.cutImp) t.dmgCutImp += m.dmg || 0; else t.dmg += m.dmg || 0; t.nh += m.nh || 0; t.cost += m.cost || 0; t.weightPct += m.weightPct || 0; t.weightLbs += m.weightLbs || 0; });
+  t.cost = eqRound(t.cost); t.weightPct = eqRound(t.weightPct); t.weightLbs = eqRound(t.weightLbs);
   return t;
 }
 // A cutting or impaling attack ("sw+1 cut", "thr imp").
@@ -49,11 +50,11 @@ function weaponCutImp(dmg) { return /\b(cut|imp)\b/i.test(String(dmg || '')); }
 function weaponAdjText(m) {
   function sg(n) { return n < 0 ? '−' : '+'; }
   var dmg = (m.dmg || 0) + (m.dmgCutImp || 0), ci = m.cutImp || (m.dmgCutImp && !m.dmg);
-  var parts = [dmg ? 'dano ' + sg(dmg) + Math.abs(dmg) + (ci ? ' (corte/perf.)' : '') : '', m.nh ? 'NH ' + sg(m.nh) + Math.abs(m.nh) : '', m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', adjCfText(m), m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : ''].filter(Boolean);
+  var parts = [dmg ? 'dano ' + sg(dmg) + Math.abs(dmg) + (ci ? ' (corte/perf.)' : '') : '', m.nh ? 'NH ' + sg(m.nh) + Math.abs(m.nh) : '', m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : '', m.weightLbs ? 'peso ' + sg(m.weightLbs) + eqLbs(Math.abs(m.weightLbs)) : ''].filter(Boolean);
   return m.name + (parts.length ? ' (' + parts.join(', ') + ')' : '');
 }
-// The weapon with its adjustments, in this order: the book's cost and weight; the cost times (1 + the
-// CFs added up), plus the adjustments' $; the weight times (1 + their % / 100) (the % add up); every
+// The weapon with its adjustments, in this order: the book's cost and weight; the cost plus the
+// adjustments' $; the weight times (1 + their % / 100) (the % add up); every
 // attack's damage plus their damage (the cutting and impaling ones also plus dmgCutImp). Never below
 // 0. odd: the attacks whose damage takes no plus (left as in the book).
 function weaponCalc(base, attacks, mods) {
@@ -63,13 +64,13 @@ function weaponCalc(base, attacks, mods) {
     if (dmg == null) { odd.push(a.baseDamage); dmg = a.baseDamage; }
     return Object.assign({}, a, { damage: dmg });
   });
-  return { attacks: out, cost: Math.max(0, eqRound(cfCost(base.cost, t.cf) + t.cost)), weight: Math.max(0, eqRound(base.weight * (1 + t.weightPct / 100))), odd: odd };
+  return { attacks: out, cost: Math.max(0, eqRound(base.cost + t.cost)), weight: Math.max(0, eqRound(base.weight * (1 + t.weightPct / 100) + t.weightLbs)), odd: odd };
 }
-var WEAPON_ADJ = { p: 'wb', kind: 'Arma', nums: [['dmg', 'Dano', '1'], ['nh', 'NH', '1'], ['cost', 'Custo ($)', 'any'], ['cf', 'CF', 'any'], ['weightPct', 'Peso (%)', 'any']], blank: { name: '', dmg: 0, nh: 0, cost: 0, cf: 0, weightPct: 0 },
+var WEAPON_ADJ = { p: 'wb', kind: 'Arma', nums: [['dmg', 'Dano', '1'], ['nh', 'NH', '1'], ['cost', 'Custo ($)', 'any'], ['weight', 'Peso', 'any']], blank: { name: '', dmg: 0, nh: 0, cost: 0, weightPct: 0, weightLbs: 0 },
   clean: function (m) { return cleanWeaponAdj(m); }, total: function (l) { return weaponAdjTotal(l); }, text: function (m) { return weaponAdjText(m); },
   hint: 'Escreva o ajuste ou busque um melhoramento ou uma magia. Ex.: Fine, Balanced, Puissance',
-  help: 'Cada ajuste soma (ou, negativo, tira): o dano de todos os ataques (+1 faz sw+1 cut virar sw+2 cut), o NH com esta arma (somado ao NH da perícia do ataque na ficha; a perícia não muda), o custo em $, o CF (fator de custo: o custo da arma vezes 1 + a soma dos CF, B274) e o peso em % do peso da arma. ' +
-    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, dano e NH; o dano de Fine e Very Fine só nos ataques de corte e perfuração). Quando o custo depende do tipo de arma, escolha a opção certa na lista. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a arma.' };
+  help: 'Cada ajuste soma (ou, negativo, tira): o dano de todos os ataques (+1 faz sw+1 cut virar sw+2 cut), o NH com esta arma (somado ao NH da perícia do ataque na ficha; a perícia não muda), o custo em $ e o peso, em % do peso da arma ou em lbs. ' +
+    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (custo em $, peso e, quando a descrição dá, dano e NH; o dano de Fine e Very Fine só nos ataques de corte e perfuração). Quando o custo depende do tipo de arma, escolha a opção certa na lista. Com vários ajustes, os valores se somam. Os ajustes ficam guardados com a arma.' };
 
 // The NH of an attack on this sheet: the sheet's level in the attack's skill (Combate or Perícias,
 // with the talents), or the best of the book's defaults ("DX-5, Force Sword-4": an attribute, or a
@@ -154,7 +155,7 @@ function weaponDraftResult(d) { return weaponCalc(d.base, d.attacks, d.adj.map(c
 function weaponDraftErrors(d) {
   var out = [];
   if (!d.base) out.push('Escolha a arma.');
-  if (d.adj.some(function (m) { var c = cleanWeaponAdj(m); return !c.name && (c.dmg || c.nh || c.cost || c.cf || c.weightPct); })) out.push('Dê um nome a cada ajuste com valores.');
+  if (d.adj.some(function (m) { var c = cleanWeaponAdj(m); return !c.name && (c.dmg || c.nh || c.cost || c.weightPct || c.weightLbs); })) out.push('Dê um nome a cada ajuste com valores.');
   return out;
 }
 // The Notas of a new weapon: the description and the book's notes ("[3] An arrow ... is $2.").

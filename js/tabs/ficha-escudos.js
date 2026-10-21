@@ -9,7 +9,7 @@
 /* A shield or cloak of Regras › Armaduras (type Shield), or one of the player's, with adjustments (as in
    Criar Arma), added to Meus Itens as an armor line that is carried (Corpo › Armas e itens).
    sheet.customShields = [{ id, baseId, base: { name, tl, db, dr, hp, cost, weight, skill, defaults },
-       description, mods: [{ name, spellId?, db, dr, nh, cost, weightPct }], db, dr, hp, cost, weight, equipId }]
+       description, mods: [{ name, spellId?, db, dr, nh, cost, weightPct, weightLbs }], db, dr, hp, cost, weight, equipId }]
      base: the shield as it was when made (or typed: baseId null); mods: the adjustments, each adding
      to (or, negative, taking from) the BD and the RD, the NH with it (on top of the sheet's skill,
      which does not change: weaponNh), the cost ($) and the weight (%); db, dr, hp, cost, weight: the
@@ -19,35 +19,35 @@
 function cleanShieldAdj(m) {
   m = m || {};
   var o = { name: String(m.name || '').trim().slice(0, 120), db: cleanInt(m.db, -10, 10, 0), dr: cleanInt(m.dr, -50, 50, 0), nh: cleanInt(m.nh, -20, 20, 0),
-    cost: abNum(m.cost, -9999999, 9999999) || 0, weightPct: abNum(m.weightPct, -100, 1000) || 0 };
-  o.cost = Math.round(o.cost * 100) / 100; o.weightPct = Math.round(o.weightPct * 100) / 100;
+    cost: abNum(m.cost, -9999999, 9999999) || 0, weightPct: abNum(m.weightPct, -100, 1000) || 0, weightLbs: abNum(m.weightLbs, -99999, 99999) || 0 };
+  o.cost = Math.round(o.cost * 100) / 100; o.weightPct = Math.round(o.weightPct * 100) / 100; o.weightLbs = Math.round(o.weightLbs * 100) / 100;
   var sp = gearId(m.spellId, 200); if (sp) o.spellId = sp;
-  return cleanAdjCf(o, m);
+  return cleanAdjImprovement(o, m);
 }
 function shieldAdjTotal(mods) {
-  var t = { db: 0, dr: 0, nh: 0, cost: 0, cf: 0, weightPct: 0 };
-  mods.forEach(function (m) { t.db += m.db || 0; t.dr += m.dr || 0; t.nh += m.nh || 0; t.cost += m.cost || 0; t.cf += m.cf || 0; t.weightPct += m.weightPct || 0; });
-  t.cost = eqRound(t.cost); t.cf = eqRound(t.cf); t.weightPct = eqRound(t.weightPct);
+  var t = { db: 0, dr: 0, nh: 0, cost: 0, weightPct: 0, weightLbs: 0 };
+  mods.forEach(function (m) { t.db += m.db || 0; t.dr += m.dr || 0; t.nh += m.nh || 0; t.cost += m.cost || 0; t.weightPct += m.weightPct || 0; t.weightLbs += m.weightLbs || 0; });
+  t.cost = eqRound(t.cost); t.weightPct = eqRound(t.weightPct); t.weightLbs = eqRound(t.weightLbs);
   return t;
 }
 // "Fortify (BD +1, RD +2, NH +1, +$300, peso −10%)".
 function shieldAdjText(m) {
   function sg(n) { return n < 0 ? '−' : '+'; }
   var parts = [m.db ? 'BD ' + sg(m.db) + Math.abs(m.db) : '', m.dr ? 'RD ' + sg(m.dr) + Math.abs(m.dr) : '', m.nh ? 'NH ' + sg(m.nh) + Math.abs(m.nh) : '',
-    m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', adjCfText(m), m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : ''].filter(Boolean);
+    m.cost ? sg(m.cost) + eqMoney(Math.abs(m.cost)) : '', m.weightPct ? 'peso ' + sg(m.weightPct) + eqNum(Math.abs(m.weightPct)) + '%' : '', m.weightLbs ? 'peso ' + sg(m.weightLbs) + eqLbs(Math.abs(m.weightLbs)) : ''].filter(Boolean);
   return m.name + (parts.length ? ' (' + parts.join(', ') + ')' : '');
 }
 // The shield with its adjustments: BD (a number; one that is not stays) and RD plus theirs; PV as is;
-// the cost times (1 + the CFs added up), plus their $; the weight times (1 + their % / 100). Never below 0.
+// the cost plus their $; the weight times (1 + their % / 100). Never below 0.
 function shieldCalc(base, mods) {
   var t = shieldAdjTotal(mods), db = /^\s*\d+\s*$/.test(String(base.db)) ? String(Math.max(0, +base.db + t.db)) : String(base.db || '');
-  return { db: db, dr: drAdd(base.dr, t.dr), hp: String(base.hp || ''), cost: Math.max(0, eqRound(cfCost(base.cost, t.cf) + t.cost)), weight: Math.max(0, eqRound(base.weight * (1 + t.weightPct / 100))), nh: t.nh };
+  return { db: db, dr: drAdd(base.dr, t.dr), hp: String(base.hp || ''), cost: Math.max(0, eqRound(base.cost + t.cost)), weight: Math.max(0, eqRound(base.weight * (1 + t.weightPct / 100) + t.weightLbs)), nh: t.nh };
 }
-var SHIELD_ADJ = { p: 'sb', kind: 'Escudo', nums: [['db', 'BD', '1'], ['dr', 'RD', '1'], ['nh', 'NH', '1'], ['cost', 'Custo ($)', 'any'], ['cf', 'CF', 'any'], ['weightPct', 'Peso (%)', 'any']], blank: { name: '', db: 0, dr: 0, nh: 0, cost: 0, cf: 0, weightPct: 0 },
+var SHIELD_ADJ = { p: 'sb', kind: 'Escudo', nums: [['db', 'BD', '1'], ['dr', 'RD', '1'], ['nh', 'NH', '1'], ['cost', 'Custo ($)', 'any'], ['weight', 'Peso', 'any']], blank: { name: '', db: 0, dr: 0, nh: 0, cost: 0, weightPct: 0, weightLbs: 0 },
   clean: function (m) { return cleanShieldAdj(m); }, total: function (l) { return shieldAdjTotal(l); }, text: function (m) { return shieldAdjText(m); },
   hint: 'Escreva o ajuste ou busque um melhoramento ou uma magia. Ex.: Fine, Dwarven, Fortify',
-  help: 'Cada ajuste soma (ou, negativo, tira): o BD e a RD do escudo, o NH com ele (somado ao NH da perícia na ficha; a perícia não muda), o custo em $, o CF (fator de custo: o custo do escudo vezes 1 + a soma dos CF, B274) e o peso em % do peso do escudo. ' +
-    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (CF, peso e, quando a descrição dá, NH). Com vários ajustes, os valores se somam.' };
+  help: 'Cada ajuste soma (ou, negativo, tira): o BD e a RD do escudo, o NH com ele (somado ao NH da perícia na ficha; a perícia não muda), o custo em $ e o peso, em % do peso do escudo ou em lbs. ' +
+    'Um melhoramento de Regras › Melhoramentos já vem com o que a regra dele diz (custo em $, peso e, quando a descrição dá, NH). Com vários ajustes, os valores se somam.' };
 
 /* ---------- data of the sheet ---------- */
 function cleanShieldBase(b) {
@@ -75,7 +75,7 @@ function shieldDraftErrors(d) {
   var out = [];
   if (!d.base) out.push('Escolha o escudo (ou digite um nome e use-o como escudo personalizado).');
   else if (!String(d.base.name || '').trim()) out.push('Dê um nome ao escudo.');
-  if (d.adj.some(function (m) { var c = cleanShieldAdj(m); return !c.name && (c.db || c.dr || c.nh || c.cost || c.cf || c.weightPct); })) out.push('Dê um nome a cada ajuste com valores.');
+  if (d.adj.some(function (m) { var c = cleanShieldAdj(m); return !c.name && (c.db || c.dr || c.nh || c.cost || c.weightPct || c.weightLbs); })) out.push('Dê um nome a cada ajuste com valores.');
   return out;
 }
 function shieldNotes(d) {
