@@ -162,19 +162,19 @@ function shieldItemsHtml(lines, g, L, can) {
       esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>' +
       '<td class="gval">' + esc(cw.db || '—') + '</td><td class="gval">' + esc(cw.dr || '—') + '</td><td>' + esc(cw.hp || '—') + '</td>' +
       (nh ? '<td class="gval" title="' + esc(nh.title) + '">' + nh.v + '</td>' : '<td><span class="eq-none">—</span></td>') +
-      '<td>' + esc(eqLbs(x.weight)) + '</td><td class="ab-txt">' + (adj ? esc(adj) : '<span class="eq-none">—</span>') + '</td>' +
+      '<td>' + esc(eqLbs(x.weight)) + '</td><td class="ab-txt">' + (adj ? esc(adj) : '<span class="eq-none">—</span>') + '</td>' + gearDescCell(cw.description) +
       (can ? '<td class="ab-acts"><button class="icon-btn" type="button" data-sb-edit="' + esc(cw.id) + '" aria-label="Editar ' + esc(x.name) + '" title="Editar">' + svg(ICON.edit, 15) + '</button>' +
         '<button class="icon-btn" type="button" data-sb-copy="' + esc(cw.id) + '" aria-label="Outro igual" title="Outro escudo igual, com os mesmos ajustes">' + svg(ICON.plus, 15, 2.4) + '</button>' +
         '<button class="icon-btn" type="button" data-sb-del="' + esc(cw.id) + '" aria-label="Excluir ' + esc(x.name) + '" title="Excluir">' + svg(ICON.trash, 15) + '</button></td>' : '') + '</tr>';
     if (can && ui.shieldDel === cw.id) {
-      html += '<tr><td colspan="8"><div class="confirm" role="alert"><span>Excluir <b>' + esc(x.name) + '</b>?' + (where.length ? ' Em uso: ' + esc(where.join(' · ')) + '. Excluir tira de lá também.' : '') + '</span>' +
+      html += '<tr><td colspan="9"><div class="confirm" role="alert"><span>Excluir <b>' + esc(x.name) + '</b>?' + (where.length ? ' Em uso: ' + esc(where.join(' · ')) + '. Excluir tira de lá também.' : '') + '</span>' +
         '<div class="btn-row"><button class="btn danger solid" type="button" data-sb-delall="' + esc(cw.id) + '">Excluir</button>' +
         '<button class="btn ghost" type="button" data-sb-delno="1">Cancelar</button></div></div></td></tr>';
     }
     return html;
   }).join('');
-  return '<div class="wtab-wrap"><table class="gtab ab-items wb-items sb-items"><thead><tr><th>Escudo</th><th>BD</th><th>RD</th><th>PV</th><th>NH</th><th>Peso</th><th>Ajustes</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody>' +
-    '<tfoot><tr><td class="wb-name" colspan="5">' + plural(lines.length, 'escudo', 'escudos') + '</td><td>' + esc(eqLbs(eqRound(weight))) + '</td><td colspan="' + (can ? 2 : 1) + '"></td></tr></tfoot></table></div>';
+  return '<div class="wtab-wrap"><table class="gtab ab-items wb-items sb-items"><thead><tr><th>Escudo</th><th>BD</th><th>RD</th><th>PV</th><th>NH</th><th>Peso</th><th>Ajustes</th><th class="ab-desc-h">Descrição</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody>' +
+    '<tfoot><tr><td class="wb-name" colspan="5">' + plural(lines.length, 'escudo', 'escudos') + '</td><td>' + esc(eqLbs(eqRound(weight))) + '</td><td colspan="' + (can ? 3 : 2) + '"></td></tr></tfoot></table></div>';
 }
 
 /* ---------- wiring ---------- */

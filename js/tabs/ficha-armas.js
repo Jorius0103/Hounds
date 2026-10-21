@@ -244,20 +244,20 @@ function weaponItemsHtml(lines, g, L, can) {
         weaponDmgCell(s, a) + weaponNhCell(s, a, nhPlus) +
         '<td>' + esc(a.reach || a.range || '—') + '</td>' +
         (first ? span('<td>' + esc(eqLbs(x.weight)) + '</td>') +
-          span('<td class="ab-txt">' + (adj ? esc(adj) : '<span class="eq-none">—</span>') + '</td>') +
+          span('<td class="ab-txt">' + (adj ? esc(adj) : '<span class="eq-none">—</span>') + '</td>') + gearDescCell(cw.description || (weaponById(cw.baseId) || {}).description, n) +
           (can ? span('<td class="ab-acts"><button class="icon-btn" type="button" data-wb-edit="' + esc(cw.id) + '" aria-label="Editar ' + esc(x.name) + '" title="Editar">' + svg(ICON.edit, 15) + '</button>' +
             '<button class="icon-btn" type="button" data-wb-copy="' + esc(cw.id) + '" aria-label="Outra com estes ajustes" title="Outra arma igual, com os mesmos ajustes">' + svg(ICON.plus, 15, 2.4) + '</button>' +
             '<button class="icon-btn" type="button" data-wb-del="' + esc(cw.id) + '" aria-label="Excluir ' + esc(x.name) + '" title="Excluir">' + svg(ICON.trash, 15) + '</button></td>') : '') : '') + '</tr>';
     }).join('');
     if (can && ui.weaponDel === cw.id) {
-      html += '<tr><td colspan="8"><div class="confirm" role="alert"><span>Excluir <b>' + esc(x.name) + '</b>?' + (where.length ? ' Em uso: ' + esc(where.join(' · ')) + '. Excluir tira de lá também.' : '') + '</span>' +
+      html += '<tr><td colspan="9"><div class="confirm" role="alert"><span>Excluir <b>' + esc(x.name) + '</b>?' + (where.length ? ' Em uso: ' + esc(where.join(' · ')) + '. Excluir tira de lá também.' : '') + '</span>' +
         '<div class="btn-row"><button class="btn danger solid" type="button" data-wb-delall="' + esc(cw.id) + '">Excluir</button>' +
         '<button class="btn ghost" type="button" data-wb-delno="1">Cancelar</button></div></div></td></tr>';
     }
     return html;
   }).join('');
-  return '<div class="wtab-wrap"><table class="gtab ab-items wb-items"><thead><tr><th>Arma</th><th>Modo</th><th>Dano</th><th>NH</th><th>Alcance</th><th>Peso</th><th>Ajustes</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody>' +
-    '<tfoot><tr><td class="wb-name" colspan="5">' + plural(lines.length, 'arma', 'armas') + '</td><td>' + esc(eqLbs(eqRound(weight))) + '</td><td colspan="' + (can ? 2 : 1) + '"></td></tr></tfoot></table></div>';
+  return '<div class="wtab-wrap"><table class="gtab ab-items wb-items"><thead><tr><th>Arma</th><th>Modo</th><th>Dano</th><th>NH</th><th>Alcance</th><th>Peso</th><th>Ajustes</th><th class="ab-desc-h">Descrição</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody>' +
+    '<tfoot><tr><td class="wb-name" colspan="5">' + plural(lines.length, 'arma', 'armas') + '</td><td>' + esc(eqLbs(eqRound(weight))) + '</td><td colspan="' + (can ? 3 : 2) + '"></td></tr></tfoot></table></div>';
 }
 
 /* ---------- wiring ---------- */

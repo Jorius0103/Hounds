@@ -941,6 +941,10 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .ab-items th:first-child, .ab-items td:first-child, .ab-items th:nth-child(4), .ab-items th:nth-child(5), .ab-items td.ab-txt { text-align: left; }
 .ab-items td:first-child small { white-space: normal; }
 .ab-items td.ab-txt { white-space: normal; min-width: 160px; max-width: 340px; font-size: 12.5px; color: var(--muted); }
+/* Descrição of the gear tables (armas, armaduras, escudos and the other items): cut short, whole on hover */
+.gtab th.ab-desc-h, .gtab td.ab-desc { text-align: left; }
+.gtab td.ab-desc { white-space: normal; min-width: 160px; max-width: 320px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.gtab td.ab-desc[title] { cursor: help; }
 .ab-items td.gval small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
 .ab-items td.ab-acts { width: 1%; }
 /* Armas: tudo centralizado, menos o nome; a marca de "fora da carga" só na célula do nome (que

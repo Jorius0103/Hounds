@@ -460,6 +460,11 @@ function paintGear(s) {
 }
 
 /* ---------- view: Equipamentos (the list) ---------- */
+// The Descrição column of the gear tables: the text cut short, the whole of it on hover; — without one.
+function gearDescCell(text, rowspan) {
+  var t = String(text || '').replace(/\s+/g, ' ').trim();
+  return '<td class="ab-desc"' + (rowspan > 1 ? ' rowspan="' + rowspan + '"' : '') + (t.length > 140 ? ' title="' + esc(t) + '"' : '') + '>' + (t ? esc(clip(t, 140)) : '<span class="eq-none">—</span>') + '</td>';
+}
 function eqEach(x, total, one, fmt) { return total ? esc(fmt(total)) + (x.qty > 1 ? '<small>' + esc(fmt(one)) + ' cada</small>' : '') : '<span class="eq-none">—</span>'; }
 // can: the line's actions, Editar (Criar Item's form) and Excluir (asking first, under the row).
 function invRowHtml(x, g, L, can) {
@@ -472,9 +477,11 @@ function invRowHtml(x, g, L, can) {
     '<small class="eq-where">' + esc(where.length ? where.join(' · ') + ' · ' + load : 'Só na lista · fora da carga') + '</small>' +
     (x.notes ? '<small class="eq-note">' + esc(x.notes) + '</small>' : '') + '</td>' +
     '<td class="eq-qty">' + x.qty + '</td><td>' + eqEach(x, eqRound(x.qty * x.weight), x.weight, eqLbs) + '</td>' +
+    // The catalog's description (a custom item has none).
+    gearDescCell(c && c.description) +
     (can ? '<td class="ab-acts"><button class="icon-btn" type="button" data-it-edit="' + esc(x.id) + '" aria-label="Editar ' + esc(x.name) + '" title="Editar">' + svg(ICON.edit, 15) + '</button>' +
       '<button class="icon-btn" type="button" data-it-del="' + esc(x.id) + '" aria-label="Excluir ' + esc(x.name) + '" title="Excluir">' + svg(ICON.trash, 15) + '</button></td>' : '') + '</tr>' +
-    (can && S.ui.itemDel === x.id ? '<tr><td colspan="4"><div class="confirm" role="alert"><span>Excluir <b>' + esc(x.name) + '</b> de Meus Itens?' +
+    (can && S.ui.itemDel === x.id ? '<tr><td colspan="5"><div class="confirm" role="alert"><span>Excluir <b>' + esc(x.name) + '</b> de Meus Itens?' +
       (where.length ? ' Está em ' + esc(where.join(' · ')) + ': sai de lá também.' : '') + '</span><div class="btn-row"><button class="btn danger solid" type="button" data-it-delyes="' + esc(x.id) + '">Excluir</button>' +
       '<button class="btn ghost" type="button" data-it-delno="1">Cancelar</button></div></div></td></tr>' : '');
 }
@@ -489,7 +496,7 @@ function sheetInvHtml(g, L, can) {
   var rest = g.equip.filter(function (x) { return !g.pieces[x.id] && !g.weaponLines[x.id] && !g.shieldLines[x.id]; });
   var half = Math.ceil(rest.length / 2);
   function tab(list) {
-    return '<table class="gtab eq-tab"><thead><tr><th>Equipamento</th><th>Qtd.</th><th>Peso</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' +
+    return '<table class="gtab eq-tab"><thead><tr><th>Equipamento</th><th>Qtd.</th><th>Peso</th><th class="ab-desc-h">Descrição</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' +
       list.map(function (x) { return invRowHtml(x, g, L, can); }).join('') + '</tbody></table>';
   }
   return '<section class="gurps' + gearFoldClass('equip', false) + '" id="equip">' + head +

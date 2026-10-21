@@ -306,7 +306,7 @@ function armorItemsHtml(lines, g, L, can) {
       '<td class="gval">' + esc(pc.piece.dr) + (pc.piece.cover === 'front' ? '<small>frontal</small>' : '') + '</td>' +
       '<td>' + esc(eqLbs(x.weight)) + '</td>' +
       '<td class="ab-txt">' + (adj ? esc(adj) : '<span class="eq-none">—</span>') + '</td>' +
-      '<td class="ab-txt">' + (x.notes ? esc(x.notes) : '<span class="eq-none">—</span>') + '</td>' +
+      '<td class="ab-txt">' + (x.notes ? esc(x.notes) : '<span class="eq-none">—</span>') + '</td>' + gearDescCell(set.description) +
       (can ? '<td class="ab-acts"><button class="icon-btn" type="button" data-ab-edit="' + esc(set.id) + '" aria-label="Editar ' + esc(x.name) + '" title="Editar">' + svg(ICON.edit, 15) + '</button>' +
         '<button class="icon-btn" type="button" data-ab-copy="' + esc(set.id) + '" aria-label="Outra peça com este modelo" title="Outra peça com este modelo e os mesmos ajustes">' + svg(ICON.plus, 15, 2.4) + '</button>' +
         '<button class="icon-btn" type="button" data-ab-del="' + esc(set.id) + '" aria-label="Excluir ' + esc(x.name) + '" title="Excluir">' + svg(ICON.trash, 15) + '</button></td>' : '') + '</tr>';
@@ -314,15 +314,15 @@ function armorItemsHtml(lines, g, L, can) {
     if (can && ui.armorDel === set.id && !shown[set.id]) {
       shown[set.id] = true;
       var used = set.pieces.filter(function (q) { return q.equipId && gearWhere(g, q.equipId).length; });
-      row += '<tr><td colspan="6"><div class="confirm" role="alert"><span>Excluir <b>' + esc(set.pieces.length > 1 ? set.name + ' (' + plural(set.pieces.length, 'peça', 'peças') + ')' : x.name) + '</b>?' +
+      row += '<tr><td colspan="7"><div class="confirm" role="alert"><span>Excluir <b>' + esc(set.pieces.length > 1 ? set.name + ' (' + plural(set.pieces.length, 'peça', 'peças') + ')' : x.name) + '</b>?' +
         (used.length ? ' Em uso: ' + esc(used.map(function (q) { return armorLocName(q.loc) + ' (' + armorPieceStatus(g, q) + ')'; }).join('; ')) + '. Excluir tira de lá também.' : '') + '</span>' +
         '<div class="btn-row"><button class="btn danger solid" type="button" data-ab-delall="' + esc(set.id) + '">Excluir</button>' +
         '<button class="btn ghost" type="button" data-ab-delno="1">Cancelar</button></div></div></td></tr>';
     }
     return row;
   }).join('');
-  return '<div class="wtab-wrap"><table class="gtab ab-items"><thead><tr><th>Armadura</th><th>RD</th><th>Peso</th><th>Ajustes</th><th>Notas</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody>' +
-    '<tfoot><tr><td colspan="2">' + plural(lines.length, 'armadura', 'armaduras') + '</td><td>' + esc(eqLbs(eqRound(weight))) + '</td><td colspan="' + (can ? 3 : 2) + '"></td></tr></tfoot></table></div>';
+  return '<div class="wtab-wrap"><table class="gtab ab-items"><thead><tr><th>Armadura</th><th>RD</th><th>Peso</th><th>Ajustes</th><th>Notas</th><th class="ab-desc-h">Descrição</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody>' +
+    '<tfoot><tr><td colspan="2">' + plural(lines.length, 'armadura', 'armaduras') + '</td><td>' + esc(eqLbs(eqRound(weight))) + '</td><td colspan="' + (can ? 4 : 3) + '"></td></tr></tfoot></table></div>';
 }
 // Criar Armadura's card: a vest (ICON.armor, the shield, is Criar Escudo's)
 ICON.vest = '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>';
@@ -576,7 +576,7 @@ function wireAdjList(cfg, box, list, changed, ctx) {
       var im = m.improvementId ? improvementById(m.improvementId) : null;
       if (m.improvementId && (!im || norm(t.value).trim().indexOf(norm(im.name)) !== 0)) { delete m.improvementId; delete m.cutImp; var b = t.closest('.ab-adj-name').querySelector('small'); if (b) b.remove(); }
       // A disadvantage's link goes when the name is no longer one (it comes back on the next drawing).
-      var dl = t.closest('.ab-adj-name').querySelector('[data-disadv-modal]'); if (dl && !adjDisadv(t.value)) dl.parentNode.remove();
+      var dl = t.closest('.ab-adj-name').querySelector('[data-disadv-modal]'); if (dl && !adjDisadv(t.value)) { var ds = dl.closest('small'); if (ds) ds.remove(); }
       sug.active = 0; show(t);
     } else if (k[1] === 'weight') {
       if (t.value === '' || isFinite(Number(t.value))) { var n = t.value === '' ? 0 : Number(t.value), lb = weightUnit(k[0]) === 'lbs'; m.weightPct = lb ? 0 : n; m.weightLbs = lb ? n : 0; }
