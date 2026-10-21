@@ -59,7 +59,7 @@ function gearId(v, n) { return typeof v === 'string' ? v.trim().slice(0, n || 60
 function cleanEquip(x, i) {
   x = x || {};
   var o = { id: gearId(x.id) || (typeof i === 'number' ? 'e' + (i + 1) : ''), kind: x.kind === 'armor' || x.kind === 'weapon' ? x.kind : 'item',
-    name: String(x.name || '').trim().slice(0, 120), qty: cleanInt(x.qty, 0, 9999, 1), weight: cleanDec(x.weight, 99999, 0),
+    name: String(x.name || '').trim().slice(0, 120), qty: cleanInt(x.qty, 0, 9999, 1), weight: eqWeight(cleanDec(x.weight, 99999, 0)),
     cost: cleanDec(x.cost, 9999999, 0), notes: String(x.notes || '').trim().slice(0, 400) };
   var ref = gearId(x.refId, 200); if (ref) o.refId = ref;
   return o;
@@ -147,6 +147,9 @@ function gearEditing() { var ui = S.ui; return !!(ui.bodyDraft || ui.packDraft |
 
 /* ---------- the load: one rule for everything that weighs ---------- */
 function eqRound(n) { return Math.round(n * 100) / 100; }
+// A weight in lbs: one decimal at most, always rounded up (2.25 is 2.3). toFixed takes away the float's
+// noise first (2.2 × 10 is 22.000000000000004, which is still 22).
+function eqWeight(n) { return Math.ceil(Number(((+n || 0) * 10).toFixed(6))) / 10; }
 function addUnits(to, from) { Object.keys(from).forEach(function (id) { to[id] = (to[id] || 0) + from[id]; }); return to; }
 // How many of each line a body configuration uses: an armor on several parts is one piece (the
 // largest quantity on a part); weapons and items on several parts add up (a knife in the hand and
@@ -223,7 +226,7 @@ function equipLevel(weight, lift) {
 }
 // "1.250,5"
 function eqNum(n) { return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 }); }
-function eqLbs(n) { return eqNum(n) + ' lbs'; }
+function eqLbs(n) { return eqNum(eqWeight(n)) + ' lbs'; }
 function eqMoney(n) { return '$' + eqNum(n); }
 
 /* ---------- parts and catalogs ---------- */
@@ -345,6 +348,9 @@ function saveGearLists(s, ch) {
   keys.forEach(function (k) { p[k] = g[k]; });
   if (legacy) p.equip = g.equip;
   ['bodies', 'packs', 'homes', 'armorSets', 'customWeapons', 'customShields'].forEach(function (k) { if (legacy || JSON.stringify(g[k]) !== JSON.stringify(saved[k])) p[k] = g[k]; });
+  // The list's weights are rounded on cleaning (eqWeight): the pieces, weapons and shields made go with
+  // it, rounded the same way, so the database finds their line's weight equal to theirs.
+  if (p.equip) ['armorSets', 'customWeapons', 'customShields'].forEach(function (k) { p[k] = g[k]; });
   return W.store.patch('sheets', s.id, p);
 }
 Ops.saveSheetEquip = function (s, list) { return saveGear(s, 'equip', list); };

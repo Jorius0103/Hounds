@@ -13,7 +13,7 @@
    Itens), which keeps its id, so the body and the packs keep it. */
 function itemDraftFrom(c) {
   if (!c) return { refId: null, custom: false, chosen: false, name: '', qty: 1, weight: 0, cost: 0, notes: '' };
-  return { refId: c.id, custom: false, chosen: true, name: c.name, qty: 1, weight: cleanDec(catNum(c.weight), 99999, 0), cost: cleanDec(catNum(c.cost), 9999999, 0), notes: '' };
+  return { refId: c.id, custom: false, chosen: true, name: c.name, qty: 1, weight: eqWeight(cleanDec(catNum(c.weight), 99999, 0)), cost: cleanDec(catNum(c.cost), 9999999, 0), notes: '' };
 }
 function itemDraftFromLine(x) {
   return { editId: x.id, kind: x.kind, refId: x.refId || null, custom: !x.refId, chosen: true, name: x.name, qty: x.qty, weight: x.weight, cost: x.cost, notes: x.notes };

@@ -41,7 +41,7 @@ function shieldAdjText(m) {
 // the cost plus their $; the weight times (1 + their % / 100). Never below 0.
 function shieldCalc(base, mods) {
   var t = shieldAdjTotal(mods), db = /^\s*\d+\s*$/.test(String(base.db)) ? String(Math.max(0, +base.db + t.db)) : String(base.db || '');
-  return { db: db, dr: drAdd(base.dr, t.dr), hp: String(base.hp || ''), cost: Math.max(0, eqRound(base.cost + t.cost)), weight: Math.max(0, eqRound(base.weight * (1 + t.weightPct / 100) + t.weightLbs)), nh: t.nh };
+  return { db: db, dr: drAdd(base.dr, t.dr), hp: String(base.hp || ''), cost: Math.max(0, eqRound(base.cost + t.cost)), weight: Math.max(0, eqWeight(base.weight * (1 + t.weightPct / 100) + t.weightLbs)), nh: t.nh };
 }
 var SHIELD_ADJ = { p: 'sb', kind: 'Escudo', nums: [['db', 'BD', '1'], ['dr', 'RD', '1'], ['nh', 'NH', '1'], ['cost', 'Custo ($)', 'any'], ['weight', 'Peso', 'any']], blank: { name: '', db: 0, dr: 0, nh: 0, cost: 0, weightPct: 0, weightLbs: 0 },
   clean: function (m) { return cleanShieldAdj(m); }, total: function (l) { return shieldAdjTotal(l); }, text: function (m) { return shieldAdjText(m); },
@@ -61,7 +61,7 @@ function cleanCustomShield(w, i, by) {
   return { id: gearId(w.id) || 'h' + (i + 1), baseId: gearId(w.baseId, 200) || null, base: cleanShieldBase(w.base), description: String(w.description || '').trim().slice(0, 2000),
     mods: (Array.isArray(w.mods) ? w.mods : []).map(cleanShieldAdj).filter(function (m) { return m.name; }),
     db: String(w.db == null ? '' : w.db).slice(0, 20), dr: String(w.dr == null ? '' : w.dr).slice(0, 40), hp: String(w.hp == null ? '' : w.hp).slice(0, 20),
-    cost: cleanDec(w.cost, 9999999, 0), weight: cleanDec(w.weight, 99999, 0), equipId: w.equipId && by[w.equipId] ? w.equipId : null };
+    cost: cleanDec(w.cost, 9999999, 0), weight: eqWeight(cleanDec(w.weight, 99999, 0)), equipId: w.equipId && by[w.equipId] ? w.equipId : null };
 }
 function shieldBases() { return (W.armors || []).filter(function (a) { return a.type === 'Shield'; }); }
 // The book's shield; a Cloak is used with Cloak, the others with Shield (their defaults when the table gives none).

@@ -64,7 +64,7 @@ function weaponCalc(base, attacks, mods) {
     if (dmg == null) { odd.push(a.baseDamage); dmg = a.baseDamage; }
     return Object.assign({}, a, { damage: dmg });
   });
-  return { attacks: out, cost: Math.max(0, eqRound(base.cost + t.cost)), weight: Math.max(0, eqRound(base.weight * (1 + t.weightPct / 100) + t.weightLbs)), odd: odd };
+  return { attacks: out, cost: Math.max(0, eqRound(base.cost + t.cost)), weight: Math.max(0, eqWeight(base.weight * (1 + t.weightPct / 100) + t.weightLbs)), odd: odd };
 }
 var WEAPON_ADJ = { p: 'wb', kind: 'Arma', nums: [['dmg', 'Dano', '1'], ['nh', 'NH', '1'], ['cost', 'Custo ($)', 'any'], ['weight', 'Peso', 'any']], blank: { name: '', dmg: 0, nh: 0, cost: 0, weightPct: 0, weightLbs: 0 },
   clean: function (m) { return cleanWeaponAdj(m); }, total: function (l) { return weaponAdjTotal(l); }, text: function (m) { return weaponAdjText(m); },
@@ -125,7 +125,7 @@ function cleanCustomWeapon(w, i, by) {
   return { id: gearId(w.id) || 'w' + (i + 1), baseId: gearId(w.baseId, 200) || null,
     base: { name: String(b.name || '').trim().slice(0, 120) || '—', tl: String(b.tl || '').slice(0, 20), type: String(b.type || '').slice(0, 20), cost: cleanDec(b.cost, 9999999, 0), weight: cleanDec(b.weight, 99999, 0) },
     description: String(w.description || '').trim().slice(0, 2000), mods: (Array.isArray(w.mods) ? w.mods : []).map(cleanWeaponAdj).filter(function (m) { return m.name; }),
-    attacks: (Array.isArray(w.attacks) ? w.attacks : []).map(cleanWeaponAttack).slice(0, 30), cost: cleanDec(w.cost, 9999999, 0), weight: cleanDec(w.weight, 99999, 0),
+    attacks: (Array.isArray(w.attacks) ? w.attacks : []).map(cleanWeaponAttack).slice(0, 30), cost: cleanDec(w.cost, 9999999, 0), weight: eqWeight(cleanDec(w.weight, 99999, 0)),
     equipId: w.equipId && by[w.equipId] ? w.equipId : null };
 }
 // Weapons of Regras › Armas that can be made: with attacks.
