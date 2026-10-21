@@ -27,18 +27,18 @@
 // [id, name, % of the torso, % already the front's only, front only offered, the location it is
 // part of, others that cover part of the same area, parts of the body (GEAR_PARTS), one side only]
 var ARMOR_LOC_DEFAULTS = /** @type {any[][]} */ ([
-  ['head', 'Cabeça', 30, false, true, null, [], ['head'], false], ['skull', 'Crânio', 20, false, true, 'head', [], ['head'], false],
-  ['face', 'Rosto', 10, false, true, 'head', [], ['head'], false], ['neck', 'Pescoço', 5, false, true, null, [], ['neck'], false],
-  ['torso', 'Tronco completo', 100, false, true, null, [], ['torso'], false], ['chest', 'Peito', 75, false, true, 'torso', [], ['torso'], false],
-  ['abdomen', 'Abdômen', 25, false, true, 'torso', [], ['torso'], false], ['groin', 'Virilha', 5, false, true, null, [], ['groin'], false],
-  ['arms', 'Braços, ambos', 50, false, true, null, [], ['arms'], false], ['shoulders', 'Ombros', 10, false, true, 'arms', [], ['arms'], false],
-  ['upper_arms', 'Braços superiores', 10, false, true, 'arms', [], ['arms'], false], ['elbows', 'Cotovelos', 5, false, true, 'arms', [], ['arms'], false],
-  ['forearms', 'Antebraços', 25, false, true, 'arms', [], ['arms'], false], ['hands', 'Mãos, ambas', 10, false, true, null, [], ['hands'], false],
-  ['hand', 'Uma mão', 5, false, true, 'hands', [], ['hands'], true], ['legs', 'Pernas, ambas', 100, false, true, null, [], ['legs'], false],
-  ['thighs', 'Coxas', 45, false, true, 'legs', [], ['legs'], false], ['knees', 'Joelhos', 5, false, true, 'legs', [], ['legs'], false],
-  ['shins', 'Canelas completas', 50, false, true, 'legs', [], ['legs'], false], ['shins_front', 'Canelas frontais', 25, true, false, 'shins', [], ['legs'], false],
-  ['leg', 'Uma perna', 50, false, true, 'legs', ['thighs', 'knees', 'shins', 'shins_front'], ['legs'], true],
-  ['feet', 'Pés, ambos', 10, false, true, null, [], ['feet'], false], ['foot', 'Um pé', 5, false, true, 'feet', [], ['feet'], true]]);
+  ['head', 'Head', 30, false, true, null, [], ['head'], false], ['skull', 'Skull', 20, false, true, 'head', [], ['head'], false],
+  ['face', 'Face', 10, false, true, 'head', [], ['head'], false], ['neck', 'Neck', 5, false, true, null, [], ['neck'], false],
+  ['torso', 'Torso', 100, false, true, null, [], ['torso'], false], ['chest', 'Chest', 75, false, true, 'torso', [], ['torso'], false],
+  ['abdomen', 'Abdomen', 25, false, true, 'torso', [], ['torso'], false], ['groin', 'Groin', 5, false, true, null, [], ['groin'], false],
+  ['arms', 'Arms', 50, false, true, null, [], ['arms'], false], ['shoulders', 'Shoulders', 10, false, true, 'arms', [], ['arms'], false],
+  ['upper_arms', 'Upper Arms', 10, false, true, 'arms', [], ['arms'], false], ['elbows', 'Elbows', 5, false, true, 'arms', [], ['arms'], false],
+  ['forearms', 'Forearms', 25, false, true, 'arms', [], ['arms'], false], ['hands', 'Hands', 10, false, true, null, [], ['hands'], false],
+  ['hand', 'Hand (one)', 5, false, true, 'hands', [], ['hands'], true], ['legs', 'Legs', 100, false, true, null, [], ['legs'], false],
+  ['thighs', 'Thighs', 45, false, true, 'legs', [], ['legs'], false], ['knees', 'Knees', 5, false, true, 'legs', [], ['legs'], false],
+  ['shins', 'Shins', 50, false, true, 'legs', [], ['legs'], false], ['shins_front', 'Shins (front only)', 25, true, false, 'shins', [], ['legs'], false],
+  ['leg', 'Leg (one)', 50, false, true, 'legs', ['thighs', 'knees', 'shins', 'shins_front'], ['legs'], true],
+  ['feet', 'Feet', 10, false, true, null, [], ['feet'], false], ['foot', 'Foot (one)', 5, false, true, 'feet', [], ['feet'], true]]);
 /* ---------- reference data ---------- */
 function abNum(v, lo, hi) { var n = Number(v); return v === null || v === '' || v === undefined || !isFinite(n) ? null : Math.min(hi, Math.max(lo, n)); }
 function cleanArmorLoc(d, dflt) {
@@ -600,7 +600,7 @@ function armorDynHtml(d) {
   var set = armorDraftSet(d);
   return (d.base ? '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Parte do corpo</h3>' +
     (Object.keys(d.locs).length > 1 ? '<p class="hint-text" style="margin:0">Este registro é de antes de “uma peça de cada vez” e tem ' + Object.keys(d.locs).length + ' peças; escolher uma parte deixa só ela.</p>' : '') + armorLocsHtml(d, set) +
-    '<p class="hint-text" style="margin:0">Escolha uma parte: a peça usa o percentual dela sobre o tronco. Cabeça já inclui Crânio e Rosto. A cobertura só frontal custa e pesa metade; Canelas frontais já é só a frente e não reduz de novo.</p></div>' +
+    '<p class="hint-text" style="margin:0">Escolha uma parte (nomes do GURPS Low-Tech, pp. 100-101): a peça usa o percentual dela sobre o tronco. Head já inclui Skull e Face. A cobertura só frontal custa e pesa metade; Shins (front only) já é só a frente e não reduz de novo.</p></div>' +
     '<div class="box sk-edit">' + armorSummaryHtml(set) + '</div>' : '') +
     (d.impact ? '<div class="confirm" role="alert"><span>Esta peça está em uso, e salvar muda: ' + esc(d.impact.join('; ')) + '.</span><div class="btn-row">' +
       '<button class="btn danger solid" type="button" id="abApply">Aplicar às peças</button><button class="btn" type="button" id="abAsNew2">Salvar como nova versão</button><button class="btn ghost" type="button" id="abBack">Voltar</button></div></div>' : '');
