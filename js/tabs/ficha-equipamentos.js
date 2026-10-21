@@ -208,17 +208,13 @@ function gearIssues(g, part) {
       if (parts && parts.indexOf(sl.part) < 0) out.push(e.name + ' não vai em ' + gearPartName(sl.part) + ' (“' + b.name + '”; ' + gearPartsText(e, g) + ').');
     });
   });
-  if (part !== 'bodies') {
-    var u = storedUnits(g.packs, g.homes), home = storedUnits([], g.homes);
-    Object.keys(u).forEach(function (id) { if (u[id] > by[id].qty) out.push(by[id].name + ': ' + u[id] + (home[id] ? ' nas mochilas e na casa' : ' nas mochilas') + ', mas a lista de equipamentos tem ' + by[id].qty + '.'); });
-  }
+  // Each pack and each house on its own: none holds more than the list has, but the same line can be in
+  // several of them (they are not added up).
+  if (part !== 'bodies') g.packs.map(function (p) { return [p, 'na mochila']; }).concat(g.homes.map(function (h) { return [h, 'na casa']; })).forEach(function (x) {
+    var u = packUnits(x[0]);
+    Object.keys(u).forEach(function (id) { if (by[id] && u[id] > by[id].qty) out.push(by[id].name + ': ' + u[id] + ' ' + x[1] + ' “' + x[0].name + '”, mas a lista de equipamentos tem ' + by[id].qty + '.'); });
+  });
   return out;
-}
-// How many of each line the packs (with the packs themselves) and the houses hold, together.
-function storedUnits(packs, homes) {
-  var u = Object.create(null);
-  packs.concat(homes).forEach(function (p) { addUnits(u, packUnits(p)); });
-  return u;
 }
 // 0 to 4; 5 is more than Extra-Heavy.
 function equipLevel(weight, lift) {
@@ -687,28 +683,30 @@ function sheetPacksHtml(g, L, editing, busy) {
     (quick ? (p.inUse ? '<button class="btn ghost" type="button" data-pkuse="" data-pksel="' + esc(p.id) + '">Parar de usar</button>' : '<button class="btn" type="button" data-pkuse="' + esc(p.id) + '" data-pksel="' + esc(p.id) + '">Usar esta mochila</button>') : '') + '</div>';
   return '<section class="gurps' + gearFoldClass('packs', editing) + '" id="gearPacks">' + head + tabs + bar + packCardHtml(x, by, g) + '</section>';
 }
-// What of the list is left for the packs and houses: what it has minus what all of them take.
-function packLeft(g, packs, homes) {
-  var by = gearIndex(g.equip), u = storedUnits(packs, homes), left = Object.create(null);
+// What of the list is left for one pack or house (p): what it has minus what that one takes (the pack
+// itself included). The others don't count: a line can be in several.
+function packLeft(g, p) {
+  var u = packUnits(p), left = Object.create(null);
   g.equip.forEach(function (e) { left[e.id] = e.qty - (u[e.id] || 0); });
-  return { by: by, left: left };
+  return left;
 }
-// "(todas nas mochilas)" when none of a line is left for packs and houses.
-function packFullText(g, homes) { return homes.length ? ' (todas nas mochilas ou na casa)' : ' (todas nas mochilas)'; }
+// When none of a line is left for this pack or house.
+function packFullText(e) { return e.qty ? ' (todas já estão aqui)' : ' (acabou)'; }
 function packEditHtml(g) {
-  var d = S.ui.packDraft, k = packLeft(g, d.packs, g.homes), by = k.by, left = k.left;
-  function opt(e, cur) {
+  var d = S.ui.packDraft, by = gearIndex(g.equip);
+  function opt(e, cur, left) {
     var n = left[e.id] + (cur ? 1 : 0), body = gearOnBody(g, e.id);
     return '<option value="' + esc(e.id) + '"' + (cur ? ' selected' : '') + (n > 0 ? '' : ' disabled') + '>' + esc(e.name) + ' · ' + esc(eqLbs(e.weight)) +
-      (n > 0 ? '' : packFullText(g, g.homes)) + (body ? ' · ⚠ no corpo em uso' : '') + '</option>';
+      (n > 0 ? '' : packFullText(e)) + (body ? ' · ⚠ no corpo em uso' : '') + '</option>';
   }
   return d.packs.map(function (p, i) {
+    var left = packLeft(g, p);
     var pk = cleanPack(p, i, by), own = pk.equipId ? by[pk.equipId].weight : 0, content = 0;
     pk.items.forEach(function (it) { content += it.qty * by[it.equipId].weight; });
     var inside = p.items.map(function (it) { return it.equipId; });
     return '<div class="box sk-edit gear-pack-edit" data-p="' + i + '"><div class="sc-row">' +
       scField('Mochila', '<input type="text" data-f="pname" maxlength="80" placeholder="Ex.: Mochila de viagem" value="' + esc(p.name) + '">', 'sc-name') +
-      scField('A própria mochila (peso próprio)', '<select data-f="pown"><option value="">Sem peso próprio</option>' + g.equip.map(function (e) { return opt(e, e.id === p.equipId); }).join('') + '</select>', 'sc-name') +
+      scField('A própria mochila (peso próprio)', '<select data-f="pown"><option value="">Sem peso próprio</option>' + g.equip.map(function (e) { return opt(e, e.id === p.equipId, left); }).join('') + '</select>', 'sc-name') +
       '<label class="gear-use" title="A mochila em uso entra na carga; só uma por vez"><input type="radio" name="packActive" data-f="puse" value="' + i + '"' + (p.inUse ? ' checked' : '') + '><span>Em uso</span></label>' +
       '<button class="btn ghost" type="button" data-pdel="' + i + '">' + svg(ICON.trash, 14) + 'Excluir mochila</button></div>' +
       '<div class="gear-slots">' + p.items.map(function (it, j) {
@@ -717,12 +715,12 @@ function packEditHtml(g) {
           '<span class="gear-w" data-iw="' + i + ':' + j + '">' + esc(eqLbs(eqRound(it.qty * e.weight))) + '</span>' +
           '<button class="icon-btn" type="button" data-idel="' + j + '" aria-label="Tirar ' + esc(e.name) + ' da mochila" title="Tirar">' + svg(ICON.x, 14, 2.4) + '</button></div>';
       }).join('') +
-      '<select data-f="padd" aria-label="Adicionar à mochila"><option value="">+ Adicionar da lista…</option>' + g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) { return opt(e, false); }).join('') + '</select></div>' +
+      '<select data-f="padd" aria-label="Adicionar à mochila"><option value="">+ Adicionar da lista…</option>' + g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) { return opt(e, false, left); }).join('') + '</select></div>' +
       '<p class="gear-ptot" data-ptot="' + i + '">' + packTotalText(own, content) + '</p></div>';
   }).join('') +
     '<div class="btn-row"><button class="btn" type="button" id="packAdd">' + svg(ICON.plus, 15, 2.4) + 'Nova mochila</button>' +
     (d.packs.length ? '<label class="gear-use"><input type="radio" name="packActive" data-f="puse" value="-1"' + (d.packs.some(function (x) { return x.inUse; }) ? '' : ' checked') + '><span>Nenhuma em uso</span></label>' : '') + '</div>' +
-    '<p class="hint-text" style="margin:0">Só entram equipamentos da lista acima, e não mais do que ela tem, somando todas as mochilas e a casa. A própria mochila, se estiver na lista (ex.: Backpack, Small), dá o peso próprio dela. ' +
+    '<p class="hint-text" style="margin:0">Só entram equipamentos da lista acima, e cada mochila guarda no máximo o que a lista tem; o mesmo item pode estar em várias mochilas (e na casa). Ao adicionar, o item vem com a quantidade da lista. A própria mochila, se estiver na lista (ex.: Backpack, Small), dá o peso próprio dela. ' +
     'Só a mochila <b>Em uso</b> entra na carga (uma por vez); as outras continuam guardadas com o que têm.</p>' +
     '<div class="form-err" id="packErr" role="alert"></div>';
 }
@@ -762,13 +760,14 @@ function sheetHomesHtml(g, editing) {
   return open + tabs + '<div class="gear-bar"><span><b>' + esc(h.name) + '</b>: guardado, não entra na carga.</span></div>' + homeCardHtml(h, by, g) + '</section>';
 }
 function homeEditHtml(g) {
-  var d = S.ui.homeDraft, k = packLeft(g, g.packs, d.homes), by = k.by, left = k.left;
-  function opt(e) {
+  var d = S.ui.homeDraft, by = gearIndex(g.equip);
+  function opt(e, left) {
     var n = left[e.id], body = gearOnBody(g, e.id);
     return '<option value="' + esc(e.id) + '"' + (n > 0 ? '' : ' disabled') + '>' + esc(e.name) + ' · ' + esc(eqLbs(e.weight)) +
-      (n > 0 ? '' : packFullText(g, d.homes)) + (body ? ' · ⚠ no corpo em uso' : '') + '</option>';
+      (n > 0 ? '' : packFullText(e)) + (body ? ' · ⚠ no corpo em uso' : '') + '</option>';
   }
   return d.homes.map(function (h, i) {
+    var left = packLeft(g, h);
     var inside = h.items.map(function (it) { return it.equipId; });
     return '<div class="box sk-edit gear-pack-edit" data-h="' + i + '"><div class="sc-row">' +
       scField('Casa', '<input type="text" data-f="hname" maxlength="80" placeholder="Ex.: Casa em Londres" value="' + esc(h.name) + '">', 'sc-name') +
@@ -779,11 +778,11 @@ function homeEditHtml(g) {
           '<span class="gear-w" data-hw="' + i + ':' + j + '">' + esc(eqLbs(eqRound(it.qty * e.weight))) + '</span>' +
           '<button class="icon-btn" type="button" data-hidel="' + j + '" aria-label="Tirar ' + esc(e.name) + ' da casa" title="Tirar">' + svg(ICON.x, 14, 2.4) + '</button></div>';
       }).join('') +
-      '<select data-f="hadd" aria-label="Guardar na casa"><option value="">+ Guardar da lista…</option>' + g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(opt).join('') + '</select></div>' +
+      '<select data-f="hadd" aria-label="Guardar na casa"><option value="">+ Guardar da lista…</option>' + g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) { return opt(e, left); }).join('') + '</select></div>' +
       '<p class="gear-ptot" data-htot="' + i + '">' + packTotalText(0, homeLbs(cleanHome(h, i, by), by)) + ' · fora da carga</p></div>';
   }).join('') +
     '<div class="btn-row"><button class="btn" type="button" id="homeAdd">' + svg(ICON.plus, 15, 2.4) + 'Nova casa</button></div>' +
-    '<p class="hint-text" style="margin:0">Só entram equipamentos da lista acima, e não mais do que ela tem, somando a casa e todas as mochilas: o que está guardado em casa não está numa mochila. ' +
+    '<p class="hint-text" style="margin:0">Só entram equipamentos da lista acima, e cada casa guarda no máximo o que a lista tem; o mesmo item pode estar também nas mochilas. Ao guardar, o item vem com a quantidade da lista. ' +
     'O que está na casa nunca entra na carga.</p>' +
     '<div class="form-err" id="homeErr" role="alert"></div>';
 }
@@ -955,7 +954,9 @@ function wirePackEdit(s) {
     if (f === 'iqty' && el.value === '') el.value = String(p.items[+el.getAttribute('data-j')].qty);
     else if (f === 'pown') { p.equipId = el.value || null; renderSheetPage(); }
     else if (f === 'padd' && el.value) {
-      p.items.push({ equipId: el.value, qty: 1 }); renderSheetPage();
+      // With the list's quantity (less the pack itself, when it is the same line).
+      var gn = gearNow(s), ln = gearIndex(gn.equip)[el.value];
+      p.items.push({ equipId: el.value, qty: ln ? Math.max(1, Math.min(9999, packLeft(gn, p)[el.value])) : 1 }); renderSheetPage();
       var on = gearIndex(gearNow(s).equip)[el.value];
       if (on && gearOnBody(gearNow(s), on.id)) toast('“' + on.name + '” também está no corpo em uso. Na carga conta uma vez só.');
     }
@@ -1004,7 +1005,7 @@ function wireHomeEdit(s) {
   box.addEventListener('change', function (e) {
     var el = /** @type {AnyEl} */ (e.target), f = el.dataset && el.dataset.f, h = home(el); if (!h) return;
     if (f === 'hqty' && el.value === '') el.value = String(h.items[+el.getAttribute('data-j')].qty);
-    else if (f === 'hadd' && el.value) { h.items.push({ equipId: el.value, qty: 1 }); renderSheetPage(); }
+    else if (f === 'hadd' && el.value) { var lh = by[el.value]; h.items.push({ equipId: el.value, qty: lh ? Math.max(1, Math.min(9999, lh.qty)) : 1 }); renderSheetPage(); }
   });
   box.addEventListener('click', function (e) {
     var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-hdel], [data-hidel]'); if (!b) return;
