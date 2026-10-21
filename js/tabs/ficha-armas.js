@@ -280,8 +280,8 @@ function wireWeaponSec(s) {
     items.addEventListener('click', function (e) {
       var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-wb-edit], [data-wb-copy], [data-wb-del], [data-wb-delall], [data-wb-delno]'); if (!b) return;
       var g = sheetGear(s), find = function (attr) { var id = b.getAttribute(attr); return g.customWeapons.filter(function (w) { return w.id === id; })[0]; };
-      if (b.hasAttribute('data-wb-edit')) { ui.weaponDraft = weaponDraftFrom(find('data-wb-edit'), 'edit', g); loadCatalog('weapons'); renderSheetPage(); return; }
-      if (b.hasAttribute('data-wb-copy')) { ui.weaponDraft = weaponDraftFrom(find('data-wb-copy'), 'copy', g); loadCatalog('weapons'); renderSheetPage(); return; }
+      if (b.hasAttribute('data-wb-edit')) { ui.weaponDraft = weaponDraftFrom(find('data-wb-edit'), 'edit', g); loadCatalog('weapons'); renderSheetPage(); gearFocusBuilder('weaponSec'); return; }
+      if (b.hasAttribute('data-wb-copy')) { ui.weaponDraft = weaponDraftFrom(find('data-wb-copy'), 'copy', g); loadCatalog('weapons'); renderSheetPage(); gearFocusBuilder('weaponSec'); return; }
       if (b.hasAttribute('data-wb-del')) { ui.weaponDel = b.getAttribute('data-wb-del'); renderSheetPage(); return; }
       if (b.hasAttribute('data-wb-delno')) { ui.weaponDel = null; renderSheetPage(); return; }
       var cw = find('data-wb-delall');

@@ -199,7 +199,7 @@ function wireShieldSec(s) {
       if (b.hasAttribute('data-sb-edit') || b.hasAttribute('data-sb-copy')) {
         var edit = b.hasAttribute('data-sb-edit');
         ui.shieldDraft = shieldDraftFrom(find(edit ? 'data-sb-edit' : 'data-sb-copy'), edit ? 'edit' : 'copy', g); loadCatalog('armors'); renderSheetPage();
-        var sec = $('shieldSec'); if (sec) sec.scrollIntoView({ block: 'start' });
+        gearFocusBuilder('shieldSec');
         return;
       }
       if (b.hasAttribute('data-sb-del')) { ui.shieldDel = b.getAttribute('data-sb-del'); renderSheetPage(); return; }

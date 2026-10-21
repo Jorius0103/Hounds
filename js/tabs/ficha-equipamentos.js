@@ -567,6 +567,14 @@ function sheetInvHtml(g, L, can) {
     '<div class="eq-grand"><span>Total de tudo</span><b>' + esc(eqLbs(L.owned)) + '</b><small>na carga: ' + esc(eqLbs(L.total)) + '</small></div></section>';
 }
 /* ---------- view: Corpo ---------- */
+// A builder just opened by Editar (or Outra igual) on a row of Meus Itens, far below it: the screen goes to
+// it and the cursor to its first field.
+function gearFocusBuilder(id) {
+  var sec = $(id); if (!sec) return;
+  sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  var f = sec.querySelector('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea');
+  if (f instanceof HTMLElement) f.focus({ preventScroll: true });
+}
 function gearChip(e, qty, g) {
   var sub = gearArmorDr(e, g);
   return '<span class="gear-chip k-' + e.kind + '">' + gearKindTag(e.kind) + (qty > 1 ? qty + ' × ' : '') + esc(g ? gearShownName(e, g) : e.name) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>';
@@ -897,8 +905,7 @@ function wireSheetEquip(s) {
     var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-it-edit], [data-it-del], [data-it-delyes], [data-it-delno]'); if (!b) return;
     if (b.hasAttribute('data-it-edit')) {
       var line = sheetGear(s).equip.filter(function (x) { return x.id === b.getAttribute('data-it-edit'); })[0]; if (!line) return;
-      ui.itemDraft = itemDraftFromLine(line); ui.itemDel = null; renderSheetPage();
-      var sec = $('itemSec'); if (sec) sec.scrollIntoView({ block: 'start' });
+      ui.itemDraft = itemDraftFromLine(line); ui.itemDel = null; renderSheetPage(); gearFocusBuilder('itemSec');
       return;
     }
     if (b.hasAttribute('data-it-del')) { ui.itemDel = b.getAttribute('data-it-del'); renderSheetPage(); return; }

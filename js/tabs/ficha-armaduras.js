@@ -691,8 +691,8 @@ function wireArmorSec(s) {
     items.addEventListener('click', function (e) {
       var t = /** @type {AnyEl} */ (e.target), b = t.closest && t.closest('[data-ab-edit], [data-ab-copy], [data-ab-del], [data-ab-delall], [data-ab-delno]'); if (!b) return;
       var g = sheetGear(s), find = function (attr) { var id = b.getAttribute(attr); return g.armorSets.filter(function (a) { return a.id === id; })[0]; };
-      if (b.hasAttribute('data-ab-edit')) { ui.armorDraft = armorDraftFrom(find('data-ab-edit'), 'edit', g); loadCatalog('armors'); renderSheetPage(); return; }
-      if (b.hasAttribute('data-ab-copy')) { ui.armorDraft = armorDraftFrom(find('data-ab-copy'), 'copy', g); loadCatalog('armors'); renderSheetPage(); return; }
+      if (b.hasAttribute('data-ab-edit')) { ui.armorDraft = armorDraftFrom(find('data-ab-edit'), 'edit', g); loadCatalog('armors'); renderSheetPage(); gearFocusBuilder('armorSec'); return; }
+      if (b.hasAttribute('data-ab-copy')) { ui.armorDraft = armorDraftFrom(find('data-ab-copy'), 'copy', g); loadCatalog('armors'); renderSheetPage(); gearFocusBuilder('armorSec'); return; }
       if (b.hasAttribute('data-ab-del')) { ui.armorDel = b.getAttribute('data-ab-del'); renderSheetPage(); return; }
       if (b.hasAttribute('data-ab-delno')) { ui.armorDel = null; renderSheetPage(); return; }
       var set = find('data-ab-delall');
