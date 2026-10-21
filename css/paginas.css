@@ -178,6 +178,22 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .pin.secret .pin-head { outline: 2px dashed #c4b5fd; outline-offset: 2px; }
 
 .vis-toggle { margin-left: 10px; vertical-align: middle; font-size: 12px; padding: 5px 10px; }
+/* "Revelar" menu (Mestre): everyone or chosen accounts */
+.vis-menu { position: relative; display: inline-block; vertical-align: middle; margin-left: 10px; }
+.vis-menu .vis-toggle { margin-left: 0; gap: 4px; }
+.vis-menu .vis-toggle[aria-expanded="true"] { background: var(--surface-2); }
+/* In a page's buttons (data-vis-host, the Ficha): the same size as the others */
+.btn-row > .vis-menu { margin-left: 0; }
+.btn-row .vis-toggle { margin-left: 0; font-size: 13px; padding: 9px 14px; }
+.btn-row .vis-menu .vis-toggle { gap: 8px; }
+.vis-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: flex; flex-direction: column; gap: 10px; width: max-content; min-width: 240px; max-width: min(340px, calc(100vw - 32px)); padding: 12px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: 0 10px 30px var(--shadow); font-size: 13px; font-weight: 400; letter-spacing: 0; text-wrap: wrap; overflow-wrap: normal; white-space: normal; }
+.vis-pop[hidden] { display: none; }
+.vis-pop .lab { font-size: 12px; font-weight: 700; color: var(--muted); }
+.vis-pop .vis-all { align-self: flex-start; }
+.vis-pop .vis-users { padding-top: 10px; border-top: 1px solid var(--line); }
+.vis-pop .vis-users.off { opacity: .45; }
+.vis-pop .btn-row { justify-content: flex-end; }
+.vis-pop .btn { padding: 7px 12px; }
 
 /* Notes */
 .nb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
@@ -207,6 +223,11 @@ a.person:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; 
 .note-body.none { color: var(--faint); font-style: italic; }
 .note-edit { display: flex; flex-direction: column; gap: 12px; }
 .note-edit textarea { min-height: 52vh; font-size: 15px; line-height: 1.7; }
+/* Ficha › Anotações: the same cards and rows, as buttons (it all opens inside the tab) */
+.sheet-notes { display: flex; flex-direction: column; gap: 16px; }
+.sheet-notes .sn-back { align-self: flex-start; padding-left: 8px; gap: 4px; }
+.sheet-notes .sn-title { margin: 2px 0 6px; font-size: 24px; font-weight: 800; text-wrap: balance; overflow-wrap: anywhere; }
+button.nb-card, button.note-row { width: 100%; font: inherit; text-align: left; cursor: pointer; }
 
 /* Magias */
 .spell-card:hover { border-color: var(--line-2) !important; transform: translateY(-2px) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, .06); }
@@ -305,6 +326,30 @@ section.gurps.folded > :not(.gurps-head) { display: none; }
 .gstat span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .gstat strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 .gstat small { font-size: 11px; color: var(--faint); }
+
+/* Atributos › Reações: reação, modificador e observações */
+.gurps-under { display: flex; flex-direction: column; gap: 12px; width: fit-content; max-width: 100%; }
+.gurps-under .gurps-derived { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
+/* The table takes the width of the cards and never sets it (long notes wrap). */
+.gurps-under > .rx-box { width: 0; min-width: 100%; }
+@media (max-width: 760px) {
+  .gurps-under { width: auto; }
+  .gurps-under .gurps-derived { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+.rx-box { display: flex; flex-direction: column; gap: 8px; }
+.rx-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.rx-title { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.rx-tab th:nth-child(2), .rx-tab td.gval { width: 120px; text-align: center; }
+.rx-tab td.gval { border-left: 1px solid var(--line); }
+.rx-tab td.rx-none { color: var(--faint); font-style: italic; text-align: left; }
+.sk-row.rx-row { grid-template-columns: minmax(0, 1.2fr) 110px minmax(0, 1fr) 32px; }
+.sk-labels.rx-row span:nth-child(2) { text-align: center; }
+.sk-labels.rx-row span:nth-child(3) { text-align: left; padding-left: 0; }
+#rxRows { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 760px) {
+  .sk-row.rx-row { grid-template-columns: minmax(0, 1fr) 90px 32px; }
+  .sk-row.rx-row [data-rf="notes"] { grid-column: 1 / 3; }
+}
 
 /* Vantagens: mesmos cartões e selos das magias */
 .spell-grid, .adv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
@@ -434,11 +479,30 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sheet-chars > .seg { margin-bottom: 0; }
 .sheet-chars > .fold { width: 320px; max-width: 100%; margin-left: auto; }
 @media (max-width: 760px) { .sheet-chars > .fold { width: 100%; } }
+/* Personagem and, beside it in one line, the points (main sheet), on the right of the line of the allies */
+.sheet-side { max-width: 100%; margin-left: auto; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-end; gap: 10px; }
+.sheet-side > .fold { width: 260px; max-width: 100%; }
+@media (max-width: 760px) { .sheet-side { width: 100%; } .sheet-side > .fold, .sheet-side > .pts-box { width: 100%; } }
+.pts-box { padding: 8px 12px; }
+.pts-tab { width: 440px; max-width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+.pts-tab th.pt-race-col { width: 140px; }
+.pts-tab th { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 0 3px 6px; text-align: center; white-space: nowrap; }
+.pts-tab td { padding: 0 3px; text-align: center; font-variant-numeric: tabular-nums; }
+.pts-box .gpts-in { width: 100%; box-sizing: border-box; padding: 6px 6px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--well); color: var(--text); font: inherit; font-size: 14px; text-align: center; font-variant-numeric: tabular-nums; }
+.pts-box .gpts-in:hover { border-color: var(--muted); }
+.pts-box .gpts-in:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.pts-box .gpts-in.pt-race { text-align: left; padding: 6px 10px; }
+.pts-tab .pt-calc { font-weight: 700; }
+.pts-tab .pt-total { color: var(--accent); }
 
 /* Ficha: a principal e os aliados, cada um numa aba, acima das abas Ficha / Equip. / Magia;
    no lugar da caixa Personagem, a do aliado aberto (nome da aba, da ficha e as ações) */
-.sheet-allies { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
-.sheet-allies > .seg { flex-wrap: wrap; margin-bottom: 0; }
+/* The line of the allies: the sheet and its allies with Criar Aliado on the left (.sheet-people, centered
+   among themselves), Personagem and the points on the right; aligned by the top, so opening Personagem
+   doesn't move the left side. */
+.sheet-allies { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; margin-bottom: 12px; }
+.sheet-people { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.sheet-allies .seg { flex-wrap: wrap; margin-bottom: 0; }
 .sheet-allies .seg button svg { vertical-align: -2px; margin-right: 5px; }
 .sheet-allies .seg button:disabled { opacity: .5; cursor: not-allowed; }
 .sheet-chars > .ally-box { max-width: 100%; margin-left: auto; padding: 6px 6px 6px 12px; border-radius: 12px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
@@ -453,15 +517,61 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 /* Ficha › aliado aberto: o painel de conteúdo troca o âmbar pelo violeta (destaques, fundos e
    linhas), para não confundir com a ficha principal. O menu e os modais não mudam. */
 #view-page.ally-view {
-  --ground: #0b0720; --surface: #150f2e; --surface-2: #1b1439; --well: #100a26; --line: #2a2150; --line-2: #3f3470;
-  --accent: #a78bfa; --accent-ink: #12082a; --accent-soft: rgba(167, 139, 250, .14);
+  --ground: hsl(262 22% 8%); --surface: hsl(262 18% 12%); --surface-2: hsl(262 16% 15%); --well: hsl(262 20% 9%); --line: hsl(262 14% 20%); --line-2: hsl(262 12% 29%);
+  --accent: hsl(262 42% 70%); --accent-ink: hsl(262 30% 10%); --accent-soft: hsl(262 42% 70% / .12);
   background: var(--ground); box-shadow: inset 4px 0 0 var(--accent);
 }
 :root[data-theme="light"] #view-page.ally-view {
-  --ground: #f5f3ff; --surface: #ffffff; --surface-2: #f1edfe; --well: #f1edfe; --line: #e4defc; --line-2: #cfc4f5;
-  --accent: #6d28d9; --accent-ink: #ffffff; --accent-soft: rgba(124, 58, 237, .1);
+  --ground: hsl(262 35% 97%); --surface: #ffffff; --surface-2: hsl(262 30% 95%); --well: hsl(262 30% 95%); --line: hsl(262 25% 90%); --line-2: hsl(262 20% 82%);
+  --accent: hsl(262 35% 42%); --accent-ink: #ffffff; --accent-soft: hsl(262 35% 42% / .08);
 }
 #view-page.ally-view .sheet-allies .seg button.on { background: var(--accent); color: var(--accent-ink); }
+/* The other colors an ally can have (ALLY_COLORS in tab-fichas.js), as soft as the violet above:
+   the same saturation and lightness, another hue. */
+#view-page.ally-view[data-ally-color="blue"] {
+  --ground: hsl(212 22% 8%); --surface: hsl(212 18% 12%); --surface-2: hsl(212 16% 15%); --well: hsl(212 20% 9%); --line: hsl(212 14% 20%); --line-2: hsl(212 12% 29%);
+  --accent: hsl(212 42% 70%); --accent-ink: hsl(212 30% 10%); --accent-soft: hsl(212 42% 70% / .12);
+}
+:root[data-theme="light"] #view-page.ally-view[data-ally-color="blue"] {
+  --ground: hsl(212 35% 97%); --surface: #ffffff; --surface-2: hsl(212 30% 95%); --well: hsl(212 30% 95%); --line: hsl(212 25% 90%); --line-2: hsl(212 20% 82%);
+  --accent: hsl(212 35% 42%); --accent-ink: #ffffff; --accent-soft: hsl(212 35% 42% / .08);
+}
+#view-page.ally-view[data-ally-color="green"] {
+  --ground: hsl(148 22% 8%); --surface: hsl(148 18% 12%); --surface-2: hsl(148 16% 15%); --well: hsl(148 20% 9%); --line: hsl(148 14% 20%); --line-2: hsl(148 12% 29%);
+  --accent: hsl(148 42% 70%); --accent-ink: hsl(148 30% 10%); --accent-soft: hsl(148 42% 70% / .12);
+}
+:root[data-theme="light"] #view-page.ally-view[data-ally-color="green"] {
+  --ground: hsl(148 35% 97%); --surface: #ffffff; --surface-2: hsl(148 30% 95%); --well: hsl(148 30% 95%); --line: hsl(148 25% 90%); --line-2: hsl(148 20% 82%);
+  --accent: hsl(148 35% 42%); --accent-ink: #ffffff; --accent-soft: hsl(148 35% 42% / .08);
+}
+#view-page.ally-view[data-ally-color="red"] {
+  --ground: hsl(4 22% 8%); --surface: hsl(4 18% 12%); --surface-2: hsl(4 16% 15%); --well: hsl(4 20% 9%); --line: hsl(4 14% 20%); --line-2: hsl(4 12% 29%);
+  --accent: hsl(4 42% 70%); --accent-ink: hsl(4 30% 10%); --accent-soft: hsl(4 42% 70% / .12);
+}
+:root[data-theme="light"] #view-page.ally-view[data-ally-color="red"] {
+  --ground: hsl(4 35% 97%); --surface: #ffffff; --surface-2: hsl(4 30% 95%); --well: hsl(4 30% 95%); --line: hsl(4 25% 90%); --line-2: hsl(4 20% 82%);
+  --accent: hsl(4 35% 42%); --accent-ink: #ffffff; --accent-soft: hsl(4 35% 42% / .08);
+}
+#view-page.ally-view[data-ally-color="olive"] {
+  --ground: hsl(78 22% 8%); --surface: hsl(78 18% 12%); --surface-2: hsl(78 16% 15%); --well: hsl(78 20% 9%); --line: hsl(78 14% 20%); --line-2: hsl(78 12% 29%);
+  --accent: hsl(78 36% 64%); --accent-ink: hsl(78 30% 10%); --accent-soft: hsl(78 36% 64% / .12);
+}
+:root[data-theme="light"] #view-page.ally-view[data-ally-color="olive"] {
+  --ground: hsl(78 30% 96%); --surface: #ffffff; --surface-2: hsl(78 26% 94%); --well: hsl(78 26% 94%); --line: hsl(78 22% 88%); --line-2: hsl(78 18% 79%);
+  --accent: hsl(78 35% 32%); --accent-ink: #ffffff; --accent-soft: hsl(78 35% 32% / .08);
+}
+/* Cinza: the same steps with little color, so it reads as gray and not as blue. */
+#view-page.ally-view[data-ally-color="slate"] {
+  --ground: hsl(215 10% 8%); --surface: hsl(215 9% 12%); --surface-2: hsl(215 8% 15%); --well: hsl(215 10% 9%); --line: hsl(215 7% 21%); --line-2: hsl(215 6% 30%);
+  --accent: hsl(215 14% 72%); --accent-ink: hsl(215 15% 10%); --accent-soft: hsl(215 14% 72% / .12);
+}
+:root[data-theme="light"] #view-page.ally-view[data-ally-color="slate"] {
+  --ground: hsl(215 14% 97%); --surface: #ffffff; --surface-2: hsl(215 12% 95%); --well: hsl(215 12% 95%); --line: hsl(215 10% 90%); --line-2: hsl(215 8% 81%);
+  --accent: hsl(215 14% 38%); --accent-ink: #ffffff; --accent-soft: hsl(215 14% 38% / .08);
+}
+/* The color of each ally beside its name (tabs and the color choice) */
+.ally-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; flex: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, .15); }
+.ally-colors .vis-user .ally-dot { margin-right: 0; }
 
 /* Ficha: retrato do personagem vinculado */
 .sheet-title { display: flex; align-items: center; gap: 16px; min-width: 0; }

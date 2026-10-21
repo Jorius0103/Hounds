@@ -68,8 +68,9 @@ function isFastDraw(name) { return /^fast-?draw\b/i.test(name || ''); }
 // Fast-Draw Combat Reflexes', and the effects of the advantages (see ficha-efeitos.js) (k.tbonus;
 // k.tfrom says where it comes from: "+2 de Talent (Soldier) 2 e +1 de Combat Reflexes"). Returns the
 // list. The marks are for showing the level only: cleanSkill and cleanCombatItem drop them.
-function applyTalents(list, s) {
-  var t = talentBonuses(s), cr = list.some(function (k) { return isFastDraw(k.name); }) && hasCombatReflexes(s);
+// combat: the skills of Combate, which the talents don't cover (Combat Reflexes and the effects do).
+function applyTalents(list, s, combat) {
+  var t = combat ? {} : talentBonuses(s), cr = list.some(function (k) { return isFastDraw(k.name); }) && hasCombatReflexes(s);
   list.forEach(function (k) {
     var o = t[norm(k.name)], from = [], fx = k.kind === 'tech' ? null : fxForSkill(s, k);
     k.tbonus = 0;
@@ -80,12 +81,18 @@ function applyTalents(list, s) {
   });
   return list;
 }
-// The skills a talent can cover: the sheet's, of Perícias and of Combate, once each, by name.
+// The sheet's skills, of Perícias and of Combate, once each, by name.
 function advSkillChoices(s) {
   var seen = {}, out = [];
   sheetSkills(s).concat(scAllItems(sheetCombat(s)).filter(function (x) { return x.kind === 'skill'; })).forEach(function (k) {
     if (k.name && !seen[norm(k.name)]) { seen[norm(k.name)] = true; out.push(k.name); }
   });
+  return out.sort(function (a, b) { return byName({ name: a }, { name: b }); });
+}
+// The skills a talent can cover: only the ones of Perícias; the combat skills (Combate) don't go in.
+function talentSkillChoices(s) {
+  var seen = {}, out = [];
+  sheetSkills(s).forEach(function (k) { if (k.name && !seen[norm(k.name)]) { seen[norm(k.name)] = true; out.push(k.name); } });
   return out.sort(function (a, b) { return byName({ name: a }, { name: b }); });
 }
 function talentSizeOf(c) { var n = advCostOf(c).cost; return n >= 15 ? 'L' : n >= 10 ? 'M' : 'S'; }
@@ -172,14 +179,14 @@ function advRulesHtml(x) {
 /* ---------- view ---------- */
 // "a, b e c"
 function joinE(list) { return list.length > 1 ? list.slice(0, -1).join(', ') + ' e ' + list[list.length - 1] : list.join(''); }
-// onSheet: the normalized names of the sheet's skills, to mark a talent's skill that is no longer there.
+// onSheet: the normalized names of the skills of Perícias, to mark a talent's skill that is not there.
 // fastDraws: the sheet's Fast-Draw skills, which Combat Reflexes raises.
 function advRowHtml(x, inCombat, onSheet, fastDraws) {
   var c = advEntryOf(x), name = esc(x.name + (x.levels ? ' ' + x.levels : '')), k = c ? advTypeKey(c.type) : '';
   var label = c ? '<a href="' + advHref(c.id) + '" data-adv-modal="' + esc(c.id) + '" title="Ver ' + (k === 'perk' ? 'o perk' : 'a vantagem') + '">' + name + '</a>' : name;
   var z = TALENT_SIZES[x.size];
   // A talent's Observações are its skills, as in the spreadsheet, then the notes.
-  var obs = z ? joinE(x.skills.map(function (n) { return n + (onSheet[norm(n)] ? '' : ' (não está na ficha)'); })) : '';
+  var obs = z ? joinE(x.skills.map(function (n) { return n + (onSheet[norm(n)] ? '' : ' (não está em Perícias)'); })) : '';
   if (x.notes) obs += (obs ? ' · ' : '') + x.notes;
   var problem = z ? talentProblem(x) : '';
   var sub = [z ? 'Talento ' + z.label.toLowerCase() + ' · +' + Math.min(x.levels || 1, TALENT_MAX_LEVELS) + ' no NH' : k === 'perk' || k === 'talent' ? advTypeLabel(c.type) : '',
@@ -199,7 +206,7 @@ function sheetAdvsHtml(s, editing) {
     (editing ? secSaveBtnsHtml('avCancel', 'avSave', 'vantagens')
       : can && !sheetDraftOpen() ? secEditBtnHtml('avEdit', 'vantagens') : '') + '</div>';
   if (editing) {
-    var choices = advSkillChoices(s);
+    var choices = talentSkillChoices(s);
     return '<section class="gurps' + gearFoldClass('advs', editing) + '" id="advs">' + head +
       // New advantages go on top, under the button.
       '<div class="box sk-edit"><div><button class="btn" type="button" id="avAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar vantagem</button></div>' +
@@ -207,7 +214,7 @@ function sheetAdvsHtml(s, editing) {
       '<div id="avRows">' + list.map(function (x, i) { return advEditRow(x, i, choices); }).join('') + '</div>' +
       '<p class="hint-text">Custo é o da vantagem, ou o de cada nível quando ela tem níveis (0 níveis: sem níveis). Mod. % soma ampliações (+) e limitações (−): ' +
       'os pontos são custo × níveis com o modificador aplicado, arredondando para cima, e as limitações não tiram mais de 80% (Basic Set, pp. B101-102). ' +
-      'Perk custa 1 ponto. Talento: escolha o tamanho (pequeno 5 pts/nível e até 6 perícias, médio 10 e 7 a 12, grande 15 e 13 ou mais) e marque as perícias da ficha; ' +
+      'Perk custa 1 ponto. Talento: escolha o tamanho (pequeno 5 pts/nível e até 6 perícias, médio 10 e 7 a 12, grande 15 e 13 ou mais) e marque as perícias da seção Perícias (as de Combate não entram); ' +
       'cada nível, até 4, soma +1 no NH delas (Basic Set, p. B89). Ao escolher da lista, custo e níveis vêm do livro.</p></div>' +
       '<div class="form-err" id="avErr" role="alert"></div></section>';
   }
@@ -217,7 +224,7 @@ function sheetAdvsHtml(s, editing) {
   var combat = {}, onSheet = {};
   scAllItems(sheetCombat(s)).forEach(function (x) { if (x.kind === 'trait') combat[norm(x.name)] = true; });
   var fastDraws = advSkillChoices(s).filter(isFastDraw);
-  advSkillChoices(s).forEach(function (n) { onSheet[norm(n)] = true; });
+  talentSkillChoices(s).forEach(function (n) { onSheet[norm(n)] = true; });
   return '<section class="gurps' + gearFoldClass('advs', editing) + '" id="advs">' + head +
     '<table class="gtab av-tab"><thead><tr><th>Vantagem</th><th>Pts</th><th>Observações</th></tr></thead><tbody>' +
     list.map(function (x) { return advRowHtml(x, !!combat[norm(x.name)], onSheet, fastDraws); }).join('') + '</tbody>' +
@@ -226,8 +233,8 @@ function sheetAdvsHtml(s, editing) {
 
 /* ---------- editor ---------- */
 function talentCountText(x) { var z = TALENT_SIZES[x.size]; return plural(x.skills.length, 'escolhida', 'escolhidas') + ' · ' + z.label.toLowerCase() + ': ' + z.range; }
-// Under a talent's row: its size and the sheet's skills to check. A skill chosen before and no
-// longer on the sheet stays in the list, marked, to be unchecked.
+// Under a talent's row: its size and the skills of Perícias to check. A skill chosen before that is not
+// there (no longer on the sheet, or a combat skill) stays in the list, marked, to be unchecked.
 function talentPanelHtml(x, i, choices) {
   var known = {}, chosen = {};
   choices.forEach(function (n) { known[norm(n)] = true; });
@@ -240,8 +247,8 @@ function talentPanelHtml(x, i, choices) {
     }).join('') + '</fieldset>' +
     '<fieldset class="av-tskills"><legend>Perícias que recebem o bônus <span class="av-tcount" data-tcount="' + i + '">' + esc(talentCountText(x)) + '</span></legend>' +
     (all.length ? '<div class="av-tlist">' + all.map(function (n) {
-      return '<label><input type="checkbox" data-tskill="' + esc(n) + '"' + (chosen[norm(n)] ? ' checked' : '') + '><span>' + esc(n) + (known[norm(n)] ? '' : ' <small>não está na ficha</small>') + '</span></label>';
-    }).join('') + '</div>' : '<p class="hint-text" style="margin:0">A ficha ainda não tem perícias: cadastre em Perícias ou Combate e volte aqui.</p>') +
+      return '<label><input type="checkbox" data-tskill="' + esc(n) + '"' + (chosen[norm(n)] ? ' checked' : '') + '><span>' + esc(n) + (known[norm(n)] ? '' : ' <small>não está em Perícias</small>') + '</span></label>';
+    }).join('') + '</div>' : '<p class="hint-text" style="margin:0">A ficha ainda não tem perícias em Perícias: cadastre lá e volte aqui. As perícias de combate não entram no talento.</p>') +
     '</fieldset></div>';
 }
 function advEditRow(x, i, choices) {
@@ -274,8 +281,10 @@ function wireSheetAdvs(s) {
       if (x.size || !isTalentName(x.name, advEntryOf(x))) return;
       x.size = x.cost >= 15 ? 'L' : x.cost >= 10 ? 'M' : 'S'; x.cost = TALENT_SIZES[x.size].cost; x.levels = Math.max(1, x.levels); x.skills = [];
     });
-    if (!ui.advDraft.length) ui.advDraft.push(cleanAdv({ name: '', cost: 0 }));
-    renderSheetPage(); focusFirst();
+    // The cursor goes to the first field only for a new, empty row: a filled name would open its suggestions.
+    var empty = !ui.advDraft.length;
+    if (empty) ui.advDraft.push(cleanAdv({ name: '', cost: 0 }));
+    renderSheetPage(); if (empty) focusFirst();
   };
   var d = ui.advDraft, box = $('advs'); if (!d || !box || !$('avSave')) return;
   function paintRow(i) {
@@ -368,7 +377,12 @@ function wireSheetAdvs(s) {
   var rows = $('avRows');
   function nameInput(e) { var t = /** @type {AnyEl} */ (e.target); return t && t.classList && t.classList.contains('sk-name') ? t : null; }
   rows.addEventListener('input', function (e) { var t = nameInput(e); if (t) { sug.active = 0; paintSug(t); } });
-  rows.addEventListener('focusin', function (e) { var t = nameInput(e); if (t) { sug.active = 0; paintSug(t); } });
+  // Focus alone opens the suggestions only on a row not linked to an entry yet: one just picked (or
+  // saved) keeps its fields in view, and typing opens them again.
+  rows.addEventListener('focusin', function (e) {
+    var t = nameInput(e), row = t && t.closest('[data-i]'), x = row && d[+row.getAttribute('data-i')];
+    if (t && !(x && x.advId)) { sug.active = 0; paintSug(t); }
+  });
   rows.addEventListener('focusout', function (e) {
     var input = nameInput(e); if (!input) return;
     setTimeout(function () { if (sug.input === input && document.activeElement !== input) hideSug(); }, 150);

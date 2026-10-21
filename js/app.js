@@ -22,18 +22,87 @@ var topTitle = $('topTitle');
 
 
 
+var EYE_ON = '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>';
+// The button goes after the title, or first in the page's buttons when it marks them with data-vis-host (Ficha).
 function tagPage(item, col) {
-  var h1 = pageRoot.querySelector('h1'); if (!h1 || !item || h1.querySelector('.secret-tag, .vis-toggle')) return;
-  var secret = isSecret(item);
+  var h1 = pageRoot.querySelector('h1'); if (!h1 || !item || h1.querySelector('.secret-tag') || pageRoot.querySelector('.vis-toggle')) return;
+  var secret = isSecret(item), host = pageRoot.querySelector('[data-vis-host]');
   if (secret) h1.insertAdjacentHTML('beforeend', secretTag(item));
   if (!canSetVis(item) || !canWrite()) return;
+  function put(html) { if (host) host.insertAdjacentHTML('afterbegin', html); else h1.insertAdjacentHTML('beforeend', html); }
+  if (secret && isMestre()) { revealMenu(put, !!host, item, col); return; }
   var who = seenBy(item);
-  h1.insertAdjacentHTML('beforeend', '<button class="btn vis-toggle" type="button" id="visToggle">' + (secret ? 'Revelar a todos' : who === 'o Mestre' ? 'Ocultar dos jogadores' : 'Ocultar dos outros') + '</button>');
+  put('<button class="btn vis-toggle" type="button" id="visToggle">' + (host ? svg(secret ? EYE_ON : EYE_OFF, 15) : '') + (secret ? 'Revelar a todos' : who === 'o Mestre' ? 'Ocultar dos jogadores' : 'Ocultar dos outros') + '</button>');
   $('visToggle').onclick = function () {
     var b = /** @type {AnyEl} */ (this); b.disabled = true;
     (item.catalog ? patchCatalogItem(col, item, { visible: secret, updatedAt: now() }) : W.store.patch(col, item.id, { visible: secret, updatedAt: now() })).then(function () { toast(secret ? 'Agora todos podem ver.' : 'Agora só ' + who + ' ' + seenVerb(item) + '.'); }, function (er) { b.disabled = false; toast(errorText(er), true); });
   };
 }
+// "Revelar" of a hidden item (Mestre): a menu to show it to everyone or only to chosen accounts (sharedWith).
+// revealDraft keeps the open menu and what was ticked while the page redraws with live updates.
+var revealDraft = null;
+function closeReveal() {
+  revealDraft = null;
+  var pop = $('visPop'), b = $('visToggle');
+  if (pop) pop.hidden = true;
+  if (b) b.setAttribute('aria-expanded', 'false');
+}
+function revealMenu(put, icon, item, col) {
+  if (revealDraft && revealDraft.id !== item.id) revealDraft = null;
+  // The account linked to a sheet (tab-fichas.js) always sees it: it is not in the list (its link is changed
+  // in the sheet), and it stays in sharedWith when the menu saves.
+  var linked = col === 'sheets' ? W.users.filter(function (u) { return u.sheetId === item.id; })[0] : null;
+  var users = W.users.filter(function (u) { return u.role !== 'mestre' && u !== linked; }).sort(byName);
+  var had = (item.sharedWith || []).filter(function (id) { return id !== item.createdBy && users.some(function (u) { return u.id === id; }); });
+  put('<span class="vis-menu"><button class="btn vis-toggle" type="button" id="visToggle" aria-haspopup="dialog" aria-expanded="false">' + (icon ? svg(EYE_ON, 15) : '') + 'Revelar' + svg('<path d="m6 9 6 6 6-6"/>', 13, 2.4) + '</button>' +
+    '<span class="vis-pop" id="visPop" role="dialog" aria-label="Revelar para" hidden></span></span>');
+  var btn = $('visToggle'), pop = $('visPop');
+  function sameIds(a, b) { return a.length === b.length && a.every(function (id) { return b.indexOf(id) >= 0; }); }
+  function sync() {
+    var all = pop.querySelector('[data-all]'), list = pop.querySelector('.vis-users');
+    revealDraft.all = all.checked;
+    revealDraft.ids = [].map.call(pop.querySelectorAll('input[data-share]:checked:not([data-creator])'), function (el) { return el.getAttribute('data-share'); });
+    if (list) { list.classList.toggle('off', all.checked); list.querySelectorAll('input:not([data-creator])').forEach(function (el) { el.disabled = all.checked; }); }
+    pop.querySelector('[data-save]').disabled = !revealDraft.all && sameIds(revealDraft.ids, had);
+  }
+  function open() {
+    if (!revealDraft) revealDraft = { id: item.id, all: false, ids: had.slice() };
+    var d = revealDraft;
+    pop.innerHTML = '<span class="lab">Mostrar para</span>' +
+      '<label class="vis-user vis-all"><input type="checkbox" data-all' + (d.all ? ' checked' : '') + '><span>Todos</span><small>Qualquer conta vê</small></label>' +
+      (users.length ? '<span class="vis-users">' + users.map(function (u) {
+        var creator = item.createdBy === u.id;
+        return '<label class="vis-user"><input type="checkbox" data-share="' + esc(u.id) + '"' + (creator ? ' data-creator' : '') +
+          (creator || d.ids.indexOf(u.id) >= 0 ? ' checked' : '') + (creator ? ' disabled' : '') + '>' +
+          '<span>' + esc(u.name) + '</span><small>' + (creator ? 'Criou' : esc(roleLabel(u.role))) + '</small></label>';
+      }).join('') + '</span>' : '') +
+      '<span class="btn-row"><button class="btn ghost" type="button" data-cancel>Cancelar</button><button class="btn primary" type="button" data-save>Salvar</button></span>';
+    pop.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    sync();
+    // Keep the menu inside the screen when the button sits near the right edge.
+    pop.style.left = '0px';
+    var r = pop.getBoundingClientRect(), shift = Math.min(0, window.innerWidth - 16 - r.right);
+    pop.style.left = Math.max(shift, 16 - r.left) + 'px';
+  }
+  btn.onclick = function () { if (pop.hidden) { open(); var f = pop.querySelector('input'); if (f) f.focus(); } else closeReveal(); };
+  pop.onchange = sync;
+  pop.onclick = function (e) {
+    if (e.target.closest('[data-cancel]')) { closeReveal(); btn.focus(); return; }
+    var save = e.target.closest('[data-save]'); if (!save) return;
+    var d = revealDraft, ids = linked ? d.ids.concat([linked.id]) : d.ids;
+    var p = d.all ? { visible: true, updatedAt: now() } : { sharedWith: ids, updatedAt: now() };
+    save.disabled = true;
+    (item.catalog ? patchCatalogItem(col, item, p) : W.store.patch(col, item.id, p)).then(function () {
+      closeReveal();
+      var after = { createdBy: item.createdBy, sharedWith: ids };
+      toast(d.all ? 'Agora todos podem ver.' : 'Agora só ' + seenBy(after) + ' ' + seenVerb(after) + '.');
+    }, function (er) { save.disabled = false; toast(errorText(er), true); });
+  };
+  if (revealDraft) open();
+}
+document.addEventListener('mousedown', function (e) { if (revealDraft && !(e.target.closest && e.target.closest('.vis-menu'))) closeReveal(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && revealDraft) { closeReveal(); var b = $('visToggle'); if (b) b.focus(); } });
+window.addEventListener('hashchange', function () { revealDraft = null; });
 var _rMap = renderMapPage, _rLoc = renderLocalPage, _rChar = renderCharPage;
 // @ts-expect-error -- substitui a função de tab-mapas.js por uma que também desenha o botão de visibilidade
 renderMapPage = function () { _rMap(); tagPage(mapById(S.route.mapId), 'maps'); };

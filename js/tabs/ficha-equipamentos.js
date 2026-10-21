@@ -460,7 +460,7 @@ function eqEach(x, total, one, fmt) { return total ? esc(fmt(total)) + (x.qty > 
 function invRowHtml(x, g, L, can) {
   var c = gearLink(x), where = gearWhere(g, x.id), counted = L.counted[x.id] || 0, pc = g.pieces[x.id];
   var sub = [pc ? 'Criar Armadura: ' + armorLocName(pc.piece.loc) + ' · ' + gearArmorDr(x, g) : c ? gearCatLine(x.kind, c) : '', x.qty === 0 ? 'acabou' : ''].filter(Boolean).join(' · ');
-  var name = c ? '<a href="' + gearCatHref(x.kind, c.id) + '" title="Ver em Regras › ' + (x.kind === 'armor' ? 'Armaduras' : x.kind === 'weapon' ? 'Armas' : 'Itens') + '">' + esc(x.name) + '</a>' : esc(x.name);
+  var name = c ? '<a href="' + gearCatHref(x.kind, c.id) + '" data-' + (x.kind === 'armor' ? 'armor' : x.kind === 'weapon' ? 'weapon' : 'item') + '-modal="' + esc(c.id) + '" title="Ver em Regras › ' + (x.kind === 'armor' ? 'Armaduras' : x.kind === 'weapon' ? 'Armas' : 'Itens') + '">' + esc(x.name) + '</a>' : esc(x.name);
   var load = counted ? (counted < x.qty ? counted + ' de ' + x.qty + ' na carga' : 'na carga') : 'fora da carga';
   // The notes show under the name (the table is half the width: no column of its own).
   return '<tr' + (counted ? '' : ' class="eq-stored"') + '><td><b>' + gearKindTag(x.kind) + name + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') +

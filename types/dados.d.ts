@@ -95,13 +95,15 @@ interface SheetAttrs {
 
 /** Coleção `sheets` (fichas) de GURPS. Ligada a personagens por `Character.sheetId`. */
 interface Sheet extends Doc {
-  name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[]; disadvs?: SheetDisadv[]; quirks?: SheetQuirk[];
+  name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[]; disadvs?: SheetDisadv[]; quirks?: SheetQuirk[]; reactions?: SheetReaction[]; points?: SheetPoints | null;
   equip?: SheetEquip[]; bodies?: SheetBody[]; packs?: SheetPack[]; homes?: SheetHome[]; armorSets?: ArmorSet[]; customWeapons?: CustomWeapon[]; customShields?: CustomShield[];
   spells?: SheetSpell[];
   /** Só nos aliados: a ficha principal que criou o aliado (fixa; veja a migration 29). O aliado aparece numa aba dela, não nas listas. */
   allyOf?: string | null;
   /** Só nos aliados: o nome da aba, independente de `name` (o nome da ficha do aliado). */
   allyName?: string | null;
+  /** Cor do painel do aliado (ALLY_COLORS, em tab-fichas.js); sem ela, violeta. */
+  allyColor?: string | null;
 }
 /** Magia da aba Magia da ficha (veja js/tabs/ficha-magias.js): perícia de IQ, H ou VH, mostrada na tabela da escola `college` ('' : Sem escola). */
 interface SheetSpell {
@@ -180,6 +182,10 @@ interface SheetDisadv {
 }
 /** Peculiaridade da ficha (veja js/tabs/ficha-peculiaridades.js): digitada, sem catálogo; vale −1 ponto, e só 5 contam. */
 interface SheetQuirk { name: string; notes: string; }
+/** Ficha › Atributos › Reações: quem reage, o modificador (−99 a +99) e de onde vem. */
+interface SheetReaction { name: string; mod: number; notes: string; }
+/** Ficha › Pontos (abaixo de Personagem): ajuste livre, raça e seus pontos e XP, digitados. */
+interface SheetPoints { adj: number; race: string; racePts: number; xp: number; }
 
 /** Item da seção Combate da ficha: perícia, técnica ou perk/vantagem (veja js/tabs/ficha-combate.js). */
 interface CombatItem {
@@ -437,7 +443,7 @@ interface Improvement extends Doc {
 }
 
 /** Coleção `notebooks` (títulos). */
-interface Notebook extends Doc { name: string }
+interface Notebook extends Doc { name: string; /** Ficha dona do título (aba Anotações da ficha); sem ele, é do menu Anotações. */ sheetId?: string | null }
 
 /** Coleção `notes`. `format: 'html'` para texto formatado; sem ele, texto simples. */
 interface Note extends Doc { notebookId: string; title: string; body?: string; format?: string }
@@ -446,7 +452,7 @@ interface Note extends Doc { notebookId: string; title: string; body?: string; f
 type Role = 'mestre' | 'admin' | 'jogador';
 
 /** Coleção `users`. Com o Supabase, `email` liga a conta (Supabase Auth) ao usuário e só o Mestre o recebe. */
-interface HubUser extends Doc { name: string; role: Role | string; email?: string | null }
+interface HubUser extends Doc { name: string; role: Role | string; email?: string | null; /** Ficha principal vinculada à conta (uma só). */ sheetId?: string | null }
 
 /** Parede ou porta de um tabuleiro, em pixels da imagem. Uma porta aberta não barra a visão nem o caminho. */
 interface BoardWall { x1: number; y1: number; x2: number; y2: number; door?: boolean; open?: boolean }
@@ -654,6 +660,9 @@ interface World {
   boards: Board[];
   notebooks: Notebook[];
   notes: Note[];
+  /** Os títulos das fichas (sheetId) e as anotações deles, fora do menu Anotações. */
+  sheetNotebooks: Notebook[];
+  sheetNotes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
   raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; improvements: Improvement[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[]; armorLocs: ArmorLoc[]; boards: Board[] };

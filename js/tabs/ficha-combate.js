@@ -99,8 +99,9 @@ function combatSkillPool(c, s) {
   var pool = [];
   c.styles.forEach(function (st) { st.items.forEach(function (x) { if (x.kind === 'skill') pool.push(x); }); });
   c.general.forEach(function (x) { if (x.kind === 'skill') pool.push(x); });
-  // The talents' bonus (Ficha › Vantagens) on every skill, and so on the techniques built on them.
-  return applyTalents(pool.concat(sheetSkills(s)), s);
+  // The talents' bonus (Ficha › Vantagens) on the skills of Perícias, and so on the techniques built on
+  // them; not on the combat skills, which the talents don't cover.
+  return applyTalents(pool, s, true).concat(applyTalents(sheetSkills(s), s));
 }
 function scFindSkill(pool, name) {
   var n = norm(name), key = combatKey(name);
@@ -376,8 +377,8 @@ function scReqRow(r, pool, av) {
 }
 // Out of the editor, a row shows only once it has points (a style brings its lists at 0).
 function scShown(items) { return items.filter(function (x) { return x.pts >= 1; }); }
-function scGroupHtml(title, items, pool, av, href, key, drag, reqs) {
-  var label = href ? '<a href="' + href + '" title="Ver o estilo">' + esc(title) + '</a>' : esc(title);
+function scGroupHtml(title, items, pool, av, styleId, key, drag, reqs) {
+  var label = styleId ? '<a href="' + styleHref(styleId) + '" data-style-modal="' + esc(styleId) + '" title="Ver o estilo">' + esc(title) + '</a>' : esc(title);
   // A prerequisite bought inside the style itself (older sheets) shows once, as its own row.
   reqs = (reqs || []).filter(function (r) { return !r.skill || items.indexOf(r.skill) < 0; });
   var miss = scReqsMissing(reqs), shown = scShown(items);
@@ -657,7 +658,7 @@ function scTotalsHtml(c, pool) {
     '<div class="sc-tot-grid">' + rows.map(function (r) { return '<div class="sc-tot-item" role="row"><span role="cell">' + esc(r[0]) + '</span><b class="gpts" role="cell">' + r[1] + '</b></div>'; }).join('') + '</div></div>';
 }
 // Whether a section of the sheet that edits in place is being edited: only one at a time.
-function sheetDraftOpen() { var ui = S.ui; return !!(ui.skillDraft || ui.combatDraft || ui.advDraft || ui.disadvDraft || ui.quirkDraft || ui.dmgDraft || ui.defDraft || ui.spellDraft); }
+function sheetDraftOpen() { var ui = S.ui; return !!(ui.skillDraft || ui.combatDraft || ui.advDraft || ui.disadvDraft || ui.quirkDraft || ui.dmgDraft || ui.defDraft || ui.spellDraft || ui.noteDraft); }
 function sheetCombatHtml(s, editing) {
   var ui = S.ui, c = editing ? ui.combatDraft.c : sheetCombat(s), a = sheetAttrsNow(s), av = attrValues(a);
   var pool = combatSkillPool(c, s), can = canWrite();
@@ -673,7 +674,7 @@ function sheetCombatHtml(s, editing) {
   ['skills', 'techniques', 'advantages', 'styles'].forEach(function (k) { loadCatalog(k); });
   var groups = combatOrder(c).map(function (k) {
     var st = c.styles[+k.slice(1)];
-    return scGroupHtml(st.name || 'Estilo sem nome', st.items, pool, av, st.styleId ? styleHref(st.styleId) : '', k, drag, scStyleReqs(st, pool));
+    return scGroupHtml(st.name || 'Estilo sem nome', st.items, pool, av, st.styleId || '', k, drag, scStyleReqs(st, pool));
   });
   var copies = scStyleCopies(c);
   return '<section class="gurps' + gearFoldClass('combat', editing) + '" id="combat">' + head +
@@ -736,7 +737,7 @@ function scGroupEditHtml(title, items, g, pool, av, listId, st) {
   return '<div class="box sc-edit' + (miss.length ? ' sc-unmet' : '') + (open ? '' : ' closed') + '" data-group="' + g + '">' +
     (st ? '<div class="sc-ghead">' + chev +
       scField('Estilo', '<input type="text" data-f="stname" data-g="' + g + '" maxlength="120" value="' + esc(st.name) + '" placeholder="Nome do estilo">', 'sc-name') +
-      sum + (cat ? '<a class="sc-catlink" href="' + styleHref(cat.id) + '" target="_blank" rel="noopener">' + esc(cat.page || 'Ver estilo') + '</a>' : '') +
+      sum + (cat ? '<a class="sc-catlink" href="' + styleHref(cat.id) + '" data-style-modal="' + esc(cat.id) + '" target="_blank" rel="noopener">' + esc(cat.page || 'Ver estilo') + '</a>' : '') +
       '<button class="btn ghost" type="button" data-delstyle="' + g + '">' + svg(ICON.trash, 14) + 'Remover estilo</button></div>'
       : '<div class="sc-ghead sc-ghead-g">' + chev + '<h3 class="sec-title" style="margin:0">' + esc(title) + '</h3>' + sum + '</div>') +
     '<div class="sc-gbody"><div class="sc-rows">' + items.map(function (x, n) { return scEditRow(x, g, n, pool, av, listId); }).join('') + '</div>' +

@@ -12,14 +12,22 @@
    ===================================================================== */
 ICON.notes = '<path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M16 2v20"/>';
 ICON.note = '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>';
+// A notebook with sheetId belongs to that sheet's Anotações tab (ficha-anotacoes.js): it and its notes
+// go to W.sheetNotebooks and W.sheetNotes, out of this menu. Only the account linked to the
+// sheet (sheetNotesOpen) sees them, not even the Mestre, and they have no "Visível para todos".
 function filterNotes() {
-  W.notebooks = pub(W.raw.notebooks);
-  var ok = {}; W.notebooks.forEach(function (nb) { ok[nb.id] = true; });
-  W.notes = pub(W.raw.notes).filter(function (n) { return ok[n.notebookId]; });
+  var all = pub(W.raw.notebooks).filter(function (nb) { return !nb.sheetId || sheetNotesOpen(nb.sheetId); }), ok = {}, mine = {};
+  all.forEach(function (nb) { ok[nb.id] = true; if (!nb.sheetId) mine[nb.id] = true; });
+  var notes = pub(W.raw.notes).filter(function (n) { return ok[n.notebookId]; });
+  W.notebooks = all.filter(function (nb) { return !nb.sheetId; });
+  W.notes = notes.filter(function (n) { return mine[n.notebookId]; });
+  W.sheetNotebooks = all.filter(function (nb) { return !!nb.sheetId; });
+  W.sheetNotes = notes.filter(function (n) { return !mine[n.notebookId]; });
 }
 function nbById(id) { for (var i = 0; i < W.notebooks.length; i++) if (W.notebooks[i].id === id) return W.notebooks[i]; return null; }
 function noteById(id) { for (var i = 0; i < W.notes.length; i++) if (W.notes[i].id === id) return W.notes[i]; return null; }
-function nbNotes(id) { return W.notes.filter(function (n) { return n.notebookId === id; }).sort(function (a, b) { return String(a.title || '').localeCompare(String(b.title || ''), 'pt', { sensitivity: 'base', numeric: true }); }); }
+function byTitle(a, b) { return String(a.title || '').localeCompare(String(b.title || ''), 'pt', { sensitivity: 'base', numeric: true }); }
+function nbNotes(id, list) { return (list || W.notes).filter(function (n) { return n.notebookId === id; }).sort(byTitle); }
 function fmtDate(t) { if (!t) return ''; try { return new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
 
 function renderNotesPage() {
@@ -121,11 +129,12 @@ function renderNotePage() {
   };
 }
 
-function openNotebookForm(nb) {
-  var editing = !!nb;
+// opts (the sheet's Anotações tab): sheetId of a new title, and then(id) in place of opening its page.
+function openNotebookForm(nb, opts) {
+  var editing = !!nb, sheetId = (opts && opts.sheetId) || null;
   showModal('<form id="nbForm" novalidate><h2 id="nbfTitle">' + (editing ? 'Renomear título' : 'Novo título') + '</h2>' +
     '<div class="field" id="f_nbname"><label for="nbname">Título</label><input type="text" id="nbname" maxlength="100" autocomplete="off" placeholder="Ex.: Sessão 12, Pistas do culto, Regras da casa" value="' + esc(editing ? nb.name : '') + '"><div class="err" id="err_nbname"></div></div>' +
-    flagHtml('nbvis', nb) +
+    (sheetId || (nb && nb.sheetId) ? '' : flagHtml('nbvis', nb)) +
     '<div class="form-err" id="nbfErr" role="alert"></div>' +
     '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="nbfCancel">Cancelar</button><button class="btn primary" type="submit" id="nbfSave">' + (editing ? 'Salvar' : 'Criar título') + '</button></div></form>');
   modal.setAttribute('aria-labelledby', 'nbfTitle');
@@ -137,16 +146,19 @@ function openNotebookForm(nb) {
     var n = name.value.trim().replace(/\s+/g, ' ');
     if (!n) { $('err_nbname').textContent = 'Informe o título.'; $('f_nbname').classList.add('invalid'); name.focus(); return; }
     var t = now(), vis = flagVal('nbvis', nb), btn = $('nbfSave'); btn.disabled = true; modalOpen.busy = true;
-    var p = editing ? W.store.patch('notebooks', nb.id, { name: n, visible: vis, updatedAt: t }).then(function () { return nb.id; }) : W.store.put('notebooks', null, { name: n, visible: vis, createdBy: me(), createdAt: t, updatedAt: t });
-    p.then(function (id) { closeModal(true); toast(editing ? 'Título salvo.' : 'Título criado.'); if (!editing) go(hrefFor('nb:' + id)); },
+    var body = { name: n, visible: vis, createdBy: me(), createdAt: t, updatedAt: t };
+    if (sheetId) body.sheetId = sheetId;
+    var p = editing ? W.store.patch('notebooks', nb.id, { name: n, visible: vis, updatedAt: t }).then(function () { return nb.id; }) : W.store.put('notebooks', null, body);
+    p.then(function (id) { closeModal(true); toast(editing ? 'Título salvo.' : 'Título criado.'); if (opts && opts.then) opts.then(id); else if (!editing) go(hrefFor('nb:' + id)); },
       function (er) { if (!modalOpen) return; modalOpen.busy = false; btn.disabled = false; $('nbfErr').textContent = errorText(er); });
   };
 }
 
-function openNoteForm(nb) {
+// then(id): what to do with the new note (the sheet's tab opens it there); without it, its page opens in edition.
+function openNoteForm(nb, then) {
   showModal('<form id="noteForm" novalidate><h2 id="nfTitle">Nova anotação</h2><p class="lede" style="margin-top:-6px">Em ' + esc(nb.name) + '</p>' +
     '<div class="field" id="f_nfname"><label for="nfname">Título da anotação</label><input type="text" id="nfname" maxlength="120" autocomplete="off" placeholder="Ex.: Resumo da sessão" value=""><div class="err" id="err_nfname"></div></div>' +
-    flagHtml('nfvis', null) +
+    (nb.sheetId ? '' : flagHtml('nfvis', null)) +
     '<div class="form-err" id="nfErr" role="alert"></div>' +
     '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="nfCancel">Cancelar</button><button class="btn primary" type="submit" id="nfSave">Criar e escrever</button></div></form>');
   modal.setAttribute('aria-labelledby', 'nfTitle');
@@ -160,6 +172,7 @@ function openNoteForm(nb) {
     var t = now(), btn = $('nfSave'); btn.disabled = true; modalOpen.busy = true;
     W.store.put('notes', null, { notebookId: nb.id, title: n, body: '', visible: flagVal('nfvis', null), createdBy: me(), createdAt: t, updatedAt: t }).then(function (id) {
       closeModal(true); toast('Anotação criada.');
+      if (then) { then(id); return; }
       S.pendingEdit = id; go(hrefFor('note:' + id));
     }, function (er) { if (!modalOpen) return; modalOpen.busy = false; btn.disabled = false; $('nfErr').textContent = errorText(er); });
   };

@@ -449,8 +449,8 @@ function adjRowHtml(cfg, m, i) {
   return '<div class="ab-adj" data-adj="' + i + '"><div class="sk-pick ab-adj-name"><input type="text" data-adj-f="' + i + ':name" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + cfg.p + 'AdjSug' + i + '"' +
     ' placeholder="' + esc(cfg.hint) + '" value="' + esc(m.name || '') + '" aria-label="Ajuste">' +
     '<div class="suggest" id="' + cfg.p + 'AdjSug' + i + '" role="listbox" hidden></div>' +
-    (sp ? '<small><a href="' + spellHref(sp.id) + '" target="_blank" rel="noopener">' + svg(ICON.spell, 12, 2.2) + 'Magia: ' + esc(sp.name) + (sp.page ? ' · ' + esc(sp.page) : '') + '</a></small>' : '') +
-    (im ? '<small><a href="' + improvementHref(im.id) + '" target="_blank" rel="noopener" title="' + esc(clip(im.description || '', 300)) + '">' + svg(ICON.improvement, 12, 2.2) + 'Melhoramento: ' + esc(im.name) +
+    (sp ? '<small><a href="' + spellHref(sp.id) + '" data-spell-modal="' + esc(sp.id) + '" target="_blank" rel="noopener">' + svg(ICON.spell, 12, 2.2) + 'Magia: ' + esc(sp.name) + (sp.page ? ' · ' + esc(sp.page) : '') + '</a></small>' : '') +
+    (im ? '<small><a href="' + improvementHref(im.id) + '" data-impr-modal="' + esc(im.id) + '" target="_blank" rel="noopener" title="' + esc(clip(im.description || '', 300)) + '">' + svg(ICON.improvement, 12, 2.2) + 'Melhoramento: ' + esc(im.name) +
       (im.page ? ' · ' + esc(im.page) : '') + '</a>' + (m.cutImp ? ' · dano só nos ataques de corte e perfuração' : '') + '</small>' : '') + '</div>' +
     cfg.nums.map(num).join('') +
     '<button class="icon-btn" type="button" data-adj-del="' + i + '" aria-label="Remover ajuste" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';

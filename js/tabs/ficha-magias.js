@@ -222,8 +222,10 @@ function wireSheetSpells(s) {
   function focusFirst() { var f = document.querySelector('#spRows .sk-name'); if (f instanceof HTMLElement) f.focus(); }
   var ed = $('spEdit'); if (ed) ed.onclick = function () {
     ui.spellDraft = sheetSpells(s);
-    if (!ui.spellDraft.length) ui.spellDraft.push(cleanSheetSpell({ name: '' }));
-    renderSheetPage(); focusFirst();
+    // The cursor goes to the first field only for a new, empty row: a filled name would open its suggestions.
+    var empty = !ui.spellDraft.length;
+    if (empty) ui.spellDraft.push(cleanSheetSpell({ name: '' }));
+    renderSheetPage(); if (empty) focusFirst();
   };
   // The school and class of the linked spells come from the catalog: it redraws the page when it arrives.
   var d = ui.spellDraft, box = $('sheetSpells');
@@ -284,7 +286,12 @@ function wireSheetSpells(s) {
   var rows = $('spRows');
   function nameInput(e) { var t = /** @type {AnyEl} */ (e.target); return t && t.classList && t.classList.contains('sk-name') ? t : null; }
   rows.addEventListener('input', function (e) { var t = nameInput(e); if (t) { sug.active = 0; paintSug(t); } });
-  rows.addEventListener('focusin', function (e) { var t = nameInput(e); if (t) { sug.active = 0; paintSug(t); } });
+  // Focus alone opens the suggestions only on a row not linked to an entry yet: one just picked (or
+  // saved) keeps its fields in view, and typing opens them again.
+  rows.addEventListener('focusin', function (e) {
+    var t = nameInput(e), row = t && t.closest('[data-i]'), x = row && d[+row.getAttribute('data-i')];
+    if (t && !(x && x.spellId)) { sug.active = 0; paintSug(t); }
+  });
   rows.addEventListener('focusout', function (e) {
     var input = nameInput(e); if (!input) return;
     setTimeout(function () { if (sug.input === input && document.activeElement !== input) hideSug(); }, 150);
