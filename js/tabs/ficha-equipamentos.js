@@ -330,13 +330,15 @@ function gearOwnName(v) { return String(v || '').trim().slice(0, 120); }
 function gearGivenName(line, auto) { return line && line.name !== auto ? line.name : ''; }
 // After a given name, on the same line, the model it is ("Reserva — Kite Shield"), so what it is still
 // shows: auto is the automatic name (the line has a given one when it differs), model what is shown.
-function gearModelHtml(x, auto, model) { return auto && x.name !== auto ? '<span class="gear-model"> — ' + esc(model || auto) + '</span>' : ''; }
+// Not when the name already says it (a piece named before the parts were in English: "Tronco completo — Plate, Medium").
+function gearHasModel(x, auto, model) { return !!auto && x.name !== auto && norm(x.name).indexOf(norm(model || auto)) < 0; }
+function gearModelHtml(x, auto, model) { return gearHasModel(x, auto, model) ? '<span class="gear-model"> — ' + esc(model || auto) + '</span>' : ''; }
 // The same as text, for where a line's name shows outside the tables (Corpo): "Reserva — Kite Shield".
 function gearShownName(x, g) {
   var pc = g.pieces[x.id], cw = g.weaponLines[x.id] || g.shieldLines[x.id], c = !pc && !cw ? gearLink(x) : null;
   var auto = pc ? armorPieceName(pc.set, armorLocById(pc.piece.loc), pc.piece.cover) : cw ? cw.base.name : c ? c.name : '';
   var model = pc ? pc.set.base.name : auto;
-  return auto && x.name !== auto ? x.name + ' — ' + model : x.name;
+  return gearHasModel(x, auto, model) ? x.name + ' — ' + model : x.name;
 }
 function gearKindTag(kind) { return '<span class="eq-kind k-' + kind + '" title="' + EQ_KIND_LABEL[kind] + '">' + svg(gearKindIcon(kind), 12, 2.2) + '</span>'; }
 
@@ -501,9 +503,10 @@ function sheetInvHtml(g, L, can) {
   if (!g.equip.length) return '<section class="gurps' + gearFoldClass('equip', false) + '" id="equip">' + head + '<p class="long none">Nenhum equipamento.' + (canWrite() ? ' Use os cartões de <b>Criar</b> acima.' : '') + '</p></section>';
   // The pieces of Criar Armadura, the weapons and the shields in their own tables; the rest below, in
   // two tables side by side (half each; one under the other on a narrow screen); the total of everything last.
-  var armors = g.equip.filter(function (x) { return g.pieces[x.id]; }), weapons = g.equip.filter(function (x) { return g.weaponLines[x.id]; });
-  var shields = g.equip.filter(function (x) { return g.shieldLines[x.id]; });
-  var rest = g.equip.filter(function (x) { return !g.pieces[x.id] && !g.weaponLines[x.id] && !g.shieldLines[x.id]; });
+  // Each table in alphabetical order (the list itself keeps its order).
+  var armors = g.equip.filter(function (x) { return g.pieces[x.id]; }).sort(byName), weapons = g.equip.filter(function (x) { return g.weaponLines[x.id]; }).sort(byName);
+  var shields = g.equip.filter(function (x) { return g.shieldLines[x.id]; }).sort(byName);
+  var rest = g.equip.filter(function (x) { return !g.pieces[x.id] && !g.weaponLines[x.id] && !g.shieldLines[x.id]; }).sort(byName);
   var half = Math.ceil(rest.length / 2);
   function tab(list) {
     return '<table class="gtab eq-tab"><thead><tr><th>Equipamento</th><th>Qtd.</th><th>Peso</th><th class="ab-desc-h">Descrição</th>' + (can ? '<th></th>' : '') + '</tr></thead><tbody>' +
