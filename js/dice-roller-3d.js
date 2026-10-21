@@ -106,38 +106,18 @@
       grad.addColorStop(1, '#b45309'); // Amber 700
     }
 
-    if (sides === 100) {
-      // Circular facet disc for D100 Zocchihedron
-      ctx.beginPath();
-      ctx.arc(128, 128, 120, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
 
-      // Outer bevel border
-      ctx.lineWidth = isTargetFace ? 12 : 9;
-      ctx.strokeStyle = isTargetFace ? '#451a03' : '#78350f';
-      ctx.stroke();
+    // Bevel border
+    ctx.lineWidth = isTargetFace ? 16 : 14;
+    ctx.strokeStyle = isTargetFace ? '#451a03' : '#78350f';
+    ctx.strokeRect(0, 0, 256, 256);
 
-      // Inner subtle highlight ring
-      ctx.beginPath();
-      ctx.arc(128, 128, 112, 0, Math.PI * 2);
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = isTargetFace ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.25)';
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 256, 256);
-
-      // Bevel border
-      ctx.lineWidth = isTargetFace ? 16 : 14;
-      ctx.strokeStyle = isTargetFace ? '#451a03' : '#78350f';
-      ctx.strokeRect(0, 0, 256, 256);
-
-      // Inner subtle highlight ring
-      ctx.lineWidth = isTargetFace ? 5 : 4;
-      ctx.strokeStyle = isTargetFace ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.25)';
-      ctx.strokeRect(8, 8, 240, 240);
-    }
+    // Inner subtle highlight ring
+    ctx.lineWidth = isTargetFace ? 5 : 4;
+    ctx.strokeStyle = isTargetFace ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.25)';
+    ctx.strokeRect(8, 8, 240, 240);
 
     // Bold result number centered
     var str = String(val);
@@ -148,8 +128,8 @@
     ctx.textBaseline = 'middle';
     ctx.fillText(str, 128, 128);
 
-    // Underline bar to distinguish 6 vs 9 and inverted numbers
-    if (val === 6 || val === 9 || val === 66 || val === 68 || val === 69 || val === 89 || val === 96 || val === 98 || val === 99) {
+    // Underline bar to distinguish 6 vs 9 and 60 vs 90
+    if (str === '6' || str === '9' || str === '60' || str === '90' || str === '66' || str === '68' || str === '69' || str === '89' || str === '96' || str === '98' || str === '99') {
       ctx.fillStyle = isTargetFace ? '#0a0a0c' : '#1e1b4b';
       var barW = str.length > 2 ? 96 : (str.length === 2 ? 80 : 64);
       ctx.fillRect(128 - barW / 2, 196, barW, isTargetFace ? 12 : 10);
@@ -159,16 +139,49 @@
     return texture;
   }
 
-  // Fast texture caching for D100 to make rolling D100 instant
-  var d100FaceTextureCache = {};
-  function getD100FaceTexture(val, isTargetFace) {
-    if (isTargetFace) {
-      return createPolyhedralFaceTexture(val, 100, true);
+  // Fast texture caching for D10 (Tens and Units) to make rolling instant
+  var d10TensTextureCache = {};
+  var d10UnitsTextureCache = {};
+
+  function getD10FaceTexture(displayStr, d10Type, isTgt) {
+    if (isTgt) {
+      return createPolyhedralFaceTexture(displayStr, 10, true);
     }
-    if (!d100FaceTextureCache[val]) {
-      d100FaceTextureCache[val] = createPolyhedralFaceTexture(val, 100, false);
+    var cache = d10Type === 'tens' ? d10TensTextureCache : d10UnitsTextureCache;
+    if (!cache[displayStr]) {
+      cache[displayStr] = createPolyhedralFaceTexture(displayStr, 10, false);
     }
-    return d100FaceTextureCache[val];
+    return cache[displayStr];
+  }
+
+  function createD10Materials(targetFaceIndex, d10Type) {
+    var bodyMat = new THREE.MeshStandardMaterial({
+      color: 0xd97706,
+      roughness: 0.65,
+      metalness: 0.0
+    });
+    var mats = [bodyMat];
+
+    var tensLabels = {
+      1: '10', 2: '20', 3: '30', 4: '40', 5: '50',
+      6: '60', 7: '70', 8: '80', 9: '90', 10: '00'
+    };
+    var unitsLabels = {
+      1: '1', 2: '2', 3: '3', 4: '4', 5: '5',
+      6: '6', 7: '7', 8: '8', 9: '9', 10: '0'
+    };
+
+    for (var f = 1; f <= 10; f++) {
+      var isTgt = (f === targetFaceIndex);
+      var displayStr = d10Type === 'tens' ? tensLabels[f] : (d10Type === 'units' ? unitsLabels[f] : (f === 10 ? '0' : String(f)));
+      var mapTex = getD10FaceTexture(displayStr, d10Type, isTgt);
+      mats.push(new THREE.MeshStandardMaterial({
+        map: mapTex,
+        roughness: 0.65,
+        metalness: 0.0
+      }));
+    }
+    return mats;
   }
 
   // Exact mathematical polyhedral dice definitions (Teal / byWulf algorithm)
@@ -373,137 +386,10 @@
     return geom;
   }
 
-  // Dedicated 100-faceted spherical geometry (Zocchihedron D100)
-  function createD100GeometryAndData(dieSize) {
-    var radius = (dieSize / 2) * 1.32;
-    var geom = new THREE.BufferGeometry();
-    var positions = [];
-    var normals = [];
-    var uvs = [];
-    var faceFirstVertexIndex = 0;
-
-    // 1. Base sphere body (amber solid core between facets)
-    var sphereRad = radius * 0.985;
-    var widthSegments = 24;
-    var heightSegments = 16;
-    var sphereGeo = new THREE.SphereGeometry(sphereRad, widthSegments, heightSegments);
-    var spherePos = sphereGeo.attributes.position.array;
-    var sphereNorm = sphereGeo.attributes.normal.array;
-    var sphereUv = sphereGeo.attributes.uv.array;
-    var sphereIdx = sphereGeo.index ? sphereGeo.index.array : null;
-
-    if (sphereIdx) {
-      for (var si = 0; si < sphereIdx.length; si++) {
-        var vi = sphereIdx[si];
-        positions.push(spherePos[vi * 3], spherePos[vi * 3 + 1], spherePos[vi * 3 + 2]);
-        normals.push(sphereNorm[vi * 3], sphereNorm[vi * 3 + 1], sphereNorm[vi * 3 + 2]);
-        uvs.push(sphereUv[vi * 2], sphereUv[vi * 2 + 1]);
-      }
-    } else {
-      for (var si = 0; si < spherePos.length; si += 3) {
-        positions.push(spherePos[si], spherePos[si + 1], spherePos[si + 2]);
-        normals.push(sphereNorm[si], sphereNorm[si + 1], sphereNorm[si + 2]);
-        var uvi = (si / 3) * 2;
-        uvs.push(sphereUv[uvi], sphereUv[uvi + 1]);
-      }
-    }
-    sphereGeo.dispose();
-
-    var baseSphereVertexCount = positions.length / 3;
-    geom.addGroup(0, baseSphereVertexCount, 0); // Material index 0 = bodyMat
-    faceFirstVertexIndex = baseSphereVertexCount;
-
-    // 2. Fibonacci spiral distribution of 100 facets
-    var faceNormals = {};
-    var faceUpVectors = {};
-    var phi = Math.PI * (3 - Math.sqrt(5)); // Golden angle ~2.399963229728653
-    var facetRadius = radius * 0.165; // facet circle radius
-
-    for (var i = 0; i < 100; i++) {
-      var fVal = i + 1; // 1 to 100
-      var y = 1 - ((2 * i + 1) / 100);
-      var r = Math.sqrt(Math.max(0, 1 - y * y));
-      var theta = i * phi;
-      var x = Math.cos(theta) * r;
-      var z = Math.sin(theta) * r;
-
-      var normal = new THREE.Vector3(x, y, z).normalize();
-      faceNormals[fVal] = normal;
-
-      // Tangent frame (local up and right)
-      var upRef = Math.abs(normal.y) > 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
-      var localUp = upRef.clone().sub(normal.clone().multiplyScalar(upRef.dot(normal))).normalize();
-      var localRight = new THREE.Vector3().crossVectors(localUp, normal).normalize();
-      faceUpVectors[fVal] = localUp;
-
-      // Facet center placed slightly on surface
-      var facetCenter = normal.clone().multiplyScalar(radius);
-
-      // Octagonal flattened facet (8 triangles around center)
-      var K = 8;
-      var facetVerts = [];
-      var facetUvs = [];
-      for (var k = 0; k < K; k++) {
-        var ang = (k * 2 * Math.PI) / K + (Math.PI / K);
-        var offset = localRight.clone().multiplyScalar(Math.cos(ang) * facetRadius)
-          .add(localUp.clone().multiplyScalar(Math.sin(ang) * facetRadius));
-        var pt = facetCenter.clone().add(offset);
-        facetVerts.push(pt);
-        facetUvs.push(new THREE.Vector2(0.5 + 0.48 * Math.cos(ang), 0.5 + 0.48 * Math.sin(ang)));
-      }
-
-      // Add K triangles: (facetCenter, facetVerts[k], facetVerts[(k + 1) % K])
-      for (var k = 0; k < K; k++) {
-        var kNext = (k + 1) % K;
-        // Tri 1: center
-        positions.push(facetCenter.x, facetCenter.y, facetCenter.z);
-        normals.push(normal.x, normal.y, normal.z);
-        uvs.push(0.5, 0.5);
-
-        // Tri 2: vertex k
-        positions.push(facetVerts[k].x, facetVerts[k].y, facetVerts[k].z);
-        normals.push(normal.x, normal.y, normal.z);
-        uvs.push(facetUvs[k].x, facetUvs[k].y);
-
-        // Tri 3: vertex kNext
-        positions.push(facetVerts[kNext].x, facetVerts[kNext].y, facetVerts[kNext].z);
-        normals.push(normal.x, normal.y, normal.z);
-        uvs.push(facetUvs[kNext].x, facetUvs[kNext].y);
-      }
-
-      var facetVertexCount = K * 3;
-      geom.addGroup(faceFirstVertexIndex, facetVertexCount, fVal);
-      faceFirstVertexIndex += facetVertexCount;
-    }
-
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(), radius * 1.05);
-
-    return {
-      defSides: 100,
-      geometry: geom,
-      faceNormals: faceNormals,
-      faceUpVectors: faceUpVectors,
-      maxVal: 100
-    };
-  }
-
   var polyGeometryCache = {};
 
   function getPolyhedronData(sides, dieSize) {
     var defSides = sides;
-    if (defSides === 100) {
-      var cacheKey100 = '100_' + dieSize;
-      if (polyGeometryCache[cacheKey100]) {
-        return polyGeometryCache[cacheKey100];
-      }
-      var d100Data = createD100GeometryAndData(dieSize);
-      polyGeometryCache[cacheKey100] = d100Data;
-      return d100Data;
-    }
-
     if (!DIE_DEFINITIONS[defSides]) {
       if (defSides <= 4) defSides = 4;
       else if (defSides <= 8) defSides = 8;
@@ -724,6 +610,7 @@
     var dieSize = 1.8;
     var sides = rollData.diceSides || 6;
     var count = rollData.rolls.length;
+    var isD100 = (sides === 100);
     var halfDie = dieSize / 2;
 
     var cubeGeo = new THREE.BoxGeometry(dieSize, dieSize, dieSize);
@@ -738,11 +625,73 @@
       new THREE.MeshStandardMaterial({ map: createD6FaceTexture(4), roughness: 0.65, metalness: 0.0 })
     ];
 
+    var d6FaceNormals = {
+      1: new THREE.Vector3(0, 1, 0),
+      6: new THREE.Vector3(0, -1, 0),
+      2: new THREE.Vector3(1, 0, 0),
+      5: new THREE.Vector3(-1, 0, 0),
+      3: new THREE.Vector3(0, 0, 1),
+      4: new THREE.Vector3(0, 0, -1)
+    };
+    var d6FaceUps = {
+      1: new THREE.Vector3(0, 0, -1),
+      6: new THREE.Vector3(0, 0, 1),
+      2: new THREE.Vector3(0, 1, 0),
+      5: new THREE.Vector3(0, 1, 0),
+      3: new THREE.Vector3(0, 1, 0),
+      4: new THREE.Vector3(0, 1, 0)
+    };
+
     var shadowGeo = new THREE.PlaneGeometry(2.6, 2.6);
     var shadowTex = createShadowTexture();
     var shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.75, depthWrite: false });
 
-    // 6. Create Dice Meshes & Trajectory Data
+    // 6. Build the list of physical 3D dice to roll:
+    // For D100 (Roll20 style), each D100 roll is represented by a pair of D10 dice:
+    // One for Tens ("00" to "90") and one for Units ("0" to "9")
+    var diceItems = [];
+    if (isD100) {
+      rollData.rolls.forEach(function (val, rollIdx) {
+        var tensNum = (val === 100) ? 0 : Math.floor(val / 10) * 10;
+        var unitsNum = (val === 100) ? 0 : (val % 10);
+
+        diceItems.push({
+          parentVal: val,
+          rollIdx: rollIdx,
+          isD100: true,
+          d10Type: 'tens',
+          targetFaceIndex: tensNum === 0 ? 10 : (tensNum / 10),
+          displayVal: tensNum === 0 ? '00' : String(tensNum),
+          sides: 10,
+          isTens: true
+        });
+
+        diceItems.push({
+          parentVal: val,
+          rollIdx: rollIdx,
+          isD100: true,
+          d10Type: 'units',
+          targetFaceIndex: unitsNum === 0 ? 10 : unitsNum,
+          displayVal: String(unitsNum),
+          sides: 10,
+          isTens: false
+        });
+      });
+    } else {
+      rollData.rolls.forEach(function (val, rollIdx) {
+        diceItems.push({
+          parentVal: val,
+          rollIdx: rollIdx,
+          isD100: false,
+          d10Type: null,
+          targetFaceIndex: val,
+          displayVal: String(val),
+          sides: sides,
+          isTens: false
+        });
+      });
+    }
+
     var dice = [];
 
     // Resting positions: random landing within a 1000x500px area in the middle of the screen
@@ -751,56 +700,103 @@
     var minScreenX = (window.innerWidth - areaW) / 2;
     var minScreenY = (window.innerHeight - areaH) / 2;
 
-    // Minimum distance in 3D ground units between any two dice (dieSize = 1.8)
-    // 3.4 units guarantees dice NEVER overlap or touch
-    var minGroundDist = count > 1 ? Math.max(2.8, 3.6 - count * 0.1) : 0;
     var targetPositions = [];
 
-    for (var i = 0; i < count; i++) {
-      var bestCandidate = null;
-      var maxCandidateDist = -1;
+    if (isD100) {
+      // For each D100 roll, place Tens and Units side-by-side as a pair
+      var pairCenters = [];
+      var minPairDist = count > 1 ? Math.max(4.0, 5.8 - count * 0.2) : 0;
 
-      // Rejection sampling: try up to 60 random landing spots across the whole 1000x500 box
-      for (var attempt = 0; attempt < 60; attempt++) {
-        var rx = minScreenX + 50 + Math.random() * (areaW - 100);
-        var ry = minScreenY + 40 + Math.random() * (areaH - 80);
-        var gpt = screenToGround(rx, ry, camera);
+      for (var p = 0; p < count; p++) {
+        var bestPair = null;
+        var maxPairDist = -1;
 
-        var candidate = { x: gpt.x, z: gpt.z };
-        if (targetPositions.length === 0) {
-          bestCandidate = candidate;
-          break;
+        for (var attempt = 0; attempt < 60; attempt++) {
+          var rx = minScreenX + 80 + Math.random() * (areaW - 160);
+          var ry = minScreenY + 40 + Math.random() * (areaH - 80);
+          var gpt = screenToGround(rx, ry, camera);
+          var cand = { x: gpt.x, z: gpt.z };
+
+          if (pairCenters.length === 0) {
+            bestPair = cand;
+            break;
+          }
+
+          var nearest = Infinity;
+          for (var j = 0; j < pairCenters.length; j++) {
+            var dx = cand.x - pairCenters[j].x;
+            var dz = cand.z - pairCenters[j].z;
+            var d = Math.sqrt(dx * dx + dz * dz);
+            if (d < nearest) nearest = d;
+          }
+
+          if (nearest >= minPairDist) {
+            bestPair = cand;
+            break;
+          }
+          if (nearest > maxPairDist) {
+            maxPairDist = nearest;
+            bestPair = cand;
+          }
         }
 
-        var nearestDist = Infinity;
-        for (var j = 0; j < targetPositions.length; j++) {
-          var dx = candidate.x - targetPositions[j].x;
-          var dz = candidate.z - targetPositions[j].z;
-          var d = Math.sqrt(dx * dx + dz * dz);
-          if (d < nearestDist) nearestDist = d;
+        if (!bestPair) {
+          var ang = (p / count) * Math.PI * 2;
+          bestPair = { x: Math.cos(ang) * 4.5, z: Math.sin(ang) * 4.5 };
         }
+        pairCenters.push(bestPair);
 
-        if (nearestDist >= minGroundDist) {
-          bestCandidate = candidate;
-          break;
-        }
-
-        if (nearestDist > maxCandidateDist) {
-          maxCandidateDist = nearestDist;
-          bestCandidate = candidate;
-        }
+        // Tens on left, Units on right (with small random tilt)
+        var jitterZ = (Math.random() - 0.5) * 0.4;
+        targetPositions.push({ x: bestPair.x - 1.8, z: bestPair.z + jitterZ });
+        targetPositions.push({ x: bestPair.x + 1.8, z: bestPair.z - jitterZ });
       }
+    } else {
+      var minGroundDist = diceItems.length > 1 ? Math.max(2.8, 3.6 - diceItems.length * 0.1) : 0;
+      for (var i = 0; i < diceItems.length; i++) {
+        var bestCandidate = null;
+        var maxCandidateDist = -1;
 
-      if (!bestCandidate) {
-        var angle = (i / count) * Math.PI * 2;
-        var rad = 4.0;
-        bestCandidate = { x: Math.cos(angle) * rad, z: Math.sin(angle) * rad };
+        for (var attempt = 0; attempt < 60; attempt++) {
+          var rx = minScreenX + 50 + Math.random() * (areaW - 100);
+          var ry = minScreenY + 40 + Math.random() * (areaH - 80);
+          var gpt = screenToGround(rx, ry, camera);
+
+          var candidate = { x: gpt.x, z: gpt.z };
+          if (targetPositions.length === 0) {
+            bestCandidate = candidate;
+            break;
+          }
+
+          var nearestDist = Infinity;
+          for (var j = 0; j < targetPositions.length; j++) {
+            var dx = candidate.x - targetPositions[j].x;
+            var dz = candidate.z - targetPositions[j].z;
+            var d = Math.sqrt(dx * dx + dz * dz);
+            if (d < nearestDist) nearestDist = d;
+          }
+
+          if (nearestDist >= minGroundDist) {
+            bestCandidate = candidate;
+            break;
+          }
+
+          if (nearestDist > maxCandidateDist) {
+            maxCandidateDist = nearestDist;
+            bestCandidate = candidate;
+          }
+        }
+
+        if (!bestCandidate) {
+          var angle = (i / diceItems.length) * Math.PI * 2;
+          bestCandidate = { x: Math.cos(angle) * 4.0, z: Math.sin(angle) * 4.0 };
+        }
+
+        targetPositions.push(bestCandidate);
       }
-
-      targetPositions.push(bestCandidate);
     }
 
-    rollData.rolls.forEach(function (val, idx) {
+    diceItems.forEach(function (item, idx) {
       var dieMesh;
       var qFinal;
       var targetX = targetPositions[idx].x;
@@ -811,60 +807,46 @@
       var camUp = new THREE.Vector3(0, 1, 0);
       var screenUp = camUp.clone().sub(dirToCam.clone().multiplyScalar(camUp.dot(dirToCam))).normalize();
 
-      if (sides === 6) {
+      if (item.sides === 6 && !item.isD100) {
         dieMesh = new THREE.Mesh(cubeGeo, d6Materials);
-        // Face normals and local UP vectors for D6 so the rolled face faces directly towards the user
-        var d6FaceNormals = {
-          1: new THREE.Vector3(0, 1, 0),
-          6: new THREE.Vector3(0, -1, 0),
-          2: new THREE.Vector3(1, 0, 0),
-          5: new THREE.Vector3(-1, 0, 0),
-          3: new THREE.Vector3(0, 0, 1),
-          4: new THREE.Vector3(0, 0, -1)
-        };
-        var d6FaceUps = {
-          1: new THREE.Vector3(0, 0, -1),
-          6: new THREE.Vector3(0, 0, 1),
-          2: new THREE.Vector3(0, 1, 0),
-          5: new THREE.Vector3(0, 1, 0),
-          3: new THREE.Vector3(0, 1, 0),
-          4: new THREE.Vector3(0, 1, 0)
-        };
-        var fNorm = d6FaceNormals[val] || new THREE.Vector3(0, 1, 0);
-        var fUp = d6FaceUps[val] || new THREE.Vector3(0, 0, -1);
+        var fNorm = d6FaceNormals[item.targetFaceIndex] || new THREE.Vector3(0, 1, 0);
+        var fUp = d6FaceUps[item.targetFaceIndex] || new THREE.Vector3(0, 0, -1);
         qFinal = computeFaceOrientation(fNorm, fUp, dirToCam, screenUp);
       } else {
-        var polyData = getPolyhedronData(sides, dieSize);
-        var targetFaceIndex;
-        if (val >= 1 && val <= polyData.maxVal) {
-          targetFaceIndex = val;
-        } else {
-          targetFaceIndex = ((Math.abs(val) - 1) % polyData.maxVal) + 1;
-        }
+        var polyData = getPolyhedronData(item.sides, dieSize);
+        var polyMats;
 
-        var bodyMat = new THREE.MeshStandardMaterial({
-          color: 0xd97706,
-          roughness: 0.65,
-          metalness: 0.0
-        });
-        var polyMats = [bodyMat];
-        for (var f = 1; f <= polyData.maxVal; f++) {
-          var isTgt = (f === targetFaceIndex);
-          var faceDisplayVal = isTgt ? val : f;
-          var mapTex = (sides === 100)
-            ? getD100FaceTexture(faceDisplayVal, isTgt)
-            : createPolyhedralFaceTexture(faceDisplayVal, sides, isTgt);
-          polyMats.push(new THREE.MeshStandardMaterial({
-            map: mapTex,
+        if (item.isD100) {
+          polyMats = createD10Materials(item.targetFaceIndex, item.d10Type);
+        } else {
+          var targetFaceIndex;
+          if (item.targetFaceIndex >= 1 && item.targetFaceIndex <= polyData.maxVal) {
+            targetFaceIndex = item.targetFaceIndex;
+          } else {
+            targetFaceIndex = ((Math.abs(item.targetFaceIndex) - 1) % polyData.maxVal) + 1;
+          }
+
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0xd97706,
             roughness: 0.65,
             metalness: 0.0
-          }));
+          });
+          polyMats = [bodyMat];
+          for (var f = 1; f <= polyData.maxVal; f++) {
+            var isTgt = (f === targetFaceIndex);
+            var faceDisplayVal = isTgt ? item.displayVal : f;
+            polyMats.push(new THREE.MeshStandardMaterial({
+              map: createPolyhedralFaceTexture(faceDisplayVal, item.sides, isTgt),
+              roughness: 0.65,
+              metalness: 0.0
+            }));
+          }
         }
 
         dieMesh = new THREE.Mesh(polyData.geometry, polyMats);
 
-        var faceNorm = polyData.faceNormals[targetFaceIndex] || new THREE.Vector3(0, 1, 0);
-        var faceUp = polyData.faceUpVectors[targetFaceIndex] || new THREE.Vector3(0, 1, 0);
+        var faceNorm = polyData.faceNormals[item.targetFaceIndex] || new THREE.Vector3(0, 1, 0);
+        var faceUp = polyData.faceUpVectors[item.targetFaceIndex] || new THREE.Vector3(0, 1, 0);
         qFinal = computeFaceOrientation(faceNorm, faceUp, dirToCam, screenUp);
       }
 
@@ -891,10 +873,15 @@
       var throwFromX = throwGpt ? throwGpt.x : (targetX + 8);
       var throwFromZ = throwGpt ? throwGpt.z : (targetZ + 10);
 
+      var itemDelay = item.isD100
+        ? (item.rollIdx * 0.09 + (item.isTens ? 0 : 0.035))
+        : (idx * 0.05);
+
       dice.push({
         mesh: dieMesh,
         shadow: shadowMesh,
-        val: val,
+        val: item.displayVal,
+        parentVal: item.parentVal,
         perspectiveScale: perspectiveScale,
         targetX: targetX,
         targetZ: targetZ,
@@ -904,7 +891,7 @@
         rotSpeedX: 18 + Math.random() * 8,
         rotSpeedY: 22 + Math.random() * 8,
         rotSpeedZ: 16 + Math.random() * 8,
-        delay: idx * 0.05
+        delay: itemDelay
       });
     });
 
