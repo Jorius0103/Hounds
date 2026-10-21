@@ -164,7 +164,7 @@ function renderDisadvantagePage() {
     (can ? '<div class="btn-row">' + (d.catalog && rawHas('disadvantages', d.id) ? '<button class="btn" type="button" id="restoreDisadvBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editDisadvBtn">' + svg(ICON.edit, 15) + 'Editar desvantagem</button><button class="btn danger" type="button" id="delDisadvBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
     '</div>' +
     (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a desvantagem <b>' + esc(d.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delDisadvYes">Excluir desvantagem</button><button class="btn ghost" type="button" id="delDisadvNo">Cancelar</button></div></div>' : '');
-  var main = '<section><h2 class="sec-title">Descrição</h2>' + (d.description ? '<p class="long">' + esc(d.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') + '</section>';
+  var main = '<section><h2 class="sec-title">Descrição</h2>' + (d.description ? '<p class="long">' + esc(d.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') + '</section>' + disadvEffectsHtml(d, 'h2');
   // Open when the page opens; a click on its title closes it (see foldBox).
   var side = foldBox('params', 'Parâmetros', null, '<dl class="facts">' +
     '<dt>Custo</dt><dd>' + (d.cost ? esc(d.cost) : none) + '</dd>' +
@@ -242,6 +242,16 @@ function openDisadvantageForm(d) {
   };
 }
 
+// What the book says it takes from the sheet of who has it (DISADV_BOOK, in ficha-efeitos.js), for the
+// version on the sheet; '' when nothing.
+function disadvEffectsHtml(d, h) {
+  var fx = disadvBookFx(d, { name: d.name, cost: 0, levels: 0 });
+  if (!fx.length) return '';
+  return '<section><' + h + ' class="sec-title">Efeitos na ficha (do livro)</' + h + '><ul class="fx-list">' + fx.map(function (e) {
+    return '<li><b>' + esc(advEffectText(e)) + '</b></li>';
+  }).join('') + '</ul><p class="hint-text">Lidos do texto da desvantagem e aplicados na ficha de quem a tem (os de uma versão mais forte, como Very Fat ou Shyness grave, seguem os pontos da ficha). ' +
+    'Os que dependem do momento aparecem ao lado do campo, sem somar.</p></section>';
+}
 /* ---------- A disadvantage in a modal (from a sheet, like the advantages' openAdvModal) ---------- */
 function openDisadvModal(id) {
   showModal('<div class="skill-modal" id="disadvModal"><p class="lede">Carregando desvantagem…</p></div>');
@@ -254,6 +264,7 @@ function openDisadvModal(id) {
       '<span class="spell-badge ' + disadvTypeClass(d.type) + '">' + esc(disadvTypeLabel(d.type)) + '</span></div>' +
       '<h2 id="disadvModalTitle">' + esc(d.name) + '</h2><p class="lede">' + (d.cost ? esc(d.cost) : 'Custo não informado') + (d.selfControl ? ' · teste de autocontrole' : '') + '</p></div>' +
       '<h3 class="sec-title">Descrição</h3>' + (d.description ? '<p class="long">' + esc(d.description) + '</p>' : '<p class="long none">Sem descrição cadastrada.</p>') +
+      disadvEffectsHtml(d, 'h3') +
       '<p class="hint-text">' + esc([d.book, d.page ? 'p. ' + d.page : ''].filter(Boolean).join(' · ')) + '</p>' +
       '<div class="btn-row" style="justify-content:flex-end"><a class="btn" href="' + disadvHref(d.id) + '"' + away + ' id="disadvModalPage">Abrir página da desvantagem</a></div>';
     modal.setAttribute('aria-labelledby', 'disadvModalTitle');

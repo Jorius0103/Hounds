@@ -299,7 +299,15 @@ function onData(kind) {
    Start
    ===================================================================== */
 setCollapsed(lstore('hounds_rail_collapsed') === '1');
-if (!location.hash) {
+// F5 keeps the page: the address's, or, where the reload loses it, the last one of this browser.
+// Any other visit opens its link, or the home page; logging in always goes to the home page (gate.js).
+function pageReloaded() {
+  try {
+    var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    return nav ? /** @type {PerformanceNavigationTiming} */ (nav).type === 'reload' : !!(performance.navigation && performance.navigation.type === 1);
+  } catch (e) { return false; }
+}
+if (!location.hash && pageReloaded()) {
   var savedRoute = lstore('hounds_route');
   if (savedRoute) {
     try { location.hash = savedRoute; } catch (e) {}

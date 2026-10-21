@@ -177,7 +177,56 @@ function setTheme(t, save) {
   try { var d = $('mesaFrame').contentDocument; if (d && d.documentElement) d.documentElement.setAttribute('data-theme', t); } catch (e) {}
   paintThemeBtn();
 }
-themeBtn.addEventListener('click', function () { setTheme(currentTheme() === 'light' ? 'dark' : 'light', true); });
+// The light/dark button goes to the plain one of the other mode, leaving any of Mais temas.
+themeBtn.addEventListener('click', function () { setPalette(null, true); setTheme(currentTheme() === 'light' ? 'dark' : 'light', true); });
+
+// Mais temas: palettes over the light or the dark theme (data-palette on <html>; the colors are in
+// base.css, and the ids also in the script at the top of index.html), remembered in this browser.
+// The open Mesa follows it too (its colors for each one are in mesa-frame.js).
+var THEMES = [
+  { id: 'pergaminho', name: 'Pergaminho', mode: 'light', hint: 'Papel antigo e tinta sépia', sw: ['#fbf7ee', '#efe6d2', '#2b1d10', '#8b2e1c'] },
+  { id: 'neve', name: 'Neve', mode: 'light', hint: 'Claro e frio, com azul', sw: ['#ffffff', '#eef3f8', '#0b1b2e', '#1d5fb8'] },
+  { id: 'floresta', name: 'Floresta', mode: 'dark', hint: 'Verde escuro e dourado', sw: ['#141d18', '#0a0f0c', '#dcebd9', '#c9a227'] },
+  { id: 'meia-noite', name: 'Meia-noite', mode: 'dark', hint: 'Azul-noite e violeta', sw: ['#151929', '#0a0c16', '#dfe3f5', '#8b7cf6'] }];
+function currentPalette() { return document.documentElement.getAttribute('data-palette') || ''; }
+// The open Mesa's document (its iframe), which follows the theme; null when there is none.
+function mesaDoc() { try { var d = $('mesaFrame').contentDocument; return d && d.documentElement ? d : null; } catch (e) { return null; } }
+// id of THEMES, or null for none (the plain light or dark).
+function setPalette(id, save) {
+  var p = THEMES.filter(function (x) { return x.id === id; })[0];
+  [document].concat(mesaDoc() || []).forEach(function (d) {
+    if (p) d.documentElement.setAttribute('data-palette', p.id); else d.documentElement.removeAttribute('data-palette');
+  });
+  if (save) lstore('hounds_palette', p ? p.id : '');
+  if (p) setTheme(p.mode, save);
+}
+function themesHtml() {
+  var cur = currentPalette();
+  function cards(mode) {
+    return '<div class="theme-grid">' + THEMES.filter(function (x) { return x.mode === mode; }).map(function (x) {
+      return '<button type="button" class="theme-card' + (x.id === cur ? ' on' : '') + '" data-palette="' + x.id + '" aria-pressed="' + (x.id === cur) + '">' +
+        '<span class="theme-sw" aria-hidden="true">' + x.sw.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + '</span>' +
+        '<b>' + esc(x.name) + '</b><small>' + esc(x.hint) + '</small></button>';
+    }).join('') + '</div>';
+  }
+  return '<div class="theme-pick"><h2 id="themesTitle">Mais temas</h2><p class="lede">Escolha um tema: ele vale neste navegador.</p>' +
+    '<h3 class="sec-title">Claros</h3>' + cards('light') + '<h3 class="sec-title">Escuros</h3>' + cards('dark') +
+    '<p class="hint-text">Para voltar ao claro ou ao escuro de sempre, use o botão <b>Tema claro</b> / <b>Tema escuro</b>.</p></div>';
+}
+$('themesBtn').addEventListener('click', function () {
+  // Picking one applies it at once; the window stays open to compare.
+  function pick(e) {
+    var b = e.target.closest && e.target.closest('.theme-card[data-palette]'); if (!b) return;
+    setPalette(b.getAttribute('data-palette'), true);
+    var box = modal.querySelector('.theme-pick'); if (!box) return;
+    box.outerHTML = themesHtml();
+    var again = modal.querySelector('.theme-card[data-palette="' + currentPalette() + '"]'); if (again instanceof HTMLElement) again.focus();
+  }
+  setDrawer(false);
+  showModal(themesHtml(), function () { modal.removeEventListener('click', pick); });
+  modal.setAttribute('aria-labelledby', 'themesTitle');
+  modal.addEventListener('click', pick);
+});
 // With no saved choice, follow the system when it changes.
 if (window.matchMedia) {
   var themeMq = matchMedia('(prefers-color-scheme: light)');

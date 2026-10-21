@@ -62,6 +62,9 @@
     el('whoBtn').hidden = false;
     try { window.dispatchEvent(new CustomEvent('hub:user', { detail: cleanUser })); } catch (e) {}
   }
+  // Logging in (the email and password, or a user picked from the list) opens the home page; the
+  // user that comes back on a reload or a new visit keeps the page (see the start of app.js).
+  function goHome() { go('#inicio'); }
   function choose(u) {
     var changed = !window.hubUser || window.hubUser.id !== u.id;
     apply(u);
@@ -79,7 +82,7 @@
     }).join('');
     el('gateList').onclick = function (ev) {
       var b = ev.target.closest('.gate-user'); if (!b) return;
-      var u = list[+b.dataset.i]; if (u) choose({ id: u.id, name: u.name, role: u.role });
+      var u = list[+b.dataset.i]; if (u) { choose({ id: u.id, name: u.name, role: u.role }); goHome(); }
     };
     el('gateClose').hidden = !window.hubUser;
     el('gate').hidden = false;
@@ -124,6 +127,7 @@
         opts.submit(em, pw).then(function (u) {
           pass.value = '';
           el('gate').hidden = true;
+          goHome();
           resolve(u);
         }, function (e) {
           btn.disabled = false; btn.textContent = 'Entrar';

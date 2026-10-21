@@ -84,6 +84,14 @@ function disadvRulesHtml(x) {
     (w.length ? '<span class="av-warn">' + esc((c ? ' · ' : '') + w.join(' · ')) + '</span>' : '');
 }
 
+// Under the rules of a row being edited: what the disadvantage does on the sheet, from the moment it
+// is picked (or its name typed), as the advantages' (advFxLineText).
+function disadvFxLineText(x) {
+  var c = disadvEntryOf(x); if (!c) return '';
+  var fx = disadvBookFx(c, x);
+  return fx.length ? 'Na ficha (do livro): ' + fx.map(advEffectText).join('; ') : 'Sem regra automática na ficha: confira o texto da desvantagem';
+}
+
 /* ---------- view ---------- */
 function disadvRowHtml(x) {
   var c = disadvEntryOf(x), name = esc(x.name + (x.levels ? ' ' + x.levels : ''));
@@ -91,6 +99,9 @@ function disadvRowHtml(x) {
   var sub = [x.levels > 1 ? x.levels + ' níveis × ' + x.cost : '',
     x.mod ? (x.mod > 0 ? '+' : '') + x.mod + '%' + (x.mod < -80 ? ' (vale -80%)' : '') : '',
     c && c.selfControl ? 'teste de autocontrole' : ''].filter(Boolean).join(' · ');
+  // What the book says it takes from the sheet (DISADV_BOOK, in ficha-efeitos.js).
+  var fx = disadvBookFx(c, x);
+  if (fx.length) sub += (sub ? ' · ' : '') + 'Do livro: ' + fx.map(advEffectText).join('; ');
   return '<tr><td><b>' + label + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</td><td class="gpts">' + advPts(x) + '</td>' +
     '<td class="av-notes">' + esc(x.notes) + '</td></tr>';
 }
@@ -129,7 +140,8 @@ function disadvEditRow(x, i) {
     '<input class="sk-name" type="text" data-f="name" maxlength="120" placeholder="Digite para buscar. Ex.: Bad Temper" aria-label="Desvantagem" value="' + esc(x.name) + '"' +
     ' autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dvSug' + i + '">' +
     '<div class="suggest" id="dvSug' + i + '" role="listbox" hidden></div></div>' +
-    '<div class="sk-rules" data-rules="' + i + '">' + disadvRulesHtml(x) + '</div></div>' +
+    '<div class="sk-rules" data-rules="' + i + '">' + disadvRulesHtml(x) + '</div>' +
+    '<div class="sk-fx" data-fxline="' + i + '">' + esc(disadvFxLineText(x)) + '</div></div>' +
     num('cost', -9999, 0, 'Custo') + num('levels', 0, 99, 'Níveis') + num('mod', -500, 1000, 'Modificador em %') +
     '<span class="sk-nh av-pts" data-pts="' + i + '">' + advPts(x) + ' pts</span>' +
     '<input type="text" data-f="notes" maxlength="400" placeholder="Ex.: autocontrole 12" aria-label="Observações" value="' + esc(x.notes) + '">' +
@@ -152,6 +164,7 @@ function wireSheetDisadvs(s) {
     var x = d[i], pts = box.querySelector('[data-pts="' + i + '"]'), rules = box.querySelector('[data-rules="' + i + '"]');
     if (pts) pts.textContent = advPts(x) + ' pts';
     if (rules) rules.innerHTML = disadvRulesHtml(x);
+    var fxl = box.querySelector('[data-fxline="' + i + '"]'); if (fxl) fxl.textContent = disadvFxLineText(x);
     $('dvTotal').textContent = advsTotal(d) + ' pts';
   }
   function onEdit(e) {

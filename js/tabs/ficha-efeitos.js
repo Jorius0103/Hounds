@@ -88,8 +88,11 @@ var ADV_FX_BUILTIN_RE = /^(Combat Reflexes|Enhanced Time Sense|Enhanced (Block|P
    › Vantagens. What depends on the moment ("to resist poison", "when motionless") is a condition:
    shown beside the field, never added. The Mestre's effects, when there are any, take their place.
    Striking ST, Weapon Master, Claws, Teeth and the Strikers count in Danos (ficha-danos.js). */
-function bookSkills(names, value, o) { return Object.assign({ target: 'skill', names: names, value: value }, o); }
-function bookAttr(key, value, cond, o) { return Object.assign({ target: 'attr', key: key, value: value, cond: cond }, o); }
+// A negative value takes from the field (the disadvantages' penalties).
+function bookFx(o) { if (o.value < 0) { o.op = 'sub'; o.value = -o.value; } return o; }
+function bookSkills(names, value, o) { return bookFx(Object.assign({ target: 'skill', names: names, value: value }, o)); }
+function bookAttr(key, value, cond, o) { return bookFx(Object.assign({ target: 'attr', key: key, value: value, cond: cond }, o)); }
+function bookAll(value, cond, o) { return bookFx(Object.assign({ target: 'skillAll', value: value, cond: cond }, o)); }
 var ADV_HT_ROLLS = 'em testes de HT (consciência, morte, doença, veneno), não no atributo nem nas perícias';
 var ADV_BOOK = {
   'acute senses': function (r) {
@@ -154,6 +157,99 @@ function advBookFx(c, x) {
   var m = /\(([^)]*)\)/.exec(x.name || ''), pts = x.cost != null ? advBaseCost(x) : x.pts || 0;
   return rule({ name: x.name || '', spec: m ? m[1].trim() : '', pts: pts }).map(cleanAdvEffect).filter(advEffectOk);
 }
+
+/* ---------- the book's rules of the disadvantages ----------
+   As ADV_BOOK, for the entries of Regras › Desvantagens (by name; r.pts: the points as a positive
+   number, before modifiers), read from their text: penalties are negative values. */
+var BOOK_MELEE = ['Axe/Mace', 'Two-Handed Axe/Mace', 'Broadsword', 'Two-Handed Sword', 'Flail', 'Two-Handed Flail', 'Knife', 'Main-Gauche', 'Polearm', 'Rapier',
+  'Saber', 'Shortsword', 'Smallsword', 'Spear', 'Staff', 'Jitte/Sai', 'Tonfa', 'Kusari', 'Whip', 'Lance'];
+var BOOK_UNARMED = ['Brawling', 'Boxing', 'Judo', 'Karate', 'Wrestling', 'Sumo Wrestling'];
+var BOOK_RANGED = ['Bow', 'Crossbow', 'Sling', 'Thrown Weapon', 'Throwing', 'Blowpipe', 'Spear Thrower', 'Guns', 'Beam Weapons', 'Gunner'];
+var BOOK_FINE_DX = ['Knot-Tying', 'Leatherworking', 'Lockpicking', 'Pickpocket', 'Sewing', 'Sleight of Hand'];
+var BOOK_FINE_OTHER = ['Artist', 'Jeweler', 'Surgery', 'Machinist', 'Mechanic'];
+var BOOK_SPEECH = ['Diplomacy', 'Fast-Talk', 'Performance', 'Public Speaking', 'Sex Appeal', 'Singing'];
+function bookFat(dis, swim, st) {
+  return [bookSkills(['Disguise'], -dis), bookSkills(['Shadowing'], -dis, { cond: 'ao seguir alguém na multidão' }), bookSkills(['Swimming'], swim),
+    bookAttr('st', st, 'para resistir a ser empurrado (knockback)')];
+}
+var DISADV_BOOK = {
+  'overweight': function () { return bookFat(1, 1, 1); },
+  'fat': function () { return bookFat(2, 3, 2); },
+  'very fat': function () { return bookFat(3, 5, 3); },
+  'dwarfism (-1 sm)': function () { return [bookAttr('move', -1, ''), bookSkills(['Disguise'], -2), bookSkills(['Shadowing'], -2, { cond: 'ao seguir alguém na multidão' })]; },
+  'unnatural features': function () { return [bookSkills(['Disguise', 'Shadowing'], -1, { perLevel: true, max: 5 })]; },
+  'hunchback': function () { return [bookSkills(['Disguise', 'Shadowing'], -3), bookAttr('dx', -1, 'com roupa e armadura comuns (as feitas sob medida, 10% mais caras, não)')]; },
+  'callous': function () {
+    return [bookSkills(['Teaching'], -3), bookSkills(['Psychology'], -3, { cond: 'para ajudar alguém' }),
+      bookSkills(['Interrogation', 'Intimidation'], 1, { cond: 'com ameaças ou tortura' })];
+  },
+  'clueless': function () { return [bookSkills(['Savoir-Faire'], -4)]; },
+  'colorblindness': function () { return [bookSkills(['Artist', 'Chemistry', 'Driving', 'Merchant', 'Piloting', 'Tracking'], -1)]; },
+  'gullibility': function () { return [bookSkills(['Merchant'], -3)]; },
+  'ham-fisted': function (r) {
+    var v = r.pts >= 10 ? -6 : -3;
+    return [bookSkills(['Fast-Draw'].concat(BOOK_FINE_DX), v), bookSkills(BOOK_FINE_OTHER, v, { cond: 'nos testes baseados em DX de trabalho delicado' })];
+  },
+  'killjoy': function () { return [bookSkills(['Carousing', 'Connoisseur', 'Erotic Art', 'Gambling'], -3)]; },
+  'low empathy': function () {
+    return [bookSkills(['Acting', 'Carousing', 'Criminology', 'Detect Lies', 'Diplomacy', 'Enthrallment', 'Fast-Talk', 'Interrogation', 'Leadership', 'Merchant',
+      'Politics', 'Psychology', 'Savoir-Faire', 'Sex Appeal', 'Sociology', 'Streetwise'], -3)];
+  },
+  'shyness': function (r) {
+    return [bookSkills(['Acting', 'Carousing', 'Diplomacy', 'Fast-Talk', 'Intimidation', 'Leadership', 'Merchant', 'Panhandling', 'Performance', 'Politics',
+      'Public Speaking', 'Savoir-Faire', 'Sex Appeal', 'Streetwise', 'Teaching'], r.pts >= 20 ? -4 : r.pts >= 10 ? -2 : -1)];
+  },
+  'stuttering': function () { return [bookSkills(BOOK_SPEECH, -2)]; },
+  'disturbing voice': function () { return [bookSkills(BOOK_SPEECH, -2)]; },
+  'truthfulness': function () { return [bookSkills(['Fast-Talk'], -5), bookSkills(['Acting'], -5, { cond: 'para enganar' })]; },
+  'noisy': function () { return [bookSkills(['Stealth'], -2, { perLevel: true })]; },
+  'oblivious': function () { return [bookSkills(['Diplomacy', 'Fast-Talk', 'Intimidation', 'Savoir-Faire', 'Sex Appeal', 'Streetwise'], -1)]; },
+  'bad grip': function () { return [bookSkills(['Climbing'].concat(BOOK_MELEE), -2, { perLevel: true, max: 6 })]; },
+  'lame': function (r) {
+    if (r.pts >= 30) return [];
+    var v = r.pts >= 20 ? -6 : -3;
+    return [bookSkills(BOOK_MELEE, v), bookSkills(BOOK_UNARMED.concat(['Acrobatics', 'Climbing', 'Jumping', 'Running', 'Dancing']), v)];
+  },
+  'blindness': function () { return [bookSkills(BOOK_MELEE, -6), bookSkills(BOOK_UNARMED.concat(BOOK_RANGED, ['Shield']), -6)]; },
+  'bad sight': function () { return [bookAttr('per', -6, 'nos testes de Visão (míope: além de 1 m; hipermetrope: a até 1 m)'), bookAll(-2, 'míope, nos ataques corpo a corpo')]; },
+  'one eye': function () { return [bookAttr('dx', -1, 'em combate e em tarefas de coordenação mão-olho'), bookSkills(BOOK_RANGED, -3, { cond: 'sem mirar antes' })]; },
+  'hard of hearing': function () { return [bookAttr('per', -4, 'nos testes de Audição'), bookAll(-4, 'quando é importante entender alguém')]; },
+  'absent-mindedness': function () {
+    return [bookAttr('iq', -5, 'nos testes de IQ fora da tarefa em que está concentrado'), { target: 'skillAttr', key: 'IQ', value: 5, op: 'sub', cond: 'fora da tarefa em que está concentrado' },
+      bookAttr('per', -5, 'para notar o que acontece ao redor')];
+  },
+  'chronic pain': function (r) {
+    var v = r.pts >= 15 ? -6 : r.pts >= 10 ? -4 : -2;
+    return [bookAttr('dx', v, 'durante uma crise de dor'), bookAttr('iq', v, 'durante uma crise de dor')];
+  },
+  'low pain threshold': function () { return [bookAttr('ht', -4, 'para resistir a ser derrubado, atordoado e a tortura')]; },
+  'easy to kill': function () { return [bookAttr('ht', -1, 'para sobreviver abaixo de −PV e quando falhar é morte imediata', { perLevel: true })]; },
+  'unfit': function (r) { return [bookAttr('ht', r.pts >= 15 ? -2 : -1, ADV_HT_ROLLS)]; },
+  'fearfulness': function () { return [bookAttr('will', -1, 'em Verificações de Pânico e para resistir a Intimidação e ao medo sobrenatural', { perLevel: true })]; },
+  'magic susceptibility': function () { return [bookAttr('will', -1, 'para resistir a magias lançadas em você (o teste de resistência, seja de HT, IQ ou Vontade)', { perLevel: true })]; },
+  'combat paralysis': function () { return [bookAttr('will', -2, 'em Verificações de Pânico')]; },
+  'low self-image': function () { return [bookAll(-3, 'quando acredita que as chances estão contra ou que esperam que falhe')]; },
+  'supersensitive': function () {
+    var c = 'com seres inteligentes a até 20 m (−2 com 10 ou mais, −3 com 100 ou mais)';
+    return [bookAttr('dx', -1, c), bookAttr('iq', -1, c)];
+  },
+  'slow riser': function () { return [bookAttr('iq', -1, 'na primeira hora depois de acordar'), { target: 'skillAttr', key: 'IQ', value: 1, op: 'sub', cond: 'na primeira hora depois de acordar' }]; },
+  'lunacy': function () { return [bookAttr('will', -2, 'na lua cheia')]; },
+  'susceptible': function (r) {
+    var m = /-\s*(\d+)\s*$/.exec(r.name.replace(/\([^)]*\)/g, '').trim());
+    return [bookAttr('ht', -(r.levels || (m ? +m[1] : 1)), 'para resistir a ' + (r.spec || 'o que a desvantagem cobre'))];
+  },
+  'wounded': function () { return [bookAttr('ht', -3, 'para resistir a infecção, sem cuidar da ferida no dia')]; },
+  'missing digit': function (r) { return [bookAttr('dx', r.pts >= 5 ? -5 : -1, 'com a mão que perdeu ' + (r.pts >= 5 ? 'o polegar' : 'o dedo'))]; },
+  'cold-blooded': function () { return [bookAttr('ht', 2, 'para resistir aos efeitos da temperatura'), bookAttr('dx', -1, 'no frio, por 10° abaixo do limite (e −1 na Velocidade Básica)')]; }
+};
+// The book's effects of a disadvantage of the sheet (x: a row of Desvantagens).
+function disadvBookFx(c, x) {
+  var rule = c && DISADV_BOOK[norm(c.name).trim()]; if (!rule) return [];
+  var m = /\(([^)]*)\)/.exec(x.name || '');
+  return rule({ name: x.name || '', spec: m ? m[1].trim() : '', pts: Math.abs((x.cost || 0) * (x.levels || 1)), levels: x.levels || 0 }).map(cleanAdvEffect).filter(advEffectOk);
+}
+
 // The effects a row of the sheet gets from its entry: the Mestre's, or without them the book's.
 // { list, book }. None for the ones the sheet applies by itself.
 function advRowFx(c, x) {
@@ -165,12 +261,13 @@ function advRowFx(c, x) {
 // The effects of the sheet's advantages, each with its value for the advantage's level:
 // [{ e, v, from }]. Vantagens first, then Combate's traits; a name only once. Kept while the sheet
 // and the list of advantages are the same objects (both are replaced when they change).
-var advFxCache = { s: null, list: null, out: null };
+var advFxCache = { s: null, list: null, dlist: null, out: null };
 function sheetFx(s) {
   if (!s) return [];
-  if (advFxCache.s === s && advFxCache.list === W.advantages) return advFxCache.out;
-  var seen = {}, out = [], traits = scAllItems(sheetCombat(s)).filter(function (x) { return x.kind === 'trait'; }), advs = sheetAdvs(s);
+  if (advFxCache.s === s && advFxCache.list === W.advantages && advFxCache.dlist === W.disadvantages) return advFxCache.out;
+  var seen = {}, out = [], traits = scAllItems(sheetCombat(s)).filter(function (x) { return x.kind === 'trait'; }), advs = sheetAdvs(s), dis = sheetDisadvs(s);
   if (advs.length || traits.length) loadCatalog('advantages'); // the page redraws when it arrives
+  if (dis.length) loadCatalog('disadvantages');
   function add(x, levels) {
     var key = norm(x.name); if (seen[key]) return; seen[key] = true;
     var c = advEntryOf(x); if (!c) return;
@@ -184,7 +281,17 @@ function sheetFx(s) {
   }
   advs.forEach(function (x) { add(x, x.levels); });
   traits.forEach(function (x) { add(x, 0); });
-  advFxCache = { s: s, list: W.advantages, out: out };
+  // Desvantagens: the book's rules (DISADV_BOOK), each name once, with its level as the advantages'.
+  dis.forEach(function (x) {
+    var key = 'd:' + norm(x.name); if (seen[key]) return; seen[key] = true;
+    var m = /\s(\d+)$/.exec(x.name), lv = x.levels || (m ? +m[1] : 0) || 1;
+    disadvBookFx(disadvEntryOf(x), x).forEach(function (e) {
+      var v = e.value * (e.perLevel ? lv : 1);
+      if (e.max != null) v = Math.min(v, e.max);
+      out.push({ e: e, v: e.op === 'sub' ? -v : v, from: x.name + (x.levels ? ' ' + x.levels : '') });
+    });
+  });
+  advFxCache = { s: s, list: W.advantages, dlist: W.disadvantages, out: out };
   return out;
 }
 // What a field gets from the effects that reach it: the ones with a condition are only listed;

@@ -58,7 +58,40 @@
     'html[data-theme=light] [style^="color: rgb(251, 191, 36)"],html[data-theme=light] [style*=" color: rgb(251, 191, 36)"]{color:#b45309!important}' +
     // White inline text turns dark, except on buttons that paint their own background.
     'html[data-theme=light] [style^="color: rgb(255, 255, 255)"]:not([style*="background"]),html[data-theme=light] [style*=" color: rgb(255, 255, 255)"]:not([style*="background"]){color:#0f172a!important}' +
-    '</style><script>try{document.documentElement.setAttribute("data-theme",parent.document.documentElement.getAttribute("data-theme")||"dark")}catch(e){}<\/script>';
+    mesaPaletteCss() +
+    '</style><script>try{var h=parent.document.documentElement,m=document.documentElement;m.setAttribute("data-theme",h.getAttribute("data-theme")||"dark");' +
+    'if(h.getAttribute("data-palette"))m.setAttribute("data-palette",h.getAttribute("data-palette"))}catch(e){}<\/script>';
+  /* The hub's Mais temas (data-palette, js/menu.js) on the Mesa: its neutral scale (slate: the
+     backgrounds, cards, lines and text), its accent (amber) and the backgrounds and borders its dialogs
+     write inline, from the palette's colors (base.css). In the dark ones the scale goes as the Mesa's
+     (950 the darkest); in the light ones it is mirrored, as the light theme above does. */
+  function mesaPaletteCss() {
+    var SL = ['950', '900', '850', '800', '750', '700', '600', '500', '400', '300', '200', '100', '50'], AM = ['950', '900', '800', '700', '600', '500', '400', '300', '200', '100', '50'];
+    var P = {
+      pergaminho: { slate: '#efe6d2 #fbf7ee #f6efe0 #f1e8d6 #e0d3b8 #cdbb98 #a8916f #846d52 #5e4a33 #4a3826 #2b1d10 #20150a #160e06',
+        amber: '#fbeee9 #f5d9cf #ecbcab #d9907a #b8604a #a2412b #8b2e1c #722416 #5a1c11 #44150c #2e0e08' },
+      neve: { slate: '#eef3f8 #ffffff #f7fafd #edf2f8 #dbe4ee #c2cfdd #93a5b9 #5f748b #3d536b #2a3f57 #0b1b2e #081525 #050e1a',
+        amber: '#eaf2fc #d3e3f8 #a9c7ef #78a3e1 #4a80cf #2f6bc2 #1d5fb8 #174d96 #123c75 #0d2c56 #081d39' },
+      floresta: { slate: '#0a0f0c #141d18 #18221c #1b2620 #223029 #33463b #4f6556 #6c8270 #9db59f #bfd3bf #dcebd9 #eef6ec #f6fbf5',
+        amber: '#1f1804 #3a2d07 #5c470c #7d6111 #a37f19 #c9a227 #dcb946 #e9cf74 #f3e2a6 #faf1d4 #fdf8ea' },
+      'meia-noite': { slate: '#0a0c16 #151929 #191e30 #1c2135 #252b42 #363e5c #4f5778 #6f7697 #a3aacb #c3c8e2 #dfe3f5 #eef0fa #f6f7fd',
+        amber: '#1a1533 #2b2259 #3e3285 #5446b3 #6f60db #8b7cf6 #a598f8 #bfb5fa #d8d2fc #ece9fe #f5f4ff' } };
+    return Object.keys(P).map(function (id) {
+      var s = P[id].slate.split(' '), a = P[id].amber.split(' '), h = 'html[data-palette="' + id + '"]';
+      var c = { ground: s[0], surface: s[1], surface2: s[3], line: s[4], line2: s[5], text: s[10] };
+      // In the light ones, white text turns the palette's text (as the light theme turns it dark).
+      var white = /^#[ef]/.test(c.ground) ? ';--color-white:' + c.text : '';
+      return h + '{' + SL.map(function (k, i) { return '--color-slate-' + k + ':' + s[i]; }).join(';') + ';--color-zinc-950:' + c.ground + ';--color-neutral-950:' + c.ground +
+          ';--color-stone-950:' + c.ground + ';--color-stone-700:' + c.line2 + ';' + AM.map(function (k, i) { return '--color-amber-' + k + ':' + a[i]; }).join(';') + white + '}' +
+        h + ',' + h + ' body{background:' + c.ground + ';color:' + c.text + '}' +
+        h + ' ::selection{background:' + a[3] + ';color:' + s[12] + '}' +
+        h + ' [style*="background: rgb(2, 6, 23)"],' + h + ' [style*="background: rgb(1, 4, 13)"]{background:' + c.ground + '!important}' +
+        h + ' [style*="background: rgb(15, 23, 42)"],' + h + ' [style*="background: rgb(11, 18, 34)"]{background:' + c.surface + '!important}' +
+        h + ' [style*="background: rgb(30, 41, 59)"]{background:' + c.surface2 + '!important}' +
+        h + ' [style*="solid rgb(30, 41, 59)"]{border-color:' + c.line + '!important}' +
+        h + ' [style*="solid rgb(51, 65, 85)"]{border-color:' + c.line2 + '!important}';
+    }).join('');
+  }
   var mesaHtml = null;
   // Promise of the Mesa's HTML, fetched once.
   window.hubMesaSource = function () {

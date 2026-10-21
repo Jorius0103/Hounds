@@ -71,6 +71,33 @@ img{max-width:100%}
   --tag-violet-strong: #7c3aed;
   --tag-pink: #be185d;
 }
+/* Mais temas (botão Mais temas, js/menu.js): paletas por cima do claro ou do escuro (data-palette no
+   <html>, com data-theme do modo). Trocam o fundo, as superfícies, as linhas, o texto e o destaque;
+   o resto (perigo, etiquetas) é o do modo. */
+:root[data-palette="pergaminho"] {
+  --ground: #efe6d2; --rail: #f6efe0; --surface: #fbf7ee; --surface-2: #f1e8d6; --well: #efe5d1;
+  --line: #e0d3b8; --line-2: #cdbb98; --text: #2b1d10; --muted: #5e4a33; --faint: #846d52;
+  --accent: #8b2e1c; --accent-ink: #ffffff; --accent-soft: rgba(139, 46, 28, .12);
+  --stage: #e6dbc3; --stage-grid: rgba(43, 29, 16, .07); --glass: rgba(251, 247, 238, .94); --overlay: rgba(43, 29, 16, .45); --shadow: rgba(60, 40, 20, .16);
+}
+:root[data-palette="neve"] {
+  --ground: #eef3f8; --rail: #f7fafd; --surface: #ffffff; --surface-2: #edf2f8; --well: #eef3f8;
+  --line: #dbe4ee; --line-2: #c2cfdd; --text: #0b1b2e; --muted: #3d536b; --faint: #5f748b;
+  --accent: #1d5fb8; --accent-ink: #ffffff; --accent-soft: rgba(29, 95, 184, .12);
+  --stage: #dde6f0; --stage-grid: rgba(11, 27, 46, .06); --glass: rgba(255, 255, 255, .94); --overlay: rgba(11, 27, 46, .45); --shadow: rgba(11, 27, 46, .14);
+}
+:root[data-palette="floresta"] {
+  --ground: #0a0f0c; --rail: #0f1612; --surface: #141d18; --surface-2: #1b2620; --well: #0d1410;
+  --line: #223029; --line-2: #33463b; --text: #dcebd9; --muted: #9db59f; --faint: #6c8270;
+  --accent: #c9a227; --accent-ink: #0d1410; --accent-soft: rgba(201, 162, 39, .14);
+  --stage: #070b09; --stage-grid: rgba(157, 181, 159, .06); --glass: rgba(15, 22, 18, .95); --overlay: rgba(10, 15, 12, .75); --shadow: rgba(0, 0, 0, .55);
+}
+:root[data-palette="meia-noite"] {
+  --ground: #0a0c16; --rail: #0f1220; --surface: #151929; --surface-2: #1c2135; --well: #0d1020;
+  --line: #252b42; --line-2: #363e5c; --text: #dfe3f5; --muted: #a3aacb; --faint: #6f7697;
+  --accent: #8b7cf6; --accent-ink: #0d1020; --accent-soft: rgba(139, 124, 246, .16);
+  --stage: #070912; --stage-grid: rgba(163, 170, 203, .06); --glass: rgba(15, 18, 32, .95); --overlay: rgba(10, 12, 22, .75); --shadow: rgba(0, 0, 0, .55);
+}
 html, body { height: 100%; }
 body { margin: 0; background: var(--ground); color: var(--text); font-family: var(--font-ui); font-size: 14px; }
 button, input, select, textarea { font: inherit; color: inherit; }

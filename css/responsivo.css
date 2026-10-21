@@ -12,7 +12,8 @@
   .app.collapsed .brand { justify-content: flex-start; padding-inline: 14px; }
   .app.collapsed .node-row { justify-content: flex-start; }
   .toggle:not(.theme-btn) { display: none; }
-  .toggle.theme-btn { margin-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .theme-row { margin-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .app.collapsed .theme-row { flex-direction: row; }
   .app.collapsed .toggle.theme-btn { justify-content: flex-start; }
   .app.collapsed .toggle.theme-btn span { display: inline; }
   .scrim { position: fixed; inset: 0; background: rgba(2,6,23,.6); z-index: 15; }
