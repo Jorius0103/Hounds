@@ -295,7 +295,7 @@
       }
     },
 
-    stopBroadcasting: function () {
+    stopBroadcasting: function (silent) {
       if (announceInterval) {
         clearInterval(announceInterval);
         announceInterval = null;
@@ -314,13 +314,15 @@
 
       var was = state.isBroadcasting;
       state.isBroadcasting = false;
-      state.hasActiveBroadcast = false;
-      state.broadcasterName = null;
-      state.broadcasterClientId = null;
-      state.trackTitle = null;
+      if (!silent) {
+        state.hasActiveBroadcast = false;
+        state.broadcasterName = null;
+        state.broadcasterClientId = null;
+        state.trackTitle = null;
+      }
       notify();
 
-      if (was) {
+      if (was && !silent) {
         sendSignal({
           type: 'AUDIO_STREAM_ANNOUNCE',
           active: false,
@@ -347,15 +349,27 @@
 
         case 'AUDIO_STREAM_ANNOUNCE':
           if (payload.active) {
+            // Se eu estava transmitindo e outro usuário assumiu: derruba a minha transmissão local
+            if (state.isBroadcasting && payload.broadcasterClientId !== myClientId) {
+              console.log('Outro usuário assumiu a transmissão de áudio. Encerrando stream local.');
+              AudioStreamSync.stopBroadcasting(true /* silent */);
+            }
+
+            var isNewBroadcaster = (state.broadcasterClientId !== payload.broadcasterClientId);
+
             state.hasActiveBroadcast = true;
             state.broadcasterClientId = payload.broadcasterClientId;
             state.broadcasterName = payload.broadcasterName || 'Mestre';
             if (payload.trackTitle) state.trackTitle = payload.trackTitle;
             notify();
 
-            // Se não sou o streamer e ainda não estabeleci áudio ativo, solicita conexão
+            // Se não sou o streamer e mudou o streamer ou não tenho conexão ativa:
             if (!state.isBroadcasting && payload.broadcasterClientId !== myClientId) {
-              if (!receiverPc || receiverPc.connectionState === 'disconnected' || receiverPc.connectionState === 'failed') {
+              if (isNewBroadcaster && receiverPc) {
+                try { receiverPc.close(); } catch (e) {}
+                receiverPc = null;
+              }
+              if (!receiverPc || receiverPc.connectionState === 'disconnected' || receiverPc.connectionState === 'failed' || receiverPc.connectionState === 'closed') {
                 sendSignal({
                   type: 'AUDIO_STREAM_REQUEST',
                   targetClientId: payload.broadcasterClientId

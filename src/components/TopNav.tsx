@@ -465,29 +465,27 @@ export const TopNav: React.FC<TopNavProps> = ({
             </span>
           </div>
 
-          {/* Botão de Transmitir / Parar (para Mestre ou quem tem permissão de edição) */}
-          {(isMestre || canEditCurrent) && (
-            audioState.isBroadcasting ? (
-              <button
-                type="button"
-                onClick={() => audioStreamSync.stopBroadcasting()}
-                className="flex items-center gap-1 px-2 py-0.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-[11px] font-bold rounded border border-rose-700/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0"
-                title="Encerrar transmissão da trilha sonora"
-              >
-                <Square size={11} className="fill-rose-400 text-rose-400" />
-                <span className="hidden sm:inline">Parar</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => audioStreamSync.startBroadcasting(currentUser?.name || (isMestre ? 'Mestre' : 'Jogador'))}
-                className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-[11px] font-bold rounded border border-slate-700 hover:border-emerald-600/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0"
-                title="Transmitir áudio de uma aba do Spotify, YouTube ou do sistema para todos os jogadores"
-              >
-                <Radio size={11} className="text-emerald-400" />
-                <span className="hidden sm:inline">Transmitir</span>
-              </button>
-            )
+          {/* Botão de Transmitir / Parar (livre para Mestre e Jogadores) */}
+          {audioState.isBroadcasting ? (
+            <button
+              type="button"
+              onClick={() => audioStreamSync.stopBroadcasting()}
+              className="flex items-center gap-1 px-2 py-0.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-[11px] font-bold rounded border border-rose-700/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0"
+              title="Encerrar transmissão da trilha sonora"
+            >
+              <Square size={11} className="fill-rose-400 text-rose-400" />
+              <span className="hidden sm:inline">Parar</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => audioStreamSync.startBroadcasting(currentUser?.name || (isMestre ? 'Mestre' : 'Jogador'))}
+              className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-[11px] font-bold rounded border border-slate-700 hover:border-emerald-600/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0"
+              title="Transmitir áudio de uma aba do Spotify, YouTube ou do sistema para todos os jogadores"
+            >
+              <Radio size={11} className="text-emerald-400" />
+              <span className="hidden sm:inline">Transmitir</span>
+            </button>
           )}
         </div>
       </div>
