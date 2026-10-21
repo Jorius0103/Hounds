@@ -548,6 +548,10 @@ export default function App() {
         const rollObj = (payload as any).rollData;
         const entry = (payload as any).logEntry;
 
+        const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
+        if (roller && typeof roller.roll === 'function') {
+          roller.roll(rollObj);
+        }
         setActiveDiceRoll(rollObj);
 
         if (entry) {
@@ -790,7 +794,11 @@ export default function App() {
           const rollObj = event.data.rollData;
           const entry = event.data.logEntry;
 
-          setActiveDiceRoll(rollObj);
+          const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
+        if (roller && typeof roller.roll === 'function') {
+          roller.roll(rollObj);
+        }
+        setActiveDiceRoll(rollObj);
 
           if (entry) {
             if (entry.npcId) {
@@ -2293,6 +2301,10 @@ export default function App() {
       }
     }
 
+    const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
+    if (roller && typeof roller.roll === 'function') {
+      roller.roll(rollData);
+    }
     setActiveDiceRoll(rollData);
   };
 

@@ -440,13 +440,17 @@
 
   // Unproject screen pixel (px, py) to 3D world ground plane (Y = 0)
   function screenToGround(px, py, camera) {
+    if (camera) camera.updateMatrixWorld(true);
     var ndcX = (px / window.innerWidth) * 2 - 1;
     var ndcY = -(py / window.innerHeight) * 2 + 1;
     var raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
     var groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     var pt = new THREE.Vector3();
-    raycaster.ray.intersectPlane(groundPlane, pt);
+    var hit = raycaster.ray.intersectPlane(groundPlane, pt);
+    if (!hit) {
+      pt.set(ndcX * 14, 0, -ndcY * 8);
+    }
     return pt;
   }
 
@@ -481,9 +485,9 @@
 
   var activeSession = null;
 
-  function dismiss() {
+  function dismiss(immediate) {
     if (activeSession) {
-      activeSession.cleanup();
+      activeSession.cleanup(immediate);
       activeSession = null;
     }
   }
@@ -491,12 +495,27 @@
   function roll(rollData, onSettled) {
     if (!rollData || !Array.isArray(rollData.rolls) || rollData.rolls.length === 0) return;
 
-    // Clean up previous session if any
-    dismiss();
+    // Clean up previous session if any immediately
+    dismiss(true);
 
     if (typeof THREE === 'undefined') {
-      console.warn('THREE.js is not loaded. Cannot render 3D dice.');
-      if (typeof onSettled === 'function') onSettled();
+      if (typeof window !== 'undefined' && window.parent && window.parent.THREE) {
+        THREE = window.parent.THREE;
+      }
+    }
+
+    if (typeof THREE === 'undefined') {
+      console.warn('THREE.js is not loaded. Loading script dynamically...');
+      var script = document.createElement('script');
+      script.src = 'js/three.min.js';
+      script.onload = function () {
+        roll(rollData, onSettled);
+      };
+      script.onerror = function () {
+        console.error('Failed to load THREE.js dynamically.');
+        if (typeof onSettled === 'function') onSettled();
+      };
+      document.head.appendChild(script);
       return;
     }
 
@@ -527,6 +546,7 @@
     var camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 300);
     camera.position.set(0, 28, 22);
     camera.lookAt(0, 0, -1);
+    camera.updateMatrixWorld(true);
 
     // 4. Lighting
     var ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
@@ -566,32 +586,58 @@
     var dice = [];
 
     // Resting positions: random landing within a 1000x500px area in the middle of the screen
-    var areaW = Math.min(1000, Math.max(320, window.innerWidth - 120));
-    var areaH = Math.min(500, Math.max(260, window.innerHeight - 160));
+    var areaW = Math.min(1000, Math.max(340, window.innerWidth - 120));
+    var areaH = Math.min(500, Math.max(260, window.innerHeight - 140));
     var minScreenX = (window.innerWidth - areaW) / 2;
     var minScreenY = (window.innerHeight - areaH) / 2;
 
+    // Minimum distance in 3D ground units between any two dice (dieSize = 1.8)
+    // 3.4 units guarantees dice NEVER overlap or touch
+    var minGroundDist = count > 1 ? Math.max(2.8, 3.6 - count * 0.1) : 0;
     var targetPositions = [];
-    if (count === 1) {
-      var rx = minScreenX + 60 + Math.random() * (areaW - 120);
-      var ry = minScreenY + 50 + Math.random() * (areaH - 100);
-      var gpt = screenToGround(rx, ry, camera);
-      targetPositions.push({ x: gpt.x, z: gpt.z });
-    } else {
-      var clusterCenterX = minScreenX + 120 + Math.random() * Math.max(10, areaW - 240);
-      var clusterCenterY = minScreenY + 80 + Math.random() * Math.max(10, areaH - 160);
-      var spacing = Math.min(150, Math.max(80, 220 / Math.sqrt(count)));
 
-      for (var i = 0; i < count; i++) {
-        var ang = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-        var r = (count === 3 && i === 0) ? 0 : (spacing * (0.65 + Math.random() * 0.45));
-        var sx = clusterCenterX + Math.cos(ang) * r;
-        var sy = clusterCenterY + Math.sin(ang) * r;
-        sx = Math.max(minScreenX + 40, Math.min(minScreenX + areaW - 40, sx));
-        sy = Math.max(minScreenY + 40, Math.min(minScreenY + areaH - 40, sy));
-        var gptMulti = screenToGround(sx, sy, camera);
-        targetPositions.push({ x: gptMulti.x, z: gptMulti.z });
+    for (var i = 0; i < count; i++) {
+      var bestCandidate = null;
+      var maxCandidateDist = -1;
+
+      // Rejection sampling: try up to 60 random landing spots across the whole 1000x500 box
+      for (var attempt = 0; attempt < 60; attempt++) {
+        var rx = minScreenX + 50 + Math.random() * (areaW - 100);
+        var ry = minScreenY + 40 + Math.random() * (areaH - 80);
+        var gpt = screenToGround(rx, ry, camera);
+
+        var candidate = { x: gpt.x, z: gpt.z };
+        if (targetPositions.length === 0) {
+          bestCandidate = candidate;
+          break;
+        }
+
+        var nearestDist = Infinity;
+        for (var j = 0; j < targetPositions.length; j++) {
+          var dx = candidate.x - targetPositions[j].x;
+          var dz = candidate.z - targetPositions[j].z;
+          var d = Math.sqrt(dx * dx + dz * dz);
+          if (d < nearestDist) nearestDist = d;
+        }
+
+        if (nearestDist >= minGroundDist) {
+          bestCandidate = candidate;
+          break;
+        }
+
+        if (nearestDist > maxCandidateDist) {
+          maxCandidateDist = nearestDist;
+          bestCandidate = candidate;
+        }
       }
+
+      if (!bestCandidate) {
+        var angle = (i / count) * Math.PI * 2;
+        var rad = 4.0;
+        bestCandidate = { x: Math.cos(angle) * rad, z: Math.sin(angle) * rad };
+      }
+
+      targetPositions.push(bestCandidate);
     }
 
     rollData.rolls.forEach(function (val, idx) {
@@ -845,7 +891,7 @@
     var sessionStartTime = Date.now();
     var dismissed = false;
 
-    function cleanup() {
+    function cleanup(immediate) {
       if (dismissed) return;
       dismissed = true;
 
@@ -855,21 +901,28 @@
 
       if (animFrameId) cancelAnimationFrame(animFrameId);
 
-      // Fade out smoothly
-      overlay.style.transition = 'opacity 0.2s ease-out';
-      overlay.style.opacity = '0';
-      setTimeout(function () {
+      if (immediate) {
         if (overlay && overlay.parentNode) {
           overlay.parentNode.removeChild(overlay);
         }
         renderer.dispose();
-      }, 220);
+      } else {
+        // Fade out smoothly
+        overlay.style.transition = 'opacity 0.2s ease-out';
+        overlay.style.opacity = '0';
+        setTimeout(function () {
+          if (overlay && overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+          }
+          renderer.dispose();
+        }, 220);
+      }
     }
 
     function onUserInteraction(e) {
       // Don't close within first 300ms to avoid an accidental click during the click that rolled
       if (Date.now() - sessionStartTime < 300) return;
-      cleanup();
+      cleanup(false);
     }
 
     window.addEventListener('pointerdown', onUserInteraction, true);
@@ -877,13 +930,13 @@
 
     // Auto-dismiss after 7.5 seconds if user stays idle
     var autoDismissTimer = setTimeout(function () {
-      cleanup();
+      cleanup(false);
     }, 7500);
 
     activeSession = {
-      cleanup: function () {
+      cleanup: function (immediate) {
         clearTimeout(autoDismissTimer);
-        cleanup();
+        cleanup(immediate);
       }
     };
   }
@@ -892,5 +945,16 @@
     roll: roll,
     dismiss: dismiss
   };
+
+  try {
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      window.parent.DiceRoller3D = global.DiceRoller3D;
+    }
+  } catch (e) {}
+  try {
+    if (typeof window !== 'undefined' && window.top && window.top !== window) {
+      window.top.DiceRoller3D = global.DiceRoller3D;
+    }
+  } catch (e) {}
 
 })(typeof window !== 'undefined' ? window : this);

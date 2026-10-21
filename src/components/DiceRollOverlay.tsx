@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export interface DiceRollResult {
   id?: string;
   rolls: number[];
   total: number;
-  diceCount: number; // 3 or 1
+  diceCount: number;
+  diceSides?: number;
   characterName: string;
   playerName?: string;
   avatar?: string;
@@ -25,47 +26,33 @@ interface DiceRollOverlayProps {
  * so the user can continue executing other tasks without hindrance.
  */
 export const DiceRollOverlay: React.FC<DiceRollOverlayProps> = ({ rollData, onClose }) => {
+  const lastRollIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!rollData) return;
+
+    const currentId = rollData.id || `${rollData.timestamp || Date.now()}-${rollData.total}`;
+    if (lastRollIdRef.current === currentId) return;
+    lastRollIdRef.current = currentId;
 
     // Use the 3D dice roller engine
     const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
     if (roller && typeof roller.roll === 'function') {
-      roller.roll(rollData, () => {});
+      roller.roll(rollData, () => {
+        onClose();
+      });
     }
 
-    const startTime = Date.now();
-    const handleDismiss = () => {
-      onClose();
-    };
-
-    // Instant dismiss on any click / tap / keydown anywhere on the screen
-    const onUserInteraction = () => {
-      if (Date.now() - startTime < 300) return;
-      window.removeEventListener('pointerdown', onUserInteraction, true);
-      window.removeEventListener('keydown', onUserInteraction, true);
-      if (roller && typeof roller.dismiss === 'function') {
-        roller.dismiss();
-      }
-      handleDismiss();
-    };
-
-    window.addEventListener('pointerdown', onUserInteraction, true);
-    window.addEventListener('keydown', onUserInteraction, true);
-
+    // Auto-close React state after 8 seconds so it is ready for next roll
     const autoTimer = setTimeout(() => {
-      window.removeEventListener('pointerdown', onUserInteraction, true);
-      window.removeEventListener('keydown', onUserInteraction, true);
-      handleDismiss();
-    }, 7500);
+      onClose();
+    }, 8000);
 
     return () => {
-      window.removeEventListener('pointerdown', onUserInteraction, true);
-      window.removeEventListener('keydown', onUserInteraction, true);
       clearTimeout(autoTimer);
-      if (roller && typeof roller.dismiss === 'function') {
-        roller.dismiss();
-      }
+      // NOTE: Do NOT call roller.dismiss() on React component effect cleanup!
+      // React 18 / component re-renders would cancel the 3D animation mid-flight.
+      // DiceRoller3D manages its own user click/timeout lifecycle safely.
     };
   }, [rollData, onClose]);
 
