@@ -35,7 +35,7 @@
    Images the Mesa embeds as text (avatars) are sent once to the image
    storage and the state carries their address (see hostImgs).
    ===================================================================== */
-var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1', editors: 'gurps_combat_master_editors_v1' };
+var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1', editors: 'gurps_combat_master_editors_v1', snapshots: 'hounds_mesa_snapshots_v1' };
 var MesaSync = (function () {
   var CH = 60000, head = null, loadedRev = null, state = null, listeners = [], timer = null, pending = null, writing = false;
   var readyRes, ready = new Promise(function (r) { readyRes = r; }), gotHead = false, lastJson = null, lastRaw = null, askTimer = null, hiddenTimer = 0;
@@ -79,7 +79,7 @@ var MesaSync = (function () {
   }
   function fetchRev(h) {
     // A head written with the state inline (no pieces) is read as is.
-    if (Array.isArray(h.combats)) return Promise.resolve({ combats: h.combats, conditions: h.conditions, players: h.players, activeCombatId: h.activeCombatId || null, deletedCombatIds: h.deletedCombatIds, editors: h.editors || null });
+    if (Array.isArray(h.combats)) return Promise.resolve({ combats: h.combats, conditions: h.conditions, players: h.players, activeCombatId: h.activeCombatId || null, deletedCombatIds: h.deletedCombatIds, editors: h.editors || null, snapshots: h.snapshots || [] });
     if (!(h.n > 0)) return Promise.resolve(null);
     return W.store.query('mesa_chunks', 'rev', h.rev).then(function (rows) {
       if (rows.length < h.n) return null;
@@ -213,6 +213,16 @@ var MesaSync = (function () {
     });
     return out;
   }
+  function mergeSnapshots(a, b) {
+    var out = (a || []).slice(), at = {};
+    out.forEach(function (x, i) { at[x.id] = i; });
+    (b || []).forEach(function (x) {
+      var i = at[x.id];
+      if (i == null) { at[x.id] = out.length; out.push(x); }
+      else if ((x.createdAt || '') >= (out[i].createdAt || '')) out[i] = x;
+    });
+    return out;
+  }
   function mergeState(base, inc) {
     if (!base) return inc;
     var del = (base.deletedCombatIds || []).concat(inc.deletedCombatIds || []).filter(function (x, i, a) { return a.indexOf(x) === i; });
@@ -234,7 +244,8 @@ var MesaSync = (function () {
       players: mergeList(base.players, inc.players).filter(function (p) { return p && p.characterType !== 'npc'; }),
       activeCombatId: inc.activeCombatId || base.activeCombatId,
       deletedCombatIds: del,
-      editors: inc.editors || base.editors
+      editors: inc.editors || base.editors,
+      snapshots: mergeSnapshots(base.snapshots, inc.snapshots)
     };
   }
   // One character in a copy of the state (a saved player and/or an NPC of a combat). Someone else's
@@ -394,6 +405,13 @@ var MesaSync = (function () {
         rt().on('mesa-audio', function (m) {
           if (m && loaded()) push(m);
         });
+        rt().on('mesa-snapshots', function (m) {
+          if (m && Array.isArray(m.snapshots)) {
+            try { localStorage.setItem('hounds_mesa_snapshots_v1', JSON.stringify(m.snapshots)); } catch (e) {}
+            if (state) state = Object.assign({}, state, { snapshots: m.snapshots });
+            if (loaded()) push({ type: 'SYNC_SNAPSHOTS_LIST', snapshots: m.snapshots, timestamp: m.ts || Date.now() });
+          }
+        });
       }
     },
     // Runs before the Mesa iframe loads: put the saved state where the Mesa reads it.
@@ -436,6 +454,18 @@ var MesaSync = (function () {
         if (!timer) timer = setTimeout(flush, delay());
         return;
       }
+      if (m.type === 'SYNC_SNAPSHOTS_LIST' && Array.isArray(m.snapshots)) {
+        try { localStorage.setItem('hounds_mesa_snapshots_v1', JSON.stringify(m.snapshots)); } catch (e) {}
+        if (state) state = Object.assign({}, state, { snapshots: m.snapshots });
+        var curStSnap = state || localState() || {};
+        curStSnap.snapshots = m.snapshots;
+        var rSnap = newRev();
+        pending = { st: curStSnap, rev: rSnap };
+        if (!timer) timer = setTimeout(flush, delay());
+        if (rt() && canSave()) rt().send('mesa-snapshots', { snapshots: m.snapshots, ts: Date.now() });
+        if (loaded()) push({ type: 'SYNC_SNAPSHOTS_LIST', snapshots: m.snapshots, timestamp: m.timestamp || Date.now() });
+        return;
+      }
       // One character changed: straight to the other browsers (the full state follows).
       if (m.type === 'SYNC_NPC') {
         if (!m.npc || !m.npc.id || !canSave()) return;
@@ -464,7 +494,11 @@ var MesaSync = (function () {
       if (!eds) {
         try { eds = JSON.parse(localStorage.getItem('gurps_combat_master_editors_v1') || '[]'); } catch (e) {}
       }
-      var st = { combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del, editors: eds || [] };
+      var snaps = Array.isArray(m.snapshots) ? m.snapshots : ((state && state.snapshots) || []);
+      if (!snaps || snaps.length === 0) {
+        try { snaps = JSON.parse(localStorage.getItem('hounds_mesa_snapshots_v1') || '[]'); } catch (e) {}
+      }
+      var st = { combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del, editors: eds || [], snapshots: snaps || [] };
       if (imgs) st = swapImgs(st);
       var json = JSON.stringify(st);
       if (json === lastJson) return;

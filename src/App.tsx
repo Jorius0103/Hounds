@@ -580,14 +580,15 @@ export default function App() {
     stateRef.current = { combats, conditions, users, activeCombatId, players };
   }, [combats, conditions, users, activeCombatId, players]);
 
-  // Broadcast function: Syncs to local tabs (BroadcastChannel) AND online cross-browser (MQTT WebSocket)
+  // Broadcast function: Syncs to local tabs (BroadcastChannel) AND online cross-browser (MQTT WebSocket & Supabase)
   const broadcastSync = (
     updatedCombats?: Combat[],
     updatedConditions?: ConditionDefinition[],
     updatedUsers?: UserAccount[],
     updatedActiveCombatId?: string,
     updatedPlayers?: NPC[],
-    updatedNpc?: NPC
+    updatedNpc?: NPC,
+    isImmediate?: boolean
   ) => {
     const editTimestamp = updatedNpc?.updatedAt || Date.now();
     lastLocalEditTimestampRef.current = editTimestamp;
@@ -598,7 +599,7 @@ export default function App() {
     const finalActiveCombat = updatedActiveCombatId || stateRef.current.activeCombatId;
     const finalPlayers = updatedPlayers || stateRef.current.players;
 
-    systemLogger.addLog('SYNC_SEND', 'Sincronização enviada (Broadcast & MQTT)', {
+    systemLogger.addLog('SYNC_SEND', 'Sincronização enviada (Broadcast, MQTT & Supabase)', {
       combatsCount: finalCombats.length,
       playersCount: finalPlayers.length,
       editTimestamp,
@@ -621,9 +622,33 @@ export default function App() {
         timestamp: editTimestamp,
         npc: updatedNpc,
       });
+
+      if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+        try {
+          (window as any).parent.hubMesaBus.publish(
+            JSON.stringify({
+              type: 'SYNC_NPC',
+              npc: updatedNpc,
+              timestamp: editTimestamp,
+            })
+          );
+        } catch (e) {}
+      }
     }
 
-    // E sincroniza o estado global via Broadcast e MQTT (com debounce trailing para novos entrantes)
+    const getLocalSnaps = () => {
+      try {
+        const s = localStorage.getItem('hounds_mesa_snapshots_v1');
+        if (s) {
+          const p = JSON.parse(s);
+          if (Array.isArray(p)) return p;
+        }
+      } catch (e) {}
+      return [];
+    };
+    const currentSnaps = getLocalSnaps();
+
+    // E sincroniza o estado global via Broadcast, MQTT e Supabase
     try {
       broadcastChannelRef.current?.postMessage({
         type: 'SYNC_STATE',
@@ -634,18 +659,33 @@ export default function App() {
         users: finalUsers,
         activeCombatId: finalActiveCombat,
         players: finalPlayers,
+        snapshots: currentSnaps,
       });
     } catch (e) {}
 
-    onlineSyncService.sendPayload({
+    const fullPayload: RemoteSyncPayload & { snapshots?: any[] } = {
       type: 'SYNC_FULL',
+      clientId: onlineSyncService.getClientId(),
       timestamp: editTimestamp,
       combats: finalCombats,
       conditions: finalConditions,
       users: finalUsers,
       activeCombatId: finalActiveCombat,
       players: finalPlayers,
-    });
+      snapshots: currentSnaps,
+    };
+
+    if (isImmediate) {
+      onlineSyncService.sendPayloadImmediate(fullPayload);
+    } else {
+      onlineSyncService.sendPayload(fullPayload);
+    }
+
+    if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+      try {
+        (window as any).parent.hubMesaBus.publish(JSON.stringify(fullPayload));
+      } catch (e) {}
+    }
   };
 
   // Connect online sync on mount
@@ -659,9 +699,24 @@ export default function App() {
       setSyncStatus(status);
     });
 
-    const unsubMsg = onlineSyncService.onSyncMessage((payload: RemoteSyncPayload) => {
+    const handleIncomingSync = (payload: RemoteSyncPayload) => {
       if ((payload as any).type?.startsWith('AUDIO_STREAM_') || (payload as any).type?.startsWith('RTC_')) {
         audioStreamSync.handleSignalMessage(payload);
+        return;
+      }
+
+      if ((payload as any).type === 'SYNC_SNAPSHOT_RESTORED') {
+        const snapName = (payload as any).snapshotName || 'Retrato da Mesa';
+        systemLogger.addLog('SYNC_RECV', `Retrato restaurado na mesa: ${snapName}`);
+        return;
+      }
+
+      if ((payload as any).type === 'SYNC_SNAPSHOTS_LIST' && Array.isArray((payload as any).snapshots)) {
+        const remoteSnaps = (payload as any).snapshots;
+        try {
+          localStorage.setItem('hounds_mesa_snapshots_v1', JSON.stringify(remoteSnaps));
+          window.dispatchEvent(new StorageEvent('storage', { key: 'hounds_mesa_snapshots_v1', newValue: JSON.stringify(remoteSnaps) }));
+        } catch (e) {}
         return;
       }
 
@@ -885,10 +940,17 @@ export default function App() {
           });
         }
         if (payload.activeCombatId && payload.activeCombatId !== stateRef.current.activeCombatId) {
-          if (currentUser?.role !== 'mestre' || msgTime > (lastLocalEditTimestampRef.current || 0)) {
-            stateRef.current.activeCombatId = payload.activeCombatId;
-            setActiveCombatId(payload.activeCombatId);
-          }
+          stateRef.current.activeCombatId = payload.activeCombatId;
+          setActiveCombatId(payload.activeCombatId);
+          try {
+            localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(payload.activeCombatId));
+          } catch (e) {}
+        }
+        if (Array.isArray((payload as any).snapshots) && (payload as any).snapshots.length > 0) {
+          try {
+            localStorage.setItem('hounds_mesa_snapshots_v1', JSON.stringify((payload as any).snapshots));
+            window.dispatchEvent(new StorageEvent('storage', { key: 'hounds_mesa_snapshots_v1', newValue: JSON.stringify((payload as any).snapshots) }));
+          } catch (e) {}
         }
       } else if (payload.type === 'REQUEST_SYNC') {
         if (stateRef.current.combats.length > 0 || stateRef.current.players.length > 0) {
@@ -903,11 +965,32 @@ export default function App() {
           });
         }
       }
-    });
+    };
+
+    const unsubMsg = onlineSyncService.onSyncMessage(handleIncomingSync);
+
+    let unsubHub: (() => void) | null = null;
+    if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus?.subscribe) {
+      try {
+        unsubHub = (window as any).parent.hubMesaBus.subscribe((msgStr: string) => {
+          try {
+            const p = typeof msgStr === 'string' ? JSON.parse(msgStr) : msgStr;
+            if (p && p.type) {
+              handleIncomingSync(p);
+            }
+          } catch (e) {}
+        });
+      } catch (e) {}
+    }
 
     return () => {
       unsubStatus();
       unsubMsg();
+      if (unsubHub) {
+        try {
+          unsubHub();
+        } catch (e) {}
+      }
     };
   }, []);
 
@@ -1166,6 +1249,10 @@ export default function App() {
   const handleSelectCombat = (id: string) => {
     if (currentUser && currentUser.role !== 'mestre') return;
     setActiveCombatId(id);
+    stateRef.current.activeCombatId = id;
+    try {
+      localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(id));
+    } catch (e) {}
     const target = combats.find((c) => c.id === id);
     // Preserva o personagem selecionado se for um Personagem fixo; caso contrário ajusta
     const isCurrentPlayer = players.some((p) => p.id === selectedNpcId);
@@ -1177,7 +1264,65 @@ export default function App() {
         setSelectedNpcId(players[0].id);
       }
     }
-    broadcastSync(undefined, undefined, undefined, id);
+    broadcastSync(undefined, undefined, undefined, id, undefined, undefined, true);
+  };
+
+  const handleRestoreSnapshot = (snap: any) => {
+    if (!snap || !snap.data) return;
+    const newCombats = snap.data.combats || [];
+    const newPlayers = snap.data.players || [];
+    const newConditions = snap.data.conditions || [];
+    const newActiveId = snap.data.activeCombatId || (newCombats[0]?.id || 'combat-vazio');
+
+    setCombats(newCombats);
+    if (newPlayers.length > 0) setPlayers(newPlayers);
+    if (newConditions.length > 0) setConditions(newConditions);
+    setActiveCombatId(newActiveId);
+
+    stateRef.current.combats = newCombats;
+    if (newPlayers.length > 0) stateRef.current.players = newPlayers;
+    if (newConditions.length > 0) stateRef.current.conditions = newConditions;
+    stateRef.current.activeCombatId = newActiveId;
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newCombats));
+      if (newPlayers.length > 0) localStorage.setItem(PLAYERS_KEY, JSON.stringify(newPlayers));
+      if (newConditions.length > 0) localStorage.setItem(CONDITIONS_KEY, JSON.stringify(newConditions));
+      localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(newActiveId));
+      if (snap.data.deletedCombatIds) {
+        localStorage.setItem(DELETED_KEY, JSON.stringify(snap.data.deletedCombatIds));
+      }
+      if (snap.data.editors) {
+        localStorage.setItem(EDITORS_STORAGE_KEY, JSON.stringify(snap.data.editors));
+      }
+    } catch (e) {}
+
+    broadcastSync(
+      newCombats,
+      newConditions,
+      undefined,
+      newActiveId,
+      newPlayers,
+      undefined,
+      true
+    );
+
+    try {
+      onlineSyncService.sendPayloadImmediate({
+        type: 'SYNC_SNAPSHOT_RESTORED' as any,
+        snapshotName: snap.name,
+        timestamp: Date.now(),
+      } as any);
+      if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+        (window as any).parent.hubMesaBus.publish(
+          JSON.stringify({
+            type: 'SYNC_SNAPSHOT_RESTORED',
+            snapshotName: snap.name,
+            timestamp: Date.now(),
+          })
+        );
+      }
+    } catch (e) {}
   };
 
   const handleCreateCombat = (name: string, description?: string) => {
@@ -3651,6 +3796,7 @@ export default function App() {
         onDeleteCombat={handleDeleteCombat}
         onRenameCombat={handleRenameCombat}
         onToggleCombatActive={handleToggleCombatActive}
+        onRestoreSnapshot={handleRestoreSnapshot}
       />
 
       {/* System Debug / Sync Log Modal */}

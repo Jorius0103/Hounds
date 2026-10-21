@@ -54,6 +54,7 @@ interface CombatManagerModalProps {
   onDeleteCombat: (id: string) => void;
   onRenameCombat: (id: string, name: string, description?: string) => void;
   onToggleCombatActive?: (id: string) => void;
+  onRestoreSnapshot?: (snapshot: CombatBackupSnapshot) => void;
 }
 
 export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
@@ -66,6 +67,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   onDeleteCombat,
   onRenameCombat,
   onToggleCombatActive,
+  onRestoreSnapshot,
 }) => {
   // Tabs: 'combats' ou 'backups'
   const [activeTab, setActiveTab] = useState<'combats' | 'backups'>('combats');
@@ -90,20 +92,60 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Carregar snapshots do localStorage ao abrir
+  // Atualiza snapshots em tempo real se outra aba ou sincronização remota atualizar o storage
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === SNAPSHOTS_STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setSnapshots(parsed);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  // Carregar snapshots do localStorage e do repositório (dados/retratos-mesa.json) ao abrir
   useEffect(() => {
     if (isOpen) {
+      let localList: CombatBackupSnapshot[] = [];
       try {
         const raw = localStorage.getItem(SNAPSHOTS_STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) {
+            localList = parsed;
             setSnapshots(parsed);
           }
         }
       } catch (err) {
         console.error('Erro ao carregar snapshots do localStorage:', err);
       }
+
+      // Tenta carregar e mesclar os retratos fixos do repositório
+      fetch('dados/retratos-mesa.json?v=' + Date.now())
+        .then((res) => {
+          if (!res.ok) throw new Error('Status ' + res.status);
+          return res.json();
+        })
+        .then((repoSnapshots: CombatBackupSnapshot[]) => {
+          if (Array.isArray(repoSnapshots) && repoSnapshots.length > 0) {
+            const map = new Map<string, CombatBackupSnapshot>();
+            repoSnapshots.forEach((s) => map.set(s.id, s));
+            localList.forEach((s) => map.set(s.id, s));
+            const merged = Array.from(map.values());
+            setSnapshots(merged);
+            try {
+              localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(merged));
+            } catch (e) {}
+          }
+        })
+        .catch(() => {
+          // Arquivo local ou sem conexão, mantém localList
+        });
     }
   }, [isOpen]);
 
@@ -121,6 +163,28 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     } catch (err) {
       console.error('Erro ao salvar snapshots no localStorage:', err);
     }
+
+    // 1. Sincroniza via MQTT imediato com outros dispositivos
+    try {
+      (window as any).onlineSyncService?.sendPayloadImmediate?.({
+        type: 'SYNC_SNAPSHOTS_LIST',
+        snapshots: updated,
+        timestamp: Date.now(),
+      });
+    } catch (e) {}
+
+    // 2. Sincroniza lista online via hubMesaBus (Supabase / Store compartilhado)
+    try {
+      if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+        (window as any).parent.hubMesaBus.publish(
+          JSON.stringify({
+            type: 'SYNC_SNAPSHOTS_LIST',
+            snapshots: updated,
+            timestamp: Date.now(),
+          })
+        );
+      }
+    } catch (e) {}
   };
 
   if (!isOpen) return null;
@@ -344,12 +408,29 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
           localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(snap.data.editors));
         }
       }
-
-      alert(`Backup "${snap.name}" restaurado com sucesso! A Mesa de Combate será recarregada agora.`);
-      window.location.reload();
+      
+      if (onRestoreSnapshot) {
+        onRestoreSnapshot(snap);
+        showToast(`Retrato "${snap.name}" restaurado e transmitido para todos os usuários!`);
+      } else {
+        alert(`Backup "${snap.name}" restaurado com sucesso! A Mesa de Combate será recarregada.`);
+        window.location.reload();
+      }
     } catch (err: any) {
       alert('Erro ao restaurar o backup: ' + (err?.message || 'Falha desconhecida'));
     }
+  };
+
+  const handleExportAllForRepo = () => {
+    const blob = new Blob([JSON.stringify(snapshots, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'retratos-mesa.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('Arquivo retratos-mesa.json gerado! Salve-o na pasta dados/ do repositório.');
   };
 
   const handleExportSnapshot = (snap: CombatBackupSnapshot) => {
@@ -828,6 +909,16 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                     onChange={handleImportFile}
                   />
                 </label>
+
+                <button
+                  type="button"
+                  onClick={handleExportAllForRepo}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 text-xs font-semibold rounded-lg border border-amber-600/40 transition-colors shadow-sm cursor-pointer"
+                  title="Baixar todos os retratos como retratos-mesa.json para colocar na pasta dados/ do repositório"
+                >
+                  <Download size={14} />
+                  <span>Exportar Repositório</span>
+                </button>
               </div>
             </div>
 
