@@ -569,7 +569,7 @@ function sheetInvHtml(g, L, can) {
 /* ---------- view: Corpo ---------- */
 function gearChip(e, qty, g) {
   var sub = gearArmorDr(e, g);
-  return '<span class="gear-chip k-' + e.kind + '">' + gearKindTag(e.kind) + (qty > 1 ? qty + ' × ' : '') + esc(e.name) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>';
+  return '<span class="gear-chip k-' + e.kind + '">' + gearKindTag(e.kind) + (qty > 1 ? qty + ' × ' : '') + esc(g ? gearShownName(e, g) : e.name) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>';
 }
 function sheetBodyHtml(g, L, editing, busy) {
   var ui = S.ui, can = canWrite(), quick = can && !gearEditing(), by = gearIndex(g.equip);
@@ -631,7 +631,7 @@ function bodyOptionsHtml(g, b, part) {
     var parts = gearParts(e, g);
     return !parts || parts.indexOf(part) >= 0;
   }).map(function (e) {
-    return '<option value="' + esc(e.id) + '"' + (e.qty > 0 ? '' : ' disabled') + '>' + esc(e.name) + (e.qty > 0 ? '' : ' (acabou)') + (also[e.id] ? ' · ⚠ já está ' + esc(also[e.id]) : '') + '</option>';
+    return '<option value="' + esc(e.id) + '"' + (e.qty > 0 ? '' : ' disabled') + '>' + esc(gearShownName(e, g)) + (e.qty > 0 ? '' : ' (acabou)') + (also[e.id] ? ' · ⚠ já está ' + esc(also[e.id]) : '') + '</option>';
   }).join('');
 }
 function bodyAddHtml(g, b, part, partName) {
@@ -667,7 +667,7 @@ function bodyCarryHtml(g, b, d, by) {
     }).join('') + '</div>' +
     (pick ? '<div class="gear-pick">' + (pick.length ? pick.map(function (o) {
       return '<button class="gear-chip k-' + o.e.kind + '" type="button" data-carry-add="' + esc(o.e.id) + '"' + (o.left > 0 ? '' : ' disabled title="' + (o.e.qty ? 'Todas já estão no corpo' : 'Acabou') + '"') + '>' +
-        gearKindTag(o.e.kind) + esc(o.e.name) + '<small>' + esc(eqLbs(o.e.weight)) + (o.e.qty > 1 ? ' · ' + o.left + ' de ' + o.e.qty : '') + (o.also ? ' · ⚠ já está ' + esc(o.also) : '') + '</small></button>';
+        gearKindTag(o.e.kind) + esc(gearShownName(o.e, g)) + '<small>' + esc(eqLbs(o.e.weight)) + (o.e.qty > 1 ? ' · ' + o.left + ' de ' + o.e.qty : '') + (o.also ? ' · ⚠ já está ' + esc(o.also) : '') + '</small></button>';
     }).join('') : '<p class="hint-text" style="margin:0">' + ({ weapon: 'Nenhuma arma em Meus Itens (use Criar Arma).', shield: 'Nenhum escudo em Meus Itens (use Criar Escudo).', item: 'Nenhum item em Meus Itens (use Criar Item).' })[d.addKind] + '</p>') + '</div>' : '') +
     '</div>';
 }
@@ -707,9 +707,9 @@ function bodyEditHtml(g) {
 // is a line of the list), then its weight.
 function packCardHtml(x, by, g) {
   var p = x.pack, own = p.equipId ? by[p.equipId] : null;
-  var rows = (own ? ['<tr class="gear-own"><td><b>' + gearKindTag(own.kind) + esc(own.name) + '</b><small>a própria mochila</small></td><td class="eq-qty">1</td><td>' + esc(eqLbs(own.weight)) + '</td></tr>'] : []).concat(p.items.map(function (it) {
+  var rows = (own ? ['<tr class="gear-own"><td><b>' + gearKindTag(own.kind) + esc(gearShownName(own, g)) + '</b><small>a própria mochila</small></td><td class="eq-qty">1</td><td>' + esc(eqLbs(own.weight)) + '</td></tr>'] : []).concat(p.items.map(function (it) {
     var e = by[it.equipId];
-    return '<tr><td><b>' + gearKindTag(e.kind) + esc(e.name) + '</b>' + gearOnBodyBadge(g, e) + '</td><td class="eq-qty">' + it.qty + '</td><td>' + eqEach({ qty: it.qty }, eqRound(it.qty * e.weight), e.weight, eqLbs) + '</td></tr>';
+    return '<tr><td><b>' + gearKindTag(e.kind) + esc(gearShownName(e, g)) + '</b>' + gearOnBodyBadge(g, e) + '</td><td class="eq-qty">' + it.qty + '</td><td>' + eqEach({ qty: it.qty }, eqRound(it.qty * e.weight), e.weight, eqLbs) + '</td></tr>';
   }));
   var half = Math.ceil(rows.length / 2);
   function tab(list) { return '<table class="gtab eq-tab"><thead><tr><th>Item</th><th>Qtd.</th><th>Peso</th></tr></thead><tbody>' + list.join('') + '</tbody></table>'; }
@@ -751,7 +751,7 @@ function packEditHtml(g) {
   var d = S.ui.packDraft, by = gearIndex(g.equip);
   function opt(e, cur, left, also) {
     var n = left[e.id] + (cur ? 1 : 0), body = gearOnBody(g, e.id), where = !cur && also[e.id];
-    return '<option value="' + esc(e.id) + '"' + (cur ? ' selected' : '') + (n > 0 ? '' : ' disabled') + '>' + esc(e.name) + ' · ' + esc(eqLbs(e.weight)) +
+    return '<option value="' + esc(e.id) + '"' + (cur ? ' selected' : '') + (n > 0 ? '' : ' disabled') + '>' + esc(gearShownName(e, g)) + ' · ' + esc(eqLbs(e.weight)) +
       (n > 0 ? '' : packFullText(e)) + (where ? ' · ⚠ já está ' + esc(where) : body ? ' · ⚠ no corpo em uso' : '') + '</option>';
   }
   return d.packs.map(function (p, i) {
@@ -773,7 +773,7 @@ function packEditHtml(g) {
       }).join('') +
       gearPickerHtml('padd', '+ Adicionar da lista… (digite o nome)', 'Adicionar à mochila', g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) {
         var n = left[e.id], where = also[e.id], body = gearOnBody(g, e.id);
-        return { id: e.id, name: e.name, off: !(n > 0), note: [eqLbs(e.weight), n > 0 ? '' : packFullText(e).replace(/^ \(|\)$/g, ''), where ? '⚠ já está ' + where : body ? '⚠ no corpo em uso' : ''].filter(Boolean).join(' · ') };
+        return { id: e.id, name: gearShownName(e, g), off: !(n > 0), note: [eqLbs(e.weight), n > 0 ? '' : packFullText(e).replace(/^ \(|\)$/g, ''), where ? '⚠ já está ' + where : body ? '⚠ no corpo em uso' : ''].filter(Boolean).join(' · ') };
       })) + '</div>' +
       '<p class="gear-ptot" data-ptot="' + i + '">' + packTotalText(own, content) + '</p></div>';
   }).join('') +
@@ -835,7 +835,7 @@ function homeLbs(h, by) { return unitsLbs(packUnits(h), by); }
 function homeCardHtml(h, by, g) {
   var rows = h.items.map(function (it) {
     var e = by[it.equipId];
-    return '<tr><td><b>' + gearKindTag(e.kind) + esc(e.name) + '</b>' + gearOnBodyBadge(g, e) + '</td><td class="eq-qty">' + it.qty + '</td><td>' + eqEach({ qty: it.qty }, eqRound(it.qty * e.weight), e.weight, eqLbs) + '</td></tr>';
+    return '<tr><td><b>' + gearKindTag(e.kind) + esc(gearShownName(e, g)) + '</b>' + gearOnBodyBadge(g, e) + '</td><td class="eq-qty">' + it.qty + '</td><td>' + eqEach({ qty: it.qty }, eqRound(it.qty * e.weight), e.weight, eqLbs) + '</td></tr>';
   });
   var half = Math.ceil(rows.length / 2);
   function tab(list) { return '<table class="gtab eq-tab"><thead><tr><th>Item</th><th>Qtd.</th><th>Peso</th></tr></thead><tbody>' + list.join('') + '</tbody></table>'; }
@@ -878,7 +878,7 @@ function homeEditHtml(g) {
       }).join('') +
       gearPickerHtml('hadd', '+ Guardar da lista… (digite o nome)', 'Guardar na casa', g.equip.filter(function (e) { return inside.indexOf(e.id) < 0; }).map(function (e) {
         var n = left[e.id];
-        return { id: e.id, name: e.name, off: !(n > 0), note: [eqLbs(e.weight), n > 0 ? '' : packFullText(e).replace(/^ \(|\)$/g, ''), also[e.id] ? '⚠ já está ' + also[e.id] : ''].filter(Boolean).join(' · ') };
+        return { id: e.id, name: gearShownName(e, g), off: !(n > 0), note: [eqLbs(e.weight), n > 0 ? '' : packFullText(e).replace(/^ \(|\)$/g, ''), also[e.id] ? '⚠ já está ' + also[e.id] : ''].filter(Boolean).join(' · ') };
       })) + '</div>' +
       '<p class="gear-ptot" data-htot="' + i + '">' + packTotalText(0, homeLbs(cleanHome(h, i, by), by)) + ' · fora da carga</p></div>';
   }).join('') +
