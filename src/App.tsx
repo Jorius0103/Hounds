@@ -23,6 +23,7 @@ import { SystemLogModal } from './components/SystemLogModal';
 import { PassDayModal } from './components/PassDayModal';
 import { DiceRollOverlay, DiceRollResult } from './components/DiceRollOverlay';
 import { systemLogger } from './utils/systemLogger';
+import { audioStreamSync } from './utils/audioStreamSync';
 import { Swords, Plus, EyeOff } from 'lucide-react';
 
 const STORAGE_KEY = 'gurps_combat_master_data_v2';
@@ -650,12 +651,20 @@ export default function App() {
   // Connect online sync on mount
   useEffect(() => {
     onlineSyncService.connect();
+    audioStreamSync.init(onlineSyncService.getClientId(), (payload) => {
+      onlineSyncService.sendPayloadImmediate(payload as any);
+    });
 
     const unsubStatus = onlineSyncService.onStatusChange((status) => {
       setSyncStatus(status);
     });
 
     const unsubMsg = onlineSyncService.onSyncMessage((payload: RemoteSyncPayload) => {
+      if ((payload as any).type?.startsWith('AUDIO_STREAM_') || (payload as any).type?.startsWith('RTC_')) {
+        audioStreamSync.handleSignalMessage(payload);
+        return;
+      }
+
       if ((payload as any).type === 'SYNC_DICE_ROLL' && (payload as any).rollData) {
         const rollObj = (payload as any).rollData;
         const entry = (payload as any).logEntry;

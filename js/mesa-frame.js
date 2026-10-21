@@ -102,6 +102,7 @@
       }).then(function (html) {
         var bust = Date.now();
         html = html.replace(/js\/dice-roller-3d\.js(\?v=[^"']*)?/g, 'js/dice-roller-3d.js?v=' + bust);
+        html = html.replace(/js\/audio-stream-sync\.js(\?v=[^"']*)?/g, 'js/audio-stream-sync.js?v=' + bust);
         return html.replace('</head>', MESA_THEME + '</head>')
           // Its exit button now leads to the hub's home page (see hubMesaFlush).
           .replace('title:"Salvar e voltar para a escolha de jogo"', 'title:"Salvar e voltar para a página inicial"');
