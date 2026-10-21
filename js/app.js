@@ -238,7 +238,7 @@ function onRoute() {
   if (prev && prev.page !== 'mesa' && r.page === 'mesa') {
     try { sessionStorage.removeItem('hounds_mesa_view_state_v1'); } catch (e) {}
     try {
-      var mf = el('mesaFrame');
+      var mf = document.getElementById('mesaFrame');
       if (mf && mf.contentWindow) {
         mf.contentWindow.postMessage({ type: 'HOUNDS_RESET_MESA_HOME' }, '*');
       }
@@ -247,7 +247,7 @@ function onRoute() {
   if (prev && prev.page === 'mesa' && r.page !== 'mesa') {
     try { sessionStorage.removeItem('hounds_mesa_view_state_v1'); } catch (e) {}
     try {
-      var mf = el('mesaFrame');
+      var mf = document.getElementById('mesaFrame');
       if (mf && mf.contentWindow) {
         mf.contentWindow.postMessage({ type: 'HOUNDS_RESET_MESA_HOME' }, '*');
       }
