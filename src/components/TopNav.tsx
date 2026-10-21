@@ -297,9 +297,9 @@ export const TopNav: React.FC<TopNavProps> = ({
           </div>
         )}
 
-        {/* Zone 2: Dice Roller (3D6 e 1D6) e Toggle de Ocultar Rolagens para o Mestre */}
+        {/* Zone 2: Dice Roller (3D6, 1D6 e + Dados) e Toggle de Ocultar Rolagens para o Mestre */}
         {onRollDice && (
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-900/90 border border-slate-750 rounded-lg shadow-inner shrink-0">
             {isMestre && onToggleHideGmRolls && (
               <button
                 type="button"
@@ -354,27 +354,25 @@ export const TopNav: React.FC<TopNavProps> = ({
               </svg>
               <span>1D6</span>
             </button>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setDicePickerOpen((prev) => !prev)}
-                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-black rounded-lg transition-all shadow-sm font-mono border cursor-pointer ${
-                  dicePickerOpen
-                    ? 'bg-amber-500 text-slate-950 border-amber-400'
-                    : 'bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white border-slate-750 hover:border-amber-500/50'
-                }`}
-                title="Abrir seletor de dados Roll20 (D4, D6, D8, D10, D12, D20, D100)"
-              >
-                <Dices size={13} className={dicePickerOpen ? 'text-slate-950' : 'text-amber-400'} />
-                <span>+ Dados</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setDicePickerOpen((prev) => !prev)}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-black rounded-lg transition-all shadow-sm font-mono border cursor-pointer ${
+                dicePickerOpen
+                  ? 'bg-amber-500 text-slate-950 border-amber-400'
+                  : 'bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white border-slate-750 hover:border-amber-500/50'
+              }`}
+              title="Abrir seletor de dados Roll20 (D4, D6, D8, D10, D12, D20, D100)"
+            >
+              <Dices size={13} className={dicePickerOpen ? 'text-slate-950' : 'text-amber-400'} />
+              <span>+ Dados</span>
+            </button>
 
-              <DicePickerModal
-                isOpen={dicePickerOpen}
-                onClose={() => setDicePickerOpen(false)}
-                onRoll={(count, sides) => onRollDice?.(count, sides)}
-              />
-            </div>
+            <DicePickerModal
+              isOpen={dicePickerOpen}
+              onClose={() => setDicePickerOpen(false)}
+              onRoll={(count, sides) => onRollDice?.(count, sides)}
+            />
           </div>
         )}
 

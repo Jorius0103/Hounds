@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Dices } from 'lucide-react';
 
 export interface DicePickerModalProps {
@@ -117,28 +118,24 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
     handleRollClick(count, sides);
   };
 
-  return (
-    <>
-      {/* Invisible backdrop to capture clicks outside */}
-      <div
-        className="fixed inset-0 z-40"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Popover Card anchored right below the button */}
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm select-none"
+      onClick={onClose}
+    >
+      {/* Modal Dialog Card */}
       <div
         ref={popoverRef}
-        className="absolute right-0 top-full mt-1.5 z-50 w-[300px] bg-slate-900 border border-slate-750 rounded-xl shadow-2xl overflow-hidden font-sans select-none animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl overflow-hidden font-sans"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 bg-slate-950/90 border-b border-slate-800">
+        <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-950/90 border-b border-slate-800">
           <div className="flex items-center gap-1.5 text-amber-400">
-            <Dices size={14} />
-            <h3 className="text-[11px] font-bold text-white uppercase tracking-wider">
+            <Dices size={16} />
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
               Rolar Dados
             </h3>
           </div>
@@ -148,7 +145,7 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
             className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
             title="Fechar"
           >
-            <X size={14} />
+            <X size={16} />
           </button>
         </div>
 
@@ -238,6 +235,7 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
           </form>
         </div>
       </div>
-    </>
+    </div>,
+    document.body
   );
 };
