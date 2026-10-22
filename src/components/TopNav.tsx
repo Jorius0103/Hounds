@@ -98,42 +98,9 @@ export const TopNav: React.FC<TopNavProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800/80 px-3 sm:px-6 py-2">
-      <div
-        className="w-full max-w-[1920px] mx-auto flex items-center justify-between flex-nowrap overflow-x-auto scrollbar-none"
-        style={{ gap: '80px' }}
-      >
-        {/* Zone 1: Combat selector / CRUD & Navigation Controls */}
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-nowrap">
-          {/* Botão Alternar Tela Inicial / Tela Detalhada (PRIMEIRO botão da barra superior) */}
-          {onOpenHomeScreen && (
-            <button
-              type="button"
-              onClick={onOpenHomeScreen}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border ${
-                isHomeScreen
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
-                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-white'
-              }`}
-              title={
-                isHomeScreen
-                  ? 'Ir para a Tela Detalhada dos personagens / NPCs'
-                  : 'Voltar para a Tela Inicial (resumo dos personagens / NPCs)'
-              }
-            >
-              {isHomeScreen ? (
-                <>
-                  <FileText size={13} className="text-amber-400" />
-                  <span className="text-[11px] font-semibold">Tela Detalhada</span>
-                </>
-              ) : (
-                <>
-                  <LayoutGrid size={13} className="text-amber-400" />
-                  <span className="text-[11px] font-semibold">Tela Inicial</span>
-                </>
-              )}
-            </button>
-          )}
-
+      <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-4 sm:gap-6 flex-nowrap overflow-x-auto scrollbar-none">
+        {/* Zone 1 (Esquerda): Seleção de Combate / CRUD, Jogadores e Controles */}
+        <div className="flex-1 flex items-center justify-start gap-3 sm:gap-4 shrink-0 flex-nowrap">
           {/* Combat selector & CRUD de combates: Apenas o Mestre escolhe combate; Jogador apenas visualiza */}
           {currentUser?.role === 'mestre' ? (
             <>
@@ -256,53 +223,87 @@ export const TopNav: React.FC<TopNavProps> = ({
           )}
         </div>
 
-        {/* Zone 1.5: Modo de Visualização (Ficha & Log / Mesa Tática / Dividida) */}
-        {activeViewMode && onSelectViewMode && (
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
+        {/* Zone Centro: Botão Alternar Tela Inicial / Tela Detalhada bem no centro da barra superior */}
+        <div className="flex items-center justify-center shrink-0 px-2">
+          {onOpenHomeScreen && (
             <button
-              onClick={() => onSelectViewMode('sheets')}
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                activeViewMode === 'sheets'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              type="button"
+              onClick={onOpenHomeScreen}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border ${
+                isHomeScreen
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-white'
               }`}
-              title="Visualização em Fichas, Lista de NPCs e Log de Combate"
+              title={
+                isHomeScreen
+                  ? 'Ir para a Tela Detalhada dos personagens / NPCs'
+                  : 'Voltar para a Tela Inicial (resumo dos personagens / NPCs)'
+              }
             >
-              <FileText size={13} />
-              <span className="hidden sm:inline">Fichas & Log</span>
+              {isHomeScreen ? (
+                <>
+                  <FileText size={13} className="text-amber-400" />
+                  <span className="text-[11px] font-semibold whitespace-nowrap">Tela Detalhada</span>
+                </>
+              ) : (
+                <>
+                  <LayoutGrid size={13} className="text-amber-400" />
+                  <span className="text-[11px] font-semibold whitespace-nowrap">Tela Inicial</span>
+                </>
+              )}
             </button>
+          )}
 
-            <button
-              onClick={() => onSelectViewMode('tactical')}
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                activeViewMode === 'tactical'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-amber-400 hover:bg-slate-800'
-              }`}
-              title="Mesa Tática Interativa (Grid Hexagonal GURPS, Tokens e Medição)"
-            >
-              <Map size={13} className={activeViewMode === 'tactical' ? 'text-slate-950' : 'text-amber-400'} />
-              <span className="font-bold">Mesa Tática</span>
-            </button>
+          {/* Zone 1.5: Modo de Visualização (Ficha & Log / Mesa Tática / Dividida) */}
+          {activeViewMode && onSelectViewMode && (
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner ml-2">
+              <button
+                onClick={() => onSelectViewMode('sheets')}
+                className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                  activeViewMode === 'sheets'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Visualização em Fichas, Lista de NPCs e Log de Combate"
+              >
+                <FileText size={13} />
+                <span className="hidden sm:inline">Fichas & Log</span>
+              </button>
 
-            <button
-              onClick={() => onSelectViewMode('split')}
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                activeViewMode === 'split'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-              title="Visão Dividida: Mesa Tática e Ficha lado a lado"
-            >
-              <Columns size={13} />
-              <span className="hidden md:inline">Dividida</span>
-            </button>
-          </div>
-        )}
+              <button
+                onClick={() => onSelectViewMode('tactical')}
+                className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                  activeViewMode === 'tactical'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-amber-400 hover:bg-slate-800'
+                }`}
+                title="Mesa Tática Interativa (Grid Hexagonal GURPS, Tokens e Medição)"
+              >
+                <Map size={13} className={activeViewMode === 'tactical' ? 'text-slate-950' : 'text-amber-400'} />
+                <span className="font-bold">Mesa Tática</span>
+              </button>
 
-        {/* Zone 2: Dice Roller (3D6, 2D6, 1D6 e + Dados) e Toggle de Ocultar Rolagens para o Mestre */}
-        {onRollDice && (
-          <div className="relative flex items-center gap-2 px-2.5 py-1 bg-slate-900/90 border border-slate-750 rounded-lg shadow-inner shrink-0">
+              <button
+                onClick={() => onSelectViewMode('split')}
+                className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                  activeViewMode === 'split'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Visão Dividida: Mesa Tática e Ficha lado a lado"
+              >
+                <Columns size={13} />
+                <span className="hidden md:inline">Dividida</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Zone Direita: Lançamentos de Dados próximo à Transmissão de Música respeitando o espaçamento */}
+        <div className="flex-1 flex items-center justify-end gap-3 sm:gap-4 shrink-0 flex-nowrap">
+          {/* Zone 2: Dice Roller (3D6, 2D6, 1D6 e + Dados) e Toggle de Ocultar Rolagens para o Mestre */}
+          {onRollDice && (
+            <div className="relative flex items-center gap-2 px-2.5 py-1 bg-slate-900/90 border border-slate-750 rounded-lg shadow-inner shrink-0">
             {isMestre && onToggleHideGmRolls && (
               <button
                 type="button"
@@ -477,6 +478,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               <span className="hidden sm:inline">Transmitir</span>
             </button>
           )}
+        </div>
         </div>
       </div>
     </header>
