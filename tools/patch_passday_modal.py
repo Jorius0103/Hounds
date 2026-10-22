@@ -67,23 +67,23 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
   };
 
   return (0, ct.jsx)("div", {
-    className: "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-xs",
+    className: "fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-xs overflow-y-auto",
     children: (0, ct.jsxs)("div", {
-      className: "relative w-full max-w-4xl bg-slate-900 border border-amber-500/35 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh]",
+      className: "relative w-full max-w-xl bg-slate-900 border border-amber-500/35 rounded-2xl shadow-2xl flex flex-col max-h-[75vh] overflow-hidden m-auto",
       children: [
-        /* Header elegante sem badges ou subtitulos poluindo */
+        /* Header limpo com respiro nos cantos */
         (0, ct.jsxs)("div", {
-          className: "shrink-0 flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border-b border-amber-500/20",
+          className: "shrink-0 flex items-center justify-between px-5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border-b border-amber-500/20",
           children: [
             (0, ct.jsxs)("div", {
-              className: "flex items-center gap-3",
+              className: "flex items-center gap-2.5",
               children: [
                 (0, ct.jsx)("div", {
-                  className: "w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shrink-0",
-                  children: (0, ct.jsxs)("svg", { viewBox: "0 0 24 24", width: "20", height: "20", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [(0, ct.jsx)("circle", { cx: "12", cy: "12", r: "4" }), (0, ct.jsx)("path", { d: "M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" })] })
+                  className: "w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shrink-0",
+                  children: (0, ct.jsxs)("svg", { viewBox: "0 0 24 24", width: "18", height: "18", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [(0, ct.jsx)("circle", { cx: "12", cy: "12", r: "4" }), (0, ct.jsx)("path", { d: "M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" })] })
                 }),
                 (0, ct.jsx)("h2", {
-                  className: "text-lg font-bold text-white tracking-tight",
+                  className: "text-base sm:text-lg font-bold text-white tracking-tight",
                   children: "Passar o Dia"
                 })
               ]
@@ -91,46 +91,45 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
             (0, ct.jsx)("button", {
               type: "button",
               onClick: onClose,
-              className: "p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0",
+              className: "p-1.5 mr-0.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0",
               title: "Fechar",
-              children: (0, ct.jsxs)("svg", { viewBox: "0 0 24 24", width: "19", height: "19", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [(0, ct.jsx)("line", { x1: "18", y1: "6", x2: "6", y2: "18" }), (0, ct.jsx)("line", { x1: "6", y1: "6", x2: "18", y2: "18" })] })
+              children: (0, ct.jsxs)("svg", { viewBox: "0 0 24 24", width: "18", height: "18", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [(0, ct.jsx)("line", { x1: "18", y1: "6", x2: "6", y2: "18" }), (0, ct.jsx)("line", { x1: "6", y1: "6", x2: "18", y2: "18" })] })
             })
           ]
         }),
         /* Subheader / Barra de Controles e Filtro */
         (0, ct.jsxs)("div", {
-          className: "shrink-0 px-6 py-3 bg-slate-950/80 border-b border-slate-800/80 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3",
+          className: "shrink-0 px-5 py-2.5 sm:px-6 sm:py-3 bg-slate-950/80 border-b border-slate-800/80 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3",
           children: [
             (0, ct.jsxs)("div", {
-              className: "flex items-center gap-2 flex-1 min-w-[220px]",
+              className: "flex items-center gap-1.5 flex-1 min-w-[180px]",
               children: [
-                (0, ct.jsx)("svg", { viewBox: "0 0 24 24", width: "14", height: "14", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", className: "text-amber-400 shrink-0", children: (0, ct.jsx)("path", { d: "m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" }) }),
-                (0, ct.jsx)("span", { className: "leading-relaxed text-slate-300", children: "Ao avançar o dia, cada item selecionado recupera mana até o seu limite." })
+                (0, ct.jsx)("svg", { viewBox: "0 0 24 24", width: "13", height: "13", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", className: "text-amber-400 shrink-0", children: (0, ct.jsx)("path", { d: "m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" }) }),
+                (0, ct.jsx)("span", { className: "text-[11px] leading-snug text-slate-300", children: "Itens selecionados recuperam mana." })
               ]
             }),
             (0, ct.jsxs)("div", {
-              className: "flex items-center gap-4 flex-wrap",
+              className: "flex items-center gap-3",
               children: [
-                /* Checkbox para mostrar itens ja cheios */
+                /* Checkbox para mostrar itens cheios */
                 (0, ct.jsxs)("label", {
-                  className: "flex items-center gap-2 text-xs text-slate-300 hover:text-white cursor-pointer select-none transition-colors",
+                  className: "flex items-center gap-1.5 text-xs text-slate-300 hover:text-white cursor-pointer select-none transition-colors",
                   children: [
                     (0, ct.jsx)("input", {
                       type: "checkbox",
                       checked: showFullItems,
                       onChange: e => setShowFullItems(e.target.checked),
-                      className: "w-4 h-4 rounded bg-slate-900 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                      className: "w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                     }),
-                    (0, ct.jsx)("span", { className: "text-[11px] font-medium text-slate-300", children: "Mostrar itens já cheios" })
+                    (0, ct.jsx)("span", { className: "text-[11px] font-medium text-slate-300", children: "Mostrar cheios" })
                   ]
                 }),
                 /* Input de Dias */
                 (0, ct.jsxs)("div", {
-                  className: "flex items-center gap-2 bg-slate-900 border border-slate-750 px-3 py-1.5 rounded-xl shadow-inner",
+                  className: "flex items-center gap-1.5 bg-slate-900 border border-slate-750 px-2.5 py-1 rounded-lg shadow-inner",
                   children: [
-                    (0, ct.jsx)("label", { htmlFor: "passDayInput", className: "text-xs font-bold text-amber-400 whitespace-nowrap", children: "Passar Dias:" }),
+                    (0, ct.jsx)("span", { className: "text-[11px] font-bold text-amber-400 whitespace-nowrap", children: "Dias:" }),
                     (0, ct.jsx)("input", {
-                      id: "passDayInput",
                       type: "number",
                       min: 1,
                       max: 365,
@@ -139,7 +138,7 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
                         let val = parseInt(e.target.value, 10);
                         setPassDays(isNaN(val) || val < 1 ? 1 : val);
                       },
-                      className: "w-14 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-lg px-2 py-1 text-center text-xs font-mono font-bold text-white focus:outline-none"
+                      className: "w-12 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded px-1.5 py-0.5 text-center text-xs font-mono font-bold text-white focus:outline-none"
                     })
                   ]
                 })
@@ -147,16 +146,16 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
             })
           ]
         }),
-        /* Content list com rolagem */
+        /* Content list com rolagem e min-h-0 */
         (0, ct.jsx)("div", {
-          className: "flex-1 overflow-y-auto px-6 py-5 space-y-4 custom-scrollbar",
+          className: "flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3.5 custom-scrollbar",
           children: charManaList.length === 0 ? (
             (0, ct.jsxs)("div", {
-              className: "py-16 text-center text-slate-400 space-y-2.5",
+              className: "py-12 text-center text-slate-400 space-y-2",
               children: [
-                (0, ct.jsxs)("svg", { viewBox: "0 0 24 24", width: "32", height: "32", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", className: "mx-auto text-slate-500", children: [(0, ct.jsx)("circle", { cx: "12", cy: "12", r: "10" }), (0, ct.jsx)("line", { x1: "12", y1: "8", x2: "12", y2: "12" }), (0, ct.jsx)("line", { x1: "12", y1: "16", x2: "12.01", y2: "16" })] }),
+                (0, ct.jsxs)("svg", { viewBox: "0 0 24 24", width: "28", height: "28", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", className: "mx-auto text-slate-500", children: [(0, ct.jsx)("circle", { cx: "12", cy: "12", r: "10" }), (0, ct.jsx)("line", { x1: "12", y1: "8", x2: "12", y2: "12" }), (0, ct.jsx)("line", { x1: "12", y1: "16", x2: "12.01", y2: "16" })] }),
                 (0, ct.jsx)("p", { className: "text-sm font-semibold text-slate-200", children: "Nenhum Item de Mana encontrado nos Personagens" }),
-                (0, ct.jsx)("p", { className: "text-xs text-slate-500 max-w-md mx-auto leading-relaxed", children: "Cadastre itens com a categoria \\"Mana\\" na seção de Itens Extras & Recursos dos Personagens para recarregá-los aqui." })
+                (0, ct.jsx)("p", { className: "text-xs text-slate-500 max-w-sm mx-auto leading-relaxed", children: "Cadastre itens com a categoria \\"Mana\\" na seção de Itens Extras & Recursos dos Personagens para recarregá-los aqui." })
               ]
             })
           ) : (
@@ -169,25 +168,25 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
 
               return (0, ct.jsxs)("div", {
                 key: char.id,
-                className: "bg-slate-950/70 border border-slate-800/90 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-750 transition-colors",
+                className: "bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 sm:p-3.5 space-y-2.5 shadow-sm",
                 children: [
-                  /* Header do Personagem */
+                  /* Header do Personagem com respiro */
                   (0, ct.jsxs)("div", {
-                    className: "flex items-center justify-between border-b border-slate-800/80 pb-2.5",
+                    className: "flex items-center justify-between border-b border-slate-800/80 pb-2 px-0.5",
                     children: [
                       (0, ct.jsxs)("div", {
-                        className: "flex items-center gap-2.5 min-w-0 pr-2",
+                        className: "flex items-center gap-2 min-w-0 pr-2",
                         children: [
                           (0, ct.jsx)("div", {
-                            className: "w-7 h-7 rounded-lg bg-emerald-950/90 border border-emerald-600/60 flex items-center justify-center text-emerald-300 text-xs font-bold shrink-0",
+                            className: "w-6 h-6 rounded-md bg-emerald-950/90 border border-emerald-600/60 flex items-center justify-center text-emerald-300 text-xs font-bold shrink-0",
                             children: (char.name || 'P').charAt(0).toUpperCase()
                           }),
                           (0, ct.jsx)("span", {
-                            className: "text-sm font-bold text-white truncate",
+                            className: "text-xs sm:text-sm font-bold text-white truncate",
                             children: char.name
                           }),
                           (0, ct.jsxs)("span", {
-                            className: "text-xs text-slate-400 shrink-0",
+                            className: "text-[11px] text-slate-400 shrink-0",
                             children: [
                               "(",
                               recItems.length,
@@ -202,7 +201,7 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
                         (0, ct.jsx)("button", {
                           type: "button",
                           onClick: () => toggleAll(char.id, items),
-                          className: "text-xs text-cyan-400 hover:text-cyan-300 font-semibold transition-colors shrink-0 cursor-pointer",
+                          className: "text-xs text-cyan-400 hover:text-cyan-300 font-semibold px-2 py-0.5 rounded hover:bg-slate-900 transition-colors shrink-0 cursor-pointer",
                           children: allRecSel ? "Desmarcar todos" : "Marcar todos"
                         })
                       ) : null
@@ -211,25 +210,25 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
                   /* Caso todos os itens estejam cheios e o checkbox esteja desmarcado */
                   visibleItems.length === 0 ? (
                     (0, ct.jsxs)("div", {
-                      className: "flex items-center justify-between py-2.5 px-3.5 bg-slate-900/40 rounded-xl border border-slate-800/60 text-xs text-slate-400",
+                      className: "flex items-center justify-between py-2 px-3 bg-slate-900/40 rounded-lg border border-slate-800/60 text-xs text-slate-400",
                       children: [
                         (0, ct.jsxs)("span", {
-                          className: "italic flex items-center gap-2",
+                          className: "italic flex items-center gap-1.5",
                           children: [
-                            (0, ct.jsx)("svg", { viewBox: "0 0 24 24", width: "14", height: "14", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", className: "text-emerald-400 shrink-0", children: (0, ct.jsx)("polyline", { points: "20 6 9 17 4 12" }) }),
-                            "Todos os itens de mana já estão com a capacidade máxima."
+                            (0, ct.jsx)("svg", { viewBox: "0 0 24 24", width: "13", height: "13", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", className: "text-emerald-400 shrink-0", children: (0, ct.jsx)("polyline", { points: "20 6 9 17 4 12" }) }),
+                            "Itens já estão na capacidade máxima."
                           ]
                         }),
                         (0, ct.jsx)("span", {
-                          className: "text-[10px] text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-800/60 px-2 py-0.5 rounded-md font-sans",
+                          className: "text-[10px] text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-800/60 px-1.5 py-0.2 rounded font-sans",
                           children: "✓ 100% Cheio"
                         })
                       ]
                     })
                   ) : (
-                    /* Grade de Itens com espaco generoso */
+                    /* Grade de Itens compacta, com nome e numeros proximos */
                     (0, ct.jsx)("div", {
-                      className: "grid grid-cols-1 md:grid-cols-2 gap-2.5",
+                      className: "grid grid-cols-1 sm:grid-cols-2 gap-2",
                       children: visibleItems.map(item => {
                         let isFull = (item.current ?? 0) >= (item.max ?? 0);
                         let isSel = charSet.has(item.id);
@@ -241,62 +240,50 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
                         return (0, ct.jsxs)("div", {
                           key: item.id,
                           onClick: () => !isFull && toggleItem(char.id, item),
-                          className: `flex items-center justify-between p-3 rounded-xl border text-xs transition-all select-none gap-3 ${
+                          className: `flex items-center justify-between p-2.5 rounded-lg border text-xs transition-all select-none gap-2 ${
                             isFull
-                              ? "bg-slate-950/40 border-slate-800/70 text-slate-400 opacity-70 cursor-default"
+                              ? "bg-slate-950/40 border-slate-800/70 text-slate-400 opacity-65 cursor-default"
                               : isSel
                               ? "bg-amber-950/20 border-amber-500/60 text-amber-100 shadow-sm cursor-pointer hover:border-amber-400"
-                              : "bg-slate-900/60 border-slate-800/80 text-slate-400 opacity-65 hover:opacity-95 cursor-pointer"
+                              : "bg-slate-900/60 border-slate-800/80 text-slate-400 opacity-70 hover:opacity-95 cursor-pointer"
                           }`,
                           children: [
                             /* Checkbox e Nome do Item */
                             (0, ct.jsxs)("div", {
-                              className: "flex items-center gap-2.5 min-w-0 flex-1",
+                              className: "flex items-center gap-2 min-w-0 flex-1",
                               children: [
                                 (0, ct.jsx)("input", {
                                   type: "checkbox",
                                   checked: isSel,
                                   disabled: isFull,
                                   onChange: () => {},
-                                  className: "w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                                  className: "w-3.5 h-3.5 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer disabled:cursor-not-allowed shrink-0"
                                 }),
-                                (0, ct.jsxs)("div", {
-                                  className: "min-w-0 flex-1",
-                                  children: [
-                                    (0, ct.jsx)("span", {
-                                      className: `font-semibold block truncate ${isFull ? "text-slate-400" : "text-slate-100"}`,
-                                      title: item.name,
-                                      children: item.name
-                                    }),
-                                    item.notes ? (
-                                      (0, ct.jsx)("span", {
-                                        className: "text-[10px] text-slate-400 block truncate mt-0.5 leading-tight",
-                                        title: item.notes,
-                                        children: item.notes
-                                      })
-                                    ) : null
-                                  ]
+                                (0, ct.jsx)("span", {
+                                  className: `font-semibold block truncate ${isFull ? "text-slate-400" : "text-slate-100"}`,
+                                  title: item.name,
+                                  children: item.name
                                 })
                               ]
                             }),
-                            /* Valores numéricos e Badge */
+                            /* Valores numericos ampliados e Badge bem proximos */
                             (0, ct.jsxs)("div", {
-                              className: "flex items-center gap-2 shrink-0 font-mono text-[11px]",
+                              className: "flex items-center gap-1.5 shrink-0 font-mono",
                               children: [
-                                (0, ct.jsx)("span", { className: "text-slate-400", children: curVal }),
-                                (0, ct.jsx)("span", { className: "text-slate-600", children: "→" }),
+                                (0, ct.jsx)("span", { className: "text-xs font-bold text-slate-400", children: curVal }),
+                                (0, ct.jsx)("span", { className: "text-xs text-slate-600", children: "→" }),
                                 (0, ct.jsxs)("span", {
-                                  className: `font-bold ${isFull ? "text-emerald-400" : "text-amber-300"}`,
+                                  className: `text-sm font-black ${isFull ? "text-emerald-400" : "text-amber-300"}`,
                                   children: isFull ? `${curVal}/${maxVal}` : `${nextVal}/${maxVal}`
                                 }),
                                 isFull ? (
                                   (0, ct.jsx)("span", {
-                                    className: "text-[10px] px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold font-sans",
+                                    className: "text-[10px] px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold font-sans",
                                     children: "Cheio"
                                   })
                                 ) : (
                                   (0, ct.jsx)("span", {
-                                    className: "text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/40 font-bold font-sans",
+                                    className: "text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold font-sans",
                                     children: `+${potentialGain}`
                                   })
                                 )
@@ -312,33 +299,33 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
             })
           )
         }),
-        /* Footer elegante e espaçoso */
+        /* Footer com respiro nas quinas e botoes */
         (0, ct.jsxs)("div", {
-          className: "shrink-0 flex items-center justify-between gap-3 px-6 py-3.5 bg-slate-950 border-t border-slate-800",
+          className: "shrink-0 flex items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-3.5 bg-slate-950 border-t border-slate-800",
           children: [
             (0, ct.jsxs)("span", {
-              className: "text-xs text-slate-300 font-medium truncate",
+              className: "text-xs text-slate-300 font-medium truncate pl-1",
               children: [
                 (0, ct.jsx)("strong", { className: "text-amber-400 font-bold", children: selCount }),
-                ` ${selCount === 1 ? "item selecionado" : "itens selecionados"} para recarga`
+                ` ${selCount === 1 ? "item selecionado" : "itens selecionados"}`
               ]
             }),
             (0, ct.jsxs)("div", {
-              className: "flex items-center gap-2.5 shrink-0",
+              className: "flex items-center gap-2.5 shrink-0 pr-1",
               children: [
                 (0, ct.jsx)("button", {
                   type: "button",
                   onClick: onClose,
-                  className: "px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0",
+                  className: "px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0",
                   children: "Cancelar"
                 }),
                 (0, ct.jsxs)("button", {
                   type: "button",
                   onClick: handleConfirm,
                   disabled: selCount === 0 || charManaList.length === 0,
-                  className: "flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0",
+                  className: "flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0",
                   children: [
-                    (0, ct.jsx)("svg", { viewBox: "0 0 24 24", width: "15", height: "15", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: (0, ct.jsx)("polyline", { points: "20 6 9 17 4 12" }) }),
+                    (0, ct.jsx)("svg", { viewBox: "0 0 24 24", width: "14", height: "14", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: (0, ct.jsx)("polyline", { points: "20 6 9 17 4 12" }) }),
                     (0, ct.jsx)("span", { children: `Confirmar (+${passDays} Mana${passDays > 1 ? ` · ${passDays} Dias` : ""})` })
                   ]
                 })
@@ -357,5 +344,4 @@ new_text = text[:idx_start] + new_comp + text[idx_end:]
 with open('mesa.html', 'w', encoding='utf-8', newline='\n') as f:
     f.write(new_text)
 
-print("mesa.html updated successfully with new PassDayModalComponent!")
-
+print("mesa.html updated successfully with compact PassDayModalComponent!")

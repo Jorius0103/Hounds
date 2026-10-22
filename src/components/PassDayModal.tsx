@@ -100,54 +100,54 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-xs">
-      <div className="relative w-full max-w-4xl bg-slate-900 border border-amber-500/35 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-xl bg-slate-900 border border-amber-500/35 rounded-2xl shadow-2xl flex flex-col max-h-[75vh] overflow-hidden m-auto animate-in fade-in zoom-in-95 duration-150">
         
-        {/* Header limpo com título elegante */}
-        <div className="shrink-0 flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border-b border-amber-500/20">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
-              <Sun size={20} className="animate-spin-slow" />
+        {/* Header limpo com respiro nos cantos */}
+        <div className="shrink-0 flex items-center justify-between px-5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border-b border-amber-500/20">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
+              <Sun size={18} className="animate-spin-slow" />
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
               Passar o Dia
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            className="p-1.5 mr-0.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
             title="Fechar"
           >
-            <X size={19} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Subheader / Barra de Controles e Filtro */}
-        <div className="shrink-0 px-6 py-3 bg-slate-950/80 border-b border-slate-800/80 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-1 min-w-[220px]">
-            <Sparkles size={14} className="text-amber-400 shrink-0" />
-            <span className="leading-relaxed text-slate-300">
-              Ao avançar o dia, cada item selecionado recupera mana até o seu limite.
+        <div className="shrink-0 px-5 py-2.5 sm:px-6 sm:py-3 bg-slate-950/80 border-b border-slate-800/80 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 flex-1 min-w-[180px]">
+            <Sparkles size={13} className="text-amber-400 shrink-0" />
+            <span className="text-[11px] leading-snug text-slate-300">
+              Itens selecionados recuperam mana.
             </span>
           </div>
 
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
             {/* Checkbox para mostrar itens já cheios */}
-            <label className="flex items-center gap-2 text-xs text-slate-300 hover:text-white cursor-pointer select-none transition-colors">
+            <label className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white cursor-pointer select-none transition-colors">
               <input
                 type="checkbox"
                 checked={showFullItems}
                 onChange={(e) => setShowFullItems(e.target.checked)}
-                className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
               />
-              <span className="text-[11px] font-medium text-slate-300">Mostrar itens já cheios</span>
+              <span className="text-[11px] font-medium text-slate-300">Mostrar cheios</span>
             </label>
 
             {/* Input de Dias */}
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-750 px-3 py-1.5 rounded-xl shadow-inner">
-              <label htmlFor="passDayInput" className="text-xs font-bold text-amber-400 whitespace-nowrap">
-                Passar Dias:
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-750 px-2.5 py-1 rounded-lg shadow-inner">
+              <label htmlFor="passDayInput" className="text-[11px] font-bold text-amber-400 whitespace-nowrap">
+                Dias:
               </label>
               <input
                 id="passDayInput"
@@ -159,21 +159,21 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                   const val = parseInt(e.target.value, 10);
                   setDays(isNaN(val) || val < 1 ? 1 : val);
                 }}
-                className="w-14 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-lg px-2 py-1 text-center text-xs font-mono font-bold text-white focus:outline-none"
+                className="w-12 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded px-1.5 py-0.5 text-center text-xs font-mono font-bold text-white focus:outline-none"
               />
             </div>
           </div>
         </div>
 
-        {/* Lista de Personagens e seus Itens */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 custom-scrollbar">
+        {/* Lista de Personagens e seus Itens - com min-h-0 para garantir scroll sem estourar altura */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3.5 custom-scrollbar">
           {charManaList.length === 0 ? (
-            <div className="py-16 text-center text-slate-400 space-y-2.5">
-              <AlertCircle size={32} className="mx-auto text-slate-500" />
+            <div className="py-12 text-center text-slate-400 space-y-2">
+              <AlertCircle size={28} className="mx-auto text-slate-500" />
               <p className="text-sm font-semibold text-slate-200">
                 Nenhum Item de Mana encontrado nos Personagens
               </p>
-              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
                 Cadastre itens com categoria "Mana" na seção de Itens Extras & Recursos dos Personagens para recarregá-los aqui.
               </p>
             </div>
@@ -190,18 +190,18 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
               return (
                 <div
                   key={char.id}
-                  className="bg-slate-950/70 border border-slate-800/90 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-750 transition-colors"
+                  className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 sm:p-3.5 space-y-2.5 shadow-sm"
                 >
-                  {/* Header do Personagem */}
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-950/90 border border-emerald-600/60 flex items-center justify-center text-emerald-300 text-xs font-bold shrink-0">
+                  {/* Header do Personagem com respiro */}
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 px-0.5">
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <div className="w-6 h-6 rounded-md bg-emerald-950/90 border border-emerald-600/60 flex items-center justify-center text-emerald-300 text-xs font-bold shrink-0">
                         {char.name?.charAt(0)?.toUpperCase() || 'P'}
                       </div>
-                      <span className="text-sm font-bold text-white truncate">
+                      <span className="text-xs sm:text-sm font-bold text-white truncate">
                         {char.name}
                       </span>
-                      <span className="text-xs text-slate-400 shrink-0">
+                      <span className="text-[11px] text-slate-400 shrink-0">
                         ({rechargeableItems.length} para recarga
                         {fullItems.length > 0 ? ` · ${fullItems.length} cheio${fullItems.length > 1 ? 's' : ''}` : ''})
                       </span>
@@ -211,7 +211,7 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                       <button
                         type="button"
                         onClick={() => toggleAllForChar(char.id, items)}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold transition-colors shrink-0 cursor-pointer"
+                        className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold px-2 py-0.5 rounded hover:bg-slate-900 transition-colors shrink-0 cursor-pointer"
                       >
                         {allRechargeableSelected ? 'Desmarcar todos' : 'Marcar todos'}
                       </button>
@@ -220,18 +220,18 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
 
                   {/* Caso todos os itens estejam cheios e o checkbox esteja desmarcado */}
                   {visibleItems.length === 0 ? (
-                    <div className="flex items-center justify-between py-2.5 px-3.5 bg-slate-900/40 rounded-xl border border-slate-800/60 text-xs text-slate-400">
-                      <span className="italic flex items-center gap-2">
-                        <Check size={14} className="text-emerald-400 shrink-0" />
-                        Todos os itens de mana já estão com a capacidade máxima.
+                    <div className="flex items-center justify-between py-2 px-3 bg-slate-900/40 rounded-lg border border-slate-800/60 text-xs text-slate-400">
+                      <span className="italic flex items-center gap-1.5">
+                        <Check size={13} className="text-emerald-400 shrink-0" />
+                        Itens já estão na capacidade máxima.
                       </span>
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-800/60 px-2 py-0.5 rounded-md font-sans">
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-800/60 px-1.5 py-0.2 rounded font-sans">
                         ✓ 100% Cheio
                       </span>
                     </div>
                   ) : (
-                    /* Grade de Itens com espaço generoso */
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    /* Grade de Itens compacta, com nome e números próximos */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {visibleItems.map((item) => {
                         const isFull = (item.current ?? 0) >= (item.max ?? 0);
                         const isSelected = charSelectedSet.has(item.id);
@@ -244,22 +244,22 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                           <div
                             key={item.id}
                             onClick={() => !isFull && toggleItem(char.id, item)}
-                            className={`flex items-center justify-between p-3 rounded-xl border text-xs transition-all select-none gap-3 ${
+                            className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition-all select-none gap-2 ${
                               isFull
-                                ? 'bg-slate-950/40 border-slate-800/70 text-slate-400 opacity-70 cursor-default'
+                                ? 'bg-slate-950/40 border-slate-800/70 text-slate-400 opacity-65 cursor-default'
                                 : isSelected
                                 ? 'bg-amber-950/20 border-amber-500/60 text-amber-100 shadow-sm cursor-pointer hover:border-amber-400'
-                                : 'bg-slate-900/60 border-slate-800/80 text-slate-400 opacity-65 hover:opacity-95 cursor-pointer'
+                                : 'bg-slate-900/60 border-slate-800/80 text-slate-400 opacity-70 hover:opacity-95 cursor-pointer'
                             }`}
                           >
                             {/* Checkbox e Nome do Item */}
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                               <input
                                 type="checkbox"
                                 checked={isSelected}
                                 disabled={isFull}
                                 onChange={() => {}}
-                                className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                                className="w-3.5 h-3.5 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer disabled:cursor-not-allowed shrink-0"
                               />
                               <div className="min-w-0 flex-1">
                                 <span
@@ -270,34 +270,26 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                                 >
                                   {item.name}
                                 </span>
-                                {item.notes && (
-                                  <span
-                                    className="text-[10px] text-slate-400 block truncate mt-0.5 leading-tight"
-                                    title={item.notes}
-                                  >
-                                    {item.notes}
-                                  </span>
-                                )}
                               </div>
                             </div>
 
-                            {/* Valores numéricos e Badge */}
-                            <div className="flex items-center gap-2 shrink-0 font-mono text-[11px]">
-                              <span className="text-slate-400">{curVal}</span>
-                              <span className="text-slate-600">→</span>
+                            {/* Valores numéricos ampliados e Badge bem próximos */}
+                            <div className="flex items-center gap-1.5 shrink-0 font-mono">
+                              <span className="text-xs font-bold text-slate-400">{curVal}</span>
+                              <span className="text-xs text-slate-600">→</span>
                               <span
-                                className={`font-bold ${
+                                className={`text-sm font-black ${
                                   isFull ? 'text-emerald-400' : 'text-amber-300'
                                 }`}
                               >
                                 {isFull ? `${curVal}/${maxVal}` : `${nextValue}/${maxVal}`}
                               </span>
                               {isFull ? (
-                                <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold font-sans">
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold font-sans">
                                   Cheio
                                 </span>
                               ) : (
-                                <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/40 font-bold font-sans">
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold font-sans">
                                   +{potentialGain}
                                 </span>
                               )}
@@ -313,17 +305,17 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
           )}
         </div>
 
-        {/* Footer elegante e espaçoso */}
-        <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-3.5 bg-slate-950 border-t border-slate-800">
-          <span className="text-xs text-slate-300 font-medium truncate">
+        {/* Footer com respiro nas quinas e botões */}
+        <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-3.5 bg-slate-950 border-t border-slate-800">
+          <span className="text-xs text-slate-300 font-medium truncate pl-1">
             <strong className="text-amber-400 font-bold">{selectedCount}</strong>{' '}
-            {selectedCount === 1 ? 'item selecionado' : 'itens selecionados'} para recarga
+            {selectedCount === 1 ? 'item selecionado' : 'itens selecionados'}
           </span>
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 pr-1">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
             >
               Cancelar
             </button>
@@ -331,9 +323,9 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
               type="button"
               onClick={handleConfirm}
               disabled={selectedCount === 0 || charManaList.length === 0}
-              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
             >
-              <Check size={15} strokeWidth={2.5} />
+              <Check size={14} strokeWidth={2.5} />
               <span>Confirmar (+{days} Mana{days > 1 ? ` · ${days} Dias` : ''})</span>
             </button>
           </div>
