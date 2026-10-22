@@ -100,23 +100,86 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-xl bg-slate-900 border border-amber-500/35 rounded-2xl shadow-2xl flex flex-col max-h-[75vh] overflow-hidden m-auto animate-in fade-in zoom-in-95 duration-150">
-        
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center select-none"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        background: 'rgba(2, 6, 23, 0.85)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+      }}
+    >
+      <div
+        className="relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        style={{
+          position: 'relative',
+          margin: 'auto',
+          width: '100%',
+          maxWidth: '620px',
+          maxHeight: '78vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#0f172a',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          borderRadius: '18px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
+          overflow: 'hidden',
+        }}
+      >
         {/* Header limpo com respiro nos cantos */}
-        <div className="shrink-0 flex items-center justify-between px-5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border-b border-amber-500/20">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 20px',
+            borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
+            background: 'linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fbbf24',
+                flexShrink: 0,
+              }}
+            >
               <Sun size={18} className="animate-spin-slow" />
             </div>
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+            <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
               Passar o Dia
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 mr-0.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            style={{
+              padding: '6px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              flexShrink: 0,
+              background: 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
             title="Fechar"
           >
             <X size={18} />
@@ -124,29 +187,63 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
         </div>
 
         {/* Subheader / Barra de Controles e Filtro */}
-        <div className="shrink-0 px-5 py-2.5 sm:px-6 sm:py-3 bg-slate-950/80 border-b border-slate-800/80 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 flex-1 min-w-[180px]">
-            <Sparkles size={13} className="text-amber-400 shrink-0" />
-            <span className="text-[11px] leading-snug text-slate-300">
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 20px',
+            background: 'rgba(2, 6, 23, 0.8)',
+            borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
+            gap: '12px',
+            fontSize: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 180px', minWidth: '180px' }}>
+            <Sparkles size={14} style={{ color: '#fbbf24', flexShrink: 0 }} />
+            <span style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: '1.4' }}>
               Itens selecionados recuperam mana.
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             {/* Checkbox para mostrar itens já cheios */}
-            <label className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white cursor-pointer select-none transition-colors">
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11px',
+                color: '#cbd5e1',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
               <input
                 type="checkbox"
                 checked={showFullItems}
                 onChange={(e) => setShowFullItems(e.target.checked)}
-                className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                className="accent-amber-500 cursor-pointer"
+                style={{ width: '14px', height: '14px', cursor: 'pointer' }}
               />
-              <span className="text-[11px] font-medium text-slate-300">Mostrar cheios</span>
+              <span>Mostrar cheios</span>
             </label>
 
             {/* Input de Dias */}
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-750 px-2.5 py-1 rounded-lg shadow-inner">
-              <label htmlFor="passDayInput" className="text-[11px] font-bold text-amber-400 whitespace-nowrap">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#0f172a',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                padding: '4px 8px',
+                borderRadius: '8px',
+              }}
+            >
+              <label htmlFor="passDayInput" style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', whiteSpace: 'nowrap' }}>
                 Dias:
               </label>
               <input
@@ -159,22 +256,45 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                   const val = parseInt(e.target.value, 10);
                   setDays(isNaN(val) || val < 1 ? 1 : val);
                 }}
-                className="w-12 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded px-1.5 py-0.5 text-center text-xs font-mono font-bold text-white focus:outline-none"
+                style={{
+                  width: '44px',
+                  background: '#020617',
+                  border: '1px solid #334155',
+                  borderRadius: '6px',
+                  padding: '2px 4px',
+                  textAlign: 'center',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  fontWeight: 'bold',
+                  color: '#ffffff',
+                  outline: 'none',
+                }}
               />
             </div>
           </div>
         </div>
 
-        {/* Lista de Personagens e seus Itens - com min-h-0 para garantir scroll sem estourar altura */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3.5 custom-scrollbar">
+        {/* Lista de Personagens e seus Itens - com minHeight: 0 para garantir scroll sem estourar altura */}
+        <div
+          className="custom-scrollbar"
+          style={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflowY: 'auto',
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
           {charManaList.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 space-y-2">
-              <AlertCircle size={28} className="mx-auto text-slate-500" />
-              <p className="text-sm font-semibold text-slate-200">
+            <div style={{ padding: '36px 0', textAlign: 'center', color: '#94a3b8' }}>
+              <AlertCircle size={28} style={{ margin: '0 auto 8px', color: '#64748b' }} />
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0', margin: '0 0 4px' }}>
                 Nenhum Item de Mana encontrado nos Personagens
               </p>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                Cadastre itens com categoria "Mana" na seção de Itens Extras & Recursos dos Personagens para recarregá-los aqui.
+              <p style={{ fontSize: '11px', color: '#64748b', maxWidth: '360px', margin: '0 auto', lineHeight: '1.4' }}>
+                Cadastre itens com a categoria "Mana" na seção de Itens Extras & Recursos dos Personagens para recarregá-los aqui.
               </p>
             </div>
           ) : (
@@ -190,18 +310,49 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
               return (
                 <div
                   key={char.id}
-                  className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 sm:p-3.5 space-y-2.5 shadow-sm"
+                  style={{
+                    background: 'rgba(2, 6, 23, 0.7)',
+                    border: '1px solid #1e293b',
+                    borderRadius: '12px',
+                    padding: '12px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                  }}
                 >
                   {/* Header do Personagem com respiro */}
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 px-0.5">
-                    <div className="flex items-center gap-2 min-w-0 pr-2">
-                      <div className="w-6 h-6 rounded-md bg-emerald-950/90 border border-emerald-600/60 flex items-center justify-center text-emerald-300 text-xs font-bold shrink-0">
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingBottom: '8px',
+                      borderBottom: '1px solid rgba(51, 65, 85, 0.6)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <div
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '6px',
+                          background: 'rgba(6, 78, 59, 0.9)',
+                          border: '1px solid rgba(5, 150, 105, 0.6)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#6ee7b7',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          flexShrink: 0,
+                        }}
+                      >
                         {char.name?.charAt(0)?.toUpperCase() || 'P'}
                       </div>
-                      <span className="text-xs sm:text-sm font-bold text-white truncate">
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {char.name}
                       </span>
-                      <span className="text-[11px] text-slate-400 shrink-0">
+                      <span style={{ fontSize: '11px', color: '#94a3b8', flexShrink: 0 }}>
                         ({rechargeableItems.length} para recarga
                         {fullItems.length > 0 ? ` · ${fullItems.length} cheio${fullItems.length > 1 ? 's' : ''}` : ''})
                       </span>
@@ -211,7 +362,18 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                       <button
                         type="button"
                         onClick={() => toggleAllForChar(char.id, items)}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold px-2 py-0.5 rounded hover:bg-slate-900 transition-colors shrink-0 cursor-pointer"
+                        className="hover:bg-slate-800 transition-colors"
+                        style={{
+                          fontSize: '11px',
+                          color: '#22d3ee',
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
                       >
                         {allRechargeableSelected ? 'Desmarcar todos' : 'Marcar todos'}
                       </button>
@@ -220,18 +382,46 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
 
                   {/* Caso todos os itens estejam cheios e o checkbox esteja desmarcado */}
                   {visibleItems.length === 0 ? (
-                    <div className="flex items-center justify-between py-2 px-3 bg-slate-900/40 rounded-lg border border-slate-800/60 text-xs text-slate-400">
-                      <span className="italic flex items-center gap-1.5">
-                        <Check size={13} className="text-emerald-400 shrink-0" />
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        background: 'rgba(15, 23, 42, 0.4)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(51, 65, 85, 0.6)',
+                        fontSize: '11px',
+                        color: '#94a3b8',
+                      }}
+                    >
+                      <span style={{ fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Check size={13} style={{ color: '#34d399', flexShrink: 0 }} />
                         Itens já estão na capacidade máxima.
                       </span>
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-800/60 px-1.5 py-0.2 rounded font-sans">
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          color: '#34d399',
+                          fontWeight: 'bold',
+                          background: 'rgba(6, 78, 59, 0.7)',
+                          border: '1px solid rgba(6, 95, 70, 0.6)',
+                          padding: '2px 6px',
+                          borderRadius: '6px',
+                        }}
+                      >
                         ✓ 100% Cheio
                       </span>
                     </div>
                   ) : (
                     /* Grade de Itens compacta, com nome e números próximos */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                        gap: '8px',
+                      }}
+                    >
                       {visibleItems.map((item) => {
                         const isFull = (item.current ?? 0) >= (item.max ?? 0);
                         const isSelected = charSelectedSet.has(item.id);
@@ -244,52 +434,97 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                           <div
                             key={item.id}
                             onClick={() => !isFull && toggleItem(char.id, item)}
-                            className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition-all select-none gap-2 ${
-                              isFull
-                                ? 'bg-slate-950/40 border-slate-800/70 text-slate-400 opacity-65 cursor-default'
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              fontSize: '11px',
+                              gap: '8px',
+                              userSelect: 'none',
+                              cursor: isFull ? 'default' : 'pointer',
+                              background: isFull
+                                ? 'rgba(2, 6, 23, 0.4)'
                                 : isSelected
-                                ? 'bg-amber-950/20 border-amber-500/60 text-amber-100 shadow-sm cursor-pointer hover:border-amber-400'
-                                : 'bg-slate-900/60 border-slate-800/80 text-slate-400 opacity-70 hover:opacity-95 cursor-pointer'
-                            }`}
+                                ? 'rgba(69, 26, 3, 0.2)'
+                                : 'rgba(15, 23, 42, 0.6)',
+                              border: isFull
+                                ? '1px solid rgba(51, 65, 85, 0.6)'
+                                : isSelected
+                                ? '1px solid rgba(245, 158, 11, 0.6)'
+                                : '1px solid rgba(51, 65, 85, 0.8)',
+                              opacity: isFull ? 0.65 : 1,
+                              transition: 'all 0.15s ease',
+                            }}
                           >
                             {/* Checkbox e Nome do Item */}
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
                               <input
                                 type="checkbox"
                                 checked={isSelected}
                                 disabled={isFull}
                                 onChange={() => {}}
-                                className="w-3.5 h-3.5 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                                className="accent-amber-500 cursor-pointer disabled:cursor-not-allowed"
+                                style={{ width: '13px', height: '13px', flexShrink: 0 }}
                               />
-                              <div className="min-w-0 flex-1">
-                                <span
-                                  className={`font-semibold block truncate ${
-                                    isFull ? 'text-slate-400' : 'text-slate-100'
-                                  }`}
-                                  title={item.name}
-                                >
-                                  {item.name}
-                                </span>
-                              </div>
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  color: isFull ? '#94a3b8' : '#f1f5f9',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={item.name}
+                              >
+                                {item.name}
+                              </span>
                             </div>
 
                             {/* Valores numéricos ampliados e Badge bem próximos */}
-                            <div className="flex items-center gap-1.5 shrink-0 font-mono">
-                              <span className="text-xs font-bold text-slate-400">{curVal}</span>
-                              <span className="text-xs text-slate-600">→</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, fontFamily: 'monospace' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8' }}>
+                                {curVal}
+                              </span>
+                              <span style={{ fontSize: '10px', color: '#475569' }}>→</span>
                               <span
-                                className={`text-sm font-black ${
-                                  isFull ? 'text-emerald-400' : 'text-amber-300'
-                                }`}
+                                style={{
+                                  fontSize: '12px',
+                                  fontWeight: 900,
+                                  color: isFull ? '#34d399' : '#fcd34d',
+                                }}
                               >
                                 {isFull ? `${curVal}/${maxVal}` : `${nextValue}/${maxVal}`}
                               </span>
                               {isFull ? (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold font-sans">
+                                <span
+                                  style={{
+                                    fontSize: '9px',
+                                    fontWeight: 600,
+                                    padding: '2px 5px',
+                                    borderRadius: '4px',
+                                    background: 'rgba(6, 78, 59, 0.8)',
+                                    color: '#34d399',
+                                    border: '1px solid rgba(6, 95, 70, 0.6)',
+                                    fontFamily: 'sans-serif',
+                                  }}
+                                >
                                   Cheio
                                 </span>
                               ) : (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold font-sans">
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    fontWeight: 'bold',
+                                    padding: '2px 5px',
+                                    borderRadius: '4px',
+                                    background: 'rgba(245, 158, 11, 0.2)',
+                                    color: '#fcd34d',
+                                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                                    fontFamily: 'sans-serif',
+                                  }}
+                                >
                                   +{potentialGain}
                                 </span>
                               )}
@@ -306,16 +541,47 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
         </div>
 
         {/* Footer com respiro nas quinas e botões */}
-        <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-3.5 bg-slate-950 border-t border-slate-800">
-          <span className="text-xs text-slate-300 font-medium truncate pl-1">
-            <strong className="text-amber-400 font-bold">{selectedCount}</strong>{' '}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            background: '#020617',
+            borderTop: '1px solid #1e293b',
+            gap: '12px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '12px',
+              color: '#cbd5e1',
+              fontWeight: 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <strong style={{ color: '#fbbf24', fontWeight: 'bold' }}>{selectedCount}</strong>{' '}
             {selectedCount === 1 ? 'item selecionado' : 'itens selecionados'}
           </span>
-          <div className="flex items-center gap-2.5 shrink-0 pr-1">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+              className="hover:text-white hover:bg-slate-800 transition-colors"
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#94a3b8',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
             >
               Cancelar
             </button>
@@ -323,14 +589,30 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
               type="button"
               onClick={handleConfirm}
               disabled={selectedCount === 0 || charManaList.length === 0}
-              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+              className="hover:opacity-90 active:scale-95 transition-all"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                background: selectedCount === 0 || charManaList.length === 0 ? '#64748b' : '#f59e0b',
+                color: '#020617',
+                border: 'none',
+                cursor: selectedCount === 0 || charManaList.length === 0 ? 'not-allowed' : 'pointer',
+                opacity: selectedCount === 0 || charManaList.length === 0 ? 0.4 : 1,
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
             >
               <Check size={14} strokeWidth={2.5} />
               <span>Confirmar (+{days} Mana{days > 1 ? ` · ${days} Dias` : ''})</span>
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
