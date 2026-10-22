@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Dices } from 'lucide-react';
 
 export interface DicePickerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRoll: (count: number, sides: number) => void;
+  anchorRect?: { top: number; right: number } | null;
 }
 
 // Crisp geometric SVG icons for each polyhedral die
@@ -88,6 +90,7 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
   isOpen,
   onClose,
   onRoll,
+  anchorRect,
 }) => {
   const [customCount, setCustomCount] = useState<number | string>(1);
   const [customSides, setCustomSides] = useState<number>(6);
@@ -117,17 +120,29 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
     handleRollClick(count, sides);
   };
 
-  return (
-    <>
-      {/* Backdrop invisível para capturar cliques fora do card sem escurecer ou desfocar a tela */}
+  return createPortal(
+    <div
+      className="fixed inset-0 select-none pointer-events-auto"
+      style={{ zIndex: 99999 }}
+    >
+      {/* Backdrop 100% invisível para capturar cliques fora do modal sem opacidade nem blur na tela */}
       <div
-        className="fixed inset-0 z-40 bg-transparent select-none"
+        className="fixed inset-0 bg-transparent"
+        style={{ position: 'fixed', inset: 0, zIndex: 99998, background: 'transparent' }}
         onClick={onClose}
       />
-      {/* Popover Card ancorado perto do botão + Dados */}
+      {/* Popover Card ancorado perto do botão + Dados e desvinculado de outros modais */}
       <div
         ref={popoverRef}
-        className="absolute top-full right-0 mt-2 z-50 w-80 sm:w-88 max-w-[calc(100vw-24px)] bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl overflow-hidden font-sans ring-1 ring-black/60"
+        style={{
+          position: 'fixed',
+          top: anchorRect ? `${anchorRect.top}px` : '56px',
+          right: anchorRect ? `${anchorRect.right}px` : '16px',
+          zIndex: 99999,
+          width: '340px',
+          maxWidth: 'calc(100vw - 24px)',
+        }}
+        className="bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl overflow-hidden font-sans ring-1 ring-black/70"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -236,6 +251,7 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
           </form>
         </div>
       </div>
-    </>
+    </div>,
+    document.body
   );
 };

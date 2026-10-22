@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus } from '../utils/onlineSync';
 import { Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid, Dices, Sun, Volume2, VolumeX, Radio, Square } from 'lucide-react';
@@ -56,7 +56,22 @@ export const TopNav: React.FC<TopNavProps> = ({
   onToggleHideGmRolls,
 }) => {
   const [dicePickerOpen, setDicePickerOpen] = useState(false);
+  const [dicePickerCoords, setDicePickerCoords] = useState<{ top: number; right: number } | null>(null);
+  const diceButtonRef = useRef<HTMLButtonElement>(null);
   const [audioState, setAudioState] = useState<AudioStreamState>(() => audioStreamSync.getState());
+
+  const handleToggleDicePicker = () => {
+    if (!dicePickerOpen && diceButtonRef.current) {
+      const rect = diceButtonRef.current.getBoundingClientRect();
+      setDicePickerCoords({
+        top: Math.round(rect.bottom + 8),
+        right: Math.max(12, Math.round(window.innerWidth - rect.right)),
+      });
+      setDicePickerOpen(true);
+    } else {
+      setDicePickerOpen(false);
+    }
+  };
 
   useEffect(() => {
     return audioStreamSync.subscribe((s) => setAudioState(s));
@@ -83,9 +98,42 @@ export const TopNav: React.FC<TopNavProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800/80 px-3 sm:px-6 py-2">
-      <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-4 sm:gap-6 md:gap-8 flex-nowrap overflow-x-auto scrollbar-none">
+      <div
+        className="w-full max-w-[1920px] mx-auto flex items-center justify-between flex-nowrap overflow-x-auto scrollbar-none"
+        style={{ gap: '80px' }}
+      >
         {/* Zone 1: Combat selector / CRUD & Navigation Controls */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-nowrap">
+          {/* Botão Alternar Tela Inicial / Tela Detalhada (PRIMEIRO botão da barra superior) */}
+          {onOpenHomeScreen && (
+            <button
+              type="button"
+              onClick={onOpenHomeScreen}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border ${
+                isHomeScreen
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-white'
+              }`}
+              title={
+                isHomeScreen
+                  ? 'Ir para a Tela Detalhada dos personagens / NPCs'
+                  : 'Voltar para a Tela Inicial (resumo dos personagens / NPCs)'
+              }
+            >
+              {isHomeScreen ? (
+                <>
+                  <FileText size={13} className="text-amber-400" />
+                  <span className="text-[11px] font-semibold">Tela Detalhada</span>
+                </>
+              ) : (
+                <>
+                  <LayoutGrid size={13} className="text-amber-400" />
+                  <span className="text-[11px] font-semibold">Tela Inicial</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* Combat selector & CRUD de combates: Apenas o Mestre escolhe combate; Jogador apenas visualiza */}
           {currentUser?.role === 'mestre' ? (
             <>
@@ -162,36 +210,6 @@ export const TopNav: React.FC<TopNavProps> = ({
               >
                 {editorCount}
               </span>
-            </button>
-          )}
-
-          {/* Botão Alternar Tela Inicial / Tela Detalhada (após Jogadores) */}
-          {onOpenHomeScreen && (
-            <button
-              type="button"
-              onClick={onOpenHomeScreen}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border ${
-                isHomeScreen
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
-                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-white'
-              }`}
-              title={
-                isHomeScreen
-                  ? 'Ir para a Tela Detalhada dos personagens / NPCs'
-                  : 'Voltar para a Tela Inicial (resumo dos personagens / NPCs)'
-              }
-            >
-              {isHomeScreen ? (
-                <>
-                  <FileText size={13} className="text-amber-400" />
-                  <span className="text-[11px] font-semibold">Tela Detalhada</span>
-                </>
-              ) : (
-                <>
-                  <LayoutGrid size={13} className="text-amber-400" />
-                  <span className="text-[11px] font-semibold">Tela Inicial</span>
-                </>
-              )}
             </button>
           )}
 
@@ -353,8 +371,9 @@ export const TopNav: React.FC<TopNavProps> = ({
               <span>1D6</span>
             </button>
             <button
+              ref={diceButtonRef}
               type="button"
-              onClick={() => setDicePickerOpen((prev) => !prev)}
+              onClick={handleToggleDicePicker}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-black rounded-lg transition-all shadow-sm font-mono border cursor-pointer ${
                 dicePickerOpen
                   ? 'bg-amber-500 text-slate-950 border-amber-400'
@@ -370,6 +389,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               isOpen={dicePickerOpen}
               onClose={() => setDicePickerOpen(false)}
               onRoll={(count, sides) => onRollDice?.(count, sides)}
+              anchorRect={dicePickerCoords}
             />
           </div>
         )}
@@ -418,7 +438,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             {audioState.isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
 
-          {/* Slider de Volume */}
+          {/* Slider de Volume (tamanho dobrado) */}
           <div className="flex items-center gap-1.5 shrink-0">
             <input
               type="range"
@@ -426,7 +446,8 @@ export const TopNav: React.FC<TopNavProps> = ({
               max={100}
               value={audioState.isMuted ? 0 : audioState.volume}
               onChange={(e) => audioStreamSync.setVolume(Number(e.target.value))}
-              className="w-8 sm:w-11 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              className="w-16 sm:w-24 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              style={{ width: '80px' }}
               title={`Volume: ${audioState.isMuted ? 'Mutado' : `${audioState.volume}%`}`}
             />
             <span className="text-[10px] font-mono font-bold text-slate-400 w-5 text-right hidden sm:inline">
