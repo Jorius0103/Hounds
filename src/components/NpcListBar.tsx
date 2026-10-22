@@ -64,6 +64,22 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
     try {
       localStorage.setItem('gurps_combat_sort_mode_v1', mode);
     } catch {}
+
+    if (mode === 'mestre') {
+      let fresh = customMasterOrder;
+      if (!fresh || fresh.length === 0) {
+        try {
+          const s = localStorage.getItem('gurps_mesa_master_order_v1');
+          if (s) {
+            const p = JSON.parse(s);
+            if (Array.isArray(p) && p.length > 0) fresh = p;
+          }
+        } catch {}
+      }
+      if (fresh && fresh.length > 0) {
+        setLocalOrderedIds([...fresh]);
+      }
+    }
   };
 
   const isMaster = currentUserRole === 'mestre';
@@ -164,9 +180,19 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
     // Ordem Mestre (disponível para todos os usuários)
     if (sortMode === 'mestre') {
-      const masterOrder = localOrderedIds || customMasterOrder || [];
-      const idxA = masterOrder.indexOf(a.id);
-      const idxB = masterOrder.indexOf(b.id);
+      let masterOrder = localOrderedIds || customMasterOrder;
+      if (!masterOrder || masterOrder.length === 0) {
+        try {
+          const s = localStorage.getItem('gurps_mesa_master_order_v1');
+          if (s) {
+            const p = JSON.parse(s);
+            if (Array.isArray(p) && p.length > 0) masterOrder = p;
+          }
+        } catch {}
+      }
+      const order = masterOrder || [];
+      const idxA = order.indexOf(a.id);
+      const idxB = order.indexOf(b.id);
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
       if (idxA !== -1) return -1;
       if (idxB !== -1) return 1;
@@ -317,13 +343,28 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => handleSelectSortMode('mestre')}
+                onClick={() => {
+                  handleSelectSortMode('mestre');
+                  let fresh = customMasterOrder;
+                  if (!fresh || fresh.length === 0) {
+                    try {
+                      const s = localStorage.getItem('gurps_mesa_master_order_v1');
+                      if (s) {
+                        const p = JSON.parse(s);
+                        if (Array.isArray(p) && p.length > 0) fresh = p;
+                      }
+                    } catch {}
+                  }
+                  if (fresh && fresh.length > 0) {
+                    setLocalOrderedIds([...fresh]);
+                  }
+                }}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
                   sortMode === 'mestre'
                     ? 'bg-purple-950/90 text-purple-300 shadow-sm border border-purple-500/50'
                     : 'text-slate-400 hover:text-purple-300 hover:bg-slate-900'
                 }`}
-                title="Ordem definida pelo Mestre (arraste e solte os cards para reorganizar)"
+                title="Ordem definida pelo Mestre (clique para atualizar a ordem instantaneamente)"
               >
                 <span>👑 Mestre</span>
               </button>

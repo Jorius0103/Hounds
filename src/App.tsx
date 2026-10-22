@@ -168,6 +168,7 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
       const incomingRound = incoming.currentRound ?? (incoming as any).round ?? 0;
       const roundChanged = existingRound !== incomingRound;
       const tacticalChanged = JSON.stringify(existing.tacticalState) !== JSON.stringify(incoming.tacticalState);
+      const customOrderChanged = JSON.stringify(existing.customOrder || []) !== JSON.stringify(incoming.customOrder || []);
 
       // Mescla eventos e rolagens gerais do combate
       const existingEvents = existing.events || [];
@@ -192,7 +193,7 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
       }
       mergedEvents.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
 
-      if (npcsChanged || playerIdsChanged || editorIdsChanged || nameChanged || isActiveChanged || roundChanged || tacticalChanged || eventsChanged) {
+      if (npcsChanged || playerIdsChanged || editorIdsChanged || nameChanged || isActiveChanged || roundChanged || tacticalChanged || eventsChanged || customOrderChanged) {
         changed = true;
       }
       merged.push({
@@ -204,6 +205,7 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
         round: incoming.round !== undefined ? incoming.round : incomingRound,
         playerIds: incoming.playerIds !== undefined ? incoming.playerIds : existing.playerIds,
         editorUserIds: incoming.editorUserIds !== undefined ? incoming.editorUserIds : existing.editorUserIds,
+        customOrder: incoming.customOrder !== undefined ? incoming.customOrder : existing.customOrder,
         isActive: incoming.isActive !== undefined ? incoming.isActive : existing.isActive,
       });
     }
@@ -867,6 +869,21 @@ export default function App() {
         return;
       }
 
+      if (payload.type === 'SYNC_MASTER_ORDER' && Array.isArray(payload.customOrder)) {
+        const newOrder = payload.customOrder;
+        setLocalMasterOrder(newOrder);
+        try {
+          localStorage.setItem('gurps_mesa_master_order_v1', JSON.stringify(newOrder));
+        } catch {}
+        if (payload.combatId) {
+          setCombats((prev) =>
+            prev.map((c) => (c.id === payload.combatId ? { ...c, customOrder: newOrder } : c))
+          );
+        }
+        systemLogger.addLog('SYNC_RECV', `Ordem do Mestre sincronizada em tempo real (${newOrder.length} combatentes)`);
+        return;
+      }
+
       if (payload.type === 'SYNC_FULL') {
         const msgTime = payload.timestamp || 0;
 
@@ -1138,6 +1155,20 @@ export default function App() {
               dodgeCount: incomingNpc.turnActions?.dodgeCount ?? 0,
               blockCount: incomingNpc.turnActions?.blockCount ?? 0,
             });
+          }
+          return;
+        }
+
+        if (event.data?.type === 'SYNC_MASTER_ORDER' && Array.isArray(event.data.customOrder)) {
+          const newOrder = event.data.customOrder;
+          setLocalMasterOrder(newOrder);
+          try {
+            localStorage.setItem('gurps_mesa_master_order_v1', JSON.stringify(newOrder));
+          } catch {}
+          if (event.data.combatId) {
+            setCombats((prev) =>
+              prev.map((c) => (c.id === event.data.combatId ? { ...c, customOrder: newOrder } : c))
+            );
           }
           return;
         }
@@ -1593,18 +1624,48 @@ export default function App() {
       localStorage.setItem('gurps_mesa_master_order_v1', JSON.stringify(newOrderIds));
     } catch {}
 
+    let updatedCombats = combats;
     if (activeCombat) {
-      const updatedCombats = combats.map((c) =>
+      updatedCombats = combats.map((c) =>
         c.id === activeCombat.id ? { ...c, customOrder: newOrderIds } : c
       );
       setCombats(updatedCombats);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
       } catch {}
-      broadcastSync(updatedCombats);
-    } else {
-      broadcastSync();
     }
+
+    // Notificação direta e imediata de alteração da Ordem do Mestre para todos os usuários
+    onlineSyncService.sendPayloadImmediate({
+      type: 'SYNC_MASTER_ORDER',
+      combatId: activeCombat?.id,
+      customOrder: newOrderIds,
+      timestamp: Date.now(),
+    });
+
+    try {
+      broadcastChannelRef.current?.postMessage({
+        type: 'SYNC_MASTER_ORDER',
+        combatId: activeCombat?.id,
+        customOrder: newOrderIds,
+        timestamp: Date.now(),
+      });
+    } catch {}
+
+    if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+      try {
+        (window as any).parent.hubMesaBus.publish(
+          JSON.stringify({
+            type: 'SYNC_MASTER_ORDER',
+            combatId: activeCombat?.id,
+            customOrder: newOrderIds,
+            timestamp: Date.now(),
+          })
+        );
+      } catch {}
+    }
+
+    broadcastSync(updatedCombats, undefined, undefined, undefined, undefined, undefined, true);
   };
 
   // Auxiliares de log automático para todas as alterações na ficha (sem apagar ao voltar ao estado inicial)
