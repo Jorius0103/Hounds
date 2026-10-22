@@ -121,10 +121,11 @@ function renderCharList() {
   var cnt = $('charCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.characters.length : plural(W.characters.length, 'personagem', 'personagens');
   el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (c) {
     var L = charLocations(c.id).length, M = charMaps(c).length, R = charRelations(c).length, sub = charSubtitle(c);
-    return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '>' +
+    return '<a class="loc-card" href="' + charHref(c.id) + '">' +
       '<button class="char-card-present-btn" type="button" data-present-id="' + esc(c.id) + '" title="Apresentar personagem para todos" aria-label="Apresentar ' + esc(c.name) + '">' +
         svg(ICON.present, 14, 2) +
       '</button>' +
+      '<div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '>' +
       '<span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
       '<span class="where">' + (sub ? esc(sub) : 'Sem raça ou organização') + '</span>' + (L || M || R ? '<span class="meta">' + [M ? plural(M, 'mapa', 'mapas') : '', L ? plural(L, 'local', 'locais') : '', R ? plural(R, 'relação', 'relações') : ''].filter(Boolean).join(' · ') + '</span>' : '') + '</div></a>';
   }).join('') + '</div>' : '<p class="lede">Nenhum personagem encontrado para essa busca.</p>';

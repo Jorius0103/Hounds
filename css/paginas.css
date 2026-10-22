@@ -22,7 +22,7 @@
 
 /* Locations */
 .loc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
-.loc-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; text-decoration: none; color: inherit; transition: border-color .15s ease, transform .15s ease; }
+.loc-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; text-decoration: none; color: inherit; transition: border-color .15s ease, transform .15s ease; }
 .loc-card:hover { border-color: var(--line-2); transform: translateY(-2px); }
 .loc-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .loc-card .thumb { aspect-ratio: 16 / 10; position: relative; }
