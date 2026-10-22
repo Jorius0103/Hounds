@@ -250,7 +250,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     let totalNpcs = 0;
     if (Array.isArray(storedCombats)) {
       storedCombats.forEach((c: any) => {
-        if (Array.isArray(c.npcs)) totalNpcs += c.npcs.length;
+        totalNpcs += (c.totalNpcs != null ? c.totalNpcs : (Array.isArray(c.npcs) ? c.npcs.length : 0));
       });
     }
 
@@ -801,7 +801,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                             </div>
                           )}
                           <div className="flex items-center gap-3 text-[10px] text-slate-500 mt-1 font-mono">
-                            <span>{c.npcs?.length || 0} NPCs</span>
+                            <span>{c.totalNpcs != null ? c.totalNpcs : (c.npcs?.length || 0)} NPCs</span>
                             <span>·</span>
                             <span>{c.createdAt}</span>
                           </div>

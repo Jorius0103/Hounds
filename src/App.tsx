@@ -578,6 +578,19 @@ export default function App() {
   const lastAppliedRemoteTimestampRef = useRef<number>(0);
 
   const stateRef = useRef({ combats, conditions, users, activeCombatId, players });
+  const combatsPoolRef = useRef<Record<string, { npcs: NPC[]; events: unknown[] }>>({});
+
+  useEffect(() => {
+    combats.forEach((c) => {
+      if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+        combatsPoolRef.current[c.id] = {
+          npcs: c.npcs,
+          events: c.events || []
+        };
+      }
+    });
+  }, []);
+
   useEffect(() => {
     stateRef.current = { combats, conditions, users, activeCombatId, players };
   }, [combats, conditions, users, activeCombatId, players]);
@@ -601,8 +614,37 @@ export default function App() {
     const finalActiveCombat = updatedActiveCombatId || stateRef.current.activeCombatId;
     const finalPlayers = updatedPlayers || stateRef.current.players;
 
+    // Guarda NPCs no pool para qualquer combate com NPCs carregados
+    finalCombats.forEach((c) => {
+      if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+        combatsPoolRef.current[c.id] = {
+          npcs: c.npcs,
+          events: c.events || []
+        };
+      }
+    });
+
+    // Otimização Online: Envia pacote enxuto para rede e banco
+    // Apenas o combate ativo carrega NPCs; combates inativos trafegam leves com contagem
+    const lightweightCombats = finalCombats.map((c) => {
+      if (c.id === finalActiveCombat) {
+        const pooled = combatsPoolRef.current[c.id];
+        const npcs = (c.npcs && c.npcs.length > 0) ? c.npcs : (pooled ? pooled.npcs : []);
+        const events = (c.events && c.events.length > 0) ? c.events : (pooled ? pooled.events : (c.events || []));
+        return { ...c, npcs, events, totalNpcs: npcs.length };
+      }
+      const poolCount = combatsPoolRef.current[c.id]?.npcs?.length;
+      const count = poolCount != null ? poolCount : (c.totalNpcs != null ? c.totalNpcs : (c.npcs?.length || 0));
+      return {
+        ...c,
+        totalNpcs: count,
+        npcs: [],
+        events: []
+      };
+    });
+
     systemLogger.addLog('SYNC_SEND', 'Sincronização enviada (Broadcast, MQTT & Supabase)', {
-      combatsCount: finalCombats.length,
+      combatsCount: lightweightCombats.length,
       playersCount: finalPlayers.length,
       editTimestamp,
       npcName: updatedNpc?.name,
@@ -644,7 +686,7 @@ export default function App() {
         type: 'SYNC_STATE',
         sourceId: onlineSyncService.getClientId(),
         timestamp: editTimestamp,
-        combats: finalCombats,
+        combats: lightweightCombats,
         conditions: finalConditions,
         users: finalUsers,
         activeCombatId: finalActiveCombat,
@@ -656,7 +698,7 @@ export default function App() {
       type: 'SYNC_FULL',
       clientId: onlineSyncService.getClientId(),
       timestamp: editTimestamp,
-      combats: finalCombats,
+      combats: lightweightCombats,
       conditions: finalConditions,
       users: finalUsers,
       activeCombatId: finalActiveCombat,
@@ -1265,12 +1307,41 @@ export default function App() {
   // Combat Handlers
   const handleSelectCombat = (id: string) => {
     if (currentUser && currentUser.role !== 'mestre') return;
+
+    // Salva o combate que estava ativo no pool antes de trocar
+    const prevActive = stateRef.current.combats.find((c) => c.id === stateRef.current.activeCombatId);
+    if (prevActive && prevActive.id !== 'combat-vazio' && prevActive.npcs && prevActive.npcs.length > 0) {
+      combatsPoolRef.current[prevActive.id] = {
+        npcs: prevActive.npcs,
+        events: prevActive.events || []
+      };
+    }
+
+    // Prepara os combates: o combate selecionado recebe os NPCs do pool (se já descarregado)
+    const targetPool = combatsPoolRef.current[id];
+    const updatedCombats = stateRef.current.combats.map((c) => {
+      if (c.id === id) {
+        const npcs = (c.npcs && c.npcs.length > 0) ? c.npcs : (targetPool ? targetPool.npcs : []);
+        const events = (c.events && c.events.length > 0) ? c.events : (targetPool ? targetPool.events : (c.events || []));
+        return {
+          ...c,
+          npcs,
+          events,
+          totalNpcs: npcs.length
+        };
+      }
+      return c;
+    });
+
+    setCombats(updatedCombats);
+    stateRef.current.combats = updatedCombats;
     setActiveCombatId(id);
     stateRef.current.activeCombatId = id;
     try {
       localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(id));
     } catch (e) {}
-    const target = combats.find((c) => c.id === id);
+
+    const target = updatedCombats.find((c) => c.id === id);
     // Preserva o personagem selecionado se for um Personagem fixo; caso contrário ajusta
     const isCurrentPlayer = players.some((p) => p.id === selectedNpcId);
     if (!isCurrentPlayer) {
@@ -1281,7 +1352,7 @@ export default function App() {
         setSelectedNpcId(players[0].id);
       }
     }
-    broadcastSync(undefined, undefined, undefined, id, undefined, undefined, true);
+    broadcastSync(updatedCombats, undefined, undefined, id, undefined, undefined, true);
   };
 
   const handleRestoreSnapshot = (snap: any) => {

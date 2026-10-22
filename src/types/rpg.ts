@@ -284,6 +284,7 @@ export interface Combat {
   createdAt: string;
   sheetSyncUrl?: string; // URL da Planilha Google (publicada como CSV ou link direto)
   npcs: NPC[];
+  totalNpcs?: number; // Contagem de NPCs para combates em repouso/descarregados
   tacticalState?: TacticalState;
   currentRound?: number;
   round?: number; // O mesmo que currentRound, com o nome usado nos dados mais antigos

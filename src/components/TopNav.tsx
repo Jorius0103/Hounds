@@ -149,7 +149,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                 >
                   {activeCombats.map((c) => (
                     <option key={c.id} value={c.id} className="bg-slate-900 text-white">
-                      {c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio') || c.name.toLowerCase().trim() === 'sem combate' ? 'Sem combate' : `${c.name} (${c.npcs?.length || 0} NPCs)`}
+                      {c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio') || c.name.toLowerCase().trim() === 'sem combate' ? 'Sem combate' : `${c.name} (${c.totalNpcs != null ? c.totalNpcs : (c.npcs?.length || 0)} NPCs)`}
                     </option>
                   ))}
                 </select>

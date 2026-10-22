@@ -40,6 +40,7 @@ var MesaSync = (function () {
   var CH = 60000, head = null, loadedRev = null, state = null, listeners = [], timer = null, pending = null, writing = false;
   var readyRes, ready = new Promise(function (r) { readyRes = r; }), gotHead = false, lastJson = null, lastRaw = null, askTimer = null, hiddenTimer = 0;
   var cid = 'hub-' + uid(), seq = 0, known = {}, knownList = [], npcSeen = {}, npcSeenList = [];
+  var combatsArchive = {};
   // Revisions this browser wrote or already applied: their echoes are skipped.
   function remember(rev) { if (!rev || known[rev]) return; known[rev] = 1; knownList.push(rev); if (knownList.length > 400) delete known[knownList.shift()]; }
   function newRev() { var r = cid + '-' + Date.now() + '-' + (++seq); remember(r); return r; }
@@ -248,6 +249,10 @@ var MesaSync = (function () {
   }
   function onHead(rows) {
     var h0 = rows.filter(function (r) { return r.id === 'state'; })[0] || null;
+    var archRow = rows.filter(function (r) { return r.id === 'combats_archive'; })[0] || null;
+    if (archRow && archRow.archive && typeof archRow.archive === 'object') {
+      combatsArchive = Object.assign({}, archRow.archive, combatsArchive);
+    }
     var first = !gotHead; gotHead = true;
     head = h0;
     if (!h0) { if (first) readyRes(); return; }
@@ -257,6 +262,25 @@ var MesaSync = (function () {
     var rev = h0.rev;
     fetchRev(h0).then(function (st) {
       if (!st || known[rev]) { if (first) readyRes(); return; }
+      if (Array.isArray(st.combats)) {
+        st.combats.forEach(function (c) {
+          if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+            combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
+          }
+        });
+      }
+      var activeId = st.activeCombatId || (st.combats && st.combats[0] && st.combats[0].id) || 'combat-vazio';
+      if (activeId && activeId !== 'combat-vazio' && combatsArchive[activeId]) {
+        st.combats = (st.combats || []).map(function (c) {
+          if (c.id === activeId && (!c.npcs || c.npcs.length === 0)) {
+            return Object.assign({}, c, {
+              npcs: combatsArchive[activeId].npcs || [],
+              events: combatsArchive[activeId].events || c.events || []
+            });
+          }
+          return c;
+        });
+      }
       if (first) {
         var hadEmptyNpcs = Array.isArray(st.combats) && st.combats.some(function (c) { return isSemCombate(c) && Array.isArray(c.npcs) && c.npcs.length > 0; });
         var cleanedCombats = Array.isArray(st.combats) ? st.combats.map(function (c) { return isSemCombate(c) ? Object.assign({}, c, { npcs: [] }) : c; }) : st.combats;
@@ -516,7 +540,42 @@ var MesaSync = (function () {
       if (!eds) {
         try { eds = JSON.parse(localStorage.getItem('gurps_combat_master_editors_v1') || '[]'); } catch (e) {}
       }
-      var st = { combats: ensureSemCombateFirst(m.combats), conditions: m.conditions, players: m.players, activeCombatId: m.activeCombatId || null, deletedCombatIds: del, editors: eds || [] };
+
+      // Arquivamento online de combates: preserva NPCs e eventos de todos os combates salvos
+      var archiveChanged = false;
+      if (Array.isArray(m.combats)) {
+        m.combats.forEach(function (c) {
+          if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+            combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
+            archiveChanged = true;
+          }
+        });
+      }
+      if (del.length > 0) {
+        del.forEach(function (delId) {
+          if (combatsArchive[delId]) {
+            delete combatsArchive[delId];
+            archiveChanged = true;
+          }
+        });
+      }
+      if (archiveChanged && canSave() && W.store && W.store.put) {
+        W.store.put('mesa', 'combats_archive', { id: 'combats_archive', archive: combatsArchive, updatedAt: Date.now() }).catch(function () {});
+      }
+
+      var activeId = m.activeCombatId || null;
+      var processedCombats = ensureSemCombateFirst(m.combats).map(function (c) {
+        if (c.id === activeId) {
+          var pooled = combatsArchive[c.id];
+          var npcs = (c.npcs && c.npcs.length > 0) ? c.npcs : (pooled ? pooled.npcs : []);
+          var events = (c.events && c.events.length > 0) ? c.events : (pooled ? pooled.events : (c.events || []));
+          return Object.assign({}, c, { npcs: npcs, events: events, totalNpcs: npcs.length });
+        }
+        var total = (c.npcs && c.npcs.length > 0) ? c.npcs.length : (combatsArchive[c.id] ? combatsArchive[c.id].npcs.length : (c.totalNpcs || 0));
+        return Object.assign({}, c, { npcs: [], events: [], totalNpcs: total });
+      });
+
+      var st = { combats: processedCombats, conditions: m.conditions, players: m.players, activeCombatId: activeId, deletedCombatIds: del, editors: eds || [] };
       if (imgs) st = swapImgs(st);
       var json = JSON.stringify(st);
       if (json === lastJson) return;
