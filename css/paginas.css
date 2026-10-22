@@ -1129,10 +1129,22 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
   to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
+.char-pres-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.char-pres-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .char-pres-close {
-  position: absolute;
-  top: 14px;
-  right: 14px;
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -1144,7 +1156,6 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
-  z-index: 2;
   padding: 0;
 }
 
@@ -1152,6 +1163,46 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
   background: var(--line-2);
   color: var(--text);
   transform: scale(1.06);
+}
+
+.char-pres-vis-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.char-pres-reveal-btn {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--well);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.char-pres-reveal-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.char-pres-reveal-btn[aria-expanded="true"] {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.char-pres-vis-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto !important;
+  z-index: 100;
+  text-align: left;
 }
 
 .char-pres-badge {
@@ -1167,7 +1218,7 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .char-pres-photo-wrap {

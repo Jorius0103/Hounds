@@ -410,6 +410,15 @@ var CharPresentation = (function () {
     }
   }
 
+  function getRevealTooltipText(item) {
+    if (!item) return 'Revelar para jogadores';
+    if (!isSecret(item)) {
+      return 'Visível para todos (qualquer conta vê)';
+    }
+    var who = (typeof seenBy === 'function') ? seenBy(item) : 'o Mestre';
+    return 'Visível atualmente para: ' + who;
+  }
+
   function show(payload) {
     if (!payload || !payload.charId) return;
     close();
@@ -419,14 +428,42 @@ var CharPresentation = (function () {
     back.className = 'char-pres-backdrop';
     overlayEl = back;
 
+    var master = typeof isMestre === 'function' && isMestre();
+    var charItem = charById(payload.charId) || rawGet('characters', payload.charId);
+    if (!charItem) {
+      charItem = {
+        id: payload.charId,
+        name: payload.name,
+        visible: payload.visible !== false,
+        sharedWith: payload.sharedWith || [],
+        createdBy: payload.createdBy || null
+      };
+    }
+
     var sub = payload.subtitle || [payload.race, payload.organization].filter(Boolean).join(' · ');
+    var revealTooltip = getRevealTooltipText(charItem);
+    var eyeSvg = '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>';
+
+    var revealHtml = master ? (
+      '<span class="char-pres-vis-menu">' +
+        '<button class="char-pres-reveal-btn" type="button" id="charPresVisToggle" aria-haspopup="dialog" aria-expanded="false" title="' + esc(revealTooltip) + '">' +
+          svg(eyeSvg, 14) + '<span>Revelar</span>' + svg('<path d="m6 9 6 6 6-6"/>', 11, 2.2) +
+        '</button>' +
+        '<span class="vis-pop char-pres-vis-pop" id="charPresVisPop" role="dialog" aria-label="Revelar para" hidden></span>' +
+      '</span>'
+    ) : '';
 
     back.innerHTML =
       '<div class="char-pres-card" role="dialog" aria-modal="true" aria-labelledby="charPresTitle">' +
-        '<button class="char-pres-close" type="button" id="charPresClose" aria-label="Fechar" title="Fechar (Esc)">' +
-          svg(ICON.x, 16, 2.2) +
-        '</button>' +
-        '<div class="char-pres-badge">' + svg(ICON.present, 13, 2) + '<span>Personagem</span></div>' +
+        '<div class="char-pres-header">' +
+          '<div class="char-pres-badge">' + svg(ICON.present, 13, 2) + '<span>Personagem</span></div>' +
+          '<div class="char-pres-top-actions">' +
+            revealHtml +
+            '<button class="char-pres-close" type="button" id="charPresClose" aria-label="Fechar" title="Fechar (Esc)">' +
+              svg(ICON.x, 16, 2.2) +
+            '</button>' +
+          '</div>' +
+        '</div>' +
         '<div class="char-pres-photo-wrap" id="charPresPhoto">' +
           '<span class="char-pres-initials">' + esc(initials(payload.name || 'P')) + '</span>' +
         '</div>' +
@@ -468,7 +505,128 @@ var CharPresentation = (function () {
       };
     }
 
+    // Interações do menu Revelar (Mestre)
+    if (master) {
+      var revBtn = document.getElementById('charPresVisToggle');
+      var revPop = document.getElementById('charPresVisPop');
+      var revDraft = null;
+
+      var users = (W.users || []).filter(function (u) { return u.role !== 'mestre'; }).sort(byName);
+      var had = (charItem.sharedWith || []).filter(function (id) {
+        return id !== charItem.createdBy && users.some(function (u) { return u.id === id; });
+      });
+
+      function sameIds(a, b) {
+        return a.length === b.length && a.every(function (id) { return b.indexOf(id) >= 0; });
+      }
+
+      function syncRev() {
+        var all = revPop.querySelector('[data-all]');
+        var list = revPop.querySelector('.vis-users');
+        if (!all) return;
+        revDraft.all = all.checked;
+        revDraft.ids = [].map.call(revPop.querySelectorAll('input[data-share]:checked:not([data-creator])'), function (el) {
+          return el.getAttribute('data-share');
+        });
+        if (list) {
+          list.classList.toggle('off', all.checked);
+          list.querySelectorAll('input:not([data-creator])').forEach(function (el) { el.disabled = all.checked; });
+        }
+        var saveBtn = revPop.querySelector('[data-save]');
+        if (saveBtn) {
+          var wasAll = charItem.visible !== false;
+          saveBtn.disabled = (revDraft.all === wasAll) && (!revDraft.all ? sameIds(revDraft.ids, had) : true);
+        }
+      }
+
+      function openRev() {
+        var isCurrentlyAll = charItem.visible !== false;
+        revDraft = { id: charItem.id, all: isCurrentlyAll, ids: had.slice() };
+        var d = revDraft;
+        revPop.innerHTML =
+          '<span class="lab">Mostrar para</span>' +
+          '<label class="vis-user vis-all"><input type="checkbox" data-all' + (d.all ? ' checked' : '') + '><span>Todos</span><small>Qualquer conta vê</small></label>' +
+          (users.length ? '<span class="vis-users">' + users.map(function (u) {
+            var creator = charItem.createdBy === u.id;
+            return '<label class="vis-user"><input type="checkbox" data-share="' + esc(u.id) + '"' + (creator ? ' data-creator' : '') +
+              (creator || d.ids.indexOf(u.id) >= 0 ? ' checked' : '') + (creator ? ' disabled' : '') + '>' +
+              '<span>' + esc(u.name) + '</span><small>' + (creator ? 'Criou' : esc(typeof roleLabel === 'function' ? roleLabel(u.role) : u.role)) + '</small></label>';
+          }).join('') + '</span>' : '') +
+          '<span class="btn-row"><button class="btn ghost" type="button" data-cancel>Cancelar</button><button class="btn primary" type="button" data-save>Salvar</button></span>';
+
+        revPop.hidden = false;
+        revBtn.setAttribute('aria-expanded', 'true');
+        syncRev();
+      }
+
+      function closeRev() {
+        revDraft = null;
+        if (revPop) revPop.hidden = true;
+        if (revBtn) revBtn.setAttribute('aria-expanded', 'false');
+      }
+
+      revBtn.onmouseenter = function () {
+        revBtn.setAttribute('title', getRevealTooltipText(charItem));
+      };
+
+      revBtn.onclick = function (e) {
+        e.stopPropagation();
+        if (revPop.hidden) {
+          openRev();
+          var f = revPop.querySelector('input');
+          if (f) f.focus();
+        } else {
+          closeRev();
+        }
+      };
+
+      revPop.onchange = syncRev;
+
+      revPop.onclick = function (e) {
+        e.stopPropagation();
+        if (e.target.closest('[data-cancel]')) {
+          closeRev();
+          revBtn.focus();
+          return;
+        }
+        var save = e.target.closest('[data-save]');
+        if (!save) return;
+        var d = revDraft;
+        var p = d.all ? { visible: true, updatedAt: now() } : { visible: false, sharedWith: d.ids, updatedAt: now() };
+        save.disabled = true;
+
+        W.store.patch('characters', charItem.id, p).then(function () {
+          charItem.visible = !!d.all;
+          charItem.sharedWith = d.ids;
+          payload.visible = !!d.all;
+          payload.sharedWith = d.ids;
+          had = d.ids.slice();
+
+          var newTooltip = getRevealTooltipText(charItem);
+          revBtn.setAttribute('title', newTooltip);
+
+          closeRev();
+          toast(d.all ? 'Agora todos podem ver.' : 'Agora só ' + seenBy(charItem) + ' ' + seenVerb(charItem) + '.');
+
+          // Se revelado para novas contas, sincroniza em tempo real
+          if (W.store && W.store.realtime && typeof W.store.realtime.send === 'function') {
+            W.store.realtime.send('char-presentation', payload);
+          }
+        }, function (er) {
+          save.disabled = false;
+          toast(errorText(er), true);
+        });
+      };
+    }
+
     back.onclick = function (e) {
+      var revPop = document.getElementById('charPresVisPop');
+      if (revPop && !revPop.hidden && !e.target.closest('.char-pres-vis-menu')) {
+        revPop.hidden = true;
+        var revBtn = document.getElementById('charPresVisToggle');
+        if (revBtn) revBtn.setAttribute('aria-expanded', 'false');
+        return;
+      }
       if (e.target === back) close();
     };
 
@@ -476,6 +634,16 @@ var CharPresentation = (function () {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
+        var revPop = document.getElementById('charPresVisPop');
+        if (revPop && !revPop.hidden) {
+          revPop.hidden = true;
+          var revBtn = document.getElementById('charPresVisToggle');
+          if (revBtn) {
+            revBtn.setAttribute('aria-expanded', 'false');
+            revBtn.focus();
+          }
+          return;
+        }
         close();
       }
     };
