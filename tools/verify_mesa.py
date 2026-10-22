@@ -35,3 +35,4 @@ elif '<div id="root">' in res.stdout:
     print(res.stdout[root_idx:root_idx+500])
 else:
     print("Root div not found!")
+
