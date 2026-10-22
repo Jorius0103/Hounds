@@ -259,7 +259,7 @@ new_comp = """var PassDayModalComponent = ({isOpen, onClose, players, onConfirm}
               children: [
                 (0, ct.jsxs)("svg", { viewBox: "0 0 24 24", width: "28", height: "28", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", style: { margin: "0 auto 8px", color: "#64748b" }, children: [(0, ct.jsx)("circle", { cx: "12", cy: "12", r: "10" }), (0, ct.jsx)("line", { x1: "12", y1: "8", x2: "12", y2: "12" }), (0, ct.jsx)("line", { x1: "12", y1: "16", x2: "12.01", y2: "16" })] }),
                 (0, ct.jsx)("p", { style: { fontSize: "13px", fontWeight: 600, color: "#e2e8f0", margin: "0 0 4px" }, children: "Nenhum Item de Mana encontrado nos Personagens" }),
-                (0, ct.jsx)("p", { style: { fontSize: "11px", color: "#64748b", maxWidth: "360px", margin: "0 auto", lineHeight: "1.4" }, children: "Cadastre itens com a categoria \"Mana\" na seção de Itens Extras & Recursos dos Personagens para recarregá-los aqui." })
+                (0, ct.jsx)("p", { style: { fontSize: "11px", color: "#64748b", maxWidth: "360px", margin: "0 auto", lineHeight: "1.4" }, children: 'Cadastre itens com a categoria "Mana" na seção de Itens Extras & Recursos dos Personagens para recarregá-los aqui.' })
               ]
             })
           ) : (
