@@ -636,18 +636,6 @@ export default function App() {
       }
     }
 
-    const getLocalSnaps = () => {
-      try {
-        const s = localStorage.getItem('hounds_mesa_snapshots_v1');
-        if (s) {
-          const p = JSON.parse(s);
-          if (Array.isArray(p)) return p;
-        }
-      } catch (e) {}
-      return [];
-    };
-    const currentSnaps = getLocalSnaps();
-
     // E sincroniza o estado global via Broadcast, MQTT e Supabase
     try {
       broadcastChannelRef.current?.postMessage({
@@ -659,11 +647,10 @@ export default function App() {
         users: finalUsers,
         activeCombatId: finalActiveCombat,
         players: finalPlayers,
-        snapshots: currentSnaps,
       });
     } catch (e) {}
 
-    const fullPayload: RemoteSyncPayload & { snapshots?: any[] } = {
+    const fullPayload: RemoteSyncPayload = {
       type: 'SYNC_FULL',
       clientId: onlineSyncService.getClientId(),
       timestamp: editTimestamp,
@@ -672,7 +659,6 @@ export default function App() {
       users: finalUsers,
       activeCombatId: finalActiveCombat,
       players: finalPlayers,
-      snapshots: currentSnaps,
     };
 
     if (isImmediate) {
