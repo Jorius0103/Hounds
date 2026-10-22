@@ -121,10 +121,22 @@ function renderCharList() {
   var cnt = $('charCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.characters.length : plural(W.characters.length, 'personagem', 'personagens');
   el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (c) {
     var L = charLocations(c.id).length, M = charMaps(c).length, R = charRelations(c).length, sub = charSubtitle(c);
-    return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
+    return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '>' +
+      '<button class="char-card-present-btn" type="button" data-present-id="' + esc(c.id) + '" title="Apresentar personagem para todos" aria-label="Apresentar ' + esc(c.name) + '">' +
+        svg(ICON.present, 14, 2) +
+      '</button>' +
+      '<span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
       '<span class="where">' + (sub ? esc(sub) : 'Sem raça ou organização') + '</span>' + (L || M || R ? '<span class="meta">' + [M ? plural(M, 'mapa', 'mapas') : '', L ? plural(L, 'local', 'locais') : '', R ? plural(R, 'relação', 'relações') : ''].filter(Boolean).join(' · ') + '</span>' : '') + '</div></a>';
   }).join('') + '</div>' : '<p class="lede">Nenhum personagem encontrado para essa busca.</p>';
   fillImages(el);
+  el.querySelectorAll('.char-card-present-btn').forEach(function (btn) {
+    btn.onclick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var cid = btn.getAttribute('data-present-id');
+      if (cid && window.CharPresentation) CharPresentation.broadcast(cid);
+    };
+  });
 }
 
 function renderCharPage() {
@@ -376,3 +388,181 @@ function openCharForm(c) {
       });
   };
 }
+
+/* =====================================================================
+   Apresentação de Personagem em Tempo Real (Broadcast / Showcase)
+   Transmite a foto e dados do personagem para todos os usuários com
+   permissão, independente da tela em que estejam na aplicação.
+   ===================================================================== */
+var CharPresentation = (function () {
+  var overlayEl = null;
+  var keyHandler = null;
+
+  function close() {
+    if (overlayEl) {
+      overlayEl.remove();
+      overlayEl = null;
+    }
+    if (keyHandler) {
+      document.removeEventListener('keydown', keyHandler, true);
+      keyHandler = null;
+    }
+  }
+
+  function show(payload) {
+    if (!payload || !payload.charId) return;
+    close();
+
+    var back = document.createElement('div');
+    back.id = 'charPresentationBack';
+    back.className = 'char-pres-backdrop';
+    overlayEl = back;
+
+    var sub = payload.subtitle || [payload.race, payload.organization].filter(Boolean).join(' · ');
+
+    back.innerHTML =
+      '<div class="char-pres-card" role="dialog" aria-modal="true" aria-labelledby="charPresTitle">' +
+        '<button class="char-pres-close" type="button" id="charPresClose" aria-label="Fechar" title="Fechar (Esc)">' +
+          svg(ICON.x, 16, 2.2) +
+        '</button>' +
+        '<div class="char-pres-badge">' + svg(ICON.present, 13, 2) + '<span>Personagem</span></div>' +
+        '<div class="char-pres-photo-wrap" id="charPresPhoto">' +
+          '<span class="char-pres-initials">' + esc(initials(payload.name || 'P')) + '</span>' +
+        '</div>' +
+        '<h2 class="char-pres-name" id="charPresTitle">' + esc(payload.name || '') + '</h2>' +
+        (sub ? '<p class="char-pres-sub">' + esc(sub) + '</p>' : '') +
+        '<div class="char-pres-actions">' +
+          '<button class="btn primary char-pres-btn-more" type="button" id="charPresMore">' +
+            svg(ICON.user, 15) + '<span>Ver mais informações</span>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(back);
+
+    // Carrega a foto se houver referência de imagem
+    if (payload.imageRef && W.store && typeof W.store.imageUrl === 'function') {
+      W.store.imageUrl(payload.imageRef).then(function (url) {
+        if (!url || !overlayEl) return;
+        var pw = document.getElementById('charPresPhoto');
+        if (pw) {
+          pw.innerHTML = '<img src="' + esc(url) + '" alt="' + esc(payload.name || '') + '">';
+        }
+      }).catch(function () {});
+    }
+
+    var closeBtn = document.getElementById('charPresClose');
+    if (closeBtn) closeBtn.onclick = close;
+
+    var moreBtn = document.getElementById('charPresMore');
+    if (moreBtn) {
+      moreBtn.onclick = function () {
+        close();
+        var targetHash = charHref(payload.charId);
+        if (typeof go === 'function') {
+          go(targetHash);
+        } else {
+          window.location.hash = targetHash;
+        }
+      };
+    }
+
+    back.onclick = function (e) {
+      if (e.target === back) close();
+    };
+
+    keyHandler = function (e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      }
+    };
+    document.addEventListener('keydown', keyHandler, true);
+  }
+
+  function broadcast(id) {
+    var c = charById(id);
+    if (!c) {
+      c = (W.characters || []).filter(function (x) { return x.id === id; })[0];
+    }
+    if (!c) return;
+
+    var payload = {
+      type: 'CHAR_PRESENTATION',
+      charId: c.id,
+      name: c.name,
+      race: c.race || '',
+      subtitle: charSubtitle(c) || '',
+      organization: (typeof charOrgText === 'function' ? charOrgText(c) : '') || '',
+      imageRef: c.image ? c.image.ref : null,
+      visible: c.visible !== false,
+      createdBy: c.createdBy || null,
+      sharedWith: c.sharedWith || [],
+      ts: Date.now()
+    };
+
+    // Abre localmente
+    show(payload);
+
+    // Envia via Realtime (Supabase)
+    if (W.store && W.store.realtime && typeof W.store.realtime.send === 'function') {
+      W.store.realtime.send('char-presentation', payload);
+    }
+
+    // Sincroniza via localStorage para outras abas no mesmo browser
+    try {
+      localStorage.setItem('hounds_char_presentation', JSON.stringify({ payload: payload, ts: Date.now() }));
+    } catch (e) {}
+
+    toast('Apresentando ' + c.name + ' para todos.');
+  }
+
+  function onReceive(payload) {
+    if (!payload || !payload.charId) return;
+
+    // Permissão: verifica se o usuário conectado tem permissão para ver
+    var canSee = (typeof isMestre === 'function' && isMestre());
+    if (!canSee) {
+      var c = charById(payload.charId);
+      if (c) {
+        canSee = !isSecret(c) || isMine(c) || sharedWithMe(c);
+      } else {
+        var myId = typeof me === 'function' ? me() : null;
+        canSee = (payload.visible !== false) ||
+                 (!!myId && payload.createdBy === myId) ||
+                 (!!myId && Array.isArray(payload.sharedWith) && payload.sharedWith.indexOf(myId) >= 0);
+      }
+    }
+
+    if (!canSee) return;
+
+    show(payload);
+  }
+
+  function init() {
+    if (W.store && W.store.realtime && typeof W.store.realtime.on === 'function') {
+      W.store.realtime.on('char-presentation', onReceive);
+    }
+  }
+
+  // Listener para sincronização entre abas do mesmo navegador
+  window.addEventListener('storage', function (e) {
+    if (e.key === 'hounds_char_presentation' && e.newValue) {
+      try {
+        var data = JSON.parse(e.newValue);
+        if (data && data.payload && (Date.now() - (data.ts || 0) < 30000)) {
+          onReceive(data.payload);
+        }
+      } catch (err) {}
+    }
+  });
+
+  return {
+    broadcast: broadcast,
+    show: show,
+    close: close,
+    onReceive: onReceive,
+    init: init
+  };
+})();

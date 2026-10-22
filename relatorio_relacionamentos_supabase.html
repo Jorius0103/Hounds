@@ -1,0 +1,1140 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Arquitetura de Dados e Relacionamentos - Hounds RPG & Supabase</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 14mm 12mm 14mm 12mm;
+  }
+  @page :left {
+    @bottom-left { content: "Hounds RPG — Arquitetura de Dados Supabase"; }
+    @bottom-right { content: counter(page); }
+  }
+  @page :right {
+    @bottom-left { content: "Hounds RPG — Arquitetura de Dados Supabase"; }
+    @bottom-right { content: counter(page); }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    background: #ffffff;
+    font-size: 9.5pt;
+    line-height: 1.45;
+    margin: 0;
+    padding: 0;
+  }
+
+  h1, h2, h3, h4 { color: #0f172a; margin-top: 0; font-weight: 700; }
+  h1 { font-size: 20pt; margin-bottom: 4px; color: #1e3a8a; }
+  .subtitle { font-size: 11pt; color: #475569; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+  
+  .header-box {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    color: white;
+    padding: 24px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+  }
+  .header-box h1 { color: #ffffff; margin: 0 0 6px 0; }
+  .header-box p { margin: 0; color: #cbd5e1; font-size: 10.5pt; }
+  .header-meta { margin-top: 14px; display: flex; gap: 20px; font-size: 9pt; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 10px; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .stat-card .val { font-size: 19pt; font-weight: 800; color: #1e3a8a; }
+  .stat-card .lbl { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-top: 2px; }
+
+  .ans-box {
+    background: #f0fdf4;
+    border-left: 4px solid #16a34a;
+    padding: 14px 18px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 18px;
+  }
+  .ans-box.alt {
+    background: #f0f9ff;
+    border-left: 4px solid #0284c7;
+  }
+  .ans-box h3 { margin-bottom: 6px; font-size: 11pt; }
+  .ans-box p { margin: 0 0 6px 0; font-size: 9.5pt; color: #1e293b; }
+  .ans-box p:last-child { margin-bottom: 0; }
+
+  .section { margin-bottom: 26px; }
+  .section h2 {
+    font-size: 13pt;
+    color: #1e3a8a;
+    border-bottom: 1.5px solid #cbd5e1;
+    padding-bottom: 5px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .section h2 span.badge {
+    font-size: 8.5pt;
+    font-weight: 600;
+    background: #e2e8f0;
+    color: #334155;
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 8.5pt;
+  }
+  th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 2px solid #cbd5e1;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  td {
+    padding: 5.5px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+  }
+  tr:nth-child(even) td { background: #f8fafc; }
+  
+  .badge-card {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 7.5pt;
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .badge-cascade { background: #fee2e2; color: #991b1b; }
+  .badge-setnull { background: #fef3c7; color: #92400e; }
+  .badge-restrict { background: #e0e7ff; color: #3730a3; }
+  .badge-fk { background: #e0f2fe; color: #0369a1; font-family: monospace; font-size: 8pt; }
+  .badge-target { background: #f1f5f9; color: #334155; font-family: monospace; font-size: 8pt; font-weight: 600; }
+
+  .page-break { page-break-before: always; }
+  .avoid-break { page-break-inside: avoid; }
+  
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .arch-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    background: #ffffff;
+  }
+  .arch-card h4 { margin: 0 0 6px 0; font-size: 10pt; color: #0f172a; }
+  .arch-card p { margin: 0; font-size: 8.8pt; color: #475569; }
+</style>
+</head>
+<body>
+
+<div class="header-box">
+  <h1>Relatório de Arquitetura de Dados & Relacionamentos</h1>
+  <p>Análise Completa da Estrutura Relacional no Supabase PostgreSQL — Hounds RPG</p>
+  <div class="header-meta">
+    <div><strong>Sistema:</strong> Hounds RPG Virtual Tabletop</div>
+    <div><strong>Banco de Dados:</strong> Supabase (PostgreSQL 15+)</div>
+    <div><strong>Data do Relatório:</strong> 22/10/2026 12:33</div>
+    <div><strong>Total de Migrations:</strong> 44 versões ativas</div>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="val">86</div>
+    <div class="lbl">Tabelas Relacionais</div>
+  </div>
+  <div class="stat-card">
+    <div class="val">123</div>
+    <div class="lbl">Chaves Estrangeiras (FK)</div>
+  </div>
+  <div class="stat-card">
+    <div class="val">18</div>
+    <div class="lbl">Tabelas Compartilhamento</div>
+  </div>
+  <div class="stat-card">
+    <div class="val">100%</div>
+    <div class="lbl">Normalizado / Relacional</div>
+  </div>
+</div>
+
+<div class="section avoid-break">
+  <h2>1. Resumo Executivo: Respostas às Questões Centrais</h2>
+  
+  <div class="ans-box">
+    <h3 style="color:#166534;">1. O banco está gravando em tabelas ou está gravando o JSON inteiro?</h3>
+    <p><strong>ESTÁ GRAVANDO EM TABELAS RELACIONAIS FORTEMENTE TIPADAS.</strong></p>
+    <p>O Hounds <strong>não grava documentos em JSON inteiro</strong>. A estrutura original legada (tabela <code>hounds_docs</code>, estilo NoSQL com JSONB monólitico) foi substituída por completo a partir da migração <code>20261014120100</code>. Hoje, cada entidade possui sua tabela dedicada com colunas normalizadas (números inteiros, textos, booleanos, timestamps), chaves primárias e chaves estrangeiras com integridade referencial.</p>
+    <p style="font-size: 8.5pt; color: #15803d; margin-top: 4px;"><em>Uso estrito de JSONB: Apenas atributos espaciais dinâmicos inerentes do VTT (paredes vetoriais, névoa de guerra do tabuleiro, rolagens de dados do chat e chunks temporários da mesa em tempo real) permanecem em colunas JSONB. Todo o restante é estritamente relacional.</em></p>
+  </div>
+
+  <div class="ans-box alt">
+    <h3 style="color:#0369a1;">2. Como funciona o relacionamento e a sincronização com o Supabase?</h3>
+    <p>A arquitetura opera em 3 camadas de alto desempenho:</p>
+    <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 9pt; color: #334155;">
+      <li><strong>Leituras Otimizadas via Views SQL (<code>&lt;tabela&gt;_doc</code>):</strong> Cada tabela principal conta com uma view correspondente com <code>security_invoker = true</code> que reúne a entidade principal e suas junções filhas e vínculos em um formato pronto para consumo da interface.</li>
+      <li><strong>Gravação Transacional Segura via RPCs (Funções do Banco):</strong> Nenhuma escrita direta é autorizada via REST comum. Todas as alterações passam por <code>hounds_put</code>, <code>hounds_patch</code>, <code>hounds_remove</code>, executando em transação atômica ACID (tudo grava ou faz rollback).</li>
+      <li><strong>Sincronização Realtime Eficiente:</strong> Apenas tabelas dinâmicas de jogo ativo (tabuleiros, tokens, turnos, chat e cabeçalho da mesa) transmitem eventos via Supabase Realtime, economizando largura de banda e respeitando as permissões de visibilidade via RLS.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section avoid-break">
+  <h2>2. Arquitetura de Módulos e Fluxo de Dados</h2>
+  <div class="arch-grid">
+    <div class="arch-card">
+      <h4>🏢 Entidades Principais & Vínculos de Mundo</h4>
+      <p>Hierarquias recursivas de Mapas (<code>mapa_pai_id</code>) e Locais (<code>local_pai_id</code>) sem limite de níveis com validação anti-ciclo. Vínculos N:M entre Personagens, Organizações e Locais com integridade relacional.</p>
+    </div>
+    <div class="arch-card">
+      <h4>📜 Sistema de Fichas e Regras GURPS</h4>
+      <p>Ficha decomposta em mais de 20 tabelas filhas: atributos, perícias, vantagens, desvantagens, peculiaridades, pontos, 8 partes anatômicas de corpo, mochilas independentes e baús/casas.</p>
+    </div>
+    <div class="arch-card">
+      <h4>⚔️ Customização Modular (Low-Tech)</h4>
+      <p>Criação detalhada de Armaduras Modulares, Armas Personalizadas e Escudos com tabelas vinculadas a ataques, modificadores livres, percentuais de peso e custo calculado.</p>
+    </div>
+    <div class="arch-card">
+      <h4>🎲 Mesa Virtual (VTT) & Realtime</h4>
+      <p>Tabuleiros, iluminação, paredes, tokens vinculados a personagens com donos definidos, ordem de turnos, log criptografado de rolagens de dados no chat e sussurros confidenciais.</p>
+    </div>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<div class="section">
+  <h2>3. Detalhamento dos Relacionamentos por Categoria <span class="badge">123 Vínculos Mapeados</span></h2>  <div class="avoid-break" style="margin-top: 18px;">
+    <h3 style="font-size: 10.5pt; color: #1e3a8a; border-left: 3px solid #3b82f6; padding-left: 8px; margin-bottom: 8px;">
+      Autenticação & Usuários <span style="font-size: 8pt; font-weight: normal; color: #64748b;">(1 relacionamentos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Tabela Origem (Source)</th>
+          <th style="width: 23%;">Coluna Chave</th>
+          <th style="width: 25%;">Tabela Destino (Target)</th>
+          <th style="width: 14%;">On Delete</th>
+          <th style="width: 13%;">Migration</th>
+        </tr>
+      </thead>
+      <tbody>        <tr>
+          <td><strong>usuario_email</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261015120000_autenticacao.sql">autenticacao</td>
+        </tr>      </tbody>
+    </table>
+  </div>  <div class="avoid-break" style="margin-top: 18px;">
+    <h3 style="font-size: 10.5pt; color: #1e3a8a; border-left: 3px solid #3b82f6; padding-left: 8px; margin-bottom: 8px;">
+      Catálogos de Regras GURPS <span style="font-size: 8pt; font-weight: normal; color: #64748b;">(12 relacionamentos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Tabela Origem (Source)</th>
+          <th style="width: 23%;">Coluna Chave</th>
+          <th style="width: 25%;">Tabela Destino (Target)</th>
+          <th style="width: 14%;">On Delete</th>
+          <th style="width: 13%;">Migration</th>
+        </tr>
+      </thead>
+      <tbody>        <tr>
+          <td><strong>arma_ataque</strong></td>
+          <td><span class="badge-fk">arma_id</span></td>
+          <td><span class="badge-target">armas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261020120000_armas_armaduras.sql">armas_armaduras</td>
+        </tr>        <tr>
+          <td><strong>armaduras</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261020120000_armas_armaduras.sql">armas_armaduras</td>
+        </tr>        <tr>
+          <td><strong>armas</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261020120000_armas_armaduras.sql">armas_armaduras</td>
+        </tr>        <tr>
+          <td><strong>desvantagens</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261021120000_desvantagens.sql">desvantagens</td>
+        </tr>        <tr>
+          <td><strong>estilos</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>itens</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261022120000_itens.sql">itens</td>
+        </tr>        <tr>
+          <td><strong>magias</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>melhoramentos</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261103120000_melhoramentos.sql">melhoramentos</td>
+        </tr>        <tr>
+          <td><strong>pericias</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>tecnicas</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>vantagem_efeito</strong></td>
+          <td><span class="badge-fk">vantagem_id</span></td>
+          <td><span class="badge-target">vantagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261102120000_vantagem_efeitos.sql">vantagem_efeitos</td>
+        </tr>        <tr>
+          <td><strong>vantagens</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>      </tbody>
+    </table>
+  </div>  <div class="avoid-break" style="margin-top: 18px;">
+    <h3 style="font-size: 10.5pt; color: #1e3a8a; border-left: 3px solid #3b82f6; padding-left: 8px; margin-bottom: 8px;">
+      Controle de Compartilhamento / Acesso <span style="font-size: 8pt; font-weight: normal; color: #64748b;">(34 relacionamentos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Tabela Origem (Source)</th>
+          <th style="width: 23%;">Coluna Chave</th>
+          <th style="width: 25%;">Tabela Destino (Target)</th>
+          <th style="width: 14%;">On Delete</th>
+          <th style="width: 13%;">Migration</th>
+        </tr>
+      </thead>
+      <tbody>        <tr>
+          <td><strong>arma_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">armas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261020120000_armas_armaduras.sql">armas_armaduras</td>
+        </tr>        <tr>
+          <td><strong>arma_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261020120000_armas_armaduras.sql">armas_armaduras</td>
+        </tr>        <tr>
+          <td><strong>armadura_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">armaduras (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261020120000_armas_armaduras.sql">armas_armaduras</td>
+        </tr>        <tr>
+          <td><strong>armadura_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261020120000_armas_armaduras.sql">armas_armaduras</td>
+        </tr>        <tr>
+          <td><strong>desvantagem_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">desvantagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261021120000_desvantagens.sql">desvantagens</td>
+        </tr>        <tr>
+          <td><strong>desvantagem_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261021120000_desvantagens.sql">desvantagens</td>
+        </tr>        <tr>
+          <td><strong>estilo_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">estilos (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>estilo_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>evento_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">eventos (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>evento_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>item_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">itens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261022120000_itens.sql">itens</td>
+        </tr>        <tr>
+          <td><strong>item_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261022120000_itens.sql">itens</td>
+        </tr>        <tr>
+          <td><strong>local_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">locais (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>local_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>magia_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">magias (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>magia_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>mapa_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">mapas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>mapa_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>melhoramento_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">melhoramentos (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261103120000_melhoramentos.sql">melhoramentos</td>
+        </tr>        <tr>
+          <td><strong>melhoramento_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261103120000_melhoramentos.sql">melhoramentos</td>
+        </tr>        <tr>
+          <td><strong>organizacao_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">organizacoes (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>organizacao_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>pericia_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">pericias (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>pericia_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagem_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">personagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagem_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">tabuleiros (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>        <tr>
+          <td><strong>tecnica_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">tecnicas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>tecnica_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>vantagem_compartilhamento</strong></td>
+          <td><span class="badge-fk">item_id</span></td>
+          <td><span class="badge-target">vantagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>vantagem_compartilhamento</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>      </tbody>
+    </table>
+  </div>  <div class="avoid-break" style="margin-top: 18px;">
+    <h3 style="font-size: 10.5pt; color: #1e3a8a; border-left: 3px solid #3b82f6; padding-left: 8px; margin-bottom: 8px;">
+      Entidades Principais do Mundo <span style="font-size: 8pt; font-weight: normal; color: #64748b;">(15 relacionamentos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Tabela Origem (Source)</th>
+          <th style="width: 23%;">Coluna Chave</th>
+          <th style="width: 25%;">Tabela Destino (Target)</th>
+          <th style="width: 14%;">On Delete</th>
+          <th style="width: 13%;">Migration</th>
+        </tr>
+      </thead>
+      <tbody>        <tr>
+          <td><strong>anotacoes</strong></td>
+          <td><span class="badge-fk">caderno_id</span></td>
+          <td><span class="badge-target">cadernos (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>anotacoes</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>cadernos</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>eventos</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>eventos</strong></td>
+          <td><span class="badge-fk">local_id</span></td>
+          <td><span class="badge-target">locais (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>locais</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>locais</strong></td>
+          <td><span class="badge-fk">local_pai_id</span></td>
+          <td><span class="badge-target">locais (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>locais</strong></td>
+          <td><span class="badge-fk">mapa_id</span></td>
+          <td><span class="badge-target">mapas (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>mapas</strong></td>
+          <td><span class="badge-fk">mapa_pai_id</span></td>
+          <td><span class="badge-target">mapas (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>marcadores</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>marcadores</strong></td>
+          <td><span class="badge-fk">local_id</span></td>
+          <td><span class="badge-target">locais (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>marcadores</strong></td>
+          <td><span class="badge-fk">mapa_id</span></td>
+          <td><span class="badge-target">mapas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>marcadores</strong></td>
+          <td><span class="badge-fk">mapa_vinculado_id</span></td>
+          <td><span class="badge-target">mapas (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>organizacoes</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagens</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>      </tbody>
+    </table>
+  </div>  <div class="avoid-break" style="margin-top: 18px;">
+    <h3 style="font-size: 10.5pt; color: #1e3a8a; border-left: 3px solid #3b82f6; padding-left: 8px; margin-bottom: 8px;">
+      Fichas & Sistema GURPS <span style="font-size: 8pt; font-weight: normal; color: #64748b;">(35 relacionamentos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Tabela Origem (Source)</th>
+          <th style="width: 23%;">Coluna Chave</th>
+          <th style="width: 25%;">Tabela Destino (Target)</th>
+          <th style="width: 14%;">On Delete</th>
+          <th style="width: 13%;">Migration</th>
+        </tr>
+      </thead>
+      <tbody>        <tr>
+          <td><strong>ficha_arma</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_arma_criada</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261027120000_ficha_criar_arma.sql">ficha_criar_arma</td>
+        </tr>        <tr>
+          <td><strong>ficha_arma_criada</strong></td>
+          <td><span class="badge-fk">ficha_id,equipamento_id</span></td>
+          <td><span class="badge-target">ficha_equipamento (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">NO ACTION</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261027120000_ficha_criar_arma.sql">ficha_criar_arma</td>
+        </tr>        <tr>
+          <td><strong>ficha_arma_criada_ataque</strong></td>
+          <td><span class="badge-fk">ficha_id,arma_criada_id</span></td>
+          <td><span class="badge-target">ficha_arma_criada (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261027120000_ficha_criar_arma.sql">ficha_criar_arma</td>
+        </tr>        <tr>
+          <td><strong>ficha_arma_criada_mod</strong></td>
+          <td><span class="badge-fk">ficha_id,arma_criada_id</span></td>
+          <td><span class="badge-target">ficha_arma_criada (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261027120000_ficha_criar_arma.sql">ficha_criar_arma</td>
+        </tr>        <tr>
+          <td><strong>ficha_armadura</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261024120000_armaduras_modulares.sql">armaduras_modulares</td>
+        </tr>        <tr>
+          <td><strong>ficha_armadura_mod</strong></td>
+          <td><span class="badge-fk">ficha_id,armadura_id</span></td>
+          <td><span class="badge-target">ficha_armadura (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261024120000_armaduras_modulares.sql">armaduras_modulares</td>
+        </tr>        <tr>
+          <td><strong>ficha_armadura_peca</strong></td>
+          <td><span class="badge-fk">ficha_id,armadura_id</span></td>
+          <td><span class="badge-target">ficha_armadura (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261024120000_armaduras_modulares.sql">armaduras_modulares</td>
+        </tr>        <tr>
+          <td><strong>ficha_armadura_peca</strong></td>
+          <td><span class="badge-fk">ficha_id,equipamento_id</span></td>
+          <td><span class="badge-target">ficha_equipamento (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">NO ACTION</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261024120000_armaduras_modulares.sql">armaduras_modulares</td>
+        </tr>        <tr>
+          <td><strong>ficha_casa</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261104120000_ficha_casas.sql">ficha_casas</td>
+        </tr>        <tr>
+          <td><strong>ficha_casa_item</strong></td>
+          <td><span class="badge-fk">ficha_id,casa_id</span></td>
+          <td><span class="badge-target">ficha_casa (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261104120000_ficha_casas.sql">ficha_casas</td>
+        </tr>        <tr>
+          <td><strong>ficha_casa_item</strong></td>
+          <td><span class="badge-fk">ficha_id,equipamento_id</span></td>
+          <td><span class="badge-target">ficha_equipamento (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">NO ACTION</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261104120000_ficha_casas.sql">ficha_casas</td>
+        </tr>        <tr>
+          <td><strong>ficha_corpo</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261023120000_ficha_corpo_mochilas.sql">ficha_corpo_mochilas</td>
+        </tr>        <tr>
+          <td><strong>ficha_corpo_item</strong></td>
+          <td><span class="badge-fk">ficha_id,corpo_id</span></td>
+          <td><span class="badge-target">ficha_corpo (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261023120000_ficha_corpo_mochilas.sql">ficha_corpo_mochilas</td>
+        </tr>        <tr>
+          <td><strong>ficha_corpo_item</strong></td>
+          <td><span class="badge-fk">ficha_id,equipamento_id</span></td>
+          <td><span class="badge-target">ficha_equipamento (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">NO ACTION</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261023120000_ficha_corpo_mochilas.sql">ficha_corpo_mochilas</td>
+        </tr>        <tr>
+          <td><strong>ficha_cultura</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_desvantagem</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261108120000_ficha_desvantagens.sql">ficha_desvantagens</td>
+        </tr>        <tr>
+          <td><strong>ficha_equipamento</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261018120000_ficha_equipamentos.sql">ficha_equipamentos</td>
+        </tr>        <tr>
+          <td><strong>ficha_escudo</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261030120000_ficha_criar_escudo.sql">ficha_criar_escudo</td>
+        </tr>        <tr>
+          <td><strong>ficha_escudo_mod</strong></td>
+          <td><span class="badge-fk">ficha_id,escudo_criado_id</span></td>
+          <td><span class="badge-target">ficha_escudo (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261030120000_ficha_criar_escudo.sql">ficha_criar_escudo</td>
+        </tr>        <tr>
+          <td><strong>ficha_estilo</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_item_combate</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_item_combate</strong></td>
+          <td><span class="badge-fk">ficha_id,estilo_ordem</span></td>
+          <td><span class="badge-target">ficha_estilo (ficha_id,ordem)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_magia</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261101120000_ficha_magias.sql">ficha_magias</td>
+        </tr>        <tr>
+          <td><strong>ficha_mochila</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261023120000_ficha_corpo_mochilas.sql">ficha_corpo_mochilas</td>
+        </tr>        <tr>
+          <td><strong>ficha_mochila</strong></td>
+          <td><span class="badge-fk">ficha_id,equipamento_id</span></td>
+          <td><span class="badge-target">ficha_equipamento (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">NO ACTION</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261023120000_ficha_corpo_mochilas.sql">ficha_corpo_mochilas</td>
+        </tr>        <tr>
+          <td><strong>ficha_mochila_item</strong></td>
+          <td><span class="badge-fk">ficha_id,equipamento_id</span></td>
+          <td><span class="badge-target">ficha_equipamento (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">NO ACTION</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261023120000_ficha_corpo_mochilas.sql">ficha_corpo_mochilas</td>
+        </tr>        <tr>
+          <td><strong>ficha_mochila_item</strong></td>
+          <td><span class="badge-fk">ficha_id,mochila_id</span></td>
+          <td><span class="badge-target">ficha_mochila (ficha_id,id)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261023120000_ficha_corpo_mochilas.sql">ficha_corpo_mochilas</td>
+        </tr>        <tr>
+          <td><strong>ficha_peculiaridade</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261109120000_ficha_peculiaridades.sql">ficha_peculiaridades</td>
+        </tr>        <tr>
+          <td><strong>ficha_pericia</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_pontos</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261115120000_ficha_pontos.sql">ficha_pontos</td>
+        </tr>        <tr>
+          <td><strong>ficha_reacao</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261114120000_ficha_reacoes.sql">ficha_reacoes</td>
+        </tr>        <tr>
+          <td><strong>ficha_vantagem</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>ficha_vantagem_pericia</strong></td>
+          <td><span class="badge-fk">ficha_id,vantagem_ordem</span></td>
+          <td><span class="badge-target">ficha_vantagem (ficha_id,ordem)</span></td>
+          <td><span class="badge-card badge-restrict">C</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagens</strong></td>
+          <td><span class="badge-fk">ficha_id</span></td>
+          <td><span class="badge-target">fichas (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>      </tbody>
+    </table>
+  </div>  <div class="avoid-break" style="margin-top: 18px;">
+    <h3 style="font-size: 10.5pt; color: #1e3a8a; border-left: 3px solid #3b82f6; padding-left: 8px; margin-bottom: 8px;">
+      Mesa Virtual (VTT) & Tabuleiros <span style="font-size: 8pt; font-weight: normal; color: #64748b;">(11 relacionamentos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Tabela Origem (Source)</th>
+          <th style="width: 23%;">Coluna Chave</th>
+          <th style="width: 25%;">Tabela Destino (Target)</th>
+          <th style="width: 14%;">On Delete</th>
+          <th style="width: 13%;">Migration</th>
+        </tr>
+      </thead>
+      <tbody>        <tr>
+          <td><strong>tabuleiro_arte</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261111120000_tabuleiro_mesa_virtual.sql">tabuleiro_mesa_virtual</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_campanha</strong></td>
+          <td><span class="badge-fk">pagina_jogadores</span></td>
+          <td><span class="badge-target">tabuleiros (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261111120000_tabuleiro_mesa_virtual.sql">tabuleiro_mesa_virtual</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_desenhos</strong></td>
+          <td><span class="badge-fk">tabuleiro_id</span></td>
+          <td><span class="badge-target">tabuleiros (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_token_dono</strong></td>
+          <td><span class="badge-fk">token_id</span></td>
+          <td><span class="badge-target">tabuleiro_tokens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_token_dono</strong></td>
+          <td><span class="badge-fk">usuario_id</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_tokens</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_tokens</strong></td>
+          <td><span class="badge-fk">personagem_id</span></td>
+          <td><span class="badge-target">personagens (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_tokens</strong></td>
+          <td><span class="badge-fk">tabuleiro_id</span></td>
+          <td><span class="badge-target">tabuleiros (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_turnos</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261111120000_tabuleiro_mesa_virtual.sql">tabuleiro_mesa_virtual</td>
+        </tr>        <tr>
+          <td><strong>tabuleiro_turnos</strong></td>
+          <td><span class="badge-fk">id</span></td>
+          <td><span class="badge-target">tabuleiros (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261111120000_tabuleiro_mesa_virtual.sql">tabuleiro_mesa_virtual</td>
+        </tr>        <tr>
+          <td><strong>tabuleiros</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261110120000_tabuleiros.sql">tabuleiros</td>
+        </tr>      </tbody>
+    </table>
+  </div>  <div class="avoid-break" style="margin-top: 18px;">
+    <h3 style="font-size: 10.5pt; color: #1e3a8a; border-left: 3px solid #3b82f6; padding-left: 8px; margin-bottom: 8px;">
+      Outros Relacionamentos <span style="font-size: 8pt; font-weight: normal; color: #64748b;">(1 relacionamentos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Tabela Origem (Source)</th>
+          <th style="width: 23%;">Coluna Chave</th>
+          <th style="width: 25%;">Tabela Destino (Target)</th>
+          <th style="width: 14%;">On Delete</th>
+          <th style="width: 13%;">Migration</th>
+        </tr>
+      </thead>
+      <tbody>        <tr>
+          <td><strong>fichas</strong></td>
+          <td><span class="badge-fk">criado_por</span></td>
+          <td><span class="badge-target">usuarios (id)</span></td>
+          <td><span class="badge-card badge-setnull">SET NULL</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>      </tbody>
+    </table>
+  </div>  <div class="avoid-break" style="margin-top: 18px;">
+    <h3 style="font-size: 10.5pt; color: #1e3a8a; border-left: 3px solid #3b82f6; padding-left: 8px; margin-bottom: 8px;">
+      Vínculos N:M do Mundo <span style="font-size: 8pt; font-weight: normal; color: #64748b;">(14 relacionamentos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Tabela Origem (Source)</th>
+          <th style="width: 23%;">Coluna Chave</th>
+          <th style="width: 25%;">Tabela Destino (Target)</th>
+          <th style="width: 14%;">On Delete</th>
+          <th style="width: 13%;">Migration</th>
+        </tr>
+      </thead>
+      <tbody>        <tr>
+          <td><strong>evento_personagem</strong></td>
+          <td><span class="badge-fk">evento_id</span></td>
+          <td><span class="badge-target">eventos (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>evento_personagem</strong></td>
+          <td><span class="badge-fk">personagem_id</span></td>
+          <td><span class="badge-target">personagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>local_personagem</strong></td>
+          <td><span class="badge-fk">local_id</span></td>
+          <td><span class="badge-target">locais (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>local_personagem</strong></td>
+          <td><span class="badge-fk">personagem_id</span></td>
+          <td><span class="badge-target">personagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>organizacao_local</strong></td>
+          <td><span class="badge-fk">local_id</span></td>
+          <td><span class="badge-target">locais (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>organizacao_local</strong></td>
+          <td><span class="badge-fk">organizacao_id</span></td>
+          <td><span class="badge-target">organizacoes (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>organizacao_mapa</strong></td>
+          <td><span class="badge-fk">mapa_id</span></td>
+          <td><span class="badge-target">mapas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>organizacao_mapa</strong></td>
+          <td><span class="badge-fk">organizacao_id</span></td>
+          <td><span class="badge-target">organizacoes (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagem_mapa</strong></td>
+          <td><span class="badge-fk">mapa_id</span></td>
+          <td><span class="badge-target">mapas (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagem_mapa</strong></td>
+          <td><span class="badge-fk">personagem_id</span></td>
+          <td><span class="badge-target">personagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagem_organizacao</strong></td>
+          <td><span class="badge-fk">organizacao_id</span></td>
+          <td><span class="badge-target">organizacoes (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagem_organizacao</strong></td>
+          <td><span class="badge-fk">personagem_id</span></td>
+          <td><span class="badge-target">personagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagem_relacao</strong></td>
+          <td><span class="badge-fk">personagem_id</span></td>
+          <td><span class="badge-target">personagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>        <tr>
+          <td><strong>personagem_relacao</strong></td>
+          <td><span class="badge-fk">relacionado_id</span></td>
+          <td><span class="badge-target">personagens (id)</span></td>
+          <td><span class="badge-card badge-cascade">CASCADE</span></td>
+          <td style="color:#64748b; font-size:7.5pt;" title="20261014120100_tabelas_relacionais.sql">tabelas_relacionais</td>
+        </tr>      </tbody>
+    </table>
+  </div></div>
+
+<div class="page-break"></div>
+
+<div class="section avoid-break">
+  <h2>4. Tabela de Controle de Integridade & Regras de Cascata</h2>
+  <p style="font-size: 9pt; color: #475569; margin-bottom: 12px;">
+    As regras de exclusão foram projetadas para garantir que nenhuma entidade filha fique órfã no banco de dados e que a integridade histórica seja preservada:
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Tipo de Ação</th>
+        <th>Comportamento no Supabase PostgreSQL</th>
+        <th>Exemplos no Hounds RPG</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge-card badge-cascade">CASCADE</span></td>
+        <td>A exclusão do registro pai apaga automaticamente todos os registros filhos dependentes na mesma transação.</td>
+        <td>Excluir uma <strong>Ficha</strong> apaga automaticamente todas as suas perícias, vantagens, desvantagens, itens do corpo, mochilas e armaduras calculadas. Excluir um <strong>Tabuleiro</strong> apaga seus tokens e desenhos.</td>
+      </tr>
+      <tr>
+        <td><span class="badge-card badge-setnull">SET NULL</span></td>
+        <td>A exclusão do registro referenciado preserva o item atual, desmarcando o vínculo (coluna passa a valer <code>NULL</code>).</td>
+        <td>Excluir um <strong>Usuário</strong> preserva mapas e personagens criados por ele (<code>criado_por</code> vira <code>NULL</code>). Excluir um <strong>Mapa</strong> pai faz submapas e locais subirem de nível sem serem apagados.</td>
+      </tr>
+      <tr>
+        <td><span class="badge-card badge-restrict">UNIQUE / 1:1</span></td>
+        <td>Garante cardinalidade estrita de 1 para 1 através de restrição exclusiva.</td>
+        <td><code>personagens.ficha_id</code> é <strong>UNIQUE</strong>: um personagem só pode ter uma ficha, e cada ficha só pertence a um personagem. <code>usuarios.ficha_id</code> vincula uma única conta a uma única ficha.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top: 24px; padding: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 8.5pt; color: #64748b;">
+    <strong>Conclusão Técnica:</strong> A base de dados do Hounds no Supabase é um exemplo de modelagem relacional avançada no PostgreSQL, combinando integridade referencial rígida com a flexibilidade necessária para um VTT moderno através de views de leitura desacopladas e procedimentos armazenados atômicos.
+  </div>
+</div>
+
+</body>
+</html>

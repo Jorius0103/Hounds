@@ -393,6 +393,7 @@ connect().then(function (s) {
     BoardPages.start();
     s.watch('users', onUsers, fail);
     MesaSync.start();
+    if (window.CharPresentation) CharPresentation.init();
     s.watch('notebooks', function (l) { W.raw.notebooks = l; filterNotes(); W.loaded.notebooks = true; onData('notes'); }, fail);
     s.watch('notes', function (l) { W.raw.notes = l; filterNotes(); W.loaded.notes = true; onData('notes'); }, fail);
     s.watch('spells', function (l) { onCatalogDocs('spells', l); }, fail);

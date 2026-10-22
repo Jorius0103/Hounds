@@ -1,0 +1,1078 @@
+﻿{
+    "TotalTables":  86,
+    "Tables":  [
+                   "anotacoes",
+                   "arma_ataque",
+                   "arma_compartilhamento",
+                   "armadura_compartilhamento",
+                   "armadura_localizacoes",
+                   "armaduras",
+                   "armas",
+                   "cadernos",
+                   "chat_mensagens",
+                   "desvantagem_compartilhamento",
+                   "desvantagens",
+                   "estilo_compartilhamento",
+                   "estilos",
+                   "evento_compartilhamento",
+                   "evento_personagem",
+                   "eventos",
+                   "ficha_arma",
+                   "ficha_arma_criada",
+                   "ficha_arma_criada_ataque",
+                   "ficha_arma_criada_mod",
+                   "ficha_armadura",
+                   "ficha_armadura_mod",
+                   "ficha_armadura_peca",
+                   "ficha_casa",
+                   "ficha_casa_item",
+                   "ficha_compartilhamento",
+                   "ficha_corpo",
+                   "ficha_corpo_item",
+                   "ficha_cultura",
+                   "ficha_desvantagem",
+                   "ficha_equipamento",
+                   "ficha_escudo",
+                   "ficha_escudo_mod",
+                   "ficha_estilo",
+                   "ficha_item_combate",
+                   "ficha_magia",
+                   "ficha_mochila",
+                   "ficha_mochila_item",
+                   "ficha_peculiaridade",
+                   "ficha_pericia",
+                   "ficha_pontos",
+                   "ficha_reacao",
+                   "ficha_vantagem",
+                   "ficha_vantagem_pericia",
+                   "fichas",
+                   "hounds_docs",
+                   "item_compartilhamento",
+                   "itens",
+                   "locais",
+                   "local_compartilhamento",
+                   "local_personagem",
+                   "magia_compartilhamento",
+                   "magias",
+                   "mapa_compartilhamento",
+                   "mapas",
+                   "marcadores",
+                   "melhoramento_compartilhamento",
+                   "melhoramentos",
+                   "mesa_estado",
+                   "mesa_partes",
+                   "organizacao_compartilhamento",
+                   "organizacao_local",
+                   "organizacao_mapa",
+                   "organizacoes",
+                   "pericia_compartilhamento",
+                   "pericias",
+                   "personagem_compartilhamento",
+                   "personagem_mapa",
+                   "personagem_organizacao",
+                   "personagem_relacao",
+                   "personagens",
+                   "tabuleiro_arte",
+                   "tabuleiro_campanha",
+                   "tabuleiro_compartilhamento",
+                   "tabuleiro_desenhos",
+                   "tabuleiro_token_dono",
+                   "tabuleiro_tokens",
+                   "tabuleiro_turnos",
+                   "tabuleiros",
+                   "tecnica_compartilhamento",
+                   "tecnicas",
+                   "usuario_email",
+                   "usuarios",
+                   "vantagem_compartilhamento",
+                   "vantagem_efeito",
+                   "vantagens"
+               ],
+    "TotalFks":  123,
+    "Fks":  [
+                {
+                    "SourceTable":  "anotacoes",
+                    "SourceCol":  "caderno_id",
+                    "TargetTable":  "cadernos",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "anotacoes",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "arma_ataque",
+                    "SourceCol":  "arma_id",
+                    "TargetTable":  "armas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261020120000_armas_armaduras.sql"
+                },
+                {
+                    "SourceTable":  "arma_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "armas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261020120000_armas_armaduras.sql"
+                },
+                {
+                    "SourceTable":  "arma_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261020120000_armas_armaduras.sql"
+                },
+                {
+                    "SourceTable":  "armadura_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "armaduras",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261020120000_armas_armaduras.sql"
+                },
+                {
+                    "SourceTable":  "armadura_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261020120000_armas_armaduras.sql"
+                },
+                {
+                    "SourceTable":  "armaduras",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261020120000_armas_armaduras.sql"
+                },
+                {
+                    "SourceTable":  "armas",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261020120000_armas_armaduras.sql"
+                },
+                {
+                    "SourceTable":  "cadernos",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "desvantagem_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "desvantagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261021120000_desvantagens.sql"
+                },
+                {
+                    "SourceTable":  "desvantagem_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261021120000_desvantagens.sql"
+                },
+                {
+                    "SourceTable":  "desvantagens",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261021120000_desvantagens.sql"
+                },
+                {
+                    "SourceTable":  "estilo_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "estilos",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "estilo_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "estilos",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "evento_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "eventos",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "evento_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "evento_personagem",
+                    "SourceCol":  "evento_id",
+                    "TargetTable":  "eventos",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "evento_personagem",
+                    "SourceCol":  "personagem_id",
+                    "TargetTable":  "personagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "eventos",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "eventos",
+                    "SourceCol":  "local_id",
+                    "TargetTable":  "locais",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_arma",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_arma_criada",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261027120000_ficha_criar_arma.sql"
+                },
+                {
+                    "SourceTable":  "ficha_arma_criada",
+                    "SourceCol":  "ficha_id,equipamento_id",
+                    "TargetTable":  "ficha_equipamento",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "",
+                    "Migration":  "20261027120000_ficha_criar_arma.sql"
+                },
+                {
+                    "SourceTable":  "ficha_arma_criada_ataque",
+                    "SourceCol":  "ficha_id,arma_criada_id",
+                    "TargetTable":  "ficha_arma_criada",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "C",
+                    "Migration":  "20261027120000_ficha_criar_arma.sql"
+                },
+                {
+                    "SourceTable":  "ficha_arma_criada_mod",
+                    "SourceCol":  "ficha_id,arma_criada_id",
+                    "TargetTable":  "ficha_arma_criada",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "C",
+                    "Migration":  "20261027120000_ficha_criar_arma.sql"
+                },
+                {
+                    "SourceTable":  "ficha_armadura",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261024120000_armaduras_modulares.sql"
+                },
+                {
+                    "SourceTable":  "ficha_armadura_mod",
+                    "SourceCol":  "ficha_id,armadura_id",
+                    "TargetTable":  "ficha_armadura",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "C",
+                    "Migration":  "20261024120000_armaduras_modulares.sql"
+                },
+                {
+                    "SourceTable":  "ficha_armadura_peca",
+                    "SourceCol":  "ficha_id,armadura_id",
+                    "TargetTable":  "ficha_armadura",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "C",
+                    "Migration":  "20261024120000_armaduras_modulares.sql"
+                },
+                {
+                    "SourceTable":  "ficha_armadura_peca",
+                    "SourceCol":  "ficha_id,equipamento_id",
+                    "TargetTable":  "ficha_equipamento",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "",
+                    "Migration":  "20261024120000_armaduras_modulares.sql"
+                },
+                {
+                    "SourceTable":  "ficha_casa",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261104120000_ficha_casas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_casa_item",
+                    "SourceCol":  "ficha_id,casa_id",
+                    "TargetTable":  "ficha_casa",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "C",
+                    "Migration":  "20261104120000_ficha_casas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_casa_item",
+                    "SourceCol":  "ficha_id,equipamento_id",
+                    "TargetTable":  "ficha_equipamento",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "",
+                    "Migration":  "20261104120000_ficha_casas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_corpo",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261023120000_ficha_corpo_mochilas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_corpo_item",
+                    "SourceCol":  "ficha_id,corpo_id",
+                    "TargetTable":  "ficha_corpo",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "C",
+                    "Migration":  "20261023120000_ficha_corpo_mochilas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_corpo_item",
+                    "SourceCol":  "ficha_id,equipamento_id",
+                    "TargetTable":  "ficha_equipamento",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "",
+                    "Migration":  "20261023120000_ficha_corpo_mochilas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_cultura",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_desvantagem",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261108120000_ficha_desvantagens.sql"
+                },
+                {
+                    "SourceTable":  "ficha_equipamento",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261018120000_ficha_equipamentos.sql"
+                },
+                {
+                    "SourceTable":  "ficha_escudo",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261030120000_ficha_criar_escudo.sql"
+                },
+                {
+                    "SourceTable":  "ficha_escudo_mod",
+                    "SourceCol":  "ficha_id,escudo_criado_id",
+                    "TargetTable":  "ficha_escudo",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "C",
+                    "Migration":  "20261030120000_ficha_criar_escudo.sql"
+                },
+                {
+                    "SourceTable":  "ficha_estilo",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_item_combate",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_item_combate",
+                    "SourceCol":  "ficha_id,estilo_ordem",
+                    "TargetTable":  "ficha_estilo",
+                    "TargetCol":  "ficha_id,ordem",
+                    "OnDelete":  "C",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_magia",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261101120000_ficha_magias.sql"
+                },
+                {
+                    "SourceTable":  "ficha_mochila",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261023120000_ficha_corpo_mochilas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_mochila",
+                    "SourceCol":  "ficha_id,equipamento_id",
+                    "TargetTable":  "ficha_equipamento",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "",
+                    "Migration":  "20261023120000_ficha_corpo_mochilas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_mochila_item",
+                    "SourceCol":  "ficha_id,equipamento_id",
+                    "TargetTable":  "ficha_equipamento",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "",
+                    "Migration":  "20261023120000_ficha_corpo_mochilas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_mochila_item",
+                    "SourceCol":  "ficha_id,mochila_id",
+                    "TargetTable":  "ficha_mochila",
+                    "TargetCol":  "ficha_id,id",
+                    "OnDelete":  "C",
+                    "Migration":  "20261023120000_ficha_corpo_mochilas.sql"
+                },
+                {
+                    "SourceTable":  "ficha_peculiaridade",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261109120000_ficha_peculiaridades.sql"
+                },
+                {
+                    "SourceTable":  "ficha_pericia",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_pontos",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261115120000_ficha_pontos.sql"
+                },
+                {
+                    "SourceTable":  "ficha_reacao",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261114120000_ficha_reacoes.sql"
+                },
+                {
+                    "SourceTable":  "ficha_vantagem",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "ficha_vantagem_pericia",
+                    "SourceCol":  "ficha_id,vantagem_ordem",
+                    "TargetTable":  "ficha_vantagem",
+                    "TargetCol":  "ficha_id,ordem",
+                    "OnDelete":  "C",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "fichas",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "item_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "itens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261022120000_itens.sql"
+                },
+                {
+                    "SourceTable":  "item_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261022120000_itens.sql"
+                },
+                {
+                    "SourceTable":  "itens",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261022120000_itens.sql"
+                },
+                {
+                    "SourceTable":  "locais",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "locais",
+                    "SourceCol":  "local_pai_id",
+                    "TargetTable":  "locais",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "locais",
+                    "SourceCol":  "mapa_id",
+                    "TargetTable":  "mapas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "local_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "locais",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "local_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "local_personagem",
+                    "SourceCol":  "local_id",
+                    "TargetTable":  "locais",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "local_personagem",
+                    "SourceCol":  "personagem_id",
+                    "TargetTable":  "personagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "magia_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "magias",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "magia_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "magias",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "mapa_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "mapas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "mapa_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "mapas",
+                    "SourceCol":  "mapa_pai_id",
+                    "TargetTable":  "mapas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "marcadores",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "marcadores",
+                    "SourceCol":  "local_id",
+                    "TargetTable":  "locais",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "marcadores",
+                    "SourceCol":  "mapa_id",
+                    "TargetTable":  "mapas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "marcadores",
+                    "SourceCol":  "mapa_vinculado_id",
+                    "TargetTable":  "mapas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "melhoramento_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "melhoramentos",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261103120000_melhoramentos.sql"
+                },
+                {
+                    "SourceTable":  "melhoramento_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261103120000_melhoramentos.sql"
+                },
+                {
+                    "SourceTable":  "melhoramentos",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261103120000_melhoramentos.sql"
+                },
+                {
+                    "SourceTable":  "organizacao_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "organizacoes",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "organizacao_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "organizacao_local",
+                    "SourceCol":  "local_id",
+                    "TargetTable":  "locais",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "organizacao_local",
+                    "SourceCol":  "organizacao_id",
+                    "TargetTable":  "organizacoes",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "organizacao_mapa",
+                    "SourceCol":  "mapa_id",
+                    "TargetTable":  "mapas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "organizacao_mapa",
+                    "SourceCol":  "organizacao_id",
+                    "TargetTable":  "organizacoes",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "organizacoes",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "pericia_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "pericias",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "pericia_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "pericias",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagem_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "personagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagem_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagem_mapa",
+                    "SourceCol":  "mapa_id",
+                    "TargetTable":  "mapas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagem_mapa",
+                    "SourceCol":  "personagem_id",
+                    "TargetTable":  "personagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagem_organizacao",
+                    "SourceCol":  "organizacao_id",
+                    "TargetTable":  "organizacoes",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagem_organizacao",
+                    "SourceCol":  "personagem_id",
+                    "TargetTable":  "personagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagem_relacao",
+                    "SourceCol":  "personagem_id",
+                    "TargetTable":  "personagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagem_relacao",
+                    "SourceCol":  "relacionado_id",
+                    "TargetTable":  "personagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagens",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "personagens",
+                    "SourceCol":  "ficha_id",
+                    "TargetTable":  "fichas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_arte",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261111120000_tabuleiro_mesa_virtual.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_campanha",
+                    "SourceCol":  "pagina_jogadores",
+                    "TargetTable":  "tabuleiros",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261111120000_tabuleiro_mesa_virtual.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "tabuleiros",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_desenhos",
+                    "SourceCol":  "tabuleiro_id",
+                    "TargetTable":  "tabuleiros",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_token_dono",
+                    "SourceCol":  "token_id",
+                    "TargetTable":  "tabuleiro_tokens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_token_dono",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_tokens",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_tokens",
+                    "SourceCol":  "personagem_id",
+                    "TargetTable":  "personagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_tokens",
+                    "SourceCol":  "tabuleiro_id",
+                    "TargetTable":  "tabuleiros",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_turnos",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261111120000_tabuleiro_mesa_virtual.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiro_turnos",
+                    "SourceCol":  "id",
+                    "TargetTable":  "tabuleiros",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261111120000_tabuleiro_mesa_virtual.sql"
+                },
+                {
+                    "SourceTable":  "tabuleiros",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261110120000_tabuleiros.sql"
+                },
+                {
+                    "SourceTable":  "tecnica_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "tecnicas",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "tecnica_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "tecnicas",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "usuario_email",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261015120000_autenticacao.sql"
+                },
+                {
+                    "SourceTable":  "vantagem_compartilhamento",
+                    "SourceCol":  "item_id",
+                    "TargetTable":  "vantagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "vantagem_compartilhamento",
+                    "SourceCol":  "usuario_id",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                },
+                {
+                    "SourceTable":  "vantagem_efeito",
+                    "SourceCol":  "vantagem_id",
+                    "TargetTable":  "vantagens",
+                    "TargetCol":  "id",
+                    "OnDelete":  "CASCADE",
+                    "Migration":  "20261102120000_vantagem_efeitos.sql"
+                },
+                {
+                    "SourceTable":  "vantagens",
+                    "SourceCol":  "criado_por",
+                    "TargetTable":  "usuarios",
+                    "TargetCol":  "id",
+                    "OnDelete":  "SET NULL",
+                    "Migration":  "20261014120100_tabelas_relacionais.sql"
+                }
+            ]
+}
