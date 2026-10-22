@@ -203,6 +203,7 @@ class AudioStreamSyncService {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: {
+          suppressLocalAudioPlayback: true,
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
@@ -235,6 +236,26 @@ class AudioStreamSyncService {
       }
 
       this.localStream = stream;
+
+      // Retorno de áudio local para o streamer:
+      // suppressLocalAudioPlayback muta a aba de origem apenas no fone do streamer,
+      // e o Hounds reproduz localmente com o volume definido pelo slider da aplicação.
+      const el = this.ensureAudioElement();
+      if (el) {
+        try {
+          el.srcObject = new MediaStream([audioTracks[0]]);
+          el.volume = this.state.volume / 100;
+          el.muted = this.state.isMuted;
+          const p = el.play();
+          if (p !== undefined) {
+            p.catch((e) => {
+              console.warn('Playback do monitor local bloqueado pelo navegador:', e);
+            });
+          }
+        } catch (e) {
+          console.warn('Erro ao configurar monitor de áudio local:', e);
+        }
+      }
 
       audioTracks[0].onended = () => {
         this.stopBroadcasting();
@@ -305,6 +326,11 @@ class AudioStreamSyncService {
 
     const wasBroadcasting = this.state.isBroadcasting;
     this.state.isBroadcasting = false;
+    if (this.audioElement && wasBroadcasting) {
+      try {
+        this.audioElement.srcObject = null;
+      } catch {}
+    }
     if (!silent) {
       this.state.hasActiveBroadcast = false;
       this.state.broadcasterName = null;

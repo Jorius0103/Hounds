@@ -215,6 +215,7 @@
         var stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: {
+            suppressLocalAudioPlayback: true,
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false
@@ -244,6 +245,26 @@
         }
 
         localStream = stream;
+
+        // Retorno de áudio local para o streamer:
+        // suppressLocalAudioPlayback muta a aba de origem apenas no fone do streamer,
+        // e o Hounds reproduz localmente com o volume definido pelo slider da aplicação.
+        var el = ensureAudio();
+        if (el) {
+          try {
+            el.srcObject = new MediaStream([audioTracks[0]]);
+            el.volume = state.volume / 100;
+            el.muted = state.isMuted;
+            var p = el.play();
+            if (p !== undefined) {
+              p.catch(function (e) {
+                console.warn('Playback do monitor local bloqueado pelo navegador:', e);
+              });
+            }
+          } catch (e) {
+            console.warn('Erro ao configurar monitor de áudio local:', e);
+          }
+        }
 
         // Ao encerrar o compartilhamento pelo banner do navegador
         audioTracks[0].onended = function () {
@@ -314,6 +335,11 @@
 
       var was = state.isBroadcasting;
       state.isBroadcasting = false;
+      if (audioElement && was) {
+        try {
+          audioElement.srcObject = null;
+        } catch (e) {}
+      }
       if (!silent) {
         state.hasActiveBroadcast = false;
         state.broadcasterName = null;
