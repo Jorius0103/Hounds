@@ -9,7 +9,6 @@ import {
   CheckCheck,
   Users,
   Search,
-  Sparkles,
 } from 'lucide-react';
 
 interface PlayerPermissionsModalProps {
@@ -58,8 +57,12 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-150"
-      style={{ overflowY: 'auto' }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
+      style={{
+        padding: '24px 16px',
+        overflowY: 'auto',
+        WebkitBackdropFilter: 'blur(4px)',
+      }}
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
@@ -67,30 +70,73 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
       }}
     >
       <div
-        className="relative w-full max-w-lg bg-slate-900 border border-slate-750 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 flex flex-col"
+        className="relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         style={{
+          position: 'relative',
           margin: 'auto',
-          maxHeight: 'calc(100vh - 32px)',
+          width: '100%',
+          maxWidth: '580px',
+          maxHeight: '75vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#0f172a',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          borderRadius: '18px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
           overflow: 'hidden',
         }}
       >
         {/* Cabeçalho */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-inner">
-              <Users size={20} />
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 20px',
+            borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
+            background: 'linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fbbf24',
+                flexShrink: 0,
+              }}
+            >
+              <Users size={18} />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-bold text-white truncate">
-                  Permissões dos Jogadores
-                </h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-slate-800 border border-slate-700 text-amber-300">
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: '15px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                  Permissões dos Jogadores no Combate
+                </h2>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                    fontFamily: 'monospace',
+                    fontWeight: 'bold',
+                    background: '#1e293b',
+                    border: '1px solid #334155',
+                    color: '#fcd34d',
+                  }}
+                >
                   {activeEditorCount} de {playerUsers.length}{' '}
                   {activeEditorCount === 1 ? 'editor' : 'editores'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p style={{ fontSize: '11px', color: '#94a3b8', margin: '2px 0 0 0' }}>
                 Defina em tempo real quem pode editar fichas e movimentar tokens
               </p>
             </div>
@@ -98,28 +144,71 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors shrink-0"
+            className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            style={{
+              padding: '6px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              flexShrink: 0,
+              background: 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
             title="Fechar (Esc)"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Barra explicativa e Ações Rápidas */}
-        <div className="space-y-2.5 shrink-0">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 text-xs">
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-              <Eye size={13} className="text-slate-400 shrink-0" />
+        {/* Subheader / Ações Rápidas & Busca */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            padding: '10px 20px',
+            background: 'rgba(2, 6, 23, 0.8)',
+            borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
+            fontSize: '12px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8' }}>
+              <Eye size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
               <span>
                 Por padrão, jogadores são <strong>espectadores</strong> (somente leitura).
               </span>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0 justify-end">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: 'auto' }}>
               <button
                 type="button"
                 onClick={() => onSetAllPermissions(true)}
-                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80 rounded-lg transition-all active:scale-95 shadow-xs"
-                title="Conceder permissão de edição a todos os jogadores cadastrados"
+                className="hover:opacity-90 active:scale-95 transition-all"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  background: 'rgba(6, 78, 59, 0.8)',
+                  color: '#6ee7b7',
+                  border: '1px solid rgba(6, 95, 70, 0.8)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+                title="Conceder permissão de edição a todos os jogadores"
               >
                 <CheckCheck size={12} />
                 <span>Liberar Todos</span>
@@ -127,7 +216,20 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               <button
                 type="button"
                 onClick={() => onSetAllPermissions(false)}
-                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg transition-all active:scale-95 shadow-xs"
+                className="hover:opacity-90 active:scale-95 transition-all"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  background: '#1e293b',
+                  color: '#cbd5e1',
+                  border: '1px solid #334155',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
                 title="Colocar todos os jogadores em modo espectador"
               >
                 <EyeOff size={12} />
@@ -136,42 +238,104 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             </div>
           </div>
 
-          {/* Busca quando houver mais de 3 jogadores */}
+          {/* Campo de Busca */}
           {playerUsers.length > 3 && (
-            <div className="relative">
+            <div style={{ position: 'relative', width: '100%' }}>
               <Search
                 size={13}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"
+                style={{
+                  position: 'absolute',
+                  left: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#64748b',
+                }}
               />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar jogador cadastrado..."
-                className="w-full bg-slate-950/90 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  background: 'rgba(2, 6, 23, 0.9)',
+                  border: '1px solid #1e293b',
+                  borderRadius: '8px',
+                  padding: '6px 10px 6px 30px',
+                  fontSize: '12px',
+                  color: '#ffffff',
+                  outline: 'none',
+                }}
               />
             </div>
           )}
         </div>
 
-        {/* Lista de jogadores cadastrados */}
-        <div className="space-y-2 overflow-y-auto flex-1 pr-1 max-h-[46vh]">
+        {/* Lista de jogadores cadastrados com scroll suave e respiro */}
+        <div
+          style={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflowY: 'auto',
+            padding: '14px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
           {playerUsers.length === 0 ? (
-            <div className="py-10 text-center text-xs text-slate-400 bg-slate-950/40 rounded-xl border border-dashed border-slate-800 p-6 space-y-2">
-              <div className="w-10 h-10 rounded-xl bg-slate-800/60 border border-slate-750 text-slate-500 mx-auto flex items-center justify-center">
-                <Users size={20} />
+            <div
+              style={{
+                padding: '24px 16px',
+                textAlign: 'center',
+                fontSize: '12px',
+                color: '#94a3b8',
+                background: 'rgba(2, 6, 23, 0.4)',
+                borderRadius: '12px',
+                border: '1px dashed #334155',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  border: '1px solid #334155',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Users size={18} />
               </div>
-              <div className="font-semibold text-slate-300">
+              <div style={{ fontWeight: 'bold', color: '#e2e8f0' }}>
                 Nenhum jogador cadastrado no sistema
               </div>
-              <p className="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed">
+              <p style={{ fontSize: '11px', color: '#64748b', maxWidth: '320px', margin: 0, lineHeight: 1.4 }}>
                 Cadastre contas com o perfil <strong>Jogador</strong> na aba{' '}
                 <strong>Usuários</strong> do Hub para gerenciar o acesso aqui.
               </p>
             </div>
           ) : filteredPlayers.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-xl border border-slate-800 p-4">
-              Nenhum jogador encontrado com "{search}".
+            <div
+              style={{
+                padding: '20px',
+                textAlign: 'center',
+                fontSize: '12px',
+                color: '#94a3b8',
+                background: 'rgba(2, 6, 23, 0.4)',
+                borderRadius: '12px',
+                border: '1px solid #1e293b',
+              }}
+            >
+              Nenhum jogador encontrado para "{search}".
             </div>
           ) : (
             filteredPlayers.map((u) => {
@@ -183,11 +347,19 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                 <div
                   key={u.id}
                   onClick={() => onTogglePermission(u.id)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
-                    isAllowed
-                      ? 'bg-emerald-950/20 border-emerald-500/40 hover:bg-emerald-950/30 shadow-sm'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-950/80'
-                  }`}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    border: isAllowed ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #1e293b',
+                    background: isAllowed ? 'rgba(6, 78, 59, 0.2)' : 'rgba(2, 6, 23, 0.6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    transition: 'all 0.15s ease',
+                  }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -203,39 +375,69 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                   }
                 >
                   {/* Avatar e Nome do Jogador */}
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: '1 1 auto' }}>
                     <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${
-                        isAllowed
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-inner'
-                          : 'bg-slate-800 text-slate-400 border border-slate-750'
-                      }`}
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '12px',
+                        flexShrink: 0,
+                        background: isAllowed ? 'rgba(16, 185, 129, 0.2)' : '#1e293b',
+                        color: isAllowed ? '#6ee7b7' : '#94a3b8',
+                        border: isAllowed ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #334155',
+                      }}
                     >
                       {initials}
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                        <span>{u.name}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          fontWeight: 'bold',
+                          color: '#ffffff',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {u.name}
                       </div>
 
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                         {isAllowed ? (
-                          <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
-                            <ShieldCheck size={12} className="shrink-0" />
-                            <span>Editor liberado</span>
-                            <span className="text-[10px] text-emerald-400/70 font-normal hidden sm:inline">
-                              · pode alterar fichas e tokens
-                            </span>
-                          </div>
+                          <span
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              color: '#34d399',
+                            }}
+                          >
+                            <ShieldCheck size={12} style={{ flexShrink: 0 }} />
+                            Editor liberado
+                          </span>
                         ) : (
-                          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
-                            <Eye size={12} className="shrink-0 text-slate-400" />
-                            <span>Modo espectador</span>
-                            <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">
-                              · somente leitura
-                            </span>
-                          </div>
+                          <span
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '11px',
+                              fontWeight: 500,
+                              color: '#94a3b8',
+                            }}
+                          >
+                            <Eye size={12} style={{ flexShrink: 0 }} />
+                            Modo espectador
+                          </span>
                         )}
                       </div>
                     </div>
@@ -243,45 +445,62 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
 
                   {/* Controle Segmentado: Espectador vs Editor */}
                   <div
-                    style={{ minHeight: '36px' }}
-                    className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800 shrink-0 self-end sm:self-auto"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: '#020617',
+                      padding: '3px',
+                      borderRadius: '8px',
+                      border: '1px solid #1e293b',
+                      flexShrink: 0,
+                    }}
                   >
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (isAllowed) onTogglePermission(u.id);
                       }}
                       style={{
-                        padding: '6px 14px',
-                        minHeight: '30px',
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: !isAllowed ? 'bold' : 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: !isAllowed ? '#1e293b' : 'transparent',
+                        color: !isAllowed ? '#f1f5f9' : '#64748b',
+                        border: !isAllowed ? '1px solid #334155' : '1px solid transparent',
                         cursor: 'pointer',
                       }}
-                      className={`rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                        !isAllowed
-                          ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm font-bold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
                     >
-                      <Eye size={14} />
+                      <Eye size={12} />
                       <span>Espectador</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (!isAllowed) onTogglePermission(u.id);
                       }}
                       style={{
-                        padding: '6px 14px',
-                        minHeight: '30px',
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: isAllowed ? 'bold' : 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: isAllowed ? '#059669' : 'transparent',
+                        color: isAllowed ? '#ffffff' : '#64748b',
+                        border: isAllowed ? '1px solid #34d399' : '1px solid transparent',
                         cursor: 'pointer',
+                        boxShadow: isAllowed ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
                       }}
-                      className={`rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                        isAllowed
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-md border border-emerald-400'
-                          : 'text-slate-400 hover:text-emerald-400'
-                      }`}
                     >
-                      <Check size={14} strokeWidth={2.5} />
+                      <Check size={12} strokeWidth={2.5} />
                       <span>Editor</span>
                     </button>
                   </div>
@@ -291,16 +510,48 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           )}
         </div>
 
-        {/* Rodapé */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-800 shrink-0 text-xs">
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        {/* Rodapé com respiro generoso e alinhamento perfeito */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            borderTop: '1px solid #1e293b',
+            background: 'rgba(2, 6, 23, 0.6)',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8' }}>
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '9999px',
+                background: '#34d399',
+                display: 'inline-block',
+                boxShadow: '0 0 6px #34d399',
+              }}
+            />
             <span>Sincronizado em tempo real com todos os jogadores.</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95"
+            className="hover:opacity-90 active:scale-95 transition-all"
+            style={{
+              padding: '7px 18px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              background: '#f59e0b',
+              color: '#020617',
+              border: 'none',
+              cursor: 'pointer',
+              flexShrink: 0,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            }}
           >
             Concluir
           </button>
