@@ -39,3 +39,4 @@ with open('mesa.html', 'w', encoding='utf-8', newline='\n') as f:
     f.write(text)
 
 print("All updates applied to mesa.html successfully!")
+
