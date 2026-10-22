@@ -82,10 +82,10 @@ export const TopNav: React.FC<TopNavProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800/80 px-2 sm:px-4 py-1.5">
-      <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-2 flex-nowrap overflow-x-auto scrollbar-none">
+    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800/80 px-3 sm:px-5 py-2">
+      <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-3 sm:gap-5 md:gap-6 flex-nowrap overflow-x-auto scrollbar-none">
         {/* Zone 1: Brand title & Combat selector / CRUD */}
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0 flex-nowrap">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
               <Swords size={16} />
@@ -95,9 +95,6 @@ export const TopNav: React.FC<TopNavProps> = ({
             </span>
             <span className="text-sm font-bold tracking-tight text-white whitespace-nowrap sm:hidden">
               GURPS
-            </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-1.5 shadow-xs">
-              v1.2.0
             </span>
           </div>
 
@@ -297,9 +294,9 @@ export const TopNav: React.FC<TopNavProps> = ({
           </div>
         )}
 
-        {/* Zone 2: Dice Roller (3D6, 1D6 e + Dados) e Toggle de Ocultar Rolagens para o Mestre */}
+        {/* Zone 2: Dice Roller (3D6, 2D6, 1D6 e + Dados) e Toggle de Ocultar Rolagens para o Mestre */}
         {onRollDice && (
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-900/90 border border-slate-750 rounded-lg shadow-inner shrink-0">
+          <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-900/90 border border-slate-750 rounded-lg shadow-inner shrink-0">
             {isMestre && onToggleHideGmRolls && (
               <button
                 type="button"
@@ -344,6 +341,19 @@ export const TopNav: React.FC<TopNavProps> = ({
             </button>
             <button
               type="button"
+              onClick={() => onRollDice(2)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white text-xs font-black rounded-lg transition-all shadow-sm font-mono border border-slate-750 hover:border-amber-500/50 cursor-pointer"
+              title="Rolar 2D6 com animação e registrar no log de combate"
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-400">
+                <rect width="18" height="18" x="3" y="3" rx="3" />
+                <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+                <circle cx="16" cy="16" r="1.5" fill="currentColor" />
+              </svg>
+              <span>2D6</span>
+            </button>
+            <button
+              type="button"
               onClick={() => onRollDice(1)}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 hover:text-white text-xs font-black rounded-lg transition-all shadow-sm font-mono border border-slate-750 hover:border-amber-500/50 cursor-pointer"
               title="Rolar 1D6 com animação e registrar no log de combate"
@@ -377,7 +387,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         )}
 
         {/* Zone 3: Bloco de Trilha Sonora / Spotify Stream alinhado à DIREITA da barra */}
-        <div className="ml-auto flex items-center gap-1.5 px-2 py-1 bg-slate-900/95 border border-slate-750 rounded-lg shadow-inner shrink-0">
+        <div className="ml-auto flex items-center gap-2.5 px-2.5 py-1 bg-slate-900/95 border border-slate-750 rounded-lg shadow-inner shrink-0">
           {/* Botão de desbloqueio para Autoplay bloqueado */}
           {audioState.needsInteraction && !audioState.isBroadcasting && (
             <button
@@ -390,46 +400,24 @@ export const TopNav: React.FC<TopNavProps> = ({
             </button>
           )}
 
-          {/* Indicador de Transmissão com Música, Artista e DJ */}
+          {/* Indicador de Transmissão apenas com o Nome do Streamer */}
           {audioState.hasActiveBroadcast ? (
             <div
-              className="flex items-center gap-1.5 max-w-[130px] sm:max-w-[200px] md:max-w-[260px] truncate"
-              title={`Música: ${audioState.trackTitle || 'Trilha'} | DJ: ${audioState.broadcasterName || 'Mestre'}`}
+              className="flex items-center gap-1.5 max-w-[120px] sm:max-w-[160px] truncate"
+              title={`Transmitindo: ${audioState.broadcasterName || 'Mestre'}`}
             >
               <span className="flex h-2 w-2 relative shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
               <Music size={13} className="text-emerald-400 shrink-0" />
-              {audioState.isBroadcasting ? (
-                <button
-                  type="button"
-                  onClick={() => audioStreamSync.promptEditTrackTitle()}
-                  className="flex flex-col min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
-                  title="Clique para editar o nome da música e artista"
-                >
-                  <span className="text-[11px] font-bold text-white truncate max-w-[110px] sm:max-w-[170px] md:max-w-[220px]">
-                    {audioState.trackTitle || 'Trilha Sonora'}
-                  </span>
-                  <span className="text-[9px] text-amber-300/90 truncate font-mono">
-                    DJ: Você ✏️
-                  </span>
-                </button>
-              ) : (
-                <div className="flex flex-col min-w-0 leading-tight">
-                  <span className="text-[11px] font-bold text-white truncate max-w-[110px] sm:max-w-[170px] md:max-w-[220px]">
-                    {audioState.trackTitle || 'Trilha Sonora'}
-                  </span>
-                  <span className="text-[9px] text-amber-300/90 truncate font-mono">
-                    DJ: {audioState.broadcasterName || 'Mestre'}
-                  </span>
-                </div>
-              )}
+              <span className="text-[11px] font-bold text-amber-300 truncate font-mono">
+                {audioState.broadcasterName || 'Mestre'}
+              </span>
             </div>
           ) : (
             <div className="flex items-center gap-1 text-slate-400 shrink-0" title="Trilha Sonora (Inativa)">
               <Music size={13} className="shrink-0 text-slate-500" />
-              <span className="text-[11px] text-slate-400 hidden xl:inline">Música</span>
             </div>
           )}
 
@@ -447,7 +435,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             {audioState.isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
 
-          {/* Slider de Volume */}
+          {/* Slider de Volume (reduzido pela metade) */}
           <div className="flex items-center gap-1 shrink-0">
             <input
               type="range"
@@ -455,7 +443,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               max={100}
               value={audioState.isMuted ? 0 : audioState.volume}
               onChange={(e) => audioStreamSync.setVolume(Number(e.target.value))}
-              className="w-10 sm:w-14 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              className="w-5 sm:w-7 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
               title={`Volume: ${audioState.isMuted ? 'Mutado' : `${audioState.volume}%`}`}
             />
             <span className="text-[10px] font-mono font-bold text-slate-400 w-5 text-right hidden sm:inline">

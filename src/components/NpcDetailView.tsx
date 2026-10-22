@@ -618,9 +618,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       ? hpStat.warningTexts
       : (hpStat.warningText ? [hpStat.warningText] : []);
 
+    const isPlayerChar = npc.characterType === 'player';
     const isPlayerRole = currentUserRole === 'jogador';
     hpWarnings.forEach((warn, idx) => {
-      if (isPlayerRole && warn.includes('Teste de morte (HT) a cada múltiplo')) {
+      if (isPlayerRole && !isPlayerChar && warn.includes('Teste de morte (HT) a cada múltiplo')) {
         return;
       }
       alerts.push({

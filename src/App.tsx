@@ -1519,9 +1519,11 @@ export default function App() {
           const currentVal = it.current || 0;
           const maxVal = it.max || (currentVal + effectiveDays);
           const nextVal = Math.min(currentVal + effectiveDays, maxVal);
-          anyUpdated = true;
-          charChanged = true;
-          charUpdatedItems.push(`${it.name} (${currentVal}➔${nextVal})`);
+          if (nextVal > currentVal) {
+            anyUpdated = true;
+            charChanged = true;
+            charUpdatedItems.push(`${it.name} (${currentVal}➔${nextVal})`);
+          }
           return {
             ...it,
             current: nextVal,

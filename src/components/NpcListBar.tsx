@@ -504,7 +504,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const hasConditions = Boolean(npc.statusConditions && npc.statusConditions.length > 0);
                 const isPlayerRole = currentUserRole === 'jogador';
                 const hpWarnsFiltered = (hpStat.warningTexts || (hpStat.warningText ? [hpStat.warningText] : [])).filter(
-                  (w) => !(isPlayerRole && w.includes('Teste de morte (HT) a cada múltiplo'))
+                  (w) => !(isPlayerRole && !isPlayerChar && w.includes('Teste de morte (HT) a cada múltiplo'))
                 );
                 const hasCriticalHpFp = Boolean(
                   hpWarnsFiltered.length > 0 ||
