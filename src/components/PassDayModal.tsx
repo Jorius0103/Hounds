@@ -6,7 +6,7 @@ interface PassDayModalProps {
   isOpen: boolean;
   onClose: () => void;
   players: NPC[];
-  onConfirm: (selectedItemIdsByChar: { [charId: string]: string[] }) => void;
+  onConfirm: (selectedItemIdsByChar: { [charId: string]: string[] }, days: number) => void;
 }
 
 interface CharManaItems {
@@ -40,10 +40,12 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
 
   // Mapa de IDs selecionados por Personagem: { [charId]: Set<itemId> }
   const [selectedItems, setSelectedItems] = useState<{ [charId: string]: Set<string> }>({});
+  const [days, setDays] = useState<number>(1);
 
   // Inicializa a seleção com todos os itens marcados por padrão ao abrir
   useEffect(() => {
     if (isOpen) {
+      setDays(1);
       const initial: { [charId: string]: Set<string> } = {};
       charManaList.forEach(({ char, items }) => {
         initial[char.id] = new Set(items.map((it) => it.id));
@@ -83,7 +85,7 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
     Object.entries(selectedItems).forEach(([charId, set]) => {
       result[charId] = Array.from(set);
     });
-    onConfirm(result);
+    onConfirm(result, Math.max(1, days || 1));
     onClose();
   };
 
@@ -101,7 +103,7 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
               <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
                 <span>Passar o Dia</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/90 text-cyan-300 border border-cyan-700/60 font-bold">
-                  Recarga +1 Mana
+                  Recarga +{days} Mana
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
@@ -119,12 +121,31 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
           </button>
         </div>
 
-        {/* Info Banner (Fixo / shrink-0) */}
-        <div className="shrink-0 px-5 py-2.5 bg-slate-950/70 border-b border-slate-800/80 text-xs text-slate-300 flex items-start gap-2">
-          <Sparkles size={14} className="text-cyan-400 shrink-0 mt-0.5" />
-          <span className="leading-relaxed">
-            Ao confirmar, os itens selecionados receberão <strong>+1 ponto</strong> de mana atual (limitado ao total do item). Desmarque os itens que não deseja atualizar.
-          </span>
+        {/* Info Banner & Campo de Dias (Fixo / shrink-0) */}
+        <div className="shrink-0 px-5 py-2.5 bg-slate-950/70 border-b border-slate-800/80 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+            <Sparkles size={14} className="text-cyan-400 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">
+              Ao confirmar, cada item selecionado receberá <strong>+{days} ponto{days > 1 ? 's' : ''}</strong> de mana (limitado ao máximo).
+            </span>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-900/90 border border-amber-500/40 px-3 py-1.5 rounded-xl shadow-inner">
+            <label htmlFor="passDayInput" className="text-xs font-bold text-amber-400 whitespace-nowrap">
+              Passar Dias:
+            </label>
+            <input
+              id="passDayInput"
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                setDays(isNaN(val) || val < 1 ? 1 : val);
+              }}
+              className="w-16 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-lg px-2 py-1 text-center text-xs font-mono font-bold text-white focus:outline-none"
+            />
+          </div>
         </div>
 
         {/* Content list com rolagem */}
@@ -177,7 +198,7 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                     {items.map((item) => {
                       const isSelected = charSelectedSet.has(item.id);
                       const isFull = (item.current ?? 0) >= (item.max ?? 0);
-                      const nextValue = Math.min((item.current ?? 0) + 1, item.max || ((item.current ?? 0) + 1));
+                      const nextValue = Math.min((item.current ?? 0) + days, item.max || ((item.current ?? 0) + days));
 
                       return (
                         <div
@@ -225,8 +246,8 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
                                 Cheio
                               </span>
                             ) : (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800 font-bold">
-                                +1
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800 font-bold">
+                                +{days}
                               </span>
                             )}
                           </div>
@@ -260,7 +281,7 @@ export const PassDayModal: React.FC<PassDayModalProps> = ({
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
             >
               <Check size={14} strokeWidth={2.5} />
-              <span>Confirmar (+1 Mana)</span>
+              <span>Confirmar (+{days} Mana{days > 1 ? ` · ${days} Dias` : ''})</span>
             </button>
           </div>
         </div>

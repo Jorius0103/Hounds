@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NPC, MesaRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { CombatHomeScreen } from './CombatHomeScreen';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
-import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X } from 'lucide-react';
+import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X, Save, Check } from 'lucide-react';
 
 interface NpcListBarProps {
   npcs: NPC[];
@@ -18,6 +18,8 @@ interface NpcListBarProps {
   canControlRound?: boolean;
   isNoCombat?: boolean;
   isHomeScreen?: boolean;
+  customMasterOrder?: string[];
+  onSaveMasterOrder?: (orderIds: string[]) => void;
 }
 
 export const NpcListBar: React.FC<NpcListBarProps> = ({
@@ -32,21 +34,105 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   canControlRound,
   isNoCombat = false,
   isHomeScreen = false,
+  customMasterOrder,
+  onSaveMasterOrder,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs' | 'alive' | 'dead'>('all');
-  const [sortMode, setSortMode] = useState<'speed' | 'alpha'>(() => {
+  const [sortMode, setSortMode] = useState<'speed' | 'alpha' | 'mestre'>(() => {
     try {
       const saved = localStorage.getItem('gurps_combat_sort_mode_v1');
-      if (saved === 'alpha' || saved === 'speed') return saved;
+      if (saved === 'alpha' || saved === 'speed' || saved === 'mestre') return saved;
     } catch {}
     return 'speed';
   });
 
-  const handleSelectSortMode = (mode: 'speed' | 'alpha') => {
+  const [localOrderedIds, setLocalOrderedIds] = useState<string[] | null>(null);
+  const [hasUnsavedOrder, setHasUnsavedOrder] = useState<boolean>(false);
+  const [savedToast, setSavedToast] = useState<boolean>(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Sincroniza ordem local quando a ordem externa mudar e não houver edições pendentes
+  useEffect(() => {
+    if (!hasUnsavedOrder) {
+      setLocalOrderedIds(customMasterOrder || null);
+    }
+  }, [customMasterOrder, hasUnsavedOrder]);
+
+  const handleSelectSortMode = (mode: 'speed' | 'alpha' | 'mestre') => {
     setSortMode(mode);
     try {
       localStorage.setItem('gurps_combat_sort_mode_v1', mode);
     } catch {}
+  };
+
+  const isMaster = currentUserRole === 'mestre';
+  const canDrag = isMaster && sortMode === 'mestre';
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (!canDrag) return;
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, overId: string) => {
+    if (!canDrag || !draggedId || draggedId === overId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverId !== overId) {
+      setDragOverId(overId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, overId: string) => {
+    if (dragOverId === overId) {
+      setDragOverId(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!canDrag || !draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const currentIds = displayedNpcs.map((n) => n.id);
+    const fromIndex = currentIds.indexOf(draggedId);
+    const toIndex = currentIds.indexOf(targetId);
+
+    if (fromIndex !== -1 && toIndex !== -1) {
+      const newIds = [...currentIds];
+      const [moved] = newIds.splice(fromIndex, 1);
+      newIds.splice(toIndex, 0, moved);
+
+      // Agrega outros IDs conhecidos fora do filtro atual
+      const allKnownIds = rawDisplayedNpcs.map((n) => n.id);
+      const fullOrder = Array.from(new Set([...newIds, ...allKnownIds]));
+
+      setLocalOrderedIds(fullOrder);
+      setHasUnsavedOrder(true);
+    }
+
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleSaveOrder = () => {
+    const orderToSave = localOrderedIds || displayedNpcs.map((n) => n.id);
+    if (onSaveMasterOrder) {
+      onSaveMasterOrder(orderToSave);
+    }
+    setHasUnsavedOrder(false);
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 2500);
   };
 
   // Se jogador ou visualizador, exibe apenas os que estão visíveis (personagens são sempre visíveis)
@@ -69,12 +155,25 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   });
 
   // Ordenação:
-  // Cada usuário escolhe ordenar por Speed ou por Ordem Alfabética.
-  // Para os Jogadores: Personagens vêm primeiro (ordenados pela escolha do usuário: Speed ou A-Z),
-  // e os NPCs são sempre listados no final da lista por ordem alfabética.
+  // 1. Mestre: segue a ordem customizada salva pelo Mestre via drag-and-drop.
+  // 2. Speed: decrescente por velocidade básica.
+  // 3. A-Z: ordem alfabética.
   const displayedNpcs = [...filteredNpcs].sort((a, b) => {
     const isPlayerA = a.characterType === 'player';
     const isPlayerB = b.characterType === 'player';
+
+    // Ordem Mestre (disponível para todos os usuários)
+    if (sortMode === 'mestre') {
+      const masterOrder = localOrderedIds || customMasterOrder || [];
+      const idxA = masterOrder.indexOf(a.id);
+      const idxB = masterOrder.indexOf(b.id);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      if (isPlayerA && !isPlayerB) return -1;
+      if (!isPlayerA && isPlayerB) return 1;
+      return (a.name || '').localeCompare(b.name || '', 'pt-BR');
+    }
 
     if (currentUserRole === 'mestre') {
       if (sortMode === 'alpha') {
@@ -188,14 +287,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             </div>
 
             {/* NOVA DIV DE ORDENAÇÃO (fora da div de filtros) */}
-            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner">
+            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner flex-wrap">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1.5 select-none">
                 Ordem:
               </span>
               <button
                 type="button"
                 onClick={() => handleSelectSortMode('speed')}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
                   sortMode === 'speed'
                     ? 'bg-amber-950/90 text-amber-300 shadow-sm border border-amber-500/50'
                     : 'text-slate-400 hover:text-amber-300 hover:bg-slate-900'
@@ -207,7 +306,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               <button
                 type="button"
                 onClick={() => handleSelectSortMode('alpha')}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
                   sortMode === 'alpha'
                     ? 'bg-sky-950/90 text-sky-300 shadow-sm border border-sky-500/50'
                     : 'text-slate-400 hover:text-sky-300 hover:bg-slate-900'
@@ -216,6 +315,37 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               >
                 <span>🔤 A-Z</span>
               </button>
+              <button
+                type="button"
+                onClick={() => handleSelectSortMode('mestre')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
+                  sortMode === 'mestre'
+                    ? 'bg-purple-950/90 text-purple-300 shadow-sm border border-purple-500/50'
+                    : 'text-slate-400 hover:text-purple-300 hover:bg-slate-900'
+                }`}
+                title="Ordem definida pelo Mestre (arraste e solte os cards para reorganizar)"
+              >
+                <span>👑 Mestre</span>
+              </button>
+
+              {/* Botão de Salvar a Ordem do Mestre */}
+              {isMaster && sortMode === 'mestre' && (
+                <button
+                  type="button"
+                  onClick={handleSaveOrder}
+                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-bold transition-all text-[11px] shadow-sm ml-1 cursor-pointer ${
+                    savedToast
+                      ? 'bg-emerald-600 text-white border border-emerald-400'
+                      : hasUnsavedOrder
+                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 ring-2 ring-amber-300'
+                      : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-500/60'
+                  }`}
+                  title="Salvar esta nova ordem dos cards para todos os usuários"
+                >
+                  {savedToast ? <Check size={11} /> : <Save size={11} />}
+                  <span>{savedToast ? 'Ordem Salva!' : hasUnsavedOrder ? 'Salvar Ordem *' : 'Salvar Ordem'}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -331,8 +461,12 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const activeManeuver = getCombatManeuver(npc.combatManeuver);
 
                 const hasConditions = Boolean(npc.statusConditions && npc.statusConditions.length > 0);
+                const isPlayerRole = currentUserRole === 'jogador';
+                const hpWarnsFiltered = (hpStat.warningTexts || (hpStat.warningText ? [hpStat.warningText] : [])).filter(
+                  (w) => !(isPlayerRole && w.includes('Teste de morte (HT) a cada múltiplo'))
+                );
                 const hasCriticalHpFp = Boolean(
-                  (hpStat.warningTexts && hpStat.warningTexts.length > 0) ||
+                  hpWarnsFiltered.length > 0 ||
                   (fpStat.warningTexts && fpStat.warningTexts.length > 0)
                 );
                 const hasCrippledParts =
@@ -375,6 +509,12 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                   <button
                     key={npc.id}
                     onClick={() => onSelectNpc(npc.id)}
+                    draggable={canDrag}
+                    onDragStart={(e) => handleDragStart(e, npc.id)}
+                    onDragOver={(e) => handleDragOver(e, npc.id)}
+                    onDragLeave={(e) => handleDragLeave(e, npc.id)}
+                    onDrop={(e) => handleDrop(e, npc.id)}
+                    onDragEnd={handleDragEnd}
                     style={{
                       borderWidth: '2px',
                       borderStyle: 'solid',
@@ -382,7 +522,11 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                       width: 'calc((100% - 50px) / 9)',
                       minWidth: '150px',
                     }}
-                    className={`group relative flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all border-2 shrink-0 ${cardColorClasses}`}
+                    className={`group relative flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all border-2 shrink-0 ${cardColorClasses} ${
+                      canDrag ? 'cursor-grab active:cursor-grabbing hover:brightness-110' : 'cursor-pointer'
+                    } ${draggedId === npc.id ? 'opacity-35 scale-95' : ''} ${
+                      dragOverId === npc.id ? 'ring-2 ring-purple-400 border-purple-400 bg-purple-950/60 shadow-lg' : ''
+                    }`}
                     title={`${npc.name || 'Personagem'} (${isPlayerChar ? 'Personagem' : 'NPC'}${
                       showSpeed ? ` | Speed: ${npc.basicSpeed ?? 0}` : ''
                     }${isDeadChar ? ' | MORTO' : ''}${

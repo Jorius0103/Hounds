@@ -193,7 +193,11 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
               : hpStatus.warningText
               ? [hpStatus.warningText]
               : [];
+          const isPlayerRole = currentUserRole === 'jogador';
           hpWarns.forEach((w, ix) => {
+            if (isPlayerRole && w.includes('Teste de morte (HT) a cada múltiplo')) {
+              return;
+            }
             criticalAlerts.push({
               id: `hp-warn-${ix}`,
               text: `PV: ${w}`,

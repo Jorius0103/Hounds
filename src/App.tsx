@@ -1469,10 +1469,11 @@ export default function App() {
     setIsHomeScreen(false);
   };
 
-  // Passar o Dia: recarrega +1 de mana para os itens de mana selecionados dos personagens
-  const handleConfirmPassDay = (selectedByChar: { [charId: string]: string[] }) => {
+  // Passar o Dia: recarrega +N de mana para os itens de mana selecionados dos personagens conforme dias passados
+  const handleConfirmPassDay = (selectedByChar: { [charId: string]: string[] }, days: number = 1) => {
     let anyUpdated = false;
     const now = Date.now();
+    const effectiveDays = Math.max(1, days || 1);
     const summaryDetails: string[] = [];
 
     const updatedPlayers = players.map((p) => {
@@ -1485,8 +1486,8 @@ export default function App() {
       const nextItems = (p.extraItems || []).map((it) => {
         if (selectedItemIds.has(it.id)) {
           const currentVal = it.current || 0;
-          const maxVal = it.max || (currentVal + 1);
-          const nextVal = Math.min(currentVal + 1, maxVal);
+          const maxVal = it.max || (currentVal + effectiveDays);
+          const nextVal = Math.min(currentVal + effectiveDays, maxVal);
           anyUpdated = true;
           charChanged = true;
           charUpdatedItems.push(`${it.name} (${currentVal}➔${nextVal})`);
@@ -1519,9 +1520,10 @@ export default function App() {
 
       if (activeCombat) {
         const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const dayLabel = effectiveDays > 1 ? `${effectiveDays} Dias` : '1 Dia';
         const descText = summaryDetails.length > 0
-          ? `Passar o Dia (+1 Mana): ${summaryDetails.join(' | ')}.`
-          : 'Passar o Dia (+1 Mana): Recursos de mana dos Personagens recuperados em +1 ponto.';
+          ? `Passar ${dayLabel} (+${effectiveDays} Mana): ${summaryDetails.join(' | ')}.`
+          : `Passar ${dayLabel} (+${effectiveDays} Mana): Recursos de mana dos Personagens recuperados em +${effectiveDays} ponto(s).`;
         const logEntry: ActionLogEntry = {
           id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
           timestamp: timeStr,
@@ -1533,7 +1535,7 @@ export default function App() {
           npcName: 'Personagens',
           npcCharacterType: 'player',
           itemName: 'Passar o Dia',
-          amount: 1,
+          amount: effectiveDays,
           description: descText,
         };
         const nextCombats = combats.map((c) => {
@@ -1547,8 +1549,8 @@ export default function App() {
               extraItems: (npc.extraItems || []).map((it) => {
                 if (selectedItemIds.has(it.id)) {
                   const currentVal = it.current || 0;
-                  const maxVal = it.max || (currentVal + 1);
-                  return { ...it, current: Math.min(currentVal + 1, maxVal) };
+                  const maxVal = it.max || (currentVal + effectiveDays);
+                  return { ...it, current: Math.min(currentVal + effectiveDays, maxVal) };
                 }
                 return it;
               }),
@@ -1571,6 +1573,37 @@ export default function App() {
         } catch (e) {}
         broadcastSync(nextCombats, undefined, undefined, undefined, updatedPlayers);
       }
+    }
+  };
+
+  const [localMasterOrder, setLocalMasterOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('gurps_mesa_master_order_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  const handleSaveMasterOrder = (newOrderIds: string[]) => {
+    setLocalMasterOrder(newOrderIds);
+    try {
+      localStorage.setItem('gurps_mesa_master_order_v1', JSON.stringify(newOrderIds));
+    } catch {}
+
+    if (activeCombat) {
+      const updatedCombats = combats.map((c) =>
+        c.id === activeCombat.id ? { ...c, customOrder: newOrderIds } : c
+      );
+      setCombats(updatedCombats);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+      } catch {}
+      broadcastSync(updatedCombats);
+    } else {
+      broadcastSync();
     }
   };
 
@@ -3464,6 +3497,8 @@ export default function App() {
         canControlRound={canEditCurrent}
         isNoCombat={isNoCombat}
         isHomeScreen={isHomeScreen && activeViewMode === 'sheets'}
+        customMasterOrder={activeCombat?.customOrder || localMasterOrder}
+        onSaveMasterOrder={handleSaveMasterOrder}
       />
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}

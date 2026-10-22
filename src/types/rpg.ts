@@ -291,5 +291,6 @@ export interface Combat {
   roundLog?: { round: number; endedAt: number }[]; // Fim de cada rodada (usado só pelo mesa.html compilado)
   editorUserIds?: string[]; // IDs dos jogadores que possuem permissão de edição
   playerIds?: string[]; // IDs dos personagens de jogadores visíveis/ativos neste combate
+  customOrder?: string[]; // IDs de combatentes na ordem definida pelo Mestre (drag-and-drop)
   isActive?: boolean; // Se false, inativo: não aparece na barra principal, apenas no CRUD
 }
