@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { X, Dices } from 'lucide-react';
 
 export interface DicePickerModalProps {
@@ -118,15 +117,17 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
     handleRollClick(count, sides);
   };
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm select-none"
-      onClick={onClose}
-    >
-      {/* Modal Dialog Card */}
+  return (
+    <>
+      {/* Backdrop invisível para capturar cliques fora do card sem escurecer ou desfocar a tela */}
+      <div
+        className="fixed inset-0 z-40 bg-transparent select-none"
+        onClick={onClose}
+      />
+      {/* Popover Card ancorado perto do botão + Dados */}
       <div
         ref={popoverRef}
-        className="w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl overflow-hidden font-sans"
+        className="absolute top-full right-0 mt-2 z-50 w-80 sm:w-88 max-w-[calc(100vw-24px)] bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl overflow-hidden font-sans ring-1 ring-black/60"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -235,7 +236,6 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
           </form>
         </div>
       </div>
-    </div>,
-    document.body
+    </>
   );
 };

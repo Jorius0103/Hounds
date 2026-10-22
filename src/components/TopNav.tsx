@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus } from '../utils/onlineSync';
-import { Swords, Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid, Dices, Sun, Volume2, VolumeX, Music, Radio, Square } from 'lucide-react';
+import { Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid, Dices, Sun, Volume2, VolumeX, Radio, Square } from 'lucide-react';
 import { DicePickerModal } from './DicePickerModal';
 import { audioStreamSync, AudioStreamState } from '../utils/audioStreamSync';
 
@@ -82,22 +82,10 @@ export const TopNav: React.FC<TopNavProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800/80 px-3 sm:px-5 py-2">
-      <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-3 sm:gap-5 md:gap-6 flex-nowrap overflow-x-auto scrollbar-none">
-        {/* Zone 1: Brand title & Combat selector / CRUD */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0 flex-nowrap">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <Swords size={16} />
-            </div>
-            <span className="text-sm font-bold tracking-tight text-white whitespace-nowrap hidden sm:inline">
-              Mesa de RPG
-            </span>
-            <span className="text-sm font-bold tracking-tight text-white whitespace-nowrap sm:hidden">
-              GURPS
-            </span>
-          </div>
-
+    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800/80 px-3 sm:px-6 py-2">
+      <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-4 sm:gap-6 md:gap-8 flex-nowrap overflow-x-auto scrollbar-none">
+        {/* Zone 1: Combat selector / CRUD & Navigation Controls */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-nowrap">
           {/* Combat selector & CRUD de combates: Apenas o Mestre escolhe combate; Jogador apenas visualiza */}
           {currentUser?.role === 'mestre' ? (
             <>
@@ -296,7 +284,7 @@ export const TopNav: React.FC<TopNavProps> = ({
 
         {/* Zone 2: Dice Roller (3D6, 2D6, 1D6 e + Dados) e Toggle de Ocultar Rolagens para o Mestre */}
         {onRollDice && (
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-900/90 border border-slate-750 rounded-lg shadow-inner shrink-0">
+          <div className="relative flex items-center gap-2 px-2.5 py-1 bg-slate-900/90 border border-slate-750 rounded-lg shadow-inner shrink-0">
             {isMestre && onToggleHideGmRolls && (
               <button
                 type="button"
@@ -386,8 +374,8 @@ export const TopNav: React.FC<TopNavProps> = ({
           </div>
         )}
 
-        {/* Zone 3: Bloco de Trilha Sonora / Spotify Stream alinhado à DIREITA da barra */}
-        <div className="ml-auto flex items-center gap-2.5 px-2.5 py-1 bg-slate-900/95 border border-slate-750 rounded-lg shadow-inner shrink-0">
+        {/* Zone 3: Bloco de Trilha Sonora / Transmissão de Áudio */}
+        <div className="flex items-center gap-2.5 px-3 py-1 bg-slate-900/95 border border-slate-750 rounded-lg shadow-inner shrink-0">
           {/* Botão de desbloqueio para Autoplay bloqueado */}
           {audioState.needsInteraction && !audioState.isBroadcasting && (
             <button
@@ -401,7 +389,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           )}
 
           {/* Indicador de Transmissão apenas com o Nome do Streamer */}
-          {audioState.hasActiveBroadcast ? (
+          {audioState.hasActiveBroadcast && (
             <div
               className="flex items-center gap-1.5 max-w-[120px] sm:max-w-[160px] truncate"
               title={`Transmitindo: ${audioState.broadcasterName || 'Mestre'}`}
@@ -410,14 +398,9 @@ export const TopNav: React.FC<TopNavProps> = ({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <Music size={13} className="text-emerald-400 shrink-0" />
               <span className="text-[11px] font-bold text-amber-300 truncate font-mono">
                 {audioState.broadcasterName || 'Mestre'}
               </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 text-slate-400 shrink-0" title="Trilha Sonora (Inativa)">
-              <Music size={13} className="shrink-0 text-slate-500" />
             </div>
           )}
 
@@ -435,15 +418,15 @@ export const TopNav: React.FC<TopNavProps> = ({
             {audioState.isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
 
-          {/* Slider de Volume (reduzido pela metade) */}
-          <div className="flex items-center gap-1 shrink-0">
+          {/* Slider de Volume */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <input
               type="range"
               min={0}
               max={100}
               value={audioState.isMuted ? 0 : audioState.volume}
               onChange={(e) => audioStreamSync.setVolume(Number(e.target.value))}
-              className="w-5 sm:w-7 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              className="w-8 sm:w-11 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
               title={`Volume: ${audioState.isMuted ? 'Mutado' : `${audioState.volume}%`}`}
             />
             <span className="text-[10px] font-mono font-bold text-slate-400 w-5 text-right hidden sm:inline">
