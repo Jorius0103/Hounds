@@ -51,10 +51,6 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
     return (u.name || '').toLowerCase().includes(q);
   });
 
-  const activeEditorCount = playerUsers.filter(
-    (u) => editorUserIds.includes(u.id) || editorUserIds.includes(u.name)
-  ).length;
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
@@ -116,26 +112,9 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               <Users size={16} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
-                  Permissões dos Jogadores no Combate
-                </h2>
-                <span
-                  style={{
-                    fontSize: '10px',
-                    padding: '1px 7px',
-                    borderRadius: '9999px',
-                    fontFamily: 'monospace',
-                    fontWeight: 'bold',
-                    background: '#1e293b',
-                    border: '1px solid #334155',
-                    color: '#fcd34d',
-                  }}
-                >
-                  {activeEditorCount} de {playerUsers.length}{' '}
-                  {activeEditorCount === 1 ? 'editor' : 'editores'}
-                </span>
-              </div>
+              <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                Permissões dos Jogadores na Mesa de RPG
+              </h2>
               <p style={{ fontSize: '10px', color: '#94a3b8', margin: '1px 0 0 0' }}>
                 Defina em tempo real quem pode editar fichas e movimentar tokens
               </p>
@@ -162,114 +141,97 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           </button>
         </div>
 
-        {/* Subheader / Ações Rápidas & Busca compacta */}
+        {/* Subheader / Busca à esquerda e Botões à direita na mesma linha */}
         <div
           style={{
             flexShrink: 0,
             display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
             padding: '8px 18px',
             background: 'rgba(2, 6, 23, 0.8)',
             borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
-            fontSize: '11px',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '8px',
-              flexWrap: 'wrap',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#94a3b8' }}>
-              <Eye size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
-              <span>
-                Por padrão, jogadores são <strong>espectadores</strong> (somente leitura).
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, marginLeft: 'auto' }}>
-              <button
-                type="button"
-                onClick={() => onSetAllPermissions(true)}
-                className="hover:opacity-90 active:scale-95 transition-all"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '3px 8px',
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  background: 'rgba(6, 78, 59, 0.8)',
-                  color: '#6ee7b7',
-                  border: '1px solid rgba(6, 95, 70, 0.8)',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                }}
-                title="Conceder permissão de edição a todos os jogadores"
-              >
-                <CheckCheck size={11} />
-                <span>Liberar Todos</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetAllPermissions(false)}
-                className="hover:opacity-90 active:scale-95 transition-all"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '3px 8px',
-                  fontSize: '10px',
-                  fontWeight: 500,
-                  background: '#1e293b',
-                  color: '#cbd5e1',
-                  border: '1px solid #334155',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                }}
-                title="Colocar todos os jogadores em modo espectador"
-              >
-                <EyeOff size={11} />
-                <span>Bloquear Todos</span>
-              </button>
-            </div>
+          {/* Campo de Busca à esquerda */}
+          <div style={{ position: 'relative', width: '200px', maxWidth: '45%' }}>
+            <Search
+              size={12}
+              style={{
+                position: 'absolute',
+                left: '9px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#64748b',
+              }}
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar jogador..."
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                background: 'rgba(2, 6, 23, 0.9)',
+                border: '1px solid #1e293b',
+                borderRadius: '6px',
+                padding: '4px 8px 4px 26px',
+                fontSize: '11px',
+                color: '#ffffff',
+                outline: 'none',
+              }}
+            />
           </div>
 
-          {/* Campo de Busca se houver mais de 5 jogadores */}
-          {playerUsers.length > 5 && (
-            <div style={{ position: 'relative', width: '100%' }}>
-              <Search
-                size={12}
-                style={{
-                  position: 'absolute',
-                  left: '9px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#64748b',
-                }}
-              />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar jogador cadastrado..."
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  background: 'rgba(2, 6, 23, 0.9)',
-                  border: '1px solid #1e293b',
-                  borderRadius: '6px',
-                  padding: '4px 8px 4px 26px',
-                  fontSize: '11px',
-                  color: '#ffffff',
-                  outline: 'none',
-                }}
-              />
-            </div>
-          )}
+          {/* Botões Liberar Todos e Bloquear Todos à direita */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => onSetAllPermissions(true)}
+              className="hover:opacity-90 active:scale-95 transition-all"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                background: 'rgba(6, 78, 59, 0.8)',
+                color: '#6ee7b7',
+                border: '1px solid rgba(6, 95, 70, 0.8)',
+                borderRadius: '5px',
+                cursor: 'pointer',
+              }}
+              title="Conceder permissão de edição a todos os jogadores"
+            >
+              <CheckCheck size={11} />
+              <span>Liberar Todos</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetAllPermissions(false)}
+              className="hover:opacity-90 active:scale-95 transition-all"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                fontSize: '10px',
+                fontWeight: 500,
+                background: '#1e293b',
+                color: '#cbd5e1',
+                border: '1px solid #334155',
+                borderRadius: '5px',
+                cursor: 'pointer',
+              }}
+              title="Colocar todos os jogadores em modo espectador"
+            >
+              <EyeOff size={11} />
+              <span>Bloquear Todos</span>
+            </button>
+          </div>
         </div>
 
         {/* Lista de jogadores: cards verticais compactos que cabem 10 itens sem rolagem */}

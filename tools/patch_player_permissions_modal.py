@@ -84,27 +84,9 @@ def get_new_portal_code():
                 (0,q.jsxs)("div",{
                   style:{minWidth:0},
                   children:[
-                    (0,q.jsxs)("div",{
-                      style:{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"},
-                      children:[
-                        (0,q.jsx)("h2",{
-                          style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},
-                          children:"Permiss\u00f5es dos Jogadores no Combate"
-                        }),
-                        (0,q.jsx)("span",{
-                          style:{
-                            fontSize:"10px",
-                            padding:"1px 7px",
-                            borderRadius:"9999px",
-                            fontFamily:"monospace",
-                            fontWeight:"bold",
-                            background:"#1e293b",
-                            border:"1px solid #334155",
-                            color:"#fcd34d"
-                          },
-                          children:`${editorCount} de ${playerUsers.length} ${editorCount===1?"editor":"editores"}`
-                        })
-                      ]
+                    (0,q.jsx)("h2",{
+                      style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},
+                      children:"Permiss\u00f5es dos Jogadores na Mesa de RPG"
                     }),
                     (0,q.jsx)("p",{
                       style:{fontSize:"10px",color:"#94a3b8",margin:"1px 0 0 0"},
@@ -147,125 +129,22 @@ def get_new_portal_code():
           ]
         }),
 
-        /* Subheader / Acoes Rapidas & Busca compacta */
+        /* Subheader / Busca a esquerda e Botoes a direita na mesma linha */
         (0,q.jsxs)("div",{
           style:{
             flexShrink:0,
             display:"flex",
-            flexDirection:"column",
-            gap:"6px",
+            alignItems:"center",
+            justifyContent:"space-between",
+            gap:"10px",
             padding:"8px 18px",
             background:"rgba(2, 6, 23, 0.8)",
-            borderBottom:"1px solid rgba(51, 65, 85, 0.8)",
-            fontSize:"11px"
+            borderBottom:"1px solid rgba(51, 65, 85, 0.8)"
           },
           children:[
+            /* Campo de busca a esquerda */
             (0,q.jsxs)("div",{
-              style:{
-                display:"flex",
-                alignItems:"center",
-                justifyContent:"space-between",
-                gap:"8px",
-                flexWrap:"wrap"
-              },
-              children:[
-                (0,q.jsxs)("div",{
-                  style:{display:"flex",alignItems:"center",gap:"5px",fontSize:"11px",color:"#94a3b8"},
-                  children:[
-                    (0,q.jsxs)("svg",{
-                      viewBox:"0 0 24 24",
-                      fill:"none",
-                      stroke:"currentColor",
-                      strokeWidth:"2",
-                      strokeLinecap:"round",
-                      strokeLinejoin:"round",
-                      style:{width:"12px",height:"12px",color:"#94a3b8",flexShrink:0},
-                      children:[
-                        (0,q.jsx)("path",{d:"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"}),
-                        (0,q.jsx)("circle",{cx:"12",cy:"12",r:"3"})
-                      ]
-                    }),
-                    (0,q.jsxs)("span",{
-                      children:[
-                        "Por padr\u00e3o, jogadores s\u00e3o ",
-                        (0,q.jsx)("strong",{children:"espectadores"}),
-                        " (somente leitura)."
-                      ]
-                    })
-                  ]
-                }),
-                (0,q.jsxs)("div",{
-                  style:{display:"flex",alignItems:"center",gap:"5px",flexShrink:0,marginLeft:"auto"},
-                  children:[
-                    (0,q.jsxs)("button",{
-                      type:"button",
-                      onClick:()=>setAllPerm&&setAllPerm(!0),
-                      style:{
-                        display:"flex",
-                        alignItems:"center",
-                        gap:"4px",
-                        padding:"3px 8px",
-                        fontSize:"10px",
-                        fontWeight:"bold",
-                        background:"rgba(6, 78, 59, 0.8)",
-                        color:"#6ee7b7",
-                        border:"1px solid rgba(6, 95, 70, 0.8)",
-                        borderRadius:"5px",
-                        cursor:"pointer"
-                      },
-                      title:"Conceder permiss\u00e3o de edi\u00e7\u00e3o a todos os jogadores",
-                      children:[
-                        (0,q.jsx)("svg",{
-                          viewBox:"0 0 24 24",
-                          fill:"none",
-                          stroke:"currentColor",
-                          strokeWidth:"2.5",
-                          strokeLinecap:"round",
-                          strokeLinejoin:"round",
-                          style:{width:"11px",height:"11px"},
-                          children:(0,q.jsx)("polyline",{points:"20 6 9 17 4 12"})
-                        }),
-                        (0,q.jsx)("span",{children:"Liberar Todos"})
-                      ]
-                    }),
-                    (0,q.jsxs)("button",{
-                      type:"button",
-                      onClick:()=>setAllPerm&&setAllPerm(!1),
-                      style:{
-                        display:"flex",
-                        alignItems:"center",
-                        gap:"4px",
-                        padding:"3px 8px",
-                        fontSize:"10px",
-                        fontWeight:500,
-                        background:"#1e293b",
-                        color:"#cbd5e1",
-                        border:"1px solid #334155",
-                        borderRadius:"5px",
-                        cursor:"pointer"
-                      },
-                      title:"Colocar todos os jogadores em modo espectador",
-                      children:[
-                        (0,q.jsxs)("svg",{
-                          viewBox:"0 0 24 24",
-                          fill:"none",
-                          stroke:"currentColor",
-                          strokeWidth:"2.5",
-                          style:{width:"11px",height:"11px"},
-                          children:[
-                            (0,q.jsx)("line",{x1:"18",y1:"6",x2:"6",y2:"18"}),
-                            (0,q.jsx)("line",{x1:"6",y1:"6",x2:"18",y2:"18"})
-                          ]
-                        }),
-                        (0,q.jsx)("span",{children:"Bloquear Todos"})
-                      ]
-                    })
-                  ]
-                })
-              ]
-            }),
-            playerUsers.length>5&&(0,q.jsxs)("div",{
-              style:{position:"relative",width:"100%"},
+              style:{position:"relative",width:"200px",maxWidth:"45%"},
               children:[
                 (0,q.jsxs)("svg",{
                   viewBox:"0 0 24 24",
@@ -284,7 +163,7 @@ def get_new_portal_code():
                   type:"text",
                   value:permSearch,
                   onChange:x=>setPermSearch(x.target.value),
-                  placeholder:"Buscar jogador cadastrado...",
+                  placeholder:"Buscar jogador...",
                   style:{
                     width:"100%",
                     boxSizing:"border-box",
@@ -296,6 +175,76 @@ def get_new_portal_code():
                     color:"#ffffff",
                     outline:"none"
                   }
+                })
+              ]
+            }),
+
+            /* Botoes Liberar Todos e Bloquear Todos a direita */
+            (0,q.jsxs)("div",{
+              style:{display:"flex",alignItems:"center",gap:"6px",flexShrink:0},
+              children:[
+                (0,q.jsxs)("button",{
+                  type:"button",
+                  onClick:()=>setAllPerm&&setAllPerm(!0),
+                  style:{
+                    display:"flex",
+                    alignItems:"center",
+                    gap:"4px",
+                    padding:"4px 10px",
+                    fontSize:"10px",
+                    fontWeight:"bold",
+                    background:"rgba(6, 78, 59, 0.8)",
+                    color:"#6ee7b7",
+                    border:"1px solid rgba(6, 95, 70, 0.8)",
+                    borderRadius:"5px",
+                    cursor:"pointer"
+                  },
+                  title:"Conceder permiss\u00e3o de edi\u00e7\u00e3o a todos os jogadores",
+                  children:[
+                    (0,q.jsx)("svg",{
+                      viewBox:"0 0 24 24",
+                      fill:"none",
+                      stroke:"currentColor",
+                      strokeWidth:"2.5",
+                      strokeLinecap:"round",
+                      strokeLinejoin:"round",
+                      style:{width:"11px",height:"11px"},
+                      children:(0,q.jsx)("polyline",{points:"20 6 9 17 4 12"})
+                    }),
+                    (0,q.jsx)("span",{children:"Liberar Todos"})
+                  ]
+                }),
+                (0,q.jsxs)("button",{
+                  type:"button",
+                  onClick:()=>setAllPerm&&setAllPerm(!1),
+                  style:{
+                    display:"flex",
+                    alignItems:"center",
+                    gap:"4px",
+                    padding:"4px 10px",
+                    fontSize:"10px",
+                    fontWeight:500,
+                    background:"#1e293b",
+                    color:"#cbd5e1",
+                    border:"1px solid #334155",
+                    borderRadius:"5px",
+                    cursor:"pointer"
+                  },
+                  title:"Colocar todos os jogadores em modo espectador",
+                  children:[
+                    (0,q.jsxs)("svg",{
+                      viewBox:"0 0 24 24",
+                      fill:"none",
+                      stroke:"currentColor",
+                      strokeWidth:"2.5",
+                      style:{width:"11px",height:"11px"},
+                      children:[
+                        (0,q.jsx)("line",{x1:"18",y1:"6",x2:"6",y2:"18"}),
+                        (0,q.jsx)("line",{x1:"6",y1:"6",x2:"18",y2:"18"})
+                      ]
+                    }),
+                    (0,q.jsx)("span",{children:"Bloquear Todos"})
+                  ]
                 })
               ]
             })
