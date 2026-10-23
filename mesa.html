@@ -4461,18 +4461,9 @@ editPartRuleKey!==null&&(0,d.jsx)("div",{style:{position:"fixed",inset:0,zIndex:
                 },
                 children:activeTab==="combats"?(0,et.jsx)(Lr,{size:16}):(0,et.jsx)(IArchive,{size:16})
               }),
-              (0,et.jsxs)("div",{
-                style:{minWidth:0},
-                children:[
-                  (0,et.jsx)("h2",{
-                    style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},
-                    children:"Configura\u00e7\u00f5es da Mesa de Combate"
-                  }),
-                  (0,et.jsx)("p",{
-                    style:{fontSize:"10px",color:"#94a3b8",margin:"1px 0 0 0"},
-                    children:"Gerencie combates ativos ou salve retratos completos para restaura\u00e7\u00e3o"
-                  })
-                ]
+              (0,et.jsx)("h2",{
+                style:{fontSize:"16px",fontWeight:"bold",color:"#ffffff",margin:0},
+                children:"Configura\u00e7\u00f5es da Mesa de Combate"
               })
             ]
           }),
@@ -5052,30 +5043,15 @@ editPartRuleKey!==null&&(0,d.jsx)("div",{style:{position:"fixed",inset:0,zIndex:
             style:{
               display:"flex",
               alignItems:"center",
-              justifyContent:"space-between",
+              justifyContent:"flex-end",
               gap:"8px",
               flexWrap:"wrap",
               background:"rgba(2, 6, 23, 0.55)",
-              padding:"10px 14px",
+              padding:"8px 12px",
               borderRadius:"10px",
               border:"1px solid #1e293b"
             },
             children:[
-              (0,et.jsxs)("div",{
-                children:[
-                  (0,et.jsxs)("div",{
-                    style:{fontSize:"11px",fontWeight:"bold",color:"#ffffff",display:"flex",alignItems:"center",gap:"6px"},
-                    children:[
-                      (0,et.jsx)(IShieldCheck,{size:14,className:"text-emerald-400"}),
-                      (0,et.jsx)("span",{children:"Retratos em Tempo Real"})
-                    ]
-                  }),
-                  (0,et.jsx)("div",{
-                    style:{fontSize:"10px",color:"#94a3b8",marginTop:"1px"},
-                    children:"Salve um retrato fiel de todos os combates, NPCs e rodadas."
-                  })
-                ]
-              }),
               (0,et.jsxs)("div",{
                 style:{display:"flex",alignItems:"center",gap:"6px"},
                 children:[
@@ -5557,10 +5533,7 @@ editPartRuleKey!==null&&(0,d.jsx)("div",{style:{position:"fixed",inset:0,zIndex:
                                 style:{background:"#0f172a",border:"1px solid #1e293b",padding:"1px 5px",borderRadius:"4px",color:"#cbd5e1"},
                                 children:[snap.summary?.totalPlayers||0," personagens"]
                               }),
-                              snap.summary?.activeCombatName&&(0,et.jsxs)("span",{
-                                style:{background:"#0f172a",border:"1px solid #1e293b",padding:"1px 5px",borderRadius:"4px",color:"#34d399"},
-                                children:["Ativo: ",snap.summary.activeCombatName]
-                              })
+
                             ]
                           })
                         ]

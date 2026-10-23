@@ -421,14 +421,9 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
             >
               {activeTab === 'combats' ? <Swords size={16} /> : <Archive size={16} />}
             </div>
-            <div style={{ minWidth: 0 }}>
-              <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
-                Configurações da Mesa de Combate
-              </h2>
-              <p style={{ fontSize: '10px', color: '#94a3b8', margin: '1px 0 0 0' }}>
-                Gerencie combates ativos ou salve retratos completos para restauração
-              </p>
-            </div>
+            <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+              Configurações da Mesa de Combate
+            </h2>
           </div>
           <button
             type="button"
@@ -1016,24 +1011,15 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
+                justifyContent: 'flex-end',
                 gap: '8px',
                 flexWrap: 'wrap',
                 background: 'rgba(2, 6, 23, 0.55)',
-                padding: '10px 14px',
+                padding: '8px 12px',
                 borderRadius: '10px',
                 border: '1px solid #1e293b',
               }}
             >
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <ShieldCheck size={14} className="text-emerald-400" />
-                  <span>Retratos em Tempo Real</span>
-                </div>
-                <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>
-                  Salve um retrato fiel de todos os combates, NPCs e rodadas.
-                </div>
-              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <button
                   type="button"
@@ -1462,11 +1448,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                               <span style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '1px 5px', borderRadius: '4px', color: '#cbd5e1' }}>
                                 {snap.summary?.totalPlayers || 0} personagens
                               </span>
-                              {snap.summary?.activeCombatName && (
-                                <span style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '1px 5px', borderRadius: '4px', color: '#34d399' }}>
-                                  Ativo: {snap.summary.activeCombatName}
-                                </span>
-                              )}
                             </div>
                           </div>
 
