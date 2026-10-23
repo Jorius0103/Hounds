@@ -375,6 +375,8 @@ export default function App() {
 
   const activeCombat = combats.find((c) => c.id === activeCombatId) || combats[0];
   const isNoCombat = !activeCombat || activeCombat.id === 'combat-vazio' || activeCombat.name?.toLowerCase().includes('vazio') || activeCombat.name?.toLowerCase().trim() === 'sem combate';
+  // Rodada efetiva: no modo "Sem combate" todos os registros ficam na Rodada 0
+  const effectiveRound = isNoCombat ? 0 : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
 
   // IDs dos personagens de jogadores visíveis no combate ativo (por padrão, todos)
   const activeCombatPlayerIds = useMemo(() => {
@@ -1632,7 +1634,7 @@ export default function App() {
           id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
           timestamp: timeStr,
           timestampMs: now,
-          round: activeCombat.currentRound ?? 0,
+          round: effectiveRound,
           author: currentUser?.role === 'jogador' ? 'assistente' : 'mestre',
           authorName: currentUser?.name || (currentUser?.role === 'jogador' ? 'Jogador' : 'Mestre'),
           type: 'item',
@@ -1872,7 +1874,7 @@ export default function App() {
       const now = Date.now();
       const author = currentUser?.role === 'mestre' ? 'mestre' : 'assistente';
       const authorName = (currentUser && currentUser.name) || (currentUser && currentUser.role === 'mestre' ? 'Mestre' : 'Assistente');
-      const currentRound = activeCombat ? (activeCombat.currentRound ?? (activeCombat as any).round ?? 0) : 0;
+      const currentRound = effectiveRound;
       const combatId = activeCombat ? activeCombat.id : undefined;
 
       const variableKey = keys.join(',');
@@ -2167,7 +2169,7 @@ export default function App() {
     if (exists) {
       delete nextMeta[conditionId];
     } else {
-      const curRnd = round !== undefined ? round : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
+      const curRnd = round !== undefined ? round : effectiveRound;
       nextMeta[conditionId] = {
         startRound: curRnd,
         duration: duration,
@@ -2295,7 +2297,7 @@ export default function App() {
   ) => {
     const roundNumber = logEntry.round !== undefined 
       ? logEntry.round 
-      : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
+      : effectiveRound;
     const entryWithId: ActionLogEntry = {
       ...logEntry,
       round: roundNumber,
@@ -2405,7 +2407,7 @@ export default function App() {
     const spellInstanceId = `spell-${now}-${Math.random().toString(36).slice(2, 6)}`;
     const roundNumber = logEntry.round !== undefined 
       ? logEntry.round 
-      : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
+      : effectiveRound;
     const entryWithId: ActionLogEntry = {
       ...logEntry,
       round: roundNumber,
@@ -2602,7 +2604,7 @@ export default function App() {
             type: 'spell',
             description: `Magia encerrada: ${removedName}${currentUser?.name ? ' — por ' + currentUser.name : ''}`,
             combatId: activeCombat?.id,
-            round: activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0,
+            round: effectiveRound,
           };
           return {
             ...n,
@@ -2654,7 +2656,7 @@ export default function App() {
   ) => {
     const roundNumber = logEntry.round !== undefined 
       ? logEntry.round 
-      : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
+      : effectiveRound;
     const entryWithId: ActionLogEntry = {
       ...logEntry,
       round: roundNumber,
@@ -2752,7 +2754,7 @@ export default function App() {
     const isSecretRoll = isMestreUser && hideGmRolls;
 
     const now = Date.now();
-    const roundNumber = activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0;
+    const roundNumber = effectiveRound;
     const logDescription =
       diceCount === 3 && diceSides === 6
         ? `Rolou 3D6: [${rolls.join(', ')}] = ${total}`
@@ -3626,7 +3628,7 @@ export default function App() {
         onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
         onUpdateNpc={handlePartialUpdateNpc}
         currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
-        currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+        currentRound={effectiveRound}
         onUpdateRound={handleUpdateCombatRound}
         canControlRound={canEditCurrent}
         isNoCombat={isNoCombat}
@@ -3702,7 +3704,7 @@ export default function App() {
                   isPlayerUser={isPlayerUser}
                   currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
                   hasEditPermission={canEditCurrent}
-                  currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+                  currentRound={effectiveRound}
                   conditions={conditions}
                 />
               ) : (
@@ -3772,7 +3774,7 @@ export default function App() {
                   isPlayerUser={isPlayerUser}
                   currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
                   hasEditPermission={canEditCurrent}
-                  currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+                  currentRound={effectiveRound}
                   conditions={conditions}
                 />
               ) : (
@@ -3828,7 +3830,7 @@ export default function App() {
         onCreateCondition={handleCreateCondition}
         onUpdateCondition={handleUpdateCondition}
         onDeleteCondition={handleDeleteCondition}
-        currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+        currentRound={effectiveRound}
       />
 
       {/* Passar o Dia Modal */}
@@ -3917,7 +3919,7 @@ export default function App() {
           }}
           isPlayerView={isPlayerUser}
           combatants={allCharacters}
-          currentRound={activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0}
+          currentRound={effectiveRound}
           currentUserName={currentUser?.name}
         />
       )}

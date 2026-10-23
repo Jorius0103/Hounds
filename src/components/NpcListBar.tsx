@@ -390,45 +390,23 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             </div>
           </div>
 
-          {/* DIREITA: BOTÕES DE ADIÇÃO / CADASTRO E CONTROLE DE RODADAS */}
-          <div className="flex items-center gap-1.5 text-xs flex-wrap">
-            {currentUserRole === 'mestre' && (
-              <>
-                {onAddNewPlayer && (
-                  <button
-                    onClick={onAddNewPlayer}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-800 hover:bg-emerald-700 text-emerald-100 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap border border-emerald-600/50"
-                    title="Gerenciar personagens no combate ativo ou cadastrar novo"
-                  >
-                    <UserPlus size={12} className="text-emerald-300" />
-                    <span>+ Personagens</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={onAddNewNpc}
-                  disabled={isNoCombat}
-                  className={`flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg shadow-sm transition-all whitespace-nowrap border ${
-                    isNoCombat
-                      ? 'bg-slate-850 text-slate-500 border-slate-750/60 cursor-not-allowed opacity-50'
-                      : 'bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400/60 active:scale-95'
-                  }`}
-                  title={isNoCombat ? 'Não é possível cadastrar NPCs no modo "Sem combate"' : 'Adicionar Novo NPC ao combate ativo'}
-                >
-                  <span>+ NPC</span>
-                </button>
-              </>
+          {/* DIREITA (da direita p/ esquerda): Personagens, Rodadas e + NPC. Sem combate: oculta + NPC e Rodadas */}
+          <div className="flex items-center gap-1.5 text-xs flex-wrap sm:ml-auto">
+            {currentUserRole === 'mestre' && !isNoCombat && (
+              <button
+                onClick={onAddNewNpc}
+                className="flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg shadow-sm transition-all whitespace-nowrap border bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400/60 active:scale-95"
+                title="Adicionar Novo NPC ao combate ativo"
+              >
+                <span>+ NPC</span>
+              </button>
             )}
 
             {/* Controle de Rodadas (iniciando em 0, com botões aprimorados de menos e mais) */}
-            {(() => {
+            {!isNoCombat && (() => {
               const canEditRound = canControlRound ?? (currentUserRole === 'mestre');
               return (
-                <div
-                  className={`flex items-center bg-slate-900 border border-slate-750 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0 ${
-                    canEditRound ? 'sm:ml-1' : ''
-                  }`}
-                >
+                <div className="flex items-center bg-slate-900 border border-slate-750 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0">
                   {canEditRound && (
                     <button
                       type="button"
@@ -463,6 +441,17 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 </div>
               );
             })()}
+
+            {currentUserRole === 'mestre' && onAddNewPlayer && (
+              <button
+                onClick={onAddNewPlayer}
+                className="flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-800 hover:bg-emerald-700 text-emerald-100 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap border border-emerald-600/50"
+                title="Gerenciar personagens no combate ativo ou cadastrar novo"
+              >
+                <UserPlus size={12} className="text-emerald-300" />
+                <span>Personagens</span>
+              </button>
+            )}
           </div>
         </div>
 
