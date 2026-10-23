@@ -4400,204 +4400,1291 @@ editPartRuleKey!==null&&(0,d.jsx)("div",{style:{position:"fixed",inset:0,zIndex:
     ev.target.value='';
   };
 
-  return (0,et.jsx)("div",{onClick:e=>{if(e.target===e.currentTarget)a();},style:{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",background:"rgba(2,6,23,0.85)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",overflowY:"auto"},className:"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm",children:(0,et.jsxs)("div",{style:{position:"relative",margin:"auto",width:"100%",maxWidth:"640px",maxHeight:"85vh",display:"flex",flexDirection:"column",background:"#0f172a",border:"1px solid rgba(245,158,11,0.35)",borderRadius:"16px",boxShadow:"0 25px 50px -12px rgba(0,0,0,0.75)",overflow:"hidden"},className:"relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col",children:[
-    (0,et.jsxs)("div",{style:{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 18px",borderBottom:"1px solid rgba(245, 158, 11, 0.2)",background:"linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)"},children:[
-      (0,et.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"8px",minWidth:0},children:[
-        (0,et.jsx)("div",{style:{width:"28px",height:"28px",borderRadius:"7px",background:"rgba(245, 158, 11, 0.15)",border:"1px solid rgba(245, 158, 11, 0.4)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fbbf24",flexShrink:0},children:activeTab==="combats"?(0,et.jsx)(Lr,{size:16}):(0,et.jsx)(IArchive,{size:16})}),
-        (0,et.jsxs)("div",{style:{minWidth:0},children:[
-          (0,et.jsx)("h2",{style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},children:"Configurações da Mesa de Combate"}),
-          (0,et.jsx)("p",{style:{fontSize:"10px",color:"#94a3b8",margin:"1px 0 0 0"},children:"Gerencie combates ativos ou salve retratos completos para restauração"})
-        ]})
-      ]}),
-      (0,et.jsx)("button",{type:"button",onClick:a,style:{padding:"5px",borderRadius:"7px",cursor:"pointer",flexShrink:0,background:"transparent",border:"none",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8"},title:"Fechar (Esc)",children:(0,et.jsx)(Jt,{size:16})})
-    ]}),
-    toastMsg&&(0,et.jsxs)("div",{className:"bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-sm shrink-0",children:[(0,et.jsx)(ICheck,{size:14}),(0,et.jsx)("span",{className:"font-medium",children:toastMsg})]}),
-    (0,et.jsxs)("div",{style:{flexShrink:0,display:"flex",alignItems:"center",gap:"8px",padding:"8px 18px",borderBottom:"1px solid #1e293b",background:"rgba(15, 23, 42, 0.7)"},children:[
-      (0,et.jsxs)("button",{type:"button",onClick:()=>setActiveTab("combats"),className:`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab==="combats"?"bg-amber-500 text-slate-950 shadow-sm":"bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white"}`,children:[
-        (0,et.jsx)(Lr,{size:14}),(0,et.jsx)("span",{children:"Combates da Campanha"}),
-        (0,et.jsx)("span",{className:`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${activeTab==="combats"?"bg-slate-950 text-amber-300":"bg-slate-700 text-slate-300"}`,children:validCombats.length})
-      ]}),
-      (0,et.jsxs)("button",{type:"button",onClick:()=>setActiveTab("backups"),className:`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab==="backups"?"bg-amber-500 text-slate-950 shadow-sm":"bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white"}`,children:[
-        (0,et.jsx)(IArchive,{size:14}),(0,et.jsx)("span",{children:"Retratos & Backups da Mesa"}),
-        (0,et.jsx)("span",{className:`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${activeTab==="backups"?"bg-slate-950 text-amber-300":"bg-slate-700 text-slate-300"}`,children:snapshots.length})
-      ]})
-    ]}),
-    activeTab==="combats"&&(0,et.jsxs)("div",{style:{minHeight:0,overflowY:"auto",padding:"12px 18px",display:"flex",flexDirection:"column",gap:"12px",flex:1},children:[
-      (0,et.jsxs)("form",{onSubmit:s,className:"bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2.5",children:[
-        (0,et.jsx)("div",{className:"text-xs font-semibold text-amber-300 uppercase tracking-wider",children:"+ Criar Novo Combate"}),
-        (0,et.jsxs)("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-2",children:[
-          (0,et.jsx)("input",{type:"text",placeholder:"Nome do Combate (ex: Emboscada na Ponte)",value:c,onChange:y=>p(y.target.value),className:"bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0}),
-          (0,et.jsx)("input",{type:"text",placeholder:"Descrição / Cenário (opcional)",value:m,onChange:y=>k(y.target.value),className:"bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"})
-        ]}),
-        (0,et.jsx)("div",{className:"flex items-center justify-end gap-2 pt-1",children:(0,et.jsxs)("button",{type:"submit",className:"flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors ml-auto shadow-sm active:scale-95",children:[(0,et.jsx)(Ct,{size:14}),(0,et.jsx)("span",{children:"Criar Combate"})]})})
-      ]}),
-      (0,et.jsxs)("div",{className:"space-y-2",children:[
-        (0,et.jsxs)("div",{className:"text-xs font-semibold text-slate-400 uppercase tracking-wider",children:["Combates Cadastrados (",validCombats.length,")"]}),
-        validCombats.map(y=>{
-          let z=y.id===r,T=f===y.id,isInactive=y.isActive===!1,isDel=delCombId===y.id;
-          return (0,et.jsx)("div",{key:y.id,className:`p-3 rounded-xl border transition-all ${z?"bg-slate-850 border-amber-500/60 ring-1 ring-amber-500/40 shadow-sm":isInactive?"bg-slate-950/40 border-slate-800/80 opacity-75 hover:opacity-100":"bg-slate-950/60 border-slate-800 hover:border-slate-700"}`,children:
-            isDel?(0,et.jsxs)("div",{className:"flex items-center justify-between gap-3 p-1",children:[
-              (0,et.jsxs)("div",{className:"text-xs text-rose-300 font-medium",children:["Excluir ",(0,et.jsx)("strong",{children:`"${y.name}"`})," de vez? Esta ação não pode ser desfeita."]}),
-              (0,et.jsxs)("div",{className:"flex items-center gap-2 shrink-0",children:[
-                (0,et.jsx)("button",{type:"button",onClick:()=>setDelCombId(null),className:"px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg font-medium",children:"Cancelar"}),
-                (0,et.jsx)("button",{type:"button",onClick:()=>{n(y.id);setDelCombId(null);},className:"px-3 py-1 text-xs text-white bg-rose-600 hover:bg-rose-500 font-bold rounded-lg shadow-sm",children:"Confirmar Exclusão"})
-              ]})
-            ]}):T?(0,et.jsxs)("div",{className:"space-y-2",children:[
-              (0,et.jsx)("input",{type:"text",value:g,onChange:O=>N(O.target.value),className:"w-full bg-slate-900 border border-slate-750 rounded px-2 py-1 text-xs text-white"}),
-              (0,et.jsx)("input",{type:"text",value:w,onChange:O=>u(O.target.value),className:"w-full bg-slate-900 border border-slate-750 rounded px-2 py-1 text-xs text-slate-300",placeholder:"Descrição"}),
-              (0,et.jsxs)("div",{className:"flex justify-end gap-1.5",children:[
-                (0,et.jsx)("button",{type:"button",onClick:()=>h(null),className:"px-2 py-1 text-xs text-slate-400 hover:text-white",children:"Cancelar"}),
-                (0,et.jsx)("button",{type:"button",onClick:()=>M(y.id),className:"px-2.5 py-1 text-xs bg-amber-500 text-slate-950 font-bold rounded",children:"Salvar"})
-              ]})
-            ]}):(0,et.jsxs)("div",{className:"flex items-center justify-between gap-3",children:[
-              (0,et.jsxs)("div",{className:"min-w-0 flex-1",children:[
-                (0,et.jsxs)("div",{className:"flex items-center gap-2 flex-wrap",children:[
-                  (0,et.jsx)("span",{className:`text-xs font-bold truncate ${isInactive?"text-slate-400 line-through":"text-white"}`,children:y.name}),
-                  z&&(0,et.jsx)("span",{className:"text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded font-medium",children:"Na Mesa"}),
-                  isInactive?(0,et.jsx)("span",{className:"text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded font-medium",children:"Inativo"}):(0,et.jsx)("span",{className:"text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-medium",children:"Ativo"})
-                ]}),
-                y.description&&(0,et.jsx)("div",{className:"text-[11px] text-slate-400 truncate mt-0.5",children:y.description}),
-                (0,et.jsxs)("div",{className:"flex items-center gap-3 text-[10px] text-slate-500 mt-1 font-mono",children:[
-                  (0,et.jsx)("span",{children:`${y.totalNpcs!=null?y.totalNpcs:(y.npcs?.length||0)} NPCs`}),
-                  (0,et.jsx)("span",{children:"·"}),
-                  (0,et.jsx)("span",{children:y.createdAt})
-                ]})
-              ]}),
-              (0,et.jsxs)("div",{className:"flex items-center gap-1.5 shrink-0",children:[
-                !z&&!isInactive&&(0,et.jsx)("button",{type:"button",onClick:()=>{o(y.id);a();},className:"px-2.5 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg border border-slate-700",children:"Selecionar"}),
-                uAct&&(0,et.jsxs)("button",{type:"button",onClick:()=>uAct(y.id),className:`p-1.5 rounded-lg border transition-colors ${isInactive?"text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 border-emerald-800/50":"text-slate-400 hover:text-slate-200 bg-slate-800 border-slate-700"}`,title:isInactive?"Ativar combate":"Inativar combate",children:[
-                  (0,et.jsx)(ge,{size:13}),(0,et.jsx)("span",{className:"text-[11px] ml-1",children:isInactive?"Ativar":"Inativar"})
-                ]}),
-                (0,et.jsx)("button",{type:"button",onClick:()=>x(y),className:"p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800",title:"Renomear ou editar",children:(0,et.jsx)(Po,{size:13})}),
-                validCombats.length>1&&(0,et.jsx)("button",{type:"button",onClick:()=>setDelCombId(y.id),className:"p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg border border-rose-900/30",title:"Excluir combate",children:(0,et.jsx)(Rt,{size:13})})
-              ]})
-            ]})
-          });
-        })
-      ]})
-    ]}),
-    activeTab==="backups"&&(0,et.jsxs)("div",{style:{minHeight:0,overflowY:"auto",padding:"12px 18px",display:"flex",flexDirection:"column",gap:"12px",flex:1},children:[
-      (0,et.jsxs)("div",{className:"flex items-center justify-between gap-2 flex-wrap bg-slate-950/70 p-3 rounded-xl border border-slate-800",children:[
-        (0,et.jsxs)("div",{children:[
-          (0,et.jsxs)("div",{className:"text-xs font-bold text-white flex items-center gap-1.5",children:[(0,et.jsx)(IShieldCheck,{size:15}),(0,et.jsx)("span",{children:"Retratos em Tempo Real"})]}),
-          (0,et.jsx)("div",{className:"text-[11px] text-slate-400",children:"Salve um retrato fiel de todos os combates, NPCs, personagens e rodadas."})
-        ]}),
-        (0,et.jsxs)("div",{className:"flex items-center gap-2",children:[
-          (0,et.jsxs)("button",{type:"button",onClick:handleStartCreate,className:"flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95",children:[(0,et.jsx)(Ct,{size:14}),(0,et.jsx)("span",{children:"Novo Retrato da Mesa"})]}),
-          (0,et.jsxs)("label",{className:"flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer shadow-sm",children:[
-            (0,et.jsx)(IUpload,{size:13}),(0,et.jsx)("span",{children:"Importar (.json)"}),
-            (0,et.jsx)("input",{type:"file",accept:".json",className:"hidden",onChange:handleImportFile})
-          ]}),
-          (0,et.jsxs)("button",{type:"button",onClick:handleExportAllForRepo,className:"flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 text-xs font-semibold rounded-lg border border-amber-600/40 transition-colors shadow-sm cursor-pointer",title:"Baixar todos os retratos como retratos-mesa.json para colocar na pasta dados/ do repositório",children:[(0,et.jsx)(IDownload,{size:13}),(0,et.jsx)("span",{children:"Exportar Repositório"})]})
-        ]})
-      ]}),
-      isCreatingSnap&&(0,et.jsxs)("form",{onSubmit:handleConfirmCreate,className:"bg-slate-950 p-4 rounded-xl border border-amber-500/40 shadow-lg space-y-3",children:[
-        (0,et.jsxs)("div",{className:"flex items-center justify-between",children:[
-          (0,et.jsxs)("span",{className:"text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5",children:[(0,et.jsx)(IArchive,{size:14}),(0,et.jsx)("span",{children:"Salvar Retrato Atual da Mesa"})]}),
-          (0,et.jsx)("button",{type:"button",onClick:()=>setIsCreatingSnap(!1),className:"text-slate-400 hover:text-white",children:(0,et.jsx)(Jt,{size:14})})
-        ]}),
-        (0,et.jsxs)("div",{className:"space-y-2",children:[
-          (0,et.jsxs)("div",{children:[
-            (0,et.jsx)("label",{className:"block text-[11px] text-slate-400 font-medium mb-1",children:"Nome do Backup / Retrato:"}),
-            (0,et.jsx)("input",{type:"text",value:newSnapName,onChange:ev=>setNewSnapName(ev.target.value),placeholder:"Ex: Antes da batalha na floresta",className:"w-full bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0})
-          ]}),
-          (0,et.jsxs)("div",{children:[
-            (0,et.jsx)("label",{className:"block text-[11px] text-slate-400 font-medium mb-1",children:"Notas / Descrição (opcional):"}),
-            (0,et.jsx)("input",{type:"text",value:newSnapDesc,onChange:ev=>setNewSnapDesc(ev.target.value),placeholder:"Ex: Rodada 2, boss ferido",className:"w-full bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"})
-          ]})
-        ]}),
-        (0,et.jsxs)("div",{className:"flex items-center justify-end gap-2 pt-1",children:[
-          (0,et.jsx)("button",{type:"button",onClick:()=>setIsCreatingSnap(!1),className:"px-3 py-1.5 text-xs text-slate-400 hover:text-white",children:"Cancelar"}),
-          (0,et.jsxs)("button",{type:"submit",className:"flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg shadow-sm",children:[(0,et.jsx)(ICheck,{size:14}),(0,et.jsx)("span",{children:"Salvar Retrato"})]})
-        ]})
-      ]}),
-      (0,et.jsxs)("div",{className:"space-y-2.5",children:[
-        (0,et.jsxs)("div",{className:"flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider",children:[
-          (0,et.jsxs)("span",{children:["Versões Salvas (",snapshots.length,")"]}),
-          (0,et.jsx)("span",{className:"text-[10px] text-slate-500 normal-case",children:'Clique em "Restaurar" para aplicar na Mesa'})
-        ]}),
-        snapshots.length===0?(0,et.jsxs)("div",{className:"p-8 text-center bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-2",children:[
-          (0,et.jsx)(IArchive,{size:32}),
-          (0,et.jsx)("div",{className:"text-xs font-bold text-slate-300",children:"Nenhum retrato salvo ainda"}),
-          (0,et.jsxs)("p",{className:"text-[11px] text-slate-500 max-w-sm mx-auto",children:["Faça backups preventivos clicando em ",(0,et.jsx)("strong",{children:'"Novo Retrato da Mesa"'}),". Você poderá restaurar qualquer versão a qualquer momento."]})
-        ]}):snapshots.map(snap=>{
-          let isEd=editSnapId===snap.id,isDel=delSnapId===snap.id,isRest=restoringSnapId===snap.id;
-          return (0,et.jsx)("div",{key:snap.id,className:"p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-slate-700 transition-all space-y-2",children:
-            isRest?(0,et.jsxs)("div",{className:"p-2 bg-emerald-950/40 border border-emerald-700/50 rounded-lg space-y-2",children:[
-              (0,et.jsxs)("div",{className:"flex items-center gap-2 text-xs text-emerald-300 font-bold",children:[(0,et.jsx)(IAlert,{size:15}),(0,et.jsxs)("span",{children:[`Deseja restaurar o retrato "${snap.name}"?`]})]}),
-              (0,et.jsxs)("p",{className:"text-[11px] text-slate-300 leading-relaxed",children:[
-                "O estado atual da Mesa será substituído por este snapshot de ",(0,et.jsx)("strong",{children:snap.formattedDate}),` (${snap.summary?.totalCombats||0} combates, ${snap.summary?.totalNpcs||0} NPCs). Um backup automático do estado atual será guardado.`
-              ]}),
-              (0,et.jsxs)("div",{className:"flex items-center justify-end gap-2 pt-1",children:[
-                (0,et.jsx)("button",{type:"button",onClick:()=>setRestoringSnapId(null),className:"px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 rounded-lg font-medium",children:"Cancelar"}),
-                (0,et.jsxs)("button",{type:"button",onClick:()=>{handleRestoreSnap(snap);setRestoringSnapId(null);},className:"flex items-center gap-1.5 px-3 py-1 text-xs text-slate-950 bg-emerald-400 hover:bg-emerald-300 font-bold rounded-lg shadow-sm",children:[(0,et.jsx)(IRestore,{size:13}),(0,et.jsx)("span",{children:"Confirmar e Restaurar Mesa"})]})
-              ]})
-            ]}):isDel?(0,et.jsxs)("div",{className:"flex items-center justify-between gap-3 p-1",children:[
-              (0,et.jsxs)("div",{className:"text-xs text-rose-300 font-medium",children:["Excluir o backup ",(0,et.jsx)("strong",{children:`"${snap.name}"`}),"?"]}),
-              (0,et.jsxs)("div",{className:"flex items-center gap-2 shrink-0",children:[
-                (0,et.jsx)("button",{type:"button",onClick:()=>setDelSnapId(null),className:"px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 rounded-lg font-medium",children:"Cancelar"}),
-                (0,et.jsx)("button",{type:"button",onClick:()=>handleDeleteSnap(snap.id),className:"px-3 py-1 text-xs text-white bg-rose-600 hover:bg-rose-500 font-bold rounded-lg shadow-sm",children:"Confirmar Exclusão"})
-              ]})
-            ]}):isEd?(0,et.jsxs)("div",{className:"space-y-2",children:[
-              (0,et.jsx)("input",{type:"text",value:editSnapName,onChange:ev=>setEditSnapName(ev.target.value),className:"w-full bg-slate-900 border border-slate-750 rounded px-2.5 py-1 text-xs text-white",placeholder:"Nome do Retrato"}),
-              (0,et.jsx)("input",{type:"text",value:editSnapDesc,onChange:ev=>setEditSnapDesc(ev.target.value),className:"w-full bg-slate-900 border border-slate-750 rounded px-2.5 py-1 text-xs text-slate-300",placeholder:"Descrição / Notas"}),
-              (0,et.jsxs)("div",{className:"flex justify-end gap-1.5",children:[
-                (0,et.jsx)("button",{type:"button",onClick:()=>setEditSnapId(null),className:"px-2 py-1 text-xs text-slate-400 hover:text-white",children:"Cancelar"}),
-                (0,et.jsx)("button",{type:"button",onClick:()=>handleSaveEdit(snap.id),className:"px-2.5 py-1 text-xs bg-amber-500 text-slate-950 font-bold rounded",children:"Salvar"})
-              ]})
-            ]}):(0,et.jsxs)("div",{className:"flex items-start justify-between gap-3",children:[
-              (0,et.jsxs)("div",{className:"min-w-0 flex-1 space-y-1",children:[
-                (0,et.jsxs)("div",{className:"flex items-center gap-2 flex-wrap",children:[
-                  (0,et.jsx)("span",{className:"text-xs font-bold text-white",children:snap.name}),
-                  (0,et.jsxs)("span",{className:"flex items-center gap-1 text-[10px] text-slate-400 font-mono",children:[(0,et.jsx)(IClock,{size:11}),(0,et.jsx)("span",{children:snap.formattedDate})]})
-                ]}),
-                snap.description&&(0,et.jsx)("p",{className:"text-[11px] text-slate-300 line-clamp-2",children:snap.description}),
-                (0,et.jsxs)("div",{className:"flex items-center gap-2 text-[10px] font-mono text-slate-400 flex-wrap pt-0.5",children:[
-                  (0,et.jsxs)("span",{className:"bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-amber-300",children:[snap.summary?.totalCombats||0," combates"]}),
-                  (0,et.jsxs)("span",{className:"bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-slate-300",children:[snap.summary?.totalNpcs||0," NPCs"]}),
-                  (0,et.jsxs)("span",{className:"bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-slate-300",children:[snap.summary?.totalPlayers||0," personagens"]}),
-                  snap.summary?.activeCombatName&&(0,et.jsxs)("span",{className:"bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-emerald-400",children:["Ativo: ",snap.summary.activeCombatName]})
-                ]})
-              ]}),
-              (0,et.jsxs)("div",{className:"flex items-center gap-1.5 shrink-0 pt-0.5",children:[
-                (0,et.jsxs)("button",{type:"button",onClick:()=>setRestoringSnapId(snap.id),className:"flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-emerald-200 border border-emerald-700/60 rounded-lg transition-colors shadow-sm",title:"Restaurar este retrato",children:[(0,et.jsx)(IRestore,{size:13}),(0,et.jsx)("span",{children:"Restaurar"})]}),
-                (0,et.jsx)("button",{type:"button",onClick:()=>handleExportSnap(snap),className:"p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800",title:"Baixar snapshot em arquivo JSON",children:(0,et.jsx)(IDownload,{size:13})}),
-                (0,et.jsx)("button",{type:"button",onClick:()=>{setEditSnapId(snap.id);setEditSnapName(snap.name);setEditSnapDesc(snap.description||"");},className:"p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800",title:"Editar nome ou notas",children:(0,et.jsx)(Po,{size:13})}),
-                (0,et.jsx)("button",{type:"button",onClick:()=>setDelSnapId(snap.id),className:"p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg border border-rose-900/30",title:"Excluir este backup",children:(0,et.jsx)(Rt,{size:13})})
-              ]})
-            ]})
-          });
-        })
-      ]})
-    ]}),
-    (0,et.jsx)("div",{
-      style:{
-        flexShrink:0,
-        display:"flex",
-        alignItems:"center",
-        justifyContent:"flex-end",
-        padding:"8px 18px",
-        borderTop:"1px solid #1e293b",
-        background:"rgba(2,6,23,0.6)"
-      },
-      children:(0,et.jsx)("button",{
-        type:"button",
-        onClick:a,
+  return (0,et.jsx)("div",{
+  onClick:e=>{if(e.target===e.currentTarget)a();},
+  style:{
+    position:"fixed",
+    inset:0,
+    zIndex:99999,
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center",
+    padding:"16px",
+    background:"rgba(2,6,23,0.85)",
+    backdropFilter:"blur(4px)",
+    WebkitBackdropFilter:"blur(4px)",
+    overflowY:"auto"
+  },
+  className:"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm",
+  children:(0,et.jsxs)("div",{
+    style:{
+      position:"relative",
+      margin:"auto",
+      width:"100%",
+      maxWidth:"640px",
+      maxHeight:"85vh",
+      display:"flex",
+      flexDirection:"column",
+      background:"#0f172a",
+      border:"1px solid rgba(245,158,11,0.35)",
+      borderRadius:"16px",
+      boxShadow:"0 25px 50px -12px rgba(0,0,0,0.75)",
+      overflow:"hidden"
+    },
+    className:"relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col",
+    children:[
+      /* Cabeçalho compacto com gradiente e badge */
+      (0,et.jsxs)("div",{
         style:{
-          padding:"5px 14px",
-          borderRadius:"7px",
-          fontSize:"11px",
-          fontWeight:"bold",
-          background:"#f59e0b",
-          color:"#020617",
-          border:"none",
-          cursor:"pointer",
-          boxShadow:"0 2px 4px rgba(0,0,0,0.3)"
+          flexShrink:0,
+          display:"flex",
+          alignItems:"center",
+          justifyContent:"space-between",
+          padding:"10px 18px",
+          borderBottom:"1px solid rgba(245, 158, 11, 0.2)",
+          background:"linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)"
         },
-        children:"Concluir"
+        children:[
+          (0,et.jsxs)("div",{
+            style:{display:"flex",alignItems:"center",gap:"8px",minWidth:0},
+            children:[
+              (0,et.jsx)("div",{
+                style:{
+                  width:"28px",
+                  height:"28px",
+                  borderRadius:"7px",
+                  background:"rgba(245, 158, 11, 0.15)",
+                  border:"1px solid rgba(245, 158, 11, 0.4)",
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"center",
+                  color:"#fbbf24",
+                  flexShrink:0
+                },
+                children:activeTab==="combats"?(0,et.jsx)(Lr,{size:16}):(0,et.jsx)(IArchive,{size:16})
+              }),
+              (0,et.jsxs)("div",{
+                style:{minWidth:0},
+                children:[
+                  (0,et.jsx)("h2",{
+                    style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},
+                    children:"Configura\u00e7\u00f5es da Mesa de Combate"
+                  }),
+                  (0,et.jsx)("p",{
+                    style:{fontSize:"10px",color:"#94a3b8",margin:"1px 0 0 0"},
+                    children:"Gerencie combates ativos ou salve retratos completos para restaura\u00e7\u00e3o"
+                  })
+                ]
+              })
+            ]
+          }),
+          (0,et.jsx)("button",{
+            type:"button",
+            onClick:a,
+            style:{
+              padding:"5px",
+              borderRadius:"7px",
+              cursor:"pointer",
+              flexShrink:0,
+              background:"transparent",
+              border:"none",
+              display:"flex",
+              alignItems:"center",
+              justifyContent:"center",
+              color:"#94a3b8"
+            },
+            title:"Fechar (Esc)",
+            children:(0,et.jsx)(Jt,{size:16})
+          })
+        ]
+      }),
+
+      /* Notificação Toast */
+      toastMsg&&(0,et.jsxs)("div",{
+        style:{
+          margin:"6px 18px 0",
+          padding:"6px 12px",
+          borderRadius:"8px",
+          background:"rgba(245, 158, 11, 0.12)",
+          border:"1px solid rgba(245, 158, 11, 0.35)",
+          color:"#fcd34d",
+          fontSize:"11px",
+          display:"flex",
+          alignItems:"center",
+          gap:"6px",
+          flexShrink:0
+        },
+        children:[
+          (0,et.jsx)(ICheck,{size:13,className:"text-amber-400 shrink-0"}),
+          (0,et.jsx)("span",{style:{fontWeight:500},children:toastMsg})
+        ]
+      }),
+
+      /* Navegação entre Abas */
+      (0,et.jsxs)("div",{
+        style:{
+          flexShrink:0,
+          display:"flex",
+          alignItems:"center",
+          gap:"8px",
+          padding:"8px 18px",
+          background:"rgba(2, 6, 23, 0.8)",
+          borderBottom:"1px solid #1e293b"
+        },
+        children:[
+          (0,et.jsxs)("button",{
+            type:"button",
+            onClick:()=>setActiveTab("combats"),
+            style:{
+              display:"flex",
+              alignItems:"center",
+              gap:"6px",
+              padding:"5px 12px",
+              borderRadius:"7px",
+              fontSize:"11px",
+              fontWeight:600,
+              cursor:"pointer",
+              border:"1px solid",
+              transition:"all 0.15s ease",
+              background:activeTab==="combats"?"#f59e0b":"#1e293b",
+              color:activeTab==="combats"?"#020617":"#cbd5e1",
+              borderColor:activeTab==="combats"?"#f59e0b":"#334155"
+            },
+            children:[
+              (0,et.jsx)(Lr,{size:13}),
+              (0,et.jsx)("span",{children:"Combates da Campanha"}),
+              (0,et.jsx)("span",{
+                style:{
+                  fontSize:"9px",
+                  padding:"1px 6px",
+                  borderRadius:"9999px",
+                  fontWeight:"bold",
+                  background:activeTab==="combats"?"#020617":"#0f172a",
+                  color:activeTab==="combats"?"#fcd34d":"#94a3b8"
+                },
+                children:validCombats.length
+              })
+            ]
+          }),
+          (0,et.jsxs)("button",{
+            type:"button",
+            onClick:()=>setActiveTab("backups"),
+            style:{
+              display:"flex",
+              alignItems:"center",
+              gap:"6px",
+              padding:"5px 12px",
+              borderRadius:"7px",
+              fontSize:"11px",
+              fontWeight:600,
+              cursor:"pointer",
+              border:"1px solid",
+              transition:"all 0.15s ease",
+              background:activeTab==="backups"?"#f59e0b":"#1e293b",
+              color:activeTab==="backups"?"#020617":"#cbd5e1",
+              borderColor:activeTab==="backups"?"#f59e0b":"#334155"
+            },
+            children:[
+              (0,et.jsx)(IArchive,{size:13}),
+              (0,et.jsx)("span",{children:"Retratos & Backups da Mesa"}),
+              (0,et.jsx)("span",{
+                style:{
+                  fontSize:"9px",
+                  padding:"1px 6px",
+                  borderRadius:"9999px",
+                  fontWeight:"bold",
+                  background:activeTab==="backups"?"#020617":"#0f172a",
+                  color:activeTab==="backups"?"#fcd34d":"#94a3b8"
+                },
+                children:snapshots.length
+              })
+            ]
+          })
+        ]
+      }),
+
+      /* CONTEÚDO DA ABA 1: COMBATES DA CAMPANHA */
+      activeTab==="combats"&&(0,et.jsxs)("div",{
+        style:{
+          flex:"1 1 auto",
+          minHeight:0,
+          overflowY:"auto",
+          padding:"12px 18px",
+          display:"flex",
+          flexDirection:"column",
+          gap:"10px"
+        },
+        children:[
+          /* Form: Criar Novo Combate em div organizada */
+          (0,et.jsxs)("form",{
+            onSubmit:s,
+            style:{
+              background:"rgba(2, 6, 23, 0.55)",
+              border:"1px solid #1e293b",
+              borderRadius:"10px",
+              padding:"10px 14px",
+              display:"flex",
+              flexDirection:"column",
+              gap:"8px"
+            },
+            children:[
+              (0,et.jsx)("div",{
+                style:{
+                  fontSize:"11px",
+                  fontWeight:"bold",
+                  color:"#fbbf24",
+                  textTransform:"uppercase",
+                  letterSpacing:"0.05em"
+                },
+                children:"+ Criar Novo Combate"
+              }),
+              (0,et.jsxs)("div",{
+                style:{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"},
+                children:[
+                  (0,et.jsx)("input",{
+                    type:"text",
+                    placeholder:"Nome do Combate (ex: Emboscada na Ponte)",
+                    value:c,
+                    onChange:y=>p(y.target.value),
+                    style:{
+                      flex:"1 1 180px",
+                      height:"32px",
+                      boxSizing:"border-box",
+                      background:"#0f172a",
+                      border:"1px solid #334155",
+                      borderRadius:"7px",
+                      padding:"0 10px",
+                      fontSize:"11px",
+                      color:"#ffffff",
+                      outline:"none"
+                    },
+                    required:!0
+                  }),
+                  (0,et.jsx)("input",{
+                    type:"text",
+                    placeholder:"Descri\u00e7\u00e3o / Cen\u00e1rio (opcional)",
+                    value:m,
+                    onChange:y=>k(y.target.value),
+                    style:{
+                      flex:"1 1 180px",
+                      height:"32px",
+                      boxSizing:"border-box",
+                      background:"#0f172a",
+                      border:"1px solid #334155",
+                      borderRadius:"7px",
+                      padding:"0 10px",
+                      fontSize:"11px",
+                      color:"#ffffff",
+                      outline:"none"
+                    }
+                  }),
+                  (0,et.jsxs)("button",{
+                    type:"submit",
+                    className:"hover:opacity-90 active:scale-95 transition-all",
+                    style:{
+                      height:"32px",
+                      padding:"0 14px",
+                      background:"#f59e0b",
+                      color:"#020617",
+                      fontSize:"11px",
+                      fontWeight:"bold",
+                      borderRadius:"7px",
+                      border:"none",
+                      cursor:"pointer",
+                      display:"flex",
+                      alignItems:"center",
+                      gap:"6px",
+                      flexShrink:0,
+                      boxShadow:"0 2px 4px rgba(0,0,0,0.3)"
+                    },
+                    children:[(0,et.jsx)(Ct,{size:14}),(0,et.jsx)("span",{children:"Criar Combate"})]
+                  })
+                ]
+              })
+            ]
+          }),
+
+          /* Lista de Combates Cadastrados em divs organizadas */
+          (0,et.jsxs)("div",{
+            style:{display:"flex",flexDirection:"column",gap:"6px"},
+            children:[
+              (0,et.jsxs)("div",{
+                style:{
+                  fontSize:"11px",
+                  fontWeight:"bold",
+                  color:"#94a3b8",
+                  textTransform:"uppercase",
+                  letterSpacing:"0.05em"
+                },
+                children:["Combates Cadastrados (",validCombats.length,")"]
+              }),
+              validCombats.map(y=>{
+                let z=y.id===r,T=f===y.id,isInactive=y.isActive===!1,isDel=delCombId===y.id;
+                return (0,et.jsx)("div",{
+                  key:y.id,
+                  style:{
+                    display:"flex",
+                    alignItems:"center",
+                    justifyContent:"space-between",
+                    padding:"8px 12px",
+                    background:z?"rgba(245, 158, 11, 0.08)":isInactive?"rgba(2, 6, 23, 0.35)":"rgba(2, 6, 23, 0.55)",
+                    border:z?"1px solid rgba(245, 158, 11, 0.5)":"1px solid #1e293b",
+                    borderRadius:"10px",
+                    transition:"all 0.15s ease"
+                  },
+                  children:isDel?(0,et.jsxs)("div",{
+                    style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"10px",width:"100%"},
+                    children:[
+                      (0,et.jsxs)("div",{
+                        style:{fontSize:"11px",color:"#fda4af",fontWeight:500},
+                        children:["Excluir ",(0,et.jsx)("strong",{children:`"${y.name}"`})," de vez? Esta a\u00e7\u00e3o n\u00e3o pode ser desfeita."]
+                      }),
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",alignItems:"center",gap:"6px",flexShrink:0},
+                        children:[
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>setDelCombId(null),
+                            style:{
+                              height:"26px",
+                              padding:"0 10px",
+                              fontSize:"11px",
+                              color:"#cbd5e1",
+                              background:"#1e293b",
+                              border:"1px solid #334155",
+                              borderRadius:"6px",
+                              cursor:"pointer"
+                            },
+                            children:"Cancelar"
+                          }),
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>{n(y.id);setDelCombId(null);},
+                            style:{
+                              height:"26px",
+                              padding:"0 10px",
+                              fontSize:"11px",
+                              fontWeight:"bold",
+                              color:"#ffffff",
+                              background:"#dc2626",
+                              border:"none",
+                              borderRadius:"6px",
+                              cursor:"pointer",
+                              boxShadow:"0 2px 4px rgba(0,0,0,0.3)"
+                            },
+                            children:"Confirmar Exclus\u00e3o"
+                          })
+                        ]
+                      })
+                    ]
+                  }):T?(0,et.jsxs)("div",{
+                    style:{display:"flex",flexDirection:"column",gap:"6px",width:"100%"},
+                    children:[
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",alignItems:"center",gap:"6px"},
+                        children:[
+                          (0,et.jsx)("input",{
+                            type:"text",
+                            value:g,
+                            onChange:O=>N(O.target.value),
+                            style:{
+                              flex:1,
+                              height:"28px",
+                              boxSizing:"border-box",
+                              background:"#0f172a",
+                              border:"1px solid rgba(245, 158, 11, 0.4)",
+                              borderRadius:"6px",
+                              padding:"0 8px",
+                              fontSize:"11px",
+                              color:"#ffffff",
+                              outline:"none"
+                            }
+                          }),
+                          (0,et.jsx)("input",{
+                            type:"text",
+                            value:w,
+                            onChange:O=>u(O.target.value),
+                            style:{
+                              flex:1,
+                              height:"28px",
+                              boxSizing:"border-box",
+                              background:"#0f172a",
+                              border:"1px solid #334155",
+                              borderRadius:"6px",
+                              padding:"0 8px",
+                              fontSize:"11px",
+                              color:"#cbd5e1",
+                              outline:"none"
+                            },
+                            placeholder:"Descri\u00e7\u00e3o"
+                          })
+                        ]
+                      }),
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",justifyContent:"flex-end",gap:"6px"},
+                        children:[
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>h(null),
+                            style:{
+                              height:"24px",
+                              padding:"0 8px",
+                              fontSize:"10px",
+                              color:"#94a3b8",
+                              background:"#1e293b",
+                              border:"1px solid #334155",
+                              borderRadius:"5px",
+                              cursor:"pointer"
+                            },
+                            children:"Cancelar"
+                          }),
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>M(y.id),
+                            style:{
+                              height:"24px",
+                              padding:"0 10px",
+                              fontSize:"10px",
+                              fontWeight:"bold",
+                              background:"#f59e0b",
+                              color:"#020617",
+                              border:"none",
+                              borderRadius:"5px",
+                              cursor:"pointer"
+                            },
+                            children:"Salvar"
+                          })
+                        ]
+                      })
+                    ]
+                  }):(0,et.jsxs)(et.Fragment,{
+                    children:[
+                      (0,et.jsxs)("div",{
+                        style:{minWidth:0,flex:1},
+                        children:[
+                          (0,et.jsxs)("div",{
+                            style:{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"},
+                            children:[
+                              (0,et.jsx)("span",{
+                                style:{
+                                  fontSize:"12px",
+                                  fontWeight:"bold",
+                                  color:isInactive?"#94a3b8":"#ffffff",
+                                  textDecoration:isInactive?"line-through":"none"
+                                },
+                                children:y.name
+                              }),
+                              z&&(0,et.jsx)("span",{
+                                style:{
+                                  fontSize:"10px",
+                                  fontWeight:"bold",
+                                  padding:"1px 6px",
+                                  borderRadius:"5px",
+                                  background:"rgba(245, 158, 11, 0.15)",
+                                  border:"1px solid rgba(245, 158, 11, 0.4)",
+                                  color:"#fbbf24"
+                                },
+                                children:"Na Mesa"
+                              }),
+                              isInactive?(0,et.jsx)("span",{
+                                style:{
+                                  fontSize:"10px",
+                                  fontWeight:"bold",
+                                  padding:"1px 6px",
+                                  borderRadius:"5px",
+                                  background:"#1e293b",
+                                  border:"1px solid #334155",
+                                  color:"#94a3b8"
+                                },
+                                children:"Inativo"
+                              }):(0,et.jsx)("span",{
+                                style:{
+                                  fontSize:"10px",
+                                  fontWeight:"bold",
+                                  padding:"1px 6px",
+                                  borderRadius:"5px",
+                                  background:"rgba(16, 185, 129, 0.15)",
+                                  border:"1px solid rgba(16, 185, 129, 0.4)",
+                                  color:"#34d399"
+                                },
+                                children:"Ativo"
+                              })
+                            ]
+                          }),
+                          y.description&&(0,et.jsx)("div",{
+                            style:{
+                              fontSize:"10px",
+                              color:"#94a3b8",
+                              margin:"2px 0 0 0",
+                              overflow:"hidden",
+                              textOverflow:"ellipsis",
+                              whiteSpace:"nowrap"
+                            },
+                            children:y.description
+                          }),
+                          (0,et.jsxs)("div",{
+                            style:{
+                              display:"flex",
+                              alignItems:"center",
+                              gap:"8px",
+                              fontSize:"10px",
+                              color:"#64748b",
+                              marginTop:"3px",
+                              fontFamily:"monospace"
+                            },
+                            children:[
+                              (0,et.jsxs)("span",{
+                                children:[
+                                  y.totalNpcs!=null?y.totalNpcs:Array.isArray(y.npcs)?y.npcs.length:0,
+                                  " NPCs"
+                                ]
+                              }),
+                              (0,et.jsx)("span",{children:"·"}),
+                              (0,et.jsx)("span",{children:y.createdAt})
+                            ]
+                          })
+                        ]
+                      }),
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",alignItems:"center",gap:"5px",flexShrink:0},
+                        children:[
+                          !z&&!isInactive&&(0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>{o(y.id);a();},
+                            className:"hover:bg-amber-400 hover:text-slate-950 active:scale-95 transition-all",
+                            style:{
+                              height:"26px",
+                              padding:"0 10px",
+                              fontSize:"11px",
+                              fontWeight:"bold",
+                              background:"#1e293b",
+                              border:"1px solid rgba(245, 158, 11, 0.4)",
+                              color:"#fbbf24",
+                              borderRadius:"6px",
+                              cursor:"pointer"
+                            },
+                            children:"Selecionar"
+                          }),
+                          uAct&&(0,et.jsxs)("button",{
+                            type:"button",
+                            onClick:()=>uAct(y.id),
+                            style:{
+                              height:"26px",
+                              padding:"0 8px",
+                              fontSize:"11px",
+                              fontWeight:600,
+                              background:isInactive?"rgba(16, 185, 129, 0.15)":"#0f172a",
+                              border:isInactive?"1px solid rgba(16, 185, 129, 0.4)":"1px solid #334155",
+                              color:isInactive?"#34d399":"#94a3b8",
+                              borderRadius:"6px",
+                              cursor:"pointer",
+                              display:"flex",
+                              alignItems:"center",
+                              gap:"4px"
+                            },
+                            title:isInactive?"Ativar combate":"Inativar combate",
+                            children:[
+                              (0,et.jsx)(ge,{size:13}),
+                              (0,et.jsx)("span",{children:isInactive?"Ativar":"Inativar"})
+                            ]
+                          }),
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>x(y),
+                            style:{
+                              width:"26px",
+                              height:"26px",
+                              background:"#0f172a",
+                              border:"1px solid #334155",
+                              color:"#94a3b8",
+                              borderRadius:"6px",
+                              cursor:"pointer",
+                              display:"flex",
+                              alignItems:"center",
+                              justifyContent:"center"
+                            },
+                            title:"Renomear ou editar",
+                            children:(0,et.jsx)(Po,{size:13})
+                          }),
+                          validCombats.length>1&&(0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>setDelCombId(y.id),
+                            style:{
+                              width:"26px",
+                              height:"26px",
+                              background:"#0f172a",
+                              border:"1px solid rgba(244, 63, 94, 0.3)",
+                              color:"#fb7185",
+                              borderRadius:"6px",
+                              cursor:"pointer",
+                              display:"flex",
+                              alignItems:"center",
+                              justifyContent:"center"
+                            },
+                            title:"Excluir combate",
+                            children:(0,et.jsx)(Rt,{size:13})
+                          })
+                        ]
+                      })
+                    ]
+                  })
+                });
+              })
+            ]
+          })
+        ]
+      }),
+
+      /* CONTEÚDO DA ABA 2: RETRATOS & BACKUPS DA MESA */
+      activeTab==="backups"&&(0,et.jsxs)("div",{
+        style:{
+          flex:"1 1 auto",
+          minHeight:0,
+          overflowY:"auto",
+          padding:"12px 18px",
+          display:"flex",
+          flexDirection:"column",
+          gap:"10px"
+        },
+        children:[
+          /* Top Toolbar: Actions em div organizada */
+          (0,et.jsxs)("div",{
+            style:{
+              display:"flex",
+              alignItems:"center",
+              justifyContent:"space-between",
+              gap:"8px",
+              flexWrap:"wrap",
+              background:"rgba(2, 6, 23, 0.55)",
+              padding:"10px 14px",
+              borderRadius:"10px",
+              border:"1px solid #1e293b"
+            },
+            children:[
+              (0,et.jsxs)("div",{
+                children:[
+                  (0,et.jsxs)("div",{
+                    style:{fontSize:"11px",fontWeight:"bold",color:"#ffffff",display:"flex",alignItems:"center",gap:"6px"},
+                    children:[
+                      (0,et.jsx)(IShieldCheck,{size:14,className:"text-emerald-400"}),
+                      (0,et.jsx)("span",{children:"Retratos em Tempo Real"})
+                    ]
+                  }),
+                  (0,et.jsx)("div",{
+                    style:{fontSize:"10px",color:"#94a3b8",marginTop:"1px"},
+                    children:"Salve um retrato fiel de todos os combates, NPCs e rodadas."
+                  })
+                ]
+              }),
+              (0,et.jsxs)("div",{
+                style:{display:"flex",alignItems:"center",gap:"6px"},
+                children:[
+                  (0,et.jsxs)("button",{
+                    type:"button",
+                    onClick:handleStartCreate,
+                    className:"hover:opacity-90 active:scale-95 transition-all",
+                    style:{
+                      height:"28px",
+                      display:"flex",
+                      alignItems:"center",
+                      gap:"5px",
+                      padding:"0 12px",
+                      background:"#f59e0b",
+                      color:"#020617",
+                      fontSize:"11px",
+                      fontWeight:"bold",
+                      borderRadius:"7px",
+                      border:"none",
+                      cursor:"pointer",
+                      boxShadow:"0 2px 4px rgba(0,0,0,0.3)"
+                    },
+                    children:[
+                      (0,et.jsx)(Ct,{size:13}),
+                      (0,et.jsx)("span",{children:"Novo Retrato"})
+                    ]
+                  }),
+                  (0,et.jsxs)("label",{
+                    style:{
+                      height:"28px",
+                      display:"flex",
+                      alignItems:"center",
+                      gap:"5px",
+                      padding:"0 10px",
+                      background:"#1e293b",
+                      color:"#cbd5e1",
+                      fontSize:"11px",
+                      fontWeight:600,
+                      borderRadius:"7px",
+                      border:"1px solid #334155",
+                      cursor:"pointer"
+                    },
+                    children:[
+                      (0,et.jsx)(IUpload,{size:12}),
+                      (0,et.jsx)("span",{children:"Importar (.json)"}),
+                      (0,et.jsx)("input",{type:"file",accept:".json",style:{display:"none"},onChange:handleImportFile})
+                    ]
+                  }),
+                  (0,et.jsxs)("button",{
+                    type:"button",
+                    onClick:handleExportAllForRepo,
+                    style:{
+                      height:"28px",
+                      display:"flex",
+                      alignItems:"center",
+                      gap:"5px",
+                      padding:"0 10px",
+                      background:"#1e293b",
+                      color:"#fbbf24",
+                      fontSize:"11px",
+                      fontWeight:600,
+                      borderRadius:"7px",
+                      border:"1px solid rgba(245, 158, 11, 0.4)",
+                      cursor:"pointer"
+                    },
+                    title:"Baixar retratos-mesa.json",
+                    children:[
+                      (0,et.jsx)(IDownload,{size:12}),
+                      (0,et.jsx)("span",{children:"Exportar"})
+                    ]
+                  })
+                ]
+              })
+            ]
+          }),
+
+          /* Form: Criar Novo Snapshot */
+          isCreatingSnap&&(0,et.jsxs)("form",{
+            onSubmit:handleConfirmCreate,
+            style:{
+              background:"rgba(2, 6, 23, 0.65)",
+              padding:"12px 14px",
+              borderRadius:"10px",
+              border:"1px solid rgba(245, 158, 11, 0.4)",
+              display:"flex",
+              flexDirection:"column",
+              gap:"8px"
+            },
+            children:[
+              (0,et.jsxs)("div",{
+                style:{display:"flex",alignItems:"center",justifyContent:"space-between"},
+                children:[
+                  (0,et.jsxs)("span",{
+                    style:{
+                      fontSize:"11px",
+                      fontWeight:"bold",
+                      color:"#fbbf24",
+                      textTransform:"uppercase",
+                      letterSpacing:"0.05em",
+                      display:"flex",
+                      alignItems:"center",
+                      gap:"6px"
+                    },
+                    children:[
+                      (0,et.jsx)(IArchive,{size:13}),
+                      (0,et.jsx)("span",{children:"Salvar Retrato Atual da Mesa"})
+                    ]
+                  }),
+                  (0,et.jsx)("button",{
+                    type:"button",
+                    onClick:()=>setIsCreatingSnap(!1),
+                    style:{background:"transparent",border:"none",color:"#94a3b8",cursor:"pointer",padding:"2px"},
+                    children:(0,et.jsx)(Jt,{size:14})
+                  })
+                ]
+              }),
+              (0,et.jsxs)("div",{
+                style:{display:"flex",gap:"8px",flexWrap:"wrap"},
+                children:[
+                  (0,et.jsx)("input",{
+                    type:"text",
+                    value:newSnapName,
+                    onChange:y=>setNewSnapName(y.target.value),
+                    placeholder:"Nome do Retrato (ex: Antes da Batalha)",
+                    style:{
+                      flex:"1 1 180px",
+                      height:"32px",
+                      boxSizing:"border-box",
+                      background:"#0f172a",
+                      border:"1px solid #334155",
+                      borderRadius:"7px",
+                      padding:"0 10px",
+                      fontSize:"11px",
+                      color:"#ffffff",
+                      outline:"none"
+                    },
+                    required:!0
+                  }),
+                  (0,et.jsx)("input",{
+                    type:"text",
+                    value:newSnapDesc,
+                    onChange:y=>setNewSnapDesc(y.target.value),
+                    placeholder:"Descri\u00e7\u00e3o / Notas (opcional)",
+                    style:{
+                      flex:"1 1 180px",
+                      height:"32px",
+                      boxSizing:"border-box",
+                      background:"#0f172a",
+                      border:"1px solid #334155",
+                      borderRadius:"7px",
+                      padding:"0 10px",
+                      fontSize:"11px",
+                      color:"#ffffff",
+                      outline:"none"
+                    }
+                  })
+                ]
+              }),
+              (0,et.jsxs)("div",{
+                style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:"6px",paddingTop:"2px"},
+                children:[
+                  (0,et.jsx)("button",{
+                    type:"button",
+                    onClick:()=>setIsCreatingSnap(!1),
+                    style:{
+                      height:"26px",
+                      padding:"0 10px",
+                      fontSize:"11px",
+                      color:"#94a3b8",
+                      background:"#1e293b",
+                      border:"1px solid #334155",
+                      borderRadius:"6px",
+                      cursor:"pointer"
+                    },
+                    children:"Cancelar"
+                  }),
+                  (0,et.jsxs)("button",{
+                    type:"submit",
+                    style:{
+                      height:"26px",
+                      padding:"0 14px",
+                      background:"#f59e0b",
+                      color:"#020617",
+                      fontSize:"11px",
+                      fontWeight:"bold",
+                      borderRadius:"6px",
+                      border:"none",
+                      cursor:"pointer",
+                      display:"flex",
+                      alignItems:"center",
+                      gap:"5px"
+                    },
+                    children:[(0,et.jsx)(ICheck,{size:13}),(0,et.jsx)("span",{children:"Salvar Retrato"})]
+                  })
+                ]
+              })
+            ]
+          }),
+
+          /* Lista de Snapshots em divs organizadas */
+          (0,et.jsxs)("div",{
+            style:{display:"flex",flexDirection:"column",gap:"6px"},
+            children:[
+              (0,et.jsxs)("div",{
+                style:{
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"space-between",
+                  fontSize:"11px",
+                  fontWeight:"bold",
+                  color:"#94a3b8",
+                  textTransform:"uppercase",
+                  letterSpacing:"0.05em"
+                },
+                children:[
+                  (0,et.jsxs)("span",{children:["Vers\u00f5es Salvas (",snapshots.length,")"]}),
+                  (0,et.jsx)("span",{
+                    style:{fontSize:"10px",color:"#64748b",textTransform:"none",fontWeight:"normal"},
+                    children:'Clique em "Restaurar" para aplicar na Mesa'
+                  })
+                ]
+              }),
+              snapshots.length===0?(0,et.jsxs)("div",{
+                style:{
+                  padding:"24px",
+                  textAlign:"center",
+                  background:"rgba(2, 6, 23, 0.4)",
+                  border:"1px solid #1e293b",
+                  borderRadius:"10px",
+                  display:"flex",
+                  flexDirection:"column",
+                  alignItems:"center",
+                  gap:"6px"
+                },
+                children:[
+                  (0,et.jsx)(IArchive,{size:28,className:"text-slate-600"}),
+                  (0,et.jsx)("div",{style:{fontSize:"12px",fontWeight:"bold",color:"#e2e8f0"},children:"Nenhum retrato salvo ainda"}),
+                  (0,et.jsxs)("p",{
+                    style:{fontSize:"11px",color:"#64748b",margin:0},
+                    children:["Fa\u00e7a backups preventivos clicando em ",(0,et.jsx)("strong",{children:'"Novo Retrato"'}),"."]
+                  })
+                ]
+              }):snapshots.map(snap=>{
+                let isRest=restoringSnapId===snap.id,isDel=delSnapId===snap.id,isEd=editSnapId===snap.id;
+                return (0,et.jsx)("div",{
+                  key:snap.id,
+                  style:{
+                    padding:"8px 12px",
+                    borderRadius:"10px",
+                    border:"1px solid #1e293b",
+                    background:"rgba(2, 6, 23, 0.55)",
+                    transition:"all 0.15s ease"
+                  },
+                  children:isRest?(0,et.jsxs)("div",{
+                    style:{display:"flex",flexDirection:"column",gap:"8px"},
+                    children:[
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",alignItems:"flex-start",gap:"8px",color:"#fcd34d",fontSize:"11px"},
+                        children:[
+                          (0,et.jsx)(IAlert,{size:15,className:"text-amber-400 shrink-0 mt-0.5"}),
+                          (0,et.jsxs)("div",{
+                            children:[
+                              (0,et.jsx)("div",{style:{fontWeight:"bold"},children:`Restaurar retrato "${snap.name}"?`}),
+                              (0,et.jsx)("div",{style:{fontSize:"10px",color:"#cbd5e1",marginTop:"2px"},children:"O estado atual da Mesa ser\u00e1 substitu\u00eddo por este snapshot."})
+                            ]
+                          })
+                        ]
+                      }),
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:"6px"},
+                        children:[
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>setRestoringSnapId(null),
+                            style:{
+                              height:"26px",
+                              padding:"0 10px",
+                              fontSize:"11px",
+                              color:"#cbd5e1",
+                              background:"#1e293b",
+                              border:"1px solid #334155",
+                              borderRadius:"6px",
+                              cursor:"pointer"
+                            },
+                            children:"Cancelar"
+                          }),
+                          (0,et.jsxs)("button",{
+                            type:"button",
+                            onClick:()=>{handleRestoreSnap(snap);setRestoringSnapId(null);},
+                            style:{
+                              height:"26px",
+                              padding:"0 12px",
+                              fontSize:"11px",
+                              fontWeight:"bold",
+                              color:"#020617",
+                              background:"#34d399",
+                              border:"none",
+                              borderRadius:"6px",
+                              cursor:"pointer",
+                              display:"flex",
+                              alignItems:"center",
+                              gap:"5px"
+                            },
+                            children:[(0,et.jsx)(IRestore,{size:12}),(0,et.jsx)("span",{children:"Confirmar e Restaurar"})]
+                          })
+                        ]
+                      })
+                    ]
+                  }):isDel?(0,et.jsxs)("div",{
+                    style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"8px"},
+                    children:[
+                      (0,et.jsxs)("div",{
+                        style:{fontSize:"11px",color:"#fda4af",fontWeight:500},
+                        children:["Excluir o backup ",(0,et.jsx)("strong",{children:`"${snap.name}"`}),"?"]
+                      }),
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",alignItems:"center",gap:"6px",flexShrink:0},
+                        children:[
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>setDelSnapId(null),
+                            style:{
+                              height:"26px",
+                              padding:"0 10px",
+                              fontSize:"11px",
+                              color:"#cbd5e1",
+                              background:"#1e293b",
+                              border:"1px solid #334155",
+                              borderRadius:"6px",
+                              cursor:"pointer"
+                            },
+                            children:"Cancelar"
+                          }),
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>handleDeleteSnap(snap.id),
+                            style:{
+                              height:"26px",
+                              padding:"0 10px",
+                              fontSize:"11px",
+                              fontWeight:"bold",
+                              color:"#ffffff",
+                              background:"#dc2626",
+                              border:"none",
+                              borderRadius:"6px",
+                              cursor:"pointer"
+                            },
+                            children:"Confirmar Exclus\u00e3o"
+                          })
+                        ]
+                      })
+                    ]
+                  }):isEd?(0,et.jsxs)("div",{
+                    style:{display:"flex",flexDirection:"column",gap:"6px"},
+                    children:[
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",gap:"6px"},
+                        children:[
+                          (0,et.jsx)("input",{
+                            type:"text",
+                            value:editSnapName,
+                            onChange:ev=>setEditSnapName(ev.target.value),
+                            style:{
+                              flex:1,
+                              height:"28px",
+                              boxSizing:"border-box",
+                              background:"#0f172a",
+                              border:"1px solid rgba(245, 158, 11, 0.4)",
+                              borderRadius:"6px",
+                              padding:"0 8px",
+                              fontSize:"11px",
+                              color:"#ffffff",
+                              outline:"none"
+                            },
+                            placeholder:"Nome do Retrato"
+                          }),
+                          (0,et.jsx)("input",{
+                            type:"text",
+                            value:editSnapDesc,
+                            onChange:ev=>setEditSnapDesc(ev.target.value),
+                            style:{
+                              flex:1,
+                              height:"28px",
+                              boxSizing:"border-box",
+                              background:"#0f172a",
+                              border:"1px solid #334155",
+                              borderRadius:"6px",
+                              padding:"0 8px",
+                              fontSize:"11px",
+                              color:"#cbd5e1",
+                              outline:"none"
+                            },
+                            placeholder:"Descri\u00e7\u00e3o / Notas"
+                          })
+                        ]
+                      }),
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",justifyContent:"flex-end",gap:"6px"},
+                        children:[
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>setEditSnapId(null),
+                            style:{
+                              height:"24px",
+                              padding:"0 8px",
+                              fontSize:"10px",
+                              color:"#94a3b8",
+                              background:"#1e293b",
+                              border:"1px solid #334155",
+                              borderRadius:"5px",
+                              cursor:"pointer"
+                            },
+                            children:"Cancelar"
+                          }),
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>handleSaveEdit(snap.id),
+                            style:{
+                              height:"24px",
+                              padding:"0 10px",
+                              fontSize:"10px",
+                              fontWeight:"bold",
+                              background:"#f59e0b",
+                              color:"#020617",
+                              border:"none",
+                              borderRadius:"5px",
+                              cursor:"pointer"
+                            },
+                            children:"Salvar"
+                          })
+                        ]
+                      })
+                    ]
+                  }):(0,et.jsxs)("div",{
+                    style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"10px"},
+                    children:[
+                      (0,et.jsxs)("div",{
+                        style:{minWidth:0,flex:1},
+                        children:[
+                          (0,et.jsxs)("div",{
+                            style:{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"},
+                            children:[
+                              (0,et.jsx)("span",{
+                                style:{fontSize:"12px",fontWeight:"bold",color:"#ffffff"},
+                                children:snap.name
+                              }),
+                              (0,et.jsxs)("span",{
+                                style:{display:"flex",alignItems:"center",gap:"4px",fontSize:"10px",color:"#64748b",fontFamily:"monospace"},
+                                children:[
+                                  (0,et.jsx)(IClock,{size:10}),
+                                  (0,et.jsx)("span",{children:snap.formattedDate})
+                                ]
+                              })
+                            ]
+                          }),
+                          snap.description&&(0,et.jsx)("p",{
+                            style:{
+                              fontSize:"10px",
+                              color:"#94a3b8",
+                              margin:"2px 0 0 0",
+                              overflow:"hidden",
+                              textOverflow:"ellipsis",
+                              whiteSpace:"nowrap"
+                            },
+                            children:snap.description
+                          }),
+                          (0,et.jsxs)("div",{
+                            style:{display:"flex",alignItems:"center",gap:"6px",fontSize:"10px",fontFamily:"monospace",color:"#64748b",marginTop:"3px",flexWrap:"wrap"},
+                            children:[
+                              (0,et.jsxs)("span",{
+                                style:{background:"#0f172a",border:"1px solid #1e293b",padding:"1px 5px",borderRadius:"4px",color:"#fbbf24"},
+                                children:[snap.summary?.totalCombats||0," combates"]
+                              }),
+                              (0,et.jsxs)("span",{
+                                style:{background:"#0f172a",border:"1px solid #1e293b",padding:"1px 5px",borderRadius:"4px",color:"#cbd5e1"},
+                                children:[snap.summary?.totalNpcs||0," NPCs"]
+                              }),
+                              (0,et.jsxs)("span",{
+                                style:{background:"#0f172a",border:"1px solid #1e293b",padding:"1px 5px",borderRadius:"4px",color:"#cbd5e1"},
+                                children:[snap.summary?.totalPlayers||0," personagens"]
+                              }),
+                              snap.summary?.activeCombatName&&(0,et.jsxs)("span",{
+                                style:{background:"#0f172a",border:"1px solid #1e293b",padding:"1px 5px",borderRadius:"4px",color:"#34d399"},
+                                children:["Ativo: ",snap.summary.activeCombatName]
+                              })
+                            ]
+                          })
+                        ]
+                      }),
+                      (0,et.jsxs)("div",{
+                        style:{display:"flex",alignItems:"center",gap:"4px",flexShrink:0},
+                        children:[
+                          (0,et.jsxs)("button",{
+                            type:"button",
+                            onClick:()=>setRestoringSnapId(snap.id),
+                            className:"hover:opacity-90 active:scale-95 transition-all",
+                            style:{
+                              height:"26px",
+                              display:"flex",
+                              alignItems:"center",
+                              gap:"4px",
+                              padding:"0 8px",
+                              fontSize:"11px",
+                              fontWeight:"bold",
+                              background:"rgba(16, 185, 129, 0.15)",
+                              color:"#34d399",
+                              border:"1px solid rgba(16, 185, 129, 0.4)",
+                              borderRadius:"6px",
+                              cursor:"pointer"
+                            },
+                            title:"Restaurar este retrato",
+                            children:[(0,et.jsx)(IRestore,{size:11}),(0,et.jsx)("span",{children:"Restaurar"})]
+                          }),
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>handleExportSnap(snap),
+                            style:{
+                              width:"26px",
+                              height:"26px",
+                              background:"#0f172a",
+                              border:"1px solid #334155",
+                              color:"#94a3b8",
+                              borderRadius:"6px",
+                              cursor:"pointer",
+                              display:"flex",
+                              alignItems:"center",
+                              justifyContent:"center"
+                            },
+                            title:"Baixar arquivo JSON",
+                            children:(0,et.jsx)(IDownload,{size:12})
+                          }),
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>{setEditSnapId(snap.id);setEditSnapName(snap.name);setEditSnapDesc(snap.description||"");},
+                            style:{
+                              width:"26px",
+                              height:"26px",
+                              background:"#0f172a",
+                              border:"1px solid #334155",
+                              color:"#94a3b8",
+                              borderRadius:"6px",
+                              cursor:"pointer",
+                              display:"flex",
+                              alignItems:"center",
+                              justifyContent:"center"
+                            },
+                            title:"Editar nome ou notas",
+                            children:(0,et.jsx)(Po,{size:12})
+                          }),
+                          (0,et.jsx)("button",{
+                            type:"button",
+                            onClick:()=>setDelSnapId(snap.id),
+                            style:{
+                              width:"26px",
+                              height:"26px",
+                              background:"#0f172a",
+                              border:"1px solid rgba(244, 63, 94, 0.3)",
+                              color:"#fb7185",
+                              borderRadius:"6px",
+                              cursor:"pointer",
+                              display:"flex",
+                              alignItems:"center",
+                              justifyContent:"center"
+                            },
+                            title:"Excluir este backup",
+                            children:(0,et.jsx)(Rt,{size:12})
+                          })
+                        ]
+                      })
+                    ]
+                  })
+                });
+              })
+            ]
+          })
+        ]
+      }),
+
+      /* Rodapé com botão Concluir e respiro */
+      (0,et.jsx)("div",{
+        style:{
+          flexShrink:0,
+          display:"flex",
+          alignItems:"center",
+          justifyContent:"flex-end",
+          padding:"8px 18px",
+          borderTop:"1px solid #1e293b",
+          background:"rgba(2, 6, 23, 0.6)"
+        },
+        children:(0,et.jsx)("button",{
+          type:"button",
+          onClick:a,
+          className:"hover:opacity-90 active:scale-95 transition-all",
+          style:{
+            padding:"5px 16px",
+            borderRadius:"7px",
+            fontSize:"11px",
+            fontWeight:"bold",
+            background:"#f59e0b",
+            color:"#020617",
+            border:"none",
+            cursor:"pointer",
+            boxShadow:"0 2px 4px rgba(0,0,0,0.3)"
+          },
+          children:"Concluir"
+        })
       })
-    })
-  ]})
+    ]
+  })
 })};;var Mr=Y(Dt(),1);var J=Y(dt(),1),Kp=({isOpen:t,onClose:a,conditions:e,activeNpcConditions:r,onToggleNpcCondition:o,onCreateCondition:i,onUpdateCondition:n,onDeleteCondition:l,currentRound:curRnd=0})=>{let[c,p]=(0,Mr.useState)(""),[m,k]=(0,Mr.useState)(!1),[f,h]=(0,Mr.useState)(""),[g,N]=(0,Mr.useState)(""),[newDur,setNewDur]=(0,Mr.useState)(""),[w,u]=(0,Mr.useState)(null),[s,x]=(0,Mr.useState)(""),[M,y]=(0,Mr.useState)(""),[editDur,setEditDur]=(0,Mr.useState)("");if(!t)return null;let z=D=>{D.preventDefault(),f.trim()&&(i({label:f.trim(),description:g.trim()||"Sem descri\xE7\xE3o.",duration:typeof newDur==="number"&&newDur>0?newDur:void 0}),h(""),N(""),setNewDur(""),k(!1))},T=D=>{u(D.id),x(D.label),y(D.description),setEditDur(D.duration!==void 0?D.duration:"")},O=D=>{s.trim()&&(n(D,{label:s.trim(),description:M.trim(),duration:typeof editDur==="number"&&editDur>0?editDur:void 0}),u(null))},tt=e.filter(D=>D.label.toLowerCase().includes(c.toLowerCase())||D.description.toLowerCase().includes(c.toLowerCase()));return(0,J.jsx)("div",{style:{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",background:"rgba(2,6,23,0.85)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",overflowY:"auto"},className:"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm",children:(0,J.jsxs)("div",{style:{position:"relative",margin:"auto",width:"100%",maxWidth:"640px",maxHeight:"85vh",display:"flex",flexDirection:"column",background:"#0f172a",border:"1px solid rgba(245,158,11,0.35)",borderRadius:"16px",boxShadow:"0 25px 50px -12px rgba(0,0,0,0.75)",overflow:"hidden"},className:"relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4",children:[(0,J.jsxs)("div",{style:{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 18px",borderBottom:"1px solid rgba(245, 158, 11, 0.2)",background:"linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)"},children:[(0,J.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"8px",minWidth:0},children:[(0,J.jsx)("div",{style:{width:"28px",height:"28px",borderRadius:"7px",background:"rgba(245, 158, 11, 0.15)",border:"1px solid rgba(245, 158, 11, 0.4)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fbbf24",flexShrink:0},children:(0,J.jsx)(pp,{size:16,className:"text-amber-400"})}),(0,J.jsxs)("div",{style:{minWidth:0},children:[(0,J.jsx)("h2",{style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},children:"Gerenciador de Condi\xE7\xF5es & Estados (CRUD)"}),(0,J.jsx)("p",{style:{fontSize:"10px",color:"#94a3b8",margin:"1px 0 0 0"},children:"Crie, edite, exclua e ative estados de combate no NPC selecionado."})]})]}),(0,J.jsx)("button",{type:"button",onClick:a,style:{padding:"5px",borderRadius:"7px",cursor:"pointer",flexShrink:0,background:"transparent",border:"none",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8"},title:"Fechar (Esc)",children:(0,J.jsx)(Jt,{size:16})})]}),(0,J.jsxs)("div",{style:{flexShrink:0,padding:"8px 18px",borderBottom:"1px solid #1e293b",background:"rgba(15, 23, 42, 0.7)",display:"flex",alignItems:"center",gap:"8px"},children:[(0,J.jsxs)("div",{style:{position:"relative",flex:1},children:[(0,J.jsx)(Pl,{size:14,className:"absolute left-3 top-2.5 text-slate-500"}),(0,J.jsx)("input",{type:"text",placeholder:"Buscar condi\xE7\xE3o...",value:c,onChange:D=>p(D.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"})]}),(0,J.jsxs)("button",{onClick:()=>k(!m),className:"flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition-colors whitespace-nowrap",children:[(0,J.jsx)(Ct,{size:14}),(0,J.jsx)("span",{children:m?"Fechar":"Nova Condi\xE7\xE3o"})]})]}),m&&(0,J.jsxs)("form",{onSubmit:z,className:"p-3 bg-slate-950/80 border border-amber-500/40 rounded-xl space-y-2.5",children:[(0,J.jsx)("div",{className:"text-xs font-bold text-amber-300 uppercase tracking-wider",children:"Criar Nova Condi\xE7\xE3o / Estado"}),(0,J.jsxs)("div",{className:"grid grid-cols-1 sm:grid-cols-4 gap-2",children:[(0,J.jsx)("input",{type:"text",placeholder:"Nome do Estado (ex: Congelado)",value:f,onChange:D=>h(D.target.value),className:"bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0}),(0,J.jsx)("input",{type:"text",placeholder:"Descri\xE7\xE3o / Efeitos (ex: -2 em esquiva...)",value:g,onChange:D=>N(D.target.value),className:"sm:col-span-2 bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"}),(0,J.jsx)("input",{type:"number",min:"1",placeholder:"Dura\xE7\xE3o (rod.)",value:newDur,onChange:D=>setNewDur(D.target.value===""?"":Math.max(1,parseInt(D.target.value,10)||1)),className:"bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono",title:"Dura\xE7\xE3o em rodadas"})]}),(0,J.jsxs)("div",{className:"flex justify-end gap-2",children:[(0,J.jsx)("button",{type:"button",onClick:()=>k(!1),className:"px-3 py-1 text-xs text-slate-400 hover:text-white",children:"Cancelar"}),(0,J.jsxs)("button",{type:"submit",className:"flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg",children:[(0,J.jsx)(sa,{size:13}),(0,J.jsx)("span",{children:"Salvar Condi\xE7\xE3o"})]})]})]}),(0,J.jsx)("div",{style:{minHeight:0,overflowY:"auto",padding:"12px 18px",display:"flex",flexDirection:"column",gap:"8px",flex:1},children:tt.length===0?(0,J.jsx)("div",{className:"py-8 text-center text-xs text-slate-500 italic",children:"Nenhuma condi\xE7\xE3o encontrada."}):tt.map(D=>{let Ot=r.includes(D.label),wa=w===D.id;return(0,J.jsxs)("div",{className:`p-3 rounded-xl border transition-all flex items-start gap-3 ${Ot?"bg-red-950/30 border-red-700/60":"bg-slate-950/60 border-slate-800 hover:border-slate-750"}`,children:[(0,J.jsx)("button",{onClick:()=>o(D.label,D.duration,curRnd),title:Ot?"Remover deste NPC":"Ativar neste NPC",className:`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center border shrink-0 transition-colors ${Ot?"bg-red-600 border-red-500 text-white":"bg-slate-900 border-slate-700 hover:border-slate-500 text-transparent"}`,children:(0,J.jsx)(sa,{size:13})}),(0,J.jsx)("div",{className:"flex-1 min-w-0",children:wa?(0,J.jsxs)("div",{className:"space-y-2",children:[(0,J.jsxs)("div",{className:"grid grid-cols-1 sm:grid-cols-3 gap-2",children:[(0,J.jsx)("input",{type:"text",value:s,onChange:Wt=>x(Wt.target.value),placeholder:"Nome...",className:"sm:col-span-2 bg-slate-900 border border-slate-750 rounded px-2 py-1 text-xs text-white"}),(0,J.jsx)("input",{type:"number",min:"1",placeholder:"Dura\xE7\xE3o...",value:editDur,onChange:Wt=>setEditDur(Wt.target.value===""?"":Math.max(1,parseInt(Wt.target.value,10)||1)),className:"bg-slate-900 border border-slate-750 rounded px-2 py-1 text-xs text-white font-mono",title:"Dura\xE7\xE3o em rodadas"})]}),(0,J.jsx)("textarea",{rows:2,value:M,onChange:Wt=>y(Wt.target.value),className:"w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300"}),(0,J.jsxs)("div",{className:"flex justify-end gap-1.5",children:[(0,J.jsx)("button",{onClick:()=>u(null),className:"px-2 py-1 text-xs text-slate-400 hover:text-white",children:"Cancelar"}),(0,J.jsx)("button",{onClick:()=>O(D.id),className:"px-2.5 py-1 text-xs bg-amber-500 text-slate-950 font-bold rounded",children:"Salvar"})]})]}):(0,J.jsxs)(J.Fragment,{children:[(0,J.jsxs)("div",{className:"flex items-center gap-2",children:[(0,J.jsx)("span",{className:`text-xs font-bold ${Ot?"text-red-300":"text-slate-200"}`,children:D.label}),Ot&&(0,J.jsx)("span",{className:"text-[10px] font-mono bg-red-950 text-red-400 border border-red-800 px-1.5 py-0.2 rounded",children:"Ativo no NPC"})]}),(0,J.jsx)("div",{className:"text-[11px] text-slate-400 mt-0.5 leading-relaxed",children:D.description})]})}),!wa&&(0,J.jsxs)("div",{className:"flex items-center gap-1 shrink-0",children:[(0,J.jsx)("button",{onClick:()=>T(D),title:"Editar esta condi\xE7\xE3o",className:"p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg",children:(0,J.jsx)(Po,{size:13})}),(0,J.jsx)("button",{onClick:()=>{hubConfirm(`Excluir permanentemente a condi\xE7\xE3o "${D.label}"?`).then(ok=>{ok&&l(D.id)})},title:"Excluir condi\xE7\xE3o",className:"p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg",children:(0,J.jsx)(Rt,{size:13})})]})]},D.id)})}),(0,J.jsx)("div",{className:"flex justify-end pt-2 border-t border-slate-800",children:(0,J.jsx)("button",{onClick:a,className:"px-4 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl",children:"Concluir"})})]})})};var rn=Y(Dt(),1);var F=Y(dt(),1),Jp=({isOpen:t,onClose:a,users:e,currentUser:r,onCreateUser:o,onResetUserPassword:i,onDeleteUser:n})=>{let[l,c]=(0,rn.useState)(!1),[p,m]=(0,rn.useState)(""),[k,f]=(0,rn.useState)("jogador"),[h,g]=(0,rn.useState)("123");return t?(0,F.jsx)("div",{style:{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",background:"rgba(2,6,23,0.85)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",overflowY:"auto"},className:"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm",children:(0,F.jsxs)("div",{style:{position:"relative",margin:"auto",width:"100%",maxWidth:"580px",maxHeight:"85vh",display:"flex",flexDirection:"column",background:"#0f172a",border:"1px solid rgba(245,158,11,0.35)",borderRadius:"16px",boxShadow:"0 25px 50px -12px rgba(0,0,0,0.75)",overflow:"hidden"},className:"relative w-full max-w-xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4",children:[(0,F.jsxs)("div",{style:{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 18px",borderBottom:"1px solid rgba(245, 158, 11, 0.2)",background:"linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)"},children:[(0,F.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"8px",minWidth:0},children:[(0,F.jsx)("div",{style:{width:"28px",height:"28px",borderRadius:"7px",background:"rgba(245, 158, 11, 0.15)",border:"1px solid rgba(245, 158, 11, 0.4)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fbbf24",flexShrink:0},children:(0,F.jsx)(fe,{size:16,className:"text-amber-400"})}),(0,F.jsxs)("div",{style:{minWidth:0},children:[(0,F.jsx)("h2",{style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},children:"Controle de Acesso: Mestres e Jogadores"}),(0,F.jsx)("p",{style:{fontSize:"10px",color:"#94a3b8",margin:"1px 0 0 0"},children:"Gerencie contas, papéis e permissões de acesso ao sistema"})]})]}),(0,F.jsx)("button",{type:"button",onClick:a,style:{padding:"5px",borderRadius:"7px",cursor:"pointer",flexShrink:0,background:"transparent",border:"none",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8"},title:"Fechar (Esc)",children:(0,F.jsx)(Jt,{size:16})})]}),(0,F.jsxs)("div",{style:{flexShrink:0,padding:"8px 18px",borderBottom:"1px solid #1e293b",background:"rgba(15, 23, 42, 0.7)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"8px"},children:[(0,F.jsx)("p",{className:"text-xs text-slate-400",children:"Gerencie quem pode acessar o sistema como Mestre ou como Jogador assistente."}),(0,F.jsxs)("button",{onClick:()=>c(!l),className:"flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition-colors whitespace-nowrap",children:[(0,F.jsx)(Ct,{size:14}),(0,F.jsx)("span",{children:l?"Fechar Cadastro":"Novo Usu\xE1rio"})]})]}),l&&(0,F.jsxs)("form",{onSubmit:w=>{w.preventDefault(),p.trim()&&(o(p.trim(),k,h.trim()||"123"),m(""),g("123"),f("jogador"),c(!1))},className:"bg-slate-950/80 border border-amber-500/40 rounded-xl p-3.5 space-y-3",children:[(0,F.jsx)("div",{className:"text-xs font-bold text-amber-300 uppercase tracking-wider",children:"Cadastrar Novo Usu\xE1rio"}),(0,F.jsxs)("div",{className:"grid grid-cols-1 sm:grid-cols-3 gap-2.5",children:[(0,F.jsxs)("div",{children:[(0,F.jsx)("label",{className:"text-[11px] font-semibold text-slate-300 block mb-1",children:"Nome / Login"}),(0,F.jsx)("input",{type:"text",placeholder:"Nome do usu\xE1rio",value:p,onChange:w=>m(w.target.value),className:"w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0})]}),(0,F.jsxs)("div",{children:[(0,F.jsx)("label",{className:"text-[11px] font-semibold text-slate-300 block mb-1",children:"Tipo de Acesso"}),(0,F.jsxs)("select",{value:k,onChange:w=>f(w.target.value),className:"w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500",children:[(0,F.jsx)("option",{value:"jogador",children:"Jogador (V\xEA s\xF3 NPCs liberados)"}),(0,F.jsx)("option",{value:"mestre",children:"Mestre (Acesso total)"}),(0,F.jsx)("option",{value:"visualizador",children:"Visualizador (Somente visualiza\xE7\xE3o, n\xE3o altera nada)"})]})]}),(0,F.jsxs)("div",{children:[(0,F.jsx)("label",{className:"text-[11px] font-semibold text-slate-300 block mb-1",children:"Senha Inicial"}),(0,F.jsx)("input",{type:"text",placeholder:"Senha inicial",value:h,onChange:w=>g(w.target.value),className:"w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0})]})]}),(0,F.jsxs)("div",{className:"flex justify-end gap-2 pt-1",children:[(0,F.jsx)("button",{type:"button",onClick:()=>c(!1),className:"px-3 py-1.5 text-xs text-slate-400 hover:text-white",children:"Cancelar"}),(0,F.jsxs)("button",{type:"submit",className:"flex items-center gap-1 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg",children:[(0,F.jsx)(sa,{size:14}),(0,F.jsx)("span",{children:"Salvar Usu\xE1rio"})]})]})]}),(0,F.jsxs)("div",{className:"space-y-2 max-h-72 overflow-y-auto pr-1",children:[(0,F.jsxs)("div",{className:"text-xs font-semibold text-slate-400 uppercase tracking-wider",children:["Usu\xE1rios Cadastrados (",e.length,")"]}),e.map(w=>{let u=w.id===r.id;return(0,F.jsxs)("div",{className:"p-3 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between gap-3",children:[(0,F.jsxs)("div",{className:"flex items-center gap-3",children:[(0,F.jsx)("div",{className:`w-8 h-8 rounded-lg flex items-center justify-center ${w.role==="mestre"?"bg-amber-500/20 text-amber-400 border border-amber-500/40":w.role==="visualizador"?"bg-cyan-500/20 text-cyan-400 border border-cyan-500/40":"bg-blue-500/20 text-blue-400 border border-blue-500/40"}`,children:w.role==="mestre"?(0,F.jsx)(Yl,{size:16}):w.role==="visualizador"?(0,F.jsx)(Qa,{size:16}):(0,F.jsx)(Xl,{size:16})}),(0,F.jsxs)("div",{children:[(0,F.jsxs)("div",{className:"flex items-center gap-2",children:[(0,F.jsx)("span",{className:"text-xs font-bold text-white",children:w.name}),(0,F.jsx)("span",{className:`text-[10px] font-bold px-1.5 py-0.2 rounded uppercase ${w.role==="mestre"?"bg-amber-950 text-amber-300 border border-amber-800":w.role==="visualizador"?"bg-cyan-950 text-cyan-300 border border-cyan-800":"bg-blue-950 text-blue-300 border border-blue-800"}`,children:w.role}),u&&(0,F.jsx)("span",{className:"text-[10px] text-slate-400 italic",children:"(Voc\xEA)"})]}),(0,F.jsx)("div",{className:"text-[11px] text-slate-400 mt-0.5 font-mono",children:w.needsPasswordReset?(0,F.jsx)("span",{className:"text-amber-400 font-semibold",children:"\u26A0\uFE0F Senha reiniciada (ter\xE1 que cadastrar nova senha no login)"}):(0,F.jsx)("span",{children:"Senha ativa gravada"})})]})]}),(0,F.jsxs)("div",{className:"flex items-center gap-1.5",children:[(0,F.jsxs)("button",{onClick:()=>{hubConfirm(`Reiniciar senha de ${w.name}? Ao logar, este usu\xE1rio ter\xE1 que cadastrar uma nova senha.`).then(ok=>{ok&&i(w.id)})},title:"Reiniciar a senha deste usu\xE1rio",className:"flex items-center gap-1 px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg transition-colors",children:[(0,F.jsx)(Gl,{size:13}),(0,F.jsx)("span",{children:"Reiniciar Senha"})]}),!u&&e.length>1&&(0,F.jsx)("button",{onClick:()=>{hubConfirm(`Excluir permanentemente o usu\xE1rio ${w.name}?`).then(ok=>{ok&&n(w.id)})},title:"Excluir usu\xE1rio",className:"p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors",children:(0,F.jsx)(Rt,{size:14})})]})]},w.id)})]}),(0,F.jsx)("div",{style:{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"8px 18px",borderTop:"1px solid #1e293b",background:"rgba(2, 6, 23, 0.6)"},children:(0,F.jsx)("button",{type:"button",onClick:a,style:{padding:"5px 14px",borderRadius:"7px",fontSize:"11px",fontWeight:"bold",background:"#f59e0b",color:"#020617",border:"none",cursor:"pointer",boxShadow:"0 2px 4px rgba(0,0,0,0.3)"},children:"Concluir"})})]})}):null};var xe=Y(Dt(),1);var lt=Y(dt(),1),$p=({isOpen:t,users:a,onLoginSuccess:e,onUpdateUserPassword:r,onClose:o,canDismiss:i=!1})=>{let[n,l]=(0,xe.useState)(a[0]?.id||""),[c,p]=(0,xe.useState)(""),[m,k]=(0,xe.useState)("");xe.default.useEffect(()=>{a.length>0&&(!n||!a.some(z=>z.id===n))&&l(a[0].id)},[a,n]);let[f,h]=(0,xe.useState)(!1),[g,N]=(0,xe.useState)(null),[w,u]=(0,xe.useState)(""),[s,x]=(0,xe.useState)("");return t?(0,lt.jsx)("div",{style:{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",background:"rgba(2,6,23,0.85)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",overflowY:"auto"},className:"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md",children:(0,lt.jsxs)("div",{style:{position:"relative",margin:"auto",width:"100%",maxWidth:"440px",maxHeight:"85vh",display:"flex",flexDirection:"column",background:"#0f172a",border:"1px solid rgba(245,158,11,0.35)",borderRadius:"16px",boxShadow:"0 25px 50px -12px rgba(0,0,0,0.75)",overflow:"hidden"},className:"relative w-full max-w-md bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-5",children:[(0,lt.jsxs)("div",{className:"text-center space-y-1",children:[(0,lt.jsx)("div",{className:"w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg",children:(0,lt.jsx)(Lr,{size:24})}),(0,lt.jsx)("h2",{className:"text-lg font-bold text-white tracking-tight",children:"Mesa de Combate"}),(0,lt.jsx)("p",{className:"text-xs text-slate-400",children:f?"Defini\xE7\xE3o de Nova Senha":"Escolha seu usu\xE1rio para entrar"})]}),m&&(0,lt.jsxs)("div",{className:"p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs font-semibold flex items-center gap-2",children:[(0,lt.jsx)(vr,{size:15,className:"shrink-0 text-rose-400"}),(0,lt.jsx)("span",{children:m})]}),f&&g?(0,lt.jsxs)("form",{onSubmit:z=>{if(z.preventDefault(),!g)return;if(!w.trim()){k("A nova senha n\xE3o pode ser vazia.");return}if(w!==s){k("As senhas n\xE3o coincidem.");return}r(g.id,w.trim());let T={...g,password:w.trim(),needsPasswordReset:!1};h(!1),N(null),u(""),x(""),e(T)},className:"space-y-4",children:[(0,lt.jsxs)("div",{className:"bg-amber-950/40 border border-amber-500/40 rounded-xl p-3 text-xs text-amber-200",children:[(0,lt.jsxs)("div",{className:"font-bold flex items-center gap-1.5 mb-1",children:[(0,lt.jsx)(Gl,{size:15,className:"text-amber-400"}),(0,lt.jsx)("span",{children:"Senha Reiniciada pelo Mestre"})]}),(0,lt.jsxs)("p",{className:"text-[11px] text-amber-300/80",children:["Ol\xE1 ",(0,lt.jsx)("strong",{children:g.name}),", sua senha foi redefinida. Digite uma nova senha para sua conta:"]})]}),(0,lt.jsxs)("div",{className:"space-y-2",children:[(0,lt.jsx)("label",{className:"text-xs font-semibold text-slate-300 block",children:"Nova Senha"}),(0,lt.jsx)("input",{type:"password",placeholder:"Digite a nova senha",value:w,onChange:z=>u(z.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0,autoFocus:!0})]}),(0,lt.jsxs)("div",{className:"space-y-2",children:[(0,lt.jsx)("label",{className:"text-xs font-semibold text-slate-300 block",children:"Confirmar Nova Senha"}),(0,lt.jsx)("input",{type:"password",placeholder:"Digite novamente para confirmar",value:s,onChange:z=>x(z.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0})]}),(0,lt.jsxs)("button",{type:"submit",className:"w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-lg",children:[(0,lt.jsx)(Kc,{size:15}),(0,lt.jsx)("span",{children:"Gravar Nova Senha e Acessar"})]})]}):(0,lt.jsxs)("form",{onSubmit:z=>{z.preventDefault(),k("");let T=a.find(wa=>wa.id===n);if(!T){k("Selecione um usu\xE1rio.");return}e({...T,needsPasswordReset:!1}),p("")},className:"space-y-4",children:[(0,lt.jsxs)("div",{className:"space-y-1.5",children:[(0,lt.jsx)("label",{className:"text-xs font-semibold text-slate-300 block",children:"Selecione seu Usu\xE1rio"}),(0,lt.jsx)("div",{className:"relative",children:(0,lt.jsx)("select",{value:n,onChange:z=>l(z.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium",children:a.map(z=>(0,lt.jsxs)("option",{value:z.id,children:[z.name," (",z.role==="mestre"?"Mestre":"Jogador",")"]},z.id))})})]}),(0,lt.jsxs)("button",{type:"submit",className:"w-full py-2.5 bg-amber-500 hover:bg-amber-400 active:scale-98 text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md",children:[(0,lt.jsx)("span",{children:"Entrar no Sistema"}),(0,lt.jsx)(Kc,{size:14})]}),i&&o&&(0,lt.jsx)("button",{type:"button",onClick:o,className:"w-full py-2 text-xs text-slate-400 hover:text-white transition-colors",children:"Voltar"})]})]})}):null};var Yr=Y(Dt(),1);var Q=Y(dt(),1),r1=[{name:"Espada Larga (Broadsword)",nh:12,modes:[{name:"Golpe de Corte",damage:"sw+1 corte",type:"Corte",reach:"1"},{name:"Estocada",damage:"thr+1 perf",type:"Perfurante",reach:"1"}],notes:"Espada de uma m\xE3o cl\xE1ssica."},{name:"Espada Curta (Shortsword)",nh:12,modes:[{name:"Golpe de Corte",damage:"sw corte",type:"Corte",reach:"1"},{name:"Estocada",damage:"thr perf",type:"Perfurante",reach:"1"}],notes:"\xC1gil e compacta."},{name:"Espada de Duas M\xE3os / Montante (Greatsword)",nh:12,modes:[{name:"Golpe de Corte (2 m\xE3os)",damage:"sw+3 corte",type:"Corte",reach:"1, 2"},{name:"Estocada (2 m\xE3os)",damage:"thr+2 perf",type:"Perfurante",reach:"2"}],notes:"Requer duas m\xE3os (\u2020)."},{name:"Lan\xE7a (Spear)",nh:12,modes:[{name:"Uma M\xE3o",damage:"thr+2 perf",type:"Perfurante",reach:"1"},{name:"Duas M\xE3os",damage:"thr+3 perf",type:"Perfurante",reach:"1, 2*"},{name:"Arremesso",damage:"thr+3 perf",type:"Perfurante",reach:"10/20 yd"}],notes:"Vers\xE1til em 1 ou 2 m\xE3os."},{name:"Adaga / Faca Grande (Large Knife)",nh:12,modes:[{name:"Corte",damage:"sw-2 corte",type:"Corte",reach:"C, 1"},{name:"Estocada",damage:"thr perf",type:"Perfurante",reach:"C"},{name:"Arremesso",damage:"thr perf",type:"Perfurante",reach:"5/10 yd"}],notes:"Pode ser arremessada."},{name:"Rapieira / Florete (Rapier)",nh:13,modes:[{name:"Estocada",damage:"thr+1 perf",type:"Perfurante",reach:"1, 2"}],notes:"Arma de esgrima."},{name:"Machado de Batalha (Battleaxe)",nh:12,modes:[{name:"Uma M\xE3o",damage:"sw+2 corte",type:"Corte",reach:"1, 2"},{name:"Duas M\xE3os",damage:"sw+3 corte",type:"Corte",reach:"1, 2"}],notes:"Desbalanceada (0U)."},{name:"Machadinha de Arremesso (Small Axe)",nh:12,modes:[{name:"Corpo a Corpo",damage:"sw+1 corte",type:"Corte",reach:"1"},{name:"Arremesso",damage:"sw+1 corte",type:"Corte",reach:"10/15 yd"}],notes:"Pode ser arremessada."},{name:"Ma\xE7a / Clava (Mace)",nh:12,modes:[{name:"Golpe Contuso",damage:"sw+3 cont",type:"Contus\xE3o",reach:"1"}],notes:"Desbalanceada (0U)."},{name:"Arco Composto / Longo (Regular Bow)",nh:12,modes:[{name:"Disparo de Flecha",damage:"thr+1 perf",type:"Perfurante",reach:"150/200 yd"}],notes:"Penetra armaduras leves."},{name:"Besta (Crossbow)",nh:12,modes:[{name:"Tiro de Virote",damage:"thr+4 perf",type:"Perfurante",reach:"200/250 yd"}],notes:"Requer 4 segundos para recarregar."},{name:"Desarmado / Soco (Punch)",nh:10,modes:[{name:"Soco Direto",damage:"thr-1 cont",type:"Contus\xE3o",reach:"C"},{name:"Chute",damage:"thr cont",type:"Contus\xE3o",reach:"C, 1"}],notes:"Briga ou Boxe."}],Ip=({isOpen:t,onClose:a,onSave:e,initialWeapon:r})=>{let[o,i]=(0,Yr.useState)(""),[n,l]=(0,Yr.useState)(""),[c,p]=(0,Yr.useState)([]),[m,k]=(0,Yr.useState)("");if((0,Yr.useEffect)(()=>{r?(i(r.name||""),l(r.nh??10),k(r.notes||""),r.modes&&r.modes.length>0?p(JSON.parse(JSON.stringify(r.modes))):p([{id:`mode-${Date.now()}-1`,name:"Principal",damage:r.damage||"",type:r.type||"",reach:r.reach||"1"}])):(i(""),l(""),k(""),p([{id:`mode-${Date.now()}-1`,name:"",damage:"",type:"",reach:""}]))},[r,t]),!t)return null;let f=u=>{let s=parseInt(u,10);if(isNaN(s)||!r1[s])return;let x=r1[s];i(x.name),l(x.nh),k(x.notes||""),p(x.modes.map((M,y)=>({id:`mode-${Date.now()}-${y}`,name:M.name||"",damage:M.damage,type:M.type,reach:M.reach})))},h=()=>{p(u=>[...u,{id:`mode-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name:"",damage:"",type:"",reach:""}])},g=(u,s,x)=>{p(M=>{let y=[...M];return y[u]={...y[u],[s]:x},y})},N=u=>{c.length<=1||p(s=>s.filter((x,M)=>M!==u))},w=u=>{if(u.preventDefault(),!o.trim())return;let s=c[0];e({id:r?r.id:`wpn-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name:o.trim(),nh:typeof n=="string"?n.trim()===""?10:isNaN(Number(n))?n.trim():Number(n):n,damage:s?.damage||"",type:s?.type||"",reach:s?.reach||"",modes:c.filter(x=>x.damage.trim()!==""||x.type.trim()!==""),notes:m.trim(),isFavorite:r?!!r.isFavorite:!1}),a()};return(0,Q.jsx)("div",{style:{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",background:"rgba(2,6,23,0.85)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",overflowY:"auto"},className:"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm",children:(0,Q.jsxs)("div",{style:{position:"relative",margin:"auto",width:"100%",maxWidth:"640px",maxHeight:"85vh",display:"flex",flexDirection:"column",background:"#0f172a",border:"1px solid rgba(245,158,11,0.35)",borderRadius:"16px",boxShadow:"0 25px 50px -12px rgba(0,0,0,0.75)",overflow:"hidden"},className:"relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col",children:[(0,Q.jsxs)("div",{style:{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 18px",borderBottom:"1px solid rgba(245, 158, 11, 0.2)",background:"linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)"},children:[(0,Q.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"8px",minWidth:0},children:[(0,Q.jsx)("div",{style:{width:"28px",height:"28px",borderRadius:"7px",background:"rgba(245, 158, 11, 0.15)",border:"1px solid rgba(245, 158, 11, 0.4)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fbbf24",flexShrink:0},children:(0,Q.jsx)(kr,{size:16,className:"text-amber-400"})}),(0,Q.jsxs)("div",{style:{minWidth:0},children:[(0,Q.jsx)("h2",{style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},children:r?"Editar Arma":"Cadastrar Arma"}),(0,Q.jsx)("p",{style:{fontSize:"10px",color:"#94a3b8",margin:"1px 0 0 0"},children:"Configure estatísticas de combate, NH, modos de ataque e dano"})]})]}),(0,Q.jsx)("button",{type:"button",onClick:a,style:{padding:"5px",borderRadius:"7px",cursor:"pointer",flexShrink:0,background:"transparent",border:"none",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8"},title:"Fechar (Esc)",children:(0,Q.jsx)(Jt,{size:16})})]}),(0,Q.jsxs)("div",{style:{flexShrink:0,padding:"8px 18px",borderBottom:"1px solid #1e293b",background:"rgba(15, 23, 42, 0.7)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"8px",flexWrap:"wrap"},children:[(0,Q.jsxs)("div",{className:"flex items-center gap-1.5 text-xs text-amber-300 font-semibold",children:[(0,Q.jsx)(xa,{size:14,className:"text-amber-400 shrink-0"}),(0,Q.jsx)("span",{children:"Preencher rapidamente com modelo GURPS 4e:"})]}),(0,Q.jsxs)("select",{defaultValue:"",onChange:u=>{u.target.value!==""&&f(u.target.value)},className:"bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500",children:[(0,Q.jsx)("option",{value:"",children:"-- Escolher modelo --"}),r1.map((u,s)=>(0,Q.jsxs)("option",{value:s,children:[u.name," (",u.modes.map(x=>x.damage).join(" / "),")"]},s))]})]}),(0,Q.jsxs)("form",{onSubmit:w,style:{minHeight:0,overflowY:"auto",padding:"12px 18px",display:"flex",flexDirection:"column",gap:"12px",flex:1},children:[(0,Q.jsxs)("div",{className:"grid grid-cols-1 sm:grid-cols-4 gap-3",children:[(0,Q.jsxs)("div",{className:"sm:col-span-3",children:[(0,Q.jsx)("label",{className:"text-[11px] font-semibold text-slate-300 block mb-1",children:"Nome da Arma *"}),(0,Q.jsx)("input",{type:"text",value:o,onChange:u=>i(u.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0})]}),(0,Q.jsxs)("div",{children:[(0,Q.jsx)("label",{className:"text-[11px] font-semibold text-slate-300 block mb-1",children:"N\xEDvel de Habilidade (NH) *"}),(0,Q.jsx)("input",{type:"text",value:n,onChange:u=>l(u.target.value),placeholder:"Ex: 14 ou DX+5",className:"w-full bg-slate-950 border border-amber-500/50 rounded-lg px-3 py-1.5 text-sm font-mono font-black text-amber-300 text-center focus:outline-none focus:ring-1 focus:ring-amber-500",required:!0})]})]}),(0,Q.jsxs)("div",{className:"bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-3",children:[(0,Q.jsxs)("div",{className:"flex items-center justify-between",children:[(0,Q.jsxs)("div",{children:[(0,Q.jsx)("span",{className:"text-xs font-bold text-white uppercase tracking-wider block",children:"Op\xE7\xF5es de Ataque (Dano / Tipo / Alcance)"}),(0,Q.jsx)("span",{className:"text-[10px] text-slate-400",children:"Cadastre v\xE1rias op\xE7\xF5es (ex: Corte vs Estocada, 1 M\xE3o vs 2 M\xE3os, Arremesso)"})]}),(0,Q.jsxs)("button",{type:"button",onClick:h,className:"flex items-center gap-1 px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg transition-colors font-semibold",children:[(0,Q.jsx)(Ct,{size:13}),(0,Q.jsx)("span",{children:"+ Adicionar Outra Op\xE7\xE3o"})]})]}),(0,Q.jsx)("div",{className:"space-y-2.5",children:c.map((u,s)=>(0,Q.jsxs)("div",{className:"bg-slate-900 border border-slate-800 rounded-xl p-2.5 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center",children:[(0,Q.jsxs)("div",{className:"sm:col-span-3",children:[(0,Q.jsx)("label",{className:"text-[10px] text-slate-400 block mb-0.5",children:"Modo / R\xF3tulo"}),(0,Q.jsx)("input",{type:"text",placeholder:"ex: Corte / 1 M\xE3o",value:u.name||"",onChange:x=>g(s,"name",x.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"})]}),(0,Q.jsxs)("div",{className:"sm:col-span-3",children:[(0,Q.jsx)("label",{className:"text-[10px] text-slate-400 block mb-0.5",children:"Dano"}),(0,Q.jsx)("input",{type:"text",placeholder:"ex: sw+1 corte",value:u.damage,onChange:x=>g(s,"damage",x.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"})]}),(0,Q.jsxs)("div",{className:"sm:col-span-3",children:[(0,Q.jsx)("label",{className:"text-[10px] text-slate-400 block mb-0.5",children:"Tipo"}),(0,Q.jsx)("input",{type:"text",placeholder:"ex: Corte, Perf",value:u.type,onChange:x=>g(s,"type",x.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"})]}),(0,Q.jsxs)("div",{className:"sm:col-span-2",children:[(0,Q.jsx)("label",{className:"text-[10px] text-slate-400 block mb-0.5",children:"Alcance"}),(0,Q.jsx)("input",{type:"text",placeholder:"ex: 1, 2",value:u.reach,onChange:x=>g(s,"reach",x.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"})]}),(0,Q.jsx)("div",{className:"sm:col-span-1 flex justify-center pt-3 sm:pt-0",children:c.length>1&&(0,Q.jsx)("button",{type:"button",onClick:()=>N(s),className:"p-1 text-slate-500 hover:text-rose-400 rounded transition-colors",title:"Remover este modo",children:(0,Q.jsx)(Rt,{size:14})})})]},u.id||s))})]}),(0,Q.jsxs)("div",{children:[(0,Q.jsx)("label",{className:"text-[11px] font-semibold text-slate-300 block mb-1",children:"Observa\xE7\xF5es"}),(0,Q.jsx)("textarea",{rows:2,value:m,onChange:u=>k(u.target.value),className:"w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"})]}),(0,Q.jsxs)("div",{style:{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"8px 18px",borderTop:"1px solid #1e293b",background:"rgba(2, 6, 23, 0.6)",gap:"8px"},children:[(0,Q.jsx)("button",{type:"button",onClick:a,className:"px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors",children:"Cancelar"}),(0,Q.jsxs)("button",{type:"submit",className:"flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow transition-colors",children:[(0,Q.jsx)(sa,{size:14}),(0,Q.jsx)("span",{children:"Salvar Arma"})]})]})]})]})})};var o1=Y(Dt(),1);var xt=Y(dt(),1),t4=({isOpen:t,onClose:a,syncStatus:e,currentRoom:r,onConnectRoom:o,onForceSync:i})=>{let[n,l]=(0,o1.useState)(r),[c,p]=(0,o1.useState)(!1);if(!t)return null;let m=()=>{let f=ha.getShareableLink();navigator.clipboard.writeText(f),p(!0),setTimeout(()=>p(!1),2500)},k=f=>{f.preventDefault(),n.trim()&&o(n.trim())};return(0,xt.jsx)("div",{style:{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",background:"rgba(2,6,23,0.85)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",overflowY:"auto"},className:"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm",children:(0,xt.jsxs)("div",{style:{position:"relative",margin:"auto",width:"100%",maxWidth:"480px",maxHeight:"85vh",display:"flex",flexDirection:"column",background:"#0f172a",border:"1px solid rgba(245,158,11,0.35)",borderRadius:"16px",boxShadow:"0 25px 50px -12px rgba(0,0,0,0.75)",overflow:"hidden"},className:"relative w-full max-w-md bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4",children:[(0,xt.jsxs)("div",{style:{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 18px",borderBottom:"1px solid rgba(245, 158, 11, 0.2)",background:"linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)"},children:[(0,xt.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"8px",minWidth:0},children:[(0,xt.jsx)("div",{style:{width:"28px",height:"28px",borderRadius:"7px",background:"rgba(245, 158, 11, 0.15)",border:"1px solid rgba(245, 158, 11, 0.4)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fbbf24",flexShrink:0},children:(0,xt.jsx)(Yo,{size:16,className:e==="connected"?"text-emerald-400":"text-amber-400"})}),(0,xt.jsxs)("div",{style:{minWidth:0},children:[(0,xt.jsx)("h2",{style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},children:"Sincroniza\xE7\xE3o Online entre Navegadores"}),(0,xt.jsx)("p",{style:{fontSize:"10px",color:"#94a3b8",margin:"1px 0 0 0"},children:"Conecte mestres e jogadores \xE0 mesma sala em tempo real"})]})]}),(0,xt.jsx)("button",{type:"button",onClick:a,style:{padding:"5px",borderRadius:"7px",cursor:"pointer",flexShrink:0,background:"transparent",border:"none",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8"},title:"Fechar (Esc)",children:(0,xt.jsx)(Jt,{size:16})})]}),(0,xt.jsxs)("div",{className:"p-3 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between",children:[(0,xt.jsxs)("div",{className:"flex items-center gap-2 text-xs",children:[(0,xt.jsx)("div",{className:`w-2.5 h-2.5 rounded-full animate-pulse ${e==="connected"?"bg-emerald-500":e==="connecting"?"bg-yellow-500":"bg-rose-500"}`}),(0,xt.jsx)("span",{className:"font-semibold text-white",children:e==="connected"?"Conectado em Tempo Real":e==="connecting"?"Conectando ao Servidor Online...":"Desconectado"})]}),(0,xt.jsxs)("span",{className:"text-[11px] font-mono text-amber-300 font-bold bg-slate-900 border border-slate-800 px-2 py-0.5 rounded",children:["Sala: ",r]})]}),(0,xt.jsxs)("p",{className:"text-xs text-slate-300 leading-relaxed",children:["Esta conex\xE3o sincroniza o Mestre e o Jogador em ",(0,xt.jsx)("strong",{children:"qualquer navegador, celular ou computador diferente"})," sem necessidade de cadastro em nuvem."]}),(0,xt.jsxs)("div",{className:"space-y-1.5 bg-amber-950/20 border border-amber-500/30 rounded-xl p-3",children:[(0,xt.jsx)("label",{className:"text-xs font-bold text-amber-300 block",children:"Link de Acesso para o Jogador:"}),(0,xt.jsxs)("div",{className:"flex items-center gap-2",children:[(0,xt.jsx)("input",{type:"text",readOnly:!0,value:ha.getShareableLink(),className:"flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono select-all focus:outline-none"}),(0,xt.jsxs)("button",{onClick:m,className:`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${c?"bg-emerald-600 text-white":"bg-amber-500 hover:bg-amber-400 text-slate-950"}`,children:[c?(0,xt.jsx)(sa,{size:14}):(0,xt.jsx)(mr,{size:14}),(0,xt.jsx)("span",{children:c?"Copiado!":"Copiar Link"})]})]}),(0,xt.jsx)("p",{className:"text-[11px] text-slate-400",children:"Abra esse link no outro navegador (ou mande para o jogador). Ele entrar\xE1 na mesma sala automaticamente."})]}),(0,xt.jsxs)("form",{onSubmit:k,className:"space-y-2 pt-1",children:[(0,xt.jsx)("label",{className:"text-xs font-semibold text-slate-300 block",children:"Nome / C\xF3digo da Sala (deve ser o mesmo em ambos os navegadores):"}),(0,xt.jsxs)("div",{className:"flex items-center gap-2",children:[(0,xt.jsx)("input",{type:"text",value:n,onChange:f=>l(f.target.value.toUpperCase()),placeholder:"Ex: MESA-LEANDRO",className:"flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono font-bold text-amber-300 uppercase focus:outline-none focus:ring-1 focus:ring-amber-500"}),(0,xt.jsx)("button",{type:"submit",className:"px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg border border-slate-700 transition-colors",children:"Trocar Sala"})]})]}),(0,xt.jsxs)("div",{className:"pt-2 border-t border-slate-800 flex items-center justify-between",children:[(0,xt.jsxs)("button",{type:"button",onClick:i,className:"flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg text-xs border border-slate-700 transition-colors",children:[(0,xt.jsx)(Ap,{size:13}),(0,xt.jsx)("span",{children:"Transmitir Dados Agora"})]}),(0,xt.jsx)("button",{type:"button",onClick:a,className:"px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors",children:"Conclu\xEDdo"})]})]})})};var Qo=Y(Dt(),1);var a4=Y(Dt(),1);var R=Y(dt(),1),e4=({entry:t,showNpcInfo:a=!1,onSelectNpc:e,isCompact:r=!1,currentUserRole:o,currentUserName:uName,isPlayer:i=!1,onDeleteEntry:n,onUpdateEntryComment:updCmt})=>{let[isEditingComment,setIsEditingComment]=(0,a4.useState)(!1);let[commentText,setCommentText]=(0,a4.useState)(t.comment||"");(0,a4.useEffect)(()=>{setCommentText(t.comment||"");},[t.comment]);let canEditComment=o==="mestre"||o==="jogador";let l=t.type==="damage",c=t.type==="fatigue",p=t.type==="heal",m=t.type==="rest",k=i||o==="jogador"||o==="visualizador",f=t.npcCharacterType!=="player",h=(0,a4.useMemo)(()=>t.description?k&&f?t.description.includes("RD:")||t.description.includes("RD ")||t.description.includes("Penetrante:")||t.description.includes("Mod:")||t.description.includes("Dano Rolado")||t.description.startsWith("Local:")?"":t.description.replace(/\|?\s*RD\s*[^|,\n]*/gi,"").replace(/\|?\s*Penetrante\s*[^|,\n]*/gi,"").replace(/\|?\s*Mod\s*[^|,\n]*/gi,"").trim():t.description:"",[t.description,k]),N=(()=>{switch(t.type){case"damage":{let w=k&&f,u=t.rawDamage??t.amount??0;return{icon:(0,R.jsx)(pe,{size:12,className:"text-rose-400"}),label:w?`${u} Dano Bruto`:`-${t.finalDamage??t.amount??0} PV`,bg:"bg-rose-950/70 border-rose-800/80 text-rose-300"}}case"fatigue":return{icon:(0,R.jsx)(ee,{size:12,className:"text-cyan-400"}),label:`-${t.amount??0} FP`,bg:"bg-cyan-950/70 border-cyan-800/80 text-cyan-300"};case"heal":return{icon:(0,R.jsx)(xa,{size:12,className:"text-emerald-400"}),label:`+${t.amount??0} PV`,bg:"bg-emerald-950/70 border-emerald-800/80 text-emerald-300"};case"rest":return{icon:(0,R.jsx)(xp,{size:12,className:"text-blue-400"}),label:`+${t.amount??0} FP`,bg:"bg-blue-950/70 border-blue-800/80 text-blue-300"};case"item":{let w=t.amount??0,u=w>0?`+${w}`:`${w}`,isPass=t.itemName==="Passar o Dia"||(t.id&&t.id.indexOf("passday")!==-1);return{icon:(0,R.jsx)(Ue,{size:12,className:"text-amber-400"}),label:isPass?"+1 Mana (Dia)":(w!==0?`${u} ${t.itemName||"Item"}`:`${t.itemName||"Item"}`),bg:"bg-amber-950/70 border-amber-800/80 text-amber-300"}};case"roll":{let is3D=t.description?.indexOf("3D6")!==-1||(t.rolls&&t.rolls.length===3);let match=t.description?.match(/(\d+D\d+)/i);let rollLbl=match?match[1].toUpperCase():(is3D?"3D6":"1D6");return{icon:(0,R.jsxs)("svg",{viewBox:"0 0 24 24",width:12,height:12,fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"text-amber-400 shrink-0",children:[(0,R.jsx)("rect",{width:18,height:18,x:3,y:3,rx:3}),(0,R.jsx)("circle",{cx:8,cy:8,r:1.5,fill:"currentColor"}),(0,R.jsx)("circle",{cx:16,cy:16,r:1.5,fill:"currentColor"}),(0,R.jsx)("circle",{cx:12,cy:12,r:1.5,fill:"currentColor"})]}),label:rollLbl,bg:"bg-amber-950/70 border-amber-800/80 text-amber-300"}}default:{let vk=t.variableKey||t.keys||"",desc=t.description||"";if(vk==="hpCurrent"||vk==="hpMax"||desc.indexOf("PV:")===0||desc.indexOf("PV m\u00e1x.:")===0)return{icon:(0,R.jsx)(pe,{size:12,className:"text-rose-400"}),label:"PV",bg:"bg-rose-950/70 border-rose-800/80 text-rose-300"};if(vk==="fpCurrent"||vk==="fpMax"||desc.indexOf("FP:")===0||desc.indexOf("FP m\u00e1x.:")===0)return{icon:(0,R.jsx)(ee,{size:12,className:"text-cyan-400"}),label:"Fadiga",bg:"bg-cyan-950/70 border-cyan-800/80 text-cyan-300"};if(vk.indexOf("ta.parry")===0||vk.indexOf("ta.dodge")===0||vk.indexOf("ta.block")===0||vk==="ta.usedRetreat"||desc.indexOf("Aparar")!==-1||desc.indexOf("Esquiva")!==-1||desc.indexOf("Bloqueio")!==-1||desc.indexOf("Recuo")!==-1)return{icon:(0,R.jsx)(oa,{size:12,className:"text-amber-400"}),label:"Defesa",bg:"bg-amber-950/70 border-amber-800/80 text-amber-300"};if(vk==="ta.shock"||desc.indexOf("Choque:")===0)return{icon:(0,R.jsx)(ee,{size:12,className:"text-amber-400"}),label:"Choque",bg:"bg-amber-950/70 border-amber-800/80 text-amber-300"};if(vk.indexOf("item.")===0)return{icon:(0,R.jsx)(Ue,{size:12,className:"text-amber-400"}),label:"Item",bg:"bg-amber-950/70 border-amber-800/80 text-amber-300"};if(t.type==="spell"||vk.indexOf("actSpell.")===0||vk.indexOf("affSpell.")===0)return{icon:(0,R.jsx)(xa,{size:12,className:"text-purple-400"}),label:"Magia",bg:"bg-purple-950/70 border-purple-800/80 text-purple-300"};return{icon:(0,R.jsx)(Lp,{size:12,className:"text-slate-400"}),label:t.type==="edit"?"Ajuste":t.type==="turn"?"Turno finalizado":"Nota",bg:"bg-slate-800 border-slate-700 text-slate-300"}}}})();let isHp=l||t.variableKey==="hpCurrent"||t.keys==="hpCurrent"||(t.description&&t.description.indexOf("PV:")===0),isFp=c||t.variableKey==="fpCurrent"||t.keys==="fpCurrent"||(t.description&&t.description.indexOf("FP:")===0),isDef=t.variableKey&&(t.variableKey.indexOf("ta.parry")===0||t.variableKey.indexOf("ta.dodge")===0||t.variableKey.indexOf("ta.block")===0||t.variableKey==="ta.shock");return(0,R.jsxs)("div",{onClick:()=>t.npcId&&e?.(t.npcId),className:`bg-slate-950/80 border rounded-xl transition-all shadow-sm ${isHp?"border-rose-950/60 hover:border-rose-800/80":isFp?"border-cyan-950/60 hover:border-cyan-800/80":isDef?"border-amber-950/60 hover:border-amber-800/80":"border-slate-800/80 hover:border-slate-750"} ${t.npcId&&e?"cursor-pointer hover:bg-slate-900/90":""} ${r?"p-2 space-y-1.5":"p-3 space-y-2"}`,children:[(0,R.jsxs)("div",{className:"flex items-center justify-between gap-2",children:[(0,R.jsxs)("div",{className:"flex items-center gap-2 min-w-0",children:[a&&(0,R.jsxs)("div",{className:"flex items-center gap-1.5 min-w-0",children:[(0,R.jsx)(Gr,{avatar:t.npcAvatar,preset:t.npcPreset,name:t.npcName||"NPC",size:"sm"}),(0,R.jsx)("span",{className:"text-xs font-bold text-white truncate max-w-[120px] sm:max-w-[150px]",children:t.npcName||"NPC"})]}),(0,R.jsxs)("span",{className:`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${N.bg}`,children:[N.icon,(0,R.jsx)("span",{children:N.label})]})]}),(0,R.jsxs)("div",{className:"flex items-center gap-1.5 shrink-0",children:[(0,R.jsx)("span",{className:"text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-900 border border-slate-750 text-amber-300 shrink-0",title:t.round===0?"Rodada 0 (Prepara\xE7\xE3o)":`Rodada ${t.round??0}`,children:`R${t.round!==void 0?t.round:0}`}),(0,R.jsx)("span",{className:`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${t.author==="mestre"?"bg-amber-950/60 text-amber-300 border-amber-800/60":"bg-blue-950/60 text-blue-300 border-blue-800/60"}`,children:t.authorName||(t.author==="assistente"?(uName||"Jogador"):t.author)}),t.type==="roll"&&t.author==="mestre"&&(0,R.jsx)("span",{className:`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-0.5 ${t.isSecret?"bg-rose-950/80 text-rose-300 border-rose-700/60":"bg-emerald-950/80 text-emerald-300 border-emerald-700/60"}`,title:t.isSecret?"Rolagem Oculta do Mestre":"Rolagem Visível para todos",children:t.isSecret?"👁️‍🗨️ Oculto":"👁️ Visível"}),(0,R.jsx)("span",{className:"text-[10px] text-slate-500 font-mono",children:(t.timestamp&&t.timestamp.indexOf("T")!==-1&&(t.timestamp.endsWith("Z")||t.timestamp.indexOf("+")!==-1||t.timestamp.indexOf("-")!==-1))?(()=>{try{let d=new Date(t.timestamp);return isNaN(d.getTime())?t.timestamp:d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}catch{return t.timestamp}})():t.timestamp}),n&&(0,R.jsx)("button",{type:"button",onClick:w=>{w.stopPropagation(),hubConfirm3("Deseja excluir este registro do histórico de combate?\n\nClique em Confirmar para restaurar os valores no personagem, ou em \"Confirmar sem Registrar\" para apagar apenas o histórico sem alterar valores.").then(res=>{if(res==="confirm")n(t.id,t.npcId,!0);else if(res==="without-restore")n(t.id,t.npcId,!1)})},className:"p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/60 rounded transition-colors",title:"Excluir este registro",children:(0,R.jsx)(Rt,{size:12})})]})]}),t.attackerName&&(0,R.jsxs)("div",{className:"flex items-center gap-1.5 text-[11px] bg-amber-950/30 border border-amber-900/40 px-2 py-0.5 rounded-md text-amber-200",children:[(0,R.jsx)("span",{className:"text-amber-400/80 font-sans text-[10px] font-semibold",children:"Atacante:"}),(0,R.jsxs)("span",{className:"font-bold font-sans flex items-center gap-1",children:["\u2694\uFE0F ",t.attackerName]})]}),l&&(0,R.jsx)("div",{className:"bg-slate-900/90 border border-slate-800/90 rounded-lg p-2 space-y-1.5",children:k&&f?(0,R.jsxs)("div",{className:"flex items-center justify-between bg-slate-950/90 border border-rose-950/80 rounded-lg px-2.5 py-1.5 text-xs font-mono",children:[(0,R.jsxs)("div",{className:"flex items-center gap-2",children:[(0,R.jsxs)("span",{className:"text-slate-400 font-sans text-[11px] flex items-center gap-1",children:[(0,R.jsx)(tn,{size:11,className:"text-amber-400"}),(0,R.jsx)("span",{children:"Local:"})]}),(0,R.jsx)("span",{className:"text-amber-300 font-bold",children:t.hitLocation||"Geral"})]}),(0,R.jsx)("div",{className:"flex items-center gap-1.5",children:f?(0,R.jsxs)("div",{className:"flex items-center gap-1.5 font-sans",children:[(0,R.jsx)("span",{className:"text-slate-400 text-[11px]",children:"Dano bruto dado:"}),(0,R.jsxs)("span",{className:"text-rose-300 font-bold text-xs bg-rose-950/60 px-2 py-0.5 rounded border border-rose-900/60 font-mono",children:[t.rawDamage??t.amount??0," ",t.damageType?`(${t.damageType})`:""]})]}):(0,R.jsxs)(R.Fragment,{children:[(0,R.jsx)("span",{className:"text-slate-400 font-sans text-[11px]",children:"Dano sofrido:"}),(0,R.jsxs)("span",{className:"text-rose-400 font-bold text-sm",children:["-",t.finalDamage??t.amount??0," PV"]})]})})]}):(0,R.jsxs)(R.Fragment,{children:[(0,R.jsxs)("div",{className:"grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] font-mono",children:[(0,R.jsxs)("div",{className:"bg-slate-950 border border-slate-800/80 rounded px-1.5 py-1",children:[(0,R.jsxs)("div",{className:"text-[9px] text-slate-400 font-sans flex items-center gap-1",children:[(0,R.jsx)(tn,{size:10,className:"text-amber-400"}),(0,R.jsx)("span",{children:"Local"})]}),(0,R.jsx)("div",{className:"text-amber-300 font-bold truncate",children:t.hitLocation||"Geral"})]}),(0,R.jsxs)("div",{className:"bg-slate-950 border border-slate-800/80 rounded px-1.5 py-1",children:[(0,R.jsx)("div",{className:"text-[9px] text-slate-400 font-sans",children:"Dano Rolado"}),(0,R.jsxs)("div",{className:"text-white font-bold",children:[t.rawDamage??"-"," ",(0,R.jsxs)("span",{className:"text-[10px] text-slate-400 font-normal",children:["(",t.damageType||"corte",")"]})]})]}),(0,R.jsxs)("div",{className:"bg-slate-950 border border-slate-800/80 rounded px-1.5 py-1",children:[(0,R.jsxs)("div",{className:"text-[9px] text-slate-400 font-sans flex items-center gap-1",children:[(0,R.jsx)(oa,{size:10,className:"text-cyan-400"}),(0,R.jsx)("span",{children:"RD Total"})]}),(0,R.jsxs)("div",{className:"text-cyan-300 font-bold",title:`RD Armadura: ${t.armorDr??0} | RD Natural: ${t.naturalDr??0}`,children:[t.totalDr??(t.armorDr||0)+(t.naturalDr||0),(0,R.jsxs)("span",{className:"text-[9px] text-slate-500 font-normal ml-1",children:["(",t.armorDr??0," arm + ",t.naturalDr??0," nat)"]})]})]}),(0,R.jsxs)("div",{className:"bg-slate-950 border border-slate-800/80 rounded px-1.5 py-1",children:[(0,R.jsx)("div",{className:"text-[9px] text-slate-400 font-sans",children:"Penetrante / Mod"}),(0,R.jsxs)("div",{className:"text-amber-200 font-bold",children:[t.penetratingDamage??"-"," ",(0,R.jsxs)("span",{className:"text-[10px] text-slate-400 font-normal",children:["(x",t.woundMultiplier??"1.0",")"]})]})]})]}),(0,R.jsxs)("div",{className:"flex items-center justify-between border-t border-slate-800/70 pt-1 text-[11px] font-mono",children:[(0,R.jsx)("span",{className:"text-slate-400",children:"Dano Final Aplicado:"}),(0,R.jsxs)("div",{className:"flex items-center gap-1.5",children:[(0,R.jsxs)("span",{className:"text-rose-400 font-bold",children:["-",t.finalDamage??t.amount??0," PV"]}),t.hpBefore!==void 0&&t.hpAfter!==void 0&&(0,R.jsxs)("span",{className:"text-[10px] text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800",children:["PV: ",t.hpBefore," \u2192 ",(0,R.jsx)("strong",{className:t.hpAfter<=0?"text-red-400":"text-emerald-400",children:t.hpAfter})]})]})]})]})}),!l&&(t.fpBefore!==void 0||t.hpBefore!==void 0)&&(0,R.jsxs)("div",{className:"flex items-center justify-between text-[11px] font-mono bg-slate-900/60 px-2 py-1 rounded border border-slate-800/60",children:[(0,R.jsx)("span",{className:"text-slate-400",children:c?"Fadiga:":p?"PV:":"Recurso:"}),(0,R.jsx)("span",{className:"text-white font-bold",children:f&&k?c?"Fadiga alterada":p?"Recupera\xE7\xE3o de PV":"Recurso ajustado":c&&t.fpBefore!==void 0&&t.fpAfter!==void 0?k?`Fadiga gasta: -${t.amount||0} FP`:`FP: ${t.fpBefore} \u2192 ${t.fpAfter}`:p&&t.hpBefore!==void 0&&t.hpAfter!==void 0?k?`Cura: +${t.amount||0} PV`:`PV: ${t.hpBefore} \u2192 ${t.hpAfter}`:m&&t.fpBefore!==void 0&&t.fpAfter!==void 0?k?`Descanso: +${t.amount||0} FP`:`FP: ${t.fpBefore} \u2192 ${t.fpAfter}`:""})]}),t.type==="roll"&&(0,R.jsxs)("div",{className:"flex items-center justify-between bg-slate-900/90 border border-amber-500/30 rounded-lg p-2 font-mono",children:[(0,R.jsxs)("div",{className:"flex flex-col",children:[(0,R.jsx)("span",{className:"text-[10px] text-amber-400 font-semibold font-sans",children:(()=>{let match=t.description?.match(/(\d+D\d+)/i);let notation=match?match[1].toUpperCase():(t.rolls&&t.rolls.length>1?(t.rolls.length+"D6"):"1D6");return t.rolls&&t.rolls.length>1?(notation+": [ "+t.rolls.join(" + ")+" ]"):(notation+": [ "+(t.rolls?.[0]??(t.amount??0))+" ]");})()}),t.playerName&&(0,R.jsxs)("span",{className:"text-[9px] text-slate-400 font-sans italic",children:["Jogador: ",t.playerName]})]}),(0,R.jsxs)("div",{className:"flex items-center gap-1 bg-amber-950/60 border border-amber-500/40 px-2.5 py-0.5 rounded-lg",children:[(0,R.jsx)("span",{className:"text-[9px] text-amber-400 uppercase font-sans font-bold",children:"Total"}),(0,R.jsx)("span",{className:"text-base font-black text-amber-300",children:t.amount!==void 0?t.amount:(t.rolls?t.rolls.reduce((a,b)=>a+b,0):0)})]})]}),t.type==="roll"&&(isEditingComment?(0,R.jsxs)("form",{onSubmit:cmE=>{cmE.preventDefault();updCmt?.(t.id,t.npcId,commentText.trim());setIsEditingComment(!1);},className:"flex items-center gap-1.5 pt-0.5",onClick:cmE=>cmE.stopPropagation(),children:[(0,R.jsx)("input",{type:"text",autoFocus:!0,value:commentText,onChange:cmE=>setCommentText(cmE.target.value),placeholder:"Adicionar anota\xE7\xE3o (ex: Ataque espada no bra\xE7o...)",className:"flex-1 bg-slate-900 border border-amber-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"}),(0,R.jsxs)("button",{type:"submit",className:"flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs",title:"Salvar anota\xE7\xE3o",children:[(0,R.jsx)(sa,{size:12}),(0,R.jsx)("span",{children:"Salvar"})]}),(0,R.jsx)("button",{type:"button",onClick:()=>{setCommentText(t.comment||"");setIsEditingComment(!1);},className:"p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer shrink-0",title:"Cancelar",children:(0,R.jsx)(Jt,{size:13})})]}) : t.comment?(0,R.jsxs)("div",{className:"flex items-start justify-between gap-2 p-1.5 bg-slate-900/60 border border-amber-500/20 rounded-lg text-xs font-sans",children:[(0,R.jsxs)("div",{className:"flex items-start gap-1.5 min-w-0",children:[(0,R.jsx)("span",{className:"text-amber-400 text-xs shrink-0 mt-0.5",children:"\u{1F4AC}"}),(0,R.jsx)("span",{className:"text-amber-200/90 italic break-words text-[11px] leading-relaxed",children:t.comment})]}),canEditComment&&updCmt&&(0,R.jsx)("button",{type:"button",onClick:cmE=>{cmE.stopPropagation();setIsEditingComment(!0);},className:"text-slate-400 hover:text-amber-300 p-0.5 rounded hover:bg-slate-800/60 transition-colors shrink-0 cursor-pointer",title:"Editar coment\xE1rio da rolagem",children:(0,R.jsx)(Po,{size:11})})]}):canEditComment&&updCmt?(0,R.jsx)("div",{className:"flex justify-end pt-0.5",children:(0,R.jsxs)("button",{type:"button",onClick:cmE=>{cmE.stopPropagation();setIsEditingComment(!0);},className:"inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-amber-300 transition-colors py-0.5 px-2 rounded hover:bg-slate-900 border border-transparent hover:border-slate-800 cursor-pointer",title:"Adicionar anota\xE7\xE3o / motivo para esta rolagem",children:[(0,R.jsx)("span",{className:"text-[10px]",children:"\u{1F4AC}"}),(0,R.jsx)("span",{children:"+ Coment\xE1rio"})]})}) : null),t.type!=="roll"&&h&&(0,R.jsx)("div",{className:"text-[11px] text-slate-300 font-sans leading-relaxed",children:h})]})};var pt=Y(dt(),1),r4=({activeCombat:t,additionalCharacters:a,onSelectNpc:e,selectedNpcId:r,currentUserRole:o,currentUserName:uName,onClearHistory:i,onDeleteEntry:n,onFinishRound:fr,onDeleteRound:dr,onUpdateEntryComment:updCmt})=>{let[rv,srv]=(0,Qo.useState)("all"),[l,c]=(0,Qo.useState)("all"),[p,m]=(0,Qo.useState)(""),[pg,spg]=(0,Qo.useState)(1),_rstPg=(0,Qo.useEffect)(()=>{spg(1)},[rv,l,p,t?.id]),k=(0,Qo.useMemo)(()=>{let isEmp=!t||t.id==="combat-vazio"||(t.name||"").toLowerCase().includes("vazio")||(t.name||"").toLowerCase().trim()==="sem combate",h=[...a||[],...(isEmp?[]:t?.npcs?.filter(N=>!a?.some(w=>w.id===N.id))||[])];let g=[],seenIds=new Set();
 for(let ev of t?.events||[]){
   if((o==="jogador"||o==="visualizador")&&(ev.isSecret||ev.hiddenFromPlayers))continue;

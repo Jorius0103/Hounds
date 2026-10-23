@@ -1,61 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import { Combat } from '../types/rpg';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Swords,
+  Archive,
   Plus,
   Trash2,
   Edit2,
+  Check,
   X,
-  Eye,
-  EyeOff,
-  Download,
   Upload,
+  Download,
   RotateCcw,
   Clock,
-  Archive,
-  Check,
-  FileJson,
   ShieldCheck,
   AlertTriangle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
-export interface CombatBackupSnapshot {
+export interface CombatSnapshotSummary {
+  totalCombats: number;
+  totalNpcs: number;
+  totalPlayers: number;
+  activeCombatName?: string;
+}
+
+export interface CombatSnapshot {
   id: string;
   name: string;
-  description?: string;
-  createdAt: string;
+  createdAt: number;
   formattedDate: string;
-  summary: {
-    totalCombats: number;
-    totalNpcs: number;
-    totalPlayers: number;
-    activeCombatName: string;
-  };
+  description?: string;
+  summary?: CombatSnapshotSummary;
   data: {
-    combats: Combat[];
+    combats: any[];
+    activeCombatId: string | null;
     players?: any[];
-    conditions?: any[];
-    activeCombatId?: string | null;
-    deletedCombatIds?: string[];
-    editors?: string[];
-    [key: string]: any;
   };
 }
 
-const SNAPSHOTS_STORAGE_KEY = 'hounds_mesa_snapshots_v1';
-
-interface CombatManagerModalProps {
+export interface CombatManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  combats: Combat[];
-  activeCombatId: string;
+  combats: any[];
+  activeCombatId: string | null;
   onSelectCombat: (id: string) => void;
   onCreateCombat: (name: string, description?: string) => void;
   onDeleteCombat: (id: string) => void;
-  onRenameCombat: (id: string, name: string, description?: string) => void;
+  onRenameCombat: (id: string, newName: string, newDescription?: string) => void;
   onToggleCombatActive?: (id: string) => void;
-  onRestoreSnapshot?: (snapshot: CombatBackupSnapshot) => void;
+  onRestoreFullSnapshot?: (data: { combats: any[]; activeCombatId: string | null; players?: any[] }) => void;
+  players?: any[];
 }
+
+const STORAGE_KEY = 'hounds_combat_snapshots_v1';
+const REPO_DATA_PATH = 'dados/retratos-mesa.json';
 
 export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   isOpen,
@@ -67,274 +65,187 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   onDeleteCombat,
   onRenameCombat,
   onToggleCombatActive,
-  onRestoreSnapshot,
+  onRestoreFullSnapshot,
+  players = [],
 }) => {
-  // Tabs: 'combats' ou 'backups'
   const [activeTab, setActiveTab] = useState<'combats' | 'backups'>('combats');
 
-  // Estado do gerenciamento de combates
+  // Aba 1: Estados de criação e edição de combates
   const [newCombatName, setNewCombatName] = useState('');
   const [newCombatDesc, setNewCombatDesc] = useState('');
   const [editingCombatId, setEditingCombatId] = useState<string | null>(null);
-  const [deletingCombatId, setDeletingCombatId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [deletingCombatId, setDeletingCombatId] = useState<string | null>(null);
 
-  // Estado do CRUD de backups / retratos
-  const [snapshots, setSnapshots] = useState<CombatBackupSnapshot[]>([]);
+  // Aba 2: Estados de Snapshots
+  const [snapshots, setSnapshots] = useState<CombatSnapshot[]>([]);
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
   const [newSnapshotName, setNewSnapshotName] = useState('');
   const [newSnapshotDesc, setNewSnapshotDesc] = useState('');
+  const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
+  const [deletingSnapshotId, setDeletingSnapshotId] = useState<string | null>(null);
   const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null);
   const [editSnapshotName, setEditSnapshotName] = useState('');
   const [editSnapshotDesc, setEditSnapshotDesc] = useState('');
-  const [deletingSnapshotId, setDeletingSnapshotId] = useState<string | null>(null);
-  const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Atualiza snapshots em tempo real se outra aba ou sincronização remota atualizar o storage
-  useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === SNAPSHOTS_STORAGE_KEY && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) {
-            setSnapshots(parsed);
-          }
-        } catch {}
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Carregar snapshots do localStorage e do repositório (dados/retratos-mesa.json) ao abrir
-  useEffect(() => {
-    if (isOpen) {
-      let localList: CombatBackupSnapshot[] = [];
-      try {
-        const raw = localStorage.getItem(SNAPSHOTS_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            localList = parsed;
-            setSnapshots(parsed);
-          }
-        }
-      } catch (err) {
-        console.error('Erro ao carregar snapshots do localStorage:', err);
-      }
-
-      // Tenta carregar e mesclar os retratos fixos do repositório
-      fetch('dados/retratos-mesa.json?v=' + Date.now())
-        .then((res) => {
-          if (!res.ok) throw new Error('Status ' + res.status);
-          return res.json();
-        })
-        .then((repoSnapshots: CombatBackupSnapshot[]) => {
-          if (Array.isArray(repoSnapshots) && repoSnapshots.length > 0) {
-            const map = new Map<string, CombatBackupSnapshot>();
-            repoSnapshots.forEach((s) => map.set(s.id, s));
-            localList.forEach((s) => map.set(s.id, s));
-            const merged = Array.from(map.values());
-            setSnapshots(merged);
-            try {
-              localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(merged));
-            } catch (e) {}
-          }
-        })
-        .catch(() => {
-          // Arquivo local ou sem conexão, mantém localList
-        });
-    }
-  }, [isOpen]);
-
+  // Feedback Toast temporário
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3500);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const saveSnapshotsToStorage = (updated: CombatBackupSnapshot[]) => {
-    setSnapshots(updated);
+  // Carregar snapshots do localStorage ou do repo ao abrir
+  useEffect(() => {
+    if (!isOpen) return;
+
     try {
-      localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.error('Erro ao salvar snapshots no localStorage:', err);
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSnapshots(parsed);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao ler snapshots do localStorage:', e);
     }
 
-    // 1. Sincroniza via MQTT imediato com outros dispositivos
-    try {
-      (window as any).onlineSyncService?.sendPayloadImmediate?.({
-        type: 'SYNC_SNAPSHOTS_LIST',
-        snapshots: updated,
-        timestamp: Date.now(),
-      });
-    } catch (e) {}
+    fetch(REPO_DATA_PATH)
+      .then((res) => {
+        if (!res.ok) throw new Error('Não foi possível carregar retratos padrão do repositório');
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSnapshots(data);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          } catch (e) {
+            console.warn('Erro ao salvar no localStorage:', e);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
 
-    // 2. Sincroniza lista online via hubMesaBus (Supabase / Store compartilhado)
+  // Salvar snapshots no localStorage
+  const persistSnapshots = (updated: CombatSnapshot[]) => {
+    setSnapshots(updated);
     try {
-      if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
-        (window as any).parent.hubMesaBus.publish(
-          JSON.stringify({
-            type: 'SYNC_SNAPSHOTS_LIST',
-            snapshots: updated,
-            timestamp: Date.now(),
-          })
-        );
-      }
-    } catch (e) {}
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Erro ao salvar snapshots no localStorage:', e);
+    }
   };
+
+  // Fechar com ESC
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  // Filtra "Combate Vazio": ele é apenas um modo de visualização sem combate, não deve aparecer no CRUD
-  const validCombats = combats.filter(
-    (c) =>
-      c.id !== 'combat-vazio' &&
-      !c.name?.toLowerCase().includes('vazio') &&
-      c.name?.toLowerCase().trim() !== 'sem combate'
-  );
+  const validCombats = Array.isArray(combats) ? combats : [];
 
+  // Handlers da Aba 1: Combates
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCombatName.trim()) return;
-    onCreateCombat(newCombatName.trim(), newCombatDesc.trim());
+    onCreateCombat(newCombatName.trim(), newCombatDesc.trim() || undefined);
     setNewCombatName('');
     setNewCombatDesc('');
+    showToast('Novo combate criado com sucesso!');
   };
 
-  const startEdit = (combat: Combat) => {
-    setEditingCombatId(combat.id);
-    setEditName(combat.name);
-    setEditDesc(combat.description || '');
+  const startEdit = (c: any) => {
+    setEditingCombatId(c.id);
+    setEditName(c.name || '');
+    setEditDesc(c.description || '');
   };
 
   const saveEdit = (id: string) => {
     if (!editName.trim()) return;
-    onRenameCombat(id, editName.trim(), editDesc.trim());
+    onRenameCombat(id, editName.trim(), editDesc.trim() || undefined);
     setEditingCombatId(null);
+    showToast('Combate renomeado com sucesso!');
   };
 
-  // Coleta todo o estado atual da mesa para o snapshot
-  const captureCurrentMesaData = () => {
-    const backupKeys = [
-      'gurps_combat_master_data_v2',
-      'gurps_fixed_personagens_v1',
-      'gurps_combat_master_conditions_v2',
-      'gurps_combat_master_users_v2',
-      'gurps_combat_master_active_combat_id_v1',
-      'gurps_combat_master_deleted_v1',
-      'gurps_combat_master_editors_v1',
-      'hounds_active_user',
-      'hounds_mesa_backup_v1',
-      'hounds_theme',
-    ];
-
-    const rawStorage: Record<string, any> = {};
-    backupKeys.forEach((k) => {
-      try {
-        const item = localStorage.getItem(k);
-        if (item !== null) rawStorage[k] = JSON.parse(item);
-      } catch {
-        rawStorage[k] = localStorage.getItem(k);
-      }
-    });
-
-    const storedCombats = rawStorage['gurps_combat_master_data_v2'] || combats;
-    const storedPlayers = rawStorage['gurps_fixed_personagens_v1'] || [];
-    const storedConditions = rawStorage['gurps_combat_master_conditions_v2'] || [];
-    const storedActiveId = rawStorage['gurps_combat_master_active_combat_id_v1'] || activeCombatId;
-
-    let totalNpcs = 0;
-    if (Array.isArray(storedCombats)) {
-      storedCombats.forEach((c: any) => {
-        totalNpcs += (c.totalNpcs != null ? c.totalNpcs : (Array.isArray(c.npcs) ? c.npcs.length : 0));
-      });
-    }
-
-    const activeCombatObj = Array.isArray(storedCombats)
-      ? storedCombats.find((c: any) => c.id === storedActiveId)
-      : null;
-
-    return {
-      combats: storedCombats,
-      players: storedPlayers,
-      conditions: storedConditions,
-      activeCombatId: storedActiveId,
-      deletedCombatIds: rawStorage['gurps_combat_master_deleted_v1'] || [],
-      editors: rawStorage['gurps_combat_master_editors_v1'] || [],
-      rawStorage,
-      summary: {
-        totalCombats: Array.isArray(storedCombats)
-          ? storedCombats.filter(
-              (c: any) =>
-                c.id !== 'combat-vazio' &&
-                !c.name?.toLowerCase().includes('vazio') &&
-                c.name?.toLowerCase().trim() !== 'sem combate'
-            ).length
-          : 0,
-        totalNpcs,
-        totalPlayers: Array.isArray(storedPlayers) ? storedPlayers.length : 0,
-        activeCombatName: activeCombatObj?.name || 'Sem combate',
-      },
-    };
-  };
-
+  // Handlers da Aba 2: Snapshots
   const handleStartCreateSnapshot = () => {
-    const now = new Date();
-    const formatted = now.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    setNewSnapshotName(`Retrato - ${formatted}`);
+    const activeCombat = validCombats.find((c) => c.id === activeCombatId);
+    const defaultName = activeCombat
+      ? `Retrato: ${activeCombat.name}`
+      : `Retrato da Mesa - ${new Date().toLocaleDateString('pt-BR')}`;
+    setNewSnapshotName(defaultName);
     setNewSnapshotDesc('');
     setIsCreatingSnapshot(true);
   };
 
   const handleConfirmCreateSnapshot = (e: React.FormEvent) => {
     e.preventDefault();
-    const now = new Date();
-    const current = captureCurrentMesaData();
+    if (!newSnapshotName.trim()) return;
 
-    const snapshot: CombatBackupSnapshot = {
-      id: `snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      name: newSnapshotName.trim() || `Retrato - ${now.toLocaleDateString('pt-BR')}`,
-      description: newSnapshotDesc.trim() || undefined,
-      createdAt: now.toISOString(),
-      formattedDate: now.toLocaleString('pt-BR', {
+    let totalNpcs = 0;
+    validCombats.forEach((c) => {
+      if (Array.isArray(c.npcs)) totalNpcs += c.npcs.length;
+      else if (typeof c.totalNpcs === 'number') totalNpcs += c.totalNpcs;
+    });
+
+    const activeCombat = validCombats.find((c) => c.id === activeCombatId);
+
+    const now = Date.now();
+    const newSnapshot: CombatSnapshot = {
+      id: `snap-${now}-${Math.random().toString(36).slice(2, 7)}`,
+      name: newSnapshotName.trim(),
+      createdAt: now,
+      formattedDate: new Date(now).toLocaleString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
       }),
-      summary: current.summary,
+      description: newSnapshotDesc.trim() || undefined,
+      summary: {
+        totalCombats: validCombats.length,
+        totalNpcs,
+        totalPlayers: Array.isArray(players) ? players.length : 0,
+        activeCombatName: activeCombat ? activeCombat.name : undefined,
+      },
       data: {
-        combats: current.combats,
-        players: current.players,
-        conditions: current.conditions,
-        activeCombatId: current.activeCombatId,
-        deletedCombatIds: current.deletedCombatIds,
-        editors: current.editors,
-        rawStorage: current.rawStorage,
+        combats: JSON.parse(JSON.stringify(validCombats)),
+        activeCombatId,
+        players: JSON.parse(JSON.stringify(players || [])),
       },
     };
 
-    const updated = [snapshot, ...snapshots];
-    saveSnapshotsToStorage(updated);
+    const updated = [newSnapshot, ...snapshots];
+    persistSnapshots(updated);
     setIsCreatingSnapshot(false);
     setNewSnapshotName('');
     setNewSnapshotDesc('');
-    showToast(`Retrato "${snapshot.name}" salvo com sucesso!`);
+    showToast('Retrato da mesa salvo com sucesso!');
   };
 
-  const handleStartEditSnapshot = (snap: CombatBackupSnapshot) => {
+  const handleDeleteSnapshot = (id: string) => {
+    const updated = snapshots.filter((s) => s.id !== id);
+    persistSnapshots(updated);
+    setDeletingSnapshotId(null);
+    showToast('Retrato excluído.');
+  };
+
+  const handleStartEditSnapshot = (snap: CombatSnapshot) => {
     setEditingSnapshotId(snap.id);
     setEditSnapshotName(snap.name);
     setEditSnapshotDesc(snap.description || '');
@@ -351,227 +262,96 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
           }
         : s
     );
-    saveSnapshotsToStorage(updated);
+    persistSnapshots(updated);
     setEditingSnapshotId(null);
-    showToast('Backup atualizado com sucesso!');
+    showToast('Retrato atualizado!');
   };
 
-  const handleDeleteSnapshot = (id: string) => {
-    const updated = snapshots.filter((s) => s.id !== id);
-    saveSnapshotsToStorage(updated);
-    setDeletingSnapshotId(null);
-    showToast('Backup excluído.');
-  };
-
-  const handleRestoreSnapshot = (snap: CombatBackupSnapshot) => {
-    try {
-      // 1. Salva um backup preventivo automático antes de sobrescrever
-      const current = captureCurrentMesaData();
-      try {
-        localStorage.setItem(
-          'hounds_mesa_safety_restore_backup',
-          JSON.stringify({
-            savedAt: new Date().toISOString(),
-            reason: `Backup automático antes de restaurar "${snap.name}"`,
-            data: current,
-          })
-        );
-      } catch (e) {
-        console.warn('Não foi possível gravar backup de segurança:', e);
-      }
-
-      // 2. Restaura no localStorage
-      if (snap.data.rawStorage && typeof snap.data.rawStorage === 'object') {
-        Object.keys(snap.data.rawStorage).forEach((k) => {
-          const val = snap.data.rawStorage[k];
-          if (val !== undefined && val !== null) {
-            localStorage.setItem(k, typeof val === 'string' ? val : JSON.stringify(val));
-          }
-        });
-      } else {
-        if (snap.data.combats) {
-          localStorage.setItem('gurps_combat_master_data_v2', JSON.stringify(snap.data.combats));
-        }
-        if (snap.data.players) {
-          localStorage.setItem('gurps_fixed_personagens_v1', JSON.stringify(snap.data.players));
-        }
-        if (snap.data.conditions) {
-          localStorage.setItem('gurps_combat_master_conditions_v2', JSON.stringify(snap.data.conditions));
-        }
-        if (snap.data.activeCombatId) {
-          localStorage.setItem('gurps_combat_master_active_combat_id_v1', JSON.stringify(snap.data.activeCombatId));
-        }
-        if (snap.data.deletedCombatIds) {
-          localStorage.setItem('gurps_combat_master_deleted_v1', JSON.stringify(snap.data.deletedCombatIds));
-        }
-        if (snap.data.editors) {
-          localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(snap.data.editors));
-        }
-      }
-      
-      if (onRestoreSnapshot) {
-        onRestoreSnapshot(snap);
-        showToast(`Retrato "${snap.name}" restaurado e transmitido para todos os usuários!`);
-      } else {
-        alert(`Backup "${snap.name}" restaurado com sucesso! A Mesa de Combate será recarregada.`);
-        window.location.reload();
-      }
-    } catch (err: any) {
-      alert('Erro ao restaurar o backup: ' + (err?.message || 'Falha desconhecida'));
+  const handleRestoreSnapshot = (snap: CombatSnapshot) => {
+    if (!onRestoreFullSnapshot) {
+      alert('Restauração não implementada no callback da mesa.');
+      return;
     }
+
+    try {
+      const totalNpcs = validCombats.reduce((acc, c) => acc + (c.npcs?.length || 0), 0);
+      const autoBackup: CombatSnapshot = {
+        id: `snap-auto-${Date.now()}`,
+        name: `Backup Automático (Pré-restauração de "${snap.name}")`,
+        createdAt: Date.now(),
+        formattedDate: new Date().toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        description: 'Criado automaticamente antes de restaurar um retrato antigo.',
+        summary: {
+          totalCombats: validCombats.length,
+          totalNpcs,
+          totalPlayers: players.length,
+          activeCombatName: validCombats.find((c) => c.id === activeCombatId)?.name,
+        },
+        data: {
+          combats: JSON.parse(JSON.stringify(validCombats)),
+          activeCombatId,
+          players: JSON.parse(JSON.stringify(players || [])),
+        },
+      };
+      persistSnapshots([autoBackup, ...snapshots]);
+    } catch (e) {
+      console.warn('Erro ao criar backup automático:', e);
+    }
+
+    onRestoreFullSnapshot(snap.data);
+    setRestoringSnapshotId(null);
+    showToast(`Retrato "${snap.name}" restaurado com sucesso na Mesa!`);
+  };
+
+  const handleExportSnapshot = (snap: CombatSnapshot) => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(snap, null, 2));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute('href', dataStr);
+    const safeName = snap.name.toLowerCase().replace(/[^a-z0-9]/gi, '_');
+    dlAnchorElem.setAttribute('download', `retrato_mesa_${safeName}.json`);
+    dlAnchorElem.click();
   };
 
   const handleExportAllForRepo = () => {
-    const blob = new Blob([JSON.stringify(snapshots, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'retratos-mesa.json';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    showToast('Arquivo retratos-mesa.json gerado! Salve-o na pasta dados/ do repositório.');
-  };
-
-  const handleExportSnapshot = (snap: CombatBackupSnapshot) => {
-    const payload = {
-      app: 'Hounds GURPS',
-      snapshotId: snap.id,
-      snapshotName: snap.name,
-      exportedAt: new Date().toISOString(),
-      summary: snap.summary,
-      snapshot: snap,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const sanitizedName = snap.name.toLowerCase().replace(/[^a-z0-9]/gi, '-').slice(0, 30);
-    a.download = `hounds-backup-${sanitizedName}-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(snapshots, null, 2));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute('href', dataStr);
+    dlAnchorElem.setAttribute('download', 'retratos-mesa.json');
+    dlAnchorElem.click();
+    showToast('Arquivo retratos-mesa.json pronto para ser salvo na pasta dados/');
   };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
+
+    fileReader.readAsText(file, 'UTF-8');
+    fileReader.onload = (event) => {
       try {
-        const parsed = JSON.parse(ev.target?.result as string);
-        const now = new Date();
+        const parsed = JSON.parse(event.target?.result as string);
 
-        // Caso 1: O arquivo é um Snapshot exportado diretamente
-        if (parsed && parsed.snapshot && parsed.snapshot.data) {
-          const importedSnap: CombatBackupSnapshot = {
-            ...parsed.snapshot,
-            id: `snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            name: `${parsed.snapshot.name || 'Importado'} (Importado)`,
-            formattedDate: now.toLocaleString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-          };
-          saveSnapshotsToStorage([importedSnap, ...snapshots]);
-          showToast(`Backup importado para a lista com sucesso!`);
-          return;
+        if (Array.isArray(parsed)) {
+          const valid = parsed.filter((item) => item && item.id && item.data && item.data.combats);
+          if (valid.length === 0) throw new Error('Arquivo JSON não contém retratos válidos.');
+          persistSnapshots([...valid, ...snapshots]);
+          showToast(`${valid.length} retratos importados com sucesso!`);
+        } else if (parsed && parsed.id && parsed.data && parsed.data.combats) {
+          persistSnapshots([parsed, ...snapshots]);
+          showToast(`Retrato "${parsed.name}" importado com sucesso!`);
+        } else {
+          throw new Error('Formato de arquivo incompatível.');
         }
-
-        // Caso 2: O arquivo é um backup de localStorage completo
-        if (parsed && parsed.localStorage) {
-          const st = parsed.localStorage;
-          const combatsList = st['gurps_combat_master_data_v2'] || [];
-          const playersList = st['gurps_fixed_personagens_v1'] || [];
-          let totalNpcs = 0;
-          if (Array.isArray(combatsList)) {
-            combatsList.forEach((c: any) => {
-              if (Array.isArray(c.npcs)) totalNpcs += c.npcs.length;
-            });
-          }
-
-          const importedSnap: CombatBackupSnapshot = {
-            id: `snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            name: `Backup Importado - ${now.toLocaleDateString('pt-BR')}`,
-            description: `Arquivo importado em ${now.toLocaleTimeString('pt-BR')}`,
-            createdAt: now.toISOString(),
-            formattedDate: now.toLocaleString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-            summary: {
-              totalCombats: Array.isArray(combatsList) ? combatsList.length : 0,
-              totalNpcs,
-              totalPlayers: Array.isArray(playersList) ? playersList.length : 0,
-              activeCombatName: 'Importado',
-            },
-            data: {
-              combats: combatsList,
-              players: playersList,
-              conditions: st['gurps_combat_master_conditions_v2'] || [],
-              activeCombatId: st['gurps_combat_master_active_combat_id_v1'] || null,
-              deletedCombatIds: st['gurps_combat_master_deleted_v1'] || [],
-              editors: st['gurps_combat_master_editors_v1'] || [],
-              rawStorage: st,
-            },
-          };
-          saveSnapshotsToStorage([importedSnap, ...snapshots]);
-          showToast('Arquivo adicionado à lista de backups com sucesso!');
-          return;
-        }
-
-        // Caso 3: Backup direto de combates ou array
-        if (parsed && (parsed.combats || parsed.gurps_combat_master_data_v2)) {
-          const combatsList = parsed.combats || parsed.gurps_combat_master_data_v2 || [];
-          const playersList = parsed.players || parsed.gurps_fixed_personagens_v1 || [];
-          let totalNpcs = 0;
-          if (Array.isArray(combatsList)) {
-            combatsList.forEach((c: any) => {
-              if (Array.isArray(c.npcs)) totalNpcs += c.npcs.length;
-            });
-          }
-
-          const importedSnap: CombatBackupSnapshot = {
-            id: `snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            name: `Combates Importados - ${now.toLocaleDateString('pt-BR')}`,
-            description: `Importado de arquivo JSON`,
-            createdAt: now.toISOString(),
-            formattedDate: now.toLocaleString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-            summary: {
-              totalCombats: Array.isArray(combatsList) ? combatsList.length : 0,
-              totalNpcs,
-              totalPlayers: Array.isArray(playersList) ? playersList.length : 0,
-              activeCombatName: 'Importado',
-            },
-            data: {
-              combats: combatsList,
-              players: playersList,
-            },
-          };
-          saveSnapshotsToStorage([importedSnap, ...snapshots]);
-          showToast('Backup adicionado à lista de snapshots!');
-          return;
-        }
-
-        throw new Error('Formato de arquivo de backup não reconhecido.');
       } catch (err: any) {
-        alert('Erro ao importar arquivo: ' + (err?.message || 'Arquivo corrompido'));
+        alert('Erro ao importar arquivo: ' + (err.message || 'JSON inválido'));
       }
     };
-    reader.readAsText(file);
     e.target.value = '';
   };
 
@@ -579,9 +359,17 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
       style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: '16px',
-        overflowY: 'auto',
+        background: 'rgba(2,6,23,0.85)',
+        backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
+        overflowY: 'auto',
       }}
       role="dialog"
       aria-modal="true"
@@ -590,7 +378,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
       }}
     >
       <div
-        className="relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         style={{
           position: 'relative',
           margin: 'auto',
@@ -658,6 +445,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: '#94a3b8',
             }}
             title="Fechar (Esc)"
           >
@@ -696,7 +484,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
             gap: '8px',
             padding: '8px 18px',
             background: 'rgba(2, 6, 23, 0.8)',
-            borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
+            borderBottom: '1px solid #1e293b',
           }}
         >
           <button
@@ -783,21 +571,40 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               gap: '10px',
             }}
           >
-            {/* Create New Combat Form */}
+            {/* Form: Criar Novo Combate em div organizada */}
             <form
               onSubmit={handleCreate}
-              className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2.5"
+              style={{
+                background: 'rgba(2, 6, 23, 0.55)',
+                border: '1px solid #1e293b',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
             >
-              <div className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
+              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 + Criar Novo Combate
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   placeholder="Nome do Combate (ex: Emboscada na Ponte)"
                   value={newCombatName}
                   onChange={(e) => setNewCombatName(e.target.value)}
-                  className="bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  style={{
+                    flex: '1 1 180px',
+                    height: '32px',
+                    boxSizing: 'border-box',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '7px',
+                    padding: '0 10px',
+                    fontSize: '11px',
+                    color: '#ffffff',
+                    outline: 'none',
+                  }}
                   required
                 />
                 <input
@@ -805,13 +612,38 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                   placeholder="Descrição / Cenário (opcional)"
                   value={newCombatDesc}
                   onChange={(e) => setNewCombatDesc(e.target.value)}
-                  className="bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  style={{
+                    flex: '1 1 180px',
+                    height: '32px',
+                    boxSizing: 'border-box',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '7px',
+                    padding: '0 10px',
+                    fontSize: '11px',
+                    color: '#ffffff',
+                    outline: 'none',
+                  }}
                 />
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors ml-auto shadow-sm active:scale-95"
+                  className="hover:opacity-90 active:scale-95 transition-all"
+                  style={{
+                    height: '32px',
+                    padding: '0 14px',
+                    background: '#f59e0b',
+                    color: '#020617',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    borderRadius: '7px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    flexShrink: 0,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  }}
                 >
                   <Plus size={14} />
                   <span>Criar Combate</span>
@@ -819,9 +651,9 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               </div>
             </form>
 
-            {/* Existing Combats List */}
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            {/* Lista de Combates Cadastrados em divs organizadas */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Combates Cadastrados ({validCombats.length})
               </div>
               {validCombats.map((c) => {
@@ -833,24 +665,42 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                 return (
                   <div
                     key={c.id}
-                    className={`p-3 rounded-xl border transition-all ${
-                      isCurrentlySelected
-                        ? 'bg-slate-850 border-amber-500/60 ring-1 ring-amber-500/40 shadow-sm'
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      background: isCurrentlySelected
+                        ? 'rgba(245, 158, 11, 0.08)'
                         : isInactive
-                        ? 'bg-slate-950/40 border-slate-800/80 opacity-75 hover:opacity-100'
-                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                    }`}
+                        ? 'rgba(2, 6, 23, 0.35)'
+                        : 'rgba(2, 6, 23, 0.55)',
+                      border: isCurrentlySelected
+                        ? '1px solid rgba(245, 158, 11, 0.5)'
+                        : '1px solid #1e293b',
+                      borderRadius: '10px',
+                      transition: 'all 0.15s ease',
+                    }}
                   >
                     {isDeleting ? (
-                      <div className="flex items-center justify-between gap-3 p-1">
-                        <div className="text-xs text-rose-300 font-medium">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: '100%' }}>
+                        <div style={{ fontSize: '11px', color: '#fda4af', fontWeight: 500 }}>
                           Excluir <strong>"{c.name}"</strong> de vez? Esta ação não pode ser desfeita.
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                           <button
                             type="button"
                             onClick={() => setDeletingCombatId(null)}
-                            className="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg font-medium"
+                            style={{
+                              height: '26px',
+                              padding: '0 10px',
+                              fontSize: '11px',
+                              color: '#cbd5e1',
+                              background: '#1e293b',
+                              border: '1px solid #334155',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
                           >
                             Cancelar
                           </button>
@@ -860,76 +710,182 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                               onDeleteCombat(c.id);
                               setDeletingCombatId(null);
                             }}
-                            className="px-3 py-1 text-xs text-white bg-rose-600 hover:bg-rose-500 font-bold rounded-lg shadow-sm"
+                            style={{
+                              height: '26px',
+                              padding: '0 10px',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              color: '#ffffff',
+                              background: '#dc2626',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                            }}
                           >
                             Confirmar Exclusão
                           </button>
                         </div>
                       </div>
                     ) : isEditing ? (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-750 rounded px-2 py-1 text-xs text-white"
-                        />
-                        <input
-                          type="text"
-                          value={editDesc}
-                          onChange={(e) => setEditDesc(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-750 rounded px-2 py-1 text-xs text-slate-300"
-                          placeholder="Descrição"
-                        />
-                        <div className="flex justify-end gap-1.5">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            style={{
+                              flex: 1,
+                              height: '28px',
+                              boxSizing: 'border-box',
+                              background: '#0f172a',
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
+                              borderRadius: '6px',
+                              padding: '0 8px',
+                              fontSize: '11px',
+                              color: '#ffffff',
+                              outline: 'none',
+                            }}
+                          />
+                          <input
+                            type="text"
+                            value={editDesc}
+                            onChange={(e) => setEditDesc(e.target.value)}
+                            style={{
+                              flex: 1,
+                              height: '28px',
+                              boxSizing: 'border-box',
+                              background: '#0f172a',
+                              border: '1px solid #334155',
+                              borderRadius: '6px',
+                              padding: '0 8px',
+                              fontSize: '11px',
+                              color: '#cbd5e1',
+                              outline: 'none',
+                            }}
+                            placeholder="Descrição"
+                          />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
                           <button
                             type="button"
                             onClick={() => setEditingCombatId(null)}
-                            className="px-2 py-1 text-xs text-slate-400 hover:text-white"
+                            style={{
+                              height: '24px',
+                              padding: '0 8px',
+                              fontSize: '10px',
+                              color: '#94a3b8',
+                              background: '#1e293b',
+                              border: '1px solid #334155',
+                              borderRadius: '5px',
+                              cursor: 'pointer',
+                            }}
                           >
                             Cancelar
                           </button>
                           <button
                             type="button"
                             onClick={() => saveEdit(c.id)}
-                            className="px-2.5 py-1 text-xs bg-amber-500 text-slate-950 font-bold rounded"
+                            style={{
+                              height: '24px',
+                              padding: '0 10px',
+                              fontSize: '10px',
+                              fontWeight: 'bold',
+                              background: '#f59e0b',
+                              color: '#020617',
+                              border: 'none',
+                              borderRadius: '5px',
+                              cursor: 'pointer',
+                            }}
                           >
                             Salvar
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
+                      <>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span
-                              className={`text-xs font-bold truncate ${
-                                isInactive ? 'text-slate-400 line-through' : 'text-white'
-                              }`}
+                              style={{
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                color: isInactive ? '#94a3b8' : '#ffffff',
+                                textDecoration: isInactive ? 'line-through' : 'none',
+                              }}
                             >
                               {c.name}
                             </span>
                             {isCurrentlySelected && (
-                              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded font-medium">
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 'bold',
+                                  padding: '1px 6px',
+                                  borderRadius: '5px',
+                                  background: 'rgba(245, 158, 11, 0.15)',
+                                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                                  color: '#fbbf24',
+                                }}
+                              >
                                 Na Mesa
                               </span>
                             )}
                             {isInactive ? (
-                              <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded font-medium">
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 'bold',
+                                  padding: '1px 6px',
+                                  borderRadius: '5px',
+                                  background: '#1e293b',
+                                  border: '1px solid #334155',
+                                  color: '#94a3b8',
+                                }}
+                              >
                                 Inativo
                               </span>
                             ) : (
-                              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-medium">
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 'bold',
+                                  padding: '1px 6px',
+                                  borderRadius: '5px',
+                                  background: 'rgba(16, 185, 129, 0.15)',
+                                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                                  color: '#34d399',
+                                }}
+                              >
                                 Ativo
                               </span>
                             )}
                           </div>
                           {c.description && (
-                            <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                            <div
+                              style={{
+                                fontSize: '10px',
+                                color: '#94a3b8',
+                                margin: '2px 0 0 0',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
                               {c.description}
                             </div>
                           )}
-                          <div className="flex items-center gap-3 text-[10px] text-slate-500 mt-1 font-mono">
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              fontSize: '10px',
+                              color: '#64748b',
+                              marginTop: '3px',
+                              fontFamily: 'monospace',
+                            }}
+                          >
                             <span>
                               {c.totalNpcs != null
                                 ? c.totalNpcs
@@ -943,7 +899,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
                           {!isCurrentlySelected && !isInactive && (
                             <button
                               type="button"
@@ -951,7 +907,18 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                                 onSelectCombat(c.id);
                                 onClose();
                               }}
-                              className="px-2.5 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg border border-slate-700"
+                              className="hover:bg-amber-400 hover:text-slate-950 active:scale-95 transition-all"
+                              style={{
+                                height: '26px',
+                                padding: '0 10px',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                background: '#1e293b',
+                                border: '1px solid rgba(245, 158, 11, 0.4)',
+                                color: '#fbbf24',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                              }}
                             >
                               Selecionar
                             </button>
@@ -960,23 +927,41 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                             <button
                               type="button"
                               onClick={() => onToggleCombatActive(c.id)}
-                              className={`p-1.5 rounded-lg border transition-colors ${
-                                isInactive
-                                  ? 'text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 border-emerald-800/50'
-                                  : 'text-slate-400 hover:text-slate-200 bg-slate-800 border-slate-700'
-                              }`}
+                              style={{
+                                height: '26px',
+                                padding: '0 8px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                background: isInactive ? 'rgba(16, 185, 129, 0.15)' : '#0f172a',
+                                border: isInactive ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #334155',
+                                color: isInactive ? '#34d399' : '#94a3b8',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
                               title={isInactive ? 'Ativar combate' : 'Inativar combate'}
                             >
                               {isInactive ? <Eye size={13} /> : <EyeOff size={13} />}
-                              <span className="text-[11px] ml-1">
-                                {isInactive ? 'Ativar' : 'Inativar'}
-                              </span>
+                              <span>{isInactive ? 'Ativar' : 'Inativar'}</span>
                             </button>
                           )}
                           <button
                             type="button"
                             onClick={() => startEdit(c)}
-                            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800"
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              background: '#0f172a',
+                              border: '1px solid #334155',
+                              color: '#94a3b8',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
                             title="Renomear ou editar"
                           >
                             <Edit2 size={13} />
@@ -985,14 +970,25 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                             <button
                               type="button"
                               onClick={() => setDeletingCombatId(c.id)}
-                              className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg border border-rose-900/30"
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                background: '#0f172a',
+                                border: '1px solid rgba(244, 63, 94, 0.3)',
+                                color: '#fb7185',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
                               title="Excluir combate"
                             >
                               <Trash2 size={13} />
                             </button>
                           )}
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 );
@@ -1014,44 +1010,99 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               gap: '10px',
             }}
           >
-            {/* Top Toolbar: Actions */}
-            <div className="flex items-center justify-between gap-2 flex-wrap bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+            {/* Top Toolbar: Actions em div organizada */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+                flexWrap: 'wrap',
+                background: 'rgba(2, 6, 23, 0.55)',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                border: '1px solid #1e293b',
+              }}
+            >
               <div>
-                <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <ShieldCheck size={15} className="text-emerald-400" />
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ShieldCheck size={14} className="text-emerald-400" />
                   <span>Retratos em Tempo Real</span>
                 </div>
-                <div className="text-[11px] text-slate-400">
-                  Salve um retrato fiel de todos os combates, NPCs, personagens e rodadas.
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>
+                  Salve um retrato fiel de todos os combates, NPCs e rodadas.
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <button
                   type="button"
                   onClick={handleStartCreateSnapshot}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95"
+                  className="hover:opacity-90 active:scale-95 transition-all"
+                  style={{
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '0 12px',
+                    background: '#f59e0b',
+                    color: '#020617',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    borderRadius: '7px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  }}
                 >
-                  <Plus size={14} />
-                  <span>Novo Retrato da Mesa</span>
+                  <Plus size={13} />
+                  <span>Novo Retrato</span>
                 </button>
-                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer shadow-sm">
-                  <Upload size={13} />
+                <label
+                  style={{
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '0 10px',
+                    background: '#1e293b',
+                    color: '#cbd5e1',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    borderRadius: '7px',
+                    border: '1px solid #334155',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Upload size={12} />
                   <span>Importar (.json)</span>
                   <input
                     type="file"
                     accept=".json"
-                    className="hidden"
+                    style={{ display: 'none' }}
                     onChange={handleImportFile}
                   />
                 </label>
                 <button
                   type="button"
                   onClick={handleExportAllForRepo}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 text-xs font-semibold rounded-lg border border-amber-600/40 transition-colors shadow-sm cursor-pointer"
-                  title="Baixar todos os retratos como retratos-mesa.json para colocar na pasta dados/ do repositório"
+                  style={{
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '0 10px',
+                    background: '#1e293b',
+                    color: '#fbbf24',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    borderRadius: '7px',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    cursor: 'pointer',
+                  }}
+                  title="Baixar retratos-mesa.json"
                 >
-                  <Download size={13} />
-                  <span>Exportar Repositório</span>
+                  <Download size={12} />
+                  <span>Exportar</span>
                 </button>
               </div>
             </div>
@@ -1060,85 +1111,138 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
             {isCreatingSnapshot && (
               <form
                 onSubmit={handleConfirmCreateSnapshot}
-                className="bg-slate-950 p-4 rounded-xl border border-amber-500/40 shadow-lg space-y-3"
+                style={{
+                  background: 'rgba(2, 6, 23, 0.65)',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Archive size={14} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Archive size={13} />
                     <span>Salvar Retrato Atual da Mesa</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsCreatingSnapshot(false)}
-                    className="text-slate-400 hover:text-white"
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
                   >
                     <X size={14} />
                   </button>
                 </div>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-[11px] text-slate-400 font-medium mb-1">
-                      Nome do Backup / Retrato:
-                    </label>
-                    <input
-                      type="text"
-                      value={newSnapshotName}
-                      onChange={(e) => setNewSnapshotName(e.target.value)}
-                      placeholder="Ex: Antes da batalha na floresta"
-                      className="w-full bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-slate-400 font-medium mb-1">
-                      Notas / Descrição (opcional):
-                    </label>
-                    <input
-                      type="text"
-                      value={newSnapshotDesc}
-                      onChange={(e) => setNewSnapshotDesc(e.target.value)}
-                      placeholder="Ex: Rodada 2, boss ferido"
-                      className="w-full bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                    />
-                  </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    value={newSnapshotName}
+                    onChange={(e) => setNewSnapshotName(e.target.value)}
+                    placeholder="Nome do Retrato (ex: Antes da Batalha)"
+                    style={{
+                      flex: '1 1 180px',
+                      height: '32px',
+                      boxSizing: 'border-box',
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: '7px',
+                      padding: '0 10px',
+                      fontSize: '11px',
+                      color: '#ffffff',
+                      outline: 'none',
+                    }}
+                    required
+                  />
+                  <input
+                    type="text"
+                    value={newSnapshotDesc}
+                    onChange={(e) => setNewSnapshotDesc(e.target.value)}
+                    placeholder="Descrição / Notas (opcional)"
+                    style={{
+                      flex: '1 1 180px',
+                      height: '32px',
+                      boxSizing: 'border-box',
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: '7px',
+                      padding: '0 10px',
+                      fontSize: '11px',
+                      color: '#ffffff',
+                      outline: 'none',
+                    }}
+                  />
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-1">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', paddingTop: '2px' }}>
                   <button
                     type="button"
                     onClick={() => setIsCreatingSnapshot(false)}
-                    className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+                    style={{
+                      height: '26px',
+                      padding: '0 10px',
+                      fontSize: '11px',
+                      color: '#94a3b8',
+                      background: '#1e293b',
+                      border: '1px solid #334155',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                    }}
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg shadow-sm"
+                    style={{
+                      height: '26px',
+                      padding: '0 14px',
+                      background: '#f59e0b',
+                      color: '#020617',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
                   >
-                    <Check size={14} />
+                    <Check size={13} />
                     <span>Salvar Retrato</span>
                   </button>
                 </div>
               </form>
             )}
 
-            {/* List of Snapshots */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            {/* Lista de Snapshots em divs organizadas */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 <span>Versões Salvas ({snapshots.length})</span>
-                <span className="text-[10px] text-slate-500 normal-case">
+                <span style={{ fontSize: '10px', color: '#64748b', textTransform: 'none', fontWeight: 'normal' }}>
                   Clique em "Restaurar" para aplicar na Mesa
                 </span>
               </div>
 
               {snapshots.length === 0 ? (
-                <div className="p-8 text-center bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-2">
-                  <Archive size={32} className="mx-auto text-slate-600" />
-                  <div className="text-xs font-bold text-slate-300">
+                <div
+                  style={{
+                    padding: '24px',
+                    textAlign: 'center',
+                    background: 'rgba(2, 6, 23, 0.4)',
+                    border: '1px solid #1e293b',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Archive size={28} className="text-slate-600" />
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#e2e8f0' }}>
                     Nenhum retrato salvo ainda
                   </div>
-                  <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                    Faça backups preventivos clicando em <strong>"Novo Retrato da Mesa"</strong>.
-                    Você poderá restaurar qualquer versão a qualquer momento.
+                  <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>
+                    Faça backups preventivos clicando em <strong>"Novo Retrato"</strong>.
                   </p>
                 </div>
               ) : (
@@ -1150,29 +1254,42 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                   return (
                     <div
                       key={snap.id}
-                      className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-slate-700 transition-all space-y-2"
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid #1e293b',
+                        background: 'rgba(2, 6, 23, 0.55)',
+                        transition: 'all 0.15s ease',
+                      }}
                     >
                       {/* Modo Confirmação de Restauração */}
                       {isRestoring ? (
-                        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2.5 animate-fade-in">
-                          <div className="flex items-start gap-2 text-amber-300 text-xs">
-                            <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', color: '#fcd34d', fontSize: '11px' }}>
+                            <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
                             <div>
-                              <div className="font-bold">
+                              <div style={{ fontWeight: 'bold' }}>
                                 Restaurar retrato "{snap.name}"?
                               </div>
-                              <div className="text-[11px] text-slate-300 mt-0.5">
-                                Todos os dados atuais da mesa (combates, rodadas, fichas) serão
-                                substituídos pelos dados deste retrato. Um backup preventivo de segurança
-                                será salvo automaticamente antes da restauração.
+                              <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '2px' }}>
+                                O estado atual da Mesa será substituído por este snapshot.
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center justify-end gap-2 pt-1">
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                             <button
                               type="button"
                               onClick={() => setRestoringSnapshotId(null)}
-                              className="px-3 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 rounded-lg font-medium"
+                              style={{
+                                height: '26px',
+                                padding: '0 10px',
+                                fontSize: '11px',
+                                color: '#cbd5e1',
+                                background: '#1e293b',
+                                border: '1px solid #334155',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                              }}
                             >
                               Cancelar
                             </button>
@@ -1182,137 +1299,256 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                                 handleRestoreSnapshot(snap);
                                 setRestoringSnapshotId(null);
                               }}
-                              className="flex items-center gap-1.5 px-3 py-1 text-xs text-slate-950 bg-emerald-400 hover:bg-emerald-300 font-bold rounded-lg shadow-sm"
+                              style={{
+                                height: '26px',
+                                padding: '0 12px',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                color: '#020617',
+                                background: '#34d399',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                              }}
                             >
-                              <RotateCcw size={13} />
-                              <span>Confirmar e Restaurar Mesa</span>
+                              <RotateCcw size={12} />
+                              <span>Confirmar e Restaurar</span>
                             </button>
                           </div>
                         </div>
                       ) : isDeleting ? (
-                        /* Modo Confirmação de Exclusão */
-                        <div className="flex items-center justify-between gap-3 p-1">
-                          <div className="text-xs text-rose-300 font-medium">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <div style={{ fontSize: '11px', color: '#fda4af', fontWeight: 500 }}>
                             Excluir o backup <strong>"{snap.name}"</strong>?
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                             <button
                               type="button"
                               onClick={() => setDeletingSnapshotId(null)}
-                              className="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 rounded-lg font-medium"
+                              style={{
+                                height: '26px',
+                                padding: '0 10px',
+                                fontSize: '11px',
+                                color: '#cbd5e1',
+                                background: '#1e293b',
+                                border: '1px solid #334155',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                              }}
                             >
                               Cancelar
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteSnapshot(snap.id)}
-                              className="px-3 py-1 text-xs text-white bg-rose-600 hover:bg-rose-500 font-bold rounded-lg shadow-sm"
+                              style={{
+                                height: '26px',
+                                padding: '0 10px',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                color: '#ffffff',
+                                background: '#dc2626',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                              }}
                             >
                               Confirmar Exclusão
                             </button>
                           </div>
                         </div>
                       ) : isEditing ? (
-                        /* Modo Edição de Nome e Descrição */
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={editSnapshotName}
-                            onChange={(e) => setEditSnapshotName(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-750 rounded px-2.5 py-1 text-xs text-white"
-                            placeholder="Nome do Retrato"
-                          />
-                          <input
-                            type="text"
-                            value={editSnapshotDesc}
-                            onChange={(e) => setEditSnapshotDesc(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-750 rounded px-2.5 py-1 text-xs text-slate-300"
-                            placeholder="Descrição / Notas"
-                          />
-                          <div className="flex justify-end gap-1.5">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <input
+                              type="text"
+                              value={editSnapshotName}
+                              onChange={(e) => setEditSnapshotName(e.target.value)}
+                              style={{
+                                flex: 1,
+                                height: '28px',
+                                boxSizing: 'border-box',
+                                background: '#0f172a',
+                                border: '1px solid rgba(245, 158, 11, 0.4)',
+                                borderRadius: '6px',
+                                padding: '0 8px',
+                                fontSize: '11px',
+                                color: '#ffffff',
+                                outline: 'none',
+                              }}
+                              placeholder="Nome do Retrato"
+                            />
+                            <input
+                              type="text"
+                              value={editSnapshotDesc}
+                              onChange={(e) => setEditSnapshotDesc(e.target.value)}
+                              style={{
+                                flex: 1,
+                                height: '28px',
+                                boxSizing: 'border-box',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '6px',
+                                padding: '0 8px',
+                                fontSize: '11px',
+                                color: '#cbd5e1',
+                                outline: 'none',
+                              }}
+                              placeholder="Descrição / Notas"
+                            />
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
                             <button
                               type="button"
                               onClick={() => setEditingSnapshotId(null)}
-                              className="px-2 py-1 text-xs text-slate-400 hover:text-white"
+                              style={{
+                                height: '24px',
+                                padding: '0 8px',
+                                fontSize: '10px',
+                                color: '#94a3b8',
+                                background: '#1e293b',
+                                border: '1px solid #334155',
+                                borderRadius: '5px',
+                                cursor: 'pointer',
+                              }}
                             >
                               Cancelar
                             </button>
                             <button
                               type="button"
                               onClick={() => handleSaveEditSnapshot(snap.id)}
-                              className="px-2.5 py-1 text-xs bg-amber-500 text-slate-950 font-bold rounded"
+                              style={{
+                                height: '24px',
+                                padding: '0 10px',
+                                fontSize: '10px',
+                                fontWeight: 'bold',
+                                background: '#f59e0b',
+                                color: '#020617',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: 'pointer',
+                              }}
                             >
                               Salvar
                             </button>
                           </div>
                         </div>
                       ) : (
-                        /* Modo Normal: Card do Snapshot */
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold text-white">{snap.name}</span>
-                              <span className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
-                                <Clock size={11} />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff' }}>{snap.name}</span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
+                                <Clock size={10} />
                                 <span>{snap.formattedDate}</span>
                               </span>
                             </div>
                             {snap.description && (
-                              <p className="text-[11px] text-slate-300 line-clamp-2">
+                              <p style={{ fontSize: '10px', color: '#94a3b8', margin: '2px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {snap.description}
                               </p>
                             )}
-                            <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 flex-wrap pt-0.5">
-                              <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-amber-300">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', fontFamily: 'monospace', color: '#64748b', marginTop: '3px', flexWrap: 'wrap' }}>
+                              <span style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '1px 5px', borderRadius: '4px', color: '#fbbf24' }}>
                                 {snap.summary?.totalCombats || 0} combates
                               </span>
-                              <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-slate-300">
+                              <span style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '1px 5px', borderRadius: '4px', color: '#cbd5e1' }}>
                                 {snap.summary?.totalNpcs || 0} NPCs
                               </span>
-                              <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-slate-300">
+                              <span style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '1px 5px', borderRadius: '4px', color: '#cbd5e1' }}>
                                 {snap.summary?.totalPlayers || 0} personagens
                               </span>
                               {snap.summary?.activeCombatName && (
-                                <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-emerald-400">
+                                <span style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '1px 5px', borderRadius: '4px', color: '#34d399' }}>
                                   Ativo: {snap.summary.activeCombatName}
                                 </span>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                             <button
                               type="button"
                               onClick={() => setRestoringSnapshotId(snap.id)}
-                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-emerald-200 border border-emerald-700/60 rounded-lg transition-colors shadow-sm"
+                              className="hover:opacity-90 active:scale-95 transition-all"
+                              style={{
+                                height: '26px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '0 8px',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                background: 'rgba(16, 185, 129, 0.15)',
+                                color: '#34d399',
+                                border: '1px solid rgba(16, 185, 129, 0.4)',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                              }}
                               title="Restaurar este retrato"
                             >
-                              <RotateCcw size={13} />
+                              <RotateCcw size={11} />
                               <span>Restaurar</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => handleExportSnapshot(snap)}
-                              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800"
-                              title="Baixar snapshot em arquivo JSON"
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                color: '#94a3b8',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                              title="Baixar arquivo JSON"
                             >
-                              <Download size={13} />
+                              <Download size={12} />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleStartEditSnapshot(snap)}
-                              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800"
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                color: '#94a3b8',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
                               title="Editar nome ou notas"
                             >
-                              <Edit2 size={13} />
+                              <Edit2 size={12} />
                             </button>
                             <button
                               type="button"
                               onClick={() => setDeletingSnapshotId(snap.id)}
-                              className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg border border-rose-900/30"
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                background: '#0f172a',
+                                border: '1px solid rgba(244, 63, 94, 0.3)',
+                                color: '#fb7185',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
                               title="Excluir este backup"
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={12} />
                             </button>
                           </div>
                         </div>
@@ -1342,7 +1578,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
             onClick={onClose}
             className="hover:opacity-90 active:scale-95 transition-all"
             style={{
-              padding: '5px 14px',
+              padding: '5px 16px',
               borderRadius: '7px',
               fontSize: '11px',
               fontWeight: 'bold',
