@@ -576,55 +576,159 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-        {/* Cabeçalho do Modal */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              {activeTab === 'combats' ? <Swords size={18} /> : <Archive size={18} />}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
+      style={{
+        padding: '16px',
+        overflowY: 'auto',
+        WebkitBackdropFilter: 'blur(4px)',
+      }}
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        style={{
+          position: 'relative',
+          margin: 'auto',
+          width: '100%',
+          maxWidth: '640px',
+          maxHeight: '85vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#0f172a',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Cabeçalho compacto com gradiente e badge */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 18px',
+            borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
+            background: 'linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '7px',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fbbf24',
+                flexShrink: 0,
+              }}
+            >
+              {activeTab === 'combats' ? <Swords size={16} /> : <Archive size={16} />}
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Configurações da Mesa de Combate</h3>
-              <p className="text-[11px] text-slate-400">
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                Configurações da Mesa de Combate
+              </h2>
+              <p style={{ fontSize: '10px', color: '#94a3b8', margin: '1px 0 0 0' }}>
                 Gerencie combates ativos ou salve retratos completos para restauração
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-            title="Fechar"
+            className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            style={{
+              padding: '5px',
+              borderRadius: '7px',
+              cursor: 'pointer',
+              flexShrink: 0,
+              background: 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Fechar (Esc)"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         {/* Notificação Toast */}
         {toastMessage && (
-          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-sm animate-fade-in shrink-0">
-            <Check size={14} className="text-amber-400 shrink-0" />
-            <span className="font-medium">{toastMessage}</span>
+          <div
+            style={{
+              margin: '6px 18px 0',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              color: '#fcd34d',
+              fontSize: '11px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              flexShrink: 0,
+            }}
+          >
+            <Check size={13} className="text-amber-400 shrink-0" />
+            <span style={{ fontWeight: 500 }}>{toastMessage}</span>
           </div>
         )}
 
         {/* Navegação entre Abas */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2 shrink-0">
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 18px',
+            background: 'rgba(2, 6, 23, 0.8)',
+            borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
+          }}
+        >
           <button
             type="button"
             onClick={() => setActiveTab('combats')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'combats'
-                ? 'bg-amber-500 text-slate-950 shadow-sm'
-                : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white'
-            }`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: '7px',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: '1px solid',
+              transition: 'all 0.15s ease',
+              background: activeTab === 'combats' ? '#f59e0b' : '#1e293b',
+              color: activeTab === 'combats' ? '#020617' : '#cbd5e1',
+              borderColor: activeTab === 'combats' ? '#f59e0b' : '#334155',
+            }}
           >
-            <Swords size={14} />
+            <Swords size={13} />
             <span>Combates da Campanha</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                activeTab === 'combats' ? 'bg-slate-950 text-amber-300' : 'bg-slate-700 text-slate-300'
-              }`}
+              style={{
+                fontSize: '9px',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                fontWeight: 'bold',
+                background: activeTab === 'combats' ? '#020617' : '#0f172a',
+                color: activeTab === 'combats' ? '#fcd34d' : '#94a3b8',
+              }}
             >
               {validCombats.length}
             </span>
@@ -633,18 +737,33 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('backups')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'backups'
-                ? 'bg-amber-500 text-slate-950 shadow-sm'
-                : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white'
-            }`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: '7px',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: '1px solid',
+              transition: 'all 0.15s ease',
+              background: activeTab === 'backups' ? '#f59e0b' : '#1e293b',
+              color: activeTab === 'backups' ? '#020617' : '#cbd5e1',
+              borderColor: activeTab === 'backups' ? '#f59e0b' : '#334155',
+            }}
           >
-            <Archive size={14} />
+            <Archive size={13} />
             <span>Retratos & Backups da Mesa</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                activeTab === 'backups' ? 'bg-slate-950 text-amber-300' : 'bg-slate-700 text-slate-300'
-              }`}
+              style={{
+                fontSize: '9px',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                fontWeight: 'bold',
+                background: activeTab === 'backups' ? '#020617' : '#0f172a',
+                color: activeTab === 'backups' ? '#fcd34d' : '#94a3b8',
+              }}
             >
               {snapshots.length}
             </span>
@@ -653,7 +772,17 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
 
         {/* CONTEÚDO DA ABA 1: COMBATES DA CAMPANHA */}
         {activeTab === 'combats' && (
-          <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+          <div
+            style={{
+              flex: '1 1 auto',
+              minHeight: 0,
+              overflowY: 'auto',
+              padding: '12px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+            }}
+          >
             {/* Create New Combat Form */}
             <form
               onSubmit={handleCreate}
@@ -801,7 +930,14 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                             </div>
                           )}
                           <div className="flex items-center gap-3 text-[10px] text-slate-500 mt-1 font-mono">
-                            <span>{c.totalNpcs != null ? c.totalNpcs : (c.npcs?.length || 0)} NPCs</span>
+                            <span>
+                              {c.totalNpcs != null
+                                ? c.totalNpcs
+                                : Array.isArray(c.npcs)
+                                ? c.npcs.length
+                                : 0}{' '}
+                              NPCs
+                            </span>
                             <span>·</span>
                             <span>{c.createdAt}</span>
                           </div>
@@ -820,7 +956,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                               Selecionar
                             </button>
                           )}
-
                           {onToggleCombatActive && (
                             <button
                               type="button"
@@ -830,26 +965,22 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                                   ? 'text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 border-emerald-800/50'
                                   : 'text-slate-400 hover:text-slate-200 bg-slate-800 border-slate-700'
                               }`}
-                              title={
-                                isInactive
-                                  ? 'Ativar combate (exibir na barra principal)'
-                                  : 'Inativar combate (ocultar da barra principal)'
-                              }
+                              title={isInactive ? 'Ativar combate' : 'Inativar combate'}
                             >
                               {isInactive ? <Eye size={13} /> : <EyeOff size={13} />}
-                              <span className="text-[11px] ml-1">{isInactive ? 'Ativar' : 'Inativar'}</span>
+                              <span className="text-[11px] ml-1">
+                                {isInactive ? 'Ativar' : 'Inativar'}
+                              </span>
                             </button>
                           )}
-
                           <button
                             type="button"
                             onClick={() => startEdit(c)}
                             className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800"
-                            title="Renomear ou editar descrição"
+                            title="Renomear ou editar"
                           >
                             <Edit2 size={13} />
                           </button>
-
                           {validCombats.length > 1 && (
                             <button
                               type="button"
@@ -870,38 +1001,42 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
           </div>
         )}
 
-        {/* CONTEÚDO DA ABA 2: CRUD DE RETRATOS & BACKUPS DA MESA */}
+        {/* CONTEÚDO DA ABA 2: RETRATOS & BACKUPS DA MESA */}
         {activeTab === 'backups' && (
-          <div className="space-y-4 overflow-y-auto pr-1 flex-1">
-            {/* Barra de Ações: Criar novo backup ou importar arquivo */}
+          <div
+            style={{
+              flex: '1 1 auto',
+              minHeight: 0,
+              overflowY: 'auto',
+              padding: '12px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+            }}
+          >
+            {/* Top Toolbar: Actions */}
             <div className="flex items-center justify-between gap-2 flex-wrap bg-slate-950/70 p-3 rounded-xl border border-slate-800">
               <div>
                 <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <ShieldCheck size={15} className="text-amber-400" />
+                  <ShieldCheck size={15} className="text-emerald-400" />
                   <span>Retratos em Tempo Real</span>
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  Salve um retrato fiel de todos os combates, NPCs, personagens e rodadas atuais.
+                  Salve um retrato fiel de todos os combates, NPCs, personagens e rodadas.
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleStartCreateSnapshot}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95"
-                  title="Capturar o estado exato da Mesa agora"
                 >
                   <Plus size={14} />
                   <span>Novo Retrato da Mesa</span>
                 </button>
-
-                <label
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer shadow-sm"
-                  title="Importar um arquivo JSON de backup para a lista"
-                >
-                  <Upload size={14} />
-                  <span>Importar Arquivo (.json)</span>
+                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer shadow-sm">
+                  <Upload size={13} />
+                  <span>Importar (.json)</span>
                   <input
                     type="file"
                     accept=".json"
@@ -909,24 +1044,23 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                     onChange={handleImportFile}
                   />
                 </label>
-
                 <button
                   type="button"
                   onClick={handleExportAllForRepo}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 text-xs font-semibold rounded-lg border border-amber-600/40 transition-colors shadow-sm cursor-pointer"
                   title="Baixar todos os retratos como retratos-mesa.json para colocar na pasta dados/ do repositório"
                 >
-                  <Download size={14} />
+                  <Download size={13} />
                   <span>Exportar Repositório</span>
                 </button>
               </div>
             </div>
 
-            {/* Formulário Inline: Criar Retrato */}
+            {/* Form: Criar Novo Snapshot */}
             {isCreatingSnapshot && (
               <form
                 onSubmit={handleConfirmCreateSnapshot}
-                className="bg-slate-950 p-4 rounded-xl border border-amber-500/40 shadow-lg space-y-3 animate-fade-in"
+                className="bg-slate-950 p-4 rounded-xl border border-amber-500/40 shadow-lg space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -941,7 +1075,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                     <X size={14} />
                   </button>
                 </div>
-
                 <div className="space-y-2">
                   <div>
                     <label className="block text-[11px] text-slate-400 font-medium mb-1">
@@ -956,7 +1089,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                       required
                     />
                   </div>
-
                   <div>
                     <label className="block text-[11px] text-slate-400 font-medium mb-1">
                       Notas / Descrição (opcional):
@@ -965,12 +1097,11 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                       type="text"
                       value={newSnapshotDesc}
                       onChange={(e) => setNewSnapshotDesc(e.target.value)}
-                      placeholder="Ex: Rodada 2, boss ferido, jogador X sob efeito de magia"
+                      placeholder="Ex: Rodada 2, boss ferido"
                       className="w-full bg-slate-900 border border-slate-750 rounded-lg px-3 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
-
                 <div className="flex items-center justify-end gap-2 pt-1">
                   <button
                     type="button"
@@ -990,53 +1121,58 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               </form>
             )}
 
-            {/* Lista de Retratos Salvos (CRUD) */}
+            {/* List of Snapshots */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 <span>Versões Salvas ({snapshots.length})</span>
                 <span className="text-[10px] text-slate-500 normal-case">
-                  Clique em "Restaurar" para voltar ao estado exato do retrato
+                  Clique em "Restaurar" para aplicar na Mesa
                 </span>
               </div>
 
               {snapshots.length === 0 ? (
                 <div className="p-8 text-center bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-2">
                   <Archive size={32} className="mx-auto text-slate-600" />
-                  <div className="text-xs font-bold text-slate-300">Nenhum retrato salvo ainda</div>
+                  <div className="text-xs font-bold text-slate-300">
+                    Nenhum retrato salvo ainda
+                  </div>
                   <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                    Faça backups preventivos clicando em <strong>"Novo Retrato da Mesa"</strong>. Você poderá
-                    restaurar qualquer versão a qualquer momento.
+                    Faça backups preventivos clicando em <strong>"Novo Retrato da Mesa"</strong>.
+                    Você poderá restaurar qualquer versão a qualquer momento.
                   </p>
                 </div>
               ) : (
                 snapshots.map((snap) => {
-                  const isEditing = editingSnapshotId === snap.id;
-                  const isDeleting = deletingSnapshotId === snap.id;
                   const isRestoring = restoringSnapshotId === snap.id;
+                  const isDeleting = deletingSnapshotId === snap.id;
+                  const isEditing = editingSnapshotId === snap.id;
 
                   return (
                     <div
                       key={snap.id}
                       className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-slate-700 transition-all space-y-2"
                     >
-                      {/* Estado: Confirmação de Restauração */}
+                      {/* Modo Confirmação de Restauração */}
                       {isRestoring ? (
-                        <div className="p-2 bg-emerald-950/40 border border-emerald-700/50 rounded-lg space-y-2">
-                          <div className="flex items-center gap-2 text-xs text-emerald-300 font-bold">
-                            <AlertTriangle size={15} className="text-emerald-400 shrink-0" />
-                            <span>Deseja restaurar o retrato "{snap.name}"?</span>
+                        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2.5 animate-fade-in">
+                          <div className="flex items-start gap-2 text-amber-300 text-xs">
+                            <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                            <div>
+                              <div className="font-bold">
+                                Restaurar retrato "{snap.name}"?
+                              </div>
+                              <div className="text-[11px] text-slate-300 mt-0.5">
+                                Todos os dados atuais da mesa (combates, rodadas, fichas) serão
+                                substituídos pelos dados deste retrato. Um backup preventivo de segurança
+                                será salvo automaticamente antes da restauração.
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">
-                            O estado atual da Mesa será substituído por este snapshot de{' '}
-                            <strong>{snap.formattedDate}</strong> ({snap.summary?.totalCombats || 0} combates,{' '}
-                            {snap.summary?.totalNpcs || 0} NPCs). Um backup automático do estado atual será
-                            guardado antes de aplicar.
-                          </p>
                           <div className="flex items-center justify-end gap-2 pt-1">
                             <button
                               type="button"
                               onClick={() => setRestoringSnapshotId(null)}
-                              className="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 rounded-lg font-medium"
+                              className="px-3 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 rounded-lg font-medium"
                             >
                               Cancelar
                             </button>
@@ -1054,7 +1190,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                           </div>
                         </div>
                       ) : isDeleting ? (
-                        /* Estado: Confirmação de Exclusão */
+                        /* Modo Confirmação de Exclusão */
                         <div className="flex items-center justify-between gap-3 p-1">
                           <div className="text-xs text-rose-300 font-medium">
                             Excluir o backup <strong>"{snap.name}"</strong>?
@@ -1077,7 +1213,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                           </div>
                         </div>
                       ) : isEditing ? (
-                        /* Estado: Editando Nome e Descrição */
+                        /* Modo Edição de Nome e Descrição */
                         <div className="space-y-2">
                           <input
                             type="text"
@@ -1111,24 +1247,21 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                           </div>
                         </div>
                       ) : (
-                        /* Exibição normal do Card de Backup */
+                        /* Modo Normal: Card do Snapshot */
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1 space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs font-bold text-white">{snap.name}</span>
                               <span className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
-                                <Clock size={11} className="text-slate-500" />
-                                {snap.formattedDate}
+                                <Clock size={11} />
+                                <span>{snap.formattedDate}</span>
                               </span>
                             </div>
-
                             {snap.description && (
                               <p className="text-[11px] text-slate-300 line-clamp-2">
                                 {snap.description}
                               </p>
                             )}
-
-                            {/* Resumo do Retrato */}
                             <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 flex-wrap pt-0.5">
                               <span className="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-amber-300">
                                 {snap.summary?.totalCombats || 0} combates
@@ -1147,20 +1280,16 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Botões de Ação do Backup */}
                           <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-                            {/* Botão Restaurar */}
                             <button
                               type="button"
                               onClick={() => setRestoringSnapshotId(snap.id)}
                               className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-emerald-200 border border-emerald-700/60 rounded-lg transition-colors shadow-sm"
-                              title="Restaurar este retrato na Mesa de Combate"
+                              title="Restaurar este retrato"
                             >
                               <RotateCcw size={13} />
                               <span>Restaurar</span>
                             </button>
-
-                            {/* Botão Baixar Arquivo */}
                             <button
                               type="button"
                               onClick={() => handleExportSnapshot(snap)}
@@ -1169,18 +1298,14 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                             >
                               <Download size={13} />
                             </button>
-
-                            {/* Botão Editar Nome */}
                             <button
                               type="button"
                               onClick={() => handleStartEditSnapshot(snap)}
                               className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800"
-                              title="Editar nome ou notas deste backup"
+                              title="Editar nome ou notas"
                             >
                               <Edit2 size={13} />
                             </button>
-
-                            {/* Botão Excluir */}
                             <button
                               type="button"
                               onClick={() => setDeletingSnapshotId(snap.id)}
@@ -1199,6 +1324,38 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Rodapé com botão Concluir e respiro */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            padding: '8px 18px',
+            borderTop: '1px solid #1e293b',
+            background: 'rgba(2, 6, 23, 0.6)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="hover:opacity-90 active:scale-95 transition-all"
+            style={{
+              padding: '5px 14px',
+              borderRadius: '7px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              background: '#f59e0b',
+              color: '#020617',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            }}
+          >
+            Concluir
+          </button>
+        </div>
       </div>
     </div>
   );
