@@ -94,9 +94,10 @@
   }
   var mesaHtml = null;
   // Promise of the Mesa's HTML, fetched once.
-  window.hubMesaSource = function () {
+  window.hubMesaSource = function (forceReload) {
+    if (forceReload) { mesaHtml = null; }
     if (!mesaHtml) {
-      mesaHtml = fetch('mesa.html?v=' + Date.now()).then(function (r) {
+      mesaHtml = fetch('mesa.html?v=' + Date.now(), { cache: 'no-store' }).then(function (r) {
         if (!r.ok) throw new Error('mesa.html ' + r.status);
         return r.text();
       }).then(function (html) {
