@@ -10,7 +10,7 @@ export interface DicePickerModalProps {
 }
 
 // Crisp geometric SVG icons for each polyhedral die
-const DieIcon: React.FC<{ sides: number; size?: number; className?: string }> = ({ sides, size = 15, className = '' }) => {
+const DieIcon: React.FC<{ sides: number; size?: number; className?: string }> = ({ sides, size = 14, className = '' }) => {
   switch (sides) {
     case 4:
       return (
@@ -139,19 +139,21 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
           top: anchorRect ? `${anchorRect.top}px` : '56px',
           right: anchorRect ? `${anchorRect.right}px` : '16px',
           zIndex: 99999,
-          width: '320px',
+          width: '340px',
           maxWidth: 'calc(100vw - 24px)',
           background: '#0f172a',
           border: '1px solid rgba(245, 158, 11, 0.35)',
           borderRadius: '16px',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85)',
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Cabeçalho unificado */}
+        {/* Cabeçalho unificado com badge ambar e ícone de dados limpo */}
         <div
           style={{
             display: 'flex',
@@ -167,34 +169,36 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
               style={{
                 width: '26px',
                 height: '26px',
-                borderRadius: '6px',
+                borderRadius: '7px',
                 background: 'rgba(245, 158, 11, 0.15)',
                 border: '1px solid rgba(245, 158, 11, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#fbbf24',
+                flexShrink: 0,
               }}
             >
               <Dices size={15} />
             </div>
-            <h3 style={{ fontSize: '13px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
               Rolar Dados
-            </h3>
+            </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             style={{
-              padding: '4px',
-              borderRadius: '6px',
+              padding: '5px',
+              borderRadius: '7px',
               cursor: 'pointer',
               background: 'transparent',
               border: 'none',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: '#94a3b8',
             }}
             title="Fechar (Esc)"
           >
@@ -202,8 +206,16 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
           </button>
         </div>
 
-        {/* Linhas de Dados com botões compactos */}
-        <div style={{ background: '#0f172a' }}>
+        {/* Linhas organizadas em divs separadas com botões pill */}
+        <div
+          style={{
+            padding: '10px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            background: '#0f172a',
+          }}
+        >
           {DICE_TYPES.map((die) => (
             <div
               key={die.sides}
@@ -211,14 +223,16 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '4px 10px',
-                borderBottom: '1px solid #1e293b',
+                padding: '4px 8px',
+                background: 'rgba(2, 6, 23, 0.55)',
+                border: '1px solid #1e293b',
+                borderRadius: '8px',
               }}
             >
               {/* Die Badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '56px', flexShrink: 0 }}>
-                <DieIcon sides={die.sides} size={14} className="text-amber-400 shrink-0" />
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', color: '#f1f5f9' }}>
+              <div style={{ width: '56px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <DieIcon sides={die.sides} size={13} className="text-amber-400 shrink-0" />
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 'bold', color: '#fbbf24' }}>
                   {die.name}
                 </span>
               </div>
@@ -230,9 +244,9 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
                     key={qty}
                     type="button"
                     onClick={() => handleRollClick(qty, die.sides)}
-                    className="hover:bg-amber-400 hover:text-slate-950 active:scale-95 transition-all"
+                    className="hover:bg-amber-500 hover:text-slate-950 hover:border-amber-400 active:scale-95 transition-all"
                     style={{
-                      width: '24px',
+                      width: '26px',
                       height: '24px',
                       display: 'flex',
                       alignItems: 'center',
@@ -240,10 +254,10 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
                       fontSize: '11px',
                       fontFamily: 'monospace',
                       fontWeight: 'bold',
-                      color: '#cbd5e1',
-                      background: '#020617',
-                      border: '1px solid #1e293b',
-                      borderRadius: '5px',
+                      color: '#e2e8f0',
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: '6px',
                       cursor: 'pointer',
                     }}
                     title={`Rolar ${qty}${die.name}`}
@@ -256,85 +270,107 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
           ))}
         </div>
 
-        {/* Rodapé: Rolo Personalizado */}
+        {/* Rodapé: Rolo Personalizado (sem texto 'PERSONALIZADO', select do tamanho do D100, alinhado com o botão) */}
         <div
           style={{
-            padding: '8px 12px',
-            background: 'rgba(2, 6, 23, 0.8)',
+            padding: '10px 12px',
+            background: 'rgba(2, 6, 23, 0.75)',
             borderTop: '1px solid #1e293b',
           }}
         >
-          <form onSubmit={handleCustomSubmit} style={{ display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 auto' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto' }}>
-                <label style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, marginBottom: '2px' }}>Dado</label>
-                <select
-                  value={customSides}
-                  onChange={(e) => setCustomSides(Number(e.target.value))}
-                  style={{
-                    width: '100%',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '6px',
-                    padding: '3px 6px',
-                    fontSize: '11px',
-                    color: '#fcd34d',
-                    fontWeight: 'bold',
-                    fontFamily: 'monospace',
-                    cursor: 'pointer',
-                    outline: 'none',
-                  }}
-                >
-                  {DICE_TYPES.map((die) => (
-                    <option key={die.sides} value={die.sides} style={{ background: '#0f172a', color: '#ffffff' }}>
-                      {die.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', width: '60px', flexShrink: 0 }}>
-                <label style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, marginBottom: '2px' }}>Qtd</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={customCount}
-                  onChange={(e) => setCustomCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  onBlur={() => {
-                    if (!customCount || Number(customCount) < 1) setCustomCount(1);
-                  }}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '6px',
-                    padding: '3px 6px',
-                    fontSize: '11px',
-                    color: '#ffffff',
-                    textAlign: 'center',
-                    fontWeight: 'bold',
-                    fontFamily: 'monospace',
-                    outline: 'none',
-                  }}
-                />
-              </div>
+          <form
+            onSubmit={handleCustomSubmit}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: '8px',
+              width: '100%',
+            }}
+          >
+            {/* Campo Dado (mesmo tamanho da coluna de dados ~64px) */}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '64px', flexShrink: 0 }}>
+              <label style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, marginBottom: '3px' }}>
+                Dado
+              </label>
+              <select
+                value={customSides}
+                onChange={(e) => setCustomSides(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  height: '32px',
+                  boxSizing: 'border-box',
+                  background: '#0f172a',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  borderRadius: '7px',
+                  padding: '0 4px',
+                  fontSize: '11px',
+                  color: '#fbbf24',
+                  fontWeight: 'bold',
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                {DICE_TYPES.map((die) => (
+                  <option key={die.sides} value={die.sides} style={{ background: '#0f172a', color: '#ffffff' }}>
+                    {die.name}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {/* Campo Quantidade */}
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+              <label style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, marginBottom: '3px' }}>
+                Quantidade
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={customCount}
+                onChange={(e) => setCustomCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                onBlur={() => {
+                  if (!customCount || Number(customCount) < 1) setCustomCount(1);
+                }}
+                style={{
+                  width: '100%',
+                  height: '32px',
+                  boxSizing: 'border-box',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '7px',
+                  padding: '0 8px',
+                  fontSize: '12px',
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  fontWeight: 'bold',
+                  fontFamily: 'monospace',
+                  outline: 'none',
+                }}
+                title="Quantidade de dados a serem rolados"
+              />
+            </div>
+
+            {/* Botão Rolar perfeitamente alinhado com os inputs */}
             <button
               type="submit"
               className="hover:opacity-90 active:scale-95 transition-all"
               style={{
-                padding: '5px 12px',
+                height: '32px',
+                padding: '0 18px',
                 background: '#f59e0b',
                 color: '#020617',
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 'bold',
-                borderRadius: '6px',
+                borderRadius: '7px',
                 border: 'none',
                 cursor: 'pointer',
                 flexShrink: 0,
                 boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               Rolar

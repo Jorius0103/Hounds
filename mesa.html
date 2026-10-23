@@ -4798,76 +4798,265 @@ var DicePickerModal=({isOpen:isOpen,onClose:onClose,onRoll:onRoll,anchorRect:anc
         onClick:onClose
       }),
       (0,ct.jsxs)("div",{
-        className:"bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl overflow-hidden font-sans ring-1 ring-black/70",
-        style:{position:"fixed",top:anchorRect?anchorRect.top+"px":"56px",right:anchorRect?anchorRect.right+"px":"16px",zIndex:99999,width:"340px",maxWidth:"calc(100vw - 24px)",background:"#0f172a",border:"1px solid #334155",borderRadius:"16px",boxShadow:"0 20px 40px rgba(0, 0, 0, 0.8)",overflow:"hidden"},
+        style:{
+          position:"fixed",
+          top:anchorRect?anchorRect.top+"px":"56px",
+          right:anchorRect?anchorRect.right+"px":"16px",
+          zIndex:99999,
+          width:"340px",
+          maxWidth:"calc(100vw - 24px)",
+          background:"#0f172a",
+          border:"1px solid rgba(245, 158, 11, 0.35)",
+          borderRadius:"16px",
+          boxShadow:"0 25px 50px -12px rgba(0, 0, 0, 0.85)",
+          overflow:"hidden",
+          display:"flex",
+          flexDirection:"column"
+        },
         onClick:e=>e.stopPropagation(),
         children:[
+          /* Cabeçalho unificado com badge SVG limpo */
           (0,ct.jsxs)("div",{
-            style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px",background:"linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)",borderBottom:"1px solid rgba(245, 158, 11, 0.2)"},
+            style:{
+              display:"flex",
+              alignItems:"center",
+              justifyContent:"space-between",
+              padding:"10px 14px",
+              background:"linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)",
+              borderBottom:"1px solid rgba(245, 158, 11, 0.2)"
+            },
             children:[
-              (0,ct.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"8px"},children:[
-                (0,ct.jsx)("div",{style:{width:"24px",height:"24px",borderRadius:"6px",background:"rgba(245, 158, 11, 0.15)",border:"1px solid rgba(245, 158, 11, 0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"12px"},children:"\U0001F3B2"}),
-                (0,ct.jsx)("h3",{style:{margin:0,fontSize:"12px",fontWeight:"bold",color:"#ffffff"},children:"Rolar Dados"})
-              ]}),
-              (0,ct.jsx)("button",{type:"button",onClick:onClose,style:{padding:"4px",borderRadius:"6px",background:"transparent",border:"none",color:"#94a3b8",cursor:"pointer"},children:(0,ct.jsx)(Jt,{size:14})})
+              (0,ct.jsxs)("div",{
+                style:{display:"flex",alignItems:"center",gap:"8px"},
+                children:[
+                  (0,ct.jsx)("div",{
+                    style:{
+                      width:"26px",
+                      height:"26px",
+                      borderRadius:"7px",
+                      background:"rgba(245, 158, 11, 0.15)",
+                      border:"1px solid rgba(245, 158, 11, 0.4)",
+                      display:"flex",
+                      alignItems:"center",
+                      justifyContent:"center",
+                      color:"#fbbf24",
+                      flexShrink:0
+                    },
+                    children:(0,ct.jsxs)("svg",{
+                      viewBox:"0 0 24 24",
+                      width:"15",
+                      height:"15",
+                      fill:"none",
+                      stroke:"currentColor",
+                      strokeWidth:"2",
+                      strokeLinecap:"round",
+                      strokeLinejoin:"round",
+                      children:[
+                        (0,ct.jsx)("rect",{x:"3",y:"3",width:"18",height:"18",rx:"2.5"}),
+                        (0,ct.jsx)("circle",{cx:"8",cy:"8",r:"1.2",fill:"currentColor"}),
+                        (0,ct.jsx)("circle",{cx:"16",cy:"16",r:"1.2",fill:"currentColor"}),
+                        (0,ct.jsx)("circle",{cx:"12",cy:"12",r:"1.2",fill:"currentColor"})
+                      ]
+                    })
+                  }),
+                  (0,ct.jsx)("h2",{
+                    style:{fontSize:"14px",fontWeight:"bold",color:"#ffffff",margin:0},
+                    children:"Rolar Dados"
+                  })
+                ]
+              }),
+              (0,ct.jsx)("button",{
+                type:"button",
+                onClick:onClose,
+                style:{
+                  padding:"5px",
+                  borderRadius:"7px",
+                  cursor:"pointer",
+                  background:"transparent",
+                  border:"none",
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"center",
+                  color:"#94a3b8"
+                },
+                title:"Fechar (Esc)",
+                children:(0,ct.jsx)(Jt,{size:15})
+              })
             ]
           }),
+
+          /* Linhas organizadas em divs separadas com botões pill */
           (0,ct.jsx)("div",{
-            className:"divide-y divide-slate-800/80 bg-slate-900",
+            style:{
+              padding:"10px 12px",
+              display:"flex",
+              flexDirection:"column",
+              gap:"6px",
+              background:"#0f172a"
+            },
             children:diceTypes.map(d=>(0,ct.jsxs)("div",{
-              className:"flex items-center hover:bg-slate-800/40 transition-colors",
+              key:d.sides,
+              style:{
+                display:"flex",
+                alignItems:"center",
+                justifyContent:"space-between",
+                padding:"4px 8px",
+                background:"rgba(2, 6, 23, 0.55)",
+                border:"1px solid #1e293b",
+                borderRadius:"8px"
+              },
               children:[
-                (0,ct.jsxs)("div",{
-                  className:"flex items-center gap-1.5 px-3 py-2 text-slate-200 font-bold text-xs flex-1 min-w-0",
-                  children:[
-                    (0,ct.jsx)("span",{className:"text-amber-400 font-mono text-xs font-black tracking-wide",children:d.name})
-                  ]
+                (0,ct.jsx)("div",{
+                  style:{
+                    width:"56px",
+                    flexShrink:0,
+                    fontFamily:"monospace",
+                    fontSize:"12px",
+                    fontWeight:"bold",
+                    color:"#fbbf24"
+                  },
+                  children:d.name
                 }),
                 (0,ct.jsx)("div",{
-                  className:"flex items-center shrink-0 border-l border-slate-800",
+                  style:{display:"flex",alignItems:"center",gap:"4px"},
                   children:qtys.map(q=>(0,ct.jsx)("button",{
                     key:q,
                     type:"button",
                     onClick:()=>handleRollClick(q,d.sides),
-                    className:"w-7 h-8 flex items-center justify-center text-xs font-mono font-bold text-slate-300 hover:text-slate-950 hover:bg-amber-400 transition-all border-l first:border-l-0 border-slate-800/80 cursor-pointer",
+                    className:"hover:bg-amber-500 hover:text-slate-950 hover:border-amber-400 active:scale-95 transition-all",
+                    style:{
+                      width:"26px",
+                      height:"24px",
+                      display:"flex",
+                      alignItems:"center",
+                      justifyContent:"center",
+                      fontSize:"11px",
+                      fontFamily:"monospace",
+                      fontWeight:"bold",
+                      color:"#e2e8f0",
+                      background:"#0f172a",
+                      border:"1px solid #334155",
+                      borderRadius:"6px",
+                      cursor:"pointer"
+                    },
                     title:`Rolar ${q}${d.name}`,
                     children:q
                   }))
                 })
               ]
-            },d.sides))
+            }))
           }),
-          (0,ct.jsxs)("form",{
-            onSubmit:handleCustomSubmit,
-            className:"p-2.5 bg-slate-950/95 border-t border-slate-800 space-y-1.5",
-            children:[
-              (0,ct.jsx)("div",{className:"flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 px-0.5",children:(0,ct.jsx)("span",{children:"Personalizado"})}),
-              (0,ct.jsxs)("div",{className:"flex items-center gap-2",children:[
-                (0,ct.jsxs)("div",{className:"flex flex-col flex-1",children:[
-                  (0,ct.jsx)("label",{className:"text-[9px] text-slate-400 font-semibold mb-0.5",children:"Dado"}),
-                  (0,ct.jsx)("select",{
-                    value:customSides,
-                    onChange:e=>setCustomSides(Number(e.target.value)),
-                    className:"w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-amber-300 font-bold font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer",
-                    children:diceTypes.map(d=>(0,ct.jsx)("option",{value:d.sides,className:"bg-slate-900 text-white font-mono",children:d.name},d.sides))
-                  })
-                ]}),
-                (0,ct.jsxs)("div",{className:"flex flex-col w-20 shrink-0",children:[
-                  (0,ct.jsx)("label",{className:"text-[9px] text-slate-400 font-semibold mb-0.5",children:"Quantidade"}),
-                  (0,ct.jsx)("input",{
-                    type:"number",
-                    min:"1",
-                    max:"100",
-                    value:customCount,
-                    onChange:e=>setCustomCount(e.target.value===""?"":Math.max(1,parseInt(e.target.value,10)||1)),
-                    onBlur:()=>{if(!customCount||Number(customCount)<1)setCustomCount(1);},
-                    className:"w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white text-center font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500",
-                    title:"Quantidade de dados a serem rolados"
-                  })
-                ]}),
-                (0,ct.jsx)("button",{type:"submit",className:"py-1.5 px-3.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer shrink-0",children:"Rolar"})
-              ]})
-            ]
+
+          /* Rodape: Rolo customizado (select do tamanho do D100, alinhado com o botão) */
+          (0,ct.jsx)("div",{
+            style:{
+              padding:"10px 12px",
+              background:"rgba(2, 6, 23, 0.75)",
+              borderTop:"1px solid #1e293b"
+            },
+            children:(0,ct.jsxs)("form",{
+              onSubmit:handleCustomSubmit,
+              style:{
+                display:"flex",
+                alignItems:"flex-end",
+                gap:"8px",
+                width:"100%"
+              },
+              children:[
+                /* Campo Dado (mesmo tamanho da coluna de dados ~64px) */
+                (0,ct.jsxs)("div",{
+                  style:{display:"flex",flexDirection:"column",width:"64px",flexShrink:0},
+                  children:[
+                    (0,ct.jsx)("label",{
+                      style:{fontSize:"10px",color:"#94a3b8",fontWeight:"600",marginBottom:"3px"},
+                      children:"Dado"
+                    }),
+                    (0,ct.jsx)("select",{
+                      value:customSides,
+                      onChange:e=>setCustomSides(Number(e.target.value)),
+                      style:{
+                        width:"100%",
+                        height:"32px",
+                        boxSizing:"border-box",
+                        background:"#0f172a",
+                        border:"1px solid rgba(245, 158, 11, 0.4)",
+                        borderRadius:"7px",
+                        padding:"0 4px",
+                        fontSize:"11px",
+                        color:"#fbbf24",
+                        fontWeight:"bold",
+                        fontFamily:"monospace",
+                        cursor:"pointer",
+                        outline:"none"
+                      },
+                      children:diceTypes.map(d=>(0,ct.jsx)("option",{
+                        value:d.sides,
+                        style:{background:"#0f172a",color:"#ffffff"},
+                        children:d.name
+                      },d.sides))
+                    })
+                  ]
+                }),
+
+                /* Campo Quantidade */
+                (0,ct.jsxs)("div",{
+                  style:{display:"flex",flexDirection:"column",flex:1,minWidth:0},
+                  children:[
+                    (0,ct.jsx)("label",{
+                      style:{fontSize:"10px",color:"#94a3b8",fontWeight:"600",marginBottom:"3px"},
+                      children:"Quantidade"
+                    }),
+                    (0,ct.jsx)("input",{
+                      type:"number",
+                      min:"1",
+                      max:"100",
+                      value:customCount,
+                      onChange:e=>setCustomCount(e.target.value===""?"":Math.max(1,parseInt(e.target.value,10)||1)),
+                      onBlur:()=>{if(!customCount||Number(customCount)<1)setCustomCount(1);},
+                      style:{
+                        width:"100%",
+                        height:"32px",
+                        boxSizing:"border-box",
+                        background:"#0f172a",
+                        border:"1px solid #334155",
+                        borderRadius:"7px",
+                        padding:"0 8px",
+                        fontSize:"12px",
+                        color:"#ffffff",
+                        textAlign:"center",
+                        fontWeight:"bold",
+                        fontFamily:"monospace",
+                        outline:"none"
+                      },
+                      title:"Quantidade de dados a serem rolados"
+                    })
+                  ]
+                }),
+
+                /* Botão Rolar perfeitamente alinhado com os inputs */
+                (0,ct.jsx)("button",{
+                  type:"submit",
+                  className:"hover:opacity-90 active:scale-95 transition-all",
+                  style:{
+                    height:"32px",
+                    padding:"0 18px",
+                    background:"#f59e0b",
+                    color:"#020617",
+                    fontSize:"12px",
+                    fontWeight:"bold",
+                    borderRadius:"7px",
+                    border:"none",
+                    cursor:"pointer",
+                    flexShrink:0,
+                    boxShadow:"0 2px 4px rgba(0,0,0,0.3)",
+                    display:"flex",
+                    alignItems:"center",
+                    justifyContent:"center"
+                  },
+                  children:"Rolar"
+                })
+              ]
+            })
           })
         ]
       })
