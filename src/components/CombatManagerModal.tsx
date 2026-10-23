@@ -357,7 +357,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
       style={{
         position: 'fixed',
         inset: 0,
@@ -365,8 +364,8 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(2,6,23,0.85)',
+        padding: '24px 16px',
+        background: 'rgba(2, 6, 23, 0.85)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
         overflowY: 'auto',
@@ -383,12 +382,12 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
           margin: 'auto',
           width: '100%',
           maxWidth: '640px',
-          maxHeight: '85vh',
+          maxHeight: '82vh',
           display: 'flex',
           flexDirection: 'column',
           background: '#0f172a',
           border: '1px solid rgba(245, 158, 11, 0.35)',
-          borderRadius: '16px',
+          borderRadius: '18px',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
           overflow: 'hidden',
         }}
@@ -400,7 +399,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '10px 18px',
+            padding: '14px 20px',
             borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
             background: 'linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)',
           }}
@@ -482,7 +481,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 18px',
+            padding: '8px 20px',
             background: 'rgba(2, 6, 23, 0.8)',
             borderBottom: '1px solid #1e293b',
           }}
@@ -561,14 +560,15 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
         {/* CONTEÚDO DA ABA 1: COMBATES DA CAMPANHA */}
         {activeTab === 'combats' && (
           <div
+            className="custom-scrollbar"
             style={{
               flex: '1 1 auto',
               minHeight: 0,
               overflowY: 'auto',
-              padding: '12px 18px',
+              padding: '16px 20px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px',
+              gap: '14px',
             }}
           >
             {/* Form: Criar Novo Combate em div organizada */}
@@ -1000,14 +1000,15 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
         {/* CONTEÚDO DA ABA 2: RETRATOS & BACKUPS DA MESA */}
         {activeTab === 'backups' && (
           <div
+            className="custom-scrollbar"
             style={{
               flex: '1 1 auto',
               minHeight: 0,
               overflowY: 'auto',
-              padding: '12px 18px',
+              padding: '16px 20px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px',
+              gap: '14px',
             }}
           >
             {/* Top Toolbar: Actions em div organizada */}
@@ -1568,9 +1569,9 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
-            padding: '8px 18px',
+            padding: '12px 20px',
             borderTop: '1px solid #1e293b',
-            background: 'rgba(2, 6, 23, 0.6)',
+            background: '#020617',
           }}
         >
           <button
