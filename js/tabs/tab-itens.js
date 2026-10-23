@@ -56,7 +56,7 @@ Ops.deleteItem = function (item) {
 var itemSearchTimer = 0;
 var ITEM_SEARCH_FIELDS = ['name', 'category', 'cost', 'description'];
 // Search, filters and page of the list: kept while the site is open (see spellView).
-var itemView = { q: '', category: '', book: '', page: 1 };
+var itemView = { q: '', mine: false, category: '', book: '', page: 1 };
 
 /* =====================================================================
    Page: Itens (list)
@@ -77,12 +77,13 @@ function renderItemsPage() {
     cats.map(function (c) { return '<option value="' + esc(c) + '"' + (ui.category === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select></div>' +
     '<div class="field" style="margin:0"><select id="itemBookFilter" aria-label="Filtrar por livro"><option value="">Todos os livros</option>' +
     books.map(function (b) { return '<option value="' + esc(b) + '"' + (ui.book === b ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('') + '</select></div>' +
-    '</div>';
+    mestreOnlyHtml(ui.mine) + '</div>';
   pageRoot.innerHTML = head + toolbar + notice() + '<div id="itemResults"></div>';
 
   var q = $('itemSearch'); if (q) q.oninput = function () { ui.q = q.value; ui.page = 1; clearTimeout(itemSearchTimer); itemSearchTimer = setTimeout(renderItemList, 150); };
   var cf = $('itemCatFilter'); if (cf) cf.onchange = function () { ui.category = cf.value; ui.page = 1; renderItemList(); };
   var bf = $('itemBookFilter'); if (bf) bf.onchange = function () { ui.book = bf.value; ui.page = 1; renderItemList(); };
+  wireMestreOnly(ui, renderItemList);
   var nb = $('newItemBtn'); if (nb) nb.onclick = function () { openItemForm(null); };
   renderItemList();
 }
@@ -91,6 +92,7 @@ function filterItemList() {
   return searchCatalog((W.items || []).filter(function (x) {
     if (ui.category && x.category !== ui.category) return false;
     if (ui.book && x.book !== ui.book) return false;
+    if (ui.mine && x.catalog) return false;
     return true;
   }), ui.q, function (x) { return searchText(x, ITEM_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }

@@ -18,7 +18,11 @@
 ICON.advantage = '<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>';
 function indexAdvantages() { var idx = /** @type {Record<string, Advantage>} */ ({}); (W.advantages || []).forEach(function (a) { idx[a.id] = a; }); W.advIdx = idx; }
 function advById(id) { return (id && (W.advIdx[id] || movedCatalogItem('advantages', id))) || null; }
-function advHref(id) { return hrefFor('adv:' + id); }
+ICON.perk = '<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/>';
+// The perks (type Perk) have a list of their own, Regras › Perks (#perks), and their pages are under it
+// (#perk~id); Regras › Vantagens lists the other entries.
+function isPerkEntry(a) { return advTypeKey(a && a.type) === 'perk'; }
+function advHref(id) { return hrefFor((isPerkEntry(advById(id)) ? 'perk:' : 'adv:') + id); }
 
 // Values found in the list, for the filters and the form suggestions.
 function advValues(field) {
@@ -66,59 +70,69 @@ Ops.deleteAdvantage = function (adv) {
 var advSearchTimer = 0;
 var ADV_SEARCH_FIELDS = ['name', 'cost', 'type', 'description'];
 // Search, filters and page of the list: kept while the site is open (see spellView).
-var advView = { q: '', advType: '', advBook: '', page: 1 };
+var advView = { q: '', mine: false, advType: '', advBook: '', page: 1 };
+var perkView = { q: '', mine: false, advType: '', advBook: '', page: 1 };
+// The list open: Perks (true) or Vantagens.
+function advListPerks() { return !!S.route && S.route.page === 'perks'; }
 
 /* =====================================================================
    Page: Vantagens (list)
    ===================================================================== */
-function renderAdvantagesPage() {
+// perks: the page of Regras › Perks (the same list, with the perks only).
+function renderAdvantagesPage(perks) {
   loadCatalog('advantages');
-  var ui = advView, can = isMestre();
-  var types = advValues('type'), books = advValues('book');
-  var head = crumbsHtml('advs') +
-    '<div class="head-row"><div><h1>' + svg(ICON.advantage, 24, 2) + ' Vantagens</h1>' +
-    '<p class="lede">Vantagens, talentos e perks para GURPS 4ª Edição.</p></div>' +
+  var ui = perks ? perkView : advView, can = isMestre();
+  // The filters show what this list has.
+  var mine = (W.advantages || []).filter(function (a) { return isPerkEntry(a) === !!perks; });
+  var types = advValues('type').filter(function (t) { return mine.some(function (a) { return a.type === t; }); }), books = advValues('book').filter(function (b) { return mine.some(function (a) { return a.book === b; }); });
+  var head = crumbsHtml(perks ? 'perks' : 'advs') +
+    '<div class="head-row"><div><h1>' + svg(perks ? ICON.perk : ICON.advantage, 24, 2) + (perks ? ' Perks' : ' Vantagens') + '</h1>' +
+    '<p class="lede">' + (perks ? 'Perks para GURPS 4ª Edição: vantagens de 1 ponto (Basic Set, p. B100; Martial Arts, pp. 49-52).' : 'Vantagens e talentos para GURPS 4ª Edição. Os perks ficam em <a href="#perks">Perks</a>.') + '</p></div>' +
     (can ? '<div class="btn-row">' +
-      '<button class="btn primary" type="button" id="newAdvBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova vantagem</button></div>' : '') +
+      '<button class="btn primary" type="button" id="newAdvBtn">' + svg(ICON.plus, 16, 2.4) + (perks ? 'Novo perk' : 'Nova vantagem') + '</button></div>' : '') +
     '</div>';
   var toolbar = '<div class="toolbar" style="margin-bottom:16px">' +
-    '<input class="search list-search" type="search" id="advSearch" placeholder="Buscar por nome, custo ou descrição…" value="' + esc(ui.q) + '" autocomplete="off" aria-label="Buscar vantagens">' +
-    '<div class="field" style="margin:0"><select id="advTypeFilter" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option>' +
-    types.map(function (t) { return '<option value="' + esc(t) + '"' + (ui.advType === t ? ' selected' : '') + '>' + esc(advTypeLabel(t)) + '</option>'; }).join('') + '</select></div>' +
+    '<input class="search list-search" type="search" id="advSearch" placeholder="Buscar por nome, custo ou descrição…" value="' + esc(ui.q) + '" autocomplete="off" aria-label="' + (perks ? 'Buscar perks' : 'Buscar vantagens') + '">' +
+    (types.length > 1 ? '<div class="field" style="margin:0"><select id="advTypeFilter" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option>' +
+      types.map(function (t) { return '<option value="' + esc(t) + '"' + (ui.advType === t ? ' selected' : '') + '>' + esc(advTypeLabel(t)) + '</option>'; }).join('') + '</select></div>' : '') +
     '<div class="field" style="margin:0"><select id="advBookFilter" aria-label="Filtrar por livro"><option value="">Todos os livros</option>' +
     books.map(function (b) { return '<option value="' + esc(b) + '"' + (ui.advBook === b ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('') + '</select></div>' +
-    '</div>';
+    mestreOnlyHtml(ui.mine) + '</div>';
   pageRoot.innerHTML = head + toolbar + notice() + '<div id="advResults"></div>';
 
   var q = $('advSearch'); if (q) q.oninput = function () { ui.q = q.value; ui.page = 1; clearTimeout(advSearchTimer); advSearchTimer = setTimeout(renderAdvList, 150); };
   var tf = $('advTypeFilter'); if (tf) tf.onchange = function () { ui.advType = tf.value; ui.page = 1; renderAdvList(); };
   var bf = $('advBookFilter'); if (bf) bf.onchange = function () { ui.advBook = bf.value; ui.page = 1; renderAdvList(); };
+  wireMestreOnly(ui, renderAdvList);
   var nb = $('newAdvBtn'); if (nb) nb.onclick = function () { openAdvantageForm(null); };
   renderAdvList();
 }
 function filterAdvList() {
-  var ui = advView;
+  var perks = advListPerks(), ui = perks ? perkView : advView;
   return searchCatalog((W.advantages || []).filter(function (a) {
+    if (isPerkEntry(a) !== perks) return false;
     if (ui.advType && a.type !== ui.advType) return false;
     if (ui.advBook && a.book !== ui.advBook) return false;
+    if (ui.mine && a.catalog) return false;
     return true;
   }), ui.q, function (a) { return searchText(a, ADV_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }
 function renderAdvList() {
   var el = $('advResults'); if (!el) return;
-  if (!W.loaded.advantages) { el.innerHTML = '<p class="lede">Carregando vantagens…</p>'; return; }
-  var ui = advView, all = filterAdvList(), pg = pageOf(all, ui.page);
+  var perks = advListPerks();
+  if (!W.loaded.advantages) { el.innerHTML = '<p class="lede">Carregando ' + (perks ? 'perks' : 'vantagens') + '…</p>'; return; }
+  var ui = perks ? perkView : advView, all = filterAdvList(), pg = pageOf(all, ui.page);
   ui.page = pg.page;
   if (!all.length) {
-    if (!(W.advantages || []).length) {
-      el.innerHTML = '<div class="empty-state">' + svg(ICON.advantage, 34, 1.6) + '<strong>Nenhuma vantagem cadastrada</strong>' +
-        '<span>' + (CATALOG.advantages.failed ? 'Não foi possível carregar a lista dos livros.' : isMestre() ? 'Crie uma com <b>Nova vantagem</b>.' : 'As vantagens vão aparecer aqui.') + '</span></div>';
+    if (!(W.advantages || []).some(function (a) { return isPerkEntry(a) === perks; })) {
+      el.innerHTML = '<div class="empty-state">' + svg(perks ? ICON.perk : ICON.advantage, 34, 1.6) + '<strong>' + (perks ? 'Nenhum perk cadastrado' : 'Nenhuma vantagem cadastrada') + '</strong>' +
+        '<span>' + (CATALOG.advantages.failed ? 'Não foi possível carregar a lista dos livros.' : isMestre() ? 'Crie ' + (perks ? 'um com <b>Novo perk</b>' : 'uma com <b>Nova vantagem</b>') + '.' : (perks ? 'Os perks vão' : 'As vantagens vão') + ' aparecer aqui.') + '</span></div>';
       return;
     }
-    el.innerHTML = '<p class="lede" style="padding:24px 0">Nenhuma vantagem corresponde aos filtros aplicados.</p>';
+    el.innerHTML = '<p class="lede" style="padding:24px 0">' + (perks ? 'Nenhum perk' : 'Nenhuma vantagem') + ' corresponde aos filtros aplicados.</p>';
     return;
   }
-  el.innerHTML = '<div class="list-bar"><span class="meta">' + pageCountText(pg, all.length, 'vantagem', 'vantagens') + '</span>' + pagerHtml(pg) + '</div>' +
+  el.innerHTML = '<div class="list-bar"><span class="meta">' + pageCountText(pg, all.length, perks ? 'perk' : 'vantagem', perks ? 'perks' : 'vantagens') + '</span>' + pagerHtml(pg) + '</div>' +
     '<div class="adv-grid">' + pg.items.map(function (a) {
       return '<a class="spell-card adv-card" href="' + advHref(a.id) + '">' +
         '<div class="adv-card-top"><strong>' + esc(a.name) + '</strong><span class="spell-badge ' + advTypeClass(a.type) + '">' + esc(advTypeLabel(a.type)) + '</span></div>' +
@@ -133,18 +147,22 @@ function renderAdvList() {
 /* =====================================================================
    Page: single advantage
    ===================================================================== */
+// The same page under Vantagens (#vantagem~id) or Perks (#perk~id): a perk opened under Vantagens, or the
+// other way round, goes to its own.
 function renderAdvantagePage() {
   loadCatalog('advantages');
-  var a = advById(S.route.advId), ui = S.ui;
+  var a = advById(S.route.advId), ui = S.ui, inPerks = S.route.page === 'perk';
   if (!a) {
-    pageRoot.innerHTML = crumbsHtml('advs') + (W.loaded.advantages
-      ? '<h1>Vantagem não encontrada</h1><p class="lede">Essa vantagem pode ter sido excluída ou o link está incorreto.</p><div><a class="btn" href="#vantagens">Voltar para Vantagens</a></div>'
-      : '<p class="lede">Carregando vantagem…</p>');
+    pageRoot.innerHTML = crumbsHtml(inPerks ? 'perks' : 'advs') + (W.loaded.advantages
+      ? '<h1>' + (inPerks ? 'Perk não encontrado' : 'Vantagem não encontrada') + '</h1><p class="lede">' + (inPerks ? 'Esse perk pode ter sido excluído' : 'Essa vantagem pode ter sido excluída') + ' ou o link está incorreto.</p>' +
+        '<div><a class="btn" href="' + (inPerks ? '#perks">Voltar para Perks' : '#vantagens">Voltar para Vantagens') + '</a></div>'
+      : '<p class="lede">Carregando…</p>');
     return;
   }
+  if (isPerkEntry(a) !== inPerks) { go(advHref(a.id), true); return; }
   var can = isMestre();
-  var head = crumbsHtml('adv:' + a.id) +
-    '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.advantage, 12, 2.4) + ' Vantagem</span>' +
+  var head = crumbsHtml((inPerks ? 'perk:' : 'adv:') + a.id) +
+    '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(inPerks ? ICON.perk : ICON.advantage, 12, 2.4) + (inPerks ? ' Perk' : ' Vantagem') + '</span>' +
     '<span class="spell-badge ' + advTypeClass(a.type) + '">' + esc(advTypeLabel(a.type)) + '</span></div>' +
     '<h1>' + esc(a.name) + '</h1>' + ptNameHtml(a, 'p') + '<p class="lede">' + (a.cost ? esc(a.cost) : 'Custo não informado') + '</p></div>' +
     (can ? '<div class="btn-row">' + (a.catalog && rawHas('advantages', a.id) ? '<button class="btn" type="button" id="restoreAdvBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editAdvBtn">' + svg(ICON.edit, 15) + 'Editar vantagem</button><button class="btn danger" type="button" id="delAdvBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
@@ -167,7 +185,7 @@ function renderAdvantagePage() {
   var dn = $('delAdvNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderAdvantagePage(); };
   var dy = $('delAdvYes'); if (dy) dy.onclick = function () {
     dy.disabled = true;
-    Ops.deleteAdvantage(a).then(function () { toast('Vantagem excluída.'); go('#vantagens', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
+    Ops.deleteAdvantage(a).then(function () { toast(inPerks ? 'Perk excluído.' : 'Vantagem excluída.'); go(inPerks ? '#perks' : '#vantagens', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
   };
   var rb = $('restoreAdvBtn'); if (rb) rb.onclick = function () {
     rb.disabled = true;
@@ -226,7 +244,7 @@ function openAdvantageForm(a) {
     '<div class="field" id="f_aname"><label for="aname">Nome da vantagem</label><input type="text" id="aname" maxlength="100" autocomplete="off" placeholder="Ex.: Combat Reflexes" value="' + val('name') + '"><div class="err" id="err_aname"></div></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
     '<div class="field"><label for="acost">Custo</label><input type="text" id="acost" maxlength="120" placeholder="Ex.: 15 pontos, 5 pontos/nível" value="' + val('cost') + '"></div>' +
-    '<div class="field"><label for="atype">Tipo</label><input type="text" id="atype" list="advTypeList" maxlength="80" placeholder="Ex.: Vantagem, Perk" value="' + (editing ? val('type') : 'Vantagem') + '">' +
+    '<div class="field"><label for="atype">Tipo</label><input type="text" id="atype" list="advTypeList" maxlength="80" placeholder="Ex.: Vantagem, Perk" value="' + (editing ? val('type') : advListPerks() ? 'Perk' : 'Vantagem') + '">' +
     '<datalist id="advTypeList">' + advValues('type').map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist></div></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
     '<div class="field"><label for="abook">Livro</label><input type="text" id="abook" list="advBookList" maxlength="100" placeholder="Ex.: GURPS Basic Set (4ª ed.)" value="' + val('book') + '">' +
@@ -285,7 +303,8 @@ function openAdvantageForm(a) {
       effects: effects, visible: flagVal('avis', a), sharedWith: shareVal('avis', a) }).then(function (id) {
       closeModal(true);
       toast(editing ? 'Vantagem salva.' : 'Vantagem criada.');
-      if (!editing) go(advHref(id));
+      // The new entry is not in the list yet: its page is the one of its type.
+      if (!editing) go(hrefFor((advTypeKey($('atype') ? $('atype').value : '') === 'perk' ? 'perk:' : 'adv:') + id));
     }, function (er) {
       if (!modalOpen) return;
       modalOpen.busy = false; btn.disabled = false; btn.textContent = editing ? 'Salvar vantagem' : 'Criar vantagem'; $('afCancel').disabled = false;

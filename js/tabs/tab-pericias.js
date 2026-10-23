@@ -46,8 +46,10 @@ Ops.saveSkill = function (skill, fields) {
   if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode criar ou editar perícias.' });
   var t = now(), attr = (fields.attribute || '').trim(), diff = (fields.difficulty || '').trim();
   // The type line follows the attribute and difficulty; without them, the entry keeps its own
-  // (a book cross-reference like "see Crewman, p. 185").
-  var type = attr && diff ? attr + '/' + (SKILL_CAT_NAMES[diff] || diff) : (skill && !skill.attribute ? skill.type || '' : '');
+  // (a book cross-reference like "see Crewman, p. 185"). A combat skill's starts with its group
+  // ("Melee; DX/Average": the Combate list takes it, see isCombatSkill).
+  var group = SKILL_COMBAT_GROUPS.some(function (g) { return g[0] === fields.combatGroup; }) ? fields.combatGroup : '';
+  var type = attr && diff ? (group ? group + '; ' : '') + attr + '/' + (SKILL_CAT_NAMES[diff] || diff) : (skill && !skill.attribute ? skill.type || '' : '');
   return W.store.put('skills', skill ? skill.id : null, {
     v: 1,
     name: (fields.name || '').trim(),
@@ -79,7 +81,7 @@ Ops.deleteSkill = function (skill) {
 var skillSearchTimer = 0;
 var SKILL_SEARCH_FIELDS = ['name', 'type', 'defaults', 'description'];
 // Search, filters and page of the list: kept while the site is open (see spellView).
-var skillView = { q: '', attr: '', diff: '', book: '', page: 1 };
+var skillView = { q: '', mine: false, attr: '', diff: '', book: '', page: 1 };
 
 /* =====================================================================
    Page: Perícias (list)
@@ -103,13 +105,14 @@ function renderSkillsPage() {
     diffs.map(function (d) { return '<option value="' + d + '"' + (ui.diff === d ? ' selected' : '') + '>' + esc(SKILL_CAT_LABELS[d]) + '</option>'; }).join('') + '</select></div>' +
     '<div class="field" style="margin:0"><select id="skillBookFilter" aria-label="Filtrar por livro"><option value="">Todos os livros</option>' +
     books.map(function (b) { return '<option value="' + esc(b) + '"' + (ui.book === b ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('') + '</select></div>' +
-    '</div>';
+    mestreOnlyHtml(ui.mine) + '</div>';
   pageRoot.innerHTML = head + toolbar + notice() + '<div id="skillResults"></div>';
 
   var q = $('skillSearch'); if (q) q.oninput = function () { ui.q = q.value; ui.page = 1; clearTimeout(skillSearchTimer); skillSearchTimer = setTimeout(renderSkillList, 150); };
   var af = $('skillAttrFilter'); if (af) af.onchange = function () { ui.attr = af.value; ui.page = 1; renderSkillList(); };
   var df = $('skillDiffFilter'); if (df) df.onchange = function () { ui.diff = df.value; ui.page = 1; renderSkillList(); };
   var bf = $('skillBookFilter'); if (bf) bf.onchange = function () { ui.book = bf.value; ui.page = 1; renderSkillList(); };
+  wireMestreOnly(ui, renderSkillList);
   var nb = $('newSkillBtn'); if (nb) nb.onclick = function () { openSkillForm(null); };
   renderSkillList();
 }
@@ -119,6 +122,7 @@ function filterSkillList() {
     if (ui.attr && s.attribute !== ui.attr) return false;
     if (ui.diff && s.difficulty !== ui.diff) return false;
     if (ui.book && s.book !== ui.book) return false;
+    if (ui.mine && s.catalog) return false;
     return true;
   }), ui.q, function (s) { return searchText(s, SKILL_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }
@@ -244,9 +248,13 @@ function renderSkillPage() {
 /* =====================================================================
    Form: skill (Mestre)
    ===================================================================== */
-function openSkillForm(s) {
+// The groups of the combat skills (the start of their type in the books); '' is a skill out of Combate's list.
+var SKILL_COMBAT_GROUPS = [['', 'Não (perícia comum)'], ['Melee', 'Corpo a corpo'], ['Ranged', 'À distância'], ['General', 'Geral (combate)']];
+function skillCombatGroup(s) { var m = /^(Melee|Ranged|General);/.exec((s && s.type) || ''); return m ? m[1] : ''; }
+// how.combat: made from Regras › Combate (it starts as a combat skill, and its page opens there).
+function openSkillForm(s, how) {
   if (!isMestre()) { toast('Apenas o Mestre pode criar ou editar perícias.', true); return; }
-  var editing = !!s;
+  var editing = !!s, inCombat = !!(how && how.combat), group = editing ? skillCombatGroup(s) : inCombat ? 'Melee' : '';
   function val(k) { return esc(editing ? s[k] || '' : ''); }
   function opts(list, cur, labels, none) {
     return '<option value="">' + none + '</option>' + list.map(function (x) { return '<option value="' + x + '"' + (cur === x ? ' selected' : '') + '>' + esc(labels ? labels[x] : x) + '</option>'; }).join('');
@@ -257,6 +265,8 @@ function openSkillForm(s) {
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
     '<div class="field"><label for="kattr">Atributo</label><select id="kattr">' + opts(SKILL_CAT_ATTRS, editing ? s.attribute : 'IQ', null, '—') + '</select></div>' +
     '<div class="field"><label for="kdiff">Dificuldade</label><select id="kdiff">' + opts(SKILL_CAT_DIFFS, editing ? s.difficulty : 'A', SKILL_CAT_LABELS, '—') + '</select></div></div>' +
+    '<div class="field"><label for="kgroup">Perícia de combate</label><select id="kgroup">' + SKILL_COMBAT_GROUPS.map(function (g) { return '<option value="' + g[0] + '"' + (g[0] === group ? ' selected' : '') + '>' + g[1] + '</option>'; }).join('') + '</select>' +
+    '<div class="hint-text" style="margin:4px 0 0">As de combate aparecem também em Regras › Combate.</div></div>' +
     '<div class="field"><label for="kdef">Padrão (default)</label><input type="text" id="kdef" maxlength="300" placeholder="Ex.: IQ-5 ou Merchant-3" value="' + val('defaults') + '"></div>' +
     '<div class="field"><label for="kpre">Pré-requisitos</label><input type="text" id="kpre" maxlength="300" placeholder="Ex.: Trained by a Master" value="' + val('prerequisites') + '"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + check('kspec', editing && s.specialty, 'Exige especialização') + check('kcine', editing && s.cinematic, 'Cinemática') + '</div>' +
@@ -281,13 +291,13 @@ function openSkillForm(s) {
     if (!n) { $('err_kname').textContent = 'Informe o nome da perícia.'; $('f_kname').classList.add('invalid'); name.focus(); return; }
     modalOpen.busy = true;
     var btn = $('kfSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('kfCancel').disabled = true; $('kfErr').textContent = '';
-    Ops.saveSkill(s, { name: n, attribute: $('kattr').value, difficulty: $('kdiff').value, defaults: $('kdef').value, prerequisites: $('kpre').value,
+    Ops.saveSkill(s, { name: n, attribute: $('kattr').value, difficulty: $('kdiff').value, combatGroup: $('kgroup').value, defaults: $('kdef').value, prerequisites: $('kpre').value,
       specialty: $('kspec').checked, cinematic: $('kcine').checked, book: $('kbook').value, page: $('kpage').value,
       description: $('kdesc').value, modifiers: $('kmod').value,
       visible: flagVal('kvis', s), sharedWith: shareVal('kvis', s) }).then(function (id) {
       closeModal(true);
       toast(editing ? 'Perícia salva.' : 'Perícia criada.');
-      if (!editing) go(skillHref(id));
+      if (!editing) go(inCombat && $('kgroup').value ? combatSkillHref(id) : skillHref(id));
     }, function (er) {
       if (!modalOpen) return;
       modalOpen.busy = false; btn.disabled = false; btn.textContent = editing ? 'Salvar perícia' : 'Criar perícia'; $('kfCancel').disabled = false;

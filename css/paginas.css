@@ -449,9 +449,29 @@ p.pt-name { font-size: 15px; margin: -2px 0 4px; }
 .skill-modal-head { display: flex; flex-direction: column; gap: 6px; }
 .skill-modal-head .lede { margin: 0; }
 .skill-modal .sec-title { margin-bottom: 8px; }
-#skRows, #cuRows, #spRows { display: flex; flex-direction: column; gap: 8px; }
+#skRows, #cuRows, #spRows, #pkRows, #clRows, #lgRows { display: flex; flex-direction: column; gap: 8px; }
+/* Línguas: nome, falada, escrita, nativa, pontos */
+.sk-row.lang { grid-template-columns: minmax(0, 1fr) 140px 140px auto 70px 32px; }
+.sk-row .lg-native { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.sk-row .lg-native input { width: 16px; height: 16px; min-width: 16px; padding: 0; margin: 0; border: 0; border-radius: 0; background: none; accent-color: var(--accent); }
+.gperk-tab thead th:first-child { color: #0ea5e9; }
+.gclass-tab thead th:first-child { color: #f59e0b; }
+.glang-tab thead th:first-child { color: #22c55e; }
+.glang-tab td:nth-child(2), .glang-tab td:nth-child(3) { text-align: left; font-size: 13px; color: var(--muted); }
 /* Ficha › Magia: a escola no lugar do atributo, mais larga */
-.sk-row.sp-row { grid-template-columns: minmax(0, 1fr) 150px 72px 70px 70px 132px 32px; }
+.sk-row.sp-row { grid-template-columns: minmax(0, 1fr) 150px 72px 70px 70px 132px 32px 32px; }
+/* Ficha › Magia: a estrela das favoritas e a tabela Favoritos */
+.sp-name { display: flex; align-items: flex-start; gap: 6px; }
+.sp-fav { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--faint); cursor: pointer; }
+span.sp-fav { cursor: default; }
+.sp-fav:hover { color: #eab308; background: var(--well); }
+.sp-fav:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sp-fav.on { color: #eab308; }
+.sp-fav.on svg { fill: currentColor; }
+.sk-row .sp-fav { width: 32px; height: 32px; }
+.sp-favs-title { display: inline-flex; align-items: center; gap: 6px; }
+.sp-favs-title svg { color: #eab308; }
+.sp-favs-title svg { fill: currentColor; }
 #spRows .sk-row { align-items: start; }
 .sp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .gtab tr.gschool td { background: var(--surface-2); font-weight: 700; color: var(--text); }
@@ -696,6 +716,9 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .sc-f.sc-name { flex: 1 1 220px; }
 /* Adicionar estilo: a busca no catálogo, com a lista filtrada embaixo */
 .sc-f .sk-pick input { width: 100%; box-sizing: border-box; }
+/* Combate: a lista de sugestões do nome de uma linha, larga como as dos outros seletores */
+.sc-row .sk-pick .suggest { min-width: 360px; z-index: 20; }
+.sc-row .sk-pick .suggest span { font-weight: 600; color: var(--text); }
 #scStyleSug { max-height: 320px; }
 .sc-f.sc-base input { width: 150px; }
 .sc-nh { min-width: 92px; font-weight: 700; font-size: 14px; padding: 7px 8px; border-radius: 8px; display: flex; flex-direction: column; }
@@ -1009,6 +1032,11 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .suggest .ab-custom-opt span { color: var(--accent); font-weight: 600; }
 .suggest .ab-custom-opt svg { vertical-align: -2px; margin-right: 4px; }
 .ab-custom .gstat input { width: 100%; box-sizing: border-box; margin-top: 2px; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 6px; color: var(--text); font: inherit; font-size: 13px; }
+.ab-custom .gstat select { width: 100%; box-sizing: border-box; margin-top: 2px; background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 6px; color: var(--text); font: inherit; font-size: 13px; }
+/* Criar Arma, arma personalizada: os ataques digitados */
+.wb-atk-edit td { padding: 4px 6px; }
+.wb-atk-edit input { width: 100%; min-width: 64px; box-sizing: border-box; background: var(--well); border: 1px solid var(--line-2); border-radius: 6px; padding: 5px 6px; color: var(--text); font: inherit; font-size: 13px; }
+.wb-atk-edit input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
 @media (max-width: 760px) { .ab-grid { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .av-sizes { grid-template-columns: 1fr; } }
 
@@ -1030,6 +1058,14 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 
 /* Efeitos das vantagens: editor no formulário da vantagem (Mestre) e a lista na página */
 .modal:has(#advForm) { max-width: 760px; }
+/* Formulário de estilo: cada lista escolhida dos catálogos, em etiquetas */
+.modal:has(#styleForm) { max-width: 640px; }
+.sf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sf-chips:empty { display: none; }
+.sf-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--text); font-size: 13px; }
+.sf-chip button { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
+.sf-chip button:hover { background: var(--well); color: var(--text); }
+.sf-list .sk-pick input { width: 100%; box-sizing: border-box; }
 .fx-box { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .fx-box legend { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 0 6px; }
 #afFx { display: flex; flex-direction: column; gap: 10px; }
@@ -1295,3 +1331,13 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
   box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
 }
 
+
+/* NH: o nível em destaque, o "IQ+1" discreto; um valor calculado abre a conta (ficha-contas.js) */
+.nh-rel { font-size: 11px; font-weight: 500; color: var(--faint); }
+.nh-lvl { font-size: 15px; font-weight: 700; color: inherit; }
+.nh-lvl.none { font-size: 12px; font-weight: 500; color: var(--faint); }
+.gtab .gnh, .sk-nh, .sc-nh { font-weight: 500; }
+.calc-why { text-align: inherit; }
+/* O NH fica como "(IQ+1) 12", sem sublinhado; os outros valores calculados mantêm o pontilhado. */
+.calc-why:has(.nh-lvl) { border-bottom: 0; }
+.calc-why:hover .nh-lvl { color: var(--accent); }

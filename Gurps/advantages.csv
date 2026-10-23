@@ -352,3 +352,695 @@ GURPS Low-Tech;9;Equipment Bond;1 point;Perk;You own a piece of equipment – or
 GURPS Low-Tech;9;Improvised Weapons;1 point;Perk;You’ve practiced fighting with everyday items. Ignore skill penalties (only) when wielding them as described Improvised Weapons under (p. 63). You must specialize by combat skill. Choose Brawling or Karate to use improvised fist loads effectively.
 GURPS Low-Tech;9;Naval Training;1 point;Perk;You’ve trained at fighting on a rocking ship or boat. You may ignore attack and defense penalties for bad footing under those circumstances.
 GURPS Low-Tech;9;Two-Man Pike Training;1 point;Perk;"You’re trained to work with another warrior to move and fight while wielding a large spear or polearm, which must both have Reach 3+. Once you and your companion have taken a Ready maneuver to grasp the weapon, you move and choose maneuvers as a single fighter with these stats: worse (cid:129) The Basic Speed, Move, and Spear skill of the pair. (cid:129) Effective ST equal to the stronger man’s ST plus 1/5 the other man’s ST, rounded down, for the purpose of damage, resisting knockback, etc. (cid:129) Effective HP equal to the higher HP score of the pair plus 1/5 the other man’s HP, rounded down, for the purpose of making or resisting slams. The front man can let go with one hand as a free action, if necessary. He can even draw a one-handed weapon and fight at full skill with that weapon – although the team still moves as a single fighter with the lower Basic Speed and Move, and the pike cannot be used to attack during this time. To resume pike use, the front man must take another Ready maneuver. If either fighter gets separated, he must take a new Ready maneuver to get back on the pike; until then, he’s fighting individually while his partner drags the giant spear. If either fighter lacks this perk, the team cannot combine ST or HP, but still uses the worse Basic Speed and Move, and fights at the lower Spear skill, -2!"
+GURPS Power-Ups 2: Perks;4;Classic Features;1 point;Perk;"Requires specialization.
+
+You have some well-defined set of features in spades. You might be markedly pale or tan, the epitome of blondes or redheads, or a muscleman – or perhaps you have idealized Chinese or Irish or Orcish looks. Whenever you interact with an NPC who fancies those looks – due to a quirk, GM fiat, or a note in a published adventure – you function as one Appearance level higher, cumulative with any specified reaction bonus. For instance, if you’re a Classic Redhead with Average looks, an NPC with the quirk “Prefers redheads (+2 reactions)” would react to you at +2 for his quirk and another +1 because you count as Attractive."
+GURPS Power-Ups 2: Perks;4;Forgettable Face;1 point;Perk;"You blend in. Your face is hard to pick out or remember. You get +1 to Shadowing in crowds, while others have -1 to rolls made to recognize you from a lineup or mug shots – or even to recall meeting you!
+
+You can’t have both Forgettable Face and Distinctive Features (p. B165). Unnatural Features (p. B22), and Appearance above Attractive or below Unattractive, are likewise off-limits, except when this perk is actually an exotic ability."
+GURPS Power-Ups 2: Perks;4;Honest Face;1 point;Perk;You simply look honest, reliable, or generally harmless. This has nothing to do with your reputation among those who know you, or how virtuous you really are! People who don’t know you will tend to pick you as the one to confide in – or not to pick you, if they’re looking for a potential criminal or troublemaker. You won’t be spot-checked by customs agents and the like unless they have another reason to suspect you, or unless they’re truly choosing at random. You have +1 to trained Acting skill for the sole purpose of “acting innocent.”
+GURPS Power-Ups 2: Perks;4;Passing Appearance;1 point;Perk;"Requires specialization.
+
+Regardless of your true ethnicity, race, or sex, your looks never trigger bigoted NPCs’ biases or Intolerance disadvantages (although your words might!). Moreover, if someone like you would normally have a Social Stigma in your setting, you lack that Stigma – and if the Stigma is racial, this perk acts as a small Unusual Background that lets you buy it off at the usual cost.
+
+You must specialize by type of looks. Two common examples:
+
+Androgynous: With minimal effort, you can ensure that you’re mistaken for whatever sex is convenient. Above-average Appearance with the Androgynous modifier (p. B21) means you don’t need this perk.
+
+Passing Complexion: Your ethnicity isn’t readily apparent to onlookers.
+
+At the GM’s discretion, this perk is cinematic or even exotic if there’s no believable way to explain others mistaking your appearance."
+GURPS Power-Ups 2: Perks;4;Photogenic;1 point;Perk;You look great in posed, still photographs. Anyone looking at your picture reacts as if your Appearance were one level higher (if you already have Transcendent looks, you get another +1 to reactions). To look good in moving pictures, buy full-fledged Appearance.
+GURPS Power-Ups 2: Perks;5;Acrobatic Feints;1 point;Perk;You’ve practiced using gymnastics to catch enemies offguard. You may use your Acrobatics skill to feint and may improve the Feint (Acrobatics) technique. The GM may allow similar perks for other noncombat skills: Dancing Feints for Dancing, Sexy Feints for Sex Appeal, and so on.
+GURPS Power-Ups 2: Perks;5;Acrobatic Kicks;1 point;Perk;"You’ve learned to kick as a natural extension of flips, jumps, and spins. Roll against Acrobatics-2 to hit with a kick. Kicking techniques can likewise default to Acrobatics. Acrobatic kicks don’t receive Brawling or Karate damage bonuses, however.
+
+As with Acrobatic Feints, above, other skills may have related perks; e.g., Dancing Kicks for Dancing."
+GURPS Power-Ups 2: Perks;5;Akimbo;1 point;Perk;"Cinematic. Requires specialization.
+
+You’re not restricted by having two hands full of weapons. You can open doors, reload, and so forth without putting anything down. This doesn’t help you fight using a weapon in either hand – take Ambidexterity (p. B39), Dual-Weapon Attack (p. B230), and/or Off-Hand Weapon Training (pp. 16-17) for that. You must specialize by one-handed weapon skill."
+GURPS Power-Ups 2: Perks;5;Armor Familiarity;1 point/level;Perk;"Requires specialization. Comes in levels, each costing 1 point.
+
+You’re accustomed to fighting in armor. This perk comes in levels. Each level lets you ignore -1 in encumbrance penalties to attack or parry with Judo, Karate, or a fencing skill. For instance, two levels mean you have no penalty up to Medium encumbrance, -1 at Heavy, and -2 at Extra-Heavy. You must specialize by skill: Armor Familiarity (Judo), Armor Familiarity (Rapier), etc."
+GURPS Power-Ups 2: Perks;5;Armorer’s Gift;1 point;Perk;"Requires specialization.
+
+You’ve practiced assembly and disassembly drills on a firearm until you can do it in your sleep. Roll against the relevant Armoury, Beam Weapons, Gunner, Guns, or Liquid Projector specialty to accomplish this in record time: 10 seconds for a handgun, 30 for a long arm (e.g., rifle), or 60 for a support weapon (e.g., rocket launcher). Conditions are unimportant – you can do this upside down, blindfolded, underwater, etc. You also get +2 on rolls to clear malfunctions (p. B407). You must specialize by weapon skill."
+GURPS Power-Ups 2: Perks;5;Biting Mastery;1 point;Perk;You’ve learned a highly developed body of effective bites for close-quarters use. You may roll against Karate to attack with a bite and add its damage bonus to biting damage.
+GURPS Power-Ups 2: Perks;5;Clinch;1 point;Perk;"Requires specialization.
+
+You’ve integrated limited grappling moves into your Boxing, Brawling, or Karate skill – choose one. Whenever you grapple a standing opponent’s head, neck, or torso (only), use your striking skill for the attack roll. This is rarely worth the point if you already know a grappling skill!"
+GURPS Power-Ups 2: Perks;5;Combat Vaulting;1 point;Perk;"Cinematic. Requires specialization.
+
+You can use a pole weapon to aid balance and make impressive vaults in combat. To benefit from this perk, you must first take a Ready maneuver to grip your weapon properly. After that, you may either add (Reach - 1) to combat uses of Acrobatics and Jumping, or add Reach to vertical or horizontal Jumping distance – choose each turn. Returning to a fighting grip requires another Ready; learn Form Mastery (below) to make this a free action after a stunt. You must specialize by Reach 2+ pole weapon: Combat Vaulting (Halberd), Combat Vaulting (Long Spear), Combat Vaulting (Quarterstaff), etc."
+GURPS Power-Ups 2: Perks;5;Cotton Stomach;1 point;Perk;"Cinematic.
+
+You’ve learned to catch attackers’ hands and feet using your abdominal muscles (or rolls of fat!). Once per turn, you can attempt a standard unarmed parry against a punch or a kick to your torso, but using your body instead of a limb. Success lets you use a follow-up technique capable of trapping an attacker – e.g., Arm Lock – “hands-free.”
+
+This is a cinematic combat version of Hands-Free (p. 16)."
+GURPS Power-Ups 2: Perks;5;Dirty Fighting;1 point;Perk;You’re talented at fighting dishonestly. You get +1 on success rolls for Dirty Tricks (p. B405) and similar improvised combat deceptions. The GM may extend this bonus to any feint or attack made before combat begins, or the first illegal blow you make under formal tournament conditions, if he feels that it represents a real “sucker punch” rather than a free combat bonus.
+GURPS Power-Ups 2: Perks;5;Drunken Fighting;1 point;Perk;"Cinematic.
+
+You’ve mastered the mythical art of fighting while intoxicated (see pp. B439-440). When you’re tipsy or drunk (p. B428), treat the -1 or -2 to DX as a +1 or +2 bonus in a fight. Penalties to IQ and self-control rolls apply normally!"
+GURPS Power-Ups 2: Perks;5;Dual Ready;1 point;Perk;"Requires specialization.
+
+You can use a single Ready maneuver to draw a weapon with either hand. Specialize by weapon combination in left hand/right hand order; e.g., Dual Ready (Axe/Pick) lets you ready an axe in your left hand and a pick in your right. This is mostly redundant if you can Fast-Draw those weapons – but not every weapon allows Fast-Draw."
+GURPS Power-Ups 2: Perks;5;Exotic Weapon Training;1 point;Perk;"Requires specialization.
+
+Certain weapons have a built-in skill penalty due to their unusual balance relative to other weapons used with the same skill. You’ve trained enough with such a weapon that you no longer suffer this penalty. You must specialize by weapon; e.g., Exotic Weapon Training (Three-Part Staff) to avoid -1 to Two-Handed Flail skill for the three-part staff (see GURPS Martial Arts ).
+
+This is a combat form of Exotic Equipment Training (p. 9)."
+GURPS Power-Ups 2: Perks;5;Focused Fury;1 point;Perk;"Cinematic.
+
+Unlike most fighters, you can combine Mighty Blows (p. B357) with All-Out Attack (Strong), improving its damage bonus to the higher of +2 per die or a flat +3. You can also do this with the Committed Attack (Strong) maneuver from GURPS Martial Arts, raising its damage bonus to the better of +1 per die or a flat +2. Either use costs 1 FP per attack."
+GURPS Power-Ups 2: Perks;5;Form Mastery;1 point;Perk;"Requires specialization.
+
+When using a weapon that works with multiple skills, you must normally specify the skill you’re using once, at the start of your turn. You’ve practiced fluid shifts between forms and can change skills repeatedly, during your turn . For instance, you could start your turn using a spear with the Staff skill, switch to the Spear skill to attack, and then return to Staff for parrying. You must specialize by weapon: Form Mastery (Naginata), Form Mastery (Spear), etc."
+GURPS Power-Ups 2: Perks;6;Grip Mastery;1 point;Perk;"Requires specialization.
+
+Switching between one- and two-handed grips, or a regular grip and the Defensive Grip in GURPS Martial Arts, usually takes a Ready maneuver. You’ve practiced until this has become second nature. You can do either grip change (or both ) as a free action once on your turn, before or after your maneuver. For instance, you could make a one-handed katana cut and end your turn in a two-handed Defensive Grip. Next turn, you could shift to a regular two-handed grip and attack. You must specialize by weapon; e.g., Grip Mastery (Katana)."
+GURPS Power-Ups 2: Perks;6;Ground Guard;1 point;Perk;You know a body of tactics for use when you’re lying faceup, lying face-down, or crawling and your opponent is also in any of those postures. In that situation only, you get +1 in all grappling Contests – pins, chokes, attempts to break free, etc. If your foe knows Ground Guard, too, your bonuses cancel out.
+GURPS Power-Ups 2: Perks;6;Huge Weapons;1 point/level;Perk;"Requires specialization. Comes in levels, each costing 1 point.
+
+You can use weapons that would normally be too large for your SM or ST. There are two specialties:
+
+Huge Weapons (SM): Add +1 to effective SM for the sole purpose of determining what weapons are “oversized” for you.
+
+Huge Weapons (ST): Add +1 to ST for the sole purpose of avoiding penalties for insufficient ST to use weapons. This never affects damage!
+
+You may take either or both twice, for double the benefit. “Big hands” is as likely an explanation as training; thus, this perk isn’t specialized by skill or weapon."
+GURPS Power-Ups 2: Perks;6;Improvised Weapons;1 point;Perk;"Requires specialization.
+
+You’ve practiced fighting with everyday items. These weapons might be improvised for others but they’re familiar to you. Ignore skill penalties (only) when wielding them. You must specialize by combat skill. You can learn Improvised Weapons (Brawling) or Improvised Weapons (Karate) to use improvised fist loads effectively."
+GURPS Power-Ups 2: Perks;6;Iron Body Parts;1 point;Perk;"Cinematic. Requires specialization.
+
+You’ve toughened a body part through exotic exercises. This provides resistance to injury – either a bonus to resist harm from breaks and locks, or DR against strikes – and the right to buy optional abilities. Details depend on the body part, each of which is its own specialty:
+
+Iron Arms: You have +3 to ST and HT rolls to resist injury from Arm Lock, Wrench Arm, and the like. You may optionally purchase DR 1 or 2 (Partial, Arms, -20%; Tough Skin, -40%) [2 or 4] or Striker (Crushing; Limb, Arm, -20%) [4].
+
+Iron Hands‡: You have DR 1 (Partial, Hands, -40%; Tough Skin, -40%) [1]. Once you’ve acquired this perk, you may elect to buy a second level of DR [1] and/or Blunt Claws [3].
+
+Iron Legs: You have +3 to ST and HT rolls to resist injury from Leg Lock, Wrench Leg, and similar techniques, and may optionally acquire DR 1 or 2 (Partial, Legs, -20%; Tough Skin, -40%) [2 or 4].
+
+Iron Neck: You have +3 to ST and HT rolls to resist injury from chokes, strangles, and Neck Snaps, and may optionally buy DR 1 or 2 (Partial, Neck, -50%; Tough Skin, -40%) [1 or 2]."
+GURPS Power-Ups 2: Perks;6;Naval Training;1 point;Perk;You’ve trained at fighting on a rocking ship or boat. You may ignore the -2 to attack and -1 to defend for bad footing under those circumstances.
+GURPS Power-Ups 2: Perks;6;Neck Control;1 point;Perk;"Requires specialization.
+
+You’re adept at striking from the clinch. You must specialize by unarmed striking skill. Whenever you’ve grappled a standing opponent’s head, neck, or torso (only), you get +1 to hit when you strike that foe with your skill."
+GURPS Power-Ups 2: Perks;6;One-Armed Bandit;1 point;Perk;"Cinematic. Requires specialization.
+
+You can operate a lever- or pump-action long arm onehanded and without changing your grip. The gun’s RoF becomes 1. Roll against the appropriate Guns specialty before each shot. Failure wastes your turn; treat it as a Do Nothing maneuver. Critical failure means an immediate roll on the Critical Miss Table (p. B556)! You must specialize by Guns skill."
+GURPS Power-Ups 2: Perks;6;Pants-Positive Safety;1 point;Perk;"Cinematic.
+
+You can carry a loaded, cocked firearm shoved through your waistband without any risk of accidental discharge – even if you leave the safety off!"
+GURPS Power-Ups 2: Perks;6;Peg-Leg Fighting;1 point;Perk;"Cinematic.
+
+Prerequisite: Lame. You’ve developed fighting moves that exploit the lurching gait caused by your Lame disadvantage (p. B141). You suffer the usual effects of Crippled Legs or Missing Legs, but you may sideslip as an alternative to retreating, moving a yard to either side instead of away – for you, staggering off to the side is as effective as retreating! Moreover, your All-Out Attacks are wildly unpredictable and give opponents -1 to defend."
+GURPS Power-Ups 2: Perks;6;Pistol-Fist;1 point;Perk;"Cinematic. Requires specialization.
+
+You can roll against Beam Weapons (Pistol) or Guns (Pistol) – you must specialize – to pistol-whip people, and can parry melee attacks at (firearms skill/2) + 3."
+GURPS Power-Ups 2: Perks;7;Power Grappling;1 point;Perk;You’re adept at applying force precisely when wrestling. Except when rolling to hit or for an active defense, you may opt to shift normally DX-based grappling rolls to ST. Moreover, whenever you make a ST roll that usually enjoys a ST bonus from Sumo Wrestling or Wrestling – e.g., the roll to break free – you may waive your bonus and attempt a ST-based Judo, Sumo Wrestling, or Wrestling roll instead.
+GURPS Power-Ups 2: Perks;7;Quick-Sheathe;1 point;Perk;"Requires specialization.
+
+You’ve practiced holstering or sheathing your weapon quickly. A successful Fast-Draw roll shaves one second off the time needed to stow your weapon, reducing it from two seconds to one in most cases. Specialties match those for Fast-Draw (p. B194): Quick-Sheathe (Knife), Quick-Sheathe (Pistol), etc."
+GURPS Power-Ups 2: Perks;7;Quick-Swap;1 point;Perk;"Requires specialization.
+
+You’ve perfected the art of juggling a one-handed weapon between hands. Shifting a weapon to an empty receiving hand normally demands a Ready maneuver, but becomes a free action with this perk. Swapping two weapons between full hands normally takes two Ready maneuvers, but requires just one with Quick-Swap. You can use this perk once per turn, on your turn.
+
+You must specialize by one-handed weapon skill: Quick-Swap (Pistol), Quick-Swap (Rapier), etc. If two different weapons are involved, you need this perk for both skills."
+GURPS Power-Ups 2: Perks;7;Rapid Retraction;1 point;Perk;"Requires specialization.
+
+You punch or kick so quickly that it’s difficult for opponents to trap your limb. You get +1 on all rolls to avoid such techniques as Arm Lock and Leg Grapple when they follow an enemy parry. You must specialize in Rapid Retraction (Punches) or Rapid Retraction (Kicks). The GM may allow Rapid Retraction (Bites) for nonhumans."
+GURPS Power-Ups 2: Perks;7;Razor Kicks;1 point;Perk;"You can hold a shuriken, straight razor, or tiny knife between your toes while kicking barefoot, enabling your kick to inflict thrust-1 cutting damage, plus bonuses for unarmed combat skill. A special variant is available if you have High-Heeled Heroine (p. 14):
+
+High-Heeled Hurt*: You can kick with high-heeled footwear, dealing thrust-1 large piercing damage, plus unarmed skill bonuses."
+GURPS Power-Ups 2: Perks;7;Reach Mastery;1 point;Perk;"Requires specialization.
+
+Changing Reach with certain long weapons covered by the Kusari, Polearm, Spear, Two-Handed Axe/Mace, Two-Handed Flail, or Whip skill requires a Ready maneuver. You’ve practiced until this has become second nature. You can change Reach as a free action once on your turn, before or after your maneuver. You must specialize by weapon; e.g., Reach Mastery (Glaive)."
+GURPS Power-Ups 2: Perks;7;Sacrificial Parry;1 point;Perk;"Requires specialization.
+
+You’re adept at protecting less-capable or exposed allies. You can sacrifice a parry defense to parry an attack on an ally standing beside you within your weapon’s Reach. You must specialize by melee combat skill."
+GURPS Power-Ups 2: Perks;7;Secret Styles;1 point/level;Perk;"Cinematic. Comes in levels, each costing 1 point.
+
+You can make your fighting moves more effective by shouting out their names before executing them: “Dragon’s Claw,” “Eagle’s Beak,” etc. Doing so before an attack gives your foe -1 to defend against it, while doing this before an active defense gives you +1 to defend. If attacker and defender both do this, the modifiers cancel out. You may use each Secret Style perk just once per battle."
+GURPS Power-Ups 2: Perks;7;Shield-Wall Training;1 point;Perk;You’ve drilled extensively at fighting from behind a shield wall. You can sacrifice your block defense to block an attack on an ally standing beside you. Furthermore, you may ignore the -2 to attack when holding a large shield (p. B547).
+GURPS Power-Ups 2: Perks;7;Shoves and Tackles;1 point;Perk;"Requires specialization.
+
+You’ve trained at using a melee weapon to press and overbear the enemy. Whenever you make an armed shove or slam – whether a shield rush (p. B372) or one of the long-weapon options in GURPS Martial Arts – add a damage bonus similar that which Sumo Wrestling gives unarmed shoves and slams: +1 per die at skill DX+1, or +2 per die at DX+2 or better. You must specialize by Melee Weapon skill."
+GURPS Power-Ups 2: Perks;7;Special Setup;1 point;Perk;"Requires specialization.
+
+Certain techniques require a specific “setup” before execution. You’ve learned an alternative setup. Your specialty must name one technique and spell out the change. For instance, if you can use Arm Lock after a Karate parry instead of after a Judo parry, you have Special Setup (Karate Parry > Arm Lock)."
+GURPS Power-Ups 2: Perks;7;Strongbow;1 point;Perk;"You’ve learned how best to draw a heavy bow. If you know Bow at DX+1, you can shoot a bow of your ST+1 instead of your ST. Bow at DX+2 or better lets you use a bow of your ST+2. You need a strong bow to see range and damage improvements; there’s no effect when shooting a bow of your ST or less.
+
+Similar perks may exist for weapons that require a minimum ST to cock rather than to draw or shoot. For instance:
+
+Crossbow Finesse: You’ve learned to optimize leverage when cocking a crossbow. If you know Crossbow at DX+1, add +1 to ST for the sole purpose of cocking crossbows. If you have it at DX+2 or better, add +2."
+GURPS Power-Ups 2: Perks;7;Style Familiarity;1 point;Perk;"Requires specialization.
+
+Style Familiarity means you’ve studied and/or practiced a fighting style; for the full ramifications, see GURPS Martial Arts. Paying a point to be familiar with a style gives the following benefits:
+
+• You can acquire the style’s combat perks, learn its cinematic skills (provided that you have Trained by a Master or Weapon Master), improve its techniques whenever you have the points, and in some cases buy “optional traits” that are generally off-limits to PCs. For that one style, Style Familiarity serves as a global Unusual Background perk (p. 20) for all of these things.
+
+• You’re familiar with the style’s culture and don’t suffer the -3 for lack of Cultural Familiarity when using such skills as Connoisseur (Weapons), Games, Savoir-Faire (Dojo), or Teaching to interact with co-stylists.
+
+• In most settings, you have the equivalent of a 1-point Claim to Hospitality (p. B41) with a school or an instructor.
+
+• If your opponent has studied one or more styles and you have Style Familiarity with them all, you may reduce the defense penalty from his feints and Deceptive Attacks by -1. You’re aware of his styles’ tricks and tactics!"
+GURPS Power-Ups 2: Perks;8;Sure-Footed;1 point;Perk;"Requires specialization.
+
+You’ve studied low, stable stances for fighting on unfavorable ground. This lets you ignore the -2 to attack and -1 to defend for a specific type of bad footing:
+
+Sure-Footed (Ice): Frozen puddles, lakes, etc. – and waxed floors!
+
+Sure-Footed (Sand): Beach or desert. Sure-Footed (Slippery): Mud, oil, and blood (but not grappling a slippery opponent ).
+
+Sure-Footed (Snow): Snow, loose or packed. Sure-Footed (Uneven): Rocks, corpse piles, etc. Sure-Footed (Water): Water no more than waist-deep. The GM may allow others. See, for example, High-Heeled Heroine (p. 14) and Naval Training (p. 6).
+
+Sure-Footed doesn’t aid DX in general, or Move. For that, buy Terrain Adaptation (p. B93)."
+GURPS Power-Ups 2: Perks;8;Teamwork;1 point;Perk;"Requires specialization.
+
+You’ve practiced fighting in a team. To use Teamwork, everyone in the squad must take a Ready maneuver to “form up.” After that, the entire group acts at the same point in the combat sequence as its slowest member. On the team’s collective turn, each member may choose his actions freely. The sole requirement is that after everyone in the original formation has taken his turn, they’re all still adjacent to one another (in adjoining hexes). If anyone gets separated, the team must form up again – with or without the straggler.
+
+A fighter who’s formed-up may: • Brace a teammate in front of him and within a yard, adding 1/5 (round down) of his ST or HP, as applicable, to his ally’s score when his friend resists a slam (p. B371), executes a shove (p. B372), or suffers knockback (p. B378). This is a free action.
+
+• Feint and transfer the benefits to another teammate who can reach the same foe.
+
+• Ignore the -2 to attack enemies in close combat with teammates (p. B392).
+
+• Sacrifice a parry or a block to defend a teammate behind him from a long weapon or missile that passes within a yard (through his hex).
+
+You must specialize in working with a particular small group (e.g., an adventuring party). Only those with the same specialty can form up and enjoy these benefits."
+GURPS Power-Ups 2: Perks;8;Trademark Move;1 point;Perk;"Requires specialization.
+
+A Trademark Move is a prescription for a full turn’s worth of combat actions. Write down every detail when you buy it; e.g., “All-Out Attack (Strong) using Broadsword, for 2d+3 cutting, thrown as a Rapid Strike with a chop to the neck, at skill 13, followed by a Deceptive slash at the torso giving -2 defenses, at skill 14.” Damage and attack rolls can improve with ST, DX, and skill, but all weapons, maneuvers, combat options, and hit locations remain fixed. In return for committing a point to such a specific move, you’re at +1 on all skill rolls made to execute it exactly as written – no substitutions.
+
+A Trademark Move must be distinctive – no “Attack with Broadsword to torso.” The GM is free to forbid one that isn’t!"
+GURPS Power-Ups 2: Perks;8;Unarmed Parry;1 point;Perk;"Requires specialization.
+
+You’ve adapted armed parrying motions to the empty hand. This lets you use a Melee Weapon parry – unmodified by a weapon’s Parry stat – as your unarmed parry. You’re at -3 against non-thrusting weapons and risk hand injury if you fail; see Parrying Unarmed (p. B376). You must specialize by Melee Weapon skill; Unarmed Parry (Rapier) is most common, and used while wearing a mail glove. If you also want to strike, learn Boxing, Brawling, or Karate instead."
+GURPS Power-Ups 2: Perks;8;Weapon Adaptation;1 point;Perk;"Requires specialization.
+
+You’ve adapted the moves used with one group of melee weapons to another class of weapons. This lets you wield the weapons covered by one weapon skill using a different skill and its techniques, with all of the benefits and drawbacks of that skill, provided the replacement skill defaults to the usual one at no worse than -4 and uses the same number of hands. Each adaptation is a separate perk; e.g., Weapon Adaptation (Shortsword to Smallsword) lets you use the Smallsword skill to fight when equipped with a Shortsword weapon – complete with fencing parries, superior retreats, and encumbrance penalties.
+
+In a cinematic campaign, the GM may permit any adaptation, even Knife to Halberd. He might also allow adaptation of Reach C weapons to unarmed skills – e.g., Knife to Karate – complete with unarmed damage bonuses."
+GURPS Power-Ups 2: Perks;8;Better (Gear);1 point;Perk;"Requires specialization.
+
+You can obtain gear that’s slightly better than run-of-themill items in your world – although still of the prevailing TL. Perhaps you invented the process or bought from a limited production run. You must specialize by narrow category: Better Pistols, Better Powerstones, Better Rapiers, etc.
+
+You must acquire the equipment with starting money or as Signature Gear. The GM determines the benefits. Many GURPS supplements offer options to improve the looks, durability, or weight of gear, and the GM may allow a one-step improvement in a single category (but not for quality – good, fine, etc.). For items with introduction dates, like guns in GURPS High-Tech, you might instead have early access to prototypes. Otherwise, the GM may allow stats commensurate with hardware worth 50% more than what you spent."
+GURPS Power-Ups 2: Perks;8;Cheaper (Gear);1 point;Perk;"Requires specialization.
+
+You can buy one category of gear more cheaply. Explain why: “in” with a dealer, guild membership, belong to a race that favors its own, etc. If you can’t exploit these ties – e.g., you’re buying guns from a Tennessee shop, not Yuri the Russian – you pay full price.
+
+The discount depends on scope: Broad Category (ground vehicles, dwarven goods, guns): 10%.
+
+Large Subcategory (cars, dwarven weapons, rifles): 20%. Small Subcategory (sports cars, dwarven blades, sniper rifles): 30%.
+
+Specific Class (Italian sports cars, dwarven axes, Russian sniper rifles): 40%.
+
+The GM may allow another 10% off if such purchases are hard to set up (e.g., you must journey to the Pixie Lands). Halve the final discount for items worth more than campaign starting money (e.g., spacecraft).
+
+If both Better and Cheaper Gear would apply, you must choose one per acquisition."
+GURPS Power-Ups 2: Perks;9;Doodad;1 point/level;Perk;"Cinematic. Comes in levels, each costing 1 point.
+
+This perk comes in levels. Each instance lets you use one Gizmo (p. B57) per game session – but only to reveal a nearly insignificant item that’s ubiquitous in your setting but that you didn’t say you had. This limits you to things like books of matches, dead rats, packets of gum, pencils, etc."
+GURPS Power-Ups 2: Perks;9;Equipment Bond;1 point;Perk;"Requires specialization.
+
+You own a piece of equipment (e.g., sensor or vehicle) or a kit (tool, medical, etc.) that’s uniquely suited to you. You must acquire it with cash or as Signature Gear. When you use it, you get +1 to the skill associated with that equipment, regardless of the gear’s actual quality. This is cumulative with any bonus inherent to the hardware.
+
+This perk reflects the fact that you’re used to your stuff; in the case of a kit, you might even have assembled the contents. If you lose that particular item, you lose the perk. You can acquire a new Equipment Bond in play, however."
+GURPS Power-Ups 2: Perks;9;Exotic Equipment Training;1 point;Perk;"Requires specialization.
+
+Certain equipment – fancy cameras and musical instruments, experimental jets, etc. – has a built-in skill penalty due to complex controls or unusual balance rather than poor quality. You’ve trained enough that you don’t suffer this penalty. You must specialize by particular piece of hard-to-use gear; e.g., “F-102 jet fighter.” This perk applies whenever you operate any item of that class; it isn’t particular to your personal example.
+
+See Exotic Weapon Training (p. 5) for the combat version."
+GURPS Power-Ups 2: Perks;9;Intuitive Repairman;1 point;Perk;"Requires specialization.
+
+You can maintain something of yours – typically electronics, vehicles, or weapons – without needing formal repair skills. You must specialize by particular item; e.g., “My ’76 Dodge Ram.” Roll against IQ instead of Armoury, Electrician, Electronics Repair, Machinist, or Mechanic to fix or install standard accessories on your equipment. To do custom work or maintain an identical item that isn’t yours, you’ll need actual skills.
+
+This perk is inefficient for two or more pieces of gear that require a single repair skill between them. Such skills are IQ/A, so spending the 2 points on one of them would give IQ level for all purposes."
+GURPS Power-Ups 2: Perks;9;Suit Familiarity;1 point;Perk;"Requires specialization.
+
+You’ve learned to compensate for the limitations of a bulky environment suit and may ignore its DX penalties. The Environment Suit skill (p. B192) still sets an upper limit on effective skill – you just don’t suffer extra DX penalties. You must specialize by Environment Suit skill: Suit Familiarity (Diving Suit), Suit Familiarity (Vacc Suit), etc."
+GURPS Power-Ups 2: Perks;9;Supersuit;1 point;Perk;"Cinematic.
+
+Prerequisite: Superhuman abilities. You have a costume that’s compatible with your superhuman abilities. You won’t damage it by using them, and if your body changes size, form, or substance, it changes with you."
+GURPS Power-Ups 2: Perks;9;Weapon Bond;1 point;Perk;"Requires specialization.
+
+You own a weapon that’s uniquely suited to you. Its quality might be no better than normal, but when you use it, you’re at +1 to effective skill and all techniques based on that skill. This isn’t a supernatural attunement, nor does it require a specially modified weapon; it’s a matter of balance, fit to your hand, and intimate familiarity.
+
+You can have a bond to a weapon of any type or quality. The bond changes neither the weapon nor its price. If you lose the weapon, you lose this perk – although you can buy a new Weapon Bond in play. To avoid such fates, buy the weapon as Signature Gear."
+GURPS Power-Ups 2: Perks;10;Accessory;1 point;Perk;"Requires specialization.
+
+Your body incorporates a useful gadget that provides minor benefits not covered by a specific advantage. You might even be an item of the specified type, built on points; e.g., an intelligent magical harp would list Accessory (Harp) among its perks. The following Accessories are usually acceptable, provided that you’re big enough to contain (or be ) the item:
+
+• Everyday household or office equipment in your setting: Cigarette Lighter, Fan, Flashlight, Laser Pointer, Stereo System, Vacuum Cleaner, etc.
+
+• Specialized tool or electronic device of your personal TL or less. Low-tech options are things like Hammer, Pick, and Shovel. High-tech tools are more interesting. Testing and diagnostic instruments like Dosimeter, pH Meter, and Ultrasound Scanner are valid perks. A Hypo perk can carry a single dose of a drug (bought normally). The Mini Tool Kit, Micromanipulators, and Molecular Manipulators perks let you make trivial repairs on items of the appropriate scale, regardless of the skill needed.
+
+• Kit of basic equipment for a single skill of your personal TL: Cleaning Equipment (for Housekeeping), Climbing Line and Grapnel (Climbing), First Aid Kit (First Aid), Lockpicks (Lockpicking), Medical Gear (Physician), Surgical Instruments (Surgery), etc. If the skill requires a specialty, so does your kit. Equipment good enough to grant a skill bonus cannot be an Accessory.
+
+• Computer. This can run the utility software standard for ordinary desktop or smaller computers in your setting – word processor, spreadsheet, e-mail, games, etc. It can’t run software good enough to grant advantages or skill bonuses, or real-time combat aids like targeting programs. The GM may set a Complexity limit. A suggestion is (SM + TL - 5); e.g., a SM 0 person at TL9 could at most implant a Complexity 4 computer.
+
+• Any of the above for others to use: Biomonitor gives medics +2 to skill rolls to treat you; Terminal lets allies use your Accessory (Computer); Video Display enables you to display images received via your Telecommunication advantage (or stored in your mind, if you have Digital Mind); and Wet Bar is great fun, even if refills get expensive!
+
+• Nanotech that exists in your setting and doesn’t grant effects expressible as a full-fledged advantage.
+
+• One-shot weaponry (e.g., a rocket in a finger) that requires repair skills to reload. A reusable, reloadable weapon requires a full-fledged Weapon Mount (p. B53).
+
+• Vehicle component that doesn’t emulate an attack, defense, ranged sensor, or full-featured communicator: Airlock, Headlights, IFF Transponder, Siren, Tow Cable, etc.
+
+Many Accessory perks ape other exotic perks; e.g., climbing equipment is Climbing Line (below), a fan is Air Jet (below), flashlights and headlights are Illumination (below), a cigarette lighter is Ignition (below), a mirror is Periscope (p. 11), and a shovel is Burrower (below).
+
+The above lists aren’t exhaustive – they’re intended strictly as examples!"
+GURPS Power-Ups 2: Perks;10;Air Jet;1 point;Perk;You can project a constant stream of air strong enough to scatter dust and extinguish candles at two yards. This might be a respiratory feature, a magical gift, or the result of air powers. It has no combat effect.
+GURPS Power-Ups 2: Perks;10;Burrower;1 point;Perk;"You can dig with your body as if equipped with a shovel. See Digging (p. B350) for speed; this is almost certainly slower Tunneling (p. B94)."
+GURPS Power-Ups 2: Perks;10;Climbing Line;1 point;Perk;You can generate a climbing line at will, in the form of a silk thread, spider web, or similar. This gives you improved climbing ability (p. B349) and can also be used with Swinging (p. 16). Buy Binding (p. B40) if you want to entangle foes.
+GURPS Power-Ups 2: Perks;10;Cross-Species Surrogacy;1 point;Perk;"Requires specialization.
+
+Prerequisite: Female. You can carry implanted embryos of certain other species to term. This might only work for closely related species, or it might be more general."
+GURPS Power-Ups 2: Perks;10;Extreme Sexual Dimorphism;1 point;Perk;You have exaggerated primary male or secondary female sexual attributes. This gives +1 to Sex Appeal – but also +1 to others’ attempts to identify you, and -1 to Disguise or Shadowing when trying to remain anonymous .
+GURPS Power-Ups 2: Perks;10;Feathers;1 point;Perk;You have feathers. These prevent sunburn and help shed water, eliminating up to -2 in penalties for being wet – notably for Cold (p. B430).
+GURPS Power-Ups 2: Perks;10;Fur;1 point;Perk;You have fur. This prevents sunburn and serves as an Unusual Background justifying Damage Resistance 1-3 (p. B46), Spines (p. B88), and/or Temperature Tolerance 1-3 (p. B93), depending on the fur. You must buy these other traits separately.
+GURPS Power-Ups 2: Perks;10;Generator;1 point;Perk;You can produce a steady flow of direct current, not unlike a battery. Your maximum sustained power output in watts equals your Basic Lift in pounds before considering any STmodifying advantages or enhancements. For short-term exertions, make a ST roll to perform such feats as turning over a car’s engine.
+GURPS Power-Ups 2: Perks;10;Ignition;1 point;Perk;You can produce a small spark that can light candles, fuses, lanterns, tinder, and other Highly Flammable or Super-Flammable material (p. B433) with a touch. You can inflict 1 point of burning damage by touch, once per object.
+GURPS Power-Ups 2: Perks;10;Illumination;1 point;Perk;You can emit light from your body. This could be due to light powers, a supernatural nimbus, cool flame, or built-in lamps. This is usually equivalent to a flashlight (a narrow 10-yard beam) or a torch (lights a 2-yard radius) – but for vehicles built as characters, it’s as bright as the headlights standard on a vehicle of that type.
+GURPS Power-Ups 2: Perks;11;Immunity to (Specific Hazard);1 point;Perk;"Requires specialization.
+
+As a realistic trait, this means you’re totally immune to an extremely rare or specific metabolic hazard that DR wouldn’t affect; e.g., Immunity to Gas Narcosis.
+
+As a fantasy trait, you – or your race – are immune to the damaging environmental hazards of one specific locale or narrow type. The operative words here are “specific” and “narrow”! Not “Immunity to Fire” or “Immunity to Corrosives,” or even “Immunity to Lava” or “Immunity to Acid,” but things like “Immunity to Mount Doom” (if you’re adapted to one specific volcano) or “Immunity to Swamp Acid” (if your world’s fantasy acid swamps don’t harm you)."
+GURPS Power-Ups 2: Perks;11;Immunity to (Specific Poison);1 point;Perk;"Requires specialization.
+
+You’re totally immune to one specific poison – it simply has no effect on you."
+GURPS Power-Ups 2: Perks;11;Limited Camouflage;1 point;Perk;"Requires specialization.
+
+Your surface (fur, paint job, skin, etc.) blends in with a particular terrain or vegetation type, giving +2 to Camouflage and Stealth when posed still and unclad against a suitable backdrop. For instance, a gargoyle with Limited Camouflage (Stone) would get a bonus next to a rock face (and possibly +2 to Acting to “impersonate” statuary!), while a tiger with Limited Camouflage (Jungle) would be hard to see in his wilderness home."
+GURPS Power-Ups 2: Perks;11;Long Fingers/Thumbs;1 point;Perk;You don’t have Claws (p. B42), but your digits are long enough that when you target the eyes with a barehanded strike or eye gouge, you get the ¥4 wounding modifier for the skull. If you have Talons or Long Talons, you don’t need this perk.
+GURPS Power-Ups 2: Perks;11;No Degeneration in Zero-G;1 point;Perk;"Races that evolved in a gravity field suffer from a slow loss of bone density when they live in microgravity or zero gravity. Without special exercises or treatments, they must roll vs. HT every six months. Failure indicates a loss of one point of ST; critical failure gives Vulnerability (Crushing ¥2) [-30]. This perk grants immunity to these rolls."
+GURPS Power-Ups 2: Perks;11;No Visible Damage;1 point;Perk;"Cinematic.
+
+Prerequisite: Unkillable. Regardless of your injuries, you don’t look wounded until you reach -10¥HP. You can be crippled, but your limbs can’t be amputated and your eyes can’t be put out – crippling injury leaves them in place but nonfunctional."
+GURPS Power-Ups 2: Perks;11;Parthenogenesis;1 point;Perk;"Prerequisite: Female. You can trigger pregnancy by inducing voluntary hormonal changes via biofeedback, or by taking a pill. The fetus is effectively your clone. This is a perk if you can also use sexual reproduction; it’s 0-point feature if you can only reproduce this way."
+GURPS Power-Ups 2: Perks;11;Perfume;1 point;Perk;Your body generates its own natural scent, which most people find pleasing. You have +1 on reaction rolls where a pleasant smell makes a difference.
+GURPS Power-Ups 2: Perks;11;Periscope;1 point;Perk;You’re able to bend or reflect light, either with a material object (making this perk an Accessory) or using a light-control power, so that you can see over obstacles and around corners. This requires continuous Aim maneuvers, and you can’t see directly in front of you while doing so.
+GURPS Power-Ups 2: Perks;11;Pressure-Tolerant Lungs;1 point;Perk;"Requires specialization.
+
+Your lungs and other organs can handle a wider range of atmospheric pressures than an ordinary human’s. Add either thin or dense atmospheres to the range of pressures you can breathe without penalty, and shift the penalties for thinner or denser atmospheres, respectively, by one class; see Atmospheric Pressure (p. B429)."
+GURPS Power-Ups 2: Perks;12;Racial Gifts;1 point;Perk;"Requires specialization.
+
+This is strictly a racial perk. You can buy a specific set of exotic and/or supernatural advantages that are allowed but not mandatory for your race, but off-limits for most other races in your setting. For instance, if you belong to a demonic species that’s superficially human but sometimes has Claws, Innate Attacks, Strikers, and/or Teeth, then your race might have “Demonic Gifts.”
+
+The GM lists the optional advantages and decides whether you can buy them in play. He might waive this perk for a race whose extra options aren’t all that remarkable – or require one perk per advantage for powerful, rare abilities."
+GURPS Power-Ups 2: Perks;12;Reproductive Control;1 point;Perk;"Requires specialization.
+
+Prerequisite: Female. This perk comes in two versions:
+
+Fertility Control: You can control your fertility. Adjusting hormone levels takes about a day.
+
+Reabsorption: You can absorb an early fetus back into the womb. Make a Will roll to cancel the pregnancy."
+GURPS Power-Ups 2: Perks;12;Rinse;1 point;Perk;"You can moisten the exterior of your body at will, becoming damp enough to negate ongoing damage due to Cyclic (pp. B103-104) contact effects. You can extinguish flame if you’re on fire, flush away acid or poison, and so on. Each use costs 1 FP that you can only recover if you have access to water; see Dehydration (p. B426)."
+GURPS Power-Ups 2: Perks;12;Sanitized Metabolism;1 point;Perk;You’re totally clean. Your body produces minimal, sanitized waste products, and you never suffer from bad breath, excessive perspiration, or unsightly skin problems. This gives -1 to attempts to track you by scent and +1 to reaction rolls in close confines (cramped spaceships, submarines, elevators, etc.).
+GURPS Power-Ups 2: Perks;12;Scales;1 point;Perk;You have scales. This prevents sunburn and serves as an Unusual Background for Damage Resistance 1-5 (p. B46), which you must buy separately.
+GURPS Power-Ups 2: Perks;12;Striking Surface;1 point;Perk;"Prerequisite: Damage Resistance 3+ without Flexible, Force Field, or Tough Skin.
+
+You have a hard body surface that increases barehanded damage. Your punch counts as having brass knuckles and your kick works as if wearing heavy boots. This gives +1 to damage. If you can’t turn this off, there are no additional effects; if you can switch it off and on, your perk is hidden when not in use but you suffer Bad Grip 3 while using it (such control usually exists for a reason!)."
+GURPS Power-Ups 2: Perks;12;Accent;1 point;Perk;"Requires specialization.
+
+Prerequisite: Relevant Language at Broken or better spoken comprehension.
+
+You’ve practiced an accent for a particular Language advantage until it has become second nature. You never have to make the rolls under Accents (p. B24) for this. If your comprehension is Broken or Accented, though, you’ll come across as uneducated, giving -3 or -1, respectively, to impersonate a sophisticated or intellectual individual (but +1 to impersonate a rube!)."
+GURPS Power-Ups 2: Perks;12;Autotrance;1 point;Perk;You can enter a trance at will. This requires one minute of complete concentration and a successful Will roll, at -1 per additional attempt per hour. This trance gives +2 on rolls to contact spirits, etc. You must make a Will roll to break your trance. If you fail, you can try again every five minutes.
+GURPS Power-Ups 2: Perks;12;Call of the Wild;1 point;Perk;"Cinematic.
+
+Prerequisite: Animal Empathy. Your attunement with beasts lets you ignore up to -5 in penalties when you use skills such as Animal Handling on frightened, man-eating, mutant, or wild animals. If there’s a real animal in there, you can treat it moreor-less like a tame one, provided that you have appropriate skills."
+GURPS Power-Ups 2: Perks;12;Controllable Disadvantage (Mental);1 point;Perk;"Requires specialization.
+
+You can inflict one specific mental disadvantage on yourself by making a Will roll, at -1 per additional attempt per hour. Valid options include Callous (benefits Intimidation), Easy to Read (helpful for convincing others you’re telling the truth when you really are), Flashbacks (to fake insanity), and Split Personality (for impersonations that can get past a psych evaluation). Berserk is off-limits – it already includes similar rules of its own."
+GURPS Power-Ups 2: Perks;13;Eye for Distance;1 point;Perk;"You can accurately gauge distances within line of sight without using tools. Error is around 5%; where relevant, the GM will secretly roll 2d-7 for the percentage, keeping negative numbers. The only combat effect is that you don’t need a rangefinder to benefit from rules that require one."
+GURPS Power-Ups 2: Perks;13;Focused (Task);1 point;Perk;"Requires specialization.
+
+You get +3 on success rolls for a specific, lengthy noncombat task – at the cost of -5 to rolls for everything else, much as if you had Single-Minded (p. B85). Focused is only allowed for tasks where both modifiers regularly matter; e.g., Focused Driver might give +3 to Driving but -5 to Area Knowledge and Navigation, and Perception rolls to notice road signs. The GM’s word is final."
+GURPS Power-Ups 2: Perks;13;Good with (Animal);1 point;Perk;"Requires specialization.
+
+You have the Animal Empathy advantage (p. B40) for one specific species – dogs, horses, whatever."
+GURPS Power-Ups 2: Perks;13;Good with (Social Group);1 point;Perk;"Requires specialization.
+
+You enjoy the Sensitivity advantage (p. B51) – an IQ-3 roll to sense intent and +1 to Detect Lies and Psychology – when dealing with one specific group: kids (anyone under 12 years of age), old folks (adults over 65), wizards, etc. “Men” and “women” are much too broad for this purpose!"
+GURPS Power-Ups 2: Perks;13;Headhunter;1 point;Perk;You’re good at finding potential employees. You get +2 to the rolls under Finding a Hireling (p. B517). This is only useful in campaigns where the PCs regularly need to recruit troops, staff their base, etc.
+GURPS Power-Ups 2: Perks;13;Job Hunter;1 point;Perk;This is like Headhunter, above, but the shoe is on the other foot: you’re an expert at finding work. You get +2 to the rolls under Finding a Job (p. B518). This only matters if the GM makes jobs and income a meaningful part of the campaign.
+GURPS Power-Ups 2: Perks;13;One-Way Fluency;1 point;Perk;"Requires specialization.
+
+For Languages (pp. B23-25), spoken comprehension by default specifies one’s ability to speak and understand a tongue. It’s common to be able to understand but not speak a language, however – and rarely, someone can speak by making sounds without knowing their meaning. Either is a perk, written as, for instance, One-Way Fluency (Understands French) or One-Way Fluency (Speaks French). Effective comprehension is Accented – or Native, if you have Language Talent – and no IQ roll is required."
+GURPS Power-Ups 2: Perks;13;One-Way Literacy;1 point;Perk;"Requires specialization.
+
+This works like One-Way Fluency, above, but for written language. For instance, One-Way Literacy (Reads French) would let you read French at the Accented level but not write it, while One-Way Literacy (Writes French) would do just the opposite."
+GURPS Power-Ups 2: Perks;13;Patience of Job;1 point;Perk;"You can withstand physical nuisances with ease; for instance, you could spend hours in a mosquito-infested swamp without scratching or swatting. You may ignore up to -2 in penalties for such distractions on long tasks (at least an hour); e.g., on Stealth rolls when crawling through 100 yards of nettles and biting ants."
+GURPS Power-Ups 2: Perks;13;Rule of 15;1 point;Perk;"A Fright Check normally fails on any roll of 14+, regardless of modified Will; see The Rule of 14 (p. B360). This perk means you only fail on 15+. Will and bonuses (like Fearlessness) must total 14+ for this to be useful, of course!"
+GURPS Power-Ups 2: Perks;13;Acceleration Tolerance;1 point;Perk;You get +3 to HT rolls to resist the effects of high acceleration (p. B434).
+GURPS Power-Ups 2: Perks;13;Alcohol Tolerance;1 point;Perk;Your body metabolizes alcohol with remarkable efficiency. You can drink steadily for an indefinite period with no major detrimental effects. Binging affects you as it would anyone else. You get +2 on all HT rolls related to drinking.
+GURPS Power-Ups 2: Perks;13;Carrier;1 point;Perk;"Requires specialization.
+
+You have a non-disadvantageous form of Social Disease (p. B155) where the ailment – choose one – doesn’t visibly afflict you. This lets you undetectably infect others via social contact (see Contagion, p. B443), which can be useful for long-term biological warfare. Short-term, diseases inflicted this way cause nothing worse than itching and scabs; really bad effects take months or years. For a plague speedy and deadly enough for tactical use, buy Innate Attack and add Cyclic."
+GURPS Power-Ups 2: Perks;13;Compact Frame;1 point;Perk;You’re a natural phone booth-stuffer! You can tuck in limbs and ball yourself up to reduce effective SM by one. Doing so takes 10 seconds – and while you’re crunched up, you can’t do anything besides talk. You get +1 to Escape when the goal is to fit through a narrow space.
+GURPS Power-Ups 2: Perks;13;Controllable Disadvantage (Physical);1 point;Perk;"Requires specialization.
+
+You can inflict one specific physical disadvantage on yourself by making a HT roll, at -1 per additional attempt per hour. This must be an easily faked problem: breaking wind at will to get Bad Smell, talking strangely to emulate Disturbing Voice, dislocating your shoulder to simulate the effects of One Arm, and so on. Epilepsy is off-limits – it already includes similar mechanics."
+GURPS Power-Ups 2: Perks;13;Deep Sleeper;1 point;Perk;"You can fall asleep in all but the worst conditions, and can sleep through most disturbances. You never suffer any ill effects due to the quality of your sleep. You get an IQ roll to notice disturbances and awaken, just like anyone else; success is automatic if you have Combat Reflexes."
+GURPS Power-Ups 2: Perks;14;Extended Hearing;1 point;Perk;"Requires specialization.
+
+Extended Hearing (High) lets you hear – barely – the sounds covered by Ultrahearing (p. B94). Extended Hearing (Low) does the same for Subsonic Hearing (p. B89). To use either, the environment must be silent in the normal audible range and you must make an active Hearing roll at -3. This perk never gives skill bonuses."
+GURPS Power-Ups 2: Perks;14;Immunity to (Specific Disease);1 point;Perk;"Requires specialization.
+
+You’re totally immune to one specific disease that exists in the campaign setting. At high TLs, vaccines sometimes grant this perk."
+GURPS Power-Ups 2: Perks;14;Low Rejection Threshold;1 point;Perk;Your body can easily accept tissue transplants, cybernetic parts, undead limbs, and so on. You’re exempt from rolls to see whether they “take.” This is only worth the point in a setting where such implants are available to PCs and carry the risk of rejection.
+GURPS Power-Ups 2: Perks;14;Natural Pockets;1 point;Perk;You have overlapping fat rolls, a hollow left by surgery, or an unusually flexible body orifice that enables you to conceal things. This works like one level of Payload (p. B74), with whatever inconveniences the GM deems suit your ability. Some interpretations have the potential to offend, and the GM is free to forbid them – but people have trained their bodies this way.
+GURPS Power-Ups 2: Perks;14;No Hangover;1 point;Perk;No matter how much you drink, you will never get a hangover. This doesn’t mitigate the effects of intoxication – it just eliminates the unpleasant aftereffects.
+GURPS Power-Ups 2: Perks;14;Penetrating Voice;1 point;Perk;You can really make yourself heard! In situations where you want to be heard over noise, others get +3 to their Hearing roll. At the GM’s option, you get +1 to Intimidation rolls if you surprise someone by yelling or roaring.
+GURPS Power-Ups 2: Perks;14;Resistant to (Specific Poison);1 point;Perk;"Requires specialization.
+
+You have +3 to resist one specific poison. You might be able to acquire this through slow acclimatization. This perk is less effective than Immunity to (Specific Poison) (p. 11), but available to anyone."
+GURPS Power-Ups 2: Perks;14;Robust (Sense);1 point;Perk;"Requires specialization.
+
+One of your senses is less prone to overloading, much as if you had a weaker version of Protected Sense (p. B78). You must specialize by sense. For instance:
+
+Robust Hearing: You may ignore -1 in Hearing penalties due to noise and get +1 to HT rolls to resist deafening effects (flash-bang grenades, Thunderclap spells, etc.).
+
+Robust Vision: You may ignore -1 in Vision penalties due to bright light and get +1 to HT rolls to resist dazzling effects (flash-bang grenades, Flash spells, etc.)."
+GURPS Power-Ups 2: Perks;14;Sea Legs;1 point;Perk;You have +3 to resist Seasickness (p. B436) and any similar form of motion sickness.
+GURPS Power-Ups 2: Perks;14;Clothing Shticks;1 point;Perk;"Requires specialization.
+
+Some heroes, especially superheroes, are able to go adventuring in the craziest getups without suffering the logical bad effects. Each particular knack for improbable couture is its own Shtick. Any such perk might give +1 to Influence and/or reaction rolls in a social situation where its sudden revelation would impress – or +2 if, in the GM’s opinion, it’s exceptionally dramatic and relevant to the scene.
+
+Examples: Cloaked*: You can wear a cape, a cloak, or a katana-length trench coat and yet move about unimpeded. This garment never gets tangled in doors or machinery, and foes can’t tug on it in combat. Your perk doesn’t stop you from entangling them in a cloak, but you must buy the Cloak skill (p. B184) to do so. The most suitable setup for a reaction bonus is a dramatic entrance or exit.
+
+High-Heeled Heroine*: You can run, climb, fight, and so on while wearing high heels without suffering any special penalty for bad footing. In effect, you have a form of Sure-Footed (p. 8). This can give a reaction or Sex Appeal bonus in situations best left to the imagination.
+
+Looks Good in Uniform: This is a highly specialized version of Fashion Sense (p. B21). When wearing your legitimate service uniform (military, police, etc.) for official purposes, others react to you at +1. You can’t dress others or claim a bonus under any other circumstances.
+
+Masked*: You can put on a mask that covers only your eyes and nose – and become unrecognizable! Your best friends won’t believe your two identities are the same person. The GM may allow similar perks that work by putting on or taking off glasses, changing hairstyles, or wearing a wig.
+
+Sartorial Integrity*: Your clothes never get torn or dirty – even after combat, swimming the Nile, etc.
+
+Skintight*: You can wear a costume or clothing under another outfit without bulges and without anything showing, allowing you to perform quick costume changes."
+GURPS Power-Ups 2: Perks;15;Combat Shticks;1 point;Perk;"Requires specialization.
+
+Some warriors practice moves that are mostly for show but aren’t entirely worthless. A few generic examples appear below. Be sure to customize them with nifty names! All require specialization by combat skill.
+
+Flourish: On the turn after you knock down or kill a foe, you may opt to perform an impressive flourish. This takes a full Ready maneuver and requires a skill roll. Success lets you use Intimidation with the maximum +4 for “displays of strength.”
+
+Follow-Through: On any turn during which you knock down or kill an enemy using the chosen skill, make an immediate skill roll. Success lets you try Intimidation (p. B202) against any remaining foes as a free action that turn. A good example here is chiburi: flicking blood off a sword blade, practiced by Japanese swordsmen.
+
+Twirl: Twirling a handgun, sword, or other weapon lets you present it hilt- or butt-first as if to surrender it . . . and then make a skill roll to ready it instantly, with time left to attack. Failure means dropping the weapon, accidentally discharging a firearm, etc."
+GURPS Power-Ups 2: Perks;15;Influence Shticks;1 point;Perk;"Requires specialization.
+
+You have a trademark pose, stare, or walk that lets you use a specific Influence skill – Diplomacy, Fast-Talk, Intimidation, Savoir-Faire, Sex Appeal, or Streetwise – without conversation, contact, or appreciable time. This only works in person ( not via phone, telepathy, etc.) and still requires an Influence roll (p. B359), but it enables you to act quickly and silently (thus, Voice modifiers never apply).
+
+Examples: Convincing Nod: Whenever you need to get into a place where you don’t belong, you can nod as though you recognize those watching (e.g., security guards) to fake your way past. This demands a standard Influence roll with Fast-Talk.
+
+Disarming Smile: In any sticky situation where Diplomacy is a possible solution, you can just smile and shrug by way of an Influence roll.
+
+Fearsome Stare: You can use Intimidation without saying a word: simply cross your arms and glower. This conveniently leaves no evidence of a weapon, recorded threats, bruises . . .
+
+Gangster Swagger: Your manner of walking is a full-time use of Streetwise. The GM will make a secret Influence roll whenever this might impress low-life enough that they don’t randomly pick you to hassle.
+
+Haughty Sneer: You can make doormen at exclusive hotels, salesmen at expensive shops, bank managers, and so on back off merely by peering down your nose and making an Influence roll with Savoir-Faire (High Society).
+
+Sexy Pose: You can use Sex Appeal simply by thrusting your chest out, cocking your hips, licking your lips, etc. This is useful when you can see but not safely approach your mark; success can convince him to approach you."
+GURPS Power-Ups 2: Perks;15;Standard Operating Procedure;1 point;Perk;"Requires specialization.
+
+Standard Operating Procedure exempts you from having to tell the GM that your PC is doing something that’s secondnature for him. You always get the benefit of the doubt. Things like reloading and refueling “off screen” are valid, but you must have had access to sufficient ammo, fuel, and/or power at some point – and the GM is free to debit your ammo supply or bank account whenever this perk does its magic.
+
+Examples: Back to the Wall: You always sit with your back to the wall and keep a minimum of one piece of improvised cover (e.g., a table) between you and the exits. The GM must warn you when you can’t do all this!
+
+Energizer*: Your battery-operated gear gets fresh cells or a recharge between action scenes.
+
+Full Tank*: Your vehicles are always fully fueled when you arrive at an action scene. If you operate an armed vehicle, it’s also reloaded.
+
+Last Man Out: Whenever there’s any doubt whether you locked the car doors, closed the vault, turned off the stove, etc., there is no doubt – you did it.
+
+Off-Screen Reload*: Your weapons that use ammunition or power cells are reloaded between action scenes.
+
+On Alert: You always have full kit packed and ready to go in the event of emergency. This doesn’t mean you react faster (get Combat Reflexes for that) – it just means always being able to scoop up all your gear without wasting valuable time."
+GURPS Power-Ups 2: Perks;15;Attribute Substitution;1 point;Perk;"Requires specialization.
+
+You’ve trained a skill to use an attribute other than its usual controlling score. The GM decides what to allow, and the change should make sense. Some guidelines:
+
+DX-based skills with a complex technological aspect can shift to IQ (“Battlesuit based on IQ”), while those that involve fine work or hand-eye coordination can move to Per (“Driving based on Per”).
+
+IQ-based skills for small tools can go over to DX (“Lockpicking based on DX”), those used to find or follow things can move to Per (“Shadowing based on Per”), and those with a supernatural angle can shift to Will (“Ritual Magic based on Will”).
+
+HT-based skills for movement can shift to DX (“Swimming based on DX”), those with a social side can move to IQ (“Sex Appeal based on IQ”), and those for cinematic combat effects or resistance can become Will-based (“Body Control based on Will”).
+
+Will-based skills can generally drift to IQ (“Exorcism based in IQ”), and those with cinematic combat effects or that aid resistance can shift to HT (“Power Blow based on HT”).
+
+Per-based skills involving hand-eye coordination or fine manipulation can move to DX (“Search based on DX”), and most Per-based skills can shift to IQ (“Detect Lies based on IQ”).
+
+This affects routine skill use but doesn’t override a GM- or scenario-mandated roll based on a specific attribute (see p. B172). For instance, if an adventure calls for a Per-based Lockpicking roll, Attribute Substitution (Lockpicking based on DX) doesn’t let you make a DX-based roll – you have to make a Perbased roll like anybody else.
+
+You must specialize by skill and attribute, as in the examples. Nobody may have more than four Attribute Substitution perks."
+GURPS Power-Ups 2: Perks;16;Background Knowledge;1 point;Perk;"Requires specialization.
+
+You have a background that gives you skill defaults available only to those who grew up or lived in a specific locale, worked in a particular profession, etc. This doesn’t grant the skills, nor does it give defaults for skills that normally have no default for anyone. It merely allows default rolls for things that the GM feels aren’t general knowledge in the game world. For instance, any New Yorker could try Area Knowledge, Current Affairs (Regional), Geography (Regional), History, or Law (Municipal) for New York at default. If he wanted the same benefits for Chicago, that would be a perk.
+
+The GM should give the benefits of appropriate Background Knowledge for free to any PC with a decent backstory. This perk exists to let players simply declare they have some hardto-justify history without explanation, or play PCs with implausibly broad past experiences."
+GURPS Power-Ups 2: Perks;16;Cross-Trained;1 point;Perk;"Cinematic. Requires specialization.
+
+You’re familiar with all makes and models of equipment used with a particular skill. If the skill has specialties, you must also name the specialty. When working within your area, you never suffer unfamiliarity penalties (see Familiarity, p. B169).
+
+This perk is cinematic, but a version that covers a large-butfinite list is realistic for spies and soldiers who receive lavish training. The GM decides what constitutes such training and which models it covers.
+
+Cross-Trained is most common for Driving and Guns, but is available for any skill that uses equipment."
+GURPS Power-Ups 2: Perks;16;Cutting-Edge Training;1 point/level;Perk;"Requires specialization. Comes in levels, each costing 1 point.
+
+You’ve received instruction in one specific technological skill above your personal TL; e.g., a TL7 test pilot might have Cutting-Edge Training (Piloting/TL8 (Aerospace)). At the GM’s option, this perk may come with minor social connections, such as a trivial Claim to Hospitality among participants in the same training program. It often has Duty or another social obligation as a prerequisite.
+
+This perk is cheaper than High TL (p. B23) for those with fewer than five specialties. If someone manages to get Cutting-Edge Training in five areas, the GM may opt to let him replace his five perks with High TL 1 for the same points!
+
+In a setting that spans many TLs, the GM may treat this perk as having levels, one per TL. In that case, our test pilot would pay 2 points for Cutting-Edge Training 2 (Piloting/TL9 (Aerospace))."
+GURPS Power-Ups 2: Perks;16;Dabbler;1 point;Perk;"Requires specialization.
+
+You know a little about a set of related skills – but not enough to have a full point in any of them. Select eight skills (which must have defaults) that you can use at +1 to the usual attribute default. You can trade in two choices for one at default+2, or four choices for one at default+3. If a skill has an unusually generous default, you can’t raise it to the level that actual points in the skill would buy.
+
+Example: Mr. Mack the science teacher dabbles in Biology, Chemistry, Mathematics (Applied), and Physics, all of which default to IQ-6. He trades his allowed eight skills at default+1 for four at default+2, and has all four skills at IQ-4.
+
+The selected skills still count as defaults, not as studied skills. You can’t default other skills to the improved defaults and don’t benefit from rules that apply only to people who “know” a skill."
+GURPS Power-Ups 2: Perks;16;Efficient;1 point;Perk;"Requires specialization.
+
+You’ve learned what corners can be cut without causing too many disasters when it comes to a particular skill. This lets you ignore up to -2 for haste; see Time Spent (p. B346). Thus, if a noncombat skill can be hastened, you can safely use it in just 80% of the usual time. You must specialize by skill."
+GURPS Power-Ups 2: Perks;16;Hands-Free;1 point;Perk;"Requires specialization.
+
+You can perform tasks using a body part other than the one a particular skill usually assumes. In most cases, this means a feat that requires a hand but not fine manipulation, performed without using the hands. For instance, Hands-Free (Driving) lets you steer a car with your knees at no penalty.
+
+This perk is allowed for combat skills. In that case, it’s cinematic and a separate perk for each task the skill allows. For examples, see Akimbo (p. 5) and Cotton Stomach (p. 5)."
+GURPS Power-Ups 2: Perks;16;Hyper-Specialization;1 point;Perk;"Requires specialization.
+
+You’re an expert in an area far narrower than Optional Specialties (p. B169) allows. You get +5 to one skill in some specialty so obscure that it takes at least three words to describe and is unlikely to matter more than once in an adventurer’s career; e.g., Hyper-Specialization (Top Quark Mass Models) for Physics, Hyper-Specialization (Trivalent Flu Vaccines) for Bioengineering, or Hyper-Specialization (Trapped-Ion Quantum Computers) for Engineer.
+
+You must specialize by skill and area of expertise. Hyper-Specialization is only possible for IQ-based “knowledge” and “scientific” skills unless the GM makes an exception."
+GURPS Power-Ups 2: Perks;16;No Nuisance Rolls;1 point;Perk;"Cinematic. Requires specialization.
+
+Prerequisite: Attribute or skill at 16+. You’re exempt from skill or attribute rolls to perform one specific background task not directly relevant to such adventuring situations as combat, investigation, and theft. This most often affects “off-screen” rolls against skills used to get from A to B, like Area Knowledge, Driving, and Navigation. Each perk exempts you from one task; this can involve multiple skills, but you must have 16+ in any score for which you want the GM to waive success rolls.
+
+Examples: Swinging: Whether in the city or in a jungle, you can travel above the ground by swinging on vines, ropes, artificial spider webs, or similar. With this perk, you can routinely find new places to attach your lines, or new vines already in place, without having to make repeated skill rolls. You must have Perception or Observation, Acrobatics, and whatever skill you use to cast or shoot your swinging lines at 16+.
+
+Transporter: This perk enables you to get your vehicle and all its passengers and cargo safely through known, friendly or neutral territory without having to make skill rolls. You must have your vehicle operation skill and relevant Navigation specialty – plus Area Knowledge for the area you’re crossing – at 16+."
+GURPS Power-Ups 2: Perks;16;Off-Hand Training;1 point;Perk;"Requires specialization.
+
+You’ve practiced a particular skill enough with your “off” hand that you can ignore the -4 for using that hand (see Handedness, p. B14). This extends to all defenses and techniques based on that skill – including feats of fine manipulation, unlike Hands-Free (above). You must specialize by skill; any skill qualifies, including combat skills, if it has applications that normally use only one hand.
+
+This perk completely replaces the Off-Hand Weapon Training technique on p. B232 (but you can still call it that when buying it for a weapon skill). The Off-Hand Training perk is cheaper than Ambidexterity for those with fewer than five specialties. If someone is dedicated enough to buy five perks, the GM should let him replace these with full-fledged Ambidexterity for the same points!"
+GURPS Power-Ups 2: Perks;17;One-Task Wonder;1 point;Perk;"Requires specialization.
+
+There’s one specific trick you can do with a particular skill . . . without knowing the skill! This can’t be the skill’s primary use, a combat move, or anything done at a penalty. Any other task is acceptable. To perform your trick, roll against the skill’s controlling attribute.
+
+Example: A crook who can always hotwire a car without knowing Mechanic could take OTW (Hotwiring Cars), because that’s a near-trivial use of Mechanic, not a primary application, and not combat-relevant. Mechanic is an IQ-based skill, so he must make an IQ roll for the deed.
+
+For another example, see Intuitive Repairman (p. 9)."
+GURPS Power-Ups 2: Perks;17;Skill Adaptation;1 point;Perk;"Requires specialization.
+
+The tasks and techniques listed for a skill represent its basic “sub-skills.” You know some less-orthodox methods. You can learn techniques that don’t default to a skill as if they did, with the usual default penalties (if a technique’s penalties vary by controlling skill, use the easiest). Alternatively, you can add specific skill applications – like getting a parry based on the skill – which techniques don’t cover. Either must be borrowed from another, related skill.
+
+The GM sets the scope of each specialty. It might be as sweeping as Skill Adaptation (Brawling techniques default to Karate) or as narrow as Skill Adaptation (Alchemy-style elixir analysis is possible with Herb Lore).
+
+Many combat perks are forms of Skill Adaptation. For examples, see Acrobatic Feints (p. 5), Acrobatic Kicks (p. 5), Clinch (p. 5), and Unarmed Parry (p. 8)."
+GURPS Power-Ups 2: Perks;17;Technique Adaptation;1 point;Perk;"Requires specialization.
+
+This perk allows you to adapt a technique you know for one skill to any other skill for which it’s legitimate simply by spending the points – no instruction required. You must specialize by technique. For instance, if you have Technique Adaptation (Feint) and at least one point in Feint (Karate), you can go on to raise Feint (Judo), Feint (Shortsword), and so on whenever you can afford it.
+
+This perk is most common for combat techniques, but isn’t limited to them. It isn’t meaningful in a campaign where the GM doesn’t require training to learn techniques!"
+GURPS Power-Ups 2: Perks;17;Technique Mastery;1 point;Perk;"Requires specialization.
+
+You’ve trained so intensively at a technique that you enjoy a higher maximum level. You must specialize by technique. This must have a normal maximum of full skill or better, which disqualifies techniques that “cannot exceed prerequisite skill- x ,” as well as combat techniques based on active defenses. A skill’s core uses aren’t eligible; e.g., Technique Mastery (Kicking) and Technique Mastery (No-Landing Extraction) are fine for Karate and Piloting, respectively, but Technique Mastery (Punching) and Technique Mastery (Fly Plane) aren’t. If the standard maximum is full skill, yours is skill+4. If the limit is ordinarily greater than skill, yours is two levels higher (e.g., skill+6 with Arm Lock)."
+GURPS Power-Ups 2: Perks;17;Unusual Posture;1 point;Perk;"Requires specialization.
+
+You can perform a specific task with a particular skill from a posture other than the usual one, thereby avoiding posture penalties. This perk only makes sense for skills that would take posture penalties in the first place! Combat skills are the obvious example, but in that case you must specify one combat technique. For instance, Unusual Posture (Karate kick while lying down) eliminates the -4 attack penalty when on the ground for Karate kicks only; to avoid the penalty for all Karate applications, get Ground Fighting (p. B231)."
+GURPS Power-Ups 2: Perks;17;Base;1 point;Perk;"Requires specialization.
+
+You have a physical base of operations separate from any holdings implied by your Status and from property bought with money. This is easily accessible but lacks obvious ties to you. Subtract three from your Status level and consult the table on p. B266 (or your campaign’s equivalent) to determine quality; thus, Base is only useful at Status 1+ in most settings. Use the rules for Secret (p. B152) to establish whether the world can connect you with your Base."
+GURPS Power-Ups 2: Perks;17;Brotherhood;1 point;Perk;"Requires specialization.
+
+One narrow group of potential foes – military unit, monster species, street gang, etc. – doesn’t like you but remains neutral toward you if you stay out of their way. They must know you’re there. Thus, this perk only works if you’re visible and identifiable.
+
+If the perk is mundane, it’s usually the result of being known to the target group. For instance, mobsters might avoid killing the boss’ son, while soldiers probably won’t gun down their old commanding officer.
+
+If the perk is for fantasy monsters, like zombies, the things ignore you as long as you aren’t hostile. Perhaps you simply don’t smell like food!
+
+Members of this group will shove you aside if you get between them and anything or anyone they’re out to attack, break, eat, rob, etc. If you do anything more hostile than get in the way, or refuse to step aside, you become a valid target. Of course, letting them act unhindered may make you an accessory to a crime . . .
+
+Brotherhood guarantees an automatic good reaction in return for your respect. As with all NPCs, some encounters with the affected group may involve predetermined reactions; these override your perk. Supernaturally controlled NPCs may likewise ignore it."
+GURPS Power-Ups 2: Perks;17;Citizenship;1 point;Perk;"Requires specialization.
+
+In settings where nations defend borders and restrict such things as voting rights and property ownership to citizens, each PC is assumed to be a citizen of one particular state, complete with passport, Social Security Number, etc. Each citizenship beyond the first is a perk. This isn’t Cultural Familiarity (p. B23) – you might “inherit” citizenship through a parent without ever encountering the associated culture!"
+GURPS Power-Ups 2: Perks;18;Courtesy Title;1 point/level;Perk;"Requires specialization. Comes in levels, each costing 1 point.
+
+You have an honorary social advantage: Courtesy Rank (p. B29) for Rank, Emeritus Professor for Tenure, Ex-Cop for Legal Enforcement Powers, Honorary Title for Status, and so on. This most often represents a symbolic reward (e.g., “the key to the city”), a purchased title, or credentials deactivated after retirement.
+
+Courtesy Title comes in levels: 1 point per 5 points the full advantage costs. Its only benefits are the legal right to use a fancy title (+1 to reactions per full 5 points) and avoid any skill penalties the GM imposes for trying to impersonate the real McCoy.
+
+If you also have a full-fledged advantage, you can “stack” this perk with it to get your title on paper. For instance, Rank 4 [20] plus Courtesy Rank 2 [2] entitles you to present yourself as having Rank 6, although you only have the authority of Rank 4."
+GURPS Power-Ups 2: Perks;18;Disposable Identity;1 point;Perk;"Requires specialization.
+
+You have a completely reliable Alternate Identity (p. B39) that you can use for one encounter – arms deal, border crossing, etc. Then it’s gone, and your point value drops by a point."
+GURPS Power-Ups 2: Perks;18;Friend;1 point;Perk;"Requires specialization.
+
+You have a 1-point Claim to Hospitality (p. B41) with someone. Name the friend and his place of residence. When you visit him, you’ll have somewhere to stay. He’ll react to requests for aid like any NPC, but at +3. He isn’t a Contact, much less an Ally, and won’t get involved in adventures."
+GURPS Power-Ups 2: Perks;18;License;1 point;Perk;"Requires specialization.
+
+It’s normally assumed that in the course of learning the skill(s) for a regulated activity – Law if you represent others in court, Physician if you practice medicine, Piloting if you fly, etc. – you earn any necessary license. In some settings, though, licenses carry modest social benefits that qualify as perks. The GM should add up the following elements:
+
+• Courtesy Rank [1/level] if the profession has Rank. • Cultural Familiarity [1] if ordinary people have -3 to influence or impersonate those in the profession.
+
+• Debt 1 [-1] if there are professional dues. • Duty (6 or less; Involuntary; Nonhazardous) [-2] if there’s periodic testing of skills.
+
+• Enemy (Small group; Watcher; 6 or less) [-1] if the professional association has an aggressive oversight committee.
+
+• Favor [1] if the licensee gets one legal “bailout” (once used, he’s on probation).
+
+• Independent Income 1 [1] if the profession enjoys cash incentives or tax breaks.
+
+• Quirk-level Code of Honor (Professional) [-1] or Vow [-1] if the profession takes “honor” seriously.
+
+• Trivial Reputation (below) [1] if the profession is wellregarded in some quarters.
+
+A positive total merits a License perk. The actual sum isn’t important – the benefits overlap and are rarely worth more than 1 point all told. What matters is that the License is basically advantageous.
+
+Example: Pilots might get Courtesy Rank 3 (“Captain”) [3]; Debt 1 (Dues) [-1]; Duty (Yearly test) [-2]; and Favor (Lawyer will be provided in the event of serious accident) [1]. “Pilot’s License” is therefore a perk.
+
+License is unnecessary if you’re already buying Status to represent membership in a prestigious profession. A new graduate from med school might need Medical License [1] in some settings, but an established doctor with Status 1 [5] wouldn’t."
+GURPS Power-Ups 2: Perks;18;Office;1 point;Perk;"Requires specialization.
+
+You hold a minor civil office, like dogcatcher or reeve. This isn’t merely Courtesy Title (above) – you possess real authority equivalent to 5 points of Legal Enforcement Powers, Security Clearance, Status, or similar. However, this has such limited scope (e.g., “Authority over dogs in the town of Castle Rock”) that it’s only a perk. A more expensive social advantage or lack of social disadvantages is often a prerequisite, and you may have a Duty."
+GURPS Power-Ups 2: Perks;18;Permit;1 point;Perk;"Requires specialization.
+
+If a piece of gear has a Legality Class (LC) equal to or greater than your setting’s Control Rating (CR), anybody without Social Stigma (Criminal Record) may own it. But if its LC is lower, it requires a permit. A permit is a perk – one per equipment class. For weapons, concealment lowers LC by one; e.g., handguns are LC3 but treated as LC2 for concealed carry, so Concealed Carry Permit is a perk in most modern states, which are CR3+.
+
+Individuals with suitable social advantages – typically Legal Enforcement Powers or Military Rank – don’t need this perk for equipment used “on the job.”
+
+See also Control Rating and Legality Class (p. B507)."
+GURPS Power-Ups 2: Perks;18;Pet;1 point;Perk;"Requires specialization.
+
+You have a small, ordinary pet – cat, ferret, hamster, parrot, etc. This is equivalent to a modest Ally balanced by being a modest Dependent, but don’t bother doing the math. Aside from companionship, a pet grants occasional, minor benefits; e.g., a kitten might hiss at ghosts and give you +1 to reactions from cat fanciers.
+
+Buying an animal as a Pet rather than with cash secures the GM’s promise to do what he can to avoid terrible fates for it provided that you do your best to keep it out of harm’s way. It’s effectively Signature Gear. If you want an attack dog or a shoulder dragon, buy an Ally!"
+GURPS Power-Ups 2: Perks;18;Trivial Reputation;1 point;Perk;"Requires specialization.
+
+Rather than do the detailed calculation under Reputation (pp. B26-28), just treat +1 to reactions from a specialized group of people (e.g., “Women of the Tokugawa Clan”) as a perk."
+GURPS Power-Ups 2: Perks;18;Vehicle;1 point;Perk;"Requires specialization.
+
+You have an ordinary civilian vehicle (no fighting vehicles or spy cars!) separate from anything implied by your Status, and not bought with Signature Gear or money. This is an anonymous-looking backup vehicle that isn’t linked to you. Subtract three from your Status level and consult the table on p. B266 (or your campaign’s equivalent) to determine quality; in most settings, Vehicle is only useful at Status 2+. Use the rules for Secret (p. B152) to resolve whether nosy rivals connect you with your Vehicle."
+GURPS Power-Ups 2: Perks;19;Charms;1 point;Perk;"Requires specialization.
+
+Charms resemble Unusual Training (p. 21) but bestow supernatural, intuitive ( not learned) knowledge. Each Charm waives the spell and Magery prerequisites for one particular spell. You must pay points for the spell like any other IQ/H or IQ/VH skill, and Magery gives its usual bonus. You can’t cast the spell unless you have at least Magery 0 or are in an area with high or better mana.
+
+For divine magic, a Charm waives the need for Power Investiture – such spells don’t have spell prerequisites – and does let you cast the spell. However, you can only choose spells offered by your god."
+GURPS Power-Ups 2: Perks;19;Chi Resistance;1 point;Perk;"Cinematic. Requires specialization.
+
+You can rally your chi to get +3 to resist a specific, hostile chi-based effect. You must specialize by resisted ability, usually a cinematic martial-arts skill. Examples include Chi Resistance (Invisibility Art), Chi Resistance (Kiai), and Chi Resistance (Pressure Points)."
+GURPS Power-Ups 2: Perks;19;Covenant of Rest;1 point;Perk;You’ve promised a god or a spirit that you’ll carry out particular (usually good ) acts in its name. In return, it has vowed to give you a restful death. When you die, it will be impossible to summon, reanimate, or resurrect you – in body or in spirit – unless your benefactor wills it. Attempts to raise you as undead or possess your corpse will simply fail. High-tech medicine can still resuscitate you, however.
+GURPS Power-Ups 2: Perks;19;Dramatic Death;1 point;Perk;"Cinematic.
+
+You’re guaranteed to go out with a bang – a morbid but spectacular Destiny (p. B48). If a roll of the dice indicates that you’ll die for sure from anything but instant death (e.g., execution), roll 1d+1 for the number of seconds you get for a dying action (see Dying Actions, p. B423). During this time, you suffer all effects of injury except collapse due to death or unconsciousness, giving you time to prime grenades, run burning off the cliff, etc. Then you die.
+
+This is worth no points in campaigns where the GM routinely lets everybody do this!"
+GURPS Power-Ups 2: Perks;19;Magical School Familiarity;1 point;Perk;"Requires specialization.
+
+This perk exists only in backgrounds where each wizard must study with a particular academy, guild, or master that teaches a small subset of known spells. Paying a point for familiarity with a school gives these benefits:
+
+• You understand the arcane principles that undergird the school’s spells, and thus can always use measures such as Counterspell and Ward at full skill against any of its spells, even if you don’t know the spell you’re trying to defeat.
+
+• You can acquire the school’s spells by spending earned points in play.
+
+• You’re acquainted with the school’s culture. When dealing with another wizard who has the same perk, neither of you suffers -3 for lack of Cultural Familiarity when making Savoir-Faire rolls, Teaching rolls to pass along the school’s spells, or similar.
+
+• You have the equivalent of a 1-point Claim to Hospitality (p. B41) with an academy, guild, or archmage. This mostly means that you have somewhere to stay while studying.
+
+Similar perks may exist for schools that teach alchemical formulas, rituals, and so on instead of “spells” as such."
+GURPS Power-Ups 2: Perks;19;Named Possession;1 point;Perk;"Requires specialization.
+
+You own a ritually named possession; details depend on the setting, and may involve oaths, spells, or inscriptions, and/or require a fine-quality, holy, or similarly special item (GM’s decision). This perk grants that article the potential for gaining special abilities. It earns character points at the same rate as you when you perform deeds of supernatural significance. Each point can be exchanged for 25 energy points’ worth of enchantments chosen by the GM (optionally increasing the possession’s value as Signature Gear). Use the standard rules for magical enchantment to determine what’s possible – but note that the power involved might be divine, psionic, spiritual, or otherwise nonmagical. You can have multiple perks, but then the Named Possessions evenly split the points they earn."
+GURPS Power-Ups 2: Perks;19;Obscure True Name;1 point;Perk;In settings where names have magical power, having a name unknown to anybody but the gods is a small but potent advantage.
+GURPS Power-Ups 2: Perks;19;Purpose;1 point;Perk;"Cinematic. Requires specialization.
+
+You have a Higher Purpose (p. B59) so inconsequential that “Higher” is pretentious. You get +1 on all success, damage, or reaction rolls made in pursuit of a trivial goal like “Make martinis.” This most often manifests as +1 to reactions from those who share your mania. Gods sometimes grant Purpose perks as backhanded rewards."
+GURPS Power-Ups 2: Perks;19;Rest in Pieces;1 point;Perk;"Thanks to innate holiness or a sacred pact, anything that you, personally, slay can’t be resurrected or reanimated by external means, like Resurrection and Zombie spells. Once it’s down, it’s down for good, and won’t be returning. This doesn’t bypass your victim’s advantages. If he has some form of Injury Tolerance, Regeneration, Supernatural Durability, or Unkillable that would cause him (or part of him) to “get better,” too bad.
+
+In high-magic worlds where the Final Rest spell is common and provides similar benefits, the GM may tone down this perk to avoid undermining magic. It might only spontaneously confer immunity to necromancy that costs up to 20 energy points, spoiling Skull-Spirit, Summon Spirit, and Zombie, but not major spells like Lich, Resurrection, and Wraith. For non-spell effects, use the nearest spell effect to decide."
+GURPS Power-Ups 2: Perks;20;Rule of 17 (Skill);1 point/level;Perk;"Requires specialization. Comes in levels, each costing 1 point.
+
+You’ve practiced overcoming great resistance with a particular resisted supernatural skill: cinematic martial-arts skill, Enthrallment skill, spell, etc. The Rule of 16 (p. B349) kicks in one level later for you, becoming the Rule of 17. You must specialize by skill.
+
+The GM may allow multiple levels of this perk (making it Rule of 18, Rule of 19, etc.), setting the limit at whatever he considers “balanced.”"
+GURPS Power-Ups 2: Perks;20;Spirit Contract;1 point;Perk;"Requires specialization.
+
+GURPS Magic includes a simple black-magic system, which GURPS Thaumatology expands into broader rules for spirit-assisted casting. If the GM uses either, each contract with a suitable spirit is generally a perk. See the relevant rulebook for details."
+GURPS Power-Ups 2: Perks;20;Trivial Destiny;1 point;Perk;"Cinematic. Requires specialization.
+
+You have a very minor Destiny (p. B48). This perk grants you a single critical success when you need it and then disappears, lowering your point value by 1 point. The effect is like paying in advance for Buying Success (p. B347). You receive your critical success even if that would usually cost more than a point in the situation, but the GM – not you – picks when it happens, in light of your Destiny."
+GURPS Power-Ups 2: Perks;20;Extra Option;1 point;Perk;"Requires specialization.
+
+The rules are full of advanced and optional rules that change how the game works in particular situations. Usually, these don’t cost points because they’re campaign options – either everybody uses them or nobody does. However, the GM may allow certain rules that normally aren’t used in the campaign on a PC-by-PC basis. Access to each of these is a perk.
+
+Options that cost FP or character points to exercise are the fairest. For instance, each aspect of Influencing Success Rolls (p. B347) and Extra Effort in Combat (p. B357), as well as Flesh Wounds and TV Action Violence under Cinematic Combat Rules (p. B417), could be an Extra Option perk in a campaign where those rules don’t universally apply.
+
+Rules that inflict penalties are usually fine, too. For example, the GM may not want to use the complicated new hit locations in GURPS Martial Arts – or his campaign might be set before medicine knows about those locations! Then an Extra Option could enable a warrior familiar with one of those locations to target it at the standard penalty. Indeed, many optional rules in Martial Arts could work this way, with access to them becoming attractive special abilities for skilled fighters.
+
+If either kind of rule expands the spectrum of an advantage, cinematic skill, or spell, the GM should require a separate Extra Option perk for each trait that can benefit from the added option. The same goes for cinematic or supernatural rules options available for mundane skills, like the most extreme cinematic rules in Martial Arts: specialization by skill is advisable.
+
+Finally, rules that demand significant time or effort are good candidates. In particular, lengthy, difficult ceremonial magic and enchantment methods from GURPS Magic and GURPS Thaumatology make excellent perks for wizards in campaigns that don’t use those options in general. These perks shouldn’t require specialization by spell, as long setup times and the need for special resources balance potency."
+GURPS Power-Ups 2: Perks;20;Rules Exemption;1 point;Perk;"Requires specialization.
+
+This works identically to Extra Option, above, except that instead of granting access to a specific, beneficial optional rule that generally isn’t used in the campaign, it gives an exemption from a particular, detrimental optional rule that is used in the campaign. For instance, Rules Exemption (Maintaining Skills) would allow a PC with high skill levels to keep them without practice in a campaign that uses Maintaining Skills (p. B294).
+
+As with Extra Option, exemptions that apply in cinematic or supernatural situations should have narrow specialties. For instance, if the GM requires material components for spells in his campaign, the ability to ignore them is a distinct perk for each spell.
+
+For examples of exemptions from the standard rules, see No Nuisance Rolls (p. 16) and Standard Operating Procedure (p. 15)."
+GURPS Power-Ups 2: Perks;20;School, Style, or Template Adaptation;1 point;Perk;"Requires specialization.
+
+In some campaigns, only characters built using a particular character template, trained in a given fighting style, or taught at a specific school can buy certain skills, techniques, and perks. With the GM’s permission, this perk lets you buy such abilities without being from the correct background. You must specialize by school, style, or template."
+GURPS Power-Ups 2: Perks;20;Secret Knowledge;1 point;Perk;"Requires specialization.
+
+You can buy one particular skill that’s possible in your game setting but not taught to entire academies or professions – or possibly to anyone. This usually means Hidden Lore specialties, spells, and ritual magic Paths. If the skill normally isn’t even possible in your world, this perk can’t help (but see Unusual Training, p. 21)."
+GURPS Power-Ups 2: Perks;21;Special Exercises;1 point/level;Perk;"Requires specialization. Comes in levels, each costing 1 point.
+
+You pursue an exercise regimen that grants access to an attribute level or advantage that’s usually cinematic or off-limits for your race. Each trait requires its own perk.
+
+Examples: Attributes: Special Exercises (DX), Special Exercises (IQ), and Special Exercises (HT) come in levels, with each level letting you exceed the racial norm in that score – 20, for a human – by one.
+
+Secondary Characteristics: Special Exercises (Will) and Special Exercises (Per) work much the same way as higher attribute limits, but each level lets you exceed the norm by two. Each level of Special Exercises (Basic Speed) lets you increase Basic Speed by one beyond the normal two levels, while each level of Special Exercises (Basic Move) lets you increase Basic Move by one past the usual three levels. For HP and FP, take Special Exercises (HP can exceed FP by 100%) and (FP can exceed HT by 100%).
+
+Advantages: Special Exercises (DR 1, Ablative), Special Exercises (DR 1, Tough Skin), Special Exercises (Arm ST 1), Special Exercises (Lifting ST 1), and Special Exercises (Striking ST 1) are typical. Each level extends the right to buy one level of the indicated advantage.
+
+The GM should consider limiting humans to two or three levels of any Special Exercises that comes in levels, if he wants them to be remotely believable characters."
+GURPS Power-Ups 2: Perks;21;Unique Technique;1 point;Perk;"Requires specialization.
+
+You can use and improve a technique that’s otherwise forbidden in the campaign. Most often, the GM will let you “buy off” a common skill penalty as a Hard technique in a setting where no technique for that exists. Each exemption requires its own perk.
+
+This is Secret Knowledge (p. 20) for techniques, with the added facet that you can sometimes coin new techniques."
+GURPS Power-Ups 2: Perks;21;Unusual Training;1 point;Perk;"Requires specialization.
+
+With sufficient training, certain cinematic skills and techniques might work in reality. You’ve studied one of these. Unusual Training lets you buy a cinematic capability in a realistic campaign, or without a prerequisite advantage such as Gunslinger, Trained by a Master, or Weapon Master. Since what’s “cinematic” is often not the feat but the ability to perform it unrestricted, the perk might specify a set of “believable” circumstances that must be true to use the skill or technique.
+
+Examples: Unusual Training (Breaking Blow, Only vs. well-braced objects out of combat): Lets you break boards.
+
+Unusual Training (Dual-Weapon Attack, Both attacks must target the same foe): Lets you improve the Dual-Weapon Attack technique for use on one opponent. You still have the full -4 to attack adjacent adversaries simultaneously.
+
+Unusual Training (Musical Influence, Only on tame pets): Lets you be a snake-charmer."

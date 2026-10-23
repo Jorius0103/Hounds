@@ -100,6 +100,10 @@ interface Sheet extends Doc {
   name: string; description?: string; attrs?: SheetAttrs; combat?: SheetCombat; advs?: SheetAdv[]; disadvs?: SheetDisadv[]; quirks?: SheetQuirk[]; reactions?: SheetReaction[]; points?: SheetPoints | null;
   equip?: SheetEquip[]; bodies?: SheetBody[]; packs?: SheetPack[]; homes?: SheetHome[]; armorSets?: ArmorSet[]; customWeapons?: CustomWeapon[]; customShields?: CustomShield[];
   spells?: SheetSpell[];
+  /** Perks e Perícias de Classe da seção Perícias: nome e pontos, como a Familiaridade Cultural. */
+  perks?: { name: string; pts: number }[]; classSkills?: { name: string; pts: number }[];
+  /** Línguas (B23-25): níveis 0 Nenhum a 3 Nativo, falado e escrito; a nativa (uma só) vem de graça em Nativo. */
+  languages?: { name: string; spoken: number; written: number; native: boolean }[];
   /** Só nos aliados: a ficha principal que criou o aliado (fixa; veja a migration 29). O aliado aparece numa aba dela, não nas listas. */
   allyOf?: string | null;
   /** Só nos aliados: o nome da aba, independente de `name` (o nome da ficha do aliado). */
@@ -114,6 +118,8 @@ interface SheetSpell {
   bonusNote?: string;
   /** Entrada de Regras › Magias de onde a magia veio. */
   spellId?: string;
+  /** Favorita: aparece também na tabela Favoritos da aba Magia. */
+  fav?: boolean;
 }
 /** Escudo de Criar Escudo (veja js/tabs/ficha-escudos.js): o escudo do livro (ou digitado) como era ao criar, os ajustes e o resultado. */
 interface CustomShield {

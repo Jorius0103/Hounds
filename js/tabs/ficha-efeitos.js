@@ -280,6 +280,8 @@ function sheetFx(s) {
     });
   }
   advs.forEach(function (x) { add(x, x.levels); });
+  // The perks of Perícias › Perks (the ones still in Vantagens were just read, once by name).
+  sheetPerks(s).forEach(function (p) { add(cleanAdv({ name: p.name, cost: p.pts }), 0); });
   traits.forEach(function (x) { add(x, 0); });
   // Desvantagens: the book's rules (DISADV_BOOK), each name once, with its level as the advantages'.
   dis.forEach(function (x) {

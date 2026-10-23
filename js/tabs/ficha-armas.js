@@ -14,7 +14,9 @@
      taking from) the damage of every attack, the NH with the weapon (on top of the sheet's skill,
      which does not change: weaponNh), the cost ($) and the weight (%); attacks: the book's
      lines with baseDamage (the book's) and damage (adjusted); cost and weight: the results
-     (weaponCalc); equipId: the line of the list that is the weapon (null: it left the list). */
+     (weaponCalc); equipId: the line of the list that is the weapon (null: it left the list).
+   A name not in Regras › Armas can be a custom weapon, as in Criar Armadura and Criar Escudo
+   (baseId null): its data and attacks are typed (WEAPON_CUSTOM_COLS), the damage as the book writes it. */
 var WEAPON_ATTACK_KEYS = ['skill', 'defaults', 'mode', 'reach', 'parry', 'acc', 'range', 'rof', 'shots', 'st', 'bulk', 'rcl', 'notes'];
 
 /* ---------- the calculation ---------- */
@@ -109,7 +111,7 @@ function weaponDmgCell(s, a) {
 }
 function weaponNhCell(s, a, plus) {
   var nh = weaponNh(s, a, plus);
-  return nh ? '<td class="gval' + (plus ? ' bonus' : '') + '" title="' + esc(nh.title) + '">' + nh.v + '</td>' : '<td title="A ficha não tem a perícia nem um padrão dela"><span class="eq-none">—</span></td>';
+  return nh ? '<td class="gval' + (plus ? ' bonus' : '') + '">' + calcBtn(String(nh.v), weaponNhCalc(a.skill || 'Ataque', a.skill, nh), nh.title) + '</td>' : '<td title="A ficha não tem a perícia nem um padrão dela"><span class="eq-none">—</span></td>';
 }
 
 /* ---------- data of the sheet ---------- */
@@ -151,10 +153,17 @@ function weaponBaseOf(w) {
   return { base: { name: w.name, tl: String(w.tl || ''), type: String(w.type || ''), cost: catNum(w.cost) || 0, weight: catNum(w.weight) || 0 }, others: main.others,
     attacks: atk.map(function (a, i) { return cleanWeaponAttack(Object.assign({}, a, { baseDamage: a.damage || '' }, i === 0 && a.mode === 'or' ? { mode: '' } : {})); }) };
 }
-function weaponDraftResult(d) { return weaponCalc(d.base, d.attacks, d.adj.map(cleanWeaponAdj).filter(function (m) { return m.name; })); }
+// The attacks of a custom weapon that have something: the skill or the damage (the typed damage is the book's).
+function weaponCustomAttacks(d) {
+  return d.attacks.filter(function (a) { return String(a.skill || '').trim() || String(a.baseDamage || '').trim(); })
+    .map(function (a) { return cleanWeaponAttack(Object.assign({}, a, { damage: a.baseDamage || '' })); });
+}
+function weaponDraftResult(d) { return weaponCalc(d.base, d.custom ? weaponCustomAttacks(d) : d.attacks, d.adj.map(cleanWeaponAdj).filter(function (m) { return m.name; })); }
 function weaponDraftErrors(d) {
   var out = [];
-  if (!d.base) out.push('Escolha a arma.');
+  if (!d.base) out.push('Escolha a arma (ou digite um nome e use-o como arma personalizada).');
+  else if (d.custom && (!String(d.base.name || '').trim() || d.base.name === '—')) out.push('Dê um nome à arma personalizada.');
+  else if (d.custom && !weaponCustomAttacks(d).length) out.push('Preencha ao menos um ataque da arma personalizada (perícia e dano).');
   if (d.adj.some(function (m) { var c = cleanWeaponAdj(m); return !c.name && (c.dmg || c.nh || c.cost || c.weightPct || c.weightLbs); })) out.push('Dê um nome a cada ajuste com valores.');
   return out;
 }
@@ -190,8 +199,44 @@ Ops.deleteCustomWeapon = function (s, id) {
 };
 
 /* ---------- view ---------- */
+// The fields of a custom weapon's attack, by type: [key, label, example].
+var WEAPON_CUSTOM_COLS = {
+  Melee: [['skill', 'Perícia', 'Broadsword'], ['defaults', 'Padrão', 'DX-5'], ['mode', 'Modo', 'swing'], ['baseDamage', 'Dano', 'sw+1 cut'], ['reach', 'Alcance', '1'],
+    ['parry', 'Aparar', '0'], ['st', 'ST', '10'], ['notes', 'Notas', '']],
+  Ranged: [['skill', 'Perícia', 'Bow'], ['defaults', 'Padrão', 'DX-5'], ['baseDamage', 'Dano', 'thr+2 imp'], ['acc', 'Prec.', '2'], ['range', 'Distância', '×15/×20'],
+    ['rof', 'CdT', '1'], ['shots', 'Tiros', '1(2)'], ['st', 'ST', '10'], ['bulk', 'Volume', '-7'], ['rcl', 'Recuo', ''], ['notes', 'Notas', '']] };
+function weaponBlankAttack() { return { skill: '', defaults: '', mode: '', baseDamage: '', damage: '' }; }
+// A custom weapon: its data and attacks as fields; the cost, weight and attacks with the adjustments and the NH below.
+function weaponCustomBaseHtml(s, d) {
+  var b = d.base, cols = WEAPON_CUSTOM_COLS[b.type === 'Ranged' ? 'Ranged' : 'Melee'];
+  function field(label, input) { return '<div class="gstat"><span>' + label + '</span>' + input + '</div>'; }
+  function inp(k, type, label, ph) {
+    return '<input type="' + type + '" data-wb-base="' + k + '"' + (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : ' maxlength="' + (k === 'name' ? 120 : 20) + '"') +
+      ' placeholder="' + esc(ph || '—') + '" aria-label="' + label + '" value="' + esc(b[k] === 0 && type === 'number' ? '' : b[k] === '—' ? '' : b[k]) + '">';
+  }
+  return '<p class="hint-text" style="margin:0"><b>Arma personalizada</b>: não está em Regras › Armas. Preencha os dados e os ataques; o dano como no livro (sw+1 cut, thr imp, 2d pi), que a ficha converte em dados pela ST.</p>' +
+    '<div class="gurps-derived ab-custom">' + field('Nome', inp('name', 'text', 'Nome da arma')) +
+    field('Tipo', '<select data-wb-base="type" aria-label="Tipo">' + Object.keys(WEAPON_TYPE_LABELS).map(function (t) { return '<option value="' + t + '"' + (b.type === t ? ' selected' : '') + '>' + esc(WEAPON_TYPE_LABELS[t]) + '</option>'; }).join('') + '</select>') +
+    field('TL', inp('tl', 'text', 'TL', 'Ex.: 2')) + field('Custo ($)', inp('cost', 'number', 'Custo')) + field('Peso (lbs)', inp('weight', 'number', 'Peso')) + '</div>' +
+    '<div class="wtab-wrap"><table class="gtab wtab wb-atk-edit"><thead><tr>' + cols.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' +
+    d.attacks.map(function (a, i) {
+      return '<tr>' + cols.map(function (c) {
+        return '<td><input type="text" data-wb-atk="' + i + ':' + c[0] + '" maxlength="' + (c[0] === 'defaults' || c[0] === 'notes' ? 300 : 60) + '" placeholder="' + esc(c[2]) + '" aria-label="' + c[1] + ' do ataque ' + (i + 1) + '" value="' + esc(a[c[0]] || '') + '"></td>';
+      }).join('') + '<td><button class="icon-btn" type="button" data-wb-atkdel="' + i + '" aria-label="Remover o ataque ' + (i + 1) + '" title="Remover"' + (d.attacks.length < 2 ? ' disabled' : '') + '>' + svg(ICON.x, 15, 2.4) + '</button></td></tr>';
+    }).join('') + '</tbody></table></div>' +
+    '<div><button class="btn" type="button" id="wbAtkAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar ataque</button></div>' +
+    '<div id="wbCustomResult">' + weaponCustomResultHtml(s, d) + '</div>';
+}
+function weaponCustomResultHtml(s, d) {
+  var r = weaponDraftResult(d), nhPlus = weaponAdjTotal(d.adj.map(cleanWeaponAdj).filter(function (m) { return m.name; })).nh;
+  return '<div class="gurps-derived">' + gearStat('Custo', esc(eqMoney(r.cost)), r.cost !== d.base.cost ? 'digitado: ' + esc(eqMoney(d.base.cost)) : '') +
+    gearStat('Peso', esc(eqLbs(r.weight)), r.weight !== d.base.weight ? 'digitado: ' + esc(eqLbs(d.base.weight)) : '') + '</div>' +
+    (r.attacks.length ? '<div id="wbAttacks">' + weaponAttacksHtml({ attacks: r.attacks.map(function (a) { var x = weaponDice(a.damage, weaponSt(s)); return Object.assign({}, a, { damage: x !== a.damage ? a.damage + ' = ' + x : a.damage }); }) },
+      function (a) { return weaponNhCell(s, a, nhPlus); }) + '</div>' : '');
+}
 function weaponBaseBoxHtml(s, d) {
-  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha a arma em Regras › Armas: os dados e os ataques dela aparecem aqui.</p>';
+  if (!d.base) return '<p class="hint-text" style="margin:0">Escolha a arma em Regras › Armas: os dados e os ataques dela aparecem aqui. Um nome que não está no catálogo vira uma arma personalizada.</p>';
+  if (d.custom) return weaponCustomBaseHtml(s, d);
   var cat = d.baseId ? weaponById(d.baseId) : null, r = weaponDraftResult(d), nhPlus = weaponAdjTotal(d.adj.map(cleanWeaponAdj).filter(function (m) { return m.name; })).nh;
   return '<div class="gurps-derived">' + gearStat('Arma', esc(d.base.name), cat ? ptNameHtml(cat) || esc(cat.page || '') : 'como gravada') +
     gearStat('Tipo', esc(weaponTypeLabel(d.base.type)), '') + gearStat('Custo', esc(eqMoney(r.cost)), r.cost !== d.base.cost ? 'livro: ' + esc(eqMoney(d.base.cost)) : 'do livro') +
@@ -224,7 +269,7 @@ function sheetWeaponHtml(s, g) {
   var head = '<div class="gurps-head"><h2 class="sec-title">Criar Arma</h2>' + (n ? '<span class="gurps-total">' + plural(n, 'arma', 'armas') + '</span>' : '') +
     (!d ? '<div class="btn-row">' + (can && !gearEditing() ? '<button class="btn primary" type="button" id="wbNew">' + svg(ICON.plus, 15, 2.4) + 'Criar arma</button>' : '') + '</div>' : '') + '</div>';
   if (d) return '<section class="gurps" id="weaponSec">' + head + weaponBuilderHtml(s, d) + '</section>';
-  return gearCreateTile('weaponSec', 'wbNew', ICON.weapon, 'Arma', n ? plural(n, 'arma', 'armas') : '', 'De Regras › Armas, com ajustes');
+  return gearCreateTile('weaponSec', 'wbNew', ICON.weapon, 'Arma', n ? plural(n, 'arma', 'armas') : '', 'De Regras › Armas ou personalizada, com ajustes');
 }
 // The weapons of Criar Arma in Meus Itens (Arma | Modo | Dano | NH | Alcance | Custo | Peso | Ajustes;
 // Aparar, ST and the notes stay in Criar Arma, Regras › Armas and Editar equipamentos): one row per attack (the weapon's name, cost, weight,
@@ -263,10 +308,11 @@ function weaponItemsHtml(lines, g, L, can) {
 /* ---------- wiring ---------- */
 // g: the sheet's lists, for the name of the weapon being edited (its line's, when it was given).
 function weaponDraftFrom(cw, mode, g) {
-  var d = { id: null, baseId: null, base: null, attacks: [], name: '', description: '', adj: [], impact: null };
+  var d = { id: null, baseId: null, base: null, custom: false, attacks: [], name: '', description: '', adj: [], impact: null };
   if (!cw) return d;
-  d.baseId = cw.baseId; d.base = Object.assign({}, cw.base); d.description = cw.description;
+  d.baseId = cw.baseId; d.base = Object.assign({}, cw.base); d.custom = !cw.baseId; d.description = cw.description;
   d.attacks = cw.attacks.map(function (a) { return Object.assign({}, a); });
+  if (d.custom && !d.attacks.length) d.attacks = [weaponBlankAttack()];
   d.adj = cw.mods.map(function (m) { return Object.assign({}, m); });
   if (mode === 'edit') { d.id = cw.id; if (g && cw.equipId) d.name = gearGivenName(gearIndex(g.equip)[cw.equipId], cw.base.name); }
   return d;
@@ -298,15 +344,40 @@ function wireWeaponSec(s) {
   wireAdjList(WEAPON_ADJ, $('wbMods'), d.adj, paint, function () {
     return { weight: d.base ? d.base.weight : 0, ranged: d.attacks.some(function (a) { return /bow|crossbow|blowpipe/i.test(a.skill || ''); }) };
   });
-  // The weapon: Regras › Armas, found by name in English or Portuguese.
+  // A custom weapon's fields: the data and the attacks follow as they are typed (the field keeps the
+  // focus); the type, or an attack added or removed, draws the fields again.
+  function paintCustom() { var el = $('wbCustomResult'); if (el) el.innerHTML = weaponCustomResultHtml(s, d); $('wbErr').textContent = ''; var c = box.querySelector('.confirm'); if (c) c.remove(); d.impact = null; }
+  function onCustom(e) {
+    var t = /** @type {AnyEl} */ (e.target); if (!d.custom || !t.getAttribute) return;
+    var k = t.getAttribute('data-wb-base'), atk = t.getAttribute('data-wb-atk');
+    if (k) {
+      if (k === 'cost' || k === 'weight') d.base[k] = t.value === '' ? 0 : cleanDec(t.value, k === 'cost' ? 9999999 : 99999, 0);
+      else d.base[k] = String(t.value).slice(0, k === 'name' ? 120 : 20);
+      if (k === 'name') { pick.value = d.base.name; $('wbName').setAttribute('placeholder', gearAutoHint(d.base.name)); }
+      if (k === 'type') { paint(); return; }
+      paintCustom(); return;
+    }
+    if (atk) { var p = atk.split(':'); d.attacks[+p[0]][p[1]] = t.value; paintCustom(); }
+  }
+  box.addEventListener('input', onCustom);
+  box.addEventListener('change', function (e) { var t = /** @type {AnyEl} */ (e.target); if (t.getAttribute && t.getAttribute('data-wb-base') === 'type') onCustom(e); });
+  box.addEventListener('click', function (e) {
+    var t = /** @type {AnyEl} */ (e.target); if (!d.custom || !t.closest) return;
+    if (t.closest('#wbAtkAdd')) { d.attacks.push(weaponBlankAttack()); paint(); var l = box.querySelectorAll('[data-wb-atk$=":skill"]'), f = l[l.length - 1]; if (f instanceof HTMLElement) f.focus(); return; }
+    var del = t.closest('[data-wb-atkdel]'); if (del && d.attacks.length > 1) { d.attacks.splice(+del.getAttribute('data-wb-atkdel'), 1); paint(); }
+  });
+  // The weapon: Regras › Armas, found by name in English or Portuguese; a name the catalog does not
+  // have (exactly) is offered as a custom one, at the end.
   var pick = $('wbBase'), sug = $('wbBaseSug'), opts = [], act = 0;
   function hide() { sug.hidden = true; sug.innerHTML = ''; pick.setAttribute('aria-expanded', 'false'); }
   function show() {
-    var q = pick.value, all = weaponBases();
-    opts = norm(q).trim() && !(d.base && q === d.base.name) ? searchCatalog(all, q, null).slice(0, 12) : [];
+    var q = pick.value, typed = String(q || '').trim(), all = weaponBases(), same = d.base && q === d.base.name;
+    opts = norm(q).trim() && !same ? searchCatalog(all, q, null).slice(0, 12) : [];
+    if (typed && !same && !all.some(function (w) { return norm(w.name) === norm(typed); })) opts = opts.concat([{ custom: true, name: typed }]);
     act = Math.min(act, Math.max(0, opts.length - 1));
     if (!opts.length) { hide(); return; }
     sug.innerHTML = opts.map(function (w, n) {
+      if (w.custom) return '<button type="button" role="option" data-o="' + n + '" class="ab-custom-opt' + (n === act ? ' act' : '') + '" aria-selected="' + (n === act) + '"><span>' + svg(ICON.plus, 13, 2.4) + 'Usar “' + esc(w.name) + '” como arma personalizada</span><small>preencha tipo, custo, peso e os ataques</small></button>';
       return '<button type="button" role="option" data-o="' + n + '" class="' + (n === act ? 'act' : '') + '" aria-selected="' + (n === act) + '"><span>' + esc(w.name) + ptNameHtml(w) + '</span>' +
         '<small>' + esc([weaponSummary(w), w.cost, w.weight ? w.weight + ' lb' : '', w.tl ? 'TL ' + w.tl : '', w.page].filter(Boolean).join(' · ')) + '</small></button>';
     }).join('');
@@ -315,10 +386,12 @@ function wireWeaponSec(s) {
   }
   function choose(n) {
     var w = opts[n]; if (!w) return;
-    var b = weaponBaseOf(w);
-    d.baseId = w.id; d.base = b.base; d.attacks = b.attacks; d.others = b.others; pick.value = w.name; hide();
+    if (w.custom) { d.custom = true; d.baseId = null; d.base = { name: w.name, tl: '', type: 'Melee', cost: 0, weight: 0 }; d.attacks = [weaponBlankAttack()]; d.others = []; }
+    else { var b = weaponBaseOf(w); d.custom = false; d.baseId = w.id; d.base = b.base; d.attacks = b.attacks; d.others = b.others; }
+    pick.value = d.base.name; hide();
     $('wbName').setAttribute('placeholder', gearAutoHint(d.base.name));
     $('wbModsBox').hidden = false; paint();
+    if (w.custom) { var f = box.querySelector('[data-wb-atk="0:skill"]'); if (f instanceof HTMLElement) f.focus(); }
   }
   pick.addEventListener('input', function () { act = 0; show(); });
   pick.addEventListener('focus', function () { loadCatalog('weapons'); });

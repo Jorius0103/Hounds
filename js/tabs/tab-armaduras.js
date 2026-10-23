@@ -69,7 +69,7 @@ Ops.deleteArmor = function (armor) {
 var armorSearchTimer = 0;
 var ARMOR_SEARCH_FIELDS = ['name', 'location', 'category', 'table', 'skill', 'notes', 'footnotes'];
 // Search, filters and page of the list: kept while the site is open (see spellView).
-var armorView = { q: '', type: '', category: '', book: '', page: 1 };
+var armorView = { q: '', mine: false, type: '', category: '', book: '', page: 1 };
 
 /* =====================================================================
    Page: Armaduras (list)
@@ -92,13 +92,14 @@ function renderArmorsPage() {
     cats.map(function (c) { return '<option value="' + esc(c) + '"' + (ui.category === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select></div>' +
     '<div class="field" style="margin:0"><select id="armorBookFilter" aria-label="Filtrar por livro"><option value="">Todos os livros</option>' +
     books.map(function (b) { return '<option value="' + esc(b) + '"' + (ui.book === b ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('') + '</select></div>' +
-    '</div>';
+    mestreOnlyHtml(ui.mine) + '</div>';
   pageRoot.innerHTML = head + toolbar + notice() + '<div id="armorResults"></div>';
 
   var q = $('armorSearch'); if (q) q.oninput = function () { ui.q = q.value; ui.page = 1; clearTimeout(armorSearchTimer); armorSearchTimer = setTimeout(renderArmorList, 150); };
   var tf = $('armorTypeFilter'); if (tf) tf.onchange = function () { ui.type = tf.value; ui.page = 1; renderArmorList(); };
   var cf = $('armorCatFilter'); if (cf) cf.onchange = function () { ui.category = cf.value; ui.page = 1; renderArmorList(); };
   var bf = $('armorBookFilter'); if (bf) bf.onchange = function () { ui.book = bf.value; ui.page = 1; renderArmorList(); };
+  wireMestreOnly(ui, renderArmorList);
   var nb = $('newArmorBtn'); if (nb) nb.onclick = function () { openArmorForm(null); };
   renderArmorList();
 }
@@ -108,6 +109,7 @@ function filterArmorList() {
     if (ui.type && a.type !== ui.type) return false;
     if (ui.category && a.category !== ui.category) return false;
     if (ui.book && a.book !== ui.book) return false;
+    if (ui.mine && a.catalog) return false;
     return true;
   }), ui.q, function (a) { return searchText(a, ARMOR_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }

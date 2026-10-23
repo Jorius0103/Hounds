@@ -14,7 +14,10 @@
    the school the spell is shown under (the first of the book's when picked from Regras › Magias);
    empty, it goes to "Sem escola". Magery adds its level to every spell (B66): it comes from the
    sheet's Vantagens or Combate's traits, like the talents' bonus (k.tbonus, never saved).
+   fav: true marks a favorite (the star on each spell): the favorites are shown together in the
+   Favoritos table, at the top of the tab, and still in their school's table.
    ===================================================================== */
+ICON.star = '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>';
 // The schools in Portuguese, for the tables; the book's name shows on hover. One not here keeps its name.
 var SPELL_COLLEGE_PT = {
   'Air': 'Ar', 'Animal': 'Animais', 'Body Control': 'Controle do Corpo', 'Communication and Empathy': 'Comunicação e Empatia',
@@ -31,6 +34,7 @@ function cleanSheetSpell(k) {
     diff: k && k.diff === 'VH' ? 'VH' : 'H', pts: cleanInt(k && k.pts, 0, 999, 1), bonus: cleanInt(k && k.bonus, -20, 20, 0) };
   var note = out.bonus ? cleanBonusNote(k && k.bonusNote) : ''; if (note) out.bonusNote = note;
   if (k && typeof k.spellId === 'string' && k.spellId) out.spellId = k.spellId.slice(0, 200);
+  if (k && k.fav === true) out.fav = true;
   return out;
 }
 function sheetSpells(s) { return (Array.isArray(s && s.spells) ? s.spells : []).map(cleanSheetSpell).filter(function (k) { return k.name; }); }
@@ -56,6 +60,8 @@ function applyMagery(list, s) {
       .map(function (x) { return String(x).trim(); }).filter(Boolean);
     var fx = fxForSpell(s, k, colleges), from = m && m.n ? ['+' + m.n + ' de Magery ' + m.n] : [];
     k.tbonus = (m ? m.n : 0) + fx.n; k.tfrom = joinE(from.concat(fxParts(fx)));
+    k.tsrc = (m && m.n ? [{ n: m.n, from: 'Magery ' + m.n }] : []).concat(fx.used.map(function (x) { return { n: x.v, from: x.from }; }));
+    k.tcond = fxCondNotes(fx);
   });
   return list;
 }
@@ -68,7 +74,7 @@ function sheetSpellNh(k, iq) {
 }
 function sheetSpellEditNhHtml(k, iq) {
   var nh = sheetSpellNh(k, iq), w = skillWaste(k);
-  return esc(nh.rel) + ' <small>' + esc(nh.lvl) + '</small>' + (w ? '<small class="sk-waste">' + w + ' pt sem efeito</small>' : '');
+  return nhHtml(nh) + (w ? '<small class="sk-waste">' + w + ' pt sem efeito</small>' : '');
 }
 // The spells by school: in the order of the Portuguese names, "Sem escola" last.
 function sheetSpellGroups(list) {
@@ -102,7 +108,7 @@ function sheetSpellSuggestions(q) {
 
 function sheetSpellNhCell(k, iq) {
   var nh = sheetSpellNh(k, iq), t = skillBonusTitle(k);
-  return '<td class="gnh' + (t ? ' bonus' : '') + '" data-gnh="' + k.i + '"' + (t ? ' title="' + esc(t) + '"' : '') + '>' + esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small></td>';
+  return '<td class="gnh' + (t ? ' bonus' : '') + '" data-gnh="' + k.i + '">' + calcBtn(nhHtml(nh), spellCalc(k, iq), t) + '</td>';
 }
 // The schools in three tables, in order: a table takes the next school while it stays within a
 // third of the rows (a school counts its spells and its title row).
@@ -119,19 +125,38 @@ function sheetSpellTableHtml(col, iq, can) {
   return '<table class="gtab"><thead><tr><th>Magia</th><th>Pontos</th><th>NH</th></tr></thead>' +
     col.map(function (g) { return sheetSpellGroupHtml(g, iq, can); }).join('') + '</table>';
 }
-// One school, a tbody with its title and total: k.i is the position of the spell in sheet.spells,
-// g.n the position of the school.
+// The star of a spell: a button that marks or unmarks it (attr: data-fav in the tables, data-efav in
+// the editor, with the position); without can, only the mark of a favorite.
+function sheetSpellFavHtml(k, can, attr, i) {
+  var on = !!k.fav;
+  if (!can) return on ? '<span class="sp-fav on" title="Favorita">' + svg(ICON.star, 14, 2) + '</span>' : '';
+  return '<button type="button" class="sp-fav' + (on ? ' on' : '') + '" ' + attr + '="' + i + '" aria-pressed="' + on + '"' +
+    ' aria-label="' + (on ? 'Tirar ' + esc(k.name) + ' dos favoritos' : 'Marcar ' + esc(k.name) + ' como favorita') + '" title="' + (on ? 'Tirar dos favoritos' : 'Marcar como favorita') + '">' + svg(ICON.star, 14, 2) + '</button>';
+}
+// A spell's row: k.i is its position in sheet.spells; sub, what goes under the name after the difficulty.
+function sheetSpellRowHtml(k, iq, can, sub) {
+  var name = k.spellId ? '<a href="' + spellHref(k.spellId) + '" data-spell-modal="' + esc(k.spellId) + '" title="Ver as regras da magia">' + esc(k.name) + '</a>' : esc(k.name);
+  return '<tr><td><div class="sp-name">' + sheetSpellFavHtml(k, can, 'data-fav', k.i) + '<div><b>' + name + '</b><small>IQ/' + k.diff + (sub ? ' · ' + esc(sub) : '') + '</small></div></div></td><td class="gpts">' +
+    (can ? '<input class="gpts-in" type="number" min="0" max="999" step="1" inputmode="numeric" data-k="' + k.i + '" value="' + k.pts + '" aria-label="Pontos em ' + esc(k.name) + '">' : k.pts) + '</td>' +
+    sheetSpellNhCell(k, iq) + '</tr>';
+}
+// One school, a tbody with its title and total; g.n is the position of the school.
 function sheetSpellGroupHtml(g, iq, can) {
   var label = collegeLabel(g.college);
   return '<tbody><tr class="gschool"><td colspan="2"' + (g.college && label !== g.college ? ' title="' + esc(g.college) + '"' : '') + '>' + esc(label) + '</td>' +
     '<td class="gpts" data-gtot="' + g.n + '" title="Pontos em ' + esc(label) + '">' + sumPts(g.list) + '</td></tr>' +
-    g.list.map(function (k) {
-      var c = sheetSpellLink(k);
-      var name = k.spellId ? '<a href="' + spellHref(k.spellId) + '" data-spell-modal="' + esc(k.spellId) + '" title="Ver as regras da magia">' + esc(k.name) + '</a>' : esc(k.name);
-      return '<tr><td><b>' + name + '</b><small>IQ/' + k.diff + (c && c.class ? ' · ' + esc(c.class) : '') + '</small></td><td class="gpts">' +
-        (can ? '<input class="gpts-in" type="number" min="0" max="999" step="1" inputmode="numeric" data-k="' + k.i + '" value="' + k.pts + '" aria-label="Pontos em ' + esc(k.name) + '">' : k.pts) + '</td>' +
-        sheetSpellNhCell(k, iq) + '</tr>';
-    }).join('') + '</tbody>';
+    g.list.map(function (k) { var c = sheetSpellLink(k); return sheetSpellRowHtml(k, iq, can, c && c.class); }).join('') + '</tbody>';
+}
+// Favoritos: a section of its own, above Magias, with the favorite spells together, in name order,
+// with their school. list: the saved spells (k.i set, Magery applied).
+function sheetSpellFavsHtml(list, iq, can) {
+  var favs = list.filter(function (k) { return k.fav; });
+  return '<section class="gurps' + gearFoldClass('spellFavs', false) + '" id="sheetSpellFavs"><div class="gurps-head">' + sheetGripHtml('Favoritos') +
+    gearFoldTitle('spellFavs', '<span class="sp-favs-title">' + svg(ICON.star, 15, 2.2) + 'Favoritos</span>', false) +
+    '<span class="gurps-total">' + plural(favs.length, 'magia', 'magias') + '</span></div>' +
+    '<table class="gtab sp-favs"><thead><tr><th>Magia</th><th>Pontos</th><th>NH</th></tr></thead><tbody>' +
+    (favs.length ? favs.map(function (k) { return sheetSpellRowHtml(k, iq, can, collegeLabel(k.college)); }).join('')
+      : '<tr><td colspan="3" class="gnone">Nenhuma magia favorita.' + (can ? ' Marque a estrela de uma magia em Magias para ela aparecer aqui.' : '') + '</td></tr>') + '</tbody></table></section>';
 }
 function sheetSpellEditRow(k, i, iq) {
   var t = skillBonusTitle(k);
@@ -146,30 +171,43 @@ function sheetSpellEditRow(k, i, iq) {
     '<input type="number" data-f="pts" min="0" max="999" step="1" inputmode="numeric" aria-label="Pontos" value="' + k.pts + '">' +
     '<input type="number" data-f="bonus" min="-20" max="20" step="1" inputmode="numeric" aria-label="Bônus" value="' + k.bonus + '">' +
     '<span class="sk-nh' + (k.bonus || k.tbonus ? ' bonus' : '') + '" data-nh="' + i + '"' + (t ? ' title="' + esc(t) + '"' : '') + '>' + sheetSpellEditNhHtml(k, iq) + '</span>' +
+    sheetSpellFavHtml(k, true, 'data-efav', i) +
     '<button class="icon-btn" type="button" data-del="' + i + '" aria-label="Remover magia" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button>' +
     '<div class="sk-bnote" data-bnote="' + i + '"' + (k.bonus ? '' : ' hidden') + '>' + bonusNoteInput('', k.bonusNote) + '</div></div>';
 }
+// The tab: Favoritos (with any spell on the sheet) and Magias, in #spellSecs. Like the sections of the
+// tabs Ficha and Equip., each folds by its title (gearFoldTitle) and they are dragged into either order
+// by the handle (sortSecsHtml, remembered in this browser); not while Magias is edited. Then Favoritos
+// shows the saved favorites, without changing them.
+var SPELL_ORDER_KEY = 'hounds_spell_order';
 function sheetSpellsHtml(s, editing) {
   var d = S.ui.spellDraft, list = editing ? d : sheetSpells(s), can = canWrite(), m = sheetMagery(s);
-  var iq = sheetAttrsNow(s).iq;
-  var head = '<div class="gurps-head"><h2 class="sec-title">Magias</h2><span class="gurps-total" id="spTotal">' + sumPts(list) + ' pts</span>' +
+  var iq = sheetAttrsNow(s).iq, saved = applyMagery(sheetSpells(s), s), secs = {};
+  saved.forEach(function (k, i) { k.i = i; });
+  if (saved.length) secs.favs = function () { return sheetSpellFavsHtml(saved, iq, can && !editing); };
+  secs.spells = function () { return sheetSpellsSecHtml(s, editing, list, can, m, iq); };
+  return sortSecsHtml('spellSecs', SPELL_ORDER_KEY, secs);
+}
+function sheetSpellsSecHtml(s, editing, list, can, m, iq) {
+  var head = '<div class="gurps-head">' + sheetGripHtml('Magias') + gearFoldTitle('spells', 'Magias', editing) + '<span class="gurps-total" id="spTotal">' + sumPts(list) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('spCancel', 'spSave', 'magias')
       : can && !sheetDraftOpen() ? secEditBtnHtml('spEdit', 'magias') : '') + '</div>' +
     (m && m.n ? '<p class="hint-text" style="margin:0">Magery ' + m.n + ': +' + m.n + ' no NH de todas as magias.</p>' : '');
   if (editing) {
-    return '<section class="gurps" id="sheetSpells">' + head +
+    return '<section class="gurps' + gearFoldClass('spells', editing) + '" id="sheetSpells">' + head +
       // New spells go on top, under the button.
       '<div class="box sk-edit"><div><button class="btn" type="button" id="spAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar magia</button></div>' +
-      '<div class="sk-row sp-row sk-labels" aria-hidden="true"><span>Magia</span><span>Escola</span><span>Dif.</span><span>Pontos</span><span>Bônus</span><span>NH</span><span></span></div>' +
+      '<div class="sk-row sp-row sk-labels" aria-hidden="true"><span>Magia</span><span>Escola</span><span>Dif.</span><span>Pontos</span><span>Bônus</span><span>NH</span><span></span><span></span></div>' +
       '<div id="spRows">' + applyMagery(list, s).map(function (k, i) { return sheetSpellEditRow(k, i, iq); }).join('') + '</div>' +
       '<p class="hint-text">A escola é a tabela em que a magia aparece; ao escolher da lista, vem a primeira escola do livro. Dificuldade: H difícil, VH muito difícil. ' +
-      'Magery da ficha (em Vantagens ou Combate) soma no NH sozinho. Bônus é o que mais soma; com bônus, escreva o motivo. Magia não tem nível padrão: com 0 pontos fica sem NH.</p></div>' +
+      'Magery da ficha (em Vantagens ou Combate) soma no NH sozinho. Bônus é o que mais soma; com bônus, escreva o motivo. Magia não tem nível padrão: com 0 pontos fica sem NH. ' +
+      'A estrela marca a magia como favorita: ela aparece também em Favoritos.</p></div>' +
       '<datalist id="spColleges">' + spellColleges().map(function (c) { return '<option value="' + esc(c) + '">' + esc(collegeLabel(c)) + '</option>'; }).join('') + '</datalist>' +
       '<div class="form-err" id="spErr" role="alert"></div></section>';
   }
   list.forEach(function (k, i) { k.i = i; });
   applyMagery(list, s);
-  return '<section class="gurps" id="sheetSpells">' + head +
+  return '<section class="gurps' + gearFoldClass('spells', editing) + '" id="sheetSpells">' + head +
     (list.length ? '<div class="gurps-grid sp-grid">' + sheetSpellColumns(sheetSpellGroups(list)).map(function (col) { return sheetSpellTableHtml(col, iq, can); }).join('') + '</div>'
       : '<p class="long none">Nenhuma magia cadastrada.' + (can ? ' Use <b>Editar</b> para adicionar.' : '') + '</p>') + '</section>';
 }
@@ -199,8 +237,10 @@ function wireSpellQuickPts(s, box) {
     var t = field(e); if (!t || t.value === '') return;
     var i = t.getAttribute('data-k'), k = list[+i]; if (!k) return;
     k.pts = cleanInt(t.value, 0, 999, k.pts); edits[i] = k.pts;
-    var nh = sheetSpellNh(k, iq), cell = box.querySelector('[data-gnh="' + i + '"]');
-    if (cell) cell.innerHTML = esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small>';
+    // A favorite is in two tables: both rows follow.
+    var nh = sheetSpellNh(k, iq);
+    box.querySelectorAll('[data-gnh="' + i + '"]').forEach(function (cell) { cell.innerHTML = calcBtn(nhHtml(nh), spellCalc(k, iq), skillBonusTitle(k)); });
+    box.querySelectorAll('.gpts-in[data-k="' + i + '"]').forEach(function (other) { if (other !== t) other.value = String(k.pts); });
     paintTotals();
     clearTimeout(timer); timer = setTimeout(save, 700);
   });
@@ -215,10 +255,32 @@ function wireSpellQuickPts(s, box) {
     }, 250);
   });
 }
+// A star after a click, before the page redraws.
+function sheetSpellFavPaint(b, k) {
+  b.classList.toggle('on', !!k.fav); b.setAttribute('aria-pressed', String(!!k.fav));
+  b.title = k.fav ? 'Tirar dos favoritos' : 'Marcar como favorita';
+  b.setAttribute('aria-label', k.fav ? 'Tirar ' + k.name + ' dos favoritos' : 'Marcar ' + k.name + ' como favorita');
+}
+// Out of the editor, a star is saved right away (matched by name, school and difficulty, in the sheet
+// as it is now in the database); the page redraws when the sheet comes back, with Favoritos.
+function wireSpellFavs(s, box) {
+  var list = sheetSpells(s);
+  box.addEventListener('click', function (e) {
+    var b = /** @type {AnyEl} */ (e.target).closest('[data-fav]'); if (!b) return;
+    var k = list[+b.getAttribute('data-fav')]; if (!k) return;
+    var cur = sheetById(s.id) || s, fresh = sheetSpells(cur);
+    var hit = fresh.filter(function (x) { return x.name === k.name && x.college === k.college && x.diff === k.diff; })[0]; if (!hit) return;
+    hit.fav = !hit.fav;
+    box.querySelectorAll('[data-fav="' + b.getAttribute('data-fav') + '"]').forEach(function (x) { sheetSpellFavPaint(x, hit); });
+    Ops.saveSheetSpells(cur, fresh).then(function () { toast(hit.fav ? hit.name + ' nos favoritos.' : hit.name + ' saiu dos favoritos.'); },
+      function (er) { toast(errorText(er), true); renderSheetPage(); });
+  });
+}
 // While editing, S.ui.spellDraft holds the list being changed; typing updates it and the NH and
 // total beside it, adding or removing a row redraws the page from it.
 function wireSheetSpells(s) {
   var ui = S.ui; if (!$('sheetSpells')) return;
+  wireSecSort('spellSecs', SPELL_ORDER_KEY);
   function focusFirst() { var f = document.querySelector('#spRows .sk-name'); if (f instanceof HTMLElement) f.focus(); }
   var ed = $('spEdit'); if (ed) ed.onclick = function () {
     ui.spellDraft = sheetSpells(s);
@@ -229,7 +291,7 @@ function wireSheetSpells(s) {
   };
   // The school and class of the linked spells come from the catalog: it redraws the page when it arrives.
   var d = ui.spellDraft, box = $('sheetSpells');
-  if (!d) { loadCatalog('spells'); wireSpellQuickPts(s, box); return; }
+  if (!d) { loadCatalog('spells'); wireSpellQuickPts(s, $('spellSecs')); wireSpellFavs(s, $('spellSecs')); return; }
   if (!$('spSave')) return;
   var iq = sheetAttrsNow(s).iq;
   box.addEventListener('input', onEdit); box.addEventListener('change', onEdit);
@@ -307,6 +369,8 @@ function wireSheetSpells(s) {
   rows.addEventListener('mousedown', function (e) { if (e.target.closest('.suggest')) e.preventDefault(); });
   rows.addEventListener('click', function (e) { var b = e.target.closest('.suggest [data-o]'); if (b) pickSug(+b.getAttribute('data-o')); });
   box.addEventListener('click', function (e) {
+    var fb = e.target.closest && e.target.closest('[data-efav]');
+    if (fb) { var x = d[+fb.getAttribute('data-efav')]; x.fav = !x.fav; sheetSpellFavPaint(fb, x); return; }
     var b = e.target.closest && e.target.closest('[data-del]'); if (!b) return;
     d.splice(+b.getAttribute('data-del'), 1);
     renderSheetPage();

@@ -56,6 +56,8 @@ function buildMenu() {
         children: openLeaf('spell:', ICON.spell, spellById, 'Magia') },
       { id: 'advs', label: 'Vantagens', icon: ICON.advantage, route: true, hideKids: true,
         children: openLeaf('adv:', ICON.advantage, advById, 'Vantagem') },
+      { id: 'perks', label: 'Perks', icon: ICON.perk, route: true, hideKids: true,
+        children: openLeaf('perk:', ICON.perk, advById, 'Perk') },
       { id: 'disadvs', label: 'Desvantagens', icon: ICON.disadvantage, route: true, hideKids: true,
         children: openLeaf('disadv:', ICON.disadvantage, disadvById, 'Desvantagem') },
       { id: 'skills', label: 'Perícias', icon: ICON.skill, route: true, hideKids: true,

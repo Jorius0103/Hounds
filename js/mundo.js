@@ -85,7 +85,7 @@ function spellById(id) {
    edits, his visibility choice, or deleted: true. W.spells / W.advantages / W.disadvantages / W.skills /
    W.techniques / W.styles / W.weapons / W.armors / W.items / W.improvements are the book list with those documents on top.
    ===================================================================== */
-var CATALOG_VERSION = '2026-10-16-v1';
+var CATALOG_VERSION = '2026-10-23-v2';
 // fields: what an entry holds besides visibility; over: the documents of book entries by id;
 // deleted: the book entries the Mestre deleted (for him to see and restore).
 var CATALOG = {

@@ -91,7 +91,7 @@ Ops.saveSheet = function (s, fields) {
   var body = { v: 1, name: name, description: (fields.description || '').trim(), visible: fields.visible !== false, sharedWith: fields.sharedWith || (s && s.sharedWith) || [],
     createdBy: owner(s), createdAt: (s && s.createdAt) || t, updatedAt: t };
   // put replaces the whole document: attributes and skills are edited apart and must survive a rename.
-  ['attrs', 'reactions', 'points', 'skills', 'cultures', 'spells', 'combat', 'advs', 'disadvs', 'quirks', 'equip', 'bodies', 'packs', 'homes', 'armorSets', 'customWeapons', 'customShields', 'allyOf', 'allyName', 'allyColor'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
+  ['attrs', 'reactions', 'points', 'skills', 'cultures', 'perks', 'classSkills', 'languages', 'spells', 'combat', 'advs', 'disadvs', 'quirks', 'equip', 'bodies', 'packs', 'homes', 'armorSets', 'customWeapons', 'customShields', 'allyOf', 'allyName', 'allyColor'].forEach(function (k) { if (s && s[k]) body[k] = s[k]; });
   // An ally sees and is seen as its main sheet: it keeps the main one's visibility.
   if (s && s.allyOf) { body.visible = s.visible !== false; body.sharedWith = s.sharedWith || []; }
   return W.store.put('sheets', s ? s.id : null, body);
@@ -315,9 +315,14 @@ function attrRowsHtml(rows, a, r, editing, e, re) {
     return '<tr><td><b>' + esc(row[1]) + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</td>' +
       '<td class="gval' + (fx ? ' fx' : '') + '"' + (fx ? ' title="' + esc(fx.title) + '"' : '') + '>' +
       (editing && k !== 'enc' ? attrInput(k, row[1], a, r) + (fx ? '<span class="gnote fxnote">' + esc(fx.short) + '</span>' : '')
-        : attrValueText(k, e, re) + (fx ? '<span class="gnote fxnote">' + esc(fx.note) + '</span>' : '')) + '</td>' +
+        : attrCalcHtml(k, row[1], a, r, e, re, fx) + (fx ? '<span class="gnote fxnote">' + esc(fx.note) + '</span>' : '')) + '</td>' +
       '<td class="gpts' + (pts == null ? ' none' : '') + '" data-pts="' + k + '">' + (pts == null ? '—' : pts) + '</td></tr>';
   }).join('');
+}
+// A calculated value is a button that opens its account (ficha-contas.js); the others are as they are.
+function attrCalcHtml(k, label, a, r, e, re, fx) {
+  var c = attrCalc(k, label, a, r, e, re), html = attrValueText(k, e, re);
+  return c ? calcBtn(html, c, fx ? fx.title : '') : html;
 }
 // What the advantages do to a row: null when nothing. note: "base 10 · +1 de vantagens"; title: each source.
 function attrFxInfo(k, a, r, e, re) {
@@ -331,12 +336,13 @@ function attrFxInfo(k, a, r, e, re) {
     short: (d ? (d > 0 ? '+' : '') + fmt(d) + ' de vantagens' : 'condicional'),
     title: 'Base ' + fmt(bv) + ' · ' + parts.join(' · ') + ' = ' + fmt(fv) };
 }
+// Each value opens its account (derivedCalc in ficha-contas.js).
 function gurpsDerivedHtml(a, r) {
-  function stat(label, val, note) { return '<div class="gstat"><span>' + label + '</span><strong>' + val + '</strong>' + (note ? '<small>' + note + '</small>' : '') + '</div>'; }
-  return stat('Esquiva', r.dodge, 'VB + 3' + (a.enc ? ' − ' + a.enc + ' de Peso' : '')) +
-    stat('Deslocamento', r.moveNow, a.enc ? r.move + ' − ' + a.enc + ' de Peso' : 'sem Peso') +
-    stat('Carga Básica', String(r.lift).replace('.', ',') + ' lbs', a.liftSt ? '(ST ' + a.st + ' + ' + a.liftSt + ' de Lifting ST)² ÷ 5' : '(ST × ST) ÷ 5') +
-    stat('Dano', r.dmg.thr + ' / ' + r.dmg.sw, 'Estocada / Balanço');
+  function stat(kind, label, val, note) { return '<div class="gstat"><span>' + label + '</span><strong>' + calcBtn(val, derivedCalc(kind, a, r)) + '</strong>' + (note ? '<small>' + note + '</small>' : '') + '</div>'; }
+  return stat('dodge', 'Esquiva', r.dodge, 'VB + 3' + (a.enc ? ' − ' + a.enc + ' de Peso' : '')) +
+    stat('move', 'Deslocamento', r.moveNow, a.enc ? r.move + ' − ' + a.enc + ' de Peso' : 'sem Peso') +
+    stat('lift', 'Carga Básica', String(r.lift).replace('.', ',') + ' lbs', a.liftSt ? '(ST ' + a.st + ' + ' + a.liftSt + ' de Lifting ST)² ÷ 5' : '(ST × ST) ÷ 5') +
+    stat('dmg', 'Dano', r.dmg.thr + ' / ' + r.dmg.sw, 'Estocada / Balanço');
 }
 function sheetAttrsHtml(s, a, editing) {
   var r = gurpsStats(a), e = withAdvFx(s, a), re = gurpsStats(e), can = canWrite();
@@ -452,6 +458,13 @@ function wireSheetAttrs(s) {
    not 0, shown when hovering the NH), skillId the entry of Regras › Perícias
    it was picked from (the name may add a specialty). sheet.cultures is the Cultural
    Familiarity list { name, pts }, shown with the Easy skills (set apart) and counted in their total.
+   Like it, in tables of their own after the skills' and counted in the section's total:
+     sheet.perks        the perks { name, pts }
+     sheet.classSkills  the class skills { name, pts }
+     sheet.languages    the languages { name, spoken, written, native } (Basic Set, pp. B23-25): each
+                        level, spoken and written, 0 None to 3 Native (LANG_LEVELS), costs 1 point; the
+                        native language comes at Native for free, so its levels below that are
+                        negative points (an illiterate native, -3). One language at most is native.
    ===================================================================== */
 var SKILL_ATTRS = ['ST', 'DX', 'IQ', 'HT', 'Per', 'Will'];
 // [name, level with 1 point relative to the attribute, default relative to the attribute (null: none)]
@@ -485,6 +498,25 @@ function checkBonusNotes(box) {
 function cleanCulture(c) { return { name: String((c && c.name) || '').trim().slice(0, 200), pts: cleanInt(c && c.pts, 0, 99, 1) }; }
 function sheetSkills(s) { return (Array.isArray(s && s.skills) ? s.skills : []).map(cleanSkill).filter(function (k) { return k.name; }); }
 function sheetCultures(s) { return (Array.isArray(s && s.cultures) ? s.cultures : []).map(cleanCulture).filter(function (c) { return c.name; }); }
+// The perks: the list of Perks, and the ones still saved in Vantagens from before they were apart (advAsPerk),
+// once by name; saving Perícias or Vantagens moves those for good.
+function sheetPerks(s) {
+  var own = (Array.isArray(s && s.perks) ? s.perks : []).map(cleanCulture).filter(function (c) { return c.name; }), seen = {};
+  own.forEach(function (p) { seen[norm(p.name)] = true; });
+  return own.concat(sheetAdvs(s).filter(advIsPerk).map(advAsPerk).filter(function (p) { return !seen[norm(p.name)]; }));
+}
+function sheetClassSkills(s) { return (Array.isArray(s && s.classSkills) ? s.classSkills : []).map(cleanCulture).filter(function (c) { return c.name; }); }
+var LANG_LEVELS = ['Nenhum', 'Rudimentar', 'Com Sotaque', 'Nativo'];
+function cleanLanguage(l) {
+  return { name: String((l && l.name) || '').trim().slice(0, 100), spoken: cleanInt(l && l.spoken, 0, 3, 0), written: cleanInt(l && l.written, 0, 3, 0), native: !!(l && l.native) };
+}
+function sheetLanguages(s) { return (Array.isArray(s && s.languages) ? s.languages : []).map(cleanLanguage).filter(function (l) { return l.name; }); }
+function langPts(l) { return l.native ? l.spoken + l.written - 6 : l.spoken + l.written; }
+function langsPts(list) { return list.reduce(function (n, l) { return n + langPts(l); }, 0); }
+// The lists of the Perícias section: { skills, cultures, perks, classSkills, languages }.
+function sheetSkillLists(s) {
+  return { skills: sheetSkills(s), cultures: sheetCultures(s), perks: sheetPerks(s), classSkills: sheetClassSkills(s), languages: sheetLanguages(s) };
+}
 // 1, 2, 4 points buy the first three levels; every 4 points after that buy one more.
 function skillStep(pts) { return pts < 2 ? 0 : pts < 4 ? 1 : 2 + Math.floor((pts - 4) / 4); }
 function skillStepCost(i) { return i === 0 ? 1 : i === 1 ? 2 : 4 * (i - 1); }
@@ -513,17 +545,33 @@ function sumPts(list) { return list.reduce(function (n, x) { return n + x.pts; }
 // Cultural Familiarity goes with the Easy skills: its points count in their total and in the
 // skills total.
 function skillsTotal(skills, cultures) { return sumPts(skills) + sumPts(cultures || []); }
+// The section's total: the skills, Cultural Familiarity, the perks, the class skills and the languages.
+function skillsSecTotal(d) {
+  return skillsTotal(d.skills, d.cultures) + sumPts(d.perks || []) + sumPts(d.classSkills || []) + langsPts(d.languages || []);
+}
 
-Ops.saveSheetSkills = function (s, skills, cultures) {
+// more: { perks, classSkills, languages }, saved too when given.
+Ops.saveSheetSkills = function (s, skills, cultures, more) {
   if (!rawHas('sheets', s.id)) return Promise.reject({ message: 'Essa ficha não existe mais.' });
   var sk = skills.map(cleanSkill).filter(function (k) { return k.name; }).sort(byName);
-  return W.store.patch('sheets', s.id, { skills: sk, cultures: cultures.map(cleanCulture).filter(function (c) { return c.name; }), updatedAt: now() });
+  function named(x) { return x.name; }
+  var p = { skills: sk, cultures: cultures.map(cleanCulture).filter(named), updatedAt: now() };
+  if (more) {
+    p.perks = (more.perks || []).map(cleanCulture).filter(named);
+    p.classSkills = (more.classSkills || []).map(cleanCulture).filter(named);
+    p.languages = (more.languages || []).map(cleanLanguage).filter(named);
+    if (p.languages.filter(function (l) { return l.native; }).length > 1) return Promise.reject({ message: 'Só uma língua pode ser a nativa.' });
+    // The perks still in Vantagens are in this list now (sheetPerks): they leave Vantagens.
+    var cur = sheetById(s.id) || s;
+    if (sheetAdvs(cur).some(advIsPerk)) p.advs = sheetAdvsOnly(cur);
+  }
+  return W.store.patch('sheets', s.id, p);
 };
 
 function skillNhCell(k, av) {
   var nh = skillNh(k, av);
   var t = skillBonusTitle(k);
-  return '<td class="gnh' + (t ? ' bonus' : '') + '"' + (k.i != null ? ' data-gnh="' + k.i + '"' : '') + (t ? ' title="' + esc(t) + '"' : '') + '>' + esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small></td>';
+  return '<td class="gnh' + (t ? ' bonus' : '') + '"' + (k.i != null ? ' data-gnh="' + k.i + '"' : '') + '>' + calcBtn(nhHtml(nh), skillCalc(k, av), t) + '</td>';
 }
 // can: the points are a field, changed right in the table (see wireQuickPts); k.i is the
 // position of the skill in sheet.skills.
@@ -545,10 +593,33 @@ function cultureGroupHtml(cultures, can) {
   }).join('') + '</tbody>' +
     '<tfoot><tr><td>Total familiaridade cultural</td><td class="gpts" data-gtot="C">' + sumPts(cultures) + '</td></tr></tfoot></table>';
 }
+// Perks and Perícias de Classe, each in a table of its own like Cultural Familiarity (no NH). attr: the
+// data- of the points fields (p, q; see wireQuickPts); tot: the key of the total.
+function ptsGroupHtml(title, cls, list, can, attr, tot) {
+  return '<table class="gtab ' + cls + '"><thead><tr><th>' + title + '</th><th>Pontos</th></tr></thead><tbody>' + list.map(function (c, j) {
+    // A perk of Regras › Vantagens opens its rules.
+    var e = attr === 'p' ? advFind(c.name) : null;
+    var name = e ? '<a href="' + advHref(e.id) + '" data-adv-modal="' + esc(e.id) + '" title="Ver o perk">' + esc(c.name) + '</a>' : esc(c.name);
+    return '<tr><td><b>' + name + '</b></td><td class="gpts">' +
+      (can ? '<input class="gpts-in" type="number" min="0" max="99" step="1" inputmode="numeric" data-' + attr + '="' + j + '" value="' + c.pts + '" aria-label="Pontos em ' + esc(c.name) + '">' : c.pts) + '</td></tr>';
+  }).join('') + '</tbody>' +
+    '<tfoot><tr><td>Total ' + title.toLowerCase() + '</td><td class="gpts" data-gtot="' + tot + '">' + sumPts(list) + '</td></tr></tfoot></table>';
+}
+// Línguas: the spoken and written levels and the points they cost.
+function langGroupHtml(list) {
+  return '<table class="gtab glang-tab"><thead><tr><th>Línguas</th><th>Falada</th><th>Escrita</th><th>Pontos</th></tr></thead><tbody>' + list.map(function (l) {
+    return '<tr><td><b>' + esc(l.name) + '</b>' + (l.native ? '<small>Nativa</small>' : '') + '</td><td>' + LANG_LEVELS[l.spoken] + '</td><td>' + LANG_LEVELS[l.written] + '</td>' +
+      '<td class="gpts" title="' + esc(langPtsTitle(l)) + '">' + langPts(l) + '</td></tr>';
+  }).join('') + '</tbody>' +
+    '<tfoot><tr><td colspan="3">Total línguas</td><td class="gpts">' + langsPts(list) + '</td></tr></tfoot></table>';
+}
+function langPtsTitle(l) {
+  return 'Falada ' + LANG_LEVELS[l.spoken] + ' (' + l.spoken + ') + escrita ' + LANG_LEVELS[l.written] + ' (' + l.written + ')' + (l.native ? ' − 6 da língua nativa, que vem de graça em Nativo' : '') + ' = ' + langPts(l);
+}
 // NH of a row being edited; the points that buy nothing go on a line of their own.
 function skillEditNhHtml(k, av) {
   var nh = skillNh(k, av), w = skillWaste(k);
-  return esc(nh.rel) + ' <small>' + esc(nh.lvl) + '</small>' + (w ? '<small class="sk-waste">' + w + ' pt sem efeito</small>' : '');
+  return nhHtml(nh) + (w ? '<small class="sk-waste">' + w + ' pt sem efeito</small>' : '');
 }
 // The entry of Regras › Perícias a sheet skill was picked from, while its name still starts with
 // that entry's (a specialty may follow: "Animal Handling (Dogs)").
@@ -591,10 +662,28 @@ function cultureEditRow(c, i) {
     '<input type="number" data-f="pts" min="0" max="99" step="1" inputmode="numeric" aria-label="Pontos" value="' + c.pts + '">' +
     '<button class="icon-btn" type="button" data-cdel="' + i + '" aria-label="Remover cultura" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
 }
+// A perk or class skill being edited (k: p or q, as in ptsGroupHtml).
+function ptsEditRow(c, i, k, ph, label) {
+  return '<div class="sk-row cult" data-' + k + '="' + i + '">' +
+    '<input class="sk-name" type="text" data-f="name" maxlength="200" placeholder="' + esc(ph) + '" aria-label="' + esc(label) + '" value="' + esc(c.name) + '">' +
+    '<input type="number" data-f="pts" min="0" max="99" step="1" inputmode="numeric" aria-label="Pontos" value="' + c.pts + '">' +
+    '<button class="icon-btn" type="button" data-' + k + 'del="' + i + '" aria-label="Remover ' + esc(label.toLowerCase()) + '" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
+}
+function langEditRow(l, i) {
+  function sel(f, v, label) {
+    return '<select data-f="' + f + '" aria-label="' + label + '">' + LANG_LEVELS.map(function (n, x) { return '<option value="' + x + '"' + (x === v ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select>';
+  }
+  return '<div class="sk-row lang" data-l="' + i + '">' +
+    '<input class="sk-name" type="text" data-f="name" maxlength="100" placeholder="Ex.: Inglês, Élfico, Latim" aria-label="Língua" value="' + esc(l.name) + '">' +
+    sel('spoken', l.spoken, 'Falada') + sel('written', l.written, 'Escrita') +
+    '<label class="lg-native" title="A língua nativa vem de graça em Nativo, falada e escrita"><input type="checkbox" data-f="native"' + (l.native ? ' checked' : '') + '>Nativa</label>' +
+    '<span class="sk-nh lg-pts" data-lpts="' + i + '" title="' + esc(langPtsTitle(l)) + '">' + langPts(l) + ' pts</span>' +
+    '<button class="icon-btn" type="button" data-ldel="' + i + '" aria-label="Remover língua" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button></div>';
+}
 function sheetSkillsHtml(s, editing) {
-  var d = S.ui.skillDraft, skills = editing ? d.skills : sheetSkills(s), cultures = editing ? d.cultures : sheetCultures(s);
+  var L = editing ? S.ui.skillDraft : sheetSkillLists(s), skills = L.skills, cultures = L.cultures;
   var av = attrValues(sheetAttrsNow(s)), can = canWrite();
-  var head = '<div class="gurps-head">' + sheetGripHtml('Perícias') + gearFoldTitle('skills', 'Perícias', editing) + '<span class="gurps-total" id="skTotal">' + skillsTotal(skills, cultures) + ' pts</span>' +
+  var head = '<div class="gurps-head">' + sheetGripHtml('Perícias') + gearFoldTitle('skills', 'Perícias', editing) + '<span class="gurps-total" id="skTotal">' + skillsSecTotal(L) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('skCancel', 'skSave', 'perícias')
       : can && !sheetDraftOpen() ? secEditBtnHtml('skEdit', 'perícias') : '') + '</div>';
   if (editing) {
@@ -608,15 +697,31 @@ function sheetSkillsHtml(s, editing) {
       '<p class="hint-text" style="margin:0">Aparece junto com as perícias fáceis, destacada, e os pontos entram no total delas.</p>' +
       '<div id="cuRows">' + cultures.map(cultureEditRow).join('') + '</div>' +
       '<div><button class="btn" type="button" id="cuAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar cultura</button></div></div>' +
+      '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Perks</h3>' +
+      '<p class="hint-text" style="margin:0">Vantagens de 1 ponto, como as de estilo (Martial Arts, pp. 49-52). Aparecem numa tabela própria e os pontos entram no total de Perícias; em Vantagens ficam só as vantagens.</p>' +
+      '<div id="pkRows">' + L.perks.map(function (c, i) { return ptsEditRow(c, i, 'p', 'Ex.: Grip Mastery (Broadsword), Off-Hand Weapon Training', 'Perk'); }).join('') + '</div>' +
+      '<div><button class="btn" type="button" id="pkAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar perk</button></div></div>' +
+      '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Perícias de Classe</h3>' +
+      '<p class="hint-text" style="margin:0">As perícias da classe do personagem, com os pontos. Aparecem numa tabela própria e os pontos entram no total de Perícias.</p>' +
+      '<div id="clRows">' + L.classSkills.map(function (c, i) { return ptsEditRow(c, i, 'q', 'Ex.: Guerreiro, Mago, Ladino', 'Perícia de classe'); }).join('') + '</div>' +
+      '<div><button class="btn" type="button" id="clAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar perícia de classe</button></div></div>' +
+      '<div class="box sk-edit"><h3 class="sec-title" style="margin:0">Línguas</h3>' +
+      '<p class="hint-text" style="margin:0">Basic Set, pp. B23-25: cada nível, falado e escrito, custa 1 ponto (Rudimentar 1, Com Sotaque 2, Nativo 3). A língua nativa vem de graça em Nativo; abaixo disso, os pontos ficam negativos (analfabeto na nativa, −3). Só uma é a nativa.</p>' +
+      '<div class="sk-row lang sk-labels" aria-hidden="true"><span>Língua</span><span>Falada</span><span>Escrita</span><span></span><span>Pts</span><span></span></div>' +
+      '<div id="lgRows">' + L.languages.map(langEditRow).join('') + '</div>' +
+      '<div><button class="btn" type="button" id="lgAdd">' + svg(ICON.plus, 15, 2.4) + 'Adicionar língua</button></div></div>' +
       '<div class="form-err" id="skErr" role="alert"></div></section>';
   }
   var groups = SKILL_DIFF_KEYS.filter(function (x) { return x !== 'VH' || skills.some(function (k) { return k.diff === 'VH'; }); });
   skills.forEach(function (k, i) { k.i = i; });
   applyTalents(skills, s);
   return '<section class="gurps' + gearFoldClass('skills', editing) + '" id="skills">' + head +
-    (skills.length || cultures.length ? '<div class="gurps-grid">' + groups.map(function (x) {
+    (skills.length || cultures.length || L.perks.length || L.classSkills.length || L.languages.length ? '<div class="gurps-grid">' + groups.map(function (x) {
       return skillGroupHtml(x, skills.filter(function (k) { return k.diff === x; }), av, can);
-    }).join('') + (cultures.length ? cultureGroupHtml(cultures, can) : '') + '</div>'
+    }).join('') + (cultures.length ? cultureGroupHtml(cultures, can) : '') +
+      (L.perks.length ? (loadCatalog('advantages'), ptsGroupHtml('Perks', 'gperk-tab', L.perks, can, 'p', 'P')) : '') +
+      (L.classSkills.length ? ptsGroupHtml('Perícias de Classe', 'gclass-tab', L.classSkills, can, 'q', 'Q') : '') +
+      (L.languages.length ? langGroupHtml(L.languages) : '') + '</div>'
       : '<p class="long none">Nenhuma perícia cadastrada.' + (can ? ' Use <b>Editar</b> para adicionar.' : '') + '</p>') + '</section>';
 }
 // Out of the editor, the points of each skill change right in the table: the NH and totals follow
@@ -625,43 +730,48 @@ function sheetSkillsHtml(s, editing) {
 // leaving it redraws the page if something arrived meanwhile.
 function wireQuickPts(s, box) {
   var ui = S.ui, av = attrValues(sheetAttrsNow(s)), list = applyTalents(sheetSkills(s), s), cultures = sheetCultures(s), edits = {}, timer = 0;
+  var perks = sheetPerks(s), classSkills = sheetClassSkills(s), languages = sheetLanguages(s);
   if (!box.querySelector('.gpts-in')) return;
   function paintTotals() {
-    $('skTotal').textContent = skillsTotal(list, cultures) + ' pts';
+    $('skTotal').textContent = skillsSecTotal({ skills: list, cultures: cultures, perks: perks, classSkills: classSkills, languages: languages }) + ' pts';
+    var tp = box.querySelector('[data-gtot="P"]'); if (tp) tp.textContent = String(sumPts(perks));
+    var tq = box.querySelector('[data-gtot="Q"]'); if (tq) tq.textContent = String(sumPts(classSkills));
     SKILL_DIFF_KEYS.forEach(function (x) {
       var t = box.querySelector('[data-gtot="' + x + '"]');
       if (t) t.textContent = String(skillsTotal(list.filter(function (k) { return k.diff === x; })));
     });
     var tc = box.querySelector('[data-gtot="C"]'); if (tc) tc.textContent = String(sumPts(cultures));
   }
-  // edits: 'k<i>' for a skill, 'c<j>' for a Cultural Familiarity row, with the new points.
+  // edits: 'k<i>' for a skill, 'c<j>' for a Cultural Familiarity row, 'p<j>' a perk, 'q<j>' a class skill, with the new points.
   function save() {
     clearTimeout(timer); timer = 0;
     var keys = Object.keys(edits); if (!keys.length) return;
     var changed = edits; edits = {};
     // The sheet as it is now in the database, with these points on top (matched by name, and
     // attribute and difficulty for skills, in case someone else changed the lists meanwhile).
-    var cur = sheetById(s.id) || s, fresh = sheetSkills(cur), freshC = sheetCultures(cur);
+    var cur = sheetById(s.id) || s, fresh = sheetSkills(cur), freshC = sheetCultures(cur), more = { perks: sheetPerks(cur), classSkills: sheetClassSkills(cur), languages: sheetLanguages(cur) };
+    var by = { c: [cultures, freshC], p: [perks, more.perks], q: [classSkills, more.classSkills] };
     keys.forEach(function (key) {
       var n = +key.slice(1), hit;
       if (key[0] === 'k') { var k = list[n]; hit = fresh.filter(function (x) { return x.name === k.name && x.attr === k.attr && x.diff === k.diff; })[0]; }
-      else { var c = cultures[n]; hit = freshC.filter(function (x) { return x.name === c.name; })[0]; }
+      else { var c = by[key[0]][0][n]; hit = by[key[0]][1].filter(function (x) { return x.name === c.name; })[0]; }
       if (hit) hit.pts = changed[key];
     });
-    Ops.saveSheetSkills(cur, fresh, freshC).catch(function (er) { toast(errorText(er), true); ui.ptsStale = false; renderSheetPage(); });
+    Ops.saveSheetSkills(cur, fresh, freshC, more).catch(function (er) { toast(errorText(er), true); ui.ptsStale = false; renderSheetPage(); });
   }
   function field(e) { var t = /** @type {AnyEl} */ (e.target); return t && t.classList && t.classList.contains('gpts-in') ? t : null; }
-  // The skill or culture of a points field.
-  function itemOf(t) { return t.hasAttribute('data-c') ? cultures[+t.getAttribute('data-c')] : list[+t.getAttribute('data-k')]; }
+  // The skill, culture, perk or class skill of a points field, and its kind (k, c, p, q).
+  function kindOf(t) { return ['c', 'p', 'q'].filter(function (k) { return t.hasAttribute('data-' + k); })[0] || 'k'; }
+  function itemOf(t) { var k = kindOf(t); return ({ k: list, c: cultures, p: perks, q: classSkills })[k][+t.getAttribute('data-' + k)]; }
   box.addEventListener('input', function (e) {
     var t = field(e); if (!t || t.value === '') return;
     var item = itemOf(t); if (!item) return;
-    if (t.hasAttribute('data-c')) { item.pts = cleanInt(t.value, 0, 99, item.pts); edits['c' + t.getAttribute('data-c')] = item.pts; }
+    if (kindOf(t) !== 'k') { var kk = kindOf(t); item.pts = cleanInt(t.value, 0, 99, item.pts); edits[kk + t.getAttribute('data-' + kk)] = item.pts; }
     else {
       var i = +t.getAttribute('data-k');
       item.pts = cleanInt(t.value, 0, 999, item.pts); edits['k' + i] = item.pts;
       var nh = skillNh(item, av), cell = box.querySelector('[data-gnh="' + i + '"]');
-      if (cell) cell.innerHTML = esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small>';
+      if (cell) cell.innerHTML = calcBtn(nhHtml(nh), skillCalc(item, av), skillBonusTitle(item));
     }
     paintTotals();
     clearTimeout(timer); timer = setTimeout(save, 700);
@@ -677,13 +787,13 @@ function wireQuickPts(s, box) {
     }, 250);
   });
 }
-// While editing, S.ui.skillDraft holds { skills, cultures }; typing updates it and the NH and
+// While editing, S.ui.skillDraft holds the lists (sheetSkillLists); typing updates it and the NH and
 // totals beside it, adding or removing a row redraws the page from it.
 function wireSheetSkills(s) {
   var ui = S.ui;
   function focusLast(sel) { var l = document.querySelectorAll(sel); var f = l[l.length - 1]; if (f instanceof HTMLElement) f.focus(); }
   var ed = $('skEdit'); if (ed) ed.onclick = function () {
-    ui.skillDraft = { skills: sheetSkills(s), cultures: sheetCultures(s) };
+    ui.skillDraft = sheetSkillLists(s);
     // No field gets the focus (it would open the suggestions over a filled name), only the empty row
     // of a sheet without skills.
     var none = !ui.skillDraft.skills.length;
@@ -700,9 +810,26 @@ function wireSheetSkills(s) {
     if (rules) rules.innerHTML = skillRulesHtml(k);
     var note = box.querySelector('[data-bnote="' + i + '"]'); if (note) note.hidden = !k.bonus;
   }
+  // A language's points, and the native mark (one at most), as they are typed.
+  function paintLangs() {
+    d.languages.forEach(function (l, j) {
+      var p = box.querySelector('[data-lpts="' + j + '"]'); if (p) { p.textContent = langPts(cleanLanguage(l)) + ' pts'; p.title = langPtsTitle(cleanLanguage(l)); }
+      var c = box.querySelector('[data-l="' + j + '"] [data-f="native"]'); if (c) c.checked = !!l.native;
+    });
+  }
   function onEdit(e) {
-    var el = e.target, f = el.dataset && el.dataset.f, row = el.closest && el.closest('[data-i], [data-c]'); if (!f || !row) return;
-    var isSkill = row.hasAttribute('data-i'), i = +row.getAttribute(isSkill ? 'data-i' : 'data-c'), item = (isSkill ? d.skills : d.cultures)[i];
+    var el = e.target, f = el.dataset && el.dataset.f, row = el.closest && el.closest('[data-i], [data-c], [data-p], [data-q], [data-l]'); if (!f || !row) return;
+    if (row.hasAttribute('data-l')) {
+      var l = d.languages[+row.getAttribute('data-l')];
+      if (f === 'name') l.name = el.value;
+      else if (f === 'native') { l.native = el.checked; if (l.native) d.languages.forEach(function (o) { if (o !== l) o.native = false; }); }
+      else l[f] = +el.value;
+      paintLangs();
+      $('skTotal').textContent = skillsSecTotal(skillDraftClean()) + ' pts';
+      return;
+    }
+    var kind = ['i', 'c', 'p', 'q'].filter(function (k) { return row.hasAttribute('data-' + k); })[0];
+    var isSkill = kind === 'i', i = +row.getAttribute('data-' + kind), item = ({ i: d.skills, c: d.cultures, p: d.perks, q: d.classSkills })[kind][i];
     if (f === 'name' || f === 'attr' || f === 'diff' || f === 'bonusNote') item[f] = el.value;
     else if (el.value !== '') item[f] = f === 'bonus' ? cleanInt(el.value, -20, 20, 0) : cleanInt(el.value, 0, 999, 0);
     if (f === 'bonusNote' && el.value.trim()) el.classList.remove('invalid');
@@ -711,7 +838,10 @@ function wireSheetSkills(s) {
       if (f === 'name' && item.skillId && skillById(item.skillId) && !skillLink(item)) delete item.skillId;
       paintRow(i);
     }
-    $('skTotal').textContent = skillsTotal(d.skills.map(cleanSkill), d.cultures.map(cleanCulture)) + ' pts';
+    $('skTotal').textContent = skillsSecTotal(skillDraftClean()) + ' pts';
+  }
+  function skillDraftClean() {
+    return { skills: d.skills.map(cleanSkill), cultures: d.cultures.map(cleanCulture), perks: d.perks.map(cleanCulture), classSkills: d.classSkills.map(cleanCulture), languages: d.languages.map(cleanLanguage) };
   }
   // Suggestions from Regras › Perícias under the name being typed; picking one fills the name,
   // attribute and difficulty and links the row to the entry.
@@ -766,8 +896,9 @@ function wireSheetSkills(s) {
   rows.addEventListener('mousedown', function (e) { if (e.target.closest('.suggest')) e.preventDefault(); });
   rows.addEventListener('click', function (e) { var b = e.target.closest('.suggest [data-o]'); if (b) pickSug(+b.getAttribute('data-o')); });
   box.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-del], [data-cdel]'); if (!b) return;
-    if (b.hasAttribute('data-del')) d.skills.splice(+b.getAttribute('data-del'), 1); else d.cultures.splice(+b.getAttribute('data-cdel'), 1);
+    var b = e.target.closest && e.target.closest('[data-del], [data-cdel], [data-pdel], [data-qdel], [data-ldel]'); if (!b) return;
+    var lists = { del: d.skills, cdel: d.cultures, pdel: d.perks, qdel: d.classSkills, ldel: d.languages };
+    Object.keys(lists).forEach(function (k) { if (b.hasAttribute('data-' + k)) lists[k].splice(+b.getAttribute('data-' + k), 1); });
     renderSheetPage();
   });
   $('skAdd').onclick = function () {
@@ -775,12 +906,20 @@ function wireSheetSkills(s) {
     var f = document.querySelector('#skRows .sk-name'); if (f instanceof HTMLElement) f.focus();
   };
   $('cuAdd').onclick = function () { d.cultures.push({ name: '', pts: 1 }); renderSheetPage(); focusLast('#cuRows .sk-name'); };
+  $('pkAdd').onclick = function () { d.perks.push({ name: '', pts: 1 }); renderSheetPage(); focusLast('#pkRows .sk-name'); };
+  $('clAdd').onclick = function () { d.classSkills.push({ name: '', pts: 1 }); renderSheetPage(); focusLast('#clRows .sk-name'); };
+  // A new language: the native one when there is none yet (Native, free); otherwise Com Sotaque, falada.
+  $('lgAdd').onclick = function () {
+    var first = !d.languages.some(function (l) { return l.native; });
+    d.languages.push(first ? { name: '', spoken: 3, written: 3, native: true } : { name: '', spoken: 2, written: 0, native: false });
+    renderSheetPage(); focusLast('#lgRows .sk-name');
+  };
   $('skCancel').onclick = function () { ui.skillDraft = null; renderSheetPage(); };
   $('skSave').onclick = function () {
     if (!checkBonusNotes(box)) { $('skErr').textContent = 'Escreva o motivo de cada bônus.'; return; }
     $('skErr').textContent = '';
     var btn = $('skSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('skCancel').disabled = true;
-    Ops.saveSheetSkills(s, d.skills, d.cultures).then(function () { ui.skillDraft = null; toast('Perícias salvas.'); renderSheetPage(); }, function (er) {
+    Ops.saveSheetSkills(s, d.skills, d.cultures, d).then(function () { ui.skillDraft = null; toast('Perícias salvas.'); renderSheetPage(); }, function (er) {
       btn.disabled = false; btn.textContent = 'Salvar'; $('skCancel').disabled = false;
       $('skErr').textContent = errorText(er);
     });
@@ -841,8 +980,8 @@ function sheetPoints(s) { return cleanSheetPoints(s && s.points); }
 // The points of each part, in the order of the sheet: [label, points].
 function sheetSpentParts(s) {
   var p = sheetPoints(s);
-  return [['Atributos', gurpsStats(sheetAttrs(s)).total], ['Perícias', skillsTotal(sheetSkills(s), sheetCultures(s))], ['Magias', sumPts(sheetSpells(s))],
-    ['Combate', combatTotal(sheetCombat(s))], ['Vantagens', advsTotal(sheetAdvs(s))], ['Desvantagens', advsTotal(sheetDisadvs(s))],
+  return [['Atributos', gurpsStats(sheetAttrs(s)).total], ['Perícias', skillsSecTotal(sheetSkillLists(s))], ['Magias', sumPts(sheetSpells(s))],
+    ['Combate', combatTotal(sheetCombat(s))], ['Vantagens', advsTotal(sheetAdvsOnly(s))], ['Desvantagens', advsTotal(sheetDisadvs(s))],
     ['Peculiaridades', quirksTotal(sheetQuirks(s))], ['Raça', p.racePts], ['Ajuste', p.adj]];
 }
 Ops.saveSheetPoints = function (s, x) {
@@ -921,6 +1060,7 @@ function sheetGripHtml(name) { return S.ui.attrDraft || sheetDraftOpen() ? '' : 
 // below them the tabs Ficha, Equip. and Magia of the one open (s), the same sections for both.
 function renderSheetPage() {
   var m = sheetById(S.route.sheetId), ui = S.ui;
+  CALC_VIEW = []; // the accounts of the values drawn (ficha-contas.js)
   paintAllyView(false);
   // An ally's own link opens it in its main sheet's page.
   if (m && m.allyOf) { if (sheetById(m.allyOf)) { go(allyHref(m.allyOf, m.id), true); return; } m = null; }

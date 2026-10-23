@@ -72,7 +72,7 @@ Ops.deleteDisadvantage = function (dis) {
 var disadvSearchTimer = 0;
 var DISADV_SEARCH_FIELDS = ['name', 'cost', 'type', 'classes', 'description'];
 // Search, filters and page of the list: kept while the site is open (see spellView).
-var disadvView = { q: '', type: '', cls: '', book: '', self: false, page: 1 };
+var disadvView = { q: '', mine: false, type: '', cls: '', book: '', self: false, page: 1 };
 
 /* =====================================================================
    Page: Desvantagens (list)
@@ -96,7 +96,7 @@ function renderDisadvantagesPage() {
     '<div class="field" style="margin:0"><select id="disadvBookFilter" aria-label="Filtrar por livro"><option value="">Todos os livros</option>' +
     books.map(function (b) { return '<option value="' + esc(b) + '"' + (ui.book === b ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('') + '</select></div>' +
     '<label class="vis-flag" for="disadvSelfFilter" style="padding:8px 12px"><input type="checkbox" id="disadvSelfFilter"' + (ui.self ? ' checked' : '') + '><span><b>Com autocontrole</b></span></label>' +
-    '</div>';
+    mestreOnlyHtml(ui.mine) + '</div>';
   pageRoot.innerHTML = head + toolbar + notice() + '<div id="disadvResults"></div>';
 
   var q = $('disadvSearch'); if (q) q.oninput = function () { ui.q = q.value; ui.page = 1; clearTimeout(disadvSearchTimer); disadvSearchTimer = setTimeout(renderDisadvList, 150); };
@@ -104,6 +104,7 @@ function renderDisadvantagesPage() {
   var cf = $('disadvClassFilter'); if (cf) cf.onchange = function () { ui.cls = cf.value; ui.page = 1; renderDisadvList(); };
   var bf = $('disadvBookFilter'); if (bf) bf.onchange = function () { ui.book = bf.value; ui.page = 1; renderDisadvList(); };
   var sf = $('disadvSelfFilter'); if (sf) sf.onchange = function () { ui.self = sf.checked; ui.page = 1; renderDisadvList(); };
+  wireMestreOnly(ui, renderDisadvList);
   var nb = $('newDisadvBtn'); if (nb) nb.onclick = function () { openDisadvantageForm(null); };
   renderDisadvList();
 }
@@ -113,6 +114,7 @@ function filterDisadvList() {
     if (ui.type && d.type !== ui.type) return false;
     if (ui.cls && disadvClassList(d).indexOf(ui.cls) < 0) return false;
     if (ui.book && d.book !== ui.book) return false;
+    if (ui.mine && d.catalog) return false;
     if (ui.self && !d.selfControl) return false;
     return true;
   }), ui.q, function (d) { return searchText(d, DISADV_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first

@@ -83,7 +83,7 @@ var spellSearchTimer = 0;
 var SPELL_SEARCH_FIELDS = ['name', 'college', 'class', 'description', 'prerequisites'];
 // Search, filters and page of the list: kept while the site is open, so opening a spell
 // and coming back returns to the same page.
-var spellView = { q: '', college: '', spellClass: '', resistance: '', difficulty: '', book: '', change: '', page: 1 };
+var spellView = { q: '', mine: false, college: '', spellClass: '', resistance: '', difficulty: '', book: '', change: '', page: 1 };
 // The "Alterações do Mestre" filter. 'any' is every kind of change.
 var SPELL_CHANGE_FILTERS = [['any', 'Alteradas pelo Mestre'], ['created', 'Criadas pelo Mestre'], ['edited', 'Editadas dos livros'], ['hidden', 'Ocultas dos jogadores'], ['deleted', 'Excluídas']];
 // Books of the list, with how many spells each one has.
@@ -147,7 +147,7 @@ function renderSpellsPage() {
     SPELL_CHANGE_FILTERS.filter(function (f) { return isMestre() || (f[0] !== 'hidden' && f[0] !== 'deleted'); })
       .map(function (f) { return '<option value="' + f[0] + '"' + (ui.change === f[0] ? ' selected' : '') + '>' + f[1] + '</option>'; }).join('') +
     '</select></div>' +
-    '</div>';
+    mestreOnlyHtml(ui.mine) + '</div>';
 
   var body = notice() + '<div id="spellResults"></div>';
 
@@ -197,6 +197,7 @@ function renderSpellsPage() {
   if (bFilter) bFilter.onchange = function () { ui.book = bFilter.value; ui.page = 1; renderSpellList(); };
   var chFilter = $('spellChangeFilter');
   if (chFilter) chFilter.onchange = function () { ui.change = chFilter.value; ui.page = 1; renderSpellList(); };
+  wireMestreOnly(ui, renderSpellList);
 
   var nb = $('newSpellBtn');
   if (nb) {
@@ -220,6 +221,7 @@ function filterSpellsList() {
       if (ui.change === 'any' ? !k : k !== ui.change) return false;
     }
     if (ui.book && (s.source || 'Sem livro') !== ui.book) return false;
+    if (ui.mine && s.catalog) return false;
     if (diff && (s.difficulty || '').toUpperCase() !== diff) return false;
     if (college && (s.college || '').toLowerCase().indexOf(college) < 0) return false;
     if (sClass && (s.class || '').toLowerCase().indexOf(sClass) < 0) return false;

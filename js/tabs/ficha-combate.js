@@ -26,8 +26,14 @@
                                                     technique: default def and limit max relative
                                                     to the base skill (null: no limit)
        | { kind: 'trait', name, pts }                perks and advantages: only points
+       | { kind: 'spell', name, pts, bonus, diff, spellId? }  a spell of the style, as in the Magia tab
+                                                    (IQ, H or VH, no default; Magery and the
+                                                    advantages' effects count: applyMagery)
    ===================================================================== */
-var SC_KINDS = [['skill', 'Perícia'], ['tech', 'Técnica'], ['trait', 'Perk ou vantagem']];
+// The kind of a row (its select); the buttons that add one (SC_ADD) split perks from advantages, both
+// 'trait': a perk starts at 1 point, an advantage at its cost in Regras › Vantagens.
+var SC_KINDS = [['skill', 'Perícia'], ['tech', 'Técnica'], ['trait', 'Perk ou vantagem'], ['spell', 'Magia']];
+var SC_ADD = [['skill', 'Perícia'], ['tech', 'Técnica'], ['perk', 'Perk'], ['adv', 'Vantagem'], ['spell', 'Magia']];
 var SC_MODES = [['sw', 'swing'], ['thr', 'thrust'], ['fixed', 'fixo']];
 var SC_DMG_TYPES = [['cut', 'Cutting'], ['imp', 'Impaling'], ['cr', 'Crushing'], ['pi-', 'Small Piercing'], ['pi', 'Piercing'], ['pi+', 'Large Piercing'],
   ['pi++', 'Huge Piercing'], ['burn', 'Burning'], ['cor', 'Corrosion'], ['tox', 'Toxic'], ['fat', 'Fatigue'], ['spec', 'Special']];
@@ -40,12 +46,15 @@ var SC_MELEE_DIFF = { 'axe/mace': 'A', 'two-handed axe/mace': 'A', 'broadsword':
 function scStr(v, n) { return String(v == null ? '' : v).trim().slice(0, n); }
 function cleanCombatItem(x) {
   x = x || {};
-  var kind = x.kind === 'tech' || x.kind === 'trait' ? x.kind : 'skill';
+  var kind = x.kind === 'tech' || x.kind === 'trait' || x.kind === 'spell' ? x.kind : 'skill';
   var o = { kind: kind, name: scStr(x.name, 120), pts: cleanInt(x.pts, 0, 999, kind === 'tech' ? 0 : 1) };
   if (kind === 'trait') return o;
   o.bonus = cleanInt(x.bonus, -20, 20, 0);
   var note = o.bonus ? cleanBonusNote(x.bonusNote) : ''; if (note) o.bonusNote = note;
-  if (kind === 'skill') {
+  if (kind === 'spell') {
+    o.diff = x.diff === 'VH' ? 'VH' : 'H';
+    if (typeof x.spellId === 'string' && x.spellId) o.spellId = x.spellId.slice(0, 200);
+  } else if (kind === 'skill') {
     o.attr = SKILL_ATTRS.indexOf(x.attr) >= 0 ? x.attr : 'DX';
     o.diff = SKILL_DIFFS[x.diff] ? x.diff : 'A';
     if (typeof x.skillId === 'string' && x.skillId) o.skillId = x.skillId.slice(0, 200);
@@ -112,6 +121,12 @@ function techLevels(t) { return t.diff === 'A' ? t.pts : t.pts >= 2 ? t.pts - 1 
 // { rel: 'DX+5', lvl: '17', waste, base } of any item; null for perks and advantages.
 function combatNh(x, pool, av) {
   if (x.kind === 'trait') return null;
+  if (x.kind === 'spell') {
+    // Magery and the effects of the sheet open (applyMagery), as in the Magia tab.
+    var sp = pageSheet(); if (sp) applyMagery([x], sp);
+    var sn = sheetSpellNh(x, av.IQ), sabs = /^-?\d+$/.test(sn.lvl) ? +sn.lvl : null;
+    return { rel: sn.rel, lvl: sn.lvl, waste: skillWaste(x), abs: sabs, attr: 'IQ' };
+  }
   if (x.kind === 'skill') { var nh = skillNh(x, av); return { rel: nh.rel, lvl: nh.lvl, waste: skillWaste(x), abs: nh.lvl === 'sem padrão' ? null : +nh.lvl, attr: x.attr }; }
   var b = scFindSkill(pool, x.base);
   if (!b) return { rel: '—', lvl: x.base ? 'sem ' + x.base : 'sem perícia-base', waste: 0, abs: null };
@@ -173,6 +188,36 @@ function techMaxOf(t) {
   var m = /cannot exceed\s+([^;*]*?)(?:\s*([+-]\d+))?\s*(?:[;*]|$)/i.exec(t.prerequisites || '');
   return m ? (m[2] ? +m[2] : 0) : null;
 }
+/* Targeted Attacks (Martial Arts, p. 68): a Hard technique written "Targeted Attack (Skill Attack/Target)"
+   or "TA (Skill Attack/Target)" — TA (Boxing Punch/Face), TA (Karate Knee Strike/Groin), TA (Rapier
+   Thrust/Vitals Chinks). The default is the skill at the penalty to hit the target, plus a special
+   attack's own penalty; the technique buys off up to half of it, rounded up. taParse(name) gives
+   { skill, attack, target, def, max, why } (why: where the default comes from), or null. */
+var TA_STRIKE = /** @type {[RegExp, number][]} */ ([[/^eyes?$/, -9], [/^skull$/, -7], [/^(face|neck)$/, -5], [/^(hands?|feet|foot)$/, -4], [/^(groin|vitals)$/, -3], [/^(arms?|legs?)$/, -2]]);
+// Grapples: half the location penalty (Skull, Groin and Vitals rounded up).
+var TA_GRAPPLE = /** @type {[RegExp, number][]} */ ([[/^skull$/, -4], [/^(face|neck)$/, -3], [/^(hands?|feet|foot)$/, -2], [/^(groin|vitals)$/, -2], [/^(arms?|legs?)$/, -1]]);
+// The attacks, longest first; a special one adds its penalty when defaulting from the skill.
+var TA_ATTACKS = /** @type {[string, number][]} */ ([['lethal kick', -4], ['lethal strike', -2], ['elbow strike', -2], ['knee strike', -1], ['return strike', 0], ['kicking', -2], ['kick', -2],
+  ['disarming', 0], ['disarm', 0], ['swing', 0], ['thrust', 0], ['punch', 0], ['grab', 0], ['grapple', 0], ['throw', 0]]);
+var TA_FENCING = ['main-gauche', 'rapier', 'saber', 'smallsword'];
+function taParse(name) {
+  var m = /^(?:targeted attacks?|ta)\s*\(\s*(.+?)\s*\/\s*(.+?)\s*\)\s*$/i.exec(String(name || '').trim()); if (!m) return null;
+  var left = m[1], low = norm(left), att = TA_ATTACKS.filter(function (a) { return low === a[0] || low.slice(-a[0].length - 1) === ' ' + a[0]; })[0];
+  var skill = att ? left.slice(0, left.length - att[0].length).trim() : left.replace(/\s+\S+$/, '');
+  var attack = att ? att[0] : norm(left.replace(/^.*\s/, '')), target = norm(m[2]).trim(), why = [], pen = 0;
+  if (!skill) return null;
+  var grapple = attack === 'grab' || attack === 'grapple', loc = target.replace(/\s*chinks?$/, '');
+  if (/chinks?$/.test(target)) { pen = loc === 'torso' ? -8 : -10; why.push(m[2] + ' ' + pen); }
+  else if (/^weapons?$/.test(target)) { pen = -4; why.push('arma −4'); }
+  else {
+    var row = (grapple ? TA_GRAPPLE : TA_STRIKE).filter(function (r) { return r[0].test(target); })[0];
+    if (!row) return null;
+    pen = row[1]; why.push(m[2] + ' ' + (pen < 0 ? '−' + -pen : pen) + (grapple ? ' (metade, agarrando)' : ''));
+  }
+  if (/^disarm/.test(attack) && TA_FENCING.indexOf(combatKey(skill)) < 0) { pen -= 2; why.push('desarmar −2'); }
+  if (att && att[1]) { pen += att[1]; why.push(left.slice(skill.length).trim() + ' −' + -att[1]); }
+  return { skill: skill, attack: attack, target: m[2], def: pen, max: pen + Math.ceil(-pen / 2), why: why.join(', ') };
+}
 // Fills attr/diff (skills) or base/diff/default/limit (techniques) from the catalogs, when the name is known.
 function scAutofill(x) {
   if (x.kind === 'skill') {
@@ -180,11 +225,22 @@ function scAutofill(x) {
     if (sk && sk.attribute && SKILL_DIFFS[sk.difficulty]) { x.attr = sk.attribute; x.diff = sk.difficulty; x.skillId = sk.id; }
     else if (SC_MELEE_DIFF[combatKey(x.name)]) { x.attr = 'DX'; x.diff = SC_MELEE_DIFF[combatKey(x.name)]; }
   } else if (x.kind === 'tech') {
-    var p = scSplitTech(x.name), t = /** @type {any} */ (styleFind('tech', p.tech) || styleFind('tech', x.name));
+    // A Targeted Attack has its skill, default and limit in its name (taParse).
+    var ta = taParse(x.name), p = ta ? { tech: 'Targeted Attack', base: ta.skill } : scSplitTech(x.name);
+    var t = /** @type {any} */ (styleFind('tech', p.tech) || styleFind('tech', x.name));
     if (p.base) x.base = p.base;
     if (t) { x.diff = t.difficulty === 'A' ? 'A' : 'H'; x.def = techDefaultFor(t, x.base); x.max = techMaxOf(t); x.techId = t.id; }
+    if (ta) { x.diff = 'H'; x.def = ta.def; x.max = ta.max; }
+  } else if (x.kind === 'spell') {
+    var sc = (W.spells || []).filter(function (y) { return norm(y.name) === norm(x.name); })[0];
+    if (sc) { x.diff = sc.difficulty === 'VH' ? 'VH' : 'H'; x.spellId = sc.id; }
   } else if (/^Enhanced (Block|Parry)/i.test(x.name) && x.pts < 5) x.pts = /\(all/i.test(x.name) ? 10 : 5;
   else if (/^Enhanced Dodge/i.test(x.name) && x.pts < 15) x.pts = 15;
+  // An advantage added with its default points takes the cost of its entry, when the book fixes one.
+  else if (x.kind === 'trait' && x.sub === 'adv' && x.pts <= 1 && x.name) {
+    var ac = advFind(x.name), co = ac ? advCostOf(ac) : null;
+    if (co && co.cost) x.pts = co.cost;
+  }
   return x;
 }
 // What a name is: a technique, a perk/advantage or a skill. First the lists of the row's style;
@@ -208,12 +264,6 @@ function scCatalogKind(name) {
   if ((W.skills || []).some(function (s) { return s.attribute && (norm(s.name) === n || combatKey(s.name) === key); }) || SC_MELEE_DIFF[key]) return 'skill';
   if ((W.advantages || []).some(function (a) { return norm(a.name) === n || combatKey(a.name) === key; })) return 'trait';
   return null;
-}
-// Perks and combat advantages offered in every table's suggestions.
-function scTraitSuggestions() {
-  var out = ['Combat Reflexes', 'Enhanced Block', 'Enhanced Parry', 'Enhanced Dodge', 'Weapon Master', 'Trained by a Master', 'Weapon Bond'];
-  (W.advantages || []).forEach(function (a) { if (/^perk$/i.test(a.type || '')) out.push(a.name); });
-  return out;
 }
 // Rows saved with a kind the catalogs contradict (a perk as a skill): set right, keeping the points.
 function scFixKinds(c) {
@@ -295,19 +345,41 @@ function scStyleReqs(st, pool) {
   });
 }
 function scReqsMissing(reqs) { return reqs.filter(function (r) { return !r.skill; }).map(function (r) { return r.label; }); }
-// Suggestions for the names of a style's rows: its lists in the catalog, or all combat
-// skills and techniques for a free style and for the skills outside styles.
-function scSuggestions(st) {
-  var cat = st && st.styleId ? styleById(st.styleId) : null, out = [];
-  if (cat) ['skills', 'techniques', 'perks', 'cinematicSkills', 'cinematicTechniques', 'optSkills', 'optTechniques', 'optPerks', 'optAdvantages']
-    .forEach(function (f) { out = out.concat(styleItems(cat[f])); });
-  else {
-    (W.skills || []).forEach(function (s) { if (isCombatSkill(s)) out.push(s.name); });
-    Object.keys(SC_MELEE_DIFF).forEach(function (k) { out.push(k.replace(/(^|[\s/-])\w/g, function (m) { return m.toUpperCase(); })); });
-    (W.techniques || []).forEach(function (t) { if (isCombatTech(t)) out.push(t.name); });
+// The suggestions under a row's name, as in the other pickers (Criar Armadura, Criar Arma, Magias):
+// the entries of the catalog of its kind, with the Portuguese name and what they are, each name once;
+// a catalog style's own lists of that kind first. A perk row offers the perks; an advantage row, the
+// advantages. [{ name, entry, info }], at most 12.
+var SC_STYLE_FIELDS = { skill: ['skills', 'cinematicSkills', 'optSkills'], tech: ['techniques', 'cinematicTechniques', 'optTechniques'],
+  trait: ['perks', 'optPerks', 'optAdvantages'], spell: [] };
+function scNameInfo(kind, e) {
+  if (!e) return '';
+  if (kind === 'skill') return [e.attribute && e.difficulty ? e.attribute + '/' + e.difficulty : '', e.page].filter(Boolean).join(' · ');
+  if (kind === 'tech') return ['Técnica ' + (e.difficulty === 'A' ? 'Média' : 'Difícil'), e.defaults ? 'padrão ' + e.defaults : '', e.page].filter(Boolean).join(' · ');
+  if (kind === 'spell') { var col = String(e.college || '').split(',')[0].trim(); return [col ? collegeLabel(col) : '', 'IQ/' + (e.difficulty || 'H'), e.page].filter(Boolean).join(' · '); }
+  return [advTypeLabel(e.type), e.cost, e.page].filter(Boolean).join(' · ');
+}
+function scNameCatalog(x) {
+  if (x.kind === 'skill') {
+    var melee = Object.keys(SC_MELEE_DIFF).map(function (k) { return { name: k.replace(/(^|[\s/-])\w/g, function (m) { return m.toUpperCase(); }), attribute: 'DX', difficulty: SC_MELEE_DIFF[k], page: 'B208' }; });
+    return /** @type {any[]} */ ((W.skills || []).filter(isCombatSkill)).concat(melee);
   }
-  out = out.concat(scTraitSuggestions());
-  return out.filter(function (v, i) { return out.indexOf(v) === i; });
+  if (x.kind === 'tech') return (W.techniques || []).filter(isCombatTech);
+  if (x.kind === 'spell') return W.spells || [];
+  return (W.advantages || []).filter(function (a) {
+    var k = advTypeKey(a.type); if (k === 'exp' || k === 'ref') return false;
+    return x.sub === 'perk' ? k === 'perk' : x.sub === 'adv' ? k !== 'perk' : true;
+  });
+}
+function scNameOptions(x, st, q) {
+  var typed = norm(q || '').trim(), out = [], seen = {};
+  function add(name, e) { var k = norm(name); if (!name || seen[k]) return; seen[k] = true; out.push({ name: name, entry: e, info: scNameInfo(x.kind, e) }); }
+  var cat = st && st.styleId ? styleById(st.styleId) : null, find = { skill: 'skill', tech: 'tech', trait: 'adv' }[x.kind];
+  if (cat) (SC_STYLE_FIELDS[x.kind] || []).forEach(function (fld) {
+    styleItems(cat[fld]).forEach(function (n) { if (n.length <= 120 && (!typed || norm(n).indexOf(typed) >= 0)) add(n, find ? styleFind(find, n) : null); });
+  });
+  var list = scNameCatalog(x);
+  (typed ? searchCatalog(list, q, null) : list.slice().sort(byName)).slice(0, 60).forEach(function (e) { add(e.name, e); });
+  return out.slice(0, 12);
 }
 
 Ops.saveSheetCombat = function (s, combat, moved) {
@@ -329,8 +401,7 @@ function scNhCell(x, pool, av) {
   var bonus = x.bonus || x.tbonus || (b && (b.bonus || b.tbonus));
   var title = x.kind === 'tech' ? 'Técnica de ' + (x.base || '?') + ' · padrão ' + x.def + (x.max != null ? ' · máximo ' + (x.max > 0 ? '+' + x.max : x.max) : '') +
     (x.bonus ? ' · ' + bonusText(x.bonus, x.bonusNote) : '') : skillBonusTitle(x);
-  return '<td class="gnh' + (bonus ? ' bonus' : '') + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' +
-    esc(nh.rel) + '<small>' + esc(nh.lvl) + '</small></td>';
+  return '<td class="gnh' + (bonus ? ' bonus' : '') + '">' + calcBtn(nhHtml(nh), combatCalc(x, pool, av), title) + '</td>';
 }
 // The catalog entry of a row, shown in a modal on click: the skills of Regras › Combate (the
 // melee weapon skills point to "Melee Weapon", which describes them all), the techniques, and
@@ -350,6 +421,10 @@ function scLink(x) {
     var t = (x.techId && techById(x.techId)) || styleFind('tech', scSplitTech(x.name).tech);
     return t ? { attr: 'data-tech-modal', id: t.id, href: techHref(t.id), title: 'Ver a técnica' } : null;
   }
+  if (x.kind === 'spell') {
+    var sl = (x.spellId && spellById(x.spellId)) || (W.spells || []).filter(function (y) { return norm(y.name) === norm(x.name); })[0];
+    return sl ? { attr: 'data-spell-modal', id: sl.id, href: spellHref(sl.id), title: 'Ver a magia' } : null;
+  }
   var n = /^enhanced (block|parry|dodge)\b/i.test(x.name) ? 'Enhanced Defenses' : x.name, k = combatKey(n), list = W.advantages || [];
   var a = list.filter(function (y) { return norm(y.name) === norm(n); })[0] ||
     list.filter(function (y) { return combatKey(y.name) === k && !/^expans/i.test(y.type || ''); })[0] ||
@@ -358,7 +433,7 @@ function scLink(x) {
 }
 // extra: more to say under the name, after the kind ("de Knightly Mounted Combat").
 function scItemName(x, extra) {
-  var tag = x.kind === 'skill' ? x.attr + '/' + x.diff : x.kind === 'tech' ? 'Técnica ' + (x.diff === 'A' ? 'Média' : 'Difícil') : '';
+  var tag = x.kind === 'skill' ? x.attr + '/' + x.diff : x.kind === 'tech' ? 'Técnica ' + (x.diff === 'A' ? 'Média' : 'Difícil') : x.kind === 'spell' ? 'Magia IQ/' + x.diff : '';
   if (extra) tag += (tag ? ' · ' : '') + esc(extra);
   var l = scLink(x);
   var name = l ? '<a href="' + l.href + '" ' + l.attr + '="' + esc(l.id) + '" title="' + l.title + '">' + esc(x.name) + '</a>' : esc(x.name);
@@ -703,11 +778,14 @@ function scDefNote(key, note, bonus) { return scNoteField(bonusNoteInput('', not
 function scEditRow(x, g, n, pool, av, listId) {
   var nh = combatNh(x, pool, av), at = ' data-g="' + g + '" data-n="' + n + '"';
   var f = scField('Tipo', '<select data-f="kind"' + at + '>' + scOpts(SC_KINDS, x.kind) + '</select>') +
-    scField('Nome', '<input type="text" data-f="name"' + at + ' maxlength="120" list="' + listId + '" autocomplete="off" value="' + esc(x.name) + '" placeholder="' +
-      (x.kind === 'tech' ? 'Ex.: Counterattack (Broadsword)' : x.kind === 'trait' ? 'Ex.: Shield-Wall Training' : 'Ex.: Broadsword') + '">', 'sc-name');
+    scField('Nome', '<div class="sk-pick"><input type="text" data-f="name"' + at + ' maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scSug' + g + '_' + n + '" value="' + esc(x.name) + '" placeholder="' +
+      (x.kind === 'tech' ? 'Ex.: Counterattack (Broadsword)' : x.kind === 'spell' ? 'Ex.: Fireball, Deflect Missile' : x.kind === 'trait' ? (x.sub === 'adv' ? 'Ex.: Combat Reflexes' : 'Ex.: Shield-Wall Training') : 'Ex.: Broadsword') + '">' +
+      '<div class="suggest" id="scSug' + g + '_' + n + '" role="listbox" hidden></div></div>', 'sc-name');
   if (x.kind === 'skill') {
     f += scField('Atributo', '<select data-f="attr"' + at + '>' + scOpts(SKILL_ATTRS.map(function (v) { return [v, v]; }), x.attr) + '</select>') +
       scField('Dif.', '<select data-f="diff"' + at + '>' + scOpts(SKILL_DIFF_KEYS.map(function (v) { return [v, v]; }), x.diff) + '</select>');
+  } else if (x.kind === 'spell') {
+    f += scField('Dif.', '<select data-f="diff"' + at + '>' + scOpts([['H', 'H'], ['VH', 'VH']], x.diff) + '</select>');
   } else if (x.kind === 'tech') {
     f += scField('Perícia-base', '<input type="text" data-f="base"' + at + ' maxlength="100" list="scBases" autocomplete="off" value="' + esc(x.base) + '">', 'sc-base') +
       scField('Dif.', '<select data-f="diff"' + at + '>' + scOpts([['A', 'A'], ['H', 'H']], x.diff) + '</select>') +
@@ -721,7 +799,7 @@ function scEditRow(x, g, n, pool, av, listId) {
     '<button class="icon-btn" type="button" data-del="' + g + ':' + n + '" aria-label="Remover" title="Remover">' + svg(ICON.x, 15, 2.4) + '</button>';
   return '<div class="sc-row">' + f + '</div>';
 }
-function scEditNhHtml(nh) { return nh ? esc(nh.rel) + ' <small>' + esc(nh.lvl) + '</small>' + (nh.waste ? '<small class="sk-waste">' + nh.waste + ' pt sem efeito</small>' : '') : '<small>sem NH</small>'; }
+function scEditNhHtml(nh) { return nh ? nhHtml(nh) + (nh.waste ? '<small class="sk-waste">' + nh.waste + ' pt sem efeito</small>' : '') : '<small>sem NH</small>'; }
 // A style's block, and the Perícias de Combate one, can be folded to its header (name, what it
 // holds). In the editor both start folded and a new style open; st.open is the draft's only
 // (cleanCombat drops it), and the draft's gOpen is the Perícias de Combate block's.
@@ -741,14 +819,13 @@ function scGroupEditHtml(title, items, g, pool, av, listId, st) {
       '<button class="btn ghost" type="button" data-delstyle="' + g + '">' + svg(ICON.trash, 14) + 'Remover estilo</button></div>'
       : '<div class="sc-ghead sc-ghead-g">' + chev + '<h3 class="sec-title" style="margin:0">' + esc(title) + '</h3>' + sum + '</div>') +
     '<div class="sc-gbody"><div class="sc-rows">' + items.map(function (x, n) { return scEditRow(x, g, n, pool, av, listId); }).join('') + '</div>' +
-    '<div class="btn-row">' + SC_KINDS.map(function (k) { return '<button class="btn" type="button" data-add="' + g + ':' + k[0] + '">' + svg(ICON.plus, 14, 2.4) + k[1] + '</button>'; }).join('') + '</div>' +
-    (cat ? '<p class="hint-text" style="margin:0">Os nomes sugeridos vêm das listas do estilo (técnicas, perks e opcionais): escolher um preenche o resto.</p>' : '') + reqHtml + '</div></div>';
+    '<div class="btn-row">' + SC_ADD.map(function (k) { return '<button class="btn" type="button" data-add="' + g + ':' + k[0] + '">' + svg(ICON.plus, 14, 2.4) + k[1] + '</button>'; }).join('') + '</div>' +
+    (cat ? '<p class="hint-text" style="margin:0">Os nomes sugeridos mostram primeiro os das listas do estilo (técnicas, perks e opcionais), depois o resto do catálogo: escolher um preenche o resto.</p>' : '') + reqHtml + '</div></div>';
 }
 function scEditHtml(s, c, pool, av) {
   var d = S.ui.combatDraft;
-  var lists = c.styles.map(function (x, i) { return '<datalist id="scList' + i + '">' + scSuggestions(x).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>'; }).join('') +
-    '<datalist id="scListG">' + scSuggestions(null).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>' +
-    '<datalist id="scBases">' + pool.map(function (k) { return '<option value="' + esc(k.name) + '">'; }).join('') + '</datalist>';
+  // The names have their own suggestions (scNameOptions); the base skill of a technique, the sheet's.
+  var lists = '<datalist id="scBases">' + pool.map(function (k) { return '<option value="' + esc(k.name) + '">'; }).join('') + '</datalist>';
   var fromSkills = sheetSkills(s).filter(function (k) { return !d.moved.some(function (m) { return m.name === k.name && m.attr === k.attr && m.diff === k.diff; }); });
   var targets = [['g', 'Perícias de Combate']].concat(c.styles.map(function (x, i) { return ['s' + i, x.name || 'Estilo ' + (i + 1)]; }));
   return lists +
@@ -757,7 +834,7 @@ function scEditHtml(s, c, pool, av) {
     c.styles.map(function (x, i) { return scGroupEditHtml('', x.items, 's' + i, pool, av, 'scList' + i, x); }).join('') +
     '<div class="box sc-edit"><h3 class="sec-title" style="margin:0">Adicionar estilo</h3><div class="sc-row">' +
       scField('Estilo do catálogo', '<div class="sk-pick"><input type="text" id="scStylePick" maxlength="120" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scStyleSug" placeholder="' +
-        (W.loaded.styles ? 'Digite para buscar; vazio, ou um nome fora da lista, é um estilo livre' : 'Carregando estilos…') + '"><div class="suggest" id="scStyleSug" role="listbox" hidden></div></div>', 'sc-name') +
+        (W.loaded.styles ? 'Digite para buscar; um nome fora da lista vira um estilo personalizado' : 'Carregando estilos…') + '"><div class="suggest" id="scStyleSug" role="listbox" hidden></div></div>', 'sc-name') +
       '<button class="btn" type="button" id="scAddStyle">' + svg(ICON.plus, 14, 2.4) + 'Adicionar estilo</button></div>' +
       '<p class="hint-text" style="margin:0">Do catálogo, o estilo vem com Style Familiarity e, com 0 pontos, as técnicas, perícias cinemáticas, técnicas cinemáticas e perks dele (na ficha, só aparecem com pelo menos 1 ponto). As perícias que ele pede são pré-requisito: vêm da ficha só com o NH (os pontos já foram gastos), e o estilo fica marcado se faltar alguma.</p>' +
     (fromSkills.length ? '<h3 class="sec-title" style="margin:8px 0 0">Trazer da seção Perícias</h3><div class="sc-row">' +
@@ -840,7 +917,8 @@ function wireSheetCombat(s) {
       x.name = v;
       if (change) {
         // A name from the style's lists sets the kind; a known one fills the other fields.
-        var k = scKindOf(styleOf(g), v), y = cleanCombatItem(Object.assign({}, x, k ? { kind: k } : {}));
+        var k = x.kind === 'spell' ? null : scKindOf(styleOf(g), v), y = cleanCombatItem(Object.assign({}, x, k ? { kind: k } : {}));
+        if (x.sub && y.kind === 'trait') y.sub = x.sub;
         group(g)[+el.getAttribute('data-n')] = scAutofill(y);
         renderSheetPage(); return;
       }
@@ -850,6 +928,54 @@ function wireSheetCombat(s) {
     paint();
   }
   box.addEventListener('input', onEdit); box.addEventListener('change', onEdit);
+  // A row's name: the suggestions below it as it is typed (scNameOptions), picked with a click or the
+  // arrows and Enter; picking one is as leaving the field (the row is filled from the catalog).
+  var ns = { input: null, list: null, opts: [], act: 0 };
+  function nameField(e) { var t = /** @type {AnyEl} */ (e.target); return t && t.getAttribute && t.getAttribute('data-f') === 'name' && t.closest('.sc-row') ? t : null; }
+  function hideNames() { if (ns.list) { ns.list.hidden = true; ns.list.innerHTML = ''; ns.input.setAttribute('aria-expanded', 'false'); } ns.input = null; ns.list = null; ns.opts = []; }
+  function paintNames(input) {
+    var g = input.getAttribute('data-g'), x = group(g)[+input.getAttribute('data-n')], list = input.parentNode.querySelector('.suggest'); if (!x || !list) return;
+    if (ns.list && ns.list !== list) hideNames();
+    ns.input = input; ns.list = list; ns.opts = scNameOptions(x, styleOf(g), input.value); ns.act = Math.min(ns.act, Math.max(0, ns.opts.length - 1));
+    if (!ns.opts.length || (ns.opts.length === 1 && norm(ns.opts[0].name) === norm(input.value))) { list.hidden = true; list.innerHTML = ''; input.setAttribute('aria-expanded', 'false'); return; }
+    list.innerHTML = ns.opts.map(function (o, i) {
+      return '<button type="button" role="option" data-o="' + i + '" class="' + (i === ns.act ? 'act' : '') + '" aria-selected="' + (i === ns.act) + '"><span>' + esc(o.name) + (o.entry ? ptNameHtml(o.entry) : '') + '</span>' +
+        (o.info ? '<small>' + esc(o.info) + '</small>' : '') + '</button>';
+    }).join('');
+    list.hidden = false; input.setAttribute('aria-expanded', 'true');
+    var on = list.querySelector('.act'); if (on) on.scrollIntoView({ block: 'nearest' });
+  }
+  function pickName(i) {
+    var o = ns.opts[i], input = ns.input; if (!o || !input) return;
+    var g = input.getAttribute('data-g'), n = input.getAttribute('data-n');
+    input.value = o.name; hideNames();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    // The change redraws the page: the points field is the new one.
+    var pts = document.querySelector('#combat [data-f="pts"][data-g="' + g + '"][data-n="' + n + '"]'); if (pts instanceof HTMLInputElement) { pts.focus(); pts.select(); }
+  }
+  // The catalog of a row's kind loads when its name gets the focus (the list follows when it arrives).
+  var SC_KIND_CAT = { skill: 'skills', tech: 'techniques', trait: 'advantages', spell: 'spells' };
+  box.addEventListener('focusin', function (e) {
+    var t = nameField(e); if (!t) return;
+    var x = group(t.getAttribute('data-g'))[+t.getAttribute('data-n')]; ns.act = 0;
+    loadCatalog(SC_KIND_CAT[x && x.kind] || 'skills').then(function () { if (document.activeElement === t) paintNames(t); });
+    paintNames(t);
+  });
+  box.addEventListener('input', function (e) { var t = nameField(e); if (t && e.isTrusted !== false && document.activeElement === t) { ns.act = 0; paintNames(t); } });
+  box.addEventListener('focusout', function (e) { var t = nameField(e); if (t) setTimeout(function () { if (ns.input === t && document.activeElement !== t) hideNames(); }, 150); });
+  box.addEventListener('keydown', function (e) {
+    var t = nameField(e); if (!t || ns.input !== t || !ns.opts.length || ns.list.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); ns.act = Math.min(ns.opts.length - 1, ns.act + 1); paintNames(t); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); ns.act = Math.max(0, ns.act - 1); paintNames(t); }
+    else if (e.key === 'Enter') { e.preventDefault(); pickName(ns.act); }
+    else if (e.key === 'Escape') { e.stopPropagation(); hideNames(); }
+  });
+  box.addEventListener('mousedown', function (e) { if (/** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('.sc-row .suggest')) e.preventDefault(); });
+  box.addEventListener('click', function (e) {
+    var o = /** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('.sc-row .suggest [data-o]');
+    if (o) { pickName(+o.getAttribute('data-o')); e.stopPropagation(); }
+  }, true);
   box.addEventListener('click', function (e) {
     var fold = /** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('[data-fold]');
     if (fold) { scFold(fold.getAttribute('data-fold'), fold.getAttribute('aria-expanded') !== 'true'); return; }
@@ -860,8 +986,11 @@ function wireSheetCombat(s) {
       if (st.items.length && !confirm('Remover o estilo ' + (st.name || '') + ' e tudo o que está nele?')) return;
       c.styles.splice(+b.getAttribute('data-delstyle').slice(1), 1);
     } else {
-      var q = b.getAttribute('data-add').split(':');
-      group(q[0]).push(cleanCombatItem({ kind: q[1], name: '', pts: q[1] === 'tech' ? 0 : 1 }));
+      var q = b.getAttribute('data-add').split(':'), sub = q[1] === 'perk' || q[1] === 'adv' ? q[1] : '';
+      var item = cleanCombatItem({ kind: sub ? 'trait' : q[1], name: '', pts: q[1] === 'tech' ? 0 : 1 });
+      if (sub) item.sub = sub; // which button (for the placeholder and the advantage's cost; not saved)
+      if (q[1] === 'spell') loadCatalog('spells');
+      group(q[0]).push(item);
       renderSheetPage();
       var rows = document.querySelectorAll('[data-group="' + q[0] + '"] [data-f="name"]'), last = rows[rows.length - 1];
       if (last instanceof HTMLElement) last.focus();
@@ -883,18 +1012,30 @@ function wireSheetCombat(s) {
     return starts.concat(has);
   }
   function hideStyles() { sug.hidden = true; sug.innerHTML = ''; pick.setAttribute('aria-expanded', 'false'); pick.removeAttribute('aria-activedescendant'); }
+  // A name the catalog does not have (exactly) is offered as a custom style, at the end (as in Criar Armadura).
   function paintStyles() {
-    opts = styleMatches(pick.value); act = Math.min(act, Math.max(0, opts.length - 1));
+    var typed = pick.value.trim();
+    opts = styleMatches(pick.value);
+    if (typed && !(W.styles || []).some(function (x) { return norm(x.name) === norm(typed); })) opts = opts.concat([{ custom: true, name: typed }]);
+    act = Math.min(act, Math.max(0, opts.length - 1));
     if (!opts.length) { hideStyles(); return; }
     sug.innerHTML = opts.map(function (x, n) {
+      if (x.custom) return '<button type="button" role="option" id="scStyleSug' + n + '" data-o="' + n + '" class="ab-custom-opt' + (n === act ? ' act' : '') + '" aria-selected="' + (n === act) + '">' +
+        '<span>' + svg(ICON.plus, 13, 2.4) + 'Usar “' + esc(x.name) + '” como estilo personalizado</span><small>um estilo livre: ponha nele as perícias, técnicas e perks</small></button>';
       return '<button type="button" role="option" id="scStyleSug' + n + '" data-o="' + n + '" class="' + (n === act ? 'act' : '') + '" aria-selected="' + (n === act) + '">' +
         '<span>' + esc(x.name) + '</span><small>' + esc([x.page, styleCost(x)].filter(Boolean).join(' · ')) + '</small></button>';
     }).join('');
     sug.hidden = false; pick.setAttribute('aria-expanded', 'true'); pick.setAttribute('aria-activedescendant', 'scStyleSug' + act);
     var on = sug.querySelector('.act'); if (on) on.scrollIntoView({ block: 'nearest' });
   }
-  function pickStyle(n) { var x = opts[n]; if (!x) return; pick.value = x.name; pick.dataset.id = x.id; hideStyles(); $('scAddStyle').focus(); }
-  pick.addEventListener('input', function () { delete pick.dataset.id; act = 0; paintStyles(); });
+  // A catalog style is picked (then Adicionar estilo); a custom one is added right away.
+  function pickStyle(n) {
+    var x = opts[n]; if (!x) return;
+    pick.value = x.name; hideStyles();
+    if (x.custom) { delete pick.dataset.id; pick.dataset.custom = '1'; $('scAddStyle').click(); return; }
+    pick.dataset.id = x.id; $('scAddStyle').focus();
+  }
+  pick.addEventListener('input', function () { delete pick.dataset.id; delete pick.dataset.custom; act = 0; paintStyles(); });
   pick.addEventListener('focus', function () { act = 0; paintStyles(); });
   pick.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement !== pick) hideStyles(); }, 150); });
   pick.addEventListener('keydown', function (e) {
@@ -908,8 +1049,8 @@ function wireSheetCombat(s) {
   sug.addEventListener('click', function (e) { var b = e.target.closest('[data-o]'); if (b) pickStyle(+b.getAttribute('data-o')); });
   $('scAddStyle').onclick = function () {
     var name = pick.value.trim(), cat = pick.dataset.id ? styleById(pick.dataset.id) : null;
-    // Typed in full without picking: the catalog style of that exact name.
-    if (!cat && name) cat = (W.styles || []).filter(function (x) { return norm(x.name) === norm(name); })[0] || null;
+    // Typed in full without picking: the catalog style of that exact name (not when the custom one was chosen).
+    if (!cat && name && !pick.dataset.custom) cat = (W.styles || []).filter(function (x) { return norm(x.name) === norm(name); })[0] || null;
     var st = cat ? styleFromCatalog(cat, combatSkillPool(c, s)) : { name: name, items: [scSfItem(name)] };
     st.open = true;
     c.styles.push(st);

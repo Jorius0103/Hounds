@@ -127,7 +127,7 @@ function shieldResultHtml(b, r, nh) {
   function was(now, then) { return now !== then ? 'livro: ' + esc(then || '—') : ''; }
   return gearStat('BD', esc(r.db || '—'), was(r.db, b.db)) + gearStat('RD', esc(r.dr || '—'), was(r.dr, b.dr)) + gearStat('PV', esc(r.hp || '—'), '') +
     gearStat('Custo', esc(eqMoney(r.cost)), r.cost !== b.cost ? 'livro: ' + esc(eqMoney(b.cost)) : '') + gearStat('Peso', esc(eqLbs(r.weight)), r.weight !== b.weight ? 'livro: ' + esc(eqLbs(b.weight)) : '') +
-    gearStat('NH (' + esc(b.skill || 'Shield') + ')', nh ? String(nh.v) : '—', nh ? esc(nh.title) : 'a ficha não tem a perícia');
+    gearStat('NH (' + esc(b.skill || 'Shield') + ')', nh ? calcBtn(String(nh.v), weaponNhCalc(b.name || 'Escudo', b.skill || 'Shield', nh), nh.title) : '—', nh ? esc(nh.title) : 'a ficha não tem a perícia');
 }
 function shieldBuilderHtml(s, d) {
   return '<div class="box sk-edit"><div class="ab-grid">' +
@@ -161,7 +161,7 @@ function shieldItemsHtml(lines, g, L, can) {
     var html = '<tr' + (counted ? '' : ' class="eq-stored"') + '><td class="wb-name"><b>' + gearKindTag('armor') + esc(x.name) + gearModelHtml(x, cw.base.name) + '</b>' + '<small class="eq-where">' +
       esc(where.length ? where.join(' · ') + ' · ' + (counted ? 'na carga' : 'fora da carga') : 'Só na lista · fora da carga') + '</small></td>' +
       '<td class="gval">' + esc(cw.db || '—') + '</td><td class="gval">' + esc(cw.dr || '—') + '</td><td>' + esc(cw.hp || '—') + '</td>' +
-      (nh ? '<td class="gval" title="' + esc(nh.title) + '">' + nh.v + '</td>' : '<td><span class="eq-none">—</span></td>') +
+      (nh ? '<td class="gval">' + calcBtn(String(nh.v), weaponNhCalc(x.name, cw.base.skill || 'Shield', nh), nh.title) + '</td>' : '<td><span class="eq-none">—</span></td>') +
       '<td>' + esc(eqLbs(x.weight)) + '</td><td class="ab-txt">' + (adj ? esc(adj) : '<span class="eq-none">—</span>') + '</td>' + gearDescCell(cw.description) +
       (can ? '<td class="ab-acts"><button class="icon-btn" type="button" data-sb-edit="' + esc(cw.id) + '" aria-label="Editar ' + esc(x.name) + '" title="Editar">' + svg(ICON.edit, 15) + '</button>' +
         '<button class="icon-btn" type="button" data-sb-copy="' + esc(cw.id) + '" aria-label="Outro igual" title="Outro escudo igual, com os mesmos ajustes">' + svg(ICON.plus, 15, 2.4) + '</button>' +

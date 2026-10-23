@@ -73,10 +73,15 @@ function applyTalents(list, s, combat) {
   var t = combat ? {} : talentBonuses(s), cr = list.some(function (k) { return isFastDraw(k.name); }) && hasCombatReflexes(s);
   list.forEach(function (k) {
     var o = t[norm(k.name)], from = [], fx = k.kind === 'tech' ? null : fxForSkill(s, k);
-    k.tbonus = 0;
-    if (o) { k.tbonus += o.n; from.push('+' + o.n + ' de ' + o.from); }
-    if (cr && isFastDraw(k.name)) { k.tbonus += 1; from.push('+1 de Combat Reflexes'); }
-    if (fx) { k.tbonus += fx.n; from = from.concat(fxParts(fx)); }
+    // k.tsrc: each source with its value, k.tcond: the conditional ones (for the modal of the NH, ficha-contas.js).
+    k.tbonus = 0; k.tsrc = []; k.tcond = [];
+    if (o) { k.tbonus += o.n; from.push('+' + o.n + ' de ' + o.from); k.tsrc.push({ n: o.n, from: o.from }); }
+    if (cr && isFastDraw(k.name)) { k.tbonus += 1; from.push('+1 de Combat Reflexes'); k.tsrc.push({ n: 1, from: 'Combat Reflexes' }); }
+    if (fx) {
+      k.tbonus += fx.n; from = from.concat(fxParts(fx));
+      fx.used.forEach(function (m) { k.tsrc.push({ n: m.v, from: m.from }); });
+      k.tcond = fxCondNotes(fx);
+    }
     k.tfrom = joinE(from);
   });
   return list;
@@ -104,6 +109,19 @@ function advPts(x) {
   return m ? Math.ceil(base * (100 + m) / 100 - 1e-9) : base;
 }
 function advsTotal(list) { return list.reduce(function (n, x) { return n + advPts(x); }, 0); }
+// A perk (1 point, Basic Set p. B100) goes in Perícias › Perks, not in Vantagens. The entry of Regras ›
+// Vantagens says so (its type); one not in the catalog is a perk when it costs exactly 1 point and has
+// no levels. A talent never is.
+function advIsPerk(x) {
+  if (!x || x.size) return false;
+  var c = advEntryOf(x);
+  return c ? advTypeKey(c.type) === 'perk' : !x.levels && advPts(x) === 1;
+}
+// Vantagens without the perks: what the section shows, edits and counts.
+function sheetAdvsOnly(s) { return sheetAdvs(s).filter(function (x) { return !advIsPerk(x); }); }
+// A perk of Vantagens as a row of Perks ({ name, pts }). Perks saved in Vantagens before they were apart
+// show in Perks (sheetPerks) and move there when either section is saved.
+function advAsPerk(x) { return { name: x.name + (x.levels ? ' ' + x.levels : ''), pts: advPts(x) }; }
 
 Ops.saveSheetAdvs = function (s, list) {
   if (!rawHas('sheets', s.id)) return Promise.reject({ message: 'Essa ficha não existe mais.' });
@@ -111,7 +129,11 @@ Ops.saveSheetAdvs = function (s, list) {
   // A talent needs the number of skills its size covers.
   var bad = clean.filter(talentProblem)[0];
   if (bad) return Promise.reject({ message: bad.name + ': ' + talentProblem(bad) + '.' });
-  return W.store.patch('sheets', s.id, { advs: clean, updatedAt: now() });
+  // The perks go to Perícias › Perks: the ones typed here, and the ones saved here before (in sheetPerks).
+  // Resolves with how many were moved from this list.
+  var cur = sheetById(s.id) || s, moved = clean.filter(advIsPerk), p = { advs: clean.filter(function (x) { return !advIsPerk(x); }), updatedAt: now() };
+  if (moved.length || sheetAdvs(cur).some(advIsPerk)) p.perks = sheetPerks(cur).concat(moved.map(advAsPerk));
+  return W.store.patch('sheets', s.id, p).then(function () { return moved.length; });
 };
 
 /* ---------- the catalog (Regras › Vantagens) ---------- */
@@ -162,6 +184,7 @@ function advWarnings(x, c) {
     var tp = talentProblem(x); if (tp) out.push(tp);
   }
   if (k === 'perk' && advPts(x) !== 1 && !x.levels) out.push('perk custa 1 ponto');
+  if (x.name && advIsPerk(x)) out.push('é um perk: ao salvar, vai para Perícias › Perks');
   if (c && x.levels === 0 && k !== 'perk') {
     var b = advCostOf(c);
     if (b.fixed && b.cost !== x.cost) out.push('o livro diz ' + c.cost);
@@ -217,7 +240,7 @@ function advRowHtml(x, inCombat, onSheet, fastDraws) {
     '<td class="av-notes">' + esc(obs) + (problem ? '<small class="av-warn">' + esc(problem) + '</small>' : '') + '</td></tr>';
 }
 function sheetAdvsHtml(s, editing) {
-  var ui = S.ui, can = canWrite(), list = editing ? ui.advDraft : sheetAdvs(s);
+  var ui = S.ui, can = canWrite(), list = editing ? ui.advDraft : sheetAdvsOnly(s);
   var head = '<div class="gurps-head">' + sheetGripHtml('Vantagens') + gearFoldTitle('advs', 'Vantagens', editing) + '<span class="gurps-total" id="avTotal">' + advsTotal(list) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('avCancel', 'avSave', 'vantagens')
       : can && !sheetDraftOpen() ? secEditBtnHtml('avEdit', 'vantagens') : '') + '</div>';
@@ -231,7 +254,8 @@ function sheetAdvsHtml(s, editing) {
       '<p class="hint-text">Custo é o da vantagem, ou o de cada nível quando ela tem níveis (0 níveis: sem níveis). Mod. % soma ampliações (+) e limitações (−): ' +
       'os pontos são custo × níveis com o modificador aplicado, arredondando para cima, e as limitações não tiram mais de 80% (Basic Set, pp. B101-102). ' +
       'Perk custa 1 ponto. Talento: escolha o tamanho (pequeno 5 pts/nível e até 6 perícias, médio 10 e 7 a 12, grande 15 e 13 ou mais) e marque as perícias da seção Perícias (as de Combate não entram); ' +
-      'cada nível, até 4, soma +1 no NH delas (Basic Set, p. B89). Ao escolher da lista, custo e níveis vêm do livro.</p></div>' +
+      'cada nível, até 4, soma +1 no NH delas (Basic Set, p. B89). Ao escolher da lista, custo e níveis vêm do livro. ' +
+      'Perks (1 ponto) ficam em Perícias › Perks: um perk posto aqui vai para lá ao salvar.</p></div>' +
       '<div class="form-err" id="avErr" role="alert"></div></section>';
   }
   if (!list.length) return '<section class="gurps' + gearFoldClass('advs', editing) + '" id="advs">' + head + '<p class="long none">Nenhuma vantagem cadastrada.' + (can ? ' Use <b>Editar</b> para adicionar.' : '') + '</p></section>';
@@ -292,7 +316,7 @@ function wireSheetAdvs(s) {
   var ui = S.ui;
   function focusFirst() { var f = document.querySelector('#avRows .sk-name'); if (f instanceof HTMLElement) f.focus(); }
   var ed = $('avEdit'); if (ed) ed.onclick = function () {
-    ui.advDraft = sheetAdvs(s);
+    ui.advDraft = sheetAdvsOnly(s);
     // Talents saved before they had a size: the size of the cost a level they have.
     ui.advDraft.forEach(function (x) {
       if (x.size || !isTalentName(x.name, advEntryOf(x))) return;
@@ -423,7 +447,9 @@ function wireSheetAdvs(s) {
   $('avCancel').onclick = function () { ui.advDraft = null; renderSheetPage(); };
   $('avSave').onclick = function () {
     var btn = $('avSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('avCancel').disabled = true;
-    Ops.saveSheetAdvs(s, d).then(function () { ui.advDraft = null; toast('Vantagens salvas.'); renderSheetPage(); }, function (er) {
+    Ops.saveSheetAdvs(s, d).then(function (moved) {
+      ui.advDraft = null; toast('Vantagens salvas.' + (moved ? ' ' + plural(moved, 'perk foi', 'perks foram') + ' para Perícias › Perks.' : '')); renderSheetPage();
+    }, function (er) {
       btn.disabled = false; btn.textContent = 'Salvar'; $('avCancel').disabled = false;
       $('avErr').textContent = errorText(er);
     });

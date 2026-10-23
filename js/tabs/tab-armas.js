@@ -129,7 +129,7 @@ function weaponSearchText(w) {
   return t;
 }
 // Search, filters and page of the list: kept while the site is open (see spellView).
-var weaponView = { q: '', type: '', skill: '', book: '', page: 1 };
+var weaponView = { q: '', mine: false, type: '', skill: '', book: '', page: 1 };
 
 /* =====================================================================
    Page: Armas (list)
@@ -152,13 +152,14 @@ function renderWeaponsPage() {
     skills.map(function (s) { return '<option value="' + esc(s) + '"' + (ui.skill === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></div>' +
     '<div class="field" style="margin:0"><select id="weaponBookFilter" aria-label="Filtrar por livro"><option value="">Todos os livros</option>' +
     books.map(function (b) { return '<option value="' + esc(b) + '"' + (ui.book === b ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('') + '</select></div>' +
-    '</div>';
+    mestreOnlyHtml(ui.mine) + '</div>';
   pageRoot.innerHTML = head + toolbar + notice() + '<div id="weaponResults"></div>';
 
   var q = $('weaponSearch'); if (q) q.oninput = function () { ui.q = q.value; ui.page = 1; clearTimeout(weaponSearchTimer); weaponSearchTimer = setTimeout(renderWeaponList, 150); };
   var tf = $('weaponTypeFilter'); if (tf) tf.onchange = function () { ui.type = tf.value; ui.page = 1; renderWeaponList(); };
   var sf = $('weaponSkillFilter'); if (sf) sf.onchange = function () { ui.skill = sf.value; ui.page = 1; renderWeaponList(); };
   var bf = $('weaponBookFilter'); if (bf) bf.onchange = function () { ui.book = bf.value; ui.page = 1; renderWeaponList(); };
+  wireMestreOnly(ui, renderWeaponList);
   var nb = $('newWeaponBtn'); if (nb) nb.onclick = function () { openWeaponForm(null); };
   renderWeaponList();
 }
@@ -168,6 +169,7 @@ function filterWeaponList() {
     if (ui.type && w.type !== ui.type) return false;
     if (ui.skill && weaponSkills(w).indexOf(ui.skill) < 0) return false;
     if (ui.book && w.book !== ui.book) return false;
+    if (ui.mine && w.catalog) return false;
     return true;
   }), ui.q, weaponSearchText); // in name order (mergeCatalog); with a search, the most alike first
 }

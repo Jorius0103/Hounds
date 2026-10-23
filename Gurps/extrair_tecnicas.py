@@ -102,6 +102,14 @@ def processar(caminho, nome_livro, saida, contador):
     fechar()
 
 
+# Técnicas que os livros trazem fora do formato de técnica e o leitor não acha: entram à mão, depois
+# das do livro delas (se o PDF do livro estiver na pasta).
+#   Targeted Attacks (Martial Arts, p. 68): o quadro "Optional Rule: Targeted Attacks". Na ficha,
+#   "TA (Perícia Ataque/Alvo)" tem o padrão e o máximo calculados pela tabela do quadro (taParse,
+#   js/tabs/ficha-combate.js).
+EXTRAS = [{'livro': 'GURPS Martial Arts', 'pagina': '68', 'tecnica': 'Targeted Attack', 'dificuldade': 'Hard', 'cinematica': '', 'defaults': 'prerequisite skill, at the penalty to hit the target (see Modifiers)', 'pre_requisitos': 'Any Melee Weapon or unarmed combat skill; buys off up to half the default penalty (round up)', 'descricao': 'Optional rule. Attacks on high-value targets (the face, chinks in armor, weapons) stop fights, so many styles teach them as Hard techniques. Each Targeted Attack names three things. Skill: the Melee Weapon or unarmed combat skill used. Attack: for weapon skills, Swing or Thrust; for unarmed strikes, usually Punch, or a striking technique such as Disarming, Kicking, Lethal Strike or Return Strike; for grapples, Grab, Grapple or (Judo only) Throw. Target: a hit location other than the torso, chinks in armor at a location, or a weapon; the attack must be able to reach it. Write it as TA (Skill Attack/Target). The default is the skill at the penalty to hit the target (see Modifiers); defaulting from the skill, add the penalty of a special attack (Knee Strike -1; Elbow Strike, Kicking or Lethal Strike -2; Lethal Kick -4), but not when defaulting from a technique, whose default already has it. Improving the Targeted Attack buys off up to half of its default penalty, rounded up. Examples: TA (Boxing Punch/Face) defaults to Boxing-5, cannot exceed Boxing-2; TA (Broadsword Disarm/Weapon) to Broadsword-6 or Disarming (Broadsword)-6, cannot exceed Broadsword-3; TA (Broadsword Swing/Neck) to Broadsword-5, cannot exceed Broadsword-2; TA (Judo Throw/Skull) to Judo-7, cannot exceed Judo-3; TA (Karate Knee Strike/Groin) to Karate-4 or Knee Strike-3, cannot exceed Karate-2; TA (Rapier Thrust/Vitals Chinks) to Rapier-10, cannot exceed Rapier-5; TA (Wrestling Grab/Weapon) to Wrestling-4, cannot exceed Wrestling-2; TA (Wrestling Grapple/Arm) to Wrestling-1, cannot exceed Wrestling. Roll against the Targeted Attack to hit. Against a weapon it assumes -4: roll at +1 against large weapons (-3 to hit) and -1 against small ones (-5 to hit). Using the same Targeted Attack twice on a foe in a fight makes you predictable: he defends at +1 against the third and later uses. The GM may forbid Targeted Attacks.', 'modificadores': 'Strikes: Arm or Leg -2; Groin or Vitals -3; Hand or Foot -4; Face or Neck -5; Skull -7; Eye -9; chinks in armor -10 instead of the location penalty (torso chinks -8); weapons -4 (blows to break a weapon add nothing; to disarm, specify Disarm as the attack, a further -2 except with a fencing weapon). Grapples: half the location penalty (Arm or Leg -1, Hand or Foot -2, Face or Neck -3); grabs for weapons -4. Judo throws: any part but the Eye, Vitals or Groin, at the striking penalties; a throw to the head or neck damages it and needs a HT roll to avoid stun (Judo Throw, p. 75).'}]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pasta", type=Path, default=PASTA_PADRAO)
@@ -125,6 +133,9 @@ def main():
             except Exception as e:
                 print(f"  ERRO: {e}")
                 continue
+            for x in EXTRAS:
+                if x["livro"] == livro:
+                    w.writerow(x); contador[livro] += 1
             print(f"  {contador[livro]} técnicas")
     print(f"\nTotal: {sum(contador.values())} técnicas -> {arquivo}")
 

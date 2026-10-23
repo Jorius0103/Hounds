@@ -13,6 +13,7 @@
      #pericia~<id> is a skill under Perícias; #pericia-combate~<id> the same page under Combate
      #desvantagens · #desvantagem~<id> · #armas · #arma~<id> · #armaduras · #armadura~<id> · #itens · #item~<id>
      #melhoramentos · #melhoramento~<id> · #tabuleiros · #tabuleiro~<id>
+     #perks · #perk~<id>: the perks of the advantages' catalog, apart from #vantagens
    ===================================================================== */
 function parseRoute() {
   var h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
@@ -33,6 +34,8 @@ function parseRoute() {
   if (p[0] === 'magia' && p[1]) return { page: 'spell', spellId: p[1], node: 'spell:' + p[1] };
   if (p[0] === 'vantagens') return { page: 'advs', node: 'advs' };
   if (p[0] === 'vantagem' && p[1]) return { page: 'adv', advId: p[1], node: 'adv:' + p[1] };
+  if (p[0] === 'perks') return { page: 'perks', node: 'perks' };
+  if (p[0] === 'perk' && p[1]) return { page: 'perk', advId: p[1], node: 'perk:' + p[1] };
   if (p[0] === 'desvantagens') return { page: 'disadvs', node: 'disadvs' };
   if (p[0] === 'desvantagem' && p[1]) return { page: 'disadv', disadvId: p[1], node: 'disadv:' + p[1] };
   if (p[0] === 'pericias') return { page: 'skills', node: 'skills' };
@@ -79,6 +82,8 @@ function hrefFor(node) {
   if (node.indexOf('spell:') === 0) return '#magia~' + encodeURIComponent(node.slice(6));
   if (node === 'advs') return '#vantagens';
   if (node.indexOf('adv:') === 0) return '#vantagem~' + encodeURIComponent(node.slice(4));
+  if (node === 'perks') return '#perks';
+  if (node.indexOf('perk:') === 0) return '#perk~' + encodeURIComponent(node.slice(5));
   if (node === 'disadvs') return '#desvantagens';
   if (node.indexOf('disadv:') === 0) return '#desvantagem~' + encodeURIComponent(node.slice(7));
   if (node === 'skills') return '#pericias';

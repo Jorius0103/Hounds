@@ -178,7 +178,7 @@ function renderPage() {
   if (r.page === 'mesa') return;
   if (r.page === 'board') { renderBoardPage(); return; }
   // The long card lists use the width of the screen; the other pages keep a reading width.
-  pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
+  pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs' || r.page === 'perks' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
   else if (r.page === 'boards') renderBoardsPage();
@@ -198,6 +198,8 @@ function renderPage() {
   else if (r.page === 'spell') renderSpellPage();
   else if (r.page === 'advs') renderAdvantagesPage();
   else if (r.page === 'adv') renderAdvantagePage();
+  else if (r.page === 'perks') renderAdvantagesPage(true);
+  else if (r.page === 'perk') renderAdvantagePage();
   else if (r.page === 'disadvs') renderDisadvantagesPage();
   else if (r.page === 'disadv') renderDisadvantagePage();
   else if (r.page === 'skills') renderSkillsPage();
@@ -254,7 +256,7 @@ function onRoute() {
     } catch (e) {}
   }
   document.querySelectorAll('.view').forEach(function (v) { v.hidden = v.id !== (r.page === 'mesa' ? 'view-mesa' : r.page === 'board' ? 'view-board' : 'view-page'); });
-  if (byId[r.node]) { revealPath(r.node); if (r.page === 'boards' || r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
+  if (byId[r.node]) { revealPath(r.node); if (r.page === 'boards' || r.page === 'maps' || r.page === 'locais' || r.page === 'chars' || r.page === 'sheets' || r.page === 'orgs' || r.page === 'events' || r.page === 'spells' || r.page === 'advs' || r.page === 'perks' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'notes' || r.page === 'nb') expand(r.node); }
   paintMenu();
   topTitle.textContent = r.page === 'home' ? 'Início' : byId[r.node] ? byId[r.node].label : 'Hounds';
   if (r.page !== 'home') lstore('hounds_route', r.page === 'map' ? mapHref(r.mapId) : r.page === 'local' ? locHref(r.locId) : r.page === 'char' ? charHref(r.charId) : r.page === 'spell' ? spellHref(r.spellId) : r.page === 'sheet' && r.allyId ? allyHref(r.sheetId, r.allyId) : hrefFor(r.node));
@@ -304,7 +306,7 @@ function onData(kind) {
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
   if (S.route.page === 'events' && document.activeElement && document.activeElement.id === 'eventSearch') { renderEventList(); return; }
   if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }
-  if (S.route.page === 'advs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'advSearch') { renderAdvList(); return; }
+  if ((S.route.page === 'advs' || S.route.page === 'perks') && kind !== 'maps' && document.activeElement && document.activeElement.id === 'advSearch') { renderAdvList(); return; }
   if (S.route.page === 'disadvs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'disadvSearch') { renderDisadvList(); return; }
   if (S.route.page === 'skills' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'skillSearch') { renderSkillList(); return; }
   if (S.route.page === 'combat' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'combatSearch') { renderCombatList(); return; }

@@ -188,6 +188,15 @@ function wireSecSort(id, key) {
     done: function (keys) { lstore(key, JSON.stringify(keys)); } });
 }
 /* =====================================================================
+   The filter "Criado pelo Mestre" of every list of Regras: only the entries the Mestre made (the
+   documents of the database, not the books' files; see catalogChange). ui.mine keeps it, with the
+   page's other filters.
+   ===================================================================== */
+function mestreOnlyHtml(on) {
+  return '<label class="vis-flag" for="mestreOnly" style="padding:8px 12px"><input type="checkbox" id="mestreOnly"' + (on ? ' checked' : '') + '><span><b>Criado pelo Mestre</b></span></label>';
+}
+function wireMestreOnly(ui, redraw) { var el = $('mestreOnly'); if (el) el.onchange = function () { ui.mine = el.checked; ui.page = 1; redraw(); }; }
+/* =====================================================================
    Pages of a long list (spells, advantages)
    ===================================================================== */
 var PAGE_SIZE = 30;

@@ -19,11 +19,13 @@
    skills' NH (applyTalents). */
 
 /* ---------- the sheet's advantages ---------- */
-// Each once by name: Vantagens (with its levels), then the perks and advantages of Combate.
+// Each once by name: Vantagens (with its levels), Perícias › Perks, then the perks and advantages of Combate.
 function dmTraits(s) {
   var seen = {}, out = [];
   function add(name, levels, pts) { var n = norm(name); if (!name || seen[n]) return; seen[n] = true; out.push({ name: name, levels: levels, pts: pts }); }
   sheetAdvs(s).forEach(function (x) { add(x.name, x.levels, advPts(x)); });
+  // The perks of Perícias › Perks (Weapon Bond is one).
+  sheetPerks(s).forEach(function (p) { add(p.name, 0, p.pts); });
   scAllItems(sheetCombat(s)).forEach(function (x) { if (x.kind === 'trait' && x.pts > 0) add(x.name, 0, x.pts); });
   return out;
 }

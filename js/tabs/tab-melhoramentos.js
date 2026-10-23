@@ -63,7 +63,7 @@ Ops.deleteImprovement = function (item) {
 var improvementSearchTimer = 0;
 var IMPROVEMENT_SEARCH_FIELDS = ['name', 'category', 'restriction', 'cost', 'description'];
 // Search, filters and page of the list: kept while the site is open (see spellView).
-var improvementView = { q: '', kind: '', category: '', book: '', page: 1 };
+var improvementView = { q: '', mine: false, kind: '', category: '', book: '', page: 1 };
 
 /* =====================================================================
    Page: Melhoramentos (list)
@@ -87,13 +87,14 @@ function renderImprovementsPage() {
     select('improvementKindFilter', 'Filtrar por tipo de equipamento', 'Todos os equipamentos', kinds, ui.kind) +
     select('improvementCatFilter', 'Filtrar por categoria', 'Todas as categorias', cats, ui.category) +
     select('improvementBookFilter', 'Filtrar por livro', 'Todos os livros', books, ui.book) +
-    '</div>';
+    mestreOnlyHtml(ui.mine) + '</div>';
   pageRoot.innerHTML = head + toolbar + notice() + '<div id="improvementResults"></div>';
 
   var q = $('improvementSearch'); if (q) q.oninput = function () { ui.q = q.value; ui.page = 1; clearTimeout(improvementSearchTimer); improvementSearchTimer = setTimeout(renderImprovementList, 150); };
   var kf = $('improvementKindFilter'); if (kf) kf.onchange = function () { ui.kind = kf.value; ui.page = 1; renderImprovementList(); };
   var cf = $('improvementCatFilter'); if (cf) cf.onchange = function () { ui.category = cf.value; ui.page = 1; renderImprovementList(); };
   var bf = $('improvementBookFilter'); if (bf) bf.onchange = function () { ui.book = bf.value; ui.page = 1; renderImprovementList(); };
+  wireMestreOnly(ui, renderImprovementList);
   var nb = $('newImprovementBtn'); if (nb) nb.onclick = function () { openImprovementForm(null); };
   renderImprovementList();
 }
@@ -103,6 +104,7 @@ function filterImprovementList() {
     if (ui.kind && x.appliesTo !== ui.kind) return false;
     if (ui.category && x.category !== ui.category) return false;
     if (ui.book && x.book !== ui.book) return false;
+    if (ui.mine && x.catalog) return false;
     return true;
   }), ui.q, function (x) { return searchText(x, IMPROVEMENT_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
 }

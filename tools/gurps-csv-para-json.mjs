@@ -193,12 +193,15 @@ write('magias.json', spells);
 // ---------- vantagens ----------
 const ADV_BOOKS = {
   'GURPS Basic Set (4th ed.)': 'B', 'GURPS Basic Set (4ª ed.)': 'B', 'GURPS Martial Arts': 'MA', 'GURPS Fantasy': 'F',
-  'GURPS Martial Arts: Gladiators': 'MAG', 'GURPS Low-Tech': 'LT'
+  'GURPS Martial Arts: Gladiators': 'MAG', 'GURPS Low-Tech': 'LT',
+  // Os perks do Power-Ups 2 entram no advantages.csv pelo Gurps/extrair_perks_pu2.py.
+  'GURPS Power-Ups 2: Perks': 'PU2'
 };
 const advantages = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'advantages.csv'), 'utf8')).map((r) => {
   const code = bookCode(ADV_BOOKS, r.livro, 'advantages.csv');
   return { id: 'adv_' + slug(r.advantage) + '_' + code.toLowerCase() + r.pagina, name: r.advantage, cost: r.custo, type: r.tipo,
-    book: r.livro, page: code + r.pagina, description: r.descricao };
+    // A code that ends in a number gets a colon before the page: "PU2:9", not "PU29".
+    book: r.livro, page: code + (/\d$/.test(code) ? ':' : '') + r.pagina, description: r.descricao };
 }))));
 write('vantagens.json', advantages);
 
