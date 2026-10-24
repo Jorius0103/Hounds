@@ -685,14 +685,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                       {/* Linha 2 & 3: PV e FP com barras (visíveis apenas para Personagens ou para o Mestre) */}
                       {(isPlayerChar || currentUserRole === 'mestre') && (
                         <>
-                          <div className="flex items-center justify-between text-[10px] font-mono mt-1">
-                            <span className="font-semibold flex items-center gap-1">
-                              <span className="text-red-500 font-bold">PV</span>
-                              <span className="text-emerald-400 font-bold">{npc.hpCurrent}/{npc.hpMax}</span>
+                                                    <div className="flex items-center justify-between text-[10px] font-mono mt-1 px-0.5">
+                            <span className="font-semibold flex items-center gap-1.5">
+                              <span className="text-red-500 font-bold tracking-wide">PV</span>
+                              <span className="text-emerald-400 font-bold">{npc.hpCurrent} / {npc.hpMax}</span>
                             </span>
-                            <span className="text-cyan-300 flex items-center gap-1">
-                              <span className="text-cyan-400 font-bold">FP</span>
-                              <span>{npc.fpCurrent}/{npc.fpMax}</span>
+                            <span className="text-cyan-300 flex items-center gap-1.5">
+                              <span className="text-cyan-400 font-bold tracking-wide">FP</span>
+                              <span className="font-semibold">{npc.fpCurrent} / {npc.fpMax}</span>
                             </span>
                           </div>
 

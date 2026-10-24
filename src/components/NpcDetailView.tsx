@@ -1312,18 +1312,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         }}
         className="rounded-2xl shadow-2xl flex flex-col p-3.5 sm:p-5 space-y-4"
       >
-        {/* Identidade do NPC + Botão Lançar Dano (Fixo ao rolar) */}
+        {/* Identidade do NPC + Botão Lançar Dano */}
         <div
           style={{
-            position: 'sticky',
-            top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
-            zIndex: 30,
             border: npc.isDead ? '1px solid rgba(220, 38, 38, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
             background: npc.isDead
               ? 'rgba(2, 6, 23, 0.95)'
               : 'linear-gradient(to right, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))',
           }}
-          className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
+          className="backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
@@ -1336,11 +1333,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border shadow-xs text-purple-300 bg-purple-950/80 border-purple-600/60">
-                      Ficha do NPC
-                    </span>
-                  </div>
+                  
                   <h2 className={`text-lg sm:text-xl font-bold ${npc.isDead ? 'text-red-300 line-through' : 'text-white'}`}>
                     {npc.name || '(Sem Nome)'}
                   </h2>
@@ -1375,7 +1368,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   {(() => {
                     const activeManeuver = getCombatManeuver(npc.combatManeuver);
                     return (
-                      <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800">
+                      <div className="flex items-center gap-1 bg-slate-950/70 px-2 py-0.5 rounded-lg">
                         <span className="text-[10px] text-slate-400 font-semibold">Manobra:</span>
                         <select
                           disabled={isViewer}
@@ -1390,7 +1383,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                                 }
                               : undefined
                           }
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-all border outline-none truncate max-w-[135px] ${
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-all border-none outline-none truncate max-w-[135px] ${
                             activeManeuver
                               ? 'shadow-sm font-bold'
                               : 'text-slate-400 bg-slate-900 border-slate-750 hover:border-slate-600'
@@ -1409,26 +1402,28 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       </div>
                     );
                   })()}
+
+                  {!isViewer && (
+                    <button
+                      onClick={() => onOpenDamageCalculator(npc)}
+                      className="flex items-center gap-1 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
+                    >
+                      <Heart size={13} />
+                      <span>Lançar Dano / Fadiga</span>
+                    </button>
+                  )}
                 </div>
                 
               </div>
             </div>
 
-            {/* Ações do Jogador: Alertas separados em divs diferentes ao lado do Lançar Dano */}
-            <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto min-w-0">
+            {/* Ações do Jogador: Apenas Alertas à direita */}
+            <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto self-start lg:self-center">
               {renderTurnActionsBox()}
               {renderCriticalAlertsBox(true)}
 
-              {!isViewer ? (
-                <button
-                  onClick={() => onOpenDamageCalculator(npc)}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-colors active:scale-95 whitespace-nowrap shrink-0"
-                >
-                  <Heart size={15} />
-                  <span>Lançar Dano / Fadiga</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
+              {isViewer && (
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
                   <Eye size={14} />
                   <span>Espectador</span>
                 </div>
@@ -1565,12 +1560,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       }}
       className="rounded-2xl shadow-2xl flex flex-col p-3.5 sm:p-5 space-y-4"
     >
-      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas (Fixo ao rolar) */}
+      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas */}
       <div
         style={{
-          position: 'sticky',
-          top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
-          zIndex: 30,
           border: npc.isDead
             ? '1px solid rgba(220, 38, 38, 0.5)'
             : npc.characterType === 'player'
@@ -1582,7 +1574,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             ? 'linear-gradient(to right, rgba(6, 78, 59, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))'
             : 'linear-gradient(to right, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))',
         }}
-        className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
+        className="backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
       >
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           {/* Esquerda: Avatar + Identidade */}
@@ -1609,17 +1601,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
             {/* Identidade */}
             <div className="space-y-1.5 min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 mb-1">
-                  <span
-                    className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border shadow-xs ${
-                      npc.characterType === 'player'
-                        ? 'text-emerald-300 bg-emerald-950/80 border-emerald-600/60'
-                        : 'text-purple-300 bg-purple-950/80 border-purple-600/60'
-                    }`}
-                  >
-                    {npc.characterType === 'player' ? 'Ficha do Personagem' : 'Ficha do NPC'}
-                  </span>
-                </div>
+              
                 <div className="flex items-center gap-2 flex-wrap">
                 <input
                   type="text"
@@ -1711,7 +1693,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 {(() => {
                   const activeManeuver = getCombatManeuver(npc.combatManeuver);
                   return (
-                    <div className="flex items-center gap-1.5 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800 shrink-0">
+                    <div className="flex items-center gap-1 bg-slate-950/70 px-2 py-0.5 rounded-lg shrink-0">
                       <span className="text-[10px] text-slate-400 font-semibold">Manobra:</span>
                       <select
                         disabled={isViewer}
@@ -1726,7 +1708,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                               }
                             : undefined
                         }
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-all border outline-none truncate max-w-[130px] ${
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-all border-none outline-none truncate max-w-[130px] ${
                           activeManeuver
                             ? 'shadow-sm font-bold'
                             : 'text-slate-400 bg-slate-900 border-slate-750 hover:border-slate-600'
@@ -1746,71 +1728,50 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   );
                 })()}
 
-                {/* Peso & Altura - Agrupamento estável shrink-0 */}
-                <div className="flex items-center gap-1 text-[11px] text-slate-400 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800 shrink-0">
-                  <span>Peso:</span>
-                  <input
-                    type="text"
-                    value={npc.weight}
-                    readOnly={isViewer}
-                    onChange={(e) => updateField('weight', e.target.value)}
-                    className={`bg-transparent text-slate-200 w-14 text-center focus:outline-none ${isViewer ? 'cursor-default' : ''}`}
-                    placeholder="-"
-                  />
-                  <span className="text-slate-600">|</span>
-                  <span>Altura:</span>
-                  <input
-                    type="text"
-                    value={npc.height}
-                    readOnly={isViewer}
-                    onChange={(e) => updateField('height', e.target.value)}
-                    className={`bg-transparent text-slate-200 w-14 text-center focus:outline-none ${isViewer ? 'cursor-default' : ''}`}
-                    placeholder="-"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Direita: Alertas separados em divs diferentes ao lado de Botão Dano + Ações */}
-          <div className="flex flex-wrap items-center justify-end gap-2.5 self-start lg:self-center w-full lg:w-auto min-w-0">
-            {renderTurnActionsBox()}
-            {renderCriticalAlertsBox(false)}
-
-            {/* Bloco de Ações Fixo (shrink-0 para NUNCA cair para baixo dos alertas) */}
-            {!isViewer ? (
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => onOpenDamageCalculator(npc)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
-                >
-                  <Heart size={15} />
-                  <span>Lançar Dano / Fadiga</span>
-                </button>
+                {/* Ações à esquerda: Lançar Dano, Copiar (apenas NPC) e Excluir */}
+                {!isViewer && (
+                  <button
+                    onClick={() => onOpenDamageCalculator(npc)}
+                    className="flex items-center gap-1 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
+                  >
+                    <Heart size={13} />
+                    <span>Lançar Dano / Fadiga</span>
+                  </button>
+                )}
 
                 {isMaster && (
-                  <div className="flex flex-col gap-1 shrink-0">
-                    <button
-                      onClick={() => onDuplicateNpc(npc)}
-                      title="Duplicar este personagem com numeração incremental"
-                      className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 rounded-lg border border-slate-700 transition-colors flex items-center justify-center"
-                    >
-                      <Copy size={13} />
-                    </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {npc.characterType !== 'player' && (
+                      <button
+                        onClick={() => onDuplicateNpc(npc)}
+                        title="Duplicar este NPC com numeração incremental"
+                        className="p-1 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition-colors flex items-center justify-center"
+                      >
+                        <Copy size={13} />
+                      </button>
+                    )}
 
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmOpen(true)}
-                      title="Excluir este personagem"
-                      className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-950/30 hover:bg-rose-900/40 rounded-lg border border-rose-800/40 transition-colors flex items-center justify-center"
+                      title="Excluir do combate"
+                      className="p-1 text-rose-400 hover:text-rose-300 bg-rose-950/30 hover:bg-rose-900/40 rounded-lg border border-rose-800/40 transition-colors flex items-center justify-center"
                     >
                       <Trash2 size={13} />
                     </button>
                   </div>
                 )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
+
+                </div>
+            </div>
+          </div>
+
+                    {/* Direita: Apenas os Alertas à direita */}
+          <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto self-start lg:self-center">
+            {renderTurnActionsBox()}
+            {renderCriticalAlertsBox(false)}
+            {isViewer && (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
                 <Eye size={14} />
                 <span>Espectador</span>
               </div>

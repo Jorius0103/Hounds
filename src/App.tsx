@@ -3907,7 +3907,7 @@ export default function App() {
           /* MODO FICHAS & LOG GERAL */
           <div className="flex flex-col xl:flex-row gap-4 items-start w-full">
             {/* Coluna da Esquerda: Ficha do Personagem/NPC Selecionado */}
-            <div className="flex-1 min-w-0 w-full">
+            <div className="flex-1 min-w-0 w-full xl:sticky" style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}>
               {allCharacters.length === 0 ? (
                 isPlayerUser ? (
                   <div className="py-20 text-center space-y-3 max-w-md mx-auto bg-slate-900/60 border border-slate-800 rounded-2xl p-8 shadow-xl">

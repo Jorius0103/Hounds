@@ -383,23 +383,23 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       {showDetailedStats && (
                   <div className="flex flex-col shrink-0 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1 min-w-[155px] sm:min-w-[170px]">
                     {/* Linha com PV e FP */}
-                    <div className="flex items-center justify-between gap-2 text-xs leading-tight font-mono">
-                      <div className="flex items-center gap-1">
-                        <span className="inline-flex items-center gap-0.5 font-bold text-red-500">
+                    <div className="flex items-center justify-between gap-3 text-xs leading-tight font-mono">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 font-bold text-red-500">
                           <Heart size={11} className="text-red-500 fill-red-500/20 shrink-0" />
                           PV
                         </span>
                         <span className="font-black text-emerald-400">
-                          {npc.hpCurrent}<span className="text-slate-500 text-[10px] mx-0.5">/</span><span className="text-emerald-400/80 text-[10px]">{npc.hpMax}</span>
+                          {npc.hpCurrent} <span className="text-slate-500 text-[10px]">/</span> {npc.hpMax}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="inline-flex items-center gap-0.5 font-bold text-cyan-400">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 font-bold text-cyan-400">
                           <Zap size={11} className="text-cyan-400 fill-cyan-400/20 shrink-0" />
                           FP
                         </span>
                         <span className="font-black text-cyan-300">
-                          {npc.fpCurrent}<span className="text-slate-500 text-[10px] mx-0.5">/</span><span className="text-cyan-300/80 text-[10px]">{npc.fpMax}</span>
+                          {npc.fpCurrent} <span className="text-slate-500 text-[10px]">/</span> {npc.fpMax}
                         </span>
                       </div>
                     </div>
