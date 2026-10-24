@@ -305,14 +305,34 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                 }
               }}
               style={{
-                borderColor: isDead ? '#dc2626' : hasWarning ? '#f59e0b' : '#047857',
+                borderColor: isDead
+                  ? '#dc2626'
+                  : hasWarning
+                  ? '#f59e0b'
+                  : isPlayerChar
+                  ? '#059669'
+                  : '#7c3aed',
+                background: isDead
+                  ? 'rgba(69, 10, 10, 0.35)'
+                  : hasWarning
+                  ? 'linear-gradient(135deg, rgba(120, 53, 15, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                  : isPlayerChar
+                  ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.22) 0%, rgba(15, 23, 42, 0.96) 60%, rgba(2, 6, 23, 0.98) 100%)'
+                  : 'linear-gradient(135deg, rgba(88, 28, 135, 0.22) 0%, rgba(15, 23, 42, 0.96) 60%, rgba(2, 6, 23, 0.98) 100%)',
+                boxShadow: isDead
+                  ? '0 4px 14px -2px rgba(220, 38, 38, 0.15)'
+                  : isPlayerChar
+                  ? '0 4px 14px -2px rgba(16, 185, 129, 0.15)'
+                  : '0 4px 14px -2px rgba(168, 85, 247, 0.15)',
               }}
               className={`group relative flex flex-col rounded-xl p-2.5 text-left transition-all cursor-pointer border-2 shadow-md hover:shadow-lg space-y-1.5 ${
                 isDead
-                  ? 'bg-red-950/25 border-red-600/80 hover:border-red-500'
+                  ? 'border-red-600/80 hover:border-red-500'
                   : hasWarning
-                  ? 'bg-slate-900/95 border-amber-500/70 hover:border-amber-400'
-                  : 'bg-slate-900/95 border-emerald-700 hover:border-emerald-600'
+                  ? 'border-amber-500/70 hover:border-amber-400'
+                  : isPlayerChar
+                  ? 'border-emerald-700/80 hover:border-emerald-500 hover:brightness-105'
+                  : 'border-purple-700/80 hover:border-purple-500 hover:brightness-105'
               }`}
             >
               {/* CABEÇALHO COMPACTO */}

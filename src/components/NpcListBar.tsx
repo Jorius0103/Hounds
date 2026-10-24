@@ -565,8 +565,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 let nameColor = '';
 
                 if (isSelected) {
-                  cardColorClasses =
-                    'bg-blue-950/40 border-blue-500 text-blue-200 hover:bg-blue-950/50 shadow-md shadow-blue-950/50';
+                  cardColorClasses = isPlayerChar
+                    ? 'bg-emerald-950/50 border-emerald-400 text-emerald-100 shadow-md shadow-emerald-950/50'
+                    : 'bg-purple-950/50 border-purple-400 text-purple-100 shadow-md shadow-purple-950/50';
                   nameColor = 'text-white';
                 } else if (isDeadChar) {
                   cardColorClasses =
@@ -577,9 +578,10 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                     'bg-amber-950/25 border-amber-400 hover:bg-amber-950/35 text-amber-200';
                   nameColor = 'text-amber-200';
                 } else {
-                  cardColorClasses =
-                    'bg-emerald-950/25 border-emerald-700 hover:border-emerald-600 hover:bg-emerald-950/35 text-emerald-200';
-                  nameColor = isPlayerChar ? 'text-emerald-200' : 'text-slate-200';
+                  cardColorClasses = isPlayerChar
+                    ? 'bg-emerald-950/25 border-emerald-700/80 hover:border-emerald-500 hover:bg-emerald-950/35 text-emerald-200'
+                    : 'bg-purple-950/25 border-purple-700/80 hover:border-purple-500 hover:bg-purple-950/35 text-purple-200';
+                  nameColor = isPlayerChar ? 'text-emerald-200' : 'text-purple-200';
                 }
 
                 return (
@@ -595,7 +597,26 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                     style={{
                       borderWidth: '2px',
                       borderStyle: 'solid',
-                      borderColor: isSelected ? '#3b82f6' : isDeadChar ? '#dc2626' : hasAlerts ? '#f59e0b' : '#047857',
+                      borderColor: isSelected
+                        ? isPlayerChar ? '#10b981' : '#a855f7'
+                        : isDeadChar
+                        ? '#dc2626'
+                        : hasAlerts
+                        ? '#f59e0b'
+                        : isPlayerChar
+                        ? '#059669'
+                        : '#7c3aed',
+                      background: isSelected
+                        ? isPlayerChar
+                          ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.45) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                          : 'linear-gradient(135deg, rgba(88, 28, 135, 0.45) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                        : isDeadChar
+                        ? 'rgba(69, 10, 10, 0.35)'
+                        : hasAlerts
+                        ? 'linear-gradient(135deg, rgba(120, 53, 15, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                        : isPlayerChar
+                        ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.22) 0%, rgba(15, 23, 42, 0.96) 100%)'
+                        : 'linear-gradient(135deg, rgba(88, 28, 135, 0.22) 0%, rgba(15, 23, 42, 0.96) 100%)',
                       width: 'calc((100% - 50px) / 9)',
                       minWidth: '150px',
                     }}

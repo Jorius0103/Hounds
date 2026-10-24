@@ -1304,16 +1304,17 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   if (isPlayerUser && !isPlayerChar) {
     return (
       <div className="space-y-4">
-        {/* Identidade do NPC + Botão Lançar Dano (Fixo ao rolar) */}
+        {/* Identidade do NPC + Botão Lançar Dano (Fixo ao rolar com respiro) */}
         <div
           style={{
             position: 'sticky',
-            top: 'var(--mesa-top-offset, 48px)',
+            top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
             zIndex: 30,
-            border: npc.isDead ? '1px solid rgba(220, 38, 38, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
+            border: npc.isDead ? '1px solid rgba(220, 38, 38, 0.5)' : '1px solid rgba(168, 85, 247, 0.4)',
             background: npc.isDead
               ? 'rgba(2, 6, 23, 0.95)'
-              : 'linear-gradient(to right, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))',
+              : 'linear-gradient(135deg, rgba(88, 28, 135, 0.30) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)',
+            boxShadow: '0 10px 30px -5px rgba(88, 28, 135, 0.2)',
           }}
           className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
         >
@@ -1539,22 +1540,27 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   return (
     <div className="space-y-4">
-      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas (Fixo ao rolar) */}
+      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas (Fixo ao rolar com respiro) */}
       <div
         style={{
           position: 'sticky',
-          top: 'var(--mesa-top-offset, 48px)',
+          top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
           zIndex: 30,
           border: npc.isDead
             ? '1px solid rgba(220, 38, 38, 0.5)'
             : npc.characterType === 'player'
-            ? '1px solid rgba(16, 185, 129, 0.35)'
-            : '1px solid rgba(168, 85, 247, 0.35)',
+            ? '1px solid rgba(16, 185, 129, 0.4)'
+            : '1px solid rgba(168, 85, 247, 0.4)',
           background: npc.isDead
             ? 'rgba(2, 6, 23, 0.95)'
             : npc.characterType === 'player'
-            ? 'linear-gradient(to right, rgba(6, 78, 59, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))'
-            : 'linear-gradient(to right, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))',
+            ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.30) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)'
+            : 'linear-gradient(135deg, rgba(88, 28, 135, 0.30) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)',
+          boxShadow: npc.isDead
+            ? '0 10px 30px -5px rgba(220, 38, 38, 0.2)'
+            : npc.characterType === 'player'
+            ? '0 10px 30px -5px rgba(6, 78, 59, 0.25)'
+            : '0 10px 30px -5px rgba(88, 28, 135, 0.25)',
         }}
         className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
       >
