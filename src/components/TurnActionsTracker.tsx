@@ -7,12 +7,16 @@ interface TurnActionsTrackerProps {
   onChange: (updated: ITurnActionsTracker) => void;
   npcName?: string;
   isReadOnly?: boolean;
+  className?: string;
+  gridClassName?: string;
 }
 
 export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
   tracker,
   onChange,
   isReadOnly = false,
+  className = '',
+  gridClassName = 'grid-cols-3 gap-2',
 }) => {
   const currentTrackerRef = useRef(tracker);
   useEffect(() => {
@@ -80,27 +84,27 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+    <div className={`bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between space-y-2 ${className}`}>
       {/* Header Compacto com Limpar Choque e Zerar Turno */}
-      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-        <div className="flex items-center gap-1.5">
-          <Shield size={14} className="text-amber-400" />
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Shield size={14} className="text-amber-400 shrink-0" />
+          <h3 className="text-xs font-bold text-white uppercase tracking-wider truncate">
             Defesas &amp; Ações do Turno
           </h3>
         </div>
 
         {!isReadOnly && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
             {/* Botão Limpar Choque ao lado do Zerar Turno */}
             <button
               type="button"
               onClick={handleResetShock}
               disabled={(tracker.shock || 0) <= 0}
-              className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-rose-600 hover:text-white text-rose-300 text-xs font-bold rounded-lg border border-slate-700 transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:hover:bg-slate-800 disabled:hover:text-rose-300"
+              className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-slate-800 hover:bg-rose-600 hover:text-white text-rose-300 text-[11px] sm:text-xs font-bold rounded-lg border border-slate-700 transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:hover:bg-slate-800 disabled:hover:text-rose-300"
               title="Zerar penalidade de choque"
             >
-              <AlertTriangle size={12} />
+              <AlertTriangle size={11} />
               <span>Limpar Choque</span>
             </button>
 
@@ -108,10 +112,10 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
             <button
               type="button"
               onClick={handleResetTurn}
-              className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 text-xs font-bold rounded-lg border border-slate-700 transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 text-[11px] sm:text-xs font-bold rounded-lg border border-slate-700 transition-all shadow-sm active:scale-95"
               title="Zerar defesas, recuo e fadiga da rodada"
             >
-              <RotateCcw size={12} />
+              <RotateCcw size={11} />
               <span>Zerar Turno</span>
             </button>
           </div>
@@ -119,7 +123,7 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
       </div>
 
       {/* Grid com os 6 itens: dimensões verticais ampliadas e fonte maior */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs">
+      <div className={`grid ${gridClassName} text-xs`}>
         {/* 1. Aparar */}
         <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 flex flex-col justify-between min-h-[58px] sm:min-h-[64px]">
           <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-300">
