@@ -3,7 +3,7 @@ import { NPC, MesaRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { CombatHomeScreen } from './CombatHomeScreen';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
-import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X, Save, Check } from 'lucide-react';
+import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X, Save, Check, ArrowUpDown } from 'lucide-react';
 
 interface NpcListBarProps {
   npcs: NPC[];
@@ -36,6 +36,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   isHomeScreen = false,
   customMasterOrder,
   onSaveMasterOrder,
+  onlinePlayerNames,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs' | 'alive' | 'dead'>('all');
   const [sortMode, setSortMode] = useState<'speed' | 'alpha' | 'mestre'>(() => {
@@ -58,6 +59,35 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
       setLocalOrderedIds(customMasterOrder || null);
     }
   }, [customMasterOrder, hasUnsavedOrder]);
+
+  const isPlayerOnline = (playerName?: string): boolean => {
+    if (!playerName || !playerName.trim()) return false;
+    const pName = playerName.trim().toLowerCase();
+    if (onlinePlayerNames && onlinePlayerNames.has(pName)) return true;
+    try {
+      const saved = localStorage.getItem('hounds_active_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u?.name && u.name.trim().toLowerCase() === pName) return true;
+      }
+    } catch (e) {}
+    try {
+      if (typeof window !== 'undefined' && (window as any).parent) {
+        const p = (window as any).parent;
+        if (p.hubUser?.name && p.hubUser.name.trim().toLowerCase() === pName) return true;
+        if (p.BoardView && typeof p.BoardView.presence === 'function') {
+          const pres = p.BoardView.presence();
+          if (pres && typeof pres === 'object') {
+            for (const k of Object.keys(pres)) {
+              const entry = pres[k];
+              if (entry?.nm && entry.nm.trim().toLowerCase() === pName) return true;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+    return false;
+  };
 
   const handleSelectSortMode = (mode: 'speed' | 'alpha' | 'mestre') => {
     setSortMode(mode);
@@ -314,8 +344,8 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
             {/* NOVA DIV DE ORDENAÇÃO (fora da div de filtros) */}
             <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner flex-wrap">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1.5 select-none">
-                Ordem:
+              <span className="flex items-center text-slate-400 px-1.5 select-none" title="Ordenação">
+                <ArrowUpDown size={13} strokeWidth={2.2} />
               </span>
               <button
                 type="button"
@@ -607,7 +637,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                           )}
 
                           {isPlayerChar ? (
-                            <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter bg-emerald-950/80 px-1 rounded border border-emerald-800/60">
+                            <span
+                              title={`Jogador: ${npc.playerName || 'PC'} (${isPlayerOnline(npc.playerName) ? 'Online' : 'Offline'})`}
+                              className={`text-[9px] font-bold uppercase tracking-tighter shrink-0 px-1 rounded border ${
+                                isPlayerOnline(npc.playerName)
+                                  ? 'text-emerald-400 bg-emerald-950/80 border-emerald-800/60'
+                                  : 'text-slate-400 bg-slate-800/80 border-slate-700/60'
+                              }`}
+                            >
                               {npc.playerName || 'PC'}
                             </span>
                           ) : (
@@ -701,3 +738,4 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
     </div>
   );
 };
+

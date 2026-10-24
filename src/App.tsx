@@ -378,6 +378,77 @@ export default function App() {
   // Rodada efetiva: no modo "Sem combate" todos os registros ficam na Rodada 0
   const effectiveRound = isNoCombat ? 0 : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
 
+  // Presence tracking for online players
+  const [onlineUsersMap, setOnlineUsersMap] = useState<Record<string, number>>({});
+
+  const markUserOnline = (name?: string) => {
+    if (name && name.trim()) {
+      const lower = name.trim().toLowerCase();
+      setOnlineUsersMap((prev) => ({ ...prev, [lower]: Date.now() }));
+    }
+  };
+
+  useEffect(() => {
+    const sendPing = () => {
+      const name = currentUser?.name || (typeof window !== 'undefined' && (window as any).parent?.hubUser?.name);
+      if (!name) return;
+      const ping = {
+        type: 'PRESENCE_PING',
+        clientId: onlineSyncService.getClientId(),
+        userName: name,
+        timestamp: Date.now(),
+      };
+      onlineSyncService.sendPayloadImmediate(ping as any);
+      broadcastChannelRef.current?.postMessage(ping);
+      if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+        try {
+          (window as any).parent.hubMesaBus.publish(JSON.stringify(ping));
+        } catch (e) {}
+      }
+    };
+    sendPing();
+    const interval = setInterval(sendPing, 12000);
+    return () => clearInterval(interval);
+  }, [currentUser?.name]);
+
+  const onlinePlayerNames = useMemo(() => {
+    const set = new Set<string>();
+    const now = Date.now();
+    if (currentUser?.name) {
+      set.add(currentUser.name.trim().toLowerCase());
+    }
+    try {
+      const saved = localStorage.getItem('hounds_active_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.name) set.add(parsed.name.trim().toLowerCase());
+      }
+    } catch (e) {}
+    try {
+      if (typeof window !== 'undefined' && (window as any).parent) {
+        const p = (window as any).parent;
+        if (p.hubUser?.name) set.add(p.hubUser.name.trim().toLowerCase());
+        if (p.BoardView && typeof p.BoardView.presence === 'function') {
+          const pres = p.BoardView.presence();
+          if (pres && typeof pres === 'object') {
+            for (const k of Object.keys(pres)) {
+              const entry = pres[k];
+              if (entry?.nm && (!entry.t || now - entry.t < 45000)) {
+                set.add(entry.nm.trim().toLowerCase());
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+    for (const [name, lastSeen] of Object.entries(onlineUsersMap)) {
+      if (now - lastSeen < 45000) {
+        set.add(name.trim().toLowerCase());
+      }
+    }
+    return set;
+  }, [currentUser?.name, onlineUsersMap]);
+
   // IDs dos personagens de jogadores visíveis no combate ativo (por padrão, todos)
   const activeCombatPlayerIds = useMemo(() => {
     if (activeCombat && Array.isArray(activeCombat.playerIds)) {
@@ -732,6 +803,9 @@ export default function App() {
     });
 
     const handleIncomingSync = (payload: RemoteSyncPayload) => {
+      if ((payload as any).userName) markUserOnline((payload as any).userName);
+      if ((payload as any).authorName) markUserOnline((payload as any).authorName);
+      if ((payload as any).type === 'PRESENCE_PING') return;
       if ((payload as any).type?.startsWith('AUDIO_STREAM_') || (payload as any).type?.startsWith('RTC_')) {
         audioStreamSync.handleSignalMessage(payload);
         return;
@@ -1048,6 +1122,9 @@ export default function App() {
       broadcastChannelRef.current = channel;
 
       channel.onmessage = (event) => {
+        if (event.data?.userName) markUserOnline(event.data.userName);
+        if (event.data?.authorName) markUserOnline(event.data.authorName);
+        if (event.data?.type === 'PRESENCE_PING') return;
         if (event.data?.sourceId === onlineSyncService.getClientId()) return;
 
         if (event.data?.type === 'SYNC_DICE_ROLL' && event.data?.rollData) {
@@ -3641,6 +3718,7 @@ export default function App() {
         isHomeScreen={isHomeScreen && activeViewMode === 'sheets'}
         customMasterOrder={activeCombat?.customOrder || localMasterOrder}
         onSaveMasterOrder={handleSaveMasterOrder}
+        onlinePlayerNames={onlinePlayerNames}
       />
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}

@@ -32,6 +32,7 @@ interface CombatHomeScreenProps {
   currentUserRole?: UserRole;
   currentRound?: number;
   filterEmptyMessage?: string;
+  onlinePlayerNames?: Set<string>;
 }
 
 function getItemIcon(name: string, category?: string) {
@@ -60,7 +61,37 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
   currentUserRole = 'mestre',
   currentRound = 0,
   filterEmptyMessage = 'Nenhum personagem ou NPC encontrado neste filtro.',
+  onlinePlayerNames,
 }) => {
+  const isPlayerOnline = (playerName?: string): boolean => {
+    if (!playerName || !playerName.trim()) return false;
+    const pName = playerName.trim().toLowerCase();
+    if (onlinePlayerNames && onlinePlayerNames.has(pName)) return true;
+    try {
+      const saved = localStorage.getItem('hounds_active_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u?.name && u.name.trim().toLowerCase() === pName) return true;
+      }
+    } catch (e) {}
+    try {
+      if (typeof window !== 'undefined' && (window as any).parent) {
+        const p = (window as any).parent;
+        if (p.hubUser?.name && p.hubUser.name.trim().toLowerCase() === pName) return true;
+        if (p.BoardView && typeof p.BoardView.presence === 'function') {
+          const pres = p.BoardView.presence();
+          if (pres && typeof pres === 'object') {
+            for (const k of Object.keys(pres)) {
+              const entry = pres[k];
+              if (entry?.nm && entry.nm.trim().toLowerCase() === pName) return true;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+    return false;
+  };
+
   const isMaster = currentUserRole === 'mestre';
 
   if (npcs.length === 0) {
@@ -302,8 +333,10 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       </h3>
                       {isPlayerChar && npc.playerName && (
                         <span
-                          className="text-sm font-semibold text-emerald-400 truncate max-w-[140px]"
-                          title={`Jogador: ${npc.playerName}`}
+                          className={`text-sm font-semibold truncate max-w-[140px] ${
+                            isPlayerOnline(npc.playerName) ? 'text-emerald-400' : 'text-slate-400'
+                          }`}
+                          title={`Jogador: ${npc.playerName} (${isPlayerOnline(npc.playerName) ? 'Online' : 'Offline'})`}
                         >
                           ({npc.playerName})
                         </span>
