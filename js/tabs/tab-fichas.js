@@ -1055,6 +1055,10 @@ function sheetSecsHtml(s, can) {
     disadvs: function () { return sheetDisadvsHtml(s, !!ui.disadvDraft && can); },
     quirks: function () { return sheetQuirksHtml(s, !!ui.quirkDraft && can); } });
 }
+// Observações: the sheet's notes (Editar ficha), at the end of the Ficha tab.
+function sheetObsHtml(s) {
+  return '<section><h2 class="sec-title">Observações</h2>' + (s.description ? '<p class="long">' + esc(s.description) + '</p>' : '<p class="long none">Sem observações.</p>') + '</section>';
+}
 function sheetGripHtml(name) { return S.ui.attrDraft || sheetDraftOpen() ? '' : secGripHtml('a seção ' + name); }
 // The page of a main sheet (m): its head, a tab for it and one for each ally (#ficha~<id>~<ally id>), and
 // below them the tabs Ficha, Equip. and Magia of the one open (s), the same sections for both.
@@ -1099,20 +1103,28 @@ function renderSheetPage() {
       (editing && !on ? ' disabled title="Salve ou cancele a edição antes de trocar"' : '') + '>' + (x === m ? svg(ICON.user, 14, 2.2) + esc(m.name) : allyDotHtml(x) + esc(allyLabel(x))) + '</button>';
   }).join('') + '</div>' +
     (can ? '<button class="btn" type="button" id="allyNew"' + (editing ? ' disabled title="Salve ou cancele a edição antes"' : '') + '>' + svg(ICON.plus, 15, 2.4) + 'Criar Aliado</button>' : '') + '</div>' : '') + mainSide + '</div>';
-  var main = '<section><h2 class="sec-title">Observações</h2>' + (s.description ? '<p class="long">' + esc(s.description) + '</p>' : '<p class="long none">Sem observações.</p>') + '</section>';
+  var main = sheetObsHtml(s);
   var side = ally ? allyBoxHtml(ally, can && !editing, ui.confirmAllyDelete) : '';
   // The tabs: everything but the equipment and the spells, the equipment, the spells and (main sheet only)
   // the notes. Only the open one is drawn (the wire* functions skip a section that isn't there); a draft in
   // another survives the switch.
   // Anotações: only for the account linked to the sheet (not even the Mestre).
   var notesTab = !ally && sheetNotesOpen(m.id);
-  var tab = ui.sheetTab === 'equip' || ui.sheetTab === 'magic' || (ui.sheetTab === 'notes' && notesTab) ? ui.sheetTab : 'sheet';
+  // After them, the custom tabs (ficha-abas.js), 'c:<id>', and the button that makes one.
+  var ctabs = customTabs(), ct = /^c:/.test(ui.sheetTab || '') ? ctabs.filter(function (x) { return 'c:' + x.id === ui.sheetTab; })[0] || null : null;
+  var tab = ct ? ui.sheetTab : ui.sheetTab === 'equip' || ui.sheetTab === 'magic' || (ui.sheetTab === 'notes' && notesTab) ? ui.sheetTab : 'sheet';
   var tabs = '<div class="seg" role="tablist" aria-label="Seção da ficha">' + SHEET_TABS.filter(function (t) { return !t.mainOnly || notesTab; }).map(function (t) {
     var on = t.key === tab;
     return '<button type="button" role="tab" data-stab="' + t.key + '" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '">' + t.label + '</button>';
-  }).join('') + '</div>';
-  pageRoot.innerHTML = head + people + '<div class="sheet-chars">' + tabs + side + '</div>' + (tab === 'equip' ? sheetGearHtml(s) : tab === 'magic' ? sheetSpellsHtml(s, !!ui.spellDraft && can)
+  }).join('') + '</div>' +
+    // The custom tabs in a row of their own, under the fixed ones, with the button that makes one.
+    '<div class="seg seg-custom" role="tablist" aria-label="Abas personalizadas">' + ctabs.map(function (x) {
+      var on = 'c:' + x.id === tab;
+      return '<button type="button" role="tab" data-stab="c:' + esc(x.id) + '" aria-selected="' + on + '" class="ctab-btn' + (on ? ' on' : '') + '">' + esc(x.name) + '</button>';
+    }).join('') + '<button type="button" class="seg-add" id="ctabNew" title="Nova aba personalizada: escolha as seções da Ficha, do Equip. e da Magia">' + svg(ICON.plus, 13, 2.6) + 'Nova aba</button></div>';
+  pageRoot.innerHTML = head + people + '<div class="sheet-chars"><div class="sheet-tabs">' + tabs + '</div>' + side + '</div>' + (ct ? customTabHtml(s, ct, can) : tab === 'equip' ? sheetGearHtml(s) : tab === 'magic' ? sheetSpellsHtml(s, !!ui.spellDraft && can)
     : tab === 'notes' ? sheetNotesHtml(m) : sheetSecsHtml(s, can) + main);
+  var cn = $('ctabNew'); if (cn) cn.onclick = function () { openCustomTabForm(null); };
   pageRoot.querySelectorAll('[data-stab]').forEach(function (b) {
     b.onclick = function () { var t = b.getAttribute('data-stab'); if (t !== tab) { ui.sheetTab = t; renderSheetPage(); } };
   });
@@ -1137,6 +1149,7 @@ function renderSheetPage() {
   wireSheetEquip(s);
   wireSheetSpells(s);
   wireSheetNotes(m);
+  wireCustomTab(s, ct);
   wireSheetPoints(s);
   pageRoot.querySelectorAll('[data-ally]').forEach(function (b) {
     b.onclick = function () { var id = b.getAttribute('data-ally'); if (id !== (ally ? ally.id : '')) go(id ? allyHref(m.id, id) : sheetHref(m.id)); };

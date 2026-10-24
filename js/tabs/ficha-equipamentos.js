@@ -438,6 +438,16 @@ function sheetGearHtml(s) {
     packs: function () { return sheetPacksHtml(g, L, can && !!ui.packDraft, can && !!ui.bodyDraft); },
     homes: function () { return sheetHomesHtml(g, can && !!ui.homeDraft); } }) + sheetLoadHtml(L, a) + '</div>';
 }
+// One section of Equip. on its own (a custom tab of the sheet, ficha-abas.js), drawn as sheetGearHtml draws it.
+function gearBlockHtml(s, key) {
+  var ui = S.ui, can = canWrite(), g = gearNow(s), saved = sheetGear(s), L = gearLoad(g);
+  gearLoadCatalogs(saved);
+  if (key === 'equip') return sheetInvHtml(g, L, can && !gearEditing());
+  if (key === 'body') return sheetBodyHtml(g, L, can && !!ui.bodyDraft, can && !!ui.packDraft);
+  if (key === 'packs') return sheetPacksHtml(g, L, can && !!ui.packDraft, can && !!ui.bodyDraft);
+  if (key === 'homes') return sheetHomesHtml(g, can && !!ui.homeDraft);
+  return sheetLoadHtml(L, sheetAttrsNow(s));
+}
 // Meus Itens, Corpo, Mochilas and Casa are dragged into any order among them (wireSecSort); not while
 // something of the tab is being edited.
 var GEAR_ORDER_KEY = 'hounds_equip_order';
@@ -508,12 +518,14 @@ function sheetLoadHtml(L, a) {
 // While a list is edited, the load and the totals follow what is typed (the rest redraws on save).
 function paintGear(s) {
   var g = gearNow(s), L = gearLoad(g), a = sheetAttrsNow(s);
-  $('gearTotal').textContent = eqLbs(L.total);
-  $('gearStats').innerHTML = gearLoadStatsHtml(L, a);
-  $('gearNotes').innerHTML = gearOverHtml(L);
-  $('eqTotal').textContent = eqLbs(L.owned);
-  $('bodyTotal').textContent = L.active ? eqLbs(L.body) : '—';
-  $('packTotal').textContent = eqLbs(L.inUse);
+  // Only the parts on the page (a custom tab may have some of the sections and not the others).
+  function set(id, prop, v) { var el = $(id); if (el) el[prop] = v; }
+  set('gearTotal', 'textContent', eqLbs(L.total));
+  set('gearStats', 'innerHTML', gearLoadStatsHtml(L, a));
+  set('gearNotes', 'innerHTML', gearOverHtml(L));
+  set('eqTotal', 'textContent', eqLbs(L.owned));
+  set('bodyTotal', 'textContent', L.active ? eqLbs(L.body) : '—');
+  set('packTotal', 'textContent', eqLbs(L.inUse));
   return { g: g, L: L };
 }
 

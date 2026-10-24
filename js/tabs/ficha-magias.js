@@ -188,6 +188,23 @@ function sheetSpellsHtml(s, editing) {
   secs.spells = function () { return sheetSpellsSecHtml(s, editing, list, can, m, iq); };
   return sortSecsHtml('spellSecs', SPELL_ORDER_KEY, secs);
 }
+// One section of the Magia tab on its own (a custom tab of the sheet, ficha-abas.js).
+function spellBlockHtml(s, key, can) {
+  var d = S.ui.spellDraft, editing = !!d && can, iq = sheetAttrsNow(s).iq, saved = applyMagery(sheetSpells(s), s);
+  saved.forEach(function (k, i) { k.i = i; });
+  if (key === 'spellFavs') return sheetSpellFavsHtml(saved, iq, can && !editing);
+  return sheetSpellsSecHtml(s, editing, editing ? d : sheetSpells(s), can, sheetMagery(s), iq);
+}
+// Where the Magia sections are: #spellSecs in the Magia tab; in a custom tab, Favoritos and Magias may be
+// apart, or only one of them: the events and queries go to both (an object with what the wiring uses).
+function spellRoot() {
+  var one = $('spellSecs'); if (one) return one;
+  var roots = [$('sheetSpellFavs'), $('sheetSpells')].filter(Boolean);
+  if (roots.length < 2) return roots[0] || null;
+  return { querySelector: function (q) { for (var i = 0; i < roots.length; i++) { var r = roots[i].querySelector(q); if (r) return r; } return null; },
+    querySelectorAll: function (q) { var out = []; roots.forEach(function (r) { out = out.concat([].slice.call(r.querySelectorAll(q))); }); return out; },
+    addEventListener: function (t, fn, o) { roots.forEach(function (r) { r.addEventListener(t, fn, o); }); } };
+}
 function sheetSpellsSecHtml(s, editing, list, can, m, iq) {
   var head = '<div class="gurps-head">' + sheetGripHtml('Magias') + gearFoldTitle('spells', 'Magias', editing) + '<span class="gurps-total" id="spTotal">' + sumPts(list) + ' pts</span>' +
     (editing ? secSaveBtnsHtml('spCancel', 'spSave', 'magias')
@@ -279,8 +296,10 @@ function wireSpellFavs(s, box) {
 // While editing, S.ui.spellDraft holds the list being changed; typing updates it and the NH and
 // total beside it, adding or removing a row redraws the page from it.
 function wireSheetSpells(s) {
-  var ui = S.ui; if (!$('sheetSpells')) return;
+  var ui = S.ui, root = spellRoot(); if (!root) return;
   wireSecSort('spellSecs', SPELL_ORDER_KEY);
+  // Favoritos without Magias (a custom tab): its points and stars.
+  if (!$('sheetSpells')) { if (!ui.spellDraft) { loadCatalog('spells'); wireSpellQuickPts(s, root); wireSpellFavs(s, root); } return; }
   function focusFirst() { var f = document.querySelector('#spRows .sk-name'); if (f instanceof HTMLElement) f.focus(); }
   var ed = $('spEdit'); if (ed) ed.onclick = function () {
     ui.spellDraft = sheetSpells(s);
@@ -291,7 +310,7 @@ function wireSheetSpells(s) {
   };
   // The school and class of the linked spells come from the catalog: it redraws the page when it arrives.
   var d = ui.spellDraft, box = $('sheetSpells');
-  if (!d) { loadCatalog('spells'); wireSpellQuickPts(s, $('spellSecs')); wireSpellFavs(s, $('spellSecs')); return; }
+  if (!d) { loadCatalog('spells'); wireSpellQuickPts(s, root); wireSpellFavs(s, root); return; }
   if (!$('spSave')) return;
   var iq = sheetAttrsNow(s).iq;
   box.addEventListener('input', onEdit); box.addEventListener('change', onEdit);

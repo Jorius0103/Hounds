@@ -253,6 +253,7 @@ function scKindOf(st, name) {
     if (['techniques', 'cinematicTechniques', 'optTechniques'].some(has)) return 'tech';
     if (['perks', 'optPerks', 'optAdvantages'].some(has)) return 'trait';
     if (['skills', 'cinematicSkills', 'optSkills'].some(has)) return 'skill';
+    if (has('spells')) return 'spell';
   }
   return scCatalogKind(name);
 }
@@ -281,7 +282,7 @@ function scFixKinds(c) {
 // editor a row shows only with points, see scShown) its techniques, cinematic skills, cinematic
 // techniques and perks. Its skills are a prerequisite, met by the sheet's own (see scStyleReqs),
 // whose points are already spent.
-var SC_STYLE_BRINGS = [['techniques', 'tech'], ['cinematicSkills', 'skill'], ['cinematicTechniques', 'tech'], ['perks', 'trait']];
+var SC_STYLE_BRINGS = [['techniques', 'tech'], ['cinematicSkills', 'skill'], ['cinematicTechniques', 'tech'], ['perks', 'trait'], ['spells', 'spell']];
 // Every style, from the catalog or free, starts with its Style Familiarity, and it stays the first
 // row of the style (cleanCombat puts it there: in the editor, on save and on the sheet).
 function scSfName(style) { return 'Style Familiarity' + (style ? ' (' + style + ')' : ''); }
@@ -350,7 +351,7 @@ function scReqsMissing(reqs) { return reqs.filter(function (r) { return !r.skill
 // a catalog style's own lists of that kind first. A perk row offers the perks; an advantage row, the
 // advantages. [{ name, entry, info }], at most 12.
 var SC_STYLE_FIELDS = { skill: ['skills', 'cinematicSkills', 'optSkills'], tech: ['techniques', 'cinematicTechniques', 'optTechniques'],
-  trait: ['perks', 'optPerks', 'optAdvantages'], spell: [] };
+  trait: ['perks', 'optPerks', 'optAdvantages'], spell: ['spells'] };
 function scNameInfo(kind, e) {
   if (!e) return '';
   if (kind === 'skill') return [e.attribute && e.difficulty ? e.attribute + '/' + e.difficulty : '', e.page].filter(Boolean).join(' · ');

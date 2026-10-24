@@ -85,7 +85,7 @@ function spellById(id) {
    edits, his visibility choice, or deleted: true. W.spells / W.advantages / W.disadvantages / W.skills /
    W.techniques / W.styles / W.weapons / W.armors / W.items / W.improvements are the book list with those documents on top.
    ===================================================================== */
-var CATALOG_VERSION = '2026-10-23-v2';
+var CATALOG_VERSION = '2026-10-24-v1';
 // fields: what an entry holds besides visibility; over: the documents of book entries by id;
 // deleted: the book entries the Mestre deleted (for him to see and restore).
 var CATALOG = {
@@ -100,7 +100,7 @@ var CATALOG = {
   techniques: { file: 'dados/tecnicas.json', prefix: 'tech_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
     fields: ['name', 'difficulty', 'cinematic', 'defaults', 'prerequisites', 'description', 'modifiers', 'book', 'page'] },
   styles: { file: 'dados/estilos.json', prefix: 'style_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
-    fields: ['name', 'cost', 'description', 'skills', 'techniques', 'cinematicSkills', 'cinematicTechniques', 'perks',
+    fields: ['name', 'cost', 'description', 'skills', 'techniques', 'cinematicSkills', 'cinematicTechniques', 'perks', 'spells',
       'optAdvantages', 'optDisadvantages', 'optSkills', 'optTechniques', 'optPerks', 'book', 'page'] },
   // attacks: the weapon's lines of the book's table (see Weapon in types/dados.d.ts); an edit replaces them all.
   // keep: the book entries the campaign uses (up to TL4, see lowTech); the Mestre's own always show.

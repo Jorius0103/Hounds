@@ -534,7 +534,27 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 /* Ficha: as abas (Ficha / Equip.) à esquerda e a caixa de personagens vinculados à direita,
    no alto, acima das seções */
 .sheet-chars { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.sheet-chars > .seg { margin-bottom: 0; }
+.sheet-chars > .seg { margin-bottom: 0; flex-wrap: wrap; }
+/* As abas fixas em cima; embaixo, as personalizadas e o botão Nova aba */
+.sheet-tabs { display: flex; flex-direction: column; align-items: flex-start; gap: 0; max-width: 100%; }
+.sheet-tabs > .seg { margin-bottom: 0; flex-wrap: wrap; }
+.seg.seg-custom { background: transparent; border-style: dashed; padding: 2px; border-radius: 9px; }
+.seg.seg-custom button { font-size: 12px; padding: 3px 10px; border-radius: 7px; }
+/* Abas personalizadas da ficha (ficha-abas.js) */
+.seg .seg-add { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); }
+.seg .seg-add:hover { background: var(--accent-soft); color: var(--accent); }
+.ctab { display: flex; flex-direction: column; gap: 18px; }
+.ctab-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ctab-head .sec-title { margin: 0; }
+.ctab-head .btn-row { margin-left: auto; }
+.ctab-head select { background: var(--well); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 10px; color: var(--text); font: inherit; font-size: 14px; }
+.ctab-sec { display: flex; flex-direction: column; gap: 8px; }
+.ctab-sec-bar { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-bottom: 1px dashed var(--line-2); }
+.ctab-from { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ctab-sec-bar .icon-btn { margin-left: auto; }
+/* Na aba personalizada, cada seção se move pela alça da barra; as alças das próprias seções ficam ocultas. */
+.ctab-sec > :not(.ctab-sec-bar) .sec-grip { display: none; }
+.sort-secs.sorting .ctab-sec > :not(.ctab-sec-bar) { display: none; }
 .sheet-chars > .fold { width: 320px; max-width: 100%; margin-left: auto; }
 @media (max-width: 760px) { .sheet-chars > .fold { width: 100%; } }
 /* Personagem and, beside it in one line, the points (main sheet), on the right of the line of the allies */

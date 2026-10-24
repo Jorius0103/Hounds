@@ -9,10 +9,19 @@
 // tools/gurps-csv-para-json.mjs usa revisarItem ao gerar os arquivos, então a revisão vale
 // também para os catálogos gerados de novo. Depois de revisar, aumente CATALOG_VERSION em js/mundo.js.
 // Os textos estão em inglês (os livros); nomes, ids, livros e páginas não são mexidos.
+//
+// O que as regras daqui não alcançam — parágrafos, pedaços de quadros laterais e de outras colunas
+// no meio do texto, palavras cortadas — foi revisado à mão, texto por texto, e está em
+// Gurps/textos-revisados.json ({ id: { campo: texto } }). revisarItem põe esses textos no lugar
+// dos que vêm das planilhas.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const REVISADOS_FILE = path.join(ROOT, 'Gurps', 'textos-revisados.json');
+const REVISADOS = existsSync(REVISADOS_FILE) ? JSON.parse(readFileSync(REVISADOS_FILE, 'utf8')) : {};
 
 // Palavras que perderam o hífen na quebra de linha do PDF: a forma com hífen é a que os
 // próprios livros usam mais vezes. Palavras que o inglês escreve juntas (backpack, midair,
@@ -80,13 +89,14 @@ export function revisarItem(x) {
     if (/[A-Za-z)]$/.test(d)) d += '.';
     out.description = d;
   }
+  // The texts revised by hand win over the ones from the spreadsheets.
+  Object.assign(out, REVISADOS[out.id]);
   return out;
 }
 
-// CLI: revisa os nove arquivos no lugar, no mesmo formato compacto.
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// CLI: revisa os dez arquivos no lugar, no mesmo formato compacto.
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  for (const f of ['magias', 'vantagens', 'desvantagens', 'pericias', 'tecnicas', 'estilos', 'armas', 'armaduras', 'itens']) {
+  for (const f of ['magias', 'vantagens', 'desvantagens', 'pericias', 'tecnicas', 'estilos', 'armas', 'armaduras', 'itens', 'melhoramentos']) {
     const file = path.join(ROOT, 'dados', f + '.json');
     const list = JSON.parse(readFileSync(file, 'utf8'));
     let n = 0;

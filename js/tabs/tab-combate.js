@@ -90,7 +90,7 @@ Ops.deleteTechnique = function (tech) {
 var combatView = { tab: 'skills', q: '', mine: false, diff: '', book: '', kind: 'combat', page: 1 };
 var combatSearchTimer = 0;
 var COMBAT_SEARCH_FIELDS = ['name', 'type', 'defaults', 'prerequisites', 'description'];
-var STYLE_SEARCH_FIELDS = ['name', 'description', 'skills', 'techniques', 'cinematicSkills', 'cinematicTechniques', 'perks'];
+var STYLE_SEARCH_FIELDS = ['name', 'description', 'skills', 'techniques', 'cinematicSkills', 'cinematicTechniques', 'perks', 'spells'];
 // What each list is called, for the tabs, the counts and the empty states.
 var COMBAT_TABS = [
   { key: 'skills', label: 'Perícias de combate', one: 'perícia', many: 'perícias', col: 'skills', search: 'Buscar perícia, padrão ou descrição…' },
@@ -312,7 +312,7 @@ function indexStyles() { var idx = /** @type {Record<string, FightingStyle>} */ 
 function styleById(id) { return (id && W.styleIdx[id]) || null; }
 function styleHref(id) { return hrefFor('style:' + id); }
 // [field, title] of the lists of a style; the optional ones come under "Traços opcionais".
-var STYLE_LISTS = [['skills', 'Perícias'], ['techniques', 'Técnicas'], ['cinematicSkills', 'Perícias cinemáticas'], ['cinematicTechniques', 'Técnicas cinemáticas'], ['perks', 'Perks']];
+var STYLE_LISTS = [['skills', 'Perícias'], ['techniques', 'Técnicas'], ['cinematicSkills', 'Perícias cinemáticas'], ['cinematicTechniques', 'Técnicas cinemáticas'], ['perks', 'Perks'], ['spells', 'Magias']];
 var STYLE_OPT_LISTS = [['optAdvantages', 'Vantagens'], ['optDisadvantages', 'Desvantagens'], ['optSkills', 'Perícias'], ['optTechniques', 'Técnicas'], ['optPerks', 'Perks']];
 var STYLE_FIELDS = ['name', 'cost', 'description'].concat(STYLE_LISTS.concat(STYLE_OPT_LISTS).map(function (x) { return x[0]; })).concat(['book', 'page']);
 function styleItems(text) { return String(text || '').split(/\s*;\s*/).map(function (x) { return x.trim(); }).filter(Boolean); }
@@ -355,6 +355,7 @@ function styleFind(kind, item) {
   if (kind === 'skill') return (W.skills || []).filter(function (s) { return s.attribute && combatKey(s.name) === base; })[0] || null;
   if (kind === 'tech') return (W.techniques || []).filter(function (t) { return combatKey(t.name) === base || norm(t.name) === norm(item); })[0] || null;
   if (kind === 'adv') return (W.advantages || []).filter(function (a) { return combatKey(a.name) === base || norm(a.name) === norm(item); })[0] || null;
+  if (kind === 'spell') return (W.spells || []).filter(function (x) { return norm(x.name) === norm(item); })[0] || null;
   return null;
 }
 function styleChipsHtml(text, kind) {
@@ -363,17 +364,19 @@ function styleChipsHtml(text, kind) {
     if (hit && kind === 'skill') return '<a class="style-chip linked" href="' + combatSkillHref(hit.id) + '">' + esc(item) + '</a>';
     if (hit && kind === 'tech') return '<a class="style-chip linked" href="' + techHref(hit.id) + '">' + esc(item) + '</a>';
     if (hit && kind === 'adv') return '<a class="style-chip linked" href="' + hrefFor('adv:' + hit.id) + '">' + esc(item) + '</a>';
+    if (hit && kind === 'spell') return '<a class="style-chip linked" href="' + spellHref(hit.id) + '" data-spell-modal="' + esc(hit.id) + '">' + esc(item) + '</a>';
     return '<span class="style-chip">' + esc(item) + '</span>';
   }).join('') + '</div>';
 }
 // What each list holds, to know which catalog its items link to.
 var STYLE_KINDS = { skills: 'skill', cinematicSkills: 'skill', optSkills: 'skill', techniques: 'tech', cinematicTechniques: 'tech', optTechniques: 'tech',
-  perks: 'adv', optPerks: 'adv', optAdvantages: 'adv', optDisadvantages: '' };
+  perks: 'adv', optPerks: 'adv', optAdvantages: 'adv', optDisadvantages: '', spells: 'spell' };
 
 /* ---------- Page: single style ---------- */
 function renderStylePage() {
   loadCatalog('styles'); loadCatalog('skills'); loadCatalog('techniques'); loadCatalog('advantages');
   var x = styleById(S.route.styleId), ui = S.ui;
+  if (x && x.spells) loadCatalog('spells'); // the links of its Magias
   if (!x) {
     pageRoot.innerHTML = crumbsHtml('combat') + (W.loaded.styles
       ? '<h1>Estilo não encontrado</h1><p class="lede">Esse estilo pode ter sido excluído ou o link está incorreto.</p><div><a class="btn" href="#combate">Voltar para Combate</a></div>'
@@ -418,17 +421,19 @@ function renderStylePage() {
 // the ones chosen show as chips. A name not in the catalog can be added too (a specialty, a house rule).
 // Saved as before: the names separated by "; ".
 var STYLE_LIST_KIND = { skills: 'skill', cinematicSkills: 'skill', optSkills: 'skill', techniques: 'tech', cinematicTechniques: 'tech', optTechniques: 'tech',
-  perks: 'perk', optPerks: 'perk', optAdvantages: 'adv', optDisadvantages: 'disadv' };
-var STYLE_KIND_PAGE = { skill: 'Regras › Perícias', tech: 'Regras › Combate (técnicas)', perk: 'Regras › Perks', adv: 'Regras › Vantagens', disadv: 'Regras › Desvantagens' };
+  perks: 'perk', optPerks: 'perk', optAdvantages: 'adv', optDisadvantages: 'disadv', spells: 'spell' };
+var STYLE_KIND_PAGE = { skill: 'Regras › Perícias', tech: 'Regras › Combate (técnicas)', perk: 'Regras › Perks', adv: 'Regras › Vantagens', disadv: 'Regras › Desvantagens', spell: 'Regras › Magias' };
 function styleKindList(kind) {
   if (kind === 'skill') return (W.skills || []).filter(function (s) { return s.attribute && SKILL_DIFFS[s.difficulty]; });
   if (kind === 'tech') return W.techniques || [];
+  if (kind === 'spell') return W.spells || [];
   if (kind === 'disadv') return (W.disadvantages || []).filter(function (d) { return !/^(cross|remiss)/i.test(d.type || ''); });
   return (W.advantages || []).filter(function (a) { var k = advTypeKey(a.type); return k !== 'exp' && k !== 'ref' && (kind === 'perk' ? k === 'perk' : k !== 'perk'); });
 }
 function styleKindInfo(kind, e) {
   if (kind === 'skill') return [e.attribute + '/' + e.difficulty, e.specialty ? 'exige especialização' : '', e.page].filter(Boolean).join(' · ');
   if (kind === 'tech') return ['Técnica ' + (e.difficulty === 'A' ? 'Média' : 'Difícil'), e.defaults ? 'padrão ' + e.defaults : '', e.page].filter(Boolean).join(' · ');
+  if (kind === 'spell') { var col = String(e.college || '').split(',')[0].trim(); return [col ? collegeLabel(col) : '', 'IQ/' + (e.difficulty || 'H'), e.page].filter(Boolean).join(' · '); }
   return [kind === 'disadv' ? '' : advTypeLabel(e.type), e.cost, e.page].filter(Boolean).join(' · ');
 }
 function styleChipsEditHtml(k, names) {
@@ -466,7 +471,7 @@ function openStyleForm(x, how) {
     '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="stCancel">Cancelar</button><button class="btn primary" type="submit" id="stSave">' + (editing ? 'Salvar estilo' : 'Criar estilo') + '</button></div></form>';
   showModal(html);
   modal.setAttribute('aria-labelledby', 'stTitle');
-  ['skills', 'techniques', 'advantages', 'disadvantages'].forEach(loadCatalog);
+  ['skills', 'techniques', 'advantages', 'disadvantages', 'spells'].forEach(function (c) { loadCatalog(c); });
   var form = $('styleForm'), sg = { k: '', input: null, list: null, opts: [], act: 0 };
   // A chip added or taken: the form changed (the modal asks before closing it; the chips are not fields).
   function paintChips(k) { var el = form.querySelector('[data-sfchips="' + k + '"]'); if (el) el.innerHTML = styleChipsEditHtml(k, picked[k]); if (modalOpen) modalOpen.touched = true; }

@@ -329,6 +329,8 @@ interface FightingStyle extends Doc {
   cinematicSkills?: string;
   cinematicTechniques?: string;
   perks?: string;
+  /** Magias do estilo (Regras › Magias), separadas por "; ". */
+  spells?: string;
   optAdvantages?: string;
   optDisadvantages?: string;
   optSkills?: string;
