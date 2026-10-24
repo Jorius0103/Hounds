@@ -1303,24 +1303,19 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   if (isPlayerUser && !isPlayerChar) {
     return (
-      <div
-        style={{
-          background: '#0b1120',
-          border: npc.isDead ? '1px solid rgba(220, 38, 38, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
-          boxShadow: npc.isDead ? '0 20px 45px -10px rgba(220, 38, 38, 0.2)' : '0 20px 45px -10px rgba(88, 28, 135, 0.25)',
-          borderRadius: '20px',
-        }}
-        className="rounded-2xl shadow-2xl flex flex-col p-3.5 sm:p-5 space-y-4"
-      >
-        {/* Identidade do NPC + Botão Lançar Dano */}
+      <div className="space-y-4">
+        {/* Identidade do NPC + Botão Lançar Dano (Fixo ao rolar) */}
         <div
           style={{
+            position: 'sticky',
+            top: 'var(--mesa-top-offset, 48px)',
+            zIndex: 30,
             border: npc.isDead ? '1px solid rgba(220, 38, 38, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
             background: npc.isDead
               ? 'rgba(2, 6, 23, 0.95)'
               : 'linear-gradient(to right, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))',
           }}
-          className="backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
+          className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
@@ -1368,8 +1363,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   {(() => {
                     const activeManeuver = getCombatManeuver(npc.combatManeuver);
                     return (
-                      <div className="flex items-center gap-1 bg-slate-950/70 px-2 py-0.5 rounded-lg">
-                        <span className="text-[10px] text-slate-400 font-semibold">Manobra:</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] font-semibold text-slate-400">Manobra:</span>
                         <select
                           disabled={isViewer}
                           value={npc.combatManeuver || ''}
@@ -1378,20 +1373,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                             activeManeuver
                               ? {
                                   backgroundColor: activeManeuver.bgHex,
-                                  color: activeManeuver.textHex,
-                                  borderColor: activeManeuver.borderHex,
+                                  color: activeManeuver.textHex || '#ffffff',
+                                  borderColor: activeManeuver.borderHex || 'transparent',
                                 }
                               : undefined
                           }
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-all border-none outline-none truncate max-w-[135px] ${
+                          className={`text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer transition-all border outline-none truncate max-w-[140px] ${
                             activeManeuver
                               ? 'shadow-sm font-bold'
-                              : 'text-slate-400 bg-slate-900 border-slate-750 hover:border-slate-600'
+                              : 'text-slate-300 bg-slate-900/90 border-slate-750 hover:border-slate-600'
                           } ${isViewer ? 'opacity-80 cursor-default' : ''}`}
                           title="Selecionar Manobra de Combate do Turno"
                         >
                           <option value="" className="bg-slate-900 text-slate-300">
-                            -- Manobra --
+                            -- Nenhuma --
                           </option>
                           {COMBAT_MANEUVERS.map((m) => (
                             <option key={m.id} value={m.id} className="bg-slate-900 text-white">
@@ -1543,26 +1538,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // PERFIL MESTRE (LAYOUT CLÁSSICO ROBUSTO E COMPLETO)
   // =========================================================================
   return (
-    <div
-      style={{
-        background: '#0b1120',
-        border: npc.isDead
-          ? '1px solid rgba(220, 38, 38, 0.5)'
-          : npc.characterType === 'player'
-          ? '1px solid rgba(16, 185, 129, 0.35)'
-          : '1px solid rgba(168, 85, 247, 0.35)',
-        boxShadow: npc.isDead
-          ? '0 20px 45px -10px rgba(220, 38, 38, 0.2)'
-          : npc.characterType === 'player'
-          ? '0 20px 45px -10px rgba(6, 78, 59, 0.25)'
-          : '0 20px 45px -10px rgba(88, 28, 135, 0.25)',
-        borderRadius: '20px',
-      }}
-      className="rounded-2xl shadow-2xl flex flex-col p-3.5 sm:p-5 space-y-4"
-    >
-      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas */}
+    <div className="space-y-4">
+      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas (Fixo ao rolar) */}
       <div
         style={{
+          position: 'sticky',
+          top: 'var(--mesa-top-offset, 48px)',
+          zIndex: 30,
           border: npc.isDead
             ? '1px solid rgba(220, 38, 38, 0.5)'
             : npc.characterType === 'player'
@@ -1574,28 +1556,55 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             ? 'linear-gradient(to right, rgba(6, 78, 59, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))'
             : 'linear-gradient(to right, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))',
         }}
-        className="backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
+        className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
       >
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           {/* Esquerda: Avatar + Identidade */}
           <div className="flex items-center gap-3.5 w-full lg:w-auto min-w-0">
-            {/* Avatar */}
-            <div className="relative group shrink-0">
-              <NpcAvatar
-                avatar={npc.avatar}
-                preset={npc.avatarPreset}
-                name={npc.name || 'NPC'}
-                size="lg"
-                onClick={() => !isViewer && onOpenAvatarPicker(npc)}
-                className={!isViewer ? 'cursor-pointer' : 'cursor-default'}
-              />
-              {!isViewer && (
-                <button
-                  onClick={() => onOpenAvatarPicker(npc)}
-                  className="absolute inset-0 bg-black/50 text-white text-[10px] font-semibold opacity-0 group-hover:opacity-100 rounded-xl flex items-center justify-center transition-opacity"
-                >
-                  Foto
-                </button>
+            {/* Avatar + Ações Rápidas (Copiar/Excluir embaixo da foto) */}
+            <div className="flex flex-col items-center gap-1.5 shrink-0">
+              <div className="relative group shrink-0">
+                <NpcAvatar
+                  avatar={npc.avatar}
+                  preset={npc.avatarPreset}
+                  name={npc.name || 'NPC'}
+                  size="lg"
+                  onClick={() => !isViewer && onOpenAvatarPicker(npc)}
+                  className={!isViewer ? 'cursor-pointer' : 'cursor-default'}
+                />
+                {!isViewer && (
+                  <button
+                    onClick={() => onOpenAvatarPicker(npc)}
+                    className="absolute inset-0 bg-black/50 text-white text-[10px] font-semibold opacity-0 group-hover:opacity-100 rounded-xl flex items-center justify-center transition-opacity"
+                  >
+                    Foto
+                  </button>
+                )}
+              </div>
+
+              {/* Botões de Copiar (NPCs) e Excluir posicionados embaixo da foto */}
+              {isMaster && (
+                <div className="flex items-center justify-center gap-1 w-full pt-0.5">
+                  {npc.characterType !== 'player' && (
+                    <button
+                      type="button"
+                      onClick={() => onDuplicateNpc(npc)}
+                      title="Duplicar este NPC com numeração incremental"
+                      className="p-1 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition-colors flex items-center justify-center shadow-xs"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmOpen(true)}
+                    title={npc.characterType === 'player' ? 'Remover personagem deste combate' : 'Excluir NPC do combate'}
+                    className="p-1 text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/50 transition-colors flex items-center justify-center shadow-xs"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               )}
             </div>
 
@@ -1689,12 +1698,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
               {/* Linha 3: Manobra de Combate e Biometria (Peso & Altura) organizados lado a lado sem quebra */}
               <div className="flex items-center gap-2.5 flex-wrap text-xs pt-0.5">
-                {/* Seleção de Manobra de Combate (sem nome da cor, apenas o nome da manobra com sua cor de fundo) */}
+                {/* Seleção de Manobra de Combate */}
                 {(() => {
                   const activeManeuver = getCombatManeuver(npc.combatManeuver);
                   return (
-                    <div className="flex items-center gap-1 bg-slate-950/70 px-2 py-0.5 rounded-lg shrink-0">
-                      <span className="text-[10px] text-slate-400 font-semibold">Manobra:</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[11px] font-semibold text-slate-400">Manobra:</span>
                       <select
                         disabled={isViewer}
                         value={npc.combatManeuver || ''}
@@ -1703,15 +1712,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           activeManeuver
                             ? {
                                 backgroundColor: activeManeuver.bgHex,
-                                color: activeManeuver.textHex,
-                                borderColor: activeManeuver.borderHex,
+                                color: activeManeuver.textHex || '#ffffff',
+                                borderColor: activeManeuver.borderHex || 'transparent',
                               }
                             : undefined
                         }
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-all border-none outline-none truncate max-w-[130px] ${
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer transition-all border outline-none truncate max-w-[140px] ${
                           activeManeuver
                             ? 'shadow-sm font-bold'
-                            : 'text-slate-400 bg-slate-900 border-slate-750 hover:border-slate-600'
+                            : 'text-slate-300 bg-slate-900/90 border-slate-750 hover:border-slate-600'
                         } ${isViewer ? 'opacity-80 cursor-default' : ''}`}
                         title="Selecionar Manobra de Combate do Turno"
                       >
@@ -1728,38 +1737,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   );
                 })()}
 
-                {/* Ações à esquerda: Lançar Dano, Copiar (apenas NPC) e Excluir */}
+                {/* Botão Lançar Dano / Fadiga (separado e com folga dos botões de exclusão que ficam sob a foto) */}
                 {!isViewer && (
                   <button
                     onClick={() => onOpenDamageCalculator(npc)}
-                    className="flex items-center gap-1 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
                   >
                     <Heart size={13} />
                     <span>Lançar Dano / Fadiga</span>
                   </button>
-                )}
-
-                {isMaster && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    {npc.characterType !== 'player' && (
-                      <button
-                        onClick={() => onDuplicateNpc(npc)}
-                        title="Duplicar este NPC com numeração incremental"
-                        className="p-1 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition-colors flex items-center justify-center"
-                      >
-                        <Copy size={13} />
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirmOpen(true)}
-                      title="Excluir do combate"
-                      className="p-1 text-rose-400 hover:text-rose-300 bg-rose-950/30 hover:bg-rose-900/40 rounded-lg border border-rose-800/40 transition-colors flex items-center justify-center"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
                 )}
 
                 </div>
