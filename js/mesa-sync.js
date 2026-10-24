@@ -485,6 +485,9 @@ var MesaSync = (function () {
       var imgs = str.indexOf('data:image/') >= 0;
       if (m.type === 'SYNC_DICE_ROLL' && m.rollData) {
         if (rt()) rt().send('mesa-dice', { rollData: m.rollData, logEntry: m.logEntry, ts: m.timestamp || Date.now() });
+        if (W.store && typeof W.store.saveRoll === 'function') {
+          try { W.store.saveRoll(m.rollData, m.logEntry); } catch (e) {}
+        }
         return;
       }
       if (m.type === 'PRESENCE_PING' && m.userName) {
@@ -630,7 +633,22 @@ var MesaSync = (function () {
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (x) { return x !== fn; }); }; }
   };
 })();
-window.hubMesaBus = { publish: MesaSync.publish, subscribe: MesaSync.subscribe };
+window.hubMesaBus = {
+  publish: MesaSync.publish,
+  subscribe: MesaSync.subscribe,
+  getRecentRolls: function (combatId, limit) {
+    if (W.store && typeof W.store.getRecentRolls === 'function') {
+      return W.store.getRecentRolls(combatId, limit);
+    }
+    return Promise.resolve([]);
+  },
+  saveRoll: function (rollData, logEntry) {
+    if (W.store && typeof W.store.saveRoll === 'function') {
+      return W.store.saveRoll(rollData, logEntry);
+    }
+    return Promise.resolve();
+  }
+};
 window.hubMesaPrepare = function () { return MesaSync.prepare(); };
 // The Mesa's exit button: save, then go to the home page.
 window.hubMesaFlush = function () {

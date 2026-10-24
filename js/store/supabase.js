@@ -431,6 +431,69 @@ function SupabaseStore(client, bucket) {
     return client.storage.from(bName).remove([ref]).then(function () {});
   }
 
+  function saveRoll(rollObj, logEntry) {
+    if (!client) return Promise.resolve();
+    var rObj = rollObj || (logEntry && logEntry.rollData) || {};
+    var lEnt = logEntry || {};
+    var rId = rObj.id || lEnt.id || ('roll-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6));
+    var pName = rObj.characterName || lEnt.npcName || 'Mestre';
+    var uName = rObj.playerName || lEnt.playerName || 'Mestre';
+    var role = lEnt.author || 'jogador';
+    var cnt = Number(rObj.diceCount) || 3;
+    var sides = Number(rObj.diceSides) || 6;
+    var rls = Array.isArray(rObj.rolls) ? rObj.rolls : (Array.isArray(lEnt.rolls) ? lEnt.rolls : []);
+    var tot = Number(rObj.total != null ? rObj.total : lEnt.amount) || 0;
+    var desc = lEnt.description || ('Rolou ' + cnt + 'D' + sides + ': ' + tot);
+    var sec = Boolean(lEnt.isSecret);
+    var rnd = Number(lEnt.round) || 0;
+    var cbId = lEnt.combatId || null;
+    var charId = lEnt.npcId || null;
+    var tsMs = rObj.timestamp || lEnt.timestampMs || Date.now();
+    var isoTime = new Date(tsMs).toISOString();
+
+    var payload = {
+      id: rId,
+      combate_id: cbId,
+      personagem_id: charId,
+      personagem_nome: pName,
+      jogador_nome: uName,
+      autor_papel: role,
+      qtd_dados: cnt,
+      lados_dados: sides,
+      rolagens: rls,
+      total: tot,
+      descricao: desc,
+      secreto: sec,
+      rodada: rnd,
+      dados_completos: { rollData: rObj, logEntry: lEnt },
+      criado_em: isoTime
+    };
+
+    return client.rpc('hounds_registrar_rolagem', { p_rolagem: payload }).then(function (res) {
+      if (res && res.error) {
+        return client.from('mesa_rolagens').upsert(payload).catch(function () {});
+      }
+    }).catch(function () {
+      return client.from('mesa_rolagens').upsert(payload).catch(function () {});
+    });
+  }
+
+  function getRecentRolls(combatId, limit) {
+    if (!client) return Promise.resolve([]);
+    var q = client.from('mesa_rolagens').select('*').order('criado_em', { ascending: false }).limit(limit || 50);
+    if (combatId && combatId !== 'combat-vazio') {
+      q = q.or('combate_id.eq.' + combatId + ',combate_id.is.null');
+    }
+    return q.then(function (res) {
+      if (res && res.data && Array.isArray(res.data)) {
+        return res.data;
+      }
+      return [];
+    }).catch(function () {
+      return [];
+    });
+  }
+
   return {
     kind: 'supabase',
     relational: true,
@@ -442,6 +505,9 @@ function SupabaseStore(client, bucket) {
     // The database rolls the dice of the chat (rolar_dados, migration 34): a roll goes without results.
     rollsDice: true,
     upload: upload, imageUrl: imageUrl, dropImage: dropImage,
+    client: client,
+    saveRoll: saveRoll,
+    getRecentRolls: getRecentRolls,
     // For MesaSync: save 1 s after the last change (the others get each change by broadcast; the
     // database keeps it and covers a message lost), always in pieces (a small head row: its notice
     // goes to every browser on every save), usually in one piece, and reach the others directly.

@@ -1150,6 +1150,50 @@ export default function App() {
 
     const unsubMsg = onlineSyncService.onSyncMessage(handleIncomingSync);
 
+    const fetchSupabaseRolls = () => {
+      try {
+        const bus = (window as any).parent?.hubMesaBus;
+        if (bus && typeof bus.getRecentRolls === 'function') {
+          bus.getRecentRolls(stateRef.current.activeCombatId, 60).then((rows: any[]) => {
+            if (!Array.isArray(rows) || rows.length === 0) return;
+            let combatsChanged = false;
+            const currentCombats = stateRef.current.combats;
+            const isMestre = currentUser?.role === 'mestre' || !currentUser;
+
+            const newCombats = currentCombats.map((cb) => {
+              const cbEvents = cb.events || [];
+              const missingEvents: any[] = [];
+              rows.forEach((r) => {
+                const log = r.dados_completos?.logEntry;
+                if (!log) return;
+                if (log.isSecret && !isMestre) return;
+                const matchCb = !log.combatId || log.combatId === cb.id;
+                if (matchCb && !cbEvents.some((e: any) => e.id === log.id)) {
+                  missingEvents.push(log);
+                }
+              });
+              if (missingEvents.length > 0) {
+                combatsChanged = true;
+                return {
+                  ...cb,
+                  events: [...missingEvents, ...cbEvents],
+                };
+              }
+              return cb;
+            });
+
+            if (combatsChanged) {
+              setCombats(newCombats);
+              stateRef.current.combats = newCombats;
+            }
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    };
+
+    fetchSupabaseRolls();
+    window.addEventListener('focus', fetchSupabaseRolls);
+
     let unsubHub: (() => void) | null = null;
     if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus?.subscribe) {
       try {
@@ -1172,6 +1216,7 @@ export default function App() {
           unsubHub();
         } catch (e) {}
       }
+      window.removeEventListener('focus', fetchSupabaseRolls);
     };
   }, []);
 
@@ -3031,6 +3076,17 @@ export default function App() {
               timestamp: now,
             })
           );
+          if (typeof (window as any).parent.hubMesaBus.saveRoll === 'function') {
+            (window as any).parent.hubMesaBus.saveRoll(rollData, newEntry);
+          }
+        } catch (e) {}
+      }
+    } else {
+      if (typeof (window as any).parent !== 'undefined' && (window as any).parent?.hubMesaBus) {
+        try {
+          if (typeof (window as any).parent.hubMesaBus.saveRoll === 'function') {
+            (window as any).parent.hubMesaBus.saveRoll(rollData, newEntry);
+          }
         } catch (e) {}
       }
     }
