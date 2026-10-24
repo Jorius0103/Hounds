@@ -3875,7 +3875,7 @@ export default function App() {
                 onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
               />
             </div>
-            <div className="w-full xl:w-5/12 shrink-0 xl:sticky xl:top-14">
+            <div className="w-full xl:w-5/12 shrink-0 xl:sticky" style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}>
               {selectedNpc ? (
                 <NpcDetailView
                   npc={selectedNpc}
@@ -3974,7 +3974,7 @@ export default function App() {
             </div>
 
             {/* Coluna da Direita: Log Geral de Combate */}
-            <div className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky xl:top-14">
+            <div className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky" style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}>
               <GeneralCombatLog
                 activeCombat={activeCombat}
                 additionalCharacters={allCharacters}

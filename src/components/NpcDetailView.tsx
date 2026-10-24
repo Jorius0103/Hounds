@@ -1303,11 +1303,27 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   if (isPlayerUser && !isPlayerChar) {
     return (
-      <div className="space-y-4">
+      <div
+        style={{
+          background: '#0b1120',
+          border: npc.isDead ? '1px solid rgba(220, 38, 38, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
+          boxShadow: npc.isDead ? '0 20px 45px -10px rgba(220, 38, 38, 0.2)' : '0 20px 45px -10px rgba(88, 28, 135, 0.25)',
+          borderRadius: '20px',
+        }}
+        className="rounded-2xl shadow-2xl flex flex-col p-3.5 sm:p-5 space-y-4"
+      >
         {/* Identidade do NPC + Botão Lançar Dano (Fixo ao rolar) */}
         <div
-          style={{ position: 'sticky', top: 'var(--mesa-top-offset, 48px)', zIndex: 30 }}
-          className="sticky z-30 bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg transition-all"
+          style={{
+            position: 'sticky',
+            top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
+            zIndex: 30,
+            border: npc.isDead ? '1px solid rgba(220, 38, 38, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
+            background: npc.isDead
+              ? 'rgba(2, 6, 23, 0.95)'
+              : 'linear-gradient(to right, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))',
+          }}
+          className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
@@ -1320,6 +1336,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border shadow-xs text-purple-300 bg-purple-950/80 border-purple-600/60">
+                      Ficha do NPC
+                    </span>
+                  </div>
                   <h2 className={`text-lg sm:text-xl font-bold ${npc.isDead ? 'text-red-300 line-through' : 'text-white'}`}>
                     {npc.name || '(Sem Nome)'}
                   </h2>
@@ -1389,9 +1410,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     );
                   })()}
                 </div>
-                {npc.title && (
-                  <div className="text-xs text-amber-400 font-medium mt-0.5">{npc.title}</div>
-                )}
+                
               </div>
             </div>
 
@@ -1529,12 +1548,28 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // PERFIL MESTRE (LAYOUT CLÁSSICO ROBUSTO E COMPLETO)
   // =========================================================================
   return (
-    <div className="space-y-4">
+    <div
+      style={{
+        background: '#0b1120',
+        border: npc.isDead
+          ? '1px solid rgba(220, 38, 38, 0.5)'
+          : npc.characterType === 'player'
+          ? '1px solid rgba(16, 185, 129, 0.35)'
+          : '1px solid rgba(168, 85, 247, 0.35)',
+        boxShadow: npc.isDead
+          ? '0 20px 45px -10px rgba(220, 38, 38, 0.2)'
+          : npc.characterType === 'player'
+          ? '0 20px 45px -10px rgba(6, 78, 59, 0.25)'
+          : '0 20px 45px -10px rgba(88, 28, 135, 0.25)',
+        borderRadius: '20px',
+      }}
+      className="rounded-2xl shadow-2xl flex flex-col p-3.5 sm:p-5 space-y-4"
+    >
       {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas (Fixo ao rolar) */}
       <div
         style={{
           position: 'sticky',
-          top: 'var(--mesa-top-offset, 48px)',
+          top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
           zIndex: 30,
           border: npc.isDead
             ? '1px solid rgba(220, 38, 38, 0.5)'
@@ -1597,16 +1632,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   placeholder="Nome do Personagem..."
                 />
 
-                {npc.characterType !== 'player' && (
-                  <input
-                    type="text"
-                    value={npc.title}
-                    readOnly={isViewer}
-                    onChange={(e) => updateField('title', e.target.value)}
-                    className={`bg-transparent text-xs text-amber-400 font-medium border-b border-transparent hover:border-slate-700 focus:border-amber-500 focus:outline-none transition-colors px-1 max-w-[180px] truncate ${isViewer ? 'cursor-default' : ''}`}
-                    placeholder="Título / Cargo..."
-                  />
-                )}
+                
               </div>
 
               {/* Linha 2: Status, Tipo e Toggles de Visibilidade / Vida */}
