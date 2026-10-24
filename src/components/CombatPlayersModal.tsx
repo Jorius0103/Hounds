@@ -48,11 +48,18 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
       style={{
-        padding: '16px',
-        overflowY: 'auto',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
+        background: 'rgba(2, 6, 23, 0.85)',
+        backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        overflowY: 'auto',
       }}
       role="dialog"
       aria-modal="true"
@@ -65,7 +72,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
           margin: 'auto',
           width: '100%',
           maxWidth: '580px',
-          maxHeight: '85vh',
+          maxHeight: '82vh',
           display: 'flex',
           flexDirection: 'column',
           background: '#0f172a',
@@ -75,7 +82,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
           overflow: 'hidden',
         }}
       >
-        {/* Cabeçalho compacto */}
+        {/* Cabeçalho padronizado e compacto com botão Criar Novo Personagem no topo */}
         <div
           style={{
             flexShrink: 0,
@@ -85,6 +92,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
             padding: '10px 18px',
             borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
             background: 'linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)',
+            gap: '10px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
@@ -104,53 +112,58 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
             >
               <Users size={16} />
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
-                  Personagens na Mesa
-                </h2>
-                <span
-                  style={{
-                    fontSize: '10px',
-                    padding: '1px 7px',
-                    borderRadius: '9999px',
-                    fontFamily: 'monospace',
-                    fontWeight: 'bold',
-                    background: '#1e293b',
-                    border: '1px solid #334155',
-                    color: '#fcd34d',
-                  }}
-                >
-                  {activePlayerIds.length} de {players.length} habilitados
-                </span>
-              </div>
-              <p style={{ fontSize: '10px', color: '#94a3b8', margin: '1px 0 0 0' }}>
-                Habilite ou desabilite quais personagens aparecem na mesa de combate
-              </p>
-            </div>
+            <h2 style={{ fontSize: '15px', fontWeight: 'bold', color: '#ffffff', margin: 0, whiteSpace: 'nowrap' }}>
+              Personagens na Mesa
+            </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            style={{
-              padding: '5px',
-              borderRadius: '7px',
-              cursor: 'pointer',
-              flexShrink: 0,
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            title="Fechar (Esc)"
-          >
-            <X size={16} />
-          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={onAddNewPlayer}
+              className="hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                background: '#059669',
+                color: '#ffffff',
+                border: '1px solid rgba(16, 185, 129, 0.5)',
+                borderRadius: '7px',
+                cursor: 'pointer',
+              }}
+              title="Cadastrar Novo Personagem"
+            >
+              <Plus size={13} />
+              <span>Criar novo personagem</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              style={{
+                padding: '5px',
+                borderRadius: '7px',
+                cursor: 'pointer',
+                flexShrink: 0,
+                background: 'transparent',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Fechar (Esc)"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
-        {/* Subheader / Busca à esquerda e Botões à direita na mesma linha */}
+        {/* Subheader / Busca menor à esquerda e Botões na mesma linha à direita */}
         <div
           style={{
             flexShrink: 0,
@@ -163,8 +176,8 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
             borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
           }}
         >
-          {/* Campo de Busca */}
-          <div style={{ position: 'relative', width: '200px', maxWidth: '45%' }}>
+          {/* Campo de Busca reduzido */}
+          <div style={{ position: 'relative', width: '180px', maxWidth: '45%', flexShrink: 1 }}>
             <Search
               size={12}
               style={{
@@ -173,6 +186,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                 top: '50%',
                 transform: 'translateY(-50%)',
                 color: '#64748b',
+                pointerEvents: 'none',
               }}
             />
             <input
@@ -194,17 +208,17 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
             />
           </div>
 
-          {/* Botões de Ação Rápida */}
+          {/* Botões de Ação Rápida alinhados na mesma linha */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             <button
               type="button"
               onClick={() => onSetAllPlayers(true)}
-              className="hover:opacity-90 active:scale-95 transition-all"
+              className="hover:opacity-90 active:scale-95 transition-all cursor-pointer"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '4px 10px',
+                padding: '4px 9px',
                 fontSize: '10px',
                 fontWeight: 'bold',
                 background: 'rgba(6, 78, 59, 0.8)',
@@ -221,14 +235,14 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
             <button
               type="button"
               onClick={() => onSetAllPlayers(false)}
-              className="hover:opacity-90 active:scale-95 transition-all"
+              className="hover:opacity-90 active:scale-95 transition-all cursor-pointer"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '4px 10px',
+                padding: '4px 9px',
                 fontSize: '10px',
-                fontWeight: 500,
+                fontWeight: 600,
                 background: '#1e293b',
                 color: '#cbd5e1',
                 border: '1px solid #334155',
@@ -243,13 +257,14 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
           </div>
         </div>
 
-        {/* Lista de Personagens Compacta */}
+        {/* Lista de Personagens Compacta (linhas com menor altura vertical) */}
         <div
+          className="custom-scrollbar"
           style={{
             flex: '1 1 auto',
             minHeight: 0,
             overflowY: 'auto',
-            padding: '8px 18px',
+            padding: '8px 18px 14px',
             display: 'flex',
             flexDirection: 'column',
             gap: '4px',
@@ -279,15 +294,15 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                   key={player.id}
                   onClick={() => onTogglePlayer(player.id)}
                   style={{
-                    padding: '4px 10px',
-                    minHeight: '34px',
-                    borderRadius: '8px',
+                    padding: '3px 10px',
+                    minHeight: '30px',
+                    borderRadius: '7px',
                     border: isInCombat ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #1e293b',
                     background: isInCombat ? 'rgba(6, 78, 59, 0.2)' : 'rgba(2, 6, 23, 0.6)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '10px',
+                    gap: '8px',
                     cursor: 'pointer',
                     userSelect: 'none',
                     transition: 'all 0.15s ease',
@@ -302,10 +317,11 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 auto' }}>
+                    {/* Avatar / Inicial compacto */}
                     <div
                       style={{
-                        width: '26px',
-                        height: '26px',
+                        width: '24px',
+                        height: '24px',
                         borderRadius: '6px',
                         display: 'flex',
                         alignItems: 'center',
@@ -313,78 +329,47 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                         fontWeight: 'bold',
                         fontSize: '10px',
                         flexShrink: 0,
-                        background: isInCombat ? 'rgba(16, 185, 129, 0.2)' : '#1e293b',
+                        background: isInCombat ? 'rgba(16, 185, 129, 0.25)' : '#1e293b',
                         color: isInCombat ? '#6ee7b7' : '#94a3b8',
                         border: isInCombat ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #334155',
+                        overflow: 'hidden',
                       }}
                     >
-                      {initials}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexWrap: 'nowrap' }}>
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          color: '#ffffff',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: '160px',
-                        }}
-                      >
-                        {player.name || 'Sem nome'}
-                      </span>
-                      {player.playerName && (
-                        <span style={{ fontSize: '10px', color: '#64748b', whiteSpace: 'nowrap' }}>
-                          ({player.playerName})
-                        </span>
-                      )}
-
-                      {/* Status ao lado do nome */}
-                      {isInCombat ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            color: '#34d399',
-                            background: 'rgba(6, 78, 59, 0.5)',
-                            border: '1px solid rgba(16, 185, 129, 0.35)',
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
+                      {player.avatar && player.avatar.trim() !== '' ? (
+                        <img
+                          src={player.avatar}
+                          alt={player.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
                           }}
-                        >
-                          Habilitado na Mesa
-                        </span>
+                        />
                       ) : (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: '#94a3b8',
-                            background: 'rgba(30, 41, 59, 0.5)',
-                            border: '1px solid #334155',
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                          }}
-                        >
-                          Desabilitado
-                        </span>
+                        <span>{initials}</span>
                       )}
                     </div>
+
+                    {/* Nome do Personagem com Nome do Jogador entre parênteses na mesma linha */}
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: isInCombat ? '#ffffff' : '#94a3b8',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {player.name || 'Sem nome'}
+                      {player.playerName && player.playerName.trim() !== '' && (
+                        <span style={{ fontSize: '11px', fontWeight: 'normal', color: isInCombat ? '#93c5fd' : '#64748b', marginLeft: '5px' }}>
+                          ({player.playerName.trim()})
+                        </span>
+                      )}
+                    </span>
                   </div>
 
-                  {/* Botão de Toggle */}
+                  {/* Botão de Toggle compacto */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -392,7 +377,7 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
                       onTogglePlayer(player.id);
                     }}
                     style={{
-                      padding: '3px 10px',
+                      padding: '2px 8px',
                       borderRadius: '5px',
                       fontSize: '10px',
                       fontWeight: 'bold',
@@ -414,61 +399,6 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
               );
             })
           )}
-        </div>
-
-        {/* Rodapé compacto */}
-        <div
-          style={{
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '8px 18px',
-            borderTop: '1px solid #1e293b',
-            background: 'rgba(2, 6, 23, 0.6)',
-            gap: '10px',
-          }}
-        >
-          <button
-            type="button"
-            onClick={onAddNewPlayer}
-            className="hover:opacity-90 active:scale-95 transition-all"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '5px 12px',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              background: '#1e293b',
-              color: '#fcd34d',
-              border: '1px solid rgba(245, 158, 11, 0.35)',
-              borderRadius: '7px',
-              cursor: 'pointer',
-            }}
-          >
-            <Plus size={13} />
-            <span>Criar Novo Personagem</span>
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="hover:opacity-90 active:scale-95 transition-all"
-            style={{
-              padding: '5px 14px',
-              borderRadius: '7px',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              background: '#f59e0b',
-              color: '#020617',
-              border: 'none',
-              cursor: 'pointer',
-              flexShrink: 0,
-              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            }}
-          >
-            Concluir
-          </button>
         </div>
       </div>
     </div>
