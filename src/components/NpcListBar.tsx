@@ -686,28 +686,32 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                       {(isPlayerChar || currentUserRole === 'mestre') && (
                         <>
                           <div className="flex items-center justify-between text-[10px] font-mono mt-1">
-                            <span className={`font-semibold ${npc.hpCurrent <= 0 ? 'text-red-400 font-bold' : 'text-rose-300'}`}>
-                              PV {npc.hpCurrent}/{npc.hpMax}
+                            <span className="font-semibold flex items-center gap-1">
+                              <span className="text-red-500 font-bold">PV</span>
+                              <span className="text-emerald-400 font-bold">{npc.hpCurrent}/{npc.hpMax}</span>
                             </span>
-                            <span className="text-cyan-300">
-                              FP {npc.fpCurrent}/{npc.fpMax}
+                            <span className="text-cyan-300 flex items-center gap-1">
+                              <span className="text-cyan-400 font-bold">FP</span>
+                              <span>{npc.fpCurrent}/{npc.fpMax}</span>
                             </span>
                           </div>
 
-                          {/* Linha 3: Barra de Vida Dinâmica */}
-                          <div className="w-full bg-slate-900 rounded-full h-1 mt-0.5 overflow-hidden">
+                          {/* Linha 3: Barra de Vida Dinâmica (Verde) */}
+                          <div className="w-full bg-slate-900 rounded-full h-1 mt-0.5 overflow-hidden" title={`PV: ${npc.hpCurrent}/${npc.hpMax}`}>
                             <div
-                              className={`h-full transition-all duration-300 ${
-                                npc.hpCurrent <= 0
-                                  ? 'bg-red-600'
-                                  : npc.hpCurrent < npc.hpMax * 0.33
-                                  ? 'bg-rose-500'
-                                  : npc.hpCurrent < npc.hpMax
-                                  ? 'bg-yellow-500'
-                                  : 'bg-emerald-500'
-                              }`}
+                              className="h-full bg-emerald-500 transition-all duration-300"
                               style={{
                                 width: `${Math.max(0, Math.min(100, npc.hpMax > 0 ? (npc.hpCurrent / npc.hpMax) * 100 : 0))}%`,
+                              }}
+                            />
+                          </div>
+
+                          {/* Linha 3b: Barra azul abaixo da verde de PV indicando a fadiga */}
+                          <div className="w-full bg-slate-900 rounded-full h-1 mt-0.5 overflow-hidden" title={`Fadiga (FP): ${npc.fpCurrent}/${npc.fpMax}`}>
+                            <div
+                              className="h-full bg-cyan-500 transition-all duration-300"
+                              style={{
+                                width: `${Math.max(0, Math.min(100, npc.fpMax > 0 ? (npc.fpCurrent / npc.fpMax) * 100 : 0))}%`,
                               }}
                             />
                           </div>

@@ -232,26 +232,46 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   );
 
   return (
-    <div className="bg-slate-900/95 border border-slate-800 rounded-2xl shadow-xl flex flex-col h-[calc(100vh-140px)] min-h-[500px] overflow-hidden">
-      {/* Header */}
-      <div className="p-3 border-b border-slate-800 space-y-2 bg-slate-950/70">
+    <div
+      style={{
+        background: '#0b1120',
+        border: '1px solid rgba(245, 158, 11, 0.35)',
+        boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.7)',
+      }}
+      className="rounded-2xl shadow-2xl flex flex-col h-[calc(100vh-140px)] min-h-[500px] overflow-hidden"
+    >
+      {/* Header Padronizado com Gradiente Âmbar e Identidade Visual Clara de Log */}
+      <div
+        style={{
+          padding: '10px 16px',
+          borderBottom: '1px solid rgba(245, 158, 11, 0.25)',
+          background: 'linear-gradient(to right, rgba(69, 26, 3, 0.45), #0f172a, #0f172a)',
+          flexShrink: 0,
+        }}
+        className="space-y-2.5"
+      >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-              <ScrollText size={16} />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 shadow-xs">
+              <ScrollText size={17} />
             </div>
             <div>
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Log
-              </h3>
-              <p className="text-[10px] text-slate-400">
-                Histórico em tempo real
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-black text-amber-300 uppercase tracking-widest">
+                  Log de Combate
+                </h3>
+                <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60">
+                  Histórico
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-tight">
+                Rolagens, danos e eventos da mesa em tempo real
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 border border-slate-700">
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-900 text-amber-300 border border-slate-700">
               {filteredLogs.length} / {allLogs.length}
             </span>
 

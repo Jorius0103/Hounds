@@ -1532,10 +1532,22 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     <div className="space-y-4">
       {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas (Fixo ao rolar) */}
       <div
-        style={{ position: 'sticky', top: 'var(--mesa-top-offset, 48px)', zIndex: 30 }}
-        className={`sticky z-30 bg-slate-900/95 backdrop-blur-md border rounded-2xl p-4 sm:p-5 shadow-lg space-y-4 transition-all ${
-          npc.isDead ? 'border-red-900/60 bg-slate-950/95' : 'border-slate-800'
-        }`}
+        style={{
+          position: 'sticky',
+          top: 'var(--mesa-top-offset, 48px)',
+          zIndex: 30,
+          border: npc.isDead
+            ? '1px solid rgba(220, 38, 38, 0.5)'
+            : npc.characterType === 'player'
+            ? '1px solid rgba(16, 185, 129, 0.35)'
+            : '1px solid rgba(168, 85, 247, 0.35)',
+          background: npc.isDead
+            ? 'rgba(2, 6, 23, 0.95)'
+            : npc.characterType === 'player'
+            ? 'linear-gradient(to right, rgba(6, 78, 59, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))'
+            : 'linear-gradient(to right, rgba(88, 28, 135, 0.25), rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95))',
+        }}
+        className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
       >
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           {/* Esquerda: Avatar + Identidade */}
@@ -1562,7 +1574,18 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
             {/* Identidade */}
             <div className="space-y-1.5 min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 mb-1">
+                  <span
+                    className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border shadow-xs ${
+                      npc.characterType === 'player'
+                        ? 'text-emerald-300 bg-emerald-950/80 border-emerald-600/60'
+                        : 'text-purple-300 bg-purple-950/80 border-purple-600/60'
+                    }`}
+                  >
+                    {npc.characterType === 'player' ? 'Ficha do Personagem' : 'Ficha do NPC'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
                 <input
                   type="text"
                   value={npc.name}

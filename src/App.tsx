@@ -155,9 +155,14 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
       changed = true;
     } else {
       const isNoCombatEntry = isEmptyCombat(existing) || isEmptyCombat(incoming);
+      // Se incoming nao tem NPCs (combate inativo enviado leve), preserva os NPCs locais existentes
+      const incomingHasNpcs = Array.isArray(incoming.npcs) && incoming.npcs.length > 0;
+      const baseExistingNpcs = existing.npcs || [];
       const { merged: rawMergedNpcs, changed: rawNpcsChanged } = isNoCombatEntry
         ? { merged: [] as NPC[], changed: (existing.npcs?.length || 0) > 0 || (incoming.npcs?.length || 0) > 0 }
-        : mergeNpcLists(existing.npcs || [], incoming.npcs || []);
+        : (incomingHasNpcs
+            ? mergeNpcLists(baseExistingNpcs, incoming.npcs || [])
+            : { merged: baseExistingNpcs, changed: false });
       const mergedNpcs = isNoCombatEntry ? [] : rawMergedNpcs;
       const npcsChanged = rawNpcsChanged;
       const playerIdsChanged = JSON.stringify(existing.playerIds || []) !== JSON.stringify(incoming.playerIds || []);
@@ -667,7 +672,36 @@ export default function App() {
   const lastAppliedRemoteTimestampRef = useRef<number>(0);
 
   const stateRef = useRef({ combats, conditions, users, activeCombatId, players });
-  const combatsPoolRef = useRef<Record<string, { npcs: NPC[]; events: unknown[] }>>({});
+  const combatsPoolRef = useRef<Record<string, { npcs: NPC[]; events: unknown[] }>>((() => {
+    const pool: Record<string, { npcs: NPC[]; events: unknown[] }> = {};
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      if (Array.isArray(stored)) {
+        stored.forEach((c: any) => {
+          if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+            pool[c.id] = { npcs: c.npcs, events: c.events || [] };
+          }
+        });
+      }
+      const snaps = JSON.parse(localStorage.getItem('hounds_mesa_snapshots_v1') || '[]');
+      if (Array.isArray(snaps)) {
+        snaps.forEach((s: any) => {
+          const list = s?.data?.combats || s?.combats || [];
+          if (Array.isArray(list)) {
+            list.forEach((c: any) => {
+              if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0 && !pool[c.id]) {
+                pool[c.id] = { npcs: c.npcs, events: c.events || [] };
+              }
+            });
+          }
+        });
+      }
+    } catch (e) {}
+    if (typeof window !== 'undefined') {
+      (window as any)._houndsCombatsPool = pool;
+    }
+    return pool;
+  })());
 
   useEffect(() => {
     combats.forEach((c) => {
@@ -692,7 +726,8 @@ export default function App() {
     updatedActiveCombatId?: string,
     updatedPlayers?: NPC[],
     updatedNpc?: NPC,
-    isImmediate?: boolean
+    isImmediate?: boolean,
+    isFullSnapshot?: boolean
   ) => {
     const editTimestamp = updatedNpc?.updatedAt || Date.now();
     lastLocalEditTimestampRef.current = editTimestamp;
@@ -713,9 +748,8 @@ export default function App() {
       }
     });
 
-    // Otimização Online: Envia pacote enxuto para rede e banco
-    // Apenas o combate ativo carrega NPCs; combates inativos trafegam leves com contagem
-    const lightweightCombats = finalCombats.map((c) => {
+        // Otimizacao Online: Envia pacote enxuto para rede e banco (salvo quando isFullSnapshot for true)
+    const lightweightCombats = isFullSnapshot ? finalCombats : finalCombats.map((c) => {
       if (c.id === finalActiveCombat) {
         const pooled = combatsPoolRef.current[c.id];
         const npcs = (c.npcs && c.npcs.length > 0) ? c.npcs : (pooled ? pooled.npcs : []);
@@ -1079,9 +1113,19 @@ export default function App() {
         if (payload.activeCombatId && payload.activeCombatId !== stateRef.current.activeCombatId) {
           stateRef.current.activeCombatId = payload.activeCombatId;
           setActiveCombatId(payload.activeCombatId);
+          setIsHomeScreen(false);
           try {
             localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(payload.activeCombatId));
           } catch (e) {}
+          const newActiveCombat = nextCombats.find((c) => c.id === payload.activeCombatId);
+          if (newActiveCombat) {
+            const myChar = newActiveCombat.npcs?.find((n) => currentUser && (n.name === currentUser.name || n.ownerId === currentUser.id));
+            if (myChar) {
+              setSelectedNpcId(myChar.id);
+            } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
+              setSelectedNpcId(newActiveCombat.npcs[0].id);
+            }
+          }
         }
         if (Array.isArray((payload as any).snapshots) && (payload as any).snapshots.length > 0) {
           try {
@@ -1412,8 +1456,32 @@ export default function App() {
       };
     }
 
-    // Prepara os combates: o combate selecionado recebe os NPCs do pool (se já descarregado)
-    const targetPool = combatsPoolRef.current[id];
+        // Prepara os combates: busca no pool local, com fallback para localStorage e Snapshots
+    let targetPool = combatsPoolRef.current[id];
+    if (!targetPool || !targetPool.npcs || targetPool.npcs.length === 0) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        const found = stored.find((x: any) => x.id === id);
+        if (found && found.npcs && found.npcs.length > 0) {
+          targetPool = { npcs: found.npcs, events: found.events || [] };
+          combatsPoolRef.current[id] = targetPool;
+        }
+      } catch (e) {}
+    }
+    if (!targetPool || !targetPool.npcs || targetPool.npcs.length === 0) {
+      try {
+        const snaps = JSON.parse(localStorage.getItem('hounds_mesa_snapshots_v1') || '[]');
+        for (const snap of snaps) {
+          const cList = snap.data?.combats || snap.combats || [];
+          const found = cList.find((x: any) => x.id === id);
+          if (found && found.npcs && found.npcs.length > 0) {
+            targetPool = { npcs: found.npcs, events: found.events || [] };
+            combatsPoolRef.current[id] = targetPool;
+            break;
+          }
+        }
+      } catch (e) {}
+    }
     const updatedCombats = stateRef.current.combats.map((c) => {
       if (c.id === id) {
         const npcs = (c.npcs && c.npcs.length > 0) ? c.npcs : (targetPool ? targetPool.npcs : []);
@@ -1432,7 +1500,9 @@ export default function App() {
     stateRef.current.combats = updatedCombats;
     setActiveCombatId(id);
     stateRef.current.activeCombatId = id;
+    setIsHomeScreen(false);
     try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
       localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(id));
     } catch (e) {}
 
@@ -1457,15 +1527,33 @@ export default function App() {
     const newConditions = snap.data.conditions || [];
     const newActiveId = snap.data.activeCombatId || (newCombats[0]?.id || 'combat-vazio');
 
+    // Popula imediatamente o pool de combates com todos os combates do snapshot restaurado
+    newCombats.forEach((c: any) => {
+      if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+        combatsPoolRef.current[c.id] = {
+          npcs: c.npcs,
+          events: c.events || []
+        };
+      }
+    });
+
     setCombats(newCombats);
     if (newPlayers.length > 0) setPlayers(newPlayers);
     if (newConditions.length > 0) setConditions(newConditions);
     setActiveCombatId(newActiveId);
+    setIsHomeScreen(false);
 
     stateRef.current.combats = newCombats;
     if (newPlayers.length > 0) stateRef.current.players = newPlayers;
     if (newConditions.length > 0) stateRef.current.conditions = newConditions;
     stateRef.current.activeCombatId = newActiveId;
+
+    const targetActive = newCombats.find((c: any) => c.id === newActiveId);
+    if (targetActive && targetActive.npcs && targetActive.npcs.length > 0) {
+      setSelectedNpcId(targetActive.npcs[0].id);
+    } else if (newPlayers.length > 0) {
+      setSelectedNpcId(newPlayers[0].id);
+    }
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newCombats));
@@ -1487,7 +1575,8 @@ export default function App() {
       newActiveId,
       newPlayers,
       undefined,
-      true
+      true,
+      true // isFullSnapshot: envia combates completos para que todos os clientes recebam
     );
 
     try {

@@ -226,7 +226,7 @@ var MesaSync = (function () {
         combats.push(isSemCombate(c) ? Object.assign({}, c, { npcs: [] }) : c);
       } else {
         var isEmpty = isSemCombate(combats[i]) || isSemCombate(c);
-        combats[i] = Object.assign({}, combats[i], c, { npcs: isEmpty ? [] : mergeList(combats[i].npcs, c.npcs) });
+        var baseNpcs = combats[i].npcs || []; var incNpcs = c.npcs || []; var mergedNpcs = isEmpty ? [] : (incNpcs.length === 0 && baseNpcs.length > 0 ? baseNpcs : mergeList(baseNpcs, incNpcs)); combats[i] = Object.assign({}, combats[i], c, { npcs: mergedNpcs });
       }
     });
     return {
@@ -452,8 +452,9 @@ var MesaSync = (function () {
         });
         var sendHubPresence = function () {
           var u = window.hubUser;
-          if (u && u.name && rt()) {
-            rt().send('mesa-presence', { userName: u.name, role: u.role || 'jogador', ts: Date.now() });
+          if (rt()) {
+            var unm = (u && u.name) || 'Visitante-' + cid.slice(-4);
+            rt().send('mesa-presence', { userName: unm, role: (u && u.role) || 'jogador', ts: Date.now() });
           }
         };
         setInterval(sendHubPresence, 8000);

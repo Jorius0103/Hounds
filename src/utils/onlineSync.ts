@@ -24,6 +24,7 @@ const CLIENT_ID = `gurps-${Math.random().toString(36).slice(2, 9)}-${Date.now()}
 const BROKER_URLS = [
   'wss://broker.emqx.io:8084/mqtt',      // EMQX public broker (very reliable on port 8084)
   'wss://broker.hivemq.com:8884/mqtt',   // HiveMQ public broker (fallback on port 8884)
+  'wss://test.mosquitto.org:8081/mqtt',  // Mosquitto public broker (port 8081 SSL)
 ];
 
 class OnlineSyncService {
@@ -36,6 +37,10 @@ class OnlineSyncService {
   private lastSentHash: string = '';
   private pendingPayload: RemoteSyncPayload | null = null;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastMessageTime: number = Date.now();
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private wakeLockSentinel: any = null;
 
   constructor() {
     // Read room from URL query param if present (?room=... or ?sala=...)
@@ -58,18 +63,80 @@ class OnlineSyncService {
       console.warn('Failed reading URL params for room', e);
     }
 
-    // Reconnect when tab regains focus or comes back online if disconnected
+    // Monitoramento permanente: garante que o usuário continue escutando por 4+ horas
     if (typeof window !== 'undefined') {
-      window.addEventListener('focus', () => {
-        if (this.status !== 'connected') {
-          this.connect();
-        }
-      });
-      window.addEventListener('online', () => {
-        if (this.status !== 'connected') {
-          this.connect();
-        }
-      });
+      const onWake = () => this.checkAndResync();
+      window.addEventListener('focus', onWake);
+      window.addEventListener('online', onWake);
+      window.addEventListener('pageshow', onWake);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') onWake();
+        });
+      }
+
+      // Inicia Watchdog Timer contínuo (roda a cada 10 segundos)
+      this.startWatchdog();
+
+      // Solicita Screen WakeLock para evitar suspensão profunda do navegador durante sessões
+      this.requestWakeLock();
+    }
+  }
+
+  private requestWakeLock() {
+    try {
+      if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+        (navigator as any).wakeLock?.request('screen').then((sentinel: any) => {
+          this.wakeLockSentinel = sentinel;
+          sentinel.addEventListener?.('release', () => {
+            this.wakeLockSentinel = null;
+          });
+        }).catch(() => {});
+      }
+    } catch {}
+  }
+
+  private startWatchdog() {
+    if (this.watchdogTimer) clearInterval(this.watchdogTimer);
+    this.watchdogTimer = setInterval(() => {
+      const now = Date.now();
+      // Se não estiver conectado ou client nulo, reconecta
+      if (this.status !== 'connected' || !this.client || !(this.client as any).connected) {
+        this.connect();
+        return;
+      }
+      // Se passou mais de 45 segundos sem nenhuma mensagem recebida do broker (possível conexão zumbi)
+      if (now - this.lastMessageTime > 45000) {
+        console.warn('[OnlineSync] Watchdog: Conexão inativa há mais de 45s. Forçando reconexão e re-sync.');
+        this.brokerIndex = (this.brokerIndex + 1) % BROKER_URLS.length;
+        this.connect();
+      }
+    }, 10000);
+
+    // Heartbeat ativo a cada 15 segundos para manter o canal WebSocket aberto por 4+ horas
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = setInterval(() => {
+      if (this.status === 'connected' && this.client) {
+        try {
+          const pingPayload = {
+            type: 'PRESENCE_PING' as any,
+            clientId: CLIENT_ID,
+            timestamp: Date.now(),
+          };
+          const topic = `gurps_rpg_sync_v2/${this.currentRoom}`;
+          this.client.publish(topic, JSON.stringify(pingPayload), { qos: 0 });
+        } catch {}
+      }
+    }, 15000);
+  }
+
+  public checkAndResync() {
+    this.requestWakeLock();
+    const now = Date.now();
+    if (this.status !== 'connected' || !this.client || !(this.client as any).connected || now - this.lastMessageTime > 30000) {
+      this.connect();
+    } else {
+      this.requestSync();
     }
   }
 
@@ -168,6 +235,7 @@ class OnlineSyncService {
 
       this.client.on('message', (receivedTopic, message) => {
         if (receivedTopic !== topic) return;
+        this.lastMessageTime = Date.now();
         try {
           const payload: RemoteSyncPayload = JSON.parse(message.toString());
           // Ignore own messages

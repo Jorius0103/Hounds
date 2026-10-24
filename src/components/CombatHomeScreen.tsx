@@ -381,89 +381,52 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                         </span>
                       )}
                       {showDetailedStats && (
-                        <span
-                          className="text-[11px] font-mono font-bold text-amber-300 bg-slate-950 px-1.5 py-0.2 rounded border border-slate-800"
-                          title="Basic Speed"
-                        >
-                          ⚡ Spd {npc.basicSpeed ?? 0}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* CENTRO DO CABEÇALHO: PV E FP COM BARRA DE PROGRESSO DOBRADA */}
-                {showDetailedStats && (
-                  <div className="flex items-center gap-3 shrink-0 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1">
-                    {/* PV */}
-                    <div className="flex flex-col min-w-[130px] sm:min-w-[140px]">
-                      <div className="flex items-center justify-between gap-1 text-xs leading-tight">
-                        <span className="inline-flex items-center gap-0.5 font-bold text-rose-400">
-                          <Heart size={11} className="text-rose-500 fill-rose-500/20 shrink-0" />
+                  <div className="flex flex-col shrink-0 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1 min-w-[155px] sm:min-w-[170px]">
+                    {/* Linha com PV e FP */}
+                    <div className="flex items-center justify-between gap-2 text-xs leading-tight font-mono">
+                      <div className="flex items-center gap-1">
+                        <span className="inline-flex items-center gap-0.5 font-bold text-red-500">
+                          <Heart size={11} className="text-red-500 fill-red-500/20 shrink-0" />
                           PV
                         </span>
-                        <span className="font-mono font-black">
-                          <span
-                            className={
-                              npc.hpCurrent <= 0
-                                ? 'text-red-400'
-                                : npc.hpCurrent < npc.hpMax
-                                ? 'text-yellow-400'
-                                : 'text-emerald-400'
-                            }
-                          >
-                            {npc.hpCurrent}
-                          </span>
-                          <span className="text-slate-500 text-[10px] mx-0.5">/</span>
-                          <span className="text-slate-300 text-[10px]">{npc.hpMax}</span>
+                        <span className="font-black text-emerald-400">
+                          {npc.hpCurrent}<span className="text-slate-500 text-[10px] mx-0.5">/</span><span className="text-emerald-400/80 text-[10px]">{npc.hpMax}</span>
                         </span>
                       </div>
-                      {npc.hpMax > 0 && (
-                        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden mt-0.5">
-                          <div
-                            className={`h-full transition-all duration-300 ${
-                              npc.hpCurrent <= 0
-                                ? 'bg-red-600'
-                                : npc.hpCurrent < npc.hpMax * 0.33
-                                ? 'bg-rose-500'
-                                : npc.hpCurrent < npc.hpMax
-                                ? 'bg-yellow-500'
-                                : 'bg-emerald-500'
-                            }`}
-                            style={{
-                              width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="h-6 w-[1px] bg-slate-800" />
-
-                    {/* FP */}
-                    <div className="flex flex-col min-w-[130px] sm:min-w-[140px]">
-                      <div className="flex items-center justify-between gap-1 text-xs leading-tight">
-                        <span className="inline-flex items-center gap-0.5 font-bold text-cyan-300">
+                      <div className="flex items-center gap-1">
+                        <span className="inline-flex items-center gap-0.5 font-bold text-cyan-400">
                           <Zap size={11} className="text-cyan-400 fill-cyan-400/20 shrink-0" />
                           FP
                         </span>
-                        <span className="font-mono font-black">
-                          <span className="text-cyan-300">{npc.fpCurrent}</span>
-                          <span className="text-slate-500 text-[10px] mx-0.5">/</span>
-                          <span className="text-slate-300 text-[10px]">{npc.fpMax}</span>
+                        <span className="font-black text-cyan-300">
+                          {npc.fpCurrent}<span className="text-slate-500 text-[10px] mx-0.5">/</span><span className="text-cyan-300/80 text-[10px]">{npc.fpMax}</span>
                         </span>
                       </div>
-                      {npc.fpMax > 0 && (
-                        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden mt-0.5">
-                          <div
-                            className="h-full bg-cyan-500 transition-all duration-300"
-                            style={{
-                              width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
-                            }}
-                          />
-                        </div>
-                      )}
                     </div>
+
+                    {/* Barra verde de PV */}
+                    {npc.hpMax > 0 && (
+                      <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden mt-1" title={`PV: ${npc.hpCurrent}/${npc.hpMax}`}>
+                        <div
+                          className="h-full bg-emerald-500 transition-all duration-300"
+                          style={{
+                            width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Barra azul abaixo da verde de PV indicando a fadiga */}
+                    {npc.fpMax > 0 && (
+                      <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden mt-1" title={`Fadiga (FP): ${npc.fpCurrent}/${npc.fpMax}`}>
+                        <div
+                          className="h-full bg-cyan-500 transition-all duration-300"
+                          style={{
+                            width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
