@@ -2169,7 +2169,7 @@ export default function App() {
     if (exists) {
       delete nextMeta[conditionId];
     } else {
-      const curRnd = round !== undefined ? round : effectiveRound;
+      const curRnd = isNoCombat ? 0 : (round !== undefined ? round : effectiveRound);
       nextMeta[conditionId] = {
         startRound: curRnd,
         duration: duration,
@@ -2295,9 +2295,11 @@ export default function App() {
     finalDamage: number,
     logEntry: Omit<ActionLogEntry, 'id'>
   ) => {
-    const roundNumber = logEntry.round !== undefined 
-      ? logEntry.round 
-      : effectiveRound;
+    const roundNumber = isNoCombat
+      ? 0
+      : (logEntry.round !== undefined 
+        ? logEntry.round 
+        : effectiveRound);
     const entryWithId: ActionLogEntry = {
       ...logEntry,
       round: roundNumber,
@@ -2405,9 +2407,11 @@ export default function App() {
   ) => {
     const now = Date.now();
     const spellInstanceId = `spell-${now}-${Math.random().toString(36).slice(2, 6)}`;
-    const roundNumber = logEntry.round !== undefined 
-      ? logEntry.round 
-      : effectiveRound;
+    const roundNumber = isNoCombat
+      ? 0
+      : (logEntry.round !== undefined 
+        ? logEntry.round 
+        : effectiveRound);
     const entryWithId: ActionLogEntry = {
       ...logEntry,
       round: roundNumber,
@@ -2654,9 +2658,11 @@ export default function App() {
     delta: number,
     logEntry: Omit<ActionLogEntry, 'id'>
   ) => {
-    const roundNumber = logEntry.round !== undefined 
-      ? logEntry.round 
-      : effectiveRound;
+    const roundNumber = isNoCombat
+      ? 0
+      : (logEntry.round !== undefined 
+        ? logEntry.round 
+        : effectiveRound);
     const entryWithId: ActionLogEntry = {
       ...logEntry,
       round: roundNumber,

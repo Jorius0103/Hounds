@@ -415,7 +415,8 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
             const prevRound = ix > 0 ? (paginatedLogs[ix - 1].round ?? 0) : null;
             const currentEntryRound = entry.round ?? 0;
             const isNewRound = ix === 0 || prevRound !== currentEntryRound;
-            const curRound = activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0;
+            const isNoCombat = !activeCombat || activeCombat.id === 'combat-vazio' || activeCombat.name?.toLowerCase().includes('vazio') || activeCombat.name?.toLowerCase().trim() === 'sem combate';
+            const curRound = isNoCombat ? 0 : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
             const isCurrent = currentEntryRound === curRound;
             const roundTitle = currentEntryRound === 0
               ? (isCurrent ? 'Rodada 0 (Preparação) · em andamento' : 'Rodada 0 (Preparação)')

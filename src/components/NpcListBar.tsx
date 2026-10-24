@@ -391,7 +391,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
           </div>
 
           {/* DIREITA (da direita p/ esquerda): Personagens, Rodadas e + NPC. Sem combate: oculta + NPC e Rodadas */}
-          <div className="flex items-center gap-1.5 text-xs flex-wrap sm:ml-auto">
+          <div className="flex items-center justify-end gap-2 text-xs flex-wrap ml-auto">
             {currentUserRole === 'mestre' && !isNoCombat && (
               <button
                 onClick={onAddNewNpc}
