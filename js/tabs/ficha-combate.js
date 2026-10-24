@@ -972,9 +972,10 @@ function wireSheetCombat(s) {
     else if (e.key === 'Escape') { e.stopPropagation(); hideNames(); }
   });
   box.addEventListener('mousedown', function (e) { if (/** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('.sc-row .suggest')) e.preventDefault(); });
+  // Only the list of a row's name (the one open, ns.list): the style picker's list, in a row too, has its own.
   box.addEventListener('click', function (e) {
     var o = /** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('.sc-row .suggest [data-o]');
-    if (o) { pickName(+o.getAttribute('data-o')); e.stopPropagation(); }
+    if (o && ns.list && ns.list.contains(o)) { pickName(+o.getAttribute('data-o')); e.stopPropagation(); }
   }, true);
   box.addEventListener('click', function (e) {
     var fold = /** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('[data-fold]');
@@ -1021,17 +1022,27 @@ function wireSheetCombat(s) {
     if (!opts.length) { hideStyles(); return; }
     sug.innerHTML = opts.map(function (x, n) {
       if (x.custom) return '<button type="button" role="option" id="scStyleSug' + n + '" data-o="' + n + '" class="ab-custom-opt' + (n === act ? ' act' : '') + '" aria-selected="' + (n === act) + '">' +
-        '<span>' + svg(ICON.plus, 13, 2.4) + 'Usar “' + esc(x.name) + '” como estilo personalizado</span><small>um estilo livre: ponha nele as perícias, técnicas e perks</small></button>';
+        '<span>' + svg(ICON.plus, 13, 2.4) + 'Usar “' + esc(x.name) + '” como estilo personalizado</span><small>' +
+        (isMestre() ? 'abre Novo estilo de Regras › Combate; ao salvar, ele entra na ficha' : 'um estilo livre: ponha nele as perícias, técnicas e perks') + '</small></button>';
       return '<button type="button" role="option" id="scStyleSug' + n + '" data-o="' + n + '" class="' + (n === act ? 'act' : '') + '" aria-selected="' + (n === act) + '">' +
         '<span>' + esc(x.name) + '</span><small>' + esc([x.page, styleCost(x)].filter(Boolean).join(' · ')) + '</small></button>';
     }).join('');
     sug.hidden = false; pick.setAttribute('aria-expanded', 'true'); pick.setAttribute('aria-activedescendant', 'scStyleSug' + act);
     var on = sug.querySelector('.act'); if (on) on.scrollIntoView({ block: 'nearest' });
   }
-  // A catalog style is picked (then Adicionar estilo); a custom one is added right away.
+  // A catalog style is picked (then Adicionar estilo). A custom one: for the Mestre, the form of a new
+  // style of Regras › Combate, with the name typed; saved, the style is in the catalog and goes on the
+  // sheet (the editor stays open). For a player, a free style of the sheet, added right away.
   function pickStyle(n) {
     var x = opts[n]; if (!x) return;
     pick.value = x.name; hideStyles();
+    if (x.custom && isMestre()) {
+      openStyleForm(null, { name: x.name, then: function (id, fields) {
+        if (ui.combatDraft !== d) return; // the editor was closed meanwhile
+        addStyle(styleById(id) || Object.assign({ id: id }, fields));
+      } });
+      return;
+    }
     if (x.custom) { delete pick.dataset.id; pick.dataset.custom = '1'; $('scAddStyle').click(); return; }
     pick.dataset.id = x.id; $('scAddStyle').focus();
   }
@@ -1051,6 +1062,10 @@ function wireSheetCombat(s) {
     var name = pick.value.trim(), cat = pick.dataset.id ? styleById(pick.dataset.id) : null;
     // Typed in full without picking: the catalog style of that exact name (not when the custom one was chosen).
     if (!cat && name && !pick.dataset.custom) cat = (W.styles || []).filter(function (x) { return norm(x.name) === norm(name); })[0] || null;
+    addStyle(cat, name);
+  };
+  // A style on the sheet: from the catalog (cat), or free with its name; it opens, at the end.
+  function addStyle(cat, name) {
     var st = cat ? styleFromCatalog(cat, combatSkillPool(c, s)) : { name: name, items: [scSfItem(name)] };
     st.open = true;
     c.styles.push(st);
@@ -1058,7 +1073,7 @@ function wireSheetCombat(s) {
     // Only when the sheet lacks a skill the style requires; the block is marked as well.
     var miss = scReqsMissing(scStyleReqs(st, combatSkillPool(c, s)));
     if (miss.length) toast('Pré-requisito de ' + st.name + ' não atendido. Falta: ' + miss.join('; ') + '.', true);
-  };
+  }
   var bring = $('scBring'); if (bring) bring.onclick = function () {
     var left = sheetSkills(s).filter(function (k) { return !d.moved.some(function (m) { return m.name === k.name && m.attr === k.attr && m.diff === k.diff; }); });
     var k = left[+$('scFromSkill').value], t = $('scFromTarget').value; if (!k) return;

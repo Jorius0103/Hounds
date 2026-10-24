@@ -436,10 +436,11 @@ function styleChipsEditHtml(k, names) {
     return '<span class="sf-chip">' + esc(n) + '<button type="button" data-sfdel="' + k + ':' + i + '" aria-label="Tirar ' + esc(n) + '" title="Tirar">' + svg(ICON.x, 12, 2.6) + '</button></span>';
   }).join('');
 }
-function openStyleForm(x) {
+// how (a new style only): { name: the name it starts with, then(id, fields): instead of opening its page }.
+function openStyleForm(x, how) {
   if (!isMestre()) { toast('Apenas o Mestre pode criar ou editar estilos.', true); return; }
   var editing = !!x;
-  function val(k) { return esc(editing ? x[k] || '' : ''); }
+  function val(k) { return esc(editing ? x[k] || '' : k === 'name' && how && how.name ? how.name : ''); }
   // The names of each list, as they are being chosen.
   var picked = {};
   STYLE_LISTS.concat(STYLE_OPT_LISTS).forEach(function (d) { picked[d[0]] = styleItems(editing ? x[d[0]] : ''); });
@@ -536,7 +537,8 @@ function openStyleForm(x) {
     Ops.saveStyle(x, fields).then(function (id) {
       closeModal(true);
       toast(editing ? 'Estilo salvo.' : 'Estilo criado.');
-      if (!editing) go(styleHref(id));
+      if (!editing && how && how.then) how.then(id, fields);
+      else if (!editing) go(styleHref(id));
     }, function (er) {
       if (!modalOpen) return;
       modalOpen.busy = false; btn.disabled = false; btn.textContent = editing ? 'Salvar estilo' : 'Criar estilo'; $('stCancel').disabled = false;
