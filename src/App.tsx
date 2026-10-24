@@ -380,10 +380,21 @@ export default function App() {
 
   // Presence tracking for online players
   const [onlineUsersMap, setOnlineUsersMap] = useState<Record<string, number>>({});
+  const [presenceClock, setPresenceClock] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const clockInterval = setInterval(() => setPresenceClock(Date.now()), 3000);
+    return () => clearInterval(clockInterval);
+  }, []);
 
   const markUserOnline = (name?: string) => {
     if (name && name.trim()) {
       const lower = name.trim().toLowerCase();
+      if (typeof window !== 'undefined') {
+        (window as any)._houndsOnlineUsers = (window as any)._houndsOnlineUsers || {};
+        (window as any)._houndsOnlineUsers[lower] = Date.now();
+        window.dispatchEvent(new CustomEvent('hounds_presence_updated'));
+      }
       setOnlineUsersMap((prev) => ({ ...prev, [lower]: Date.now() }));
     }
   };
@@ -407,7 +418,7 @@ export default function App() {
       }
     };
     sendPing();
-    const interval = setInterval(sendPing, 12000);
+    const interval = setInterval(sendPing, 8000);
     return () => clearInterval(interval);
   }, [currentUser?.name]);
 
@@ -425,15 +436,20 @@ export default function App() {
       }
     } catch (e) {}
     try {
-      if (typeof window !== 'undefined' && (window as any).parent) {
+      if (typeof window !== 'undefined') {
         const p = (window as any).parent;
-        if (p.hubUser?.name) set.add(p.hubUser.name.trim().toLowerCase());
-        if (p.BoardView && typeof p.BoardView.presence === 'function') {
+        if (p?.hubUser?.name) set.add(p.hubUser.name.trim().toLowerCase());
+        if (p?.hubOnlineUsers) {
+          for (const [k, t] of Object.entries(p.hubOnlineUsers as Record<string, number>)) {
+            if (now - t < 35000) set.add(k.trim().toLowerCase());
+          }
+        }
+        if (p?.BoardView && typeof p.BoardView.presence === 'function') {
           const pres = p.BoardView.presence();
           if (pres && typeof pres === 'object') {
             for (const k of Object.keys(pres)) {
               const entry = pres[k];
-              if (entry?.nm && (!entry.t || now - entry.t < 45000)) {
+              if (entry?.nm && (!entry.t || now - entry.t < 35000)) {
                 set.add(entry.nm.trim().toLowerCase());
               }
             }
@@ -442,12 +458,12 @@ export default function App() {
       }
     } catch (e) {}
     for (const [name, lastSeen] of Object.entries(onlineUsersMap)) {
-      if (now - lastSeen < 45000) {
+      if (now - lastSeen < 35000) {
         set.add(name.trim().toLowerCase());
       }
     }
     return set;
-  }, [currentUser?.name, onlineUsersMap]);
+  }, [currentUser?.name, onlineUsersMap, presenceClock]);
 
   // IDs dos personagens de jogadores visíveis no combate ativo (por padrão, todos)
   const activeCombatPlayerIds = useMemo(() => {

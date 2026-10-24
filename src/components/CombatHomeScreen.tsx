@@ -63,9 +63,21 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
   filterEmptyMessage = 'Nenhum personagem ou NPC encontrado neste filtro.',
   onlinePlayerNames,
 }) => {
+  const [, setPresenceTick] = useState<number>(0);
+  useEffect(() => {
+    const interval = setInterval(() => setPresenceTick((t) => t + 1), 3000);
+    const onPresenceUpdate = () => setPresenceTick((t) => t + 1);
+    window.addEventListener('hounds_presence_updated', onPresenceUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('hounds_presence_updated', onPresenceUpdate);
+    };
+  }, []);
+
   const isPlayerOnline = (playerName?: string): boolean => {
     if (!playerName || !playerName.trim()) return false;
     const pName = playerName.trim().toLowerCase();
+    const now = Date.now();
     if (onlinePlayerNames && onlinePlayerNames.has(pName)) return true;
     try {
       const saved = localStorage.getItem('hounds_active_user');
@@ -75,17 +87,22 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
       }
     } catch (e) {}
     try {
-      if (typeof window !== 'undefined' && (window as any).parent) {
+      if (typeof window !== 'undefined') {
         const p = (window as any).parent;
-        if (p.hubUser?.name && p.hubUser.name.trim().toLowerCase() === pName) return true;
-        if (p.BoardView && typeof p.BoardView.presence === 'function') {
+        if (p?.hubUser?.name && p.hubUser.name.trim().toLowerCase() === pName) return true;
+        if (p?.hubOnlineUsers && p.hubOnlineUsers[pName] && now - p.hubOnlineUsers[pName] < 35000) return true;
+        if (p?.BoardView && typeof p.BoardView.presence === 'function') {
           const pres = p.BoardView.presence();
           if (pres && typeof pres === 'object') {
             for (const k of Object.keys(pres)) {
               const entry = pres[k];
-              if (entry?.nm && entry.nm.trim().toLowerCase() === pName) return true;
+              if (entry?.nm && entry.nm.trim().toLowerCase() === pName && (!entry.t || now - entry.t < 35000)) return true;
             }
           }
+        }
+        if ((window as any)._houndsOnlineUsers) {
+          const last = (window as any)._houndsOnlineUsers[pName];
+          if (last && now - last < 35000) return true;
         }
       }
     } catch (e) {}
@@ -333,12 +350,14 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       </h3>
                       {isPlayerChar && npc.playerName && (
                         <span
-                          className={`text-sm font-semibold truncate max-w-[140px] ${
-                            isPlayerOnline(npc.playerName) ? 'text-emerald-400' : 'text-slate-400'
-                          }`}
                           title={`Jogador: ${npc.playerName} (${isPlayerOnline(npc.playerName) ? 'Online' : 'Offline'})`}
+                          className={`text-[10px] font-bold uppercase tracking-tighter shrink-0 px-1.5 py-0.5 rounded border ${
+                            isPlayerOnline(npc.playerName)
+                              ? 'text-emerald-400 bg-emerald-950/80 border-emerald-800/60'
+                              : 'text-slate-400 bg-slate-800/80 border-slate-700/60'
+                          }`}
                         >
-                          ({npc.playerName})
+                          {npc.playerName}
                         </span>
                       )}
                     </div>

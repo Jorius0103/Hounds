@@ -443,6 +443,21 @@ var MesaSync = (function () {
             if (loaded()) push({ type: 'SYNC_SNAPSHOTS_LIST', snapshots: m.snapshots, timestamp: m.ts || Date.now() });
           }
         });
+        rt().on('mesa-presence', function (m) {
+          if (m && m.userName) {
+            window.hubOnlineUsers = window.hubOnlineUsers || {};
+            window.hubOnlineUsers[String(m.userName).trim().toLowerCase()] = Date.now();
+            if (loaded()) push({ type: 'PRESENCE_PING', userName: m.userName, role: m.role, timestamp: m.ts || Date.now() });
+          }
+        });
+        var sendHubPresence = function () {
+          var u = window.hubUser;
+          if (u && u.name && rt()) {
+            rt().send('mesa-presence', { userName: u.name, role: u.role || 'jogador', ts: Date.now() });
+          }
+        };
+        setInterval(sendHubPresence, 8000);
+        setTimeout(sendHubPresence, 1000);
       }
     },
     // Runs before the Mesa iframe loads: put the saved state where the Mesa reads it.
@@ -469,6 +484,12 @@ var MesaSync = (function () {
       var imgs = str.indexOf('data:image/') >= 0;
       if (m.type === 'SYNC_DICE_ROLL' && m.rollData) {
         if (rt()) rt().send('mesa-dice', { rollData: m.rollData, logEntry: m.logEntry, ts: m.timestamp || Date.now() });
+        return;
+      }
+      if (m.type === 'PRESENCE_PING' && m.userName) {
+        window.hubOnlineUsers = window.hubOnlineUsers || {};
+        window.hubOnlineUsers[String(m.userName).trim().toLowerCase()] = Date.now();
+        if (rt()) rt().send('mesa-presence', { userName: m.userName, role: m.role || 'jogador', ts: m.timestamp || Date.now() });
         return;
       }
       if (m.type === 'SYNC_ROUND' && m.combatId) {
