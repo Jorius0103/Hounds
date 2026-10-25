@@ -2731,88 +2731,98 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 )}
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
                 {npc.weapons.map((w) => (
                   <div
                     key={w.id}
-                    className="p-3.5 bg-slate-950/80 border border-slate-800 hover:border-slate-750 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    className={`p-3.5 rounded-xl border flex flex-col justify-between gap-3 text-xs transition-all ${
+                      w.isFavorite
+                        ? 'bg-amber-950/20 border-amber-500/60 ring-1 ring-amber-500/20'
+                        : 'bg-slate-950/80 border-slate-800 hover:border-slate-750'
+                    }`}
                   >
-                    {/* Left: Weapon Name & NH bem maior em destaque */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {/* NH BEM MAIOR PARA VISUALIZAÇÃO ÁGIL DO MESTRE */}
-                      <div className="flex flex-col items-center justify-center bg-amber-950/60 border border-amber-500/60 px-3.5 py-1.5 rounded-xl shrink-0 shadow-sm min-w-[56px]">
-                        <span className="text-[9px] text-amber-400 font-extrabold uppercase tracking-widest leading-none">NH</span>
-                        <span className={`font-mono font-black text-amber-300 tabular-nums leading-tight ${String(w.nh || '').length > 3 ? 'text-lg' : 'text-2xl'}`}>
-                          {w.nh}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <div className="flex items-baseline gap-2 flex-wrap min-w-0">
-                          <span className="font-bold text-white text-base leading-tight">
-                            {w.name}
+                    {/* Top Row: NH Badge, Weapon Name, Notes & Actions */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="flex flex-col items-center justify-center bg-amber-950/60 border border-amber-500/60 px-3 py-1 rounded-xl shrink-0 shadow-sm min-w-[50px]">
+                          <span className="text-[9px] text-amber-400 font-extrabold uppercase tracking-widest leading-none">NH</span>
+                          <span className={`font-mono font-black text-amber-300 tabular-nums leading-tight ${String(w.nh || '').length > 3 ? 'text-base' : 'text-xl'}`}>
+                            {w.nh}
                           </span>
-                          {w.notes && (
-                            <span className="text-[11px] text-amber-200/90 italic font-normal">
-                              • {w.notes}
-                            </span>
-                          )}
                         </div>
 
-                        {/* Múltiplos Modos de Ataque (Dano / Tipo / Alcance) */}
-                        {w.modes && w.modes.length > 0 ? (
-                          <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                            {w.modes.map((m, i) => (
-                              <div
-                                key={m.id || i}
-                                className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] font-mono flex items-center gap-2 text-slate-300"
-                              >
-                                {m.name && <span className="font-bold text-amber-300 font-sans">{m.name}:</span>}
-                                <span>Dano: <strong className="text-white">{m.damage}</strong></span>
-                                {m.type && <span className="text-slate-400 font-sans">({m.type})</span>}
-                                {m.reach && <span className="text-slate-400">Alc: {m.reach}</span>}
-                              </div>
-                            ))}
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+                            <span className="font-bold text-white text-sm sm:text-base leading-tight">
+                              {w.name}
+                            </span>
+                            {w.notes && (
+                              <span className="text-[11px] text-amber-200/90 italic font-normal line-clamp-1" title={w.notes}>
+                                • {w.notes}
+                              </span>
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-300 font-mono">
-                            {w.damage && <span>Dano: <strong className="text-white">{w.damage}</strong></span>}
-                            {w.type && <span>({w.type})</span>}
-                            {w.reach && <span>· Alcance: {w.reach}</span>}
-                          </div>
-                        )}
+                        </div>
                       </div>
+
+                      {!isViewer && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => onOpenWeaponModal(w)}
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors"
+                            title="Editar arma"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setConfirmAction({
+                                isOpen: true,
+                                title: 'Excluir Arma',
+                                message: `Deseja excluir a arma "${w.name || 'Arma'}" da ficha de ${npc.name || 'este personagem'}?`,
+                                confirmText: 'Excluir Arma',
+                                onConfirm: () => handleRemoveWeapon(w.id),
+                              });
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
+                            title="Excluir arma"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {!isViewer && (
-                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                        <button
-                          onClick={() => onOpenWeaponModal(w)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors"
-                          title="Editar arma"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setConfirmAction({
-                              isOpen: true,
-                              title: 'Excluir Arma',
-                              message: `Deseja excluir a arma "${w.name || 'Arma'}" da ficha de ${npc.name || 'este personagem'}?`,
-                              confirmText: 'Excluir Arma',
-                              onConfirm: () => handleRemoveWeapon(w.id),
-                            });
-                          }}
-                          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
-                          title="Excluir arma"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                    {/* Tipos de ataque um embaixo do outro */}
+                    {w.modes && w.modes.length > 0 ? (
+                      <div className="flex flex-col gap-1.5 pt-0.5 w-full">
+                        {w.modes.map((m, i) => (
+                          <div
+                            key={m.id || i}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] font-mono flex items-center justify-between gap-2 text-slate-300"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                              {m.name && <span className="font-bold text-amber-300 font-sans shrink-0">{m.name}:</span>}
+                              <span>Dano: <strong className="text-white font-bold">{m.damage}</strong></span>
+                              {m.type && <span className="text-slate-400 font-sans text-[10px]">({m.type})</span>}
+                            </div>
+                            {m.reach && <span className="text-slate-400 text-[10px] shrink-0 font-sans">Alc: {m.reach}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-1.5 pt-0.5 w-full">
+                        <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] font-mono flex items-center justify-between gap-2 text-slate-300">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                            {w.damage && <span>Dano: <strong className="text-white font-bold">{w.damage}</strong></span>}
+                            {w.type && <span className="text-slate-400 font-sans text-[10px]">({w.type})</span>}
+                          </div>
+                          {w.reach && <span className="text-slate-400 text-[10px] shrink-0 font-sans">Alc: {w.reach}</span>}
+                        </div>
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
+                ))}              </div>
             )}
           </div>
 
