@@ -2078,149 +2078,149 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 </div>
               )}
 
-              {/* Card: Magias (Magias Ativas & Sob Efeito) - Posicionamento de Meia Largura */}
-          {renderMagiasSection()}
-
-          {/* Card: Defesas Ativas (Trocado para a coluna da esquerda) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
-              <div className="flex items-center gap-2">
-                <Shield size={15} className="text-amber-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                  Defesas Ativas
-                </h3>
-              </div>
-              {isMaster && (
-                <button
-                  onClick={handleAddParry}
-                  className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
-                  title="Adicionar outra arma para cálculo de Aparar"
-                >
-                  <Plus size={11} />
-                  <span>Aparar</span>
-                </button>
-              )}
-            </div>
-
-            {/* Grid de Defesas em 3 colunas com números no tamanho de Pontos de Vida e Fadiga */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {/* Card Esquiva */}
-              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs sm:text-sm font-bold text-cyan-300 leading-tight">Esquiva</div>
-                  <input
-                    type="text"
-                    disabled={!isMaster}
-                    value={npc.dodgeNotes ?? ''}
-                    placeholder="Comentário..."
-                    onChange={(e) => updateField('dodgeNotes', e.target.value)}
-                    className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
-                    title="Comentário sobre Esquiva (ex: Speed + 3)"
-                  />
+              {/* Card: Defesas Ativas (Posicionado logo abaixo das observações) */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+                  <div className="flex items-center gap-2">
+                    <Shield size={15} className="text-amber-400" />
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                      Defesas Ativas
+                    </h3>
+                  </div>
+                  {isMaster && (
+                    <button
+                      onClick={handleAddParry}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
+                      title="Adicionar outra arma para cálculo de Aparar"
+                    >
+                      <Plus size={11} />
+                      <span>Aparar</span>
+                    </button>
+                  )}
                 </div>
-                <input
-                  type="number"
-                  disabled={!isMaster}
-                  value={npc.dodge ?? ''}
-                  placeholder="-"
-                  onChange={(e) => updateField('dodge', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                  className={`w-12 sm:w-14 bg-slate-900 border border-cyan-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-cyan-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                  title="Valor da Esquiva"
-                />
-              </div>
 
-              {/* Card Bloqueio */}
-              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs sm:text-sm font-bold text-emerald-300 leading-tight">Bloqueio</div>
-                  <input
-                    type="text"
-                    disabled={!isMaster}
-                    value={npc.blockNotes ?? ''}
-                    placeholder="Comentário..."
-                    onChange={(e) => updateField('blockNotes', e.target.value)}
-                    className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
-                    title="Comentário sobre Bloqueio (ex: Escudo / 2 + 3)"
-                  />
-                </div>
-                <input
-                  type="number"
-                  disabled={!isMaster}
-                  value={npc.block ?? ''}
-                  placeholder="-"
-                  onChange={(e) => updateField('block', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                  className={`w-12 sm:w-14 bg-slate-900 border border-emerald-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-emerald-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                  title="Valor do Bloqueio"
-                />
-              </div>
-
-              {/* Cards de Aparar no mesmo formato e tamanho dos de Esquiva e Bloqueio */}
-              {parriesList.map((parry, idx) => (
-                <div
-                  key={parry.id}
-                  className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className="text-xs sm:text-sm font-bold text-amber-400 shrink-0">Aparar:</span>
+                {/* Grid de Defesas em 3 colunas com números no tamanho de Pontos de Vida e Fadiga */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* Card Esquiva */}
+                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs sm:text-sm font-bold text-cyan-300 leading-tight">Esquiva</div>
                       <input
                         type="text"
                         disabled={!isMaster}
-                        value={parry.weaponName}
-                        onChange={(e) => handleUpdateParry(idx, { ...parry, weaponName: e.target.value })}
-                        placeholder="Arma..."
-                        className="w-full bg-transparent text-xs sm:text-sm font-bold text-amber-200 placeholder-slate-600 focus:outline-none truncate"
-                        title="Nome da arma de Aparar"
+                        value={npc.dodgeNotes ?? ''}
+                        placeholder="Comentário..."
+                        onChange={(e) => updateField('dodgeNotes', e.target.value)}
+                        className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                        title="Comentário sobre Esquiva (ex: Speed + 3)"
                       />
                     </div>
                     <input
-                      type="text"
+                      type="number"
                       disabled={!isMaster}
-                      value={parry.notes ?? ''}
-                      placeholder="Comentário..."
-                      onChange={(e) => handleUpdateParry(idx, { ...parry, notes: e.target.value })}
-                      className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
-                      title="Comentário sobre Aparar"
+                      value={npc.dodge ?? ''}
+                      placeholder="-"
+                      onChange={(e) => updateField('dodge', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                      className={`w-12 sm:w-14 bg-slate-900 border border-cyan-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-cyan-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title="Valor da Esquiva"
                     />
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
+                  {/* Card Bloqueio */}
+                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs sm:text-sm font-bold text-emerald-300 leading-tight">Bloqueio</div>
+                      <input
+                        type="text"
+                        disabled={!isMaster}
+                        value={npc.blockNotes ?? ''}
+                        placeholder="Comentário..."
+                        onChange={(e) => updateField('blockNotes', e.target.value)}
+                        className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                        title="Comentário sobre Bloqueio (ex: Escudo / 2 + 3)"
+                      />
+                    </div>
                     <input
                       type="number"
                       disabled={!isMaster}
-                      value={parry.value ?? ''}
+                      value={npc.block ?? ''}
                       placeholder="-"
-                      onChange={(e) =>
-                        handleUpdateParry(idx, {
-                          ...parry,
-                          value: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
-                        })
-                      }
-                      className={`w-12 sm:w-14 bg-slate-900 border border-amber-500/50 rounded-lg text-center font-mono font-black text-base sm:text-lg text-amber-300 py-1 sm:py-1.5 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title="Valor do Aparar"
+                      onChange={(e) => updateField('block', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                      className={`w-12 sm:w-14 bg-slate-900 border border-emerald-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-emerald-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title="Valor do Bloqueio"
                     />
-                    {isMaster && parriesList.length > 1 && (
-                      <button
-                        onClick={() => {
-                          setConfirmAction({
-                            isOpen: true,
-                            title: 'Remover Aparar',
-                            message: `Deseja remover esta linha de Aparar (${parry.weaponName || 'Aparar ' + (idx + 1)})?`,
-                            confirmText: 'Remover Aparar',
-                            onConfirm: () => handleRemoveParry(idx),
-                          });
-                        }}
-                        className="text-slate-500 hover:text-rose-400 font-bold text-xs p-0.5 transition-colors"
-                        title="Remover este Aparar"
-                      >
-                        ×
-                      </button>
-                    )}
                   </div>
+
+                  {/* Cards de Aparar no mesmo formato e tamanho dos de Esquiva e Bloqueio */}
+                  {parriesList.map((parry, idx) => (
+                    <div
+                      key={parry.id}
+                      className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="text-xs sm:text-sm font-bold text-amber-400 shrink-0">Aparar:</span>
+                          <input
+                            type="text"
+                            disabled={!isMaster}
+                            value={parry.weaponName}
+                            onChange={(e) => handleUpdateParry(idx, { ...parry, weaponName: e.target.value })}
+                            placeholder="Arma..."
+                            className="w-full bg-transparent text-xs sm:text-sm font-bold text-amber-200 placeholder-slate-600 focus:outline-none truncate"
+                            title="Nome da arma de Aparar"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          disabled={!isMaster}
+                          value={parry.notes ?? ''}
+                          placeholder="Comentário..."
+                          onChange={(e) => handleUpdateParry(idx, { ...parry, notes: e.target.value })}
+                          className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                          title="Comentário sobre Aparar"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input
+                          type="number"
+                          disabled={!isMaster}
+                          value={parry.value ?? ''}
+                          placeholder="-"
+                          onChange={(e) =>
+                            handleUpdateParry(idx, {
+                              ...parry,
+                              value: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
+                            })
+                          }
+                          className={`w-12 sm:w-14 bg-slate-900 border border-amber-500/50 rounded-lg text-center font-mono font-black text-base sm:text-lg text-amber-300 py-1 sm:py-1.5 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                          title="Valor do Aparar"
+                        />
+                        {isMaster && parriesList.length > 1 && (
+                          <button
+                            onClick={() => {
+                              setConfirmAction({
+                                isOpen: true,
+                                title: 'Remover Aparar',
+                                message: `Deseja remover esta linha de Aparar (${parry.weaponName || 'Aparar ' + (idx + 1)})?`,
+                                confirmText: 'Remover Aparar',
+                                onConfirm: () => handleRemoveParry(idx),
+                              });
+                            }}
+                            className="text-slate-500 hover:text-rose-400 font-bold text-xs p-0.5 transition-colors"
+                            title="Remover este Aparar"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+
+              {/* Card: Magias (Magias Ativas & Sob Efeito) - Posicionamento de Meia Largura */}
+              {renderMagiasSection()}
 
           {/* Card: ITENS EXTRAS & RECURSOS (Flechas, Pedras de Mana, Escudos, etc.) */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2.5">
@@ -2504,104 +2504,126 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
           </div>
 
-          {/* Card: Atributos GURPS (Primários e Secundários) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-3">
-            {/* Primários */}
-            <div className="space-y-1.5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                Atributos Primários
+          {/* Card: Atributos GURPS (Primários e Secundários Compactos Lado a Lado) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
+              {/* Primários (5 cols): ST, DX, IQ, HT */}
+              <div className="md:col-span-5 space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 px-0.5">
+                  Primários
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  {[
+                    { key: 'st', label: 'ST', val: npc.st },
+                    { key: 'dx', label: 'DX', val: npc.dx },
+                    { key: 'iq', label: 'IQ', val: npc.iq },
+                    { key: 'ht', label: 'HT', val: npc.ht },
+                  ].map(({ key, label, val }) => (
+                    <div
+                      key={key}
+                      className="bg-slate-950 border border-slate-800 rounded-lg py-1 px-0.5 flex flex-col items-center justify-between text-center min-w-0"
+                    >
+                      <div className="text-[10px] font-bold text-slate-400 text-center w-full leading-tight">
+                        {label}
+                      </div>
+                      <input
+                        type="number"
+                        disabled={!isMaster}
+                        value={val ?? ''}
+                        placeholder="-"
+                        onChange={(e) =>
+                          updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                        }
+                        className={`w-full bg-transparent text-center font-mono font-black text-sm text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0 mt-0.5 ${
+                          !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                        }`}
+                        title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { key: 'st', label: 'ST', val: npc.st },
-                  { key: 'dx', label: 'DX', val: npc.dx },
-                  { key: 'iq', label: 'IQ', val: npc.iq },
-                  { key: 'ht', label: 'HT', val: npc.ht },
-                ].map(({ key, label, val }) => (
-                  <div key={key} className="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col items-center justify-center text-center">
-                    <div className="text-[10px] font-bold text-slate-400 mb-0.5 text-center w-full">{label}</div>
+
+              {/* Secundários (7 cols): Per, Will, Speed, Move, RD Nat */}
+              <div className="md:col-span-7 space-y-1 border-t md:border-t-0 md:border-l border-slate-800/80 pt-2 md:pt-0 md:pl-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-0.5">
+                  Secundários
+                </div>
+                <div className="grid grid-cols-5 gap-1">
+                  {[
+                    { key: 'per', label: 'Per', val: npc.per, step: '1' },
+                    { key: 'will', label: 'Will', val: npc.will, step: '1' },
+                    { key: 'basicSpeed', label: 'Speed', val: npc.basicSpeed, step: '0.25' },
+                  ].map(({ key, label, val, step }) => (
+                    <div
+                      key={key}
+                      className="bg-slate-950 border border-slate-800 rounded-lg py-1 px-0.5 flex flex-col items-center justify-between text-center min-w-0"
+                    >
+                      <div className="text-[9px] font-bold text-slate-400 text-center w-full leading-tight">
+                        {label}
+                      </div>
+                      <input
+                        type="number"
+                        step={step}
+                        disabled={!isMaster}
+                        value={val ?? ''}
+                        placeholder="-"
+                        onChange={(e) =>
+                          updateField(
+                            key as any,
+                            e.target.value === ''
+                              ? 0
+                              : step === '0.25'
+                              ? parseFloat(e.target.value)
+                              : parseInt(e.target.value, 10)
+                          )
+                        }
+                        className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0 mt-0.5 ${
+                          !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                        }`}
+                        title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
+                      />
+                    </div>
+                  ))}
+
+                  {/* Move */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-lg py-1 px-0.5 flex flex-col items-center justify-between text-center min-w-0">
+                    <div className="text-[9px] font-bold text-slate-400 text-center w-full leading-tight">
+                      Move
+                    </div>
                     <input
-                      type="number"
+                      type="text"
                       disabled={!isMaster}
-                      value={val ?? ''}
+                      value={npc.basicMove ?? ''}
                       placeholder="-"
-                      onChange={(e) =>
-                        updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                      }
-                      className={`w-full bg-transparent text-center font-mono font-black text-sm text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
+                      onChange={(e) => updateField('basicMove', e.target.value)}
+                      className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none p-0 mt-0.5 truncate ${
+                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                      }`}
+                      title={isMaster ? "Move" : "Move (apenas Mestre pode editar)"}
                     />
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Secundários */}
-            <div className="space-y-1.5 border-t border-slate-800/80 pt-2.5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Atributos Secundários
-              </div>
-              <div className="grid grid-cols-5 gap-1.5 text-center">
-                {[
-                  { key: 'per', label: 'Per', val: npc.per, step: '1' },
-                  { key: 'will', label: 'Will', val: npc.will, step: '1' },
-                  { key: 'basicSpeed', label: 'Speed', val: npc.basicSpeed, step: '0.25' },
-                ].map(({ key, label, val, step }) => (
-                  <div key={key} className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col items-center justify-center text-center">
-                    <div className="text-[9px] font-bold text-slate-400 text-center w-full">
-                      {label}
+                  {/* RD Natural */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-lg py-1 px-0.5 flex flex-col items-center justify-between text-center min-w-0">
+                    <div className="text-[9px] font-bold text-amber-300 text-center w-full leading-tight">
+                      RD Nat.
                     </div>
                     <input
                       type="number"
-                      step={step}
+                      step="1"
                       disabled={!isMaster}
-                      value={val ?? ''}
+                      value={npc.naturalDr ?? ''}
                       placeholder="-"
                       onChange={(e) =>
-                        updateField(
-                          key as any,
-                          e.target.value === ''
-                            ? 0
-                            : step === '0.25'
-                            ? parseFloat(e.target.value)
-                            : parseInt(e.target.value, 10)
-                        )
+                        updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                       }
-                      className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
+                      className={`w-full bg-transparent text-center font-mono font-black text-xs text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0 mt-0.5 ${
+                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                      }`}
+                      title={isMaster ? "RD Natural" : "RD Natural (apenas Mestre pode editar)"}
                     />
                   </div>
-                ))}
-
-                {/* Move com suporte a texto flexível (ex: "6 (-1 Peso)") */}
-                <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col items-center justify-center text-center">
-                  <div className="text-[9px] font-bold text-slate-400 text-center w-full">Move</div>
-                  <input
-                    type="text"
-                    disabled={!isMaster}
-                    value={npc.basicMove ?? ''}
-                    placeholder="Ex: 6 (-1)"
-                    onChange={(e) => updateField('basicMove', e.target.value)}
-                    className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                    title={isMaster ? "Deslocamento / Move (aceita texto como '6 (-1 Peso)')" : "Move (apenas Mestre pode editar)"}
-                  />
-                </div>
-
-                {/* RD Natural */}
-                <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col items-center justify-center text-center">
-                  <div className="text-[9px] font-bold text-amber-300 text-center w-full">RD Nat.</div>
-                  <input
-                    type="number"
-                    step="1"
-                    disabled={!isMaster}
-                    value={npc.naturalDr ?? ''}
-                    placeholder="-"
-                    onChange={(e) =>
-                      updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                    }
-                    className={`w-full bg-transparent text-center font-mono font-black text-xs text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                    title={isMaster ? "RD Natural" : "RD Natural (apenas Mestre pode editar)"}
-                  />
                 </div>
               </div>
             </div>
