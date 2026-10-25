@@ -2391,9 +2391,17 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           </div>
         </div>
 
-        {/* COLUNA DA DIREITA (6 cols): Condições & Estados Críticos e Atributos GURPS */}
+        {/* COLUNA DA DIREITA (6 cols): Defesas & Ações do Turno, Condições e Atributos GURPS */}
         <div className="lg:col-span-6 space-y-3">
-          {/* Card: Condições & Estados Críticos */}
+          {/* Card: Controle de Defesas & Ações do Turno (Invertido para o topo, mesma altura da div de Fadiga) */}
+          <TurnActionsTracker
+            tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
+            onChange={(updated) => updateField('turnActions', updated)}
+            npcName={npc.name}
+            isReadOnly={isViewer}
+          />
+
+          {/* Card: Condições & Estados Críticos (Logo abaixo de Defesas & Ações do Turno) */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
               <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -2472,14 +2480,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
           </div>
-
-          {/* Card: Controle de Defesas & Ações do Turno */}
-          <TurnActionsTracker
-            tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
-            onChange={(updated) => updateField('turnActions', updated)}
-            npcName={npc.name}
-            isReadOnly={isViewer}
-          />
 
           {/* Card: Atributos GURPS (Primários e Secundários) */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-3">
