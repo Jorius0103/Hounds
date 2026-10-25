@@ -113,6 +113,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits'>('overview');
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [infoWeapon, setInfoWeapon] = useState<Weapon | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
     isOpen: boolean;
     title: string;
@@ -2749,91 +2750,105 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         : 'border-slate-800 hover:border-slate-700'
                     }`}
                   >
-                    {/* Linha única contendo: Esquerda (NH + Nome) | Meio (Opções de Ataque) | Direita (Ações) */}
-                    <div className="flex items-center justify-between gap-2.5 flex-wrap">
-                      {/* Esquerda: NH Badge + Nome da Arma */}
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <div className="flex flex-col items-center justify-center bg-amber-950/60 border border-amber-500/60 px-3 py-1 rounded-xl shrink-0 shadow-sm min-w-[50px]">
+                    {/* Linha única contendo: Esquerda (NH + Nome) | Meio (Opções de Ataque Verticais) | Direita (Ações + Info) */}
+                    <div className="flex items-center justify-between gap-3 min-w-0">
+                      {/* Esquerda: NH Badge + Nome da Arma (com truncate no texto para nunca estourar a div) */}
+                      <div className="flex items-center gap-2.5 min-w-0 shrink-0 max-w-[36%] overflow-hidden">
+                        <div className="flex flex-col items-center justify-center bg-amber-950/60 border border-amber-500/60 px-2.5 py-1 rounded-xl shrink-0 shadow-sm min-w-[46px]">
                           <span className="text-[9px] text-amber-400 font-extrabold uppercase tracking-widest leading-none">NH</span>
                           <span className={`font-mono font-black text-amber-300 tabular-nums leading-tight ${String(w.nh || '').length > 3 ? 'text-base' : 'text-xl'}`}>
-                            {w.nh}
+                            {w.nh !== undefined && w.nh !== null && w.nh !== '' ? w.nh : '-'}
                           </span>
                         </div>
 
-                        <div className="space-y-0.5">
-                          <span className="font-bold text-white text-sm sm:text-base leading-tight block">
+                        <div className="space-y-0.5 min-w-0 flex-1 overflow-hidden">
+                          <span className="font-bold text-white text-sm sm:text-base leading-tight block truncate" title={w.name}>
                             {w.name}
                           </span>
                           {w.notes && (
-                            <span className="text-[11px] text-amber-200/90 italic font-normal line-clamp-1 block" title={w.notes}>
+                            <span className="text-[11px] text-amber-200/80 italic font-normal block truncate max-w-full" title={w.notes}>
                               • {w.notes}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Meio: Opções de Ataque entre o nome e as opções de ação */}
-                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0 justify-start sm:justify-center">
+                      {/* Meio: Opções de Ataque SEMPRE UMA EM CIMA DA OUTRA (flex-col) */}
+                      <div className="flex flex-col gap-1.5 flex-1 min-w-0 justify-center">
                         {w.modes && w.modes.length > 0 ? (
                           w.modes.map((m, i) => (
                             <div
                               key={m.id || i}
-                              className="bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] font-mono flex items-center gap-1.5 text-slate-300 shadow-sm"
+                              className="bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] font-mono flex items-center justify-between gap-2 text-slate-300 shadow-sm min-w-0"
                             >
-                              {m.name && <span className="font-bold text-amber-300 font-sans shrink-0">{m.name}:</span>}
-                              <span>Dano: <strong className="text-white font-bold">{m.damage}</strong></span>
-                              {m.type && <span className="text-slate-400 font-sans text-[10px]">({m.type})</span>}
+                              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                                {m.name && <span className="font-bold text-amber-300 font-sans shrink-0">{m.name}:</span>}
+                                <span className="shrink-0">Dano: <strong className="text-white font-bold">{m.damage}</strong></span>
+                                {m.type && <span className="text-slate-400 font-sans text-[10px] shrink-0">({m.type})</span>}
+                              </div>
                               {m.reach && <span className="text-slate-400 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5">Alc: {m.reach}</span>}
                             </div>
                           ))
                         ) : (
-                          <div className="bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] font-mono flex items-center gap-1.5 text-slate-300 shadow-sm">
-                            {w.damage && <span>Dano: <strong className="text-white font-bold">{w.damage}</strong></span>}
-                            {w.type && <span className="text-slate-400 font-sans text-[10px]">({w.type})</span>}
+                          <div className="bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] font-mono flex items-center justify-between gap-2 text-slate-300 shadow-sm min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0 truncate">
+                              {w.damage && <span className="shrink-0">Dano: <strong className="text-white font-bold">{w.damage}</strong></span>}
+                              {w.type && <span className="text-slate-400 font-sans text-[10px] shrink-0">({w.type})</span>}
+                            </div>
                             {w.reach && <span className="text-slate-400 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5">Alc: {w.reach}</span>}
                           </div>
                         )}
                       </div>
 
-                      {/* Direita: Ações de favoritar, editar e excluir */}
-                      {!isViewer && (
-                        <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleFavoriteWeapon(w.id)}
-                            className={`p-1.5 rounded-lg border transition-colors ${
-                              w.isFavorite
-                                ? 'bg-amber-500/20 border-amber-500/60 text-amber-400 hover:text-amber-300'
-                                : 'bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-slate-300 border-slate-700'
-                            }`}
-                            title={w.isFavorite ? 'Remover dos favoritos' : 'Favoritar arma'}
-                          >
-                            <Star size={13} fill={w.isFavorite ? 'currentColor' : 'none'} />
-                          </button>
-                          <button
-                            onClick={() => onOpenWeaponModal(w)}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors"
-                            title="Editar arma"
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setConfirmAction({
-                                isOpen: true,
-                                title: 'Excluir Arma',
-                                message: `Deseja excluir a arma "${w.name || 'Arma'}" da ficha de ${npc.name || 'este personagem'}?`,
-                                confirmText: 'Excluir Arma',
-                                onConfirm: () => handleRemoveWeapon(w.id),
-                              });
-                            }}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
-                            title="Excluir arma"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      )}
+                      {/* Direita: Ações com Botão de Info */}
+                      <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
+                        <button
+                          type="button"
+                          onClick={() => setInfoWeapon(w)}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 rounded-lg border border-slate-700 transition-colors"
+                          title="Informações completas do item"
+                        >
+                          <Info size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFavoriteWeapon(w.id)}
+                          className={`p-1.5 rounded-lg border transition-colors ${
+                            w.isFavorite
+                              ? 'bg-amber-500/20 border-amber-500/60 text-amber-400 hover:text-amber-300'
+                              : 'bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-slate-300 border-slate-700'
+                          }`}
+                          title={w.isFavorite ? 'Remover dos favoritos' : 'Favoritar arma'}
+                        >
+                          <Star size={13} fill={w.isFavorite ? 'currentColor' : 'none'} />
+                        </button>
+                        {!isViewer && (
+                          <>
+                            <button
+                              onClick={() => onOpenWeaponModal(w)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors"
+                              title="Editar arma"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setConfirmAction({
+                                  isOpen: true,
+                                  title: 'Excluir Arma',
+                                  message: `Deseja excluir a arma "${w.name || 'Arma'}" da ficha de ${npc.name || 'este personagem'}?`,
+                                  confirmText: 'Excluir Arma',
+                                  onConfirm: () => handleRemoveWeapon(w.id),
+                                });
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
+                              title="Excluir arma"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -3620,6 +3635,203 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           }}
           onCancel={() => setConfirmAction(null)}
         />
+      )}
+
+      {/* MODAL DE INFORMAÇÕES COMPLETAS DA ARMA / ATAQUE */}
+      {infoWeapon && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(4px)',
+          }}
+          onClick={() => setInfoWeapon(null)}
+        >
+          <div
+            style={{
+              backgroundColor: '#0f172a',
+              background: '#0f172a',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 0 25px rgba(245, 158, 11, 0.15)',
+              maxWidth: '540px',
+              width: '100%',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh',
+            }}
+            className="text-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 20px',
+                borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
+                background: 'linear-gradient(to right, rgba(69, 26, 3, 0.35), #0f172a, #0f172a)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fbbf24',
+                  }}
+                >
+                  <Sword size={17} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                    Informações da Arma / Ataque
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    Ficha de Combate e Estatísticas
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInfoWeapon(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Content (Scrollable) */}
+            <div className="p-5 space-y-4 overflow-y-auto custom-scrollbar text-xs">
+              {/* Nome + NH */}
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3">
+                <div className="space-y-1 min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Nome do Item</span>
+                  <span className="text-base font-bold text-white block">{infoWeapon.name}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center bg-amber-950/60 border border-amber-500/60 px-3.5 py-1 rounded-xl shrink-0">
+                  <span className="text-[9px] text-amber-400 font-extrabold uppercase tracking-widest leading-none">NH</span>
+                  <span className="font-mono font-black text-amber-300 text-lg leading-tight">
+                    {infoWeapon.nh !== undefined && infoWeapon.nh !== null && infoWeapon.nh !== '' ? infoWeapon.nh : '-'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Modos de Ataque */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
+                  Opções de Ataque ({infoWeapon.modes?.length || 1})
+                </span>
+                <div className="space-y-2">
+                  {infoWeapon.modes && infoWeapon.modes.length > 0 ? (
+                    infoWeapon.modes.map((m, idx) => (
+                      <div
+                        key={m.id || idx}
+                        className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-800/60 pb-1">
+                          <span className="font-bold text-amber-300 text-xs">
+                            {m.name || `Modo ${idx + 1}`}
+                          </span>
+                          {m.type && (
+                            <span className="px-2 py-0.5 bg-slate-900 border border-slate-800 rounded text-[10px] text-slate-300 font-sans">
+                              {m.type}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-0.5">
+                          <div>
+                            <span className="text-slate-500 font-sans text-[10px] block">Dano:</span>
+                            <span className="text-white font-bold">{m.damage || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 font-sans text-[10px] block">Alcance:</span>
+                            <span className="text-slate-300">{m.reach || '-'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div>
+                          <span className="text-slate-500 font-sans text-[10px] block">Dano:</span>
+                          <span className="text-white font-bold">{infoWeapon.damage || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 font-sans text-[10px] block">Tipo:</span>
+                          <span className="text-slate-300">{infoWeapon.type || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 font-sans text-[10px] block">Alcance:</span>
+                          <span className="text-slate-300">{infoWeapon.reach || '-'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Observações da Arma */}
+              {infoWeapon.notes && (
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Observações</span>
+                  <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{infoWeapon.notes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: '8px',
+                padding: '12px 20px',
+                borderTop: '1px solid rgba(51, 65, 85, 0.8)',
+                background: 'rgba(2, 6, 23, 0.6)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setInfoWeapon(null)}
+                className="px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                Fechar
+              </button>
+              {!isViewer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const toEdit = infoWeapon;
+                    setInfoWeapon(null);
+                    onOpenWeaponModal(toEdit);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm"
+                >
+                  <Edit2 size={13} />
+                  <span>Editar Arma</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

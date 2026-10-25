@@ -308,17 +308,8 @@ export const WeaponModal: React.FC<WeaponModalProps> = ({
   const handleSelectCatalogWeapon = (w: any) => {
     const selectedName = w.displayName || (w.namePt && w.namePt !== w.name ? `${w.namePt} (${w.name})` : w.name);
     setName(selectedName);
-    setNh(12);
-
-    // Build notes
-    const noteParts: string[] = [];
-    if (w.book || w.page) noteParts.push(`${w.book || 'GURPS'} ${w.page || ''}`.trim());
-    if (w.cost) noteParts.push(`Custo: ${w.cost}`);
-    if (w.weight) noteParts.push(`Peso: ${w.weight} lb`);
-    if (w.attacks && w.attacks[0]?.st) noteParts.push(`ST: ${w.attacks[0].st}`);
-    if (w.notes) noteParts.push(w.notes);
-    if (w.footnotes) noteParts.push(w.footnotes);
-    setNotes(noteParts.join(' | '));
+    setNh('');
+    setNotes('');
 
     // Map attack modes
     if (w.attacks && w.attacks.length > 0) {
