@@ -53,8 +53,7 @@ function sheetBlockHtml(s, key, can) {
 
 /* ---------- the tab ---------- */
 function customTabHtml(s, t, can) {
-  var editing = !!S.ui.attrDraft || sheetDraftOpen() || gearEditing();
-  var add = ['Ficha', 'Equip.', 'Magia'].map(function (g) {
+  var add =['Ficha', 'Equip.', 'Magia'].map(function (g) {
     var opts = SHEET_BLOCKS.filter(function (b) { return b[1] === g && t.blocks.indexOf(b[0]) < 0; });
     return opts.length ? '<optgroup label="' + g + '">' + opts.map(function (b) { return '<option value="' + b[0] + '">' + esc(b[2]) + '</option>'; }).join('') + '</optgroup>' : '';
   }).join('');
@@ -67,13 +66,15 @@ function customTabHtml(s, t, can) {
     return '<div class="ctab">' + head + '<div class="empty-state">' + svg(ICON.sheet, 30, 1.6) + '<strong>Aba vazia</strong><span>Escolha em <b>Adicionar seção</b> o que esta aba mostra: ' +
       'qualquer seção da Ficha, do Equip. ou da Magia. Depois, arraste pela alça para pôr na ordem que quiser.</span></div></div>';
   }
+  // Each section with its own header, as in its tab (the points are hidden here, see .ctab-sec in
+  // paginas.css); wireCustomTab puts the button that takes it out of this tab at the end of that header.
   return '<div class="ctab">' + head + '<div class="sort-secs ctab-secs" id="ctabSecs">' + t.blocks.map(function (k) {
-    var b = SHEET_BLOCK_IDX[k];
-    return '<div class="sort-sec ctab-sec" data-key="' + k + '"><div class="ctab-sec-bar">' + (editing ? '' : secGripHtml(b[2])) +
-      '<span class="ctab-from">' + esc(b[1] + ' › ' + b[2]) + '</span>' +
-      '<button class="icon-btn" type="button" data-ctabdel="' + k + '" aria-label="Tirar ' + esc(b[2]) + ' desta aba" title="Tirar desta aba (continua em ' + esc(b[1]) + ')">' + svg(ICON.x, 14, 2.4) + '</button></div>' +
-      sheetBlockHtml(s, k, can) + '</div>';
+    return '<div class="sort-sec ctab-sec" data-key="' + k + '">' + sheetBlockHtml(s, k, can) + '</div>';
   }).join('') + '</div></div>';
+}
+function ctabDelBtnHtml(k) {
+  var b = SHEET_BLOCK_IDX[k];
+  return '<button class="icon-btn ctab-del" type="button" data-ctabdel="' + k + '" aria-label="Tirar ' + esc(b[2]) + ' desta aba" title="Tirar desta aba (continua em ' + esc(b[1]) + ')">' + svg(ICON.x, 14, 2.4) + '</button>';
 }
 function wireCustomTab(s, t) {
   if (!t || !$('ctabRename')) return;
@@ -86,12 +87,15 @@ function wireCustomTab(s, t) {
     ui.sheetTab = 'sheet'; renderSheetPage();
   };
   var box = $('ctabSecs'); if (!box) return;
+  box.querySelectorAll('.ctab-sec').forEach(function (sec) {
+    var h = sec.querySelector('.gurps-head'); if (h) h.insertAdjacentHTML('beforeend', ctabDelBtnHtml(sec.getAttribute('data-key')));
+  });
   box.addEventListener('click', function (e) {
     var b = /** @type {AnyEl} */ (e.target).closest && /** @type {AnyEl} */ (e.target).closest('[data-ctabdel]'); if (!b) return;
     t.blocks = t.blocks.filter(function (k) { return k !== b.getAttribute('data-ctabdel'); }); saveCustomTab(t); renderSheetPage();
   });
-  // Dragged by the handle of its bar (the sections' own handles are for their tabs, hidden here).
-  if (box.querySelector('.ctab-sec-bar .sec-grip')) wireDragSort(box, { item: '.ctab-sec', grip: '.ctab-sec-bar .sec-grip', ph: 'sort-ph',
+  // Dragged by the handle of its header, as in its tab (no handle while a section is being edited).
+  if (box.querySelector('.sec-grip')) wireDragSort(box, { item: '.ctab-sec', grip: '.sec-grip', ph: 'sort-ph',
     start: function () { box.classList.add('sorting'); },
     end: function () { box.classList.remove('sorting'); },
     done: function (keys) { t.blocks = keys; saveCustomTab(t); } });

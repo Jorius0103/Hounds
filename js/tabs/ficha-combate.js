@@ -348,8 +348,9 @@ function scStyleReqs(st, pool) {
 function scReqsMissing(reqs) { return reqs.filter(function (r) { return !r.skill; }).map(function (r) { return r.label; }); }
 // The suggestions under a row's name, as in the other pickers (Criar Armadura, Criar Arma, Magias):
 // the entries of the catalog of its kind, with the Portuguese name and what they are, each name once;
-// a catalog style's own lists of that kind first. A perk row offers the perks; an advantage row, the
-// advantages. [{ name, entry, info }], at most 12.
+// a catalog style's own lists of that kind first. A skill row offers every skill of Regras › Perícias
+// (styles teach Acrobatics, Breath Control, Savoir-Faire too), not only the combat ones. A perk row
+// offers the perks; an advantage row, the advantages. [{ name, entry, info }], at most 12.
 var SC_STYLE_FIELDS = { skill: ['skills', 'cinematicSkills', 'optSkills'], tech: ['techniques', 'cinematicTechniques', 'optTechniques'],
   trait: ['perks', 'optPerks', 'optAdvantages'], spell: ['spells'] };
 function scNameInfo(kind, e) {
@@ -362,7 +363,7 @@ function scNameInfo(kind, e) {
 function scNameCatalog(x) {
   if (x.kind === 'skill') {
     var melee = Object.keys(SC_MELEE_DIFF).map(function (k) { return { name: k.replace(/(^|[\s/-])\w/g, function (m) { return m.toUpperCase(); }), attribute: 'DX', difficulty: SC_MELEE_DIFF[k], page: 'B208' }; });
-    return /** @type {any[]} */ ((W.skills || []).filter(isCombatSkill)).concat(melee);
+    return /** @type {any[]} */ ((W.skills || []).filter(function (s) { return isCombatSkill(s) || (s.attribute && SKILL_DIFFS[s.difficulty]); })).concat(melee);
   }
   if (x.kind === 'tech') return (W.techniques || []).filter(isCombatTech);
   if (x.kind === 'spell') return W.spells || [];
@@ -404,7 +405,7 @@ function scNhCell(x, pool, av) {
     (x.bonus ? ' · ' + bonusText(x.bonus, x.bonusNote) : '') : skillBonusTitle(x);
   return '<td class="gnh' + (bonus ? ' bonus' : '') + '">' + calcBtn(nhHtml(nh), combatCalc(x, pool, av), title) + '</td>';
 }
-// The catalog entry of a row, shown in a modal on click: the skills of Regras › Combate (the
+// The catalog entry of a row, shown in a modal on click: the skills of Regras › Perícias (the
 // melee weapon skills point to "Melee Weapon", which describes them all), the techniques, and
 // the perks and advantages of Regras › Vantagens (Enhanced Block/Parry/Dodge are "Enhanced
 // Defenses"; the advantage itself before the books' expansions of it). Null when not there.
@@ -414,7 +415,6 @@ function scLink(x) {
     if (!sk) {
       var key = combatKey(x.name); if (SC_MELEE_DIFF[key]) key = 'melee weapon';
       sk = (W.skills || []).filter(function (s) { return s.attribute && combatKey(s.name) === key; })[0] || null;
-      if (sk && !isCombatSkill(sk)) sk = null;
     }
     return sk ? { attr: 'data-skill-modal', id: sk.id, href: skillHref(sk.id), title: 'Ver a perícia' } : null;
   }
