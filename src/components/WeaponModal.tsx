@@ -159,7 +159,7 @@ function normalizeText(text: string): string {
     .trim();
 }
 
-async function loadWeaponsDatabase(): Promise<any[]> {
+export async function loadWeaponsDatabase(): Promise<any[]> {
   if (cachedCatalog && cachedCatalog.length > 0) {
     return cachedCatalog;
   }
