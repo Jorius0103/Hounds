@@ -1851,15 +1851,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       {/* 3. TAB CONTENT: DADOS & STATUS (PRIMEIRA ABA) */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
-          {/* 1. ATRIBUTOS PRIMÁRIOS E SECUNDÁRIOS: BARRA HORIZONTAL COMPLETA (EDITÁVEL E MENOR VERTICALMENTE) */}
+          {/* 1. ATRIBUTOS PRIMÁRIOS E SECUNDÁRIOS: BARRA HORIZONTAL COMPLETA (EDITÁVEL E PROPORCIONAL) */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 sm:p-2.5 shadow-sm">
-            <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-2 xl:gap-3">
-              {/* Atributos Primários */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
+              {/* Atributos Primários (42% de largura horizontal) */}
+              <div className="flex items-center gap-1.5 sm:gap-2 lg:w-[42%] shrink-0 min-w-0">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 shrink-0 px-1 border-r border-slate-800">
                   Primários
                 </span>
-                <div className="grid grid-cols-4 gap-1 sm:gap-1.5 flex-1">
+                <div className="grid grid-cols-4 gap-1 sm:gap-1.5 flex-1 min-w-0">
                   {[
                     { key: 'st', label: 'ST', val: npc.st },
                     { key: 'dx', label: 'DX', val: npc.dx },
@@ -1868,36 +1868,36 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   ].map(({ key, label, val }) => (
                     <div
                       key={key}
-                      className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors"
+                      className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors min-w-0"
                     >
-                      <span className="text-[10px] font-bold text-slate-400 shrink-0 select-none">
+                      <span className="text-[11px] font-bold text-slate-400 shrink-0 select-none">
                         {label}
                       </span>
                       <input
                         type="number"
-                        disabled={!isMaster}
+                        disabled={isViewer}
                         value={val ?? ''}
-                        placeholder="-"
+                        placeholder="10"
                         onChange={(e) =>
                           updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                         }
-                        className={`w-full bg-transparent text-right font-mono font-black text-sm text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                        title={isMaster ? `Atributo ${label}` : `${label} (apenas Mestre pode editar)`}
+                        className={`w-full min-w-[26px] bg-transparent text-right font-mono font-black text-sm text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+                        title={`Atributo ${label}`}
                       />
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Divisor vertical para telas grandes */}
-              <div className="hidden xl:block w-px h-7 bg-slate-800 shrink-0" />
+              {/* Divisor vertical */}
+              <div className="hidden lg:block w-px h-6 bg-slate-800 shrink-0" />
 
-              {/* Atributos Secundários */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-[1.25] min-w-0">
+              {/* Atributos Secundários (58% de largura horizontal) */}
+              <div className="flex items-center gap-1.5 sm:gap-2 lg:flex-1 min-w-0">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 shrink-0 px-1 border-r border-slate-800">
                   Secundários
                 </span>
-                <div className="grid grid-cols-5 gap-1 sm:gap-1.5 flex-1">
+                <div className="grid grid-cols-5 gap-1 sm:gap-1.5 flex-1 min-w-0">
                   {[
                     { key: 'per', label: 'Per', val: npc.per, step: '1' },
                     { key: 'will', label: 'Will', val: npc.will, step: '1' },
@@ -1905,17 +1905,17 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   ].map(({ key, label, val, step }) => (
                     <div
                       key={key}
-                      className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors"
+                      className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors min-w-0"
                     >
-                      <span className="text-[10px] font-bold text-slate-400 shrink-0 select-none">
+                      <span className="text-[11px] font-bold text-slate-400 shrink-0 select-none">
                         {label}
                       </span>
                       <input
                         type="number"
                         step={step}
-                        disabled={!isMaster}
+                        disabled={isViewer}
                         value={val ?? ''}
-                        placeholder="-"
+                        placeholder="10"
                         onChange={(e) =>
                           updateField(
                             key as any,
@@ -1926,44 +1926,44 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                               : parseInt(e.target.value, 10)
                           )
                         }
-                        className={`w-full bg-transparent text-right font-mono font-bold text-xs text-slate-200 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                        title={isMaster ? `Atributo ${label}` : `${label} (apenas Mestre pode editar)`}
+                        className={`w-full min-w-[22px] bg-transparent text-right font-mono font-bold text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+                        title={`Atributo ${label}`}
                       />
                     </div>
                   ))}
 
                   {/* Move */}
-                  <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors">
-                    <span className="text-[10px] font-bold text-slate-400 shrink-0 select-none">
+                  <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors min-w-0">
+                    <span className="text-[11px] font-bold text-slate-400 shrink-0 select-none">
                       Move
                     </span>
                     <input
                       type="text"
-                      disabled={!isMaster}
+                      disabled={isViewer}
                       value={npc.basicMove ?? ''}
-                      placeholder="Ex: 6"
+                      placeholder="Ex: 5"
                       onChange={(e) => updateField('basicMove', e.target.value)}
-                      className={`w-full bg-transparent text-right font-mono font-bold text-xs text-slate-200 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title={isMaster ? "Deslocamento / Move (aceita texto como '6 (-1 Peso)')" : "Move (apenas Mestre pode editar)"}
+                      className={`w-full min-w-[26px] bg-transparent text-right font-mono font-bold text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-0.5 ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title="Deslocamento / Move"
                     />
                   </div>
 
                   {/* RD Natural */}
-                  <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors">
-                    <span className="text-[10px] font-bold text-amber-300 shrink-0 select-none">
+                  <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors min-w-0">
+                    <span className="text-[11px] font-bold text-amber-300 shrink-0 select-none">
                       RD Nat.
                     </span>
                     <input
                       type="number"
                       step="1"
-                      disabled={!isMaster}
+                      disabled={isViewer}
                       value={npc.naturalDr ?? ''}
-                      placeholder="-"
+                      placeholder="0"
                       onChange={(e) =>
                         updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                       }
-                      className={`w-full bg-transparent text-right font-mono font-black text-xs text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title={isMaster ? "RD Natural" : "RD Natural (apenas Mestre pode editar)"}
+                      className={`w-full min-w-[20px] bg-transparent text-right font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title="RD Natural"
                     />
                   </div>
                 </div>
@@ -1971,10 +1971,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
           </div>
 
-          {/* 2. PONTOS DE VIDA | PONTOS DE FADIGA | DEFESAS & AÇÕES DO TURNO (MESMA ALTURA VERTICAL) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
-            {/* Pontos de Vida */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
+          {/* 2. PONTOS DE VIDA (25%) | PONTOS DE FADIGA (25%) | DEFESAS & AÇÕES DO TURNO (50%) - MESMA ALTURA VERTICAL */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+            {/* Pontos de Vida (25% = 3 de 12 cols) */}
+            <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-200">
                 <div className="flex items-center gap-1.5">
                   <Heart size={15} className="text-rose-500" />
@@ -2003,12 +2003,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <span className="text-slate-500 font-semibold text-sm">/</span>
                   <input
                     type="number"
-                    disabled={!isMaster}
+                    disabled={isViewer}
                     value={npc.hpMax ?? ''}
                     onChange={(e) => updateField('hpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
                     placeholder="Máx"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                    title={isMaster ? "Vida Máxima" : "Vida Máxima (apenas Mestre pode editar)"}
+                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title="Vida Máxima"
                   />
                 </div>
 
@@ -2055,8 +2055,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
 
-            {/* Pontos de Fadiga */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
+            {/* Pontos de Fadiga (25% = 3 de 12 cols) */}
+            <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-200">
                 <div className="flex items-center gap-1.5">
                   <Zap size={15} className="text-cyan-400" />
@@ -2083,12 +2083,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <span className="text-slate-500 font-semibold text-sm">/</span>
                   <input
                     type="number"
-                    disabled={!isMaster}
+                    disabled={isViewer}
                     value={npc.fpMax ?? ''}
                     onChange={(e) => updateField('fpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
                     placeholder="Máx"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                    title={isMaster ? "Fadiga Máxima" : "Fadiga Máxima (apenas Mestre pode editar)"}
+                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title="Fadiga Máxima"
                   />
                 </div>
 
@@ -2127,14 +2127,16 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
 
-            {/* Defesas & Ações do Turno */}
-            <TurnActionsTracker
-              tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
-              onChange={(updated) => updateField('turnActions', updated)}
-              npcName={npc.name}
-              isReadOnly={isViewer}
-              className="h-full"
-            />
+            {/* Defesas & Ações do Turno (50% = 6 de 12 cols) */}
+            <div className="lg:col-span-6 h-full flex flex-col">
+              <TurnActionsTracker
+                tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
+                onChange={(updated) => updateField('turnActions', updated)}
+                npcName={npc.name}
+                isReadOnly={isViewer}
+                className="h-full flex-1"
+              />
+            </div>
           </div>
 
           {/* 3. CONDIÇÕES & ESTADOS CRÍTICOS | OBSERVAÇÕES PRIVADAS DO MESTRE | OBSERVAÇÕES GERAIS (MESMO TAMANHO VERTICAL) */}
