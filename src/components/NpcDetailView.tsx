@@ -2504,15 +2504,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
           </div>
 
-          {/* Card: Atributos GURPS (Primários e Secundários Compactos Lado a Lado) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
-              {/* Primários (5 cols): ST, DX, IQ, HT */}
-              <div className="md:col-span-5 space-y-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 px-0.5">
-                  Primários
-                </div>
-                <div className="grid grid-cols-4 gap-1">
+          {/* Card: Atributos GURPS (Primários e Secundários em Linha Única seguindo Modelo da Imagem) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 sm:p-2.5">
+            <div className="flex flex-row items-center justify-between gap-2 sm:gap-2.5 overflow-x-auto scrollbar-none">
+              {/* LADO ESQUERDO: PRIMÁRIOS */}
+              <div className="flex flex-col gap-1 shrink-0">
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-500 px-0.5">
+                  PRIMÁRIOS
+                </span>
+                <div className="flex items-center gap-1 sm:gap-1.5">
                   {[
                     { key: 'st', label: 'ST', val: npc.st },
                     { key: 'dx', label: 'DX', val: npc.dx },
@@ -2521,11 +2521,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   ].map(({ key, label, val }) => (
                     <div
                       key={key}
-                      className="bg-slate-950 border border-slate-800 rounded-lg py-1 px-0.5 flex flex-col items-center justify-between text-center min-w-0"
+                      className="w-11 sm:w-12 h-11 sm:h-12 flex flex-col items-center justify-center bg-slate-950/80 border border-amber-600/70 rounded-xl px-0.5 py-0.5 text-center min-w-[42px]"
                     >
-                      <div className="text-[10px] font-bold text-slate-400 text-center w-full leading-tight">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 uppercase leading-none">
                         {label}
-                      </div>
+                      </span>
                       <input
                         type="number"
                         disabled={!isMaster}
@@ -2534,7 +2534,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         onChange={(e) =>
                           updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                         }
-                        className={`w-full bg-transparent text-center font-mono font-black text-sm text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0 mt-0.5 ${
+                        className={`w-full bg-transparent text-center font-mono font-black text-sm sm:text-base text-amber-400 focus:outline-none p-0 mt-0.5 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                           !isMaster ? 'opacity-90 cursor-not-allowed' : ''
                         }`}
                         title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
@@ -2544,85 +2544,133 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 </div>
               </div>
 
-              {/* Secundários (7 cols): Per, Will, Speed, Move, RD Nat */}
-              <div className="md:col-span-7 space-y-1 border-t md:border-t-0 md:border-l border-slate-800/80 pt-2 md:pt-0 md:pl-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-0.5">
-                  Secundários
-                </div>
-                <div className="grid grid-cols-5 gap-1">
-                  {[
-                    { key: 'per', label: 'Per', val: npc.per, step: '1' },
-                    { key: 'will', label: 'Will', val: npc.will, step: '1' },
-                    { key: 'basicSpeed', label: 'Speed', val: npc.basicSpeed, step: '0.25' },
-                  ].map(({ key, label, val, step }) => (
-                    <div
-                      key={key}
-                      className="bg-slate-950 border border-slate-800 rounded-lg py-1 px-0.5 flex flex-col items-center justify-between text-center min-w-0"
-                    >
-                      <div className="text-[9px] font-bold text-slate-400 text-center w-full leading-tight">
-                        {label}
-                      </div>
+              {/* DIVISÓRIA VERTICAL */}
+              <div className="w-[1px] h-10 bg-white/20 shrink-0 self-end mb-1" />
+
+              {/* LADO DIREITO: SECUNDÁRIOS */}
+              <div className="flex flex-col gap-1 flex-1 min-w-0">
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-200 px-0.5">
+                  SECUNDÁRIOS
+                </span>
+                <div className="flex items-center gap-1 sm:gap-1.5 w-full">
+                  {/* Per */}
+                  <div className="flex-1 min-w-[38px] sm:min-w-[42px] h-11 sm:h-12 border border-[#e6be8a]/90 rounded-lg overflow-hidden flex flex-col bg-slate-950">
+                    <div className="bg-[#f0c992] py-0.5 px-0.5 text-center shrink-0">
+                      <span className="text-slate-950 font-black text-[9px] sm:text-[10px] leading-none block truncate">
+                        Per
+                      </span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center px-0.5">
                       <input
                         type="number"
-                        step={step}
                         disabled={!isMaster}
-                        value={val ?? ''}
+                        value={npc.per ?? ''}
                         placeholder="-"
                         onChange={(e) =>
-                          updateField(
-                            key as any,
-                            e.target.value === ''
-                              ? 0
-                              : step === '0.25'
-                              ? parseFloat(e.target.value)
-                              : parseInt(e.target.value, 10)
-                          )
+                          updateField('per', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                         }
-                        className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0 mt-0.5 ${
+                        className={`w-full bg-transparent text-center font-mono font-black text-xs sm:text-sm text-amber-100 focus:outline-none p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                           !isMaster ? 'opacity-90 cursor-not-allowed' : ''
                         }`}
-                        title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
+                        title={isMaster ? "Percepção (Per)" : "Per (apenas Mestre pode editar)"}
                       />
                     </div>
-                  ))}
-
-                  {/* Move */}
-                  <div className="bg-slate-950 border border-slate-800 rounded-lg py-1 px-0.5 flex flex-col items-center justify-between text-center min-w-0">
-                    <div className="text-[9px] font-bold text-slate-400 text-center w-full leading-tight">
-                      Move
-                    </div>
-                    <input
-                      type="text"
-                      disabled={!isMaster}
-                      value={npc.basicMove ?? ''}
-                      placeholder="-"
-                      onChange={(e) => updateField('basicMove', e.target.value)}
-                      className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none p-0 mt-0.5 truncate ${
-                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
-                      }`}
-                      title={isMaster ? "Move" : "Move (apenas Mestre pode editar)"}
-                    />
                   </div>
 
-                  {/* RD Natural */}
-                  <div className="bg-slate-950 border border-slate-800 rounded-lg py-1 px-0.5 flex flex-col items-center justify-between text-center min-w-0">
-                    <div className="text-[9px] font-bold text-amber-300 text-center w-full leading-tight">
-                      RD Nat.
+                  {/* Will */}
+                  <div className="flex-1 min-w-[38px] sm:min-w-[42px] h-11 sm:h-12 border border-[#e6be8a]/90 rounded-lg overflow-hidden flex flex-col bg-slate-950">
+                    <div className="bg-[#f0c992] py-0.5 px-0.5 text-center shrink-0">
+                      <span className="text-slate-950 font-black text-[9px] sm:text-[10px] leading-none block truncate">
+                        Will
+                      </span>
                     </div>
-                    <input
-                      type="number"
-                      step="1"
-                      disabled={!isMaster}
-                      value={npc.naturalDr ?? ''}
-                      placeholder="-"
-                      onChange={(e) =>
-                        updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                      }
-                      className={`w-full bg-transparent text-center font-mono font-black text-xs text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0 mt-0.5 ${
-                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
-                      }`}
-                      title={isMaster ? "RD Natural" : "RD Natural (apenas Mestre pode editar)"}
-                    />
+                    <div className="flex-1 flex items-center justify-center px-0.5">
+                      <input
+                        type="number"
+                        disabled={!isMaster}
+                        value={npc.will ?? ''}
+                        placeholder="-"
+                        onChange={(e) =>
+                          updateField('will', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                        }
+                        className={`w-full bg-transparent text-center font-mono font-black text-xs sm:text-sm text-amber-100 focus:outline-none p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                          !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                        }`}
+                        title={isMaster ? "Vontade (Will)" : "Will (apenas Mestre pode editar)"}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Speed */}
+                  <div className="flex-1 min-w-[42px] sm:min-w-[46px] h-11 sm:h-12 border border-[#e6be8a]/90 rounded-lg overflow-hidden flex flex-col bg-slate-950">
+                    <div className="bg-[#f0c992] py-0.5 px-0.5 text-center shrink-0">
+                      <span className="text-slate-950 font-black text-[9px] sm:text-[10px] leading-none block truncate">
+                        Speed
+                      </span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center px-0.5">
+                      <input
+                        type="number"
+                        step="0.25"
+                        disabled={!isMaster}
+                        value={npc.basicSpeed ?? ''}
+                        placeholder="-"
+                        onChange={(e) =>
+                          updateField('basicSpeed', e.target.value === '' ? 0 : parseFloat(e.target.value))
+                        }
+                        className={`w-full bg-transparent text-center font-mono font-black text-xs sm:text-sm text-amber-100 focus:outline-none p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                          !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                        }`}
+                        title={isMaster ? "Velocidade Básica (Speed)" : "Speed (apenas Mestre pode editar)"}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Move (Acomoda texto mais longo como '5 (-1 Peso)') */}
+                  <div className="flex-[1.6] min-w-[68px] sm:min-w-[78px] h-11 sm:h-12 border border-[#e6be8a]/90 rounded-lg overflow-hidden flex flex-col bg-slate-950">
+                    <div className="bg-[#f0c992] py-0.5 px-0.5 text-center shrink-0">
+                      <span className="text-slate-950 font-black text-[9px] sm:text-[10px] leading-none block truncate">
+                        Move
+                      </span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center px-1">
+                      <input
+                        type="text"
+                        disabled={!isMaster}
+                        value={npc.basicMove ?? ''}
+                        placeholder="-"
+                        onChange={(e) => updateField('basicMove', e.target.value)}
+                        className={`w-full bg-transparent text-center font-mono font-black text-[11px] sm:text-xs text-amber-100 focus:outline-none p-0 leading-none truncate ${
+                          !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                        }`}
+                        title={isMaster ? "Deslocamento (Move, aceita texto como '5 (-1 Peso)')" : "Move (apenas Mestre pode editar)"}
+                      />
+                    </div>
+                  </div>
+
+                  {/* RD Nat. */}
+                  <div className="flex-1 min-w-[42px] sm:min-w-[46px] h-11 sm:h-12 border border-[#e6be8a]/90 rounded-lg overflow-hidden flex flex-col bg-slate-950">
+                    <div className="bg-[#f0c992] py-0.5 px-0.5 text-center shrink-0">
+                      <span className="text-slate-950 font-black text-[9px] sm:text-[10px] leading-none block truncate">
+                        RD Nat.
+                      </span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center px-0.5">
+                      <input
+                        type="number"
+                        step="1"
+                        disabled={!isMaster}
+                        value={npc.naturalDr ?? ''}
+                        placeholder="-"
+                        onChange={(e) =>
+                          updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                        }
+                        className={`w-full bg-transparent text-center font-mono font-black text-xs sm:text-sm text-amber-100 focus:outline-none p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                          !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                        }`}
+                        title={isMaster ? "Resistência a Dano Natural" : "RD Nat. (apenas Mestre pode editar)"}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
