@@ -9,6 +9,7 @@ interface TurnActionsTrackerProps {
   isReadOnly?: boolean;
   className?: string;
   gridClassName?: string;
+  style?: React.CSSProperties;
 }
 
 export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
@@ -17,6 +18,7 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
   isReadOnly = false,
   className = '',
   gridClassName = 'grid-cols-3 sm:grid-cols-6 gap-1.5',
+  style,
 }) => {
   const currentTrackerRef = useRef(tracker);
   useEffect(() => {
@@ -84,7 +86,7 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
   };
 
   return (
-    <div className={`bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 space-y-1.5 ${className}`}>
+    <div style={style} className={`border border-slate-800 rounded-xl p-2.5 sm:p-3 space-y-1.5 ${!style ? 'bg-slate-900' : ''} ${className}`}>
       {/* Header Compacto com Limpar Choque e Zerar Turno */}
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
         <div className="flex items-center gap-1.5">

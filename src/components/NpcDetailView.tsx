@@ -126,6 +126,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const isPlayerChar = npc.characterType === 'player';
   const canEdit = !isViewer && (isMaster || isPlayerChar);
 
+  const cardGradientStyle: React.CSSProperties = {
+    background: npc.isDead
+      ? 'rgba(2, 6, 23, 0.95)'
+      : npc.characterType === 'player'
+      ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.25) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)'
+      : 'linear-gradient(135deg, rgba(88, 28, 135, 0.25) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)',
+  };
+
   const hpStat = getHpStatus(npc.hpCurrent, npc.hpMax);
   const fpStat = getFpStatus(npc.fpCurrent, npc.fpMax);
 
@@ -864,7 +872,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       return null;
     }
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2.5 shadow-sm">
+      <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-3 space-y-2.5 shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
           <div className="flex items-center gap-2">
             <Sparkles size={15} className="text-purple-400" />
@@ -1855,7 +1863,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             {/* Esquerda (6 cols): Pontos de Vida e Pontos de Fadiga Lado a Lado */}
             <div className="lg:col-span-6 grid grid-cols-2 gap-2.5 items-stretch">
               {/* Pontos de Vida */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2 flex flex-col justify-between h-full">
+              <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2 flex flex-col justify-between h-full">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-200">
                   <div className="flex items-center gap-1.5">
                     <Heart size={15} className="text-rose-500" />
@@ -1937,7 +1945,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               </div>
 
               {/* Pontos de Fadiga */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2 flex flex-col justify-between h-full">
+              <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2 flex flex-col justify-between h-full">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-200">
                   <div className="flex items-center gap-1.5">
                     <Zap size={15} className="text-cyan-400" />
@@ -2016,6 +2024,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 onChange={(updated) => updateField('turnActions', updated)}
                 npcName={npc.name}
                 isReadOnly={isViewer}
+                style={cardGradientStyle}
                 className="h-full flex-1 flex flex-col justify-between"
               />
             </div>
@@ -2023,14 +2032,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
           {/* 2. GRID PRINCIPAL: Coluna 1 (Observações, Magias & Defesas) | Coluna 2 (Condições & Atributos) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* COLUNA DA ESQUERDA (6 cols): Observações, Magias, Defesas e Itens Extras */}
+            {/* COLUNA DA ESQUERDA (6 cols): Observações, Magias e Defesas */}
             <div className="lg:col-span-6 space-y-3">
               {/* Card: Observações Logo Abaixo de Pontos de Vida e Pontos de Fadiga */}
               {isMaster ? (
                 /* Visão do Mestre: Obs Mestre abaixo de PV (col 1) e Obs Gerais abaixo de Fadiga (col 2) */
                 <div className="grid grid-cols-2 gap-2.5 items-stretch">
                   {/* Observações Privadas do Mestre (exatamente da largura de Pontos de Vida) */}
-                  <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col h-full">
+                  <div style={{ ...cardGradientStyle, borderColor: 'rgba(245, 158, 11, 0.3)' }} className="rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col h-full border">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
                       <Lock size={13} className="text-amber-400" />
                       <span className="truncate">Obs. Privadas do Mestre</span>
@@ -2045,7 +2054,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   </div>
 
                   {/* Observações Gerais (exatamente da largura de Pontos de Fadiga) */}
-                  <div className="bg-blue-950/20 border border-blue-500/30 rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col h-full">
+                  <div style={{ ...cardGradientStyle, borderColor: 'rgba(59, 130, 246, 0.3)' }} className="rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col h-full border">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
                       <Users size={13} className="text-blue-400" />
                       <span className="truncate">Observações Gerais</span>
@@ -2062,7 +2071,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 </div>
               ) : (
                 /* Visão do Jogador: Observações Gerais ocupando todo o espaço abaixo de PV e Fadiga */
-                <div className="w-full bg-blue-950/20 border border-blue-500/30 rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col">
+                <div style={{ ...cardGradientStyle, borderColor: 'rgba(59, 130, 246, 0.3)' }} className="w-full rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col border">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
                     <Users size={13} className="text-blue-400" />
                     <span>Observações Gerais</span>
@@ -2079,7 +2088,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
 
               {/* Card: Defesas Ativas (Posicionado logo abaixo das observações) */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+              <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
                   <div className="flex items-center gap-2">
                     <Shield size={15} className="text-amber-400" />
@@ -2221,9 +2230,267 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
               {/* Card: Magias (Magias Ativas & Sob Efeito) - Posicionamento de Meia Largura */}
               {renderMagiasSection()}
+            </div>
 
-          {/* Card: ITENS EXTRAS & RECURSOS (Flechas, Pedras de Mana, Escudos, etc.) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2.5">
+        {/* COLUNA DA DIREITA (6 cols): Condições, Atributos GURPS e Itens Extras */}
+        <div className="lg:col-span-6 space-y-3">
+          {/* Card: Condições & Estados Críticos */}
+          <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">
+                Condições &amp; Estados Críticos
+              </span>
+              {!isViewer && (
+                <button
+                  onClick={onOpenConditionsCrud}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
+                  title="Gerenciar lista de condições"
+                >
+                  <Plus size={12} />
+                  <span>Gerenciar</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap min-h-[32px]">
+              {(!npc.statusConditions || npc.statusConditions.length === 0) ? (
+                <span className="text-[11px] text-slate-500 italic">
+                  Nenhum estado crítico ativo no momento.
+                </span>
+              ) : (
+                npc.statusConditions.map((cond) => {
+                  const meta = npc.conditionMetadata?.[cond];
+                  const condDef = conditions?.find((c) => c.label === cond || c.id === cond);
+                  const startRound = meta?.startRound ?? 0;
+                  const duration = meta?.duration ?? condDef?.duration;
+                  const isExpired = duration !== undefined && duration > 0 && currentRound >= (startRound + duration);
+
+                  return (
+                    <span
+                      key={cond}
+                      className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help border transition-all ${
+                        isExpired
+                          ? 'bg-amber-950/90 border-amber-500 text-amber-200 animate-pulse ring-1 ring-amber-500/60'
+                          : 'bg-red-950/70 border-red-800 text-red-200'
+                      }`}
+                      title={
+                        isExpired
+                          ? `⚠️ ALERTA: ${cond} finalizou sua duração de ${duration} rodada(s) na rodada ${startRound + duration}! Remova manualmente.`
+                          : duration
+                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration} rodadas, expira na R${startRound + duration})`
+                          : `${cond}: ${getConditionDescription(cond)}`
+                      }
+                    >
+                      {isExpired ? (
+                        <>
+                          <span className="font-bold text-amber-300">⚠️ {cond}</span>
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-900/80 text-amber-200 font-bold uppercase tracking-wider">
+                            Duração Finalizada
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{cond}</span>
+                          {duration !== undefined && duration > 0 && (
+                            <span className="text-[9px] text-red-300/80 font-mono">
+                              ({duration}R)
+                            </span>
+                          )}
+                        </>
+                      )}
+                      {!isViewer && (
+                        <button
+                          onClick={() => removeCondition(cond)}
+                          className={`ml-0.5 font-bold ${isExpired ? 'text-amber-400 hover:text-white' : 'text-red-400 hover:text-white'}`}
+                          title="Remover estado manualmente"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Card: Atributos GURPS (Primários e Secundários em Linha Única com Degradê do Sistema) */}
+          <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-2 sm:p-2.5 overflow-hidden">
+            <div className="flex flex-row items-center justify-between gap-2 sm:gap-4 flex-nowrap">
+              {/* LADO ESQUERDO: PRIMÁRIOS */}
+              <div className="flex flex-col gap-1 shrink-0">
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-400 px-0.5">
+                  PRIMÁRIOS
+                </span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {[
+                    { key: 'st', label: 'ST', val: npc.st },
+                    { key: 'dx', label: 'DX', val: npc.dx },
+                    { key: 'iq', label: 'IQ', val: npc.iq },
+                    { key: 'ht', label: 'HT', val: npc.ht },
+                  ].map(({ key, label, val }) => (
+                    <div
+                      key={key}
+                      style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
+                      className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                    >
+                      <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                        {label}
+                      </span>
+                      <input
+                        type="number"
+                        size={1}
+                        disabled={!isMaster}
+                        value={val ?? ''}
+                        placeholder="-"
+                        onChange={(e) =>
+                          updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                        }
+                        className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                          !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                        }`}
+                        title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* DIVISÓRIA VERTICAL */}
+              <div className="w-[1px] h-8 bg-slate-800 shrink-0 self-center mx-1 sm:mx-2" />
+
+              {/* LADO DIREITO: SECUNDÁRIOS */}
+              <div className="flex flex-col gap-1 shrink-0">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 px-0.5">
+                  SECUNDÁRIOS
+                </span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {/* Per */}
+                  <div
+                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
+                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                  >
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                      Per
+                    </span>
+                    <input
+                      type="number"
+                      size={1}
+                      disabled={!isMaster}
+                      value={npc.per ?? ''}
+                      placeholder="-"
+                      onChange={(e) =>
+                        updateField('per', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                      }
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                      }`}
+                      title={isMaster ? "Percepção (Per)" : "Per (apenas Mestre pode editar)"}
+                    />
+                  </div>
+
+                  {/* Will */}
+                  <div
+                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
+                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                  >
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                      Will
+                    </span>
+                    <input
+                      type="number"
+                      size={1}
+                      disabled={!isMaster}
+                      value={npc.will ?? ''}
+                      placeholder="-"
+                      onChange={(e) =>
+                        updateField('will', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                      }
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                      }`}
+                      title={isMaster ? "Vontade (Will)" : "Will (apenas Mestre pode editar)"}
+                    />
+                  </div>
+
+                  {/* Speed */}
+                  <div
+                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
+                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                  >
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                      Speed
+                    </span>
+                    <input
+                      type="number"
+                      step="0.25"
+                      size={1}
+                      disabled={!isMaster}
+                      value={npc.basicSpeed ?? ''}
+                      placeholder="-"
+                      onChange={(e) =>
+                        updateField('basicSpeed', e.target.value === '' ? 0 : parseFloat(e.target.value))
+                      }
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                      }`}
+                      title={isMaster ? "Velocidade Básica (Speed)" : "Speed (apenas Mestre pode editar)"}
+                    />
+                  </div>
+
+                  {/* Move (Acomoda perfeitamente '6 (-1 Peso)') */}
+                  <div
+                    style={{ width: '124px', minWidth: '124px', maxWidth: '124px', height: '38px' }}
+                    className="h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-1.5 py-0.5 text-center shrink-0 transition-colors"
+                  >
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                      Move
+                    </span>
+                    <input
+                      type="text"
+                      size={1}
+                      disabled={!isMaster}
+                      value={npc.basicMove ?? ''}
+                      placeholder="-"
+                      onChange={(e) => updateField('basicMove', e.target.value)}
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none whitespace-nowrap truncate ${
+                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                      }`}
+                      title={isMaster ? "Deslocamento (Move, aceita texto como '6 (-1 Peso)')" : "Move (apenas Mestre pode editar)"}
+                    />
+                  </div>
+
+                  {/* RD Nat. */}
+                  <div
+                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
+                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                  >
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                      RD Nat.
+                    </span>
+                    <input
+                      type="number"
+                      step="1"
+                      size={1}
+                      disabled={!isMaster}
+                      value={npc.naturalDr ?? ''}
+                      placeholder="-"
+                      onChange={(e) =>
+                        updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                      }
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
+                      }`}
+                      title={isMaster ? "Resistência a Dano Natural" : "RD Nat. (apenas Mestre pode editar)"}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card: ITENS EXTRAS & RECURSOS (Flechas, Pedras de Mana, Escudos, etc.) - Abaixo de Atributos */}
+          <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-3 space-y-2.5">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
               <div className="flex items-center gap-2">
                 <Package size={15} className="text-amber-400" />
@@ -2421,263 +2688,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             )}
           </div>
         </div>
-
-        {/* COLUNA DA DIREITA (6 cols): Condições e Atributos GURPS */}
-        <div className="lg:col-span-6 space-y-3">
-          {/* Card: Condições & Estados Críticos */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">
-                Condições &amp; Estados Críticos
-              </span>
-              {!isViewer && (
-                <button
-                  onClick={onOpenConditionsCrud}
-                  className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
-                  title="Gerenciar lista de condições"
-                >
-                  <Plus size={12} />
-                  <span>Gerenciar</span>
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap min-h-[32px]">
-              {(!npc.statusConditions || npc.statusConditions.length === 0) ? (
-                <span className="text-[11px] text-slate-500 italic">
-                  Nenhum estado crítico ativo no momento.
-                </span>
-              ) : (
-                npc.statusConditions.map((cond) => {
-                  const meta = npc.conditionMetadata?.[cond];
-                  const condDef = conditions?.find((c) => c.label === cond || c.id === cond);
-                  const startRound = meta?.startRound ?? 0;
-                  const duration = meta?.duration ?? condDef?.duration;
-                  const isExpired = duration !== undefined && duration > 0 && currentRound >= (startRound + duration);
-
-                  return (
-                    <span
-                      key={cond}
-                      className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help border transition-all ${
-                        isExpired
-                          ? 'bg-amber-950/90 border-amber-500 text-amber-200 animate-pulse ring-1 ring-amber-500/60'
-                          : 'bg-red-950/70 border-red-800 text-red-200'
-                      }`}
-                      title={
-                        isExpired
-                          ? `⚠️ ALERTA: ${cond} finalizou sua duração de ${duration} rodada(s) na rodada ${startRound + duration}! Remova manualmente.`
-                          : duration
-                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration} rodadas, expira na R${startRound + duration})`
-                          : `${cond}: ${getConditionDescription(cond)}`
-                      }
-                    >
-                      {isExpired ? (
-                        <>
-                          <span className="font-bold text-amber-300">⚠️ {cond}</span>
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-900/80 text-amber-200 font-bold uppercase tracking-wider">
-                            Duração Finalizada
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{cond}</span>
-                          {duration !== undefined && duration > 0 && (
-                            <span className="text-[9px] text-red-300/80 font-mono">
-                              ({duration}R)
-                            </span>
-                          )}
-                        </>
-                      )}
-                      {!isViewer && (
-                        <button
-                          onClick={() => removeCondition(cond)}
-                          className={`ml-0.5 font-bold ${isExpired ? 'text-amber-400 hover:text-white' : 'text-red-400 hover:text-white'}`}
-                          title="Remover estado manualmente"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </span>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* Card: Atributos GURPS (Primários e Secundários em Linha Única distribuídos com Cores do Design System) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 sm:p-2.5 overflow-hidden">
-            <div className="flex flex-row items-center justify-between gap-2 sm:gap-4 flex-nowrap">
-              {/* LADO ESQUERDO: PRIMÁRIOS */}
-              <div className="flex flex-col gap-1 shrink-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400 px-0.5">
-                  PRIMÁRIOS
-                </span>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  {[
-                    { key: 'st', label: 'ST', val: npc.st },
-                    { key: 'dx', label: 'DX', val: npc.dx },
-                    { key: 'iq', label: 'IQ', val: npc.iq },
-                    { key: 'ht', label: 'HT', val: npc.ht },
-                  ].map(({ key, label, val }) => (
-                    <div
-                      key={key}
-                      style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                      className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
-                    >
-                      <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
-                        {label}
-                      </span>
-                      <input
-                        type="number"
-                        size={1}
-                        disabled={!isMaster}
-                        value={val ?? ''}
-                        placeholder="-"
-                        onChange={(e) =>
-                          updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                        }
-                        className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                          !isMaster ? 'opacity-90 cursor-not-allowed' : ''
-                        }`}
-                        title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* DIVISÓRIA VERTICAL */}
-              <div className="w-[1px] h-8 bg-slate-800 shrink-0 self-center mx-1 sm:mx-2" />
-
-              {/* LADO DIREITO: SECUNDÁRIOS */}
-              <div className="flex flex-col gap-1 shrink-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 px-0.5">
-                  SECUNDÁRIOS
-                </span>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  {/* Per */}
-                  <div
-                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
-                  >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
-                      Per
-                    </span>
-                    <input
-                      type="number"
-                      size={1}
-                      disabled={!isMaster}
-                      value={npc.per ?? ''}
-                      placeholder="-"
-                      onChange={(e) =>
-                        updateField('per', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                      }
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
-                      }`}
-                      title={isMaster ? "Percepção (Per)" : "Per (apenas Mestre pode editar)"}
-                    />
-                  </div>
-
-                  {/* Will */}
-                  <div
-                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
-                  >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
-                      Will
-                    </span>
-                    <input
-                      type="number"
-                      size={1}
-                      disabled={!isMaster}
-                      value={npc.will ?? ''}
-                      placeholder="-"
-                      onChange={(e) =>
-                        updateField('will', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                      }
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
-                      }`}
-                      title={isMaster ? "Vontade (Will)" : "Will (apenas Mestre pode editar)"}
-                    />
-                  </div>
-
-                  {/* Speed */}
-                  <div
-                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
-                  >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
-                      Speed
-                    </span>
-                    <input
-                      type="number"
-                      step="0.25"
-                      size={1}
-                      disabled={!isMaster}
-                      value={npc.basicSpeed ?? ''}
-                      placeholder="-"
-                      onChange={(e) =>
-                        updateField('basicSpeed', e.target.value === '' ? 0 : parseFloat(e.target.value))
-                      }
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
-                      }`}
-                      title={isMaster ? "Velocidade Básica (Speed)" : "Speed (apenas Mestre pode editar)"}
-                    />
-                  </div>
-
-                  {/* Move (Acomoda perfeitamente '6 (-1 Peso)') */}
-                  <div
-                    style={{ width: '124px', minWidth: '124px', maxWidth: '124px', height: '38px' }}
-                    className="h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-1.5 py-0.5 text-center shrink-0 transition-colors"
-                  >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
-                      Move
-                    </span>
-                    <input
-                      type="text"
-                      size={1}
-                      disabled={!isMaster}
-                      value={npc.basicMove ?? ''}
-                      placeholder="-"
-                      onChange={(e) => updateField('basicMove', e.target.value)}
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none whitespace-nowrap truncate ${
-                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
-                      }`}
-                      title={isMaster ? "Deslocamento (Move, aceita texto como '6 (-1 Peso)')" : "Move (apenas Mestre pode editar)"}
-                    />
-                  </div>
-
-                  {/* RD Nat. */}
-                  <div
-                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
-                  >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
-                      RD Nat.
-                    </span>
-                    <input
-                      type="number"
-                      step="1"
-                      size={1}
-                      disabled={!isMaster}
-                      value={npc.naturalDr ?? ''}
-                      placeholder="-"
-                      onChange={(e) =>
-                        updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                      }
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                        !isMaster ? 'opacity-90 cursor-not-allowed' : ''
-                      }`}
-                      title={isMaster ? "Resistência a Dano Natural" : "RD Nat. (apenas Mestre pode editar)"}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
         </div>
