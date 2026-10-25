@@ -335,6 +335,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     updateField('weapons', copy);
   };
 
+  const handleToggleFavoriteWeapon = (weaponId: string) => {
+    const copy = npc.weapons.map((w) =>
+      w.id === weaponId ? { ...w, isFavorite: !w.isFavorite } : w
+    );
+    updateField('weapons', copy);
+  };
+
   // Armor Kits & Locations helpers
   const kits: ArmorKit[] = useMemo(() => {
     if (npc.armorKits && npc.armorKits.length > 0) {
@@ -2696,7 +2703,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       {/* 8. TAB CONTENT: ARMAS & ATAQUES (NH MAIOR + PERÍCIAS E PERKS DE COMBATE ABAIXO) */}
       {activeTab === 'weapons' && (
         <div className="space-y-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+          <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -2735,15 +2742,17 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 {npc.weapons.map((w) => (
                   <div
                     key={w.id}
-                    className={`p-3.5 rounded-xl border flex flex-col justify-between gap-3 text-xs transition-all ${
+                    style={cardGradientStyle}
+                    className={`p-3.5 rounded-xl border flex flex-col justify-between gap-2.5 text-xs transition-all shadow-sm ${
                       w.isFavorite
-                        ? 'bg-amber-950/20 border-amber-500/60 ring-1 ring-amber-500/20'
-                        : 'bg-slate-950/80 border-slate-800 hover:border-slate-750'
+                        ? 'border-amber-500/70 ring-1 ring-amber-500/30'
+                        : 'border-slate-800 hover:border-slate-700'
                     }`}
                   >
-                    {/* Top Row: NH Badge, Weapon Name, Notes & Actions */}
-                    <div className="flex items-start justify-between gap-2.5">
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {/* Linha única contendo: Esquerda (NH + Nome) | Meio (Opções de Ataque) | Direita (Ações) */}
+                    <div className="flex items-center justify-between gap-2.5 flex-wrap">
+                      {/* Esquerda: NH Badge + Nome da Arma */}
+                      <div className="flex items-center gap-2.5 shrink-0">
                         <div className="flex flex-col items-center justify-center bg-amber-950/60 border border-amber-500/60 px-3 py-1 rounded-xl shrink-0 shadow-sm min-w-[50px]">
                           <span className="text-[9px] text-amber-400 font-extrabold uppercase tracking-widest leading-none">NH</span>
                           <span className={`font-mono font-black text-amber-300 tabular-nums leading-tight ${String(w.nh || '').length > 3 ? 'text-base' : 'text-xl'}`}>
@@ -2751,22 +2760,56 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           </span>
                         </div>
 
-                        <div className="space-y-0.5 min-w-0 flex-1">
-                          <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
-                            <span className="font-bold text-white text-sm sm:text-base leading-tight">
-                              {w.name}
+                        <div className="space-y-0.5">
+                          <span className="font-bold text-white text-sm sm:text-base leading-tight block">
+                            {w.name}
+                          </span>
+                          {w.notes && (
+                            <span className="text-[11px] text-amber-200/90 italic font-normal line-clamp-1 block" title={w.notes}>
+                              • {w.notes}
                             </span>
-                            {w.notes && (
-                              <span className="text-[11px] text-amber-200/90 italic font-normal line-clamp-1" title={w.notes}>
-                                • {w.notes}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
 
+                      {/* Meio: Opções de Ataque entre o nome e as opções de ação */}
+                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0 justify-start sm:justify-center">
+                        {w.modes && w.modes.length > 0 ? (
+                          w.modes.map((m, i) => (
+                            <div
+                              key={m.id || i}
+                              className="bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] font-mono flex items-center gap-1.5 text-slate-300 shadow-sm"
+                            >
+                              {m.name && <span className="font-bold text-amber-300 font-sans shrink-0">{m.name}:</span>}
+                              <span>Dano: <strong className="text-white font-bold">{m.damage}</strong></span>
+                              {m.type && <span className="text-slate-400 font-sans text-[10px]">({m.type})</span>}
+                              {m.reach && <span className="text-slate-400 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5">Alc: {m.reach}</span>}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] font-mono flex items-center gap-1.5 text-slate-300 shadow-sm">
+                            {w.damage && <span>Dano: <strong className="text-white font-bold">{w.damage}</strong></span>}
+                            {w.type && <span className="text-slate-400 font-sans text-[10px]">({w.type})</span>}
+                            {w.reach && <span className="text-slate-400 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5">Alc: {w.reach}</span>}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Direita: Ações de favoritar, editar e excluir */}
                       {!isViewer && (
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFavoriteWeapon(w.id)}
+                            className={`p-1.5 rounded-lg border transition-colors ${
+                              w.isFavorite
+                                ? 'bg-amber-500/20 border-amber-500/60 text-amber-400 hover:text-amber-300'
+                                : 'bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-slate-300 border-slate-700'
+                            }`}
+                            title={w.isFavorite ? 'Remover dos favoritos' : 'Favoritar arma'}
+                          >
+                            <Star size={13} fill={w.isFavorite ? 'currentColor' : 'none'} />
+                          </button>
                           <button
                             onClick={() => onOpenWeaponModal(w)}
                             className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors"
@@ -2792,44 +2835,16 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         </div>
                       )}
                     </div>
-
-                    {/* Tipos de ataque um embaixo do outro */}
-                    {w.modes && w.modes.length > 0 ? (
-                      <div className="flex flex-col gap-1.5 pt-0.5 w-full">
-                        {w.modes.map((m, i) => (
-                          <div
-                            key={m.id || i}
-                            className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] font-mono flex items-center justify-between gap-2 text-slate-300"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                              {m.name && <span className="font-bold text-amber-300 font-sans shrink-0">{m.name}:</span>}
-                              <span>Dano: <strong className="text-white font-bold">{m.damage}</strong></span>
-                              {m.type && <span className="text-slate-400 font-sans text-[10px]">({m.type})</span>}
-                            </div>
-                            {m.reach && <span className="text-slate-400 text-[10px] shrink-0 font-sans">Alc: {m.reach}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-1.5 pt-0.5 w-full">
-                        <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] font-mono flex items-center justify-between gap-2 text-slate-300">
-                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                            {w.damage && <span>Dano: <strong className="text-white font-bold">{w.damage}</strong></span>}
-                            {w.type && <span className="text-slate-400 font-sans text-[10px]">({w.type})</span>}
-                          </div>
-                          {w.reach && <span className="text-slate-400 text-[10px] shrink-0 font-sans">Alc: {w.reach}</span>}
-                        </div>
-                      </div>
-                    )}
                   </div>
-                ))}              </div>
+                ))}
+              </div>
             )}
           </div>
 
           {/* DOIS CAMPOS ABAIXO DAS ARMAS: PERÍCIAS DE COMBATE E PERK DE COMBATE */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Perícias de Combate */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 space-y-2 shadow-sm">
               <label className="text-xs font-bold uppercase tracking-wider text-amber-400 block">
                 Perícias de Combate
               </label>
@@ -2844,7 +2859,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
 
             {/* Perk / Peculiaridades de Combate */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 space-y-2 shadow-sm">
               <label className="text-xs font-bold uppercase tracking-wider text-amber-400 block">
                 Perk / Peculiaridades de Combate
               </label>
@@ -2966,7 +2981,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 10. TAB CONTENT: ARMADURA POR LOCALIZAÇÃO (MODELO EXCEL + KITS + REGRAS) */}
       {activeTab === 'armor' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+        <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
           {/* Header com Kits de Armadura */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">

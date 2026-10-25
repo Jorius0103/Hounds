@@ -571,18 +571,28 @@ export const WeaponModal: React.FC<WeaponModalProps> = ({
             {/* Dropdown de resultados de busca do banco de dados */}
             {isSearchOpen && searchQuery.trim().length > 0 && (
               <div
-                className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-[#0f172a] border border-amber-500/40 rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto custom-scrollbar"
+                className="absolute top-full left-0 right-0 mt-1.5 z-50 border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto custom-scrollbar"
                 style={{
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 8px 10px -6px rgba(0, 0, 0, 0.8)',
+                  backgroundColor: '#0f172a',
+                  background: '#0f172a',
+                  opacity: 1,
+                  zIndex: 99999,
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 10px 15px -3px rgba(0, 0, 0, 0.9)',
                 }}
               >
-                <div className="px-3 py-1.5 bg-slate-950 border-b border-slate-800 text-[10px] text-amber-400/90 font-semibold flex items-center justify-between">
+                <div
+                  style={{ backgroundColor: '#020617', background: '#020617' }}
+                  className="px-3 py-1.5 border-b border-slate-800 text-[10px] text-amber-400 font-semibold flex items-center justify-between"
+                >
                   <span>{searchResults.length} armas encontradas</span>
                   <span className="text-slate-500">Clique para preencher os campos</span>
                 </div>
 
                 {searchResults.length === 0 ? (
-                  <div className="px-4 py-4 text-center text-xs text-slate-500 italic">
+                  <div
+                    style={{ backgroundColor: '#0f172a', background: '#0f172a' }}
+                    className="px-4 py-4 text-center text-xs text-slate-500 italic"
+                  >
                     Nenhuma arma encontrada no catálogo para "{searchQuery}".
                   </div>
                 ) : (
@@ -591,7 +601,8 @@ export const WeaponModal: React.FC<WeaponModalProps> = ({
                       key={w.id || idx}
                       type="button"
                       onClick={() => handleSelectCatalogWeapon(w)}
-                      className="w-full text-left px-3 py-2 border-b border-slate-800/60 hover:bg-amber-950/30 hover:border-amber-500/30 transition-colors flex flex-col gap-0.5 group cursor-pointer"
+                      style={{ backgroundColor: '#0f172a', background: '#0f172a' }}
+                      className="w-full text-left px-3 py-2 border-b border-slate-800/80 hover:bg-slate-800/90 hover:border-amber-500/40 transition-colors flex flex-col gap-0.5 group cursor-pointer"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
