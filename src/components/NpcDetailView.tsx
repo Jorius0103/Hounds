@@ -1529,7 +1529,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             onChange={(updated) => updateField('turnActions', updated)}
             npcName={npc.name}
             isReadOnly={isViewer}
-            gridClassName="grid-cols-3 sm:grid-cols-6 gap-2"
           />
         </div>
       </div>
@@ -1851,144 +1850,50 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       {/* 3. TAB CONTENT: DADOS & STATUS (PRIMEIRA ABA) */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
-          {/* 1. ATRIBUTOS: TARJA HORIZONTAL COMPLETA (INSPIRADA NA TELA INICIAL, 100% DA LARGURA E EDITÁVEL) */}
-          <div
-            className="w-full flex items-center justify-between px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl select-none text-xs gap-1.5 sm:gap-2 overflow-x-auto shadow-sm"
-            title="Atributos Primários e Secundários (editáveis)"
-          >
-            {/* ST */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Força (ST)">
-              <span className="font-bold text-slate-400 text-xs mr-0.5">ST</span>
-              <input
-                type="number"
-                disabled={isViewer}
-                value={npc.st ?? ''}
-                placeholder="10"
-                onChange={(e) => updateField('st', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
+          {/* OBSERVAÇÕES: Duas Colunas (Mestre e Compartilhadas) */}
+          <div className={`grid grid-cols-1 ${isMaster ? 'md:grid-cols-2' : ''} gap-3`}>
+        {/* Observações Privadas do Mestre */}
+        {isMaster && (
+          <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+              <Lock size={13} className="text-amber-400" />
+              <span>Observações Privadas do Mestre</span>
             </div>
-
-            {/* DX */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Destreza (DX)">
-              <span className="font-bold text-slate-400 text-xs mr-0.5">DX</span>
-              <input
-                type="number"
-                disabled={isViewer}
-                value={npc.dx ?? ''}
-                placeholder="10"
-                onChange={(e) => updateField('dx', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
-            </div>
-
-            {/* IQ */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Inteligência (IQ)">
-              <span className="font-bold text-slate-400 text-xs mr-0.5">IQ</span>
-              <input
-                type="number"
-                disabled={isViewer}
-                value={npc.iq ?? ''}
-                placeholder="10"
-                onChange={(e) => updateField('iq', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
-            </div>
-
-            {/* HT */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Vitalidade (HT)">
-              <span className="font-bold text-slate-400 text-xs mr-0.5">HT</span>
-              <input
-                type="number"
-                disabled={isViewer}
-                value={npc.ht ?? ''}
-                placeholder="10"
-                onChange={(e) => updateField('ht', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
-            </div>
-
-            {/* Divisor vertical */}
-            <div className="hidden sm:block h-4 w-[1px] bg-slate-800 shrink-0" />
-
-            {/* Per */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Percepção (Per)">
-              <span className="font-bold text-teal-400 text-xs mr-0.5">Per</span>
-              <input
-                type="number"
-                step="1"
-                disabled={isViewer}
-                value={npc.per ?? ''}
-                placeholder="10"
-                onChange={(e) => updateField('per', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-teal-200 focus:outline-none focus:ring-1 focus:ring-teal-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
-            </div>
-
-            {/* Will */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Vontade (Will)">
-              <span className="font-bold text-indigo-300 text-xs mr-0.5">Will</span>
-              <input
-                type="number"
-                step="1"
-                disabled={isViewer}
-                value={npc.will ?? ''}
-                placeholder="10"
-                onChange={(e) => updateField('will', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-indigo-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
-            </div>
-
-            {/* Speed */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Velocidade Básica (Speed)">
-              <span className="font-bold text-amber-400 text-xs mr-0.5">Spd</span>
-              <input
-                type="number"
-                step="0.25"
-                disabled={isViewer}
-                value={npc.basicSpeed ?? ''}
-                placeholder="5.0"
-                onChange={(e) =>
-                  updateField('basicSpeed', e.target.value === '' ? 0 : parseFloat(e.target.value))
-                }
-                className={`w-11 sm:w-12 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
-            </div>
-
-            {/* Move */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Deslocamento Básico (Move)">
-              <span className="font-bold text-emerald-400 text-xs mr-0.5">Move</span>
-              <input
-                type="text"
-                disabled={isViewer}
-                value={npc.basicMove ?? ''}
-                placeholder="5"
-                onChange={(e) => updateField('basicMove', e.target.value)}
-                className={`w-10 sm:w-12 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-emerald-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
-            </div>
-
-            {/* RD Nat. */}
-            <div className="inline-flex items-center gap-1 shrink-0" title="Resistência a Danos Natural (RD Nat.)">
-              <span className="font-bold text-amber-300 text-xs mr-0.5">RD Nat.</span>
-              <input
-                type="number"
-                step="1"
-                disabled={isViewer}
-                value={npc.naturalDr ?? ''}
-                placeholder="0"
-                onChange={(e) =>
-                  updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                }
-                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-              />
-            </div>
+            <textarea
+              rows={2}
+              value={npc.masterNotes || ''}
+              onChange={(e) => updateField('masterNotes', e.target.value)}
+              placeholder="Anotações privadas do mestre, segredos, táticas..."
+              className="w-full bg-slate-950/90 border border-amber-500/20 rounded-lg p-2 text-xs text-amber-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
           </div>
+        )}
 
-          {/* 2. PONTOS DE VIDA (25%) | PONTOS DE FADIGA (25%) | DEFESAS & AÇÕES DO TURNO (50%) - MESMA LARGURA DO CABEÇALHO */}
-          <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
-            {/* Pontos de Vida (25% = 3 de 12 cols) */}
-            <div className="col-span-12 md:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
+        {/* Observações Gerais Compartilhadas */}
+        <div className="bg-blue-950/20 border border-blue-500/30 rounded-xl p-3 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
+            <Users size={13} className="text-blue-400" />
+            <span>Observações Gerais</span>
+          </div>
+          <textarea
+            rows={2}
+            value={npc.assistantNotes || ''}
+            readOnly={isViewer}
+            onChange={(e) => updateField('assistantNotes', e.target.value)}
+            placeholder="Anotações visíveis e editáveis pelo jogador e pelo mestre..."
+            className="w-full bg-slate-950/90 border border-blue-500/20 rounded-lg p-2 text-xs text-blue-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      {/* 3. GRID PRINCIPAL: Coluna 1 (Vitals & Defesas) | Coluna 2 (Condições & Atributos) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* COLUNA DA ESQUERDA (6 cols): PV & FP, Defesas Ativas, Ações do Turno e Itens Extras */}
+        <div className="lg:col-span-6 space-y-3">
+          {/* Card: Pontos de Vida e Pontos de Fadiga Lado a Lado (Ampliado verticalmente com fonte maior) */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Pontos de Vida */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-200">
                 <div className="flex items-center gap-1.5">
                   <Heart size={15} className="text-rose-500" />
@@ -2017,12 +1922,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <span className="text-slate-500 font-semibold text-sm">/</span>
                   <input
                     type="number"
-                    disabled={isViewer}
+                    disabled={!isMaster}
                     value={npc.hpMax ?? ''}
                     onChange={(e) => updateField('hpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
                     placeholder="Máx"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-                    title="Vida Máxima"
+                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title={isMaster ? "Vida Máxima" : "Vida Máxima (apenas Mestre pode editar)"}
                   />
                 </div>
 
@@ -2069,8 +1974,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               )}
             </div>
 
-            {/* Pontos de Fadiga (25% = 3 de 12 cols) */}
-            <div className="col-span-12 md:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
+            {/* Pontos de Fadiga */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-200">
                 <div className="flex items-center gap-1.5">
                   <Zap size={15} className="text-cyan-400" />
@@ -2097,12 +2002,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   <span className="text-slate-500 font-semibold text-sm">/</span>
                   <input
                     type="number"
-                    disabled={isViewer}
+                    disabled={!isMaster}
                     value={npc.fpMax ?? ''}
                     onChange={(e) => updateField('fpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
                     placeholder="Máx"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-                    title="Fadiga Máxima"
+                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title={isMaster ? "Fadiga Máxima" : "Fadiga Máxima (apenas Mestre pode editar)"}
                   />
                 </div>
 
@@ -2140,505 +2045,546 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Defesas & Ações do Turno (50% = 6 de 12 cols) */}
-            <div className="col-span-12 md:col-span-6 h-full flex flex-col">
-              <TurnActionsTracker
-                tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
-                onChange={(updated) => updateField('turnActions', updated)}
-                npcName={npc.name}
-                isReadOnly={isViewer}
-                className="h-full flex-1"
-              />
-            </div>
           </div>
 
-          {/* 3. CONDIÇÕES & ESTADOS CRÍTICOS (50%) | OBSERVAÇÕES DO MESTRE (25%) | OBSERVAÇÕES GERAIS (25%) */}
-          <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
-            {/* Card: Condições & Estados Críticos (esquerda, 50% = 6 cols) */}
-            <div className="col-span-12 md:col-span-6 bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-2">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5 shrink-0">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Condições &amp; Estados Críticos
-                </span>
-                {!isViewer && (
-                  <button
-                    onClick={onOpenConditionsCrud}
-                    className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
-                    title="Gerenciar lista de condições"
-                  >
-                    <Plus size={12} />
-                    <span>Gerenciar</span>
-                  </button>
-                )}
-              </div>
+          {/* Card: Magias (Magias Ativas & Sob Efeito) - Posicionamento de Meia Largura */}
+          {renderMagiasSection()}
 
-              <div className="flex items-center gap-1.5 flex-wrap flex-1 content-start overflow-y-auto max-h-[120px] min-h-[44px] pr-1">
-                {(!npc.statusConditions || npc.statusConditions.length === 0) ? (
-                  <span className="text-[11px] text-slate-500 italic">
-                    Nenhum estado crítico ativo no momento.
-                  </span>
-                ) : (
-                  npc.statusConditions.map((cond) => {
-                    const meta = npc.conditionMetadata?.[cond];
-                    const condDef = conditions?.find((c) => c.label === cond || c.id === cond);
-                    const startRound = meta?.startRound ?? 0;
-                    const duration = meta?.duration ?? condDef?.duration;
-                    const isExpired = duration !== undefined && duration > 0 && currentRound >= (startRound + duration);
-
-                    return (
-                      <span
-                        key={cond}
-                        className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help border transition-all ${
-                          isExpired
-                            ? 'bg-amber-950/90 border-amber-500 text-amber-200 animate-pulse ring-1 ring-amber-500/60'
-                            : 'bg-red-950/70 border-red-800 text-red-200'
-                        }`}
-                        title={
-                          isExpired
-                            ? `⚠️ ALERTA: ${cond} finalizou sua duração de ${duration} rodada(s) na rodada ${startRound + duration}! Remova manualmente.`
-                            : duration
-                            ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration} rodadas, expira na R${startRound + duration})`
-                            : `${cond}: ${getConditionDescription(cond)}`
-                        }
-                      >
-                        {isExpired ? (
-                          <>
-                            <span className="font-bold text-amber-300">⚠️ {cond}</span>
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-900/80 text-amber-200 font-bold uppercase tracking-wider">
-                              Duração Finalizada
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span>{cond}</span>
-                            {duration !== undefined && duration > 0 && (
-                              <span className="text-[9px] text-red-300/80 font-mono">
-                                ({duration}R)
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {!isViewer && (
-                          <button
-                            onClick={() => removeCondition(cond)}
-                            className={`ml-0.5 font-bold ${isExpired ? 'text-amber-400 hover:text-white' : 'text-red-400 hover:text-white'}`}
-                            title="Remover estado manualmente"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </span>
-                    );
-                  })
-                )}
+          {/* Card: Defesas Ativas (Trocado para a coluna da esquerda) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+              <div className="flex items-center gap-2">
+                <Shield size={15} className="text-amber-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Defesas Ativas
+                </h3>
               </div>
+              {isMaster && (
+                <button
+                  onClick={handleAddParry}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
+                  title="Adicionar outra arma para cálculo de Aparar"
+                >
+                  <Plus size={11} />
+                  <span>Aparar</span>
+                </button>
+              )}
             </div>
 
-            {/* Observações: Mestre (duas de 3 cols = 25% cada) vs Jogador (1 de 6 cols = 50%) */}
-            {isMaster ? (
-              <>
-                {/* Observações Privadas do Mestre (25% = 3 de 12 cols) */}
-                <div className="col-span-6 md:col-span-3 bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300 shrink-0">
-                    <Lock size={13} className="text-amber-400" />
-                    <span className="truncate">Observações do Mestre</span>
-                  </div>
-                  <textarea
-                    rows={2}
-                    value={npc.masterNotes || ''}
-                    onChange={(e) => updateField('masterNotes', e.target.value)}
-                    placeholder="Anotações privadas do mestre..."
-                    className="w-full flex-1 min-h-[64px] resize-none bg-slate-950/90 border border-amber-500/20 rounded-lg p-2 text-xs text-amber-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            {/* Grid de Defesas em 3 colunas com números no tamanho de Pontos de Vida e Fadiga */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* Card Esquiva */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs sm:text-sm font-bold text-cyan-300 leading-tight">Esquiva</div>
+                  <input
+                    type="text"
+                    disabled={!isMaster}
+                    value={npc.dodgeNotes ?? ''}
+                    placeholder="Comentário..."
+                    onChange={(e) => updateField('dodgeNotes', e.target.value)}
+                    className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                    title="Comentário sobre Esquiva (ex: Speed + 3)"
                   />
                 </div>
-
-                {/* Observações Gerais (25% = 3 de 12 cols) */}
-                <div className="col-span-6 md:col-span-3 bg-blue-950/20 border border-blue-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300 shrink-0">
-                    <Users size={13} className="text-blue-400" />
-                    <span className="truncate">Observações Gerais</span>
-                  </div>
-                  <textarea
-                    rows={2}
-                    value={npc.assistantNotes || ''}
-                    readOnly={isViewer}
-                    onChange={(e) => updateField('assistantNotes', e.target.value)}
-                    placeholder="Anotações visíveis para jogador e mestre..."
-                    className="w-full flex-1 min-h-[64px] resize-none bg-slate-950/90 border border-blue-500/20 rounded-lg p-2 text-xs text-blue-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </>
-            ) : (
-              /* Na visão jogadores a de Observações Gerais fica ocupando o espaço das duas observações (50% = 6 de 12 cols) */
-              <div className="col-span-12 md:col-span-6 bg-blue-950/20 border border-blue-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300 shrink-0">
-                  <Users size={13} className="text-blue-400" />
-                  <span>Observações Gerais</span>
-                </div>
-                <textarea
-                  rows={2}
-                  value={npc.assistantNotes || ''}
-                  readOnly={isViewer}
-                  onChange={(e) => updateField('assistantNotes', e.target.value)}
-                  placeholder="Anotações visíveis e editáveis pelo jogador e pelo mestre..."
-                  className="w-full flex-1 min-h-[64px] resize-none bg-slate-950/90 border border-blue-500/20 rounded-lg p-2 text-xs text-blue-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                <input
+                  type="number"
+                  disabled={!isMaster}
+                  value={npc.dodge ?? ''}
+                  placeholder="-"
+                  onChange={(e) => updateField('dodge', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                  className={`w-12 sm:w-14 bg-slate-900 border border-cyan-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-cyan-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                  title="Valor da Esquiva"
                 />
               </div>
-            )}
+
+              {/* Card Bloqueio */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs sm:text-sm font-bold text-emerald-300 leading-tight">Bloqueio</div>
+                  <input
+                    type="text"
+                    disabled={!isMaster}
+                    value={npc.blockNotes ?? ''}
+                    placeholder="Comentário..."
+                    onChange={(e) => updateField('blockNotes', e.target.value)}
+                    className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                    title="Comentário sobre Bloqueio (ex: Escudo / 2 + 3)"
+                  />
+                </div>
+                <input
+                  type="number"
+                  disabled={!isMaster}
+                  value={npc.block ?? ''}
+                  placeholder="-"
+                  onChange={(e) => updateField('block', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                  className={`w-12 sm:w-14 bg-slate-900 border border-emerald-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-emerald-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                  title="Valor do Bloqueio"
+                />
+              </div>
+
+              {/* Cards de Aparar no mesmo formato e tamanho dos de Esquiva e Bloqueio */}
+              {parriesList.map((parry, idx) => (
+                <div
+                  key={parry.id}
+                  className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-xs sm:text-sm font-bold text-amber-400 shrink-0">Aparar:</span>
+                      <input
+                        type="text"
+                        disabled={!isMaster}
+                        value={parry.weaponName}
+                        onChange={(e) => handleUpdateParry(idx, { ...parry, weaponName: e.target.value })}
+                        placeholder="Arma..."
+                        className="w-full bg-transparent text-xs sm:text-sm font-bold text-amber-200 placeholder-slate-600 focus:outline-none truncate"
+                        title="Nome da arma de Aparar"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      disabled={!isMaster}
+                      value={parry.notes ?? ''}
+                      placeholder="Comentário..."
+                      onChange={(e) => handleUpdateParry(idx, { ...parry, notes: e.target.value })}
+                      className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                      title="Comentário sobre Aparar"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <input
+                      type="number"
+                      disabled={!isMaster}
+                      value={parry.value ?? ''}
+                      placeholder="-"
+                      onChange={(e) =>
+                        handleUpdateParry(idx, {
+                          ...parry,
+                          value: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
+                        })
+                      }
+                      className={`w-12 sm:w-14 bg-slate-900 border border-amber-500/50 rounded-lg text-center font-mono font-black text-base sm:text-lg text-amber-300 py-1 sm:py-1.5 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title="Valor do Aparar"
+                    />
+                    {isMaster && parriesList.length > 1 && (
+                      <button
+                        onClick={() => {
+                          setConfirmAction({
+                            isOpen: true,
+                            title: 'Remover Aparar',
+                            message: `Deseja remover esta linha de Aparar (${parry.weaponName || 'Aparar ' + (idx + 1)})?`,
+                            confirmText: 'Remover Aparar',
+                            onConfirm: () => handleRemoveParry(idx),
+                          });
+                        }}
+                        className="text-slate-500 hover:text-rose-400 font-bold text-xs p-0.5 transition-colors"
+                        title="Remover este Aparar"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* 4. SEÇÃO INFERIOR: DIVS RESTANTES */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Coluna da Esquerda (6 cols): Magias e Defesas Ativas */}
-            <div className="lg:col-span-6 space-y-3">
-              {/* Card: Magias (Magias Ativas & Sob Efeito) */}
-              {renderMagiasSection()}
+          {/* Card: ITENS EXTRAS & RECURSOS (Flechas, Pedras de Mana, Escudos, etc.) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+              <div className="flex items-center gap-2">
+                <Package size={15} className="text-amber-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Itens Extras &amp; Recursos
+                </h3>
+              </div>
 
-              {/* Card: Defesas Ativas */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
-                  <div className="flex items-center gap-2">
-                    <Shield size={15} className="text-amber-400" />
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                      Defesas Ativas
-                    </h3>
-                  </div>
-                  {isMaster && (
-                    <button
-                      onClick={handleAddParry}
-                      className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
-                      title="Adicionar outra arma para cálculo de Aparar"
-                    >
-                      <Plus size={11} />
-                      <span>Aparar</span>
-                    </button>
-                  )}
+              {/* Botões de Adição Rápida */}
+              {isMaster && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleAddExtraItem({ name: 'Flechas', max: 20, category: 'arrows' })}
+                    className="text-[10px] font-bold text-amber-300 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800/60 px-2 py-0.5 rounded-lg transition-colors"
+                    title="Cadastrar Flechas (Total: 20)"
+                  >
+                    + Flechas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddExtraItem({ name: 'Pedras de Mana', max: 5, category: 'mana' })}
+                    className="text-[10px] font-bold text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/60 px-2 py-0.5 rounded-lg transition-colors"
+                    title="Cadastrar Pedras de Mana (Total: 5)"
+                  >
+                    + Mana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddExtraItem({ name: 'Escudo', max: 30, category: 'shield' })}
+                    className="text-[10px] font-bold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 px-2 py-0.5 rounded-lg transition-colors"
+                    title="Cadastrar Escudo (Durabilidade: 30)"
+                  >
+                    + Escudo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddExtraItem()}
+                    className="p-1 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                    title="Adicionar outro recurso personalizado"
+                  >
+                    <Plus size={13} />
+                  </button>
                 </div>
+              )}
+            </div>
 
-                {/* Grid de Defesas em 3 colunas com números no tamanho de Pontos de Vida e Fadiga */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {/* Card Esquiva */}
-                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs sm:text-sm font-bold text-cyan-300 leading-tight">Esquiva</div>
+            {/* Lista de Itens Extras */}
+            {(!npc.extraItems || npc.extraItems.length === 0) ? (
+              <div className="py-2.5 text-center text-xs text-slate-500 italic">
+                Nenhum item extra cadastrado.
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {npc.extraItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-slate-950/90 border border-slate-800 rounded-xl p-2 flex items-center justify-between gap-2 hover:border-slate-750 transition-colors"
+                  >
+                    {/* Nome do Item com Ícone */}
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                      {!isViewer && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
+                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors shrink-0 ${
+                            item.isFavorite
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                          }`}
+                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
+                        >
+                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
+                        </button>
+                      )}
+                      {getItemIcon(item.name, item.category)}
                       <input
                         type="text"
                         disabled={!isMaster}
-                        value={npc.dodgeNotes ?? ''}
-                        placeholder="Comentário..."
-                        onChange={(e) => updateField('dodgeNotes', e.target.value)}
-                        className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
-                        title="Comentário sobre Esquiva (ex: Speed + 3)"
+                        value={item.name}
+                        onChange={(e) => handleUpdateExtraItem(item.id, { name: e.target.value })}
+                        className={`w-full bg-transparent text-xs font-bold text-white focus:outline-none focus:border-b focus:border-amber-500 ${!isMaster ? 'cursor-default' : ''}`}
+                        placeholder="Nome do Item..."
                       />
                     </div>
-                    <input
-                      type="number"
-                      disabled={!isMaster}
-                      value={npc.dodge ?? ''}
-                      placeholder="-"
-                      onChange={(e) => updateField('dodge', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                      className={`w-12 sm:w-14 bg-slate-900 border border-cyan-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-cyan-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title="Valor da Esquiva"
-                    />
-                  </div>
 
-                  {/* Card Bloqueio */}
-                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs sm:text-sm font-bold text-emerald-300 leading-tight">Bloqueio</div>
+                    {/* Coluna de Categoria do Recurso */}
+                    <div className="shrink-0">
+                      {isMaster ? (
+                        <select
+                          value={item.category || (item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra') ? 'mana' : item.name.toLowerCase().includes('escudo') ? 'shield' : item.name.toLowerCase().includes('flecha') ? 'arrows' : 'other')}
+                          onChange={(e) => handleUpdateExtraItem(item.id, { category: e.target.value as any })}
+                          className="bg-slate-900 border border-slate-750 text-[10px] text-slate-300 font-semibold rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          title="Categoria do recurso"
+                        >
+                          <option value="mana">Pedra de Mana</option>
+                          <option value="shield">Escudo</option>
+                          <option value="arrows">Flechas</option>
+                          <option value="other">Outros</option>
+                        </select>
+                      ) : (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border ${
+                          item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
+                            ? 'bg-cyan-950/80 border-cyan-800 text-cyan-300'
+                            : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
+                            ? 'bg-emerald-950/80 border-emerald-800 text-emerald-300'
+                            : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
+                            ? 'bg-amber-950/80 border-amber-800 text-amber-300'
+                            : 'bg-slate-900 border-slate-800 text-slate-400'
+                        }`}>
+                          {item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
+                            ? 'Pedra de Mana'
+                            : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
+                            ? 'Escudo'
+                            : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
+                            ? 'Flechas'
+                            : 'Outros'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Inputs Atual / Total */}
+                    <div className="flex items-center gap-1 text-xs font-mono font-bold">
                       <input
-                        type="text"
+                        type="number"
+                        min="0"
+                        disabled={isViewer}
+                        value={item.current ?? ''}
+                        onChange={(e) =>
+                          handleUpdateExtraItem(item.id, {
+                            current: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
+                          })
+                        }
+                        className={`w-12 bg-slate-900 border border-slate-750 rounded-lg text-center py-0.5 text-amber-300 focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
+                        title="Quantidade Atual"
+                      />
+                      <span className="text-slate-500 font-normal">/</span>
+                      <input
+                        type="number"
+                        min="0"
                         disabled={!isMaster}
-                        value={npc.blockNotes ?? ''}
-                        placeholder="Comentário..."
-                        onChange={(e) => updateField('blockNotes', e.target.value)}
-                        className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
-                        title="Comentário sobre Bloqueio (ex: Escudo / 2 + 3)"
+                        value={item.max ?? ''}
+                        onChange={(e) =>
+                          handleUpdateExtraItem(item.id, {
+                            max: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
+                          })
+                        }
+                        className={`w-12 bg-slate-900 border border-slate-750 rounded-lg text-center py-0.5 text-slate-400 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                        title={isMaster ? "Quantidade Total / Máxima" : "Quantidade Total (apenas Mestre pode editar)"}
                       />
                     </div>
-                    <input
-                      type="number"
-                      disabled={!isMaster}
-                      value={npc.block ?? ''}
-                      placeholder="-"
-                      onChange={(e) => updateField('block', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                      className={`w-12 sm:w-14 bg-slate-900 border border-emerald-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-emerald-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title="Valor do Bloqueio"
-                    />
-                  </div>
 
-                  {/* Cards de Aparar no mesmo formato e tamanho dos de Esquiva e Bloqueio */}
-                  {parriesList.map((parry, idx) => (
-                    <div
-                      key={parry.id}
-                      className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="text-xs sm:text-sm font-bold text-amber-400 shrink-0">Aparar:</span>
-                          <input
-                            type="text"
-                            disabled={!isMaster}
-                            value={parry.weaponName}
-                            onChange={(e) => handleUpdateParry(idx, { ...parry, weaponName: e.target.value })}
-                            placeholder="Arma..."
-                            className="w-full bg-transparent text-xs sm:text-sm font-bold text-amber-200 placeholder-slate-600 focus:outline-none truncate"
-                            title="Nome da arma de Aparar"
-                          />
-                        </div>
-                        <input
-                          type="text"
-                          disabled={!isMaster}
-                          value={parry.notes ?? ''}
-                          placeholder="Comentário..."
-                          onChange={(e) => handleUpdateParry(idx, { ...parry, notes: e.target.value })}
-                          className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
-                          title="Comentário sobre Aparar"
-                        />
-                      </div>
-
+                    {/* Botões Rápidos - e + */}
+                    {!isViewer && (
                       <div className="flex items-center gap-1 shrink-0">
-                        <input
-                          type="number"
-                          disabled={!isMaster}
-                          value={parry.value ?? ''}
-                          placeholder="-"
-                          onChange={(e) =>
-                            handleUpdateParry(idx, {
-                              ...parry,
-                              value: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
-                            })
-                          }
-                          className={`w-12 sm:w-14 bg-slate-900 border border-amber-500/50 rounded-lg text-center font-mono font-black text-base sm:text-lg text-amber-300 py-1 sm:py-1.5 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                          title="Valor do Aparar"
-                        />
-                        {isMaster && parriesList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustExtraItem(item.id, -1)}
+                          className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold text-xs flex items-center justify-center active:scale-95"
+                          title="-1 item"
+                        >
+                          -
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustExtraItem(item.id, 1)}
+                          className="w-6 h-6 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center active:scale-95"
+                          title="+1 item"
+                        >
+                          +
+                        </button>
+                        {isMaster && (
                           <button
+                            type="button"
                             onClick={() => {
                               setConfirmAction({
                                 isOpen: true,
-                                title: 'Remover Aparar',
-                                message: `Deseja remover esta linha de Aparar (${parry.weaponName || 'Aparar ' + (idx + 1)})?`,
-                                confirmText: 'Remover Aparar',
-                                onConfirm: () => handleRemoveParry(idx),
+                                title: 'Excluir Item Extra',
+                                message: `Deseja excluir o item "${item.name}" da ficha de ${npc.name || 'este personagem'}?`,
+                                confirmText: 'Excluir Item',
+                                onConfirm: () => handleRemoveExtraItem(item.id),
                               });
                             }}
-                            className="text-slate-500 hover:text-rose-400 font-bold text-xs p-0.5 transition-colors"
-                            title="Remover este Aparar"
+                            className="text-slate-500 hover:text-rose-400 font-bold px-1 text-sm ml-0.5"
+                            title="Excluir item"
                           >
                             ×
                           </button>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* COLUNA DA DIREITA (6 cols): Condições & Estados Críticos e Atributos GURPS */}
+        <div className="lg:col-span-6 space-y-3">
+          {/* Card: Condições & Estados Críticos */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">
+                Condições &amp; Estados Críticos
+              </span>
+              {!isViewer && (
+                <button
+                  onClick={onOpenConditionsCrud}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-amber-500/50 transition-colors"
+                  title="Gerenciar lista de condições"
+                >
+                  <Plus size={12} />
+                  <span>Gerenciar</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap min-h-[32px]">
+              {(!npc.statusConditions || npc.statusConditions.length === 0) ? (
+                <span className="text-[11px] text-slate-500 italic">
+                  Nenhum estado crítico ativo no momento.
+                </span>
+              ) : (
+                npc.statusConditions.map((cond) => {
+                  const meta = npc.conditionMetadata?.[cond];
+                  const condDef = conditions?.find((c) => c.label === cond || c.id === cond);
+                  const startRound = meta?.startRound ?? 0;
+                  const duration = meta?.duration ?? condDef?.duration;
+                  const isExpired = duration !== undefined && duration > 0 && currentRound >= (startRound + duration);
+
+                  return (
+                    <span
+                      key={cond}
+                      className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-lg font-medium cursor-help border transition-all ${
+                        isExpired
+                          ? 'bg-amber-950/90 border-amber-500 text-amber-200 animate-pulse ring-1 ring-amber-500/60'
+                          : 'bg-red-950/70 border-red-800 text-red-200'
+                      }`}
+                      title={
+                        isExpired
+                          ? `⚠️ ALERTA: ${cond} finalizou sua duração de ${duration} rodada(s) na rodada ${startRound + duration}! Remova manualmente.`
+                          : duration
+                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration} rodadas, expira na R${startRound + duration})`
+                          : `${cond}: ${getConditionDescription(cond)}`
+                      }
+                    >
+                      {isExpired ? (
+                        <>
+                          <span className="font-bold text-amber-300">⚠️ {cond}</span>
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-900/80 text-amber-200 font-bold uppercase tracking-wider">
+                            Duração Finalizada
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{cond}</span>
+                          {duration !== undefined && duration > 0 && (
+                            <span className="text-[9px] text-red-300/80 font-mono">
+                              ({duration}R)
+                            </span>
+                          )}
+                        </>
+                      )}
+                      {!isViewer && (
+                        <button
+                          onClick={() => removeCondition(cond)}
+                          className={`ml-0.5 font-bold ${isExpired ? 'text-amber-400 hover:text-white' : 'text-red-400 hover:text-white'}`}
+                          title="Remover estado manualmente"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Card: Controle de Defesas & Ações do Turno */}
+          <TurnActionsTracker
+            tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
+            onChange={(updated) => updateField('turnActions', updated)}
+            npcName={npc.name}
+            isReadOnly={isViewer}
+          />
+
+          {/* Card: Atributos GURPS (Primários e Secundários) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-3">
+            {/* Primários */}
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                Atributos Primários
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { key: 'st', label: 'ST', val: npc.st },
+                  { key: 'dx', label: 'DX', val: npc.dx },
+                  { key: 'iq', label: 'IQ', val: npc.iq },
+                  { key: 'ht', label: 'HT', val: npc.ht },
+                ].map(({ key, label, val }) => (
+                  <div key={key} className="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                    <div className="text-[10px] font-bold text-slate-400 mb-0.5 text-center w-full">{label}</div>
+                    <input
+                      type="number"
+                      disabled={!isMaster}
+                      value={val ?? ''}
+                      placeholder="-"
+                      onChange={(e) =>
+                        updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                      }
+                      className={`w-full bg-transparent text-center font-mono font-black text-sm text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Coluna da Direita (6 cols): Itens Extras & Recursos */}
-            <div className="lg:col-span-6 space-y-3">
-              {/* Card: ITENS EXTRAS & RECURSOS (Flechas, Pedras de Mana, Escudos, etc.) */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2.5">
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
-                  <div className="flex items-center gap-2">
-                    <Package size={15} className="text-amber-400" />
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                      Itens Extras &amp; Recursos
-                    </h3>
-                  </div>
-
-                  {/* Botões de Adição Rápida */}
-                  {isMaster && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleAddExtraItem({ name: 'Flechas', max: 20, category: 'arrows' })}
-                        className="text-[10px] font-bold text-amber-300 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800/60 px-2 py-0.5 rounded-lg transition-colors"
-                        title="Cadastrar Flechas (Total: 20)"
-                      >
-                        + Flechas
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAddExtraItem({ name: 'Pedras de Mana', max: 5, category: 'mana' })}
-                        className="text-[10px] font-bold text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/60 px-2 py-0.5 rounded-lg transition-colors"
-                        title="Cadastrar Pedras de Mana (Total: 5)"
-                      >
-                        + Mana
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAddExtraItem({ name: 'Escudo', max: 30, category: 'shield' })}
-                        className="text-[10px] font-bold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 px-2 py-0.5 rounded-lg transition-colors"
-                        title="Cadastrar Escudo (Durabilidade: 30)"
-                      >
-                        + Escudo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAddExtraItem()}
-                        className="p-1 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-                        title="Adicionar outro recurso personalizado"
-                      >
-                        <Plus size={13} />
-                      </button>
+            {/* Secundários */}
+            <div className="space-y-1.5 border-t border-slate-800/80 pt-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Atributos Secundários
+              </div>
+              <div className="grid grid-cols-5 gap-1.5 text-center">
+                {[
+                  { key: 'per', label: 'Per', val: npc.per, step: '1' },
+                  { key: 'will', label: 'Will', val: npc.will, step: '1' },
+                  { key: 'basicSpeed', label: 'Speed', val: npc.basicSpeed, step: '0.25' },
+                ].map(({ key, label, val, step }) => (
+                  <div key={key} className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col items-center justify-center text-center">
+                    <div className="text-[9px] font-bold text-slate-400 text-center w-full">
+                      {label}
                     </div>
-                  )}
+                    <input
+                      type="number"
+                      step={step}
+                      disabled={!isMaster}
+                      value={val ?? ''}
+                      placeholder="-"
+                      onChange={(e) =>
+                        updateField(
+                          key as any,
+                          e.target.value === ''
+                            ? 0
+                            : step === '0.25'
+                            ? parseFloat(e.target.value)
+                            : parseInt(e.target.value, 10)
+                        )
+                      }
+                      className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
+                    />
+                  </div>
+                ))}
+
+                {/* Move com suporte a texto flexível (ex: "6 (-1 Peso)") */}
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col items-center justify-center text-center">
+                  <div className="text-[9px] font-bold text-slate-400 text-center w-full">Move</div>
+                  <input
+                    type="text"
+                    disabled={!isMaster}
+                    value={npc.basicMove ?? ''}
+                    placeholder="Ex: 6 (-1)"
+                    onChange={(e) => updateField('basicMove', e.target.value)}
+                    className={`w-full bg-transparent text-center font-mono font-bold text-xs text-slate-200 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title={isMaster ? "Deslocamento / Move (aceita texto como '6 (-1 Peso)')" : "Move (apenas Mestre pode editar)"}
+                  />
                 </div>
 
-                {/* Lista de Itens Extras */}
-                {(!npc.extraItems || npc.extraItems.length === 0) ? (
-                  <div className="py-2.5 text-center text-xs text-slate-500 italic">
-                    Nenhum item extra cadastrado.
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {npc.extraItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="bg-slate-950/90 border border-slate-800 rounded-xl p-2 flex items-center justify-between gap-2 hover:border-slate-750 transition-colors"
-                      >
-                        {/* Nome do Item com Ícone */}
-                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                          {!isViewer && (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleFavoriteExtraItem(item.id)}
-                              className={`w-6 h-6 rounded flex items-center justify-center transition-colors shrink-0 ${
-                                item.isFavorite
-                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                                  : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-                              }`}
-                              title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
-                            >
-                              <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
-                            </button>
-                          )}
-                          {getItemIcon(item.name, item.category)}
-                          <input
-                            type="text"
-                            disabled={!isMaster}
-                            value={item.name}
-                            onChange={(e) => handleUpdateExtraItem(item.id, { name: e.target.value })}
-                            className={`w-full bg-transparent text-xs font-bold text-white focus:outline-none focus:border-b focus:border-amber-500 ${!isMaster ? 'cursor-default' : ''}`}
-                            placeholder="Nome do Item..."
-                          />
-                        </div>
-
-                        {/* Coluna de Categoria do Recurso */}
-                        <div className="shrink-0">
-                          {isMaster ? (
-                            <select
-                              value={item.category || (item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra') ? 'mana' : item.name.toLowerCase().includes('escudo') ? 'shield' : item.name.toLowerCase().includes('flecha') ? 'arrows' : 'other')}
-                              onChange={(e) => handleUpdateExtraItem(item.id, { category: e.target.value as any })}
-                              className="bg-slate-900 border border-slate-750 text-[10px] text-slate-300 font-semibold rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                              title="Categoria do recurso"
-                            >
-                              <option value="mana">Pedra de Mana</option>
-                              <option value="shield">Escudo</option>
-                              <option value="arrows">Flechas</option>
-                              <option value="other">Outros</option>
-                            </select>
-                          ) : (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border ${
-                              item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
-                                ? 'bg-cyan-950/80 border-cyan-800 text-cyan-300'
-                                : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
-                                ? 'bg-emerald-950/80 border-emerald-800 text-emerald-300'
-                                : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
-                                ? 'bg-amber-950/80 border-amber-800 text-amber-300'
-                                : 'bg-slate-900 border-slate-800 text-slate-400'
-                            }`}>
-                              {item.category === 'mana' || item.name.toLowerCase().includes('mana') || item.name.toLowerCase().includes('pedra')
-                                ? 'Pedra de Mana'
-                                : item.category === 'shield' || item.name.toLowerCase().includes('escudo')
-                                ? 'Escudo'
-                                : item.category === 'arrows' || item.name.toLowerCase().includes('flecha')
-                                ? 'Flechas'
-                                : 'Outros'}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Inputs Atual / Total */}
-                        <div className="flex items-center gap-1 text-xs font-mono font-bold">
-                          <input
-                            type="number"
-                            min="0"
-                            disabled={isViewer}
-                            value={item.current ?? ''}
-                            onChange={(e) =>
-                              handleUpdateExtraItem(item.id, {
-                                current: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
-                              })
-                            }
-                            className={`w-12 bg-slate-900 border border-slate-750 rounded-lg text-center py-0.5 text-amber-300 focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
-                            title="Quantidade Atual"
-                          />
-                          <span className="text-slate-500 font-normal">/</span>
-                          <input
-                            type="number"
-                            min="0"
-                            disabled={!isMaster}
-                            value={item.max ?? ''}
-                            onChange={(e) =>
-                              handleUpdateExtraItem(item.id, {
-                                max: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
-                              })
-                            }
-                            className={`w-12 bg-slate-900 border border-slate-750 rounded-lg text-center py-0.5 text-slate-400 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                            title={isMaster ? "Quantidade Total / Máxima" : "Quantidade Total (apenas Mestre pode editar)"}
-                          />
-                        </div>
-
-                        {/* Botões Rápidos - e + */}
-                        {!isViewer && (
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustExtraItem(item.id, -1)}
-                              className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold text-xs flex items-center justify-center active:scale-95"
-                              title="-1 item"
-                            >
-                              -
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustExtraItem(item.id, 1)}
-                              className="w-6 h-6 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center active:scale-95"
-                              title="+1 item"
-                            >
-                              +
-                            </button>
-                            {isMaster && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setConfirmAction({
-                                    isOpen: true,
-                                    title: 'Excluir Item Extra',
-                                    message: `Deseja excluir o item "${item.name}" da ficha de ${npc.name || 'este personagem'}?`,
-                                    confirmText: 'Excluir Item',
-                                    onConfirm: () => handleRemoveExtraItem(item.id),
-                                  });
-                                }}
-                                className="text-slate-500 hover:text-rose-400 font-bold px-1 text-sm ml-0.5"
-                                title="Excluir item"
-                              >
-                                ×
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* RD Natural */}
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col items-center justify-center text-center">
+                  <div className="text-[9px] font-bold text-amber-300 text-center w-full">RD Nat.</div>
+                  <input
+                    type="number"
+                    step="1"
+                    disabled={!isMaster}
+                    value={npc.naturalDr ?? ''}
+                    placeholder="-"
+                    onChange={(e) =>
+                      updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                    }
+                    className={`w-full bg-transparent text-center font-mono font-black text-xs text-amber-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                    title={isMaster ? "RD Natural" : "RD Natural (apenas Mestre pode editar)"}
+                  />
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
         </div>
       )}
 
