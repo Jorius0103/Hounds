@@ -1851,130 +1851,144 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       {/* 3. TAB CONTENT: DADOS & STATUS (PRIMEIRA ABA) */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
-          {/* 1. ATRIBUTOS PRIMÁRIOS E SECUNDÁRIOS: BARRA HORIZONTAL COMPLETA (EDITÁVEL E PROPORCIONAL) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 sm:p-2.5 shadow-sm">
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
-              {/* Atributos Primários (42% de largura horizontal) */}
-              <div className="flex items-center gap-1.5 sm:gap-2 lg:w-[42%] shrink-0 min-w-0">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 shrink-0 px-1 border-r border-slate-800">
-                  Primários
-                </span>
-                <div className="grid grid-cols-4 gap-1 sm:gap-1.5 flex-1 min-w-0">
-                  {[
-                    { key: 'st', label: 'ST', val: npc.st },
-                    { key: 'dx', label: 'DX', val: npc.dx },
-                    { key: 'iq', label: 'IQ', val: npc.iq },
-                    { key: 'ht', label: 'HT', val: npc.ht },
-                  ].map(({ key, label, val }) => (
-                    <div
-                      key={key}
-                      className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors min-w-0"
-                    >
-                      <span className="text-[11px] font-bold text-slate-400 shrink-0 select-none">
-                        {label}
-                      </span>
-                      <input
-                        type="number"
-                        disabled={isViewer}
-                        value={val ?? ''}
-                        placeholder="10"
-                        onChange={(e) =>
-                          updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                        }
-                        className={`w-full min-w-[26px] bg-transparent text-right font-mono font-black text-sm text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-                        title={`Atributo ${label}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {/* 1. ATRIBUTOS: TARJA HORIZONTAL COMPLETA (INSPIRADA NA TELA INICIAL, 100% DA LARGURA E EDITÁVEL) */}
+          <div
+            className="w-full flex items-center justify-between px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl select-none text-xs gap-1.5 sm:gap-2 overflow-x-auto shadow-sm"
+            title="Atributos Primários e Secundários (editáveis)"
+          >
+            {/* ST */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Força (ST)">
+              <span className="font-bold text-slate-400 text-xs mr-0.5">ST</span>
+              <input
+                type="number"
+                disabled={isViewer}
+                value={npc.st ?? ''}
+                placeholder="10"
+                onChange={(e) => updateField('st', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
+            </div>
 
-              {/* Divisor vertical */}
-              <div className="hidden lg:block w-px h-6 bg-slate-800 shrink-0" />
+            {/* DX */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Destreza (DX)">
+              <span className="font-bold text-slate-400 text-xs mr-0.5">DX</span>
+              <input
+                type="number"
+                disabled={isViewer}
+                value={npc.dx ?? ''}
+                placeholder="10"
+                onChange={(e) => updateField('dx', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
+            </div>
 
-              {/* Atributos Secundários (58% de largura horizontal) */}
-              <div className="flex items-center gap-1.5 sm:gap-2 lg:flex-1 min-w-0">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 shrink-0 px-1 border-r border-slate-800">
-                  Secundários
-                </span>
-                <div className="grid grid-cols-5 gap-1 sm:gap-1.5 flex-1 min-w-0">
-                  {[
-                    { key: 'per', label: 'Per', val: npc.per, step: '1' },
-                    { key: 'will', label: 'Will', val: npc.will, step: '1' },
-                    { key: 'basicSpeed', label: 'Speed', val: npc.basicSpeed, step: '0.25' },
-                  ].map(({ key, label, val, step }) => (
-                    <div
-                      key={key}
-                      className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors min-w-0"
-                    >
-                      <span className="text-[11px] font-bold text-slate-400 shrink-0 select-none">
-                        {label}
-                      </span>
-                      <input
-                        type="number"
-                        step={step}
-                        disabled={isViewer}
-                        value={val ?? ''}
-                        placeholder="10"
-                        onChange={(e) =>
-                          updateField(
-                            key as any,
-                            e.target.value === ''
-                              ? 0
-                              : step === '0.25'
-                              ? parseFloat(e.target.value)
-                              : parseInt(e.target.value, 10)
-                          )
-                        }
-                        className={`w-full min-w-[22px] bg-transparent text-right font-mono font-bold text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-                        title={`Atributo ${label}`}
-                      />
-                    </div>
-                  ))}
+            {/* IQ */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Inteligência (IQ)">
+              <span className="font-bold text-slate-400 text-xs mr-0.5">IQ</span>
+              <input
+                type="number"
+                disabled={isViewer}
+                value={npc.iq ?? ''}
+                placeholder="10"
+                onChange={(e) => updateField('iq', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
+            </div>
 
-                  {/* Move */}
-                  <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors min-w-0">
-                    <span className="text-[11px] font-bold text-slate-400 shrink-0 select-none">
-                      Move
-                    </span>
-                    <input
-                      type="text"
-                      disabled={isViewer}
-                      value={npc.basicMove ?? ''}
-                      placeholder="Ex: 5"
-                      onChange={(e) => updateField('basicMove', e.target.value)}
-                      className={`w-full min-w-[26px] bg-transparent text-right font-mono font-bold text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-0.5 ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title="Deslocamento / Move"
-                    />
-                  </div>
+            {/* HT */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Vitalidade (HT)">
+              <span className="font-bold text-slate-400 text-xs mr-0.5">HT</span>
+              <input
+                type="number"
+                disabled={isViewer}
+                value={npc.ht ?? ''}
+                placeholder="10"
+                onChange={(e) => updateField('ht', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
+            </div>
 
-                  {/* RD Natural */}
-                  <div className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-1.5 sm:px-2 py-1 flex items-center justify-between gap-1 shadow-inner hover:border-slate-700 transition-colors min-w-0">
-                    <span className="text-[11px] font-bold text-amber-300 shrink-0 select-none">
-                      RD Nat.
-                    </span>
-                    <input
-                      type="number"
-                      step="1"
-                      disabled={isViewer}
-                      value={npc.naturalDr ?? ''}
-                      placeholder="0"
-                      onChange={(e) =>
-                        updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
-                      }
-                      className={`w-full min-w-[20px] bg-transparent text-right font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
-                      title="RD Natural"
-                    />
-                  </div>
-                </div>
-              </div>
+            {/* Divisor vertical */}
+            <div className="hidden sm:block h-4 w-[1px] bg-slate-800 shrink-0" />
+
+            {/* Per */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Percepção (Per)">
+              <span className="font-bold text-teal-400 text-xs mr-0.5">Per</span>
+              <input
+                type="number"
+                step="1"
+                disabled={isViewer}
+                value={npc.per ?? ''}
+                placeholder="10"
+                onChange={(e) => updateField('per', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-teal-200 focus:outline-none focus:ring-1 focus:ring-teal-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
+            </div>
+
+            {/* Will */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Vontade (Will)">
+              <span className="font-bold text-indigo-300 text-xs mr-0.5">Will</span>
+              <input
+                type="number"
+                step="1"
+                disabled={isViewer}
+                value={npc.will ?? ''}
+                placeholder="10"
+                onChange={(e) => updateField('will', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-indigo-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
+            </div>
+
+            {/* Speed */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Velocidade Básica (Speed)">
+              <span className="font-bold text-amber-400 text-xs mr-0.5">Spd</span>
+              <input
+                type="number"
+                step="0.25"
+                disabled={isViewer}
+                value={npc.basicSpeed ?? ''}
+                placeholder="5.0"
+                onChange={(e) =>
+                  updateField('basicSpeed', e.target.value === '' ? 0 : parseFloat(e.target.value))
+                }
+                className={`w-11 sm:w-12 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
+            </div>
+
+            {/* Move */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Deslocamento Básico (Move)">
+              <span className="font-bold text-emerald-400 text-xs mr-0.5">Move</span>
+              <input
+                type="text"
+                disabled={isViewer}
+                value={npc.basicMove ?? ''}
+                placeholder="5"
+                onChange={(e) => updateField('basicMove', e.target.value)}
+                className={`w-10 sm:w-12 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-emerald-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
+            </div>
+
+            {/* RD Nat. */}
+            <div className="inline-flex items-center gap-1 shrink-0" title="Resistência a Danos Natural (RD Nat.)">
+              <span className="font-bold text-amber-300 text-xs mr-0.5">RD Nat.</span>
+              <input
+                type="number"
+                step="1"
+                disabled={isViewer}
+                value={npc.naturalDr ?? ''}
+                placeholder="0"
+                onChange={(e) =>
+                  updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+                }
+                className={`w-9 sm:w-10 bg-slate-950/90 border border-slate-750 hover:border-slate-600 rounded-md py-0.5 text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isViewer ? 'opacity-90 cursor-not-allowed' : ''}`}
+              />
             </div>
           </div>
 
-          {/* 2. PONTOS DE VIDA (25%) | PONTOS DE FADIGA (25%) | DEFESAS & AÇÕES DO TURNO (50%) - MESMA ALTURA VERTICAL */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+          {/* 2. PONTOS DE VIDA (25%) | PONTOS DE FADIGA (25%) | DEFESAS & AÇÕES DO TURNO (50%) - MESMA LARGURA DO CABEÇALHO */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
             {/* Pontos de Vida (25% = 3 de 12 cols) */}
-            <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
+            <div className="col-span-12 md:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-200">
                 <div className="flex items-center gap-1.5">
                   <Heart size={15} className="text-rose-500" />
@@ -2056,7 +2070,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
 
             {/* Pontos de Fadiga (25% = 3 de 12 cols) */}
-            <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
+            <div className="col-span-12 md:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between h-full space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-200">
                 <div className="flex items-center gap-1.5">
                   <Zap size={15} className="text-cyan-400" />
@@ -2128,7 +2142,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
 
             {/* Defesas & Ações do Turno (50% = 6 de 12 cols) */}
-            <div className="lg:col-span-6 h-full flex flex-col">
+            <div className="col-span-12 md:col-span-6 h-full flex flex-col">
               <TurnActionsTracker
                 tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
                 onChange={(updated) => updateField('turnActions', updated)}
@@ -2139,10 +2153,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
           </div>
 
-          {/* 3. CONDIÇÕES & ESTADOS CRÍTICOS | OBSERVAÇÕES PRIVADAS DO MESTRE | OBSERVAÇÕES GERAIS (MESMO TAMANHO VERTICAL) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+          {/* 3. CONDIÇÕES & ESTADOS CRÍTICOS (50%) | OBSERVAÇÕES DO MESTRE (25%) | OBSERVAÇÕES GERAIS (25%) */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
             {/* Card: Condições & Estados Críticos (esquerda, 50% = 6 cols) */}
-            <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-2">
+            <div className="col-span-12 md:col-span-6 bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-2">
               <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5 shrink-0">
                 <span className="text-xs font-bold text-white uppercase tracking-wider">
                   Condições &amp; Estados Críticos
@@ -2221,11 +2235,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               </div>
             </div>
 
-            {/* Observações: Mestre (duas de 3 cols = 6 cols) vs Jogador (1 de 6 cols = ocupa espaço das duas) */}
+            {/* Observações: Mestre (duas de 3 cols = 25% cada) vs Jogador (1 de 6 cols = 50%) */}
             {isMaster ? (
               <>
-                {/* Observações Privadas do Mestre (Reduzida pela metade: 3 de 12 cols) */}
-                <div className="lg:col-span-3 bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
+                {/* Observações Privadas do Mestre (25% = 3 de 12 cols) */}
+                <div className="col-span-6 md:col-span-3 bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300 shrink-0">
                     <Lock size={13} className="text-amber-400" />
                     <span className="truncate">Observações do Mestre</span>
@@ -2239,8 +2253,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   />
                 </div>
 
-                {/* Observações Gerais (Reduzida pela metade: 3 de 12 cols) */}
-                <div className="lg:col-span-3 bg-blue-950/20 border border-blue-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
+                {/* Observações Gerais (25% = 3 de 12 cols) */}
+                <div className="col-span-6 md:col-span-3 bg-blue-950/20 border border-blue-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300 shrink-0">
                     <Users size={13} className="text-blue-400" />
                     <span className="truncate">Observações Gerais</span>
@@ -2256,8 +2270,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 </div>
               </>
             ) : (
-              /* Na visão jogadores a de Observações Gerais fica ocupando o espaço das duas observações (6 de 12 cols) */
-              <div className="lg:col-span-6 bg-blue-950/20 border border-blue-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
+              /* Na visão jogadores a de Observações Gerais fica ocupando o espaço das duas observações (50% = 6 de 12 cols) */
+              <div className="col-span-12 md:col-span-6 bg-blue-950/20 border border-blue-500/30 rounded-xl p-3 flex flex-col justify-between h-full min-h-[120px] space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300 shrink-0">
                   <Users size={13} className="text-blue-400" />
                   <span>Observações Gerais</span>
