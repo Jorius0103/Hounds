@@ -405,8 +405,8 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                     {/* Linha com PV e FP */}
                     <div className="flex items-center justify-between gap-3 text-xs leading-tight font-mono">
                       <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1 font-bold text-red-500">
-                          <Heart size={11} className="text-red-500 fill-red-500/20 shrink-0" />
+                        <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
+                          <Heart size={11} className="text-emerald-400 fill-emerald-400/20 shrink-0" />
                           PV
                         </span>
                         <span className="font-black text-emerald-400">

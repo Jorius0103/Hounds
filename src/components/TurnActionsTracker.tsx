@@ -52,6 +52,16 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
     onChange(next);
   };
 
+  const canResetTurn =
+    (tracker.parryCount || 0) > 0 ||
+    (tracker.dodgeCount || 0) > 0 ||
+    (tracker.blockCount || 0) > 0 ||
+    !!tracker.usedRetreat ||
+    !!tracker.usedBlockThisTurn ||
+    !!tracker.usedFatigueThisTurn ||
+    (tracker.fatigueAmountUsed || 0) > 0 ||
+    (!!tracker.notes && tracker.notes.trim() !== '');
+
   const handleToggleRetreat = () => {
     if (isReadOnly) return;
     const next = {
@@ -98,27 +108,28 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
 
         {!isReadOnly && (
           <div className="flex items-center gap-1.5">
+            {/* Botão Zerar Turno */}
+            <button
+              type="button"
+              onClick={handleResetTurn}
+              disabled={!canResetTurn}
+              className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 text-[11px] font-bold rounded-lg border border-slate-700 transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:hover:bg-slate-800 disabled:hover:text-amber-400 disabled:cursor-not-allowed"
+              title="Zerar defesas, recuo e fadiga da rodada"
+            >
+              <RotateCcw size={11} />
+              <span>Zerar Turno</span>
+            </button>
+
             {/* Botão Limpar Choque ao lado do Zerar Turno */}
             <button
               type="button"
               onClick={handleResetShock}
               disabled={(tracker.shock || 0) <= 0}
-              className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-rose-600 hover:text-white text-rose-300 text-[11px] font-bold rounded-lg border border-slate-700 transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:hover:bg-slate-800 disabled:hover:text-rose-300"
+              className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-rose-600 hover:text-white text-rose-300 text-[11px] font-bold rounded-lg border border-slate-700 transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:hover:bg-slate-800 disabled:hover:text-rose-300 disabled:cursor-not-allowed"
               title="Zerar penalidade de choque"
             >
               <AlertTriangle size={11} />
               <span>Limpar Choque</span>
-            </button>
-
-            {/* Botão Zerar Turno */}
-            <button
-              type="button"
-              onClick={handleResetTurn}
-              className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 text-[11px] font-bold rounded-lg border border-slate-700 transition-all shadow-sm active:scale-95"
-              title="Zerar defesas, recuo e fadiga da rodada"
-            >
-              <RotateCcw size={11} />
-              <span>Zerar Turno</span>
             </button>
           </div>
         )}

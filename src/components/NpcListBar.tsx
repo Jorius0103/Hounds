@@ -708,7 +708,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         <>
                                                     <div className="flex items-center justify-between text-[10px] font-mono mt-1 px-0.5">
                             <span className="font-semibold flex items-center gap-1.5">
-                              <span className="text-red-500 font-bold tracking-wide">PV</span>
+                              <span className="text-emerald-400 font-bold tracking-wide">PV</span>
                               <span className="text-emerald-400 font-bold">{npc.hpCurrent} / {npc.hpMax}</span>
                             </span>
                             <span className="text-cyan-300 flex items-center gap-1.5">
