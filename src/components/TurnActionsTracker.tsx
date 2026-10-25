@@ -123,9 +123,9 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
       </div>
 
       {/* Grid com os 6 itens calibrado para casar a altura vertical com a div de Fadiga */}
-      <div className={`grid ${gridClassName} text-xs`}>
+      <div className={`grid ${gridClassName} text-xs flex-1 items-stretch`}>
         {/* 1. Aparar */}
-        <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col justify-between min-h-[46px] sm:min-h-[50px]">
+        <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col justify-between h-full min-h-[46px] sm:min-h-[50px]">
           <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-300">
             <span>Aparar</span>
             {tracker.parryCount > 1 && (
@@ -161,7 +161,7 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
         </div>
 
         {/* 2. Esquiva */}
-        <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col justify-between min-h-[46px] sm:min-h-[50px]">
+        <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col justify-between h-full min-h-[46px] sm:min-h-[50px]">
           <div className="text-[10px] sm:text-[11px] font-bold text-slate-300">
             Esquiva
           </div>
@@ -192,7 +192,7 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
         </div>
 
         {/* 3. Bloqueio */}
-        <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col justify-between min-h-[46px] sm:min-h-[50px]">
+        <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col justify-between h-full min-h-[46px] sm:min-h-[50px]">
           <div className="text-[10px] sm:text-[11px] font-bold text-slate-300">
             Bloqueio
           </div>
@@ -227,7 +227,7 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
           type="button"
           disabled={isReadOnly}
           onClick={handleToggleRetreat}
-          className={`p-1.5 rounded-lg border transition-all flex flex-col justify-between select-none min-h-[46px] sm:min-h-[50px] text-left ${
+          className={`p-1.5 rounded-lg border transition-all flex flex-col justify-between select-none h-full min-h-[46px] sm:min-h-[50px] text-left ${
             isReadOnly ? 'cursor-default' : 'cursor-pointer'
           } ${
             tracker.usedRetreat
@@ -255,7 +255,7 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
           type="button"
           disabled={isReadOnly}
           onClick={handleToggleFatigue}
-          className={`p-1.5 rounded-lg border transition-all flex flex-col justify-between select-none min-h-[46px] sm:min-h-[50px] text-left ${
+          className={`p-1.5 rounded-lg border transition-all flex flex-col justify-between select-none h-full min-h-[46px] sm:min-h-[50px] text-left ${
             isReadOnly ? 'cursor-default' : 'cursor-pointer'
           } ${
             tracker.usedFatigueThisTurn
@@ -279,7 +279,7 @@ export const TurnActionsTracker: React.FC<TurnActionsTrackerProps> = ({
         </button>
 
         {/* 6. Choque */}
-        <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col justify-between min-h-[46px] sm:min-h-[50px]">
+        <div className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex flex-col justify-between h-full min-h-[46px] sm:min-h-[50px]">
           <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-300">
             <span className="flex items-center gap-1">
               <AlertTriangle size={11} className={tracker.shock > 0 ? 'text-rose-400' : 'text-slate-600'} />

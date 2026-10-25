@@ -1849,205 +1849,236 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 3. TAB CONTENT: DADOS & STATUS (PRIMEIRA ABA) */}
       {activeTab === 'overview' && (
-        <div className="space-y-4">
-          {/* OBSERVAÇÕES: Duas Colunas (Mestre e Compartilhadas) */}
-          <div className={`grid grid-cols-1 ${isMaster ? 'md:grid-cols-2' : ''} gap-3`}>
-        {/* Observações Privadas do Mestre */}
-        {isMaster && (
-          <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
-              <Lock size={13} className="text-amber-400" />
-              <span>Observações Privadas do Mestre</span>
-            </div>
-            <textarea
-              rows={2}
-              value={npc.masterNotes || ''}
-              onChange={(e) => updateField('masterNotes', e.target.value)}
-              placeholder="Anotações privadas do mestre, segredos, táticas..."
-              className="w-full bg-slate-950/90 border border-amber-500/20 rounded-lg p-2 text-xs text-amber-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
-            />
-          </div>
-        )}
-
-        {/* Observações Gerais Compartilhadas */}
-        <div className="bg-blue-950/20 border border-blue-500/30 rounded-xl p-3 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
-            <Users size={13} className="text-blue-400" />
-            <span>Observações Gerais</span>
-          </div>
-          <textarea
-            rows={2}
-            value={npc.assistantNotes || ''}
-            readOnly={isViewer}
-            onChange={(e) => updateField('assistantNotes', e.target.value)}
-            placeholder="Anotações visíveis e editáveis pelo jogador e pelo mestre..."
-            className="w-full bg-slate-950/90 border border-blue-500/20 rounded-lg p-2 text-xs text-blue-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* 3. GRID PRINCIPAL: Coluna 1 (Vitals & Defesas) | Coluna 2 (Condições & Atributos) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* COLUNA DA ESQUERDA (6 cols): PV & FP, Defesas Ativas, Ações do Turno e Itens Extras */}
-        <div className="lg:col-span-6 space-y-3">
-          {/* Card: Pontos de Vida e Pontos de Fadiga Lado a Lado (Ampliado verticalmente com fonte maior) */}
-          <div className="grid grid-cols-2 gap-2.5">
-            {/* Pontos de Vida */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-200">
-                <div className="flex items-center gap-1.5">
-                  <Heart size={15} className="text-rose-500" />
-                  <span className="uppercase tracking-wider text-xs font-bold">Pontos de Vida</span>
+        <div className="space-y-3">
+          {/* 1. LINHA SUPERIOR: PV & FP (Esquerda) e Defesas & Ações do Turno (Direita) - Rigorosamente com a mesma altura */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+            {/* Esquerda (6 cols): Pontos de Vida e Pontos de Fadiga Lado a Lado */}
+            <div className="lg:col-span-6 grid grid-cols-2 gap-2.5 items-stretch">
+              {/* Pontos de Vida */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+                  <div className="flex items-center gap-1.5">
+                    <Heart size={15} className="text-rose-500" />
+                    <span className="uppercase tracking-wider text-xs font-bold">Pontos de Vida</span>
+                  </div>
+                  {npc.hpMax > 0 && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${hpStat.badgeBg}`}>
+                      {hpStat.label}
+                    </span>
+                  )}
                 </div>
+
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <div className="flex items-center gap-1.5 text-lg font-mono font-black">
+                    <input
+                      type="number"
+                      disabled={isViewer}
+                      value={npc.hpCurrent ?? ''}
+                      onChange={(e) => updateField('hpCurrent', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                      placeholder="Atual"
+                      className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 font-mono font-black text-base sm:text-lg focus:outline-none ${
+                        npc.hpCurrent <= 0 ? 'text-red-400' : npc.hpCurrent < npc.hpMax ? 'text-yellow-400' : 'text-emerald-400'
+                      } ${isViewer ? 'opacity-90' : ''}`}
+                      title="Vida Atual"
+                    />
+                    <span className="text-slate-500 font-semibold text-sm">/</span>
+                    <input
+                      type="number"
+                      disabled={!isMaster}
+                      value={npc.hpMax ?? ''}
+                      onChange={(e) => updateField('hpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                      placeholder="Máx"
+                      className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title={isMaster ? "Vida Máxima" : "Vida Máxima (apenas Mestre pode editar)"}
+                    />
+                  </div>
+
+                  {!isViewer && (
+                    <div className="flex items-center gap-1 sm:gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => updateField('hpCurrent', (npc.hpCurrent || 0) - 1)}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-300 font-mono font-black text-sm flex items-center justify-center active:scale-95"
+                        title="-1 Vida"
+                      >
+                        -
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateField('hpCurrent', (npc.hpCurrent || 0) + 1)}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-mono font-black text-sm flex items-center justify-center active:scale-95"
+                        title="+1 Vida"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Barra de Vida */}
                 {npc.hpMax > 0 && (
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${hpStat.badgeBg}`}>
-                    {hpStat.label}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-0.5">
-                <div className="flex items-center gap-1.5 text-lg font-mono font-black">
-                  <input
-                    type="number"
-                    disabled={isViewer}
-                    value={npc.hpCurrent ?? ''}
-                    onChange={(e) => updateField('hpCurrent', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                    placeholder="Atual"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 font-mono font-black text-base sm:text-lg focus:outline-none ${
-                      npc.hpCurrent <= 0 ? 'text-red-400' : npc.hpCurrent < npc.hpMax ? 'text-yellow-400' : 'text-emerald-400'
-                    } ${isViewer ? 'opacity-90' : ''}`}
-                    title="Vida Atual"
-                  />
-                  <span className="text-slate-500 font-semibold text-sm">/</span>
-                  <input
-                    type="number"
-                    disabled={!isMaster}
-                    value={npc.hpMax ?? ''}
-                    onChange={(e) => updateField('hpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                    placeholder="Máx"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                    title={isMaster ? "Vida Máxima" : "Vida Máxima (apenas Mestre pode editar)"}
-                  />
-                </div>
-
-                {!isViewer && (
-                  <div className="flex items-center gap-1 sm:gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => updateField('hpCurrent', (npc.hpCurrent || 0) - 1)}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-300 font-mono font-black text-sm flex items-center justify-center active:scale-95"
-                      title="-1 Vida"
-                    >
-                      -
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateField('hpCurrent', (npc.hpCurrent || 0) + 1)}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-mono font-black text-sm flex items-center justify-center active:scale-95"
-                      title="+1 Vida"
-                    >
-                      +
-                    </button>
+                  <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden mt-1">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        npc.hpCurrent <= 0
+                          ? 'bg-red-600'
+                          : npc.hpCurrent < npc.hpMax * 0.33
+                          ? 'bg-rose-500'
+                          : npc.hpCurrent < npc.hpMax
+                          ? 'bg-yellow-500'
+                          : 'bg-emerald-500'
+                      }`}
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
+                      }}
+                    />
                   </div>
                 )}
               </div>
 
-              {/* Barra de Vida */}
-              {npc.hpMax > 0 && (
-                <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden mt-1">
-                  <div
-                    className={`h-full transition-all duration-300 ${
-                      npc.hpCurrent <= 0
-                        ? 'bg-red-600'
-                        : npc.hpCurrent < npc.hpMax * 0.33
-                        ? 'bg-rose-500'
-                        : npc.hpCurrent < npc.hpMax
-                        ? 'bg-yellow-500'
-                        : 'bg-emerald-500'
-                    }`}
-                    style={{
-                      width: `${Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))}%`,
-                    }}
-                  />
+              {/* Pontos de Fadiga */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+                  <div className="flex items-center gap-1.5">
+                    <Zap size={15} className="text-cyan-400" />
+                    <span className="uppercase tracking-wider text-xs font-bold">Pontos de Fadiga</span>
+                  </div>
+                  {npc.fpMax > 0 && (
+                    <span className="text-[10px] font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded">
+                      {fpStat.label}
+                    </span>
+                  )}
                 </div>
-              )}
+
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <div className="flex items-center gap-1.5 text-lg font-mono font-black">
+                    <input
+                      type="number"
+                      disabled={isViewer}
+                      value={npc.fpCurrent ?? ''}
+                      onChange={(e) => updateField('fpCurrent', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                      placeholder="Atual"
+                      className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-cyan-300 font-mono font-black text-base sm:text-lg focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
+                      title="Fadiga Atual"
+                    />
+                    <span className="text-slate-500 font-semibold text-sm">/</span>
+                    <input
+                      type="number"
+                      disabled={!isMaster}
+                      value={npc.fpMax ?? ''}
+                      onChange={(e) => updateField('fpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                      placeholder="Máx"
+                      className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      title={isMaster ? "Fadiga Máxima" : "Fadiga Máxima (apenas Mestre pode editar)"}
+                    />
+                  </div>
+
+                  {!isViewer && (
+                    <div className="flex items-center gap-1 sm:gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => updateField('fpCurrent', (npc.fpCurrent || 0) - 1)}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 font-mono font-black text-sm flex items-center justify-center active:scale-95"
+                        title="-1 Fadiga"
+                      >
+                        -
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateField('fpCurrent', (npc.fpCurrent || 0) + 1)}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-black text-sm flex items-center justify-center active:scale-95"
+                        title="+1 Fadiga"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Barra de Fadiga */}
+                {npc.fpMax > 0 && (
+                  <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden mt-1">
+                    <div
+                      className="h-full bg-cyan-500 transition-all duration-300"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Pontos de Fadiga */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-200">
-                <div className="flex items-center gap-1.5">
-                  <Zap size={15} className="text-cyan-400" />
-                  <span className="uppercase tracking-wider text-xs font-bold">Pontos de Fadiga</span>
-                </div>
-                {npc.fpMax > 0 && (
-                  <span className="text-[10px] font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded">
-                    {fpStat.label}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-0.5">
-                <div className="flex items-center gap-1.5 text-lg font-mono font-black">
-                  <input
-                    type="number"
-                    disabled={isViewer}
-                    value={npc.fpCurrent ?? ''}
-                    onChange={(e) => updateField('fpCurrent', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                    placeholder="Atual"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-cyan-300 font-mono font-black text-base sm:text-lg focus:outline-none ${isViewer ? 'opacity-90' : ''}`}
-                    title="Fadiga Atual"
-                  />
-                  <span className="text-slate-500 font-semibold text-sm">/</span>
-                  <input
-                    type="number"
-                    disabled={!isMaster}
-                    value={npc.fpMax ?? ''}
-                    onChange={(e) => updateField('fpMax', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                    placeholder="Máx"
-                    className={`w-14 sm:w-16 bg-slate-950 border border-slate-750 rounded-lg text-center py-1 sm:py-1.5 text-slate-300 font-mono text-base sm:text-lg font-black focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
-                    title={isMaster ? "Fadiga Máxima" : "Fadiga Máxima (apenas Mestre pode editar)"}
-                  />
-                </div>
-
-                {!isViewer && (
-                  <div className="flex items-center gap-1 sm:gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => updateField('fpCurrent', (npc.fpCurrent || 0) - 1)}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 font-mono font-black text-sm flex items-center justify-center active:scale-95"
-                      title="-1 Fadiga"
-                    >
-                      -
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateField('fpCurrent', (npc.fpCurrent || 0) + 1)}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-black text-sm flex items-center justify-center active:scale-95"
-                      title="+1 Fadiga"
-                    >
-                      +
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Barra de Fadiga */}
-              {npc.fpMax > 0 && (
-                <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden mt-1">
-                  <div
-                    className="h-full bg-cyan-500 transition-all duration-300"
-                    style={{
-                      width: `${Math.max(0, Math.min(100, (npc.fpCurrent / npc.fpMax) * 100))}%`,
-                    }}
-                  />
-                </div>
-              )}
+            {/* Direita (6 cols): Defesas & Ações do Turno (Mesma altura exata de Fadiga) */}
+            <div className="lg:col-span-6 flex flex-col h-full">
+              <TurnActionsTracker
+                tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
+                onChange={(updated) => updateField('turnActions', updated)}
+                npcName={npc.name}
+                isReadOnly={isViewer}
+                className="h-full flex-1 flex flex-col justify-between"
+              />
             </div>
           </div>
 
-          {/* Card: Magias (Magias Ativas & Sob Efeito) - Posicionamento de Meia Largura */}
+          {/* 2. GRID PRINCIPAL: Coluna 1 (Observações, Magias & Defesas) | Coluna 2 (Condições & Atributos) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* COLUNA DA ESQUERDA (6 cols): Observações, Magias, Defesas e Itens Extras */}
+            <div className="lg:col-span-6 space-y-3">
+              {/* Card: Observações Logo Abaixo de Pontos de Vida e Pontos de Fadiga */}
+              {isMaster ? (
+                /* Visão do Mestre: Obs Mestre abaixo de PV (col 1) e Obs Gerais abaixo de Fadiga (col 2) */
+                <div className="grid grid-cols-2 gap-2.5 items-stretch">
+                  {/* Observações Privadas do Mestre (exatamente da largura de Pontos de Vida) */}
+                  <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col h-full">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                      <Lock size={13} className="text-amber-400" />
+                      <span className="truncate">Obs. Privadas do Mestre</span>
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={npc.masterNotes || ''}
+                      onChange={(e) => updateField('masterNotes', e.target.value)}
+                      placeholder="Anotações privadas do mestre..."
+                      className="w-full flex-1 bg-slate-950/90 border border-amber-500/20 rounded-lg p-2 text-xs text-amber-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-y"
+                    />
+                  </div>
+
+                  {/* Observações Gerais (exatamente da largura de Pontos de Fadiga) */}
+                  <div className="bg-blue-950/20 border border-blue-500/30 rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col h-full">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
+                      <Users size={13} className="text-blue-400" />
+                      <span className="truncate">Observações Gerais</span>
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={npc.assistantNotes || ''}
+                      readOnly={isViewer}
+                      onChange={(e) => updateField('assistantNotes', e.target.value)}
+                      placeholder="Anotações do jogador e mestre..."
+                      className="w-full flex-1 bg-slate-950/90 border border-blue-500/20 rounded-lg p-2 text-xs text-blue-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Visão do Jogador: Observações Gerais ocupando todo o espaço abaixo de PV e Fadiga */
+                <div className="w-full bg-blue-950/20 border border-blue-500/30 rounded-xl p-2.5 sm:p-3 space-y-1.5 flex flex-col">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
+                    <Users size={13} className="text-blue-400" />
+                    <span>Observações Gerais</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={npc.assistantNotes || ''}
+                    readOnly={isViewer}
+                    onChange={(e) => updateField('assistantNotes', e.target.value)}
+                    placeholder="Anotações visíveis e editáveis pelo jogador e pelo mestre..."
+                    className="w-full flex-1 bg-slate-950/90 border border-blue-500/20 rounded-lg p-2 text-xs text-blue-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+                  />
+                </div>
+              )}
+
+              {/* Card: Magias (Magias Ativas & Sob Efeito) - Posicionamento de Meia Largura */}
           {renderMagiasSection()}
 
           {/* Card: Defesas Ativas (Trocado para a coluna da esquerda) */}
@@ -2391,17 +2422,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           </div>
         </div>
 
-        {/* COLUNA DA DIREITA (6 cols): Defesas & Ações do Turno, Condições e Atributos GURPS */}
+        {/* COLUNA DA DIREITA (6 cols): Condições e Atributos GURPS */}
         <div className="lg:col-span-6 space-y-3">
-          {/* Card: Controle de Defesas & Ações do Turno (Invertido para o topo, mesma altura da div de Fadiga) */}
-          <TurnActionsTracker
-            tracker={npc.turnActions || DEFAULT_TURN_ACTIONS}
-            onChange={(updated) => updateField('turnActions', updated)}
-            npcName={npc.name}
-            isReadOnly={isViewer}
-          />
-
-          {/* Card: Condições & Estados Críticos (Logo abaixo de Defesas & Ações do Turno) */}
+          {/* Card: Condições & Estados Críticos */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
               <span className="text-xs font-bold text-white uppercase tracking-wider">
