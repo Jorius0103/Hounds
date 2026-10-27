@@ -1769,40 +1769,30 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 )}
 
                 {npc.characterType === 'player' && (
-                  <button
-                    type="button"
-                    disabled={isViewer}
-                    onClick={() => !isViewer && onOpenPlayerPermissions?.(npc.id)}
+                  <div
                     title={
-                      isViewer
-                        ? displayPlayerName
-                          ? `Jogador: ${displayPlayerName} (${isLinkedPlayerOnline ? 'Online' : 'Offline'})`
-                          : 'Nenhum jogador vinculado'
-                        : displayPlayerName
-                        ? `Jogador vinculado: ${displayPlayerName} (${isLinkedPlayerOnline ? 'Online' : 'Offline'}) - Clique para alterar ou desvincular`
-                        : 'Clique para vincular este personagem a uma conta de usuário'
-                    }
-                    className={`flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all ${
                       displayPlayerName
-                        ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-300 hover:bg-emerald-900/80 hover:border-emerald-500 shadow-sm'
-                        : 'bg-slate-950 border-dashed border-amber-700/60 text-amber-300/90 hover:bg-slate-900 hover:border-amber-500 hover:text-amber-300 shadow-sm'
-                    } ${isViewer ? 'cursor-default opacity-85' : 'cursor-pointer active:scale-95'}`}
+                        ? `Jogador vinculado: ${displayPlayerName} (${isLinkedPlayerOnline ? 'Online' : 'Offline'})`
+                        : 'Nenhum jogador vinculado'
+                    }
+                    className={`flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border select-none cursor-default ${
+                      displayPlayerName
+                        ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-300 shadow-sm'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 shadow-sm'
+                    }`}
                   >
-                    <UserCheck size={12} className={displayPlayerName ? 'text-emerald-400' : 'text-amber-400'} />
+                    <UserCheck size={12} className={displayPlayerName ? 'text-emerald-400' : 'text-slate-500'} />
                     <span className="text-slate-400 font-normal">Player:</span>
                     <span className="truncate max-w-[100px] sm:max-w-[130px]">
-                      {displayPlayerName || 'Vincular...'}
+                      {displayPlayerName || 'Nenhum'}
                     </span>
                     {displayPlayerName && isLinkedPlayerOnline && (
                       <span
-                        className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/80 animate-pulse shrink-0"
+                        className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/80 shrink-0"
                         title="Online"
                       />
                     )}
-                    {!isViewer && (
-                      <span className="text-[9px] text-slate-400 font-normal ml-0.5">▾</span>
-                    )}
-                  </button>
+                  </div>
                 )}
 
                 {/* Visibilidade exclusiva para NPCs (Apenas Mestre) */}

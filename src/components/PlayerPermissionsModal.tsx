@@ -9,7 +9,7 @@ import {
   CheckCheck,
   Users,
   Search,
-  Sparkles,
+  UserCheck,
 } from 'lucide-react';
 
 interface PlayerPermissionsModalProps {
@@ -20,8 +20,7 @@ interface PlayerPermissionsModalProps {
   onTogglePermission: (userId: string) => void;
   onSetAllPermissions: (allow: boolean) => void;
   characters?: NPC[];
-  onLinkCharacter?: (userId: string, characterId: string | null) => void;
-  selectedCharacterId?: string | null;
+  onLinkCharacter?: (characterId: string, userId: string | null) => void;
   onlinePlayerNames?: Set<string>;
 }
 
@@ -34,10 +33,11 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
   onSetAllPermissions,
   characters = [],
   onLinkCharacter,
-  selectedCharacterId,
   onlinePlayerNames,
 }) => {
-  const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'characters' | 'permissions'>('characters');
+  const [charSearch, setCharSearch] = useState('');
+  const [permSearch, setPermSearch] = useState('');
 
   // Fecha com a tecla Escape
   useEffect(() => {
@@ -54,26 +54,53 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
   // Filtra apenas os usuários com perfil de jogador (apenas dois perfis no sistema: mestre e jogador)
   const playerUsers = users.filter((u) => u.role === 'jogador');
 
+  // Personagens filtrados pela busca
+  const filteredCharacters = characters.filter((c) => {
+    const q = charSearch.trim().toLowerCase();
+    if (!q) return true;
+    const charName = (c.name || '').toLowerCase();
+    const playerName = (c.playerName || '').toLowerCase();
+    return charName.includes(q) || playerName.includes(q);
+  });
+
+  // Jogadores filtrados pela busca de permissões
   const filteredPlayers = playerUsers.filter((u) => {
-    const q = search.trim().toLowerCase();
+    const q = permSearch.trim().toLowerCase();
     if (!q) return true;
     return (u.name || '').toLowerCase().includes(q);
   });
 
-  // Personagem atualmente focado se aberto a partir de uma ficha
-  const selectedCharacter = selectedCharacterId
-    ? characters.find((c) => c.id === selectedCharacterId) || null
-    : null;
+  // Helper para verificar se um usuário está online
+  const isUserOnline = (userName?: string): boolean => {
+    if (!userName || !onlinePlayerNames) return false;
+    return onlinePlayerNames.has(userName.trim().toLowerCase());
+  };
 
-  const selectedCharUser = selectedCharacter
-    ? users.find(
-        (u) =>
-          (selectedCharacter.userId && selectedCharacter.userId === u.id) ||
-          (!selectedCharacter.userId &&
-            selectedCharacter.playerName &&
-            selectedCharacter.playerName.trim().toLowerCase() === u.name.trim().toLowerCase())
-      ) || null
-    : null;
+  // Helper para encontrar o usuário vinculado a um personagem
+  const getLinkedUserForChar = (char: NPC): UserAccount | null => {
+    if (char.userId) {
+      const u = users.find((x) => x.id === char.userId);
+      if (u) return u;
+    }
+    if (char.playerName && char.playerName.trim()) {
+      const u = users.find(
+        (x) => x.name.trim().toLowerCase() === char.playerName!.trim().toLowerCase()
+      );
+      if (u) return u;
+    }
+    return null;
+  };
+
+  // Helper para encontrar todos os personagens vinculados a um usuário
+  const getCharactersForUser = (user: UserAccount): NPC[] => {
+    return characters.filter((c) => {
+      if (c.userId && c.userId === user.id) return true;
+      if (!c.userId && c.playerName && c.playerName.trim().toLowerCase() === user.name.trim().toLowerCase()) {
+        return true;
+      }
+      return false;
+    });
+  };
 
   return (
     <div
@@ -106,7 +133,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           overflow: 'hidden',
         }}
       >
-        {/* Cabeçalho compacto */}
+        {/* Cabeçalho */}
         <div
           style={{
             flexShrink: 0,
@@ -137,10 +164,10 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             </div>
             <div style={{ minWidth: 0 }}>
               <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
-                Jogadores: Permissões & Vínculo de Personagens
+                Jogadores da Mesa de RPG
               </h2>
               <p style={{ fontSize: '10px', color: '#94a3b8', margin: '1px 0 0 0' }}>
-                Defina permissões (Espectador / Editor) e associe cada jogador ao seu personagem
+                Gerencie o vínculo dos personagens aos usuários e permissões de edição
               </p>
             </div>
           </div>
@@ -165,7 +192,90 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           </button>
         </div>
 
-        {/* Subheader / Busca à esquerda e Botões à direita na mesma linha */}
+        {/* Abas Superiores: Personagens & Vínculos vs Permissões */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: '#020617',
+            borderBottom: '1px solid #1e293b',
+            padding: '0 18px',
+            gap: '8px',
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab('characters')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '9px 12px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              color: activeTab === 'characters' ? '#fbbf24' : '#94a3b8',
+              borderBottom: activeTab === 'characters' ? '2px solid #fbbf24' : '2px solid transparent',
+              background: 'transparent',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <UserCheck size={13} />
+            <span>Personagens & Vínculo</span>
+            <span
+              style={{
+                fontSize: '9px',
+                padding: '1px 5px',
+                borderRadius: '9999px',
+                background: activeTab === 'characters' ? 'rgba(245, 158, 11, 0.2)' : '#1e293b',
+                color: activeTab === 'characters' ? '#fbbf24' : '#64748b',
+              }}
+            >
+              {characters.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('permissions')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '9px 12px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              color: activeTab === 'permissions' ? '#34d399' : '#94a3b8',
+              borderBottom: activeTab === 'permissions' ? '2px solid #34d399' : '2px solid transparent',
+              background: 'transparent',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <ShieldCheck size={13} />
+            <span>Permissões (Espectador / Editor)</span>
+            <span
+              style={{
+                fontSize: '9px',
+                padding: '1px 5px',
+                borderRadius: '9999px',
+                background: activeTab === 'permissions' ? 'rgba(16, 185, 129, 0.2)' : '#1e293b',
+                color: activeTab === 'permissions' ? '#34d399' : '#64748b',
+              }}
+            >
+              {playerUsers.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Subheader / Busca e Ações Rápidas */}
         <div
           style={{
             flexShrink: 0,
@@ -178,8 +288,8 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
           }}
         >
-          {/* Campo de Busca à esquerda */}
-          <div style={{ position: 'relative', width: '220px', maxWidth: '45%' }}>
+          {/* Campo de Busca */}
+          <div style={{ position: 'relative', width: '240px', maxWidth: '50%' }}>
             <Search
               size={12}
               style={{
@@ -192,9 +302,12 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             />
             <input
               type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar jogador..."
+              value={activeTab === 'characters' ? charSearch : permSearch}
+              onChange={(e) => {
+                if (activeTab === 'characters') setCharSearch(e.target.value);
+                else setPermSearch(e.target.value);
+              }}
+              placeholder={activeTab === 'characters' ? 'Buscar personagem...' : 'Buscar jogador...'}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -209,88 +322,62 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             />
           </div>
 
-          {/* Botões Liberar Todos e Bloquear Todos à direita */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={() => onSetAllPermissions(true)}
-              className="hover:opacity-90 active:scale-95 transition-all"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 10px',
-                fontSize: '10px',
-                fontWeight: 'bold',
-                background: 'rgba(6, 78, 59, 0.8)',
-                color: '#6ee7b7',
-                border: '1px solid rgba(6, 95, 70, 0.8)',
-                borderRadius: '5px',
-                cursor: 'pointer',
-              }}
-              title="Conceder permissão de edição a todos os jogadores"
-            >
-              <CheckCheck size={11} />
-              <span>Liberar Todos</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetAllPermissions(false)}
-              className="hover:opacity-90 active:scale-95 transition-all"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 10px',
-                fontSize: '10px',
-                fontWeight: 500,
-                background: '#1e293b',
-                color: '#cbd5e1',
-                border: '1px solid #334155',
-                borderRadius: '5px',
-                cursor: 'pointer',
-              }}
-              title="Colocar todos os jogadores em modo espectador"
-            >
-              <EyeOff size={11} />
-              <span>Bloquear Todos</span>
-            </button>
-          </div>
+          {/* Ações da Aba de Permissões */}
+          {activeTab === 'permissions' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => onSetAllPermissions(true)}
+                className="hover:opacity-90 active:scale-95 transition-all"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  background: 'rgba(6, 78, 59, 0.8)',
+                  color: '#6ee7b7',
+                  border: '1px solid rgba(6, 95, 70, 0.8)',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                }}
+                title="Conceder permissão de edição a todos os jogadores"
+              >
+                <CheckCheck size={11} />
+                <span>Liberar Todos</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetAllPermissions(false)}
+                className="hover:opacity-90 active:scale-95 transition-all"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  background: '#1e293b',
+                  color: '#cbd5e1',
+                  border: '1px solid #334155',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                }}
+                title="Colocar todos os jogadores em modo espectador"
+              >
+                <EyeOff size={11} />
+                <span>Bloquear Todos</span>
+              </button>
+            </div>
+          ) : (
+            <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+              Mostrando <strong style={{ color: '#fbbf24' }}>{filteredCharacters.length}</strong> de {characters.length} personagens
+            </div>
+          )}
         </div>
 
-        {/* Banner contextual quando aberto a partir de uma ficha específica */}
-        {selectedCharacter && (
-          <div
-            style={{
-              padding: '6px 18px',
-              background: 'rgba(245, 158, 11, 0.12)',
-              borderBottom: '1px solid rgba(245, 158, 11, 0.25)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '11px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Sparkles size={13} style={{ color: '#fbbf24' }} />
-              <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>Ficha Selecionada:</span>
-              <span style={{ color: '#ffffff', fontWeight: 'bold' }}>{selectedCharacter.name}</span>
-            </div>
-            <div style={{ fontSize: '10px' }}>
-              {selectedCharUser ? (
-                <span style={{ color: '#cbd5e1' }}>
-                  Vinculado a <strong style={{ color: '#6ee7b7' }}>{selectedCharUser.name}</strong>
-                </span>
-              ) : (
-                <span style={{ color: '#f59e0b', fontWeight: 500 }}>
-                  Selecione o jogador desejado abaixo
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Lista de jogadores: cards verticais compactos */}
+        {/* Conteúdo Principal com Rolagem */}
         <div
           style={{
             flex: '1 1 auto',
@@ -302,388 +389,437 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             gap: '5px',
           }}
         >
-          {playerUsers.length === 0 ? (
-            <div
-              style={{
-                padding: '20px 16px',
-                textAlign: 'center',
-                fontSize: '11px',
-                color: '#94a3b8',
-                background: 'rgba(2, 6, 23, 0.4)',
-                borderRadius: '10px',
-                border: '1px dashed #334155',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
+          {activeTab === 'characters' ? (
+            /* ======================================================= */
+            /* ABA 1: LISTA DE PERSONAGENS & VÍNCULO A USUÁRIOS       */
+            /* ======================================================= */
+            filteredCharacters.length === 0 ? (
               <div
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  background: 'rgba(30, 41, 59, 0.6)',
-                  border: '1px solid #334155',
-                  color: '#64748b',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  fontSize: '11px',
+                  color: '#94a3b8',
+                  background: 'rgba(2, 6, 23, 0.4)',
+                  borderRadius: '10px',
+                  border: '1px dashed #334155',
                 }}
               >
-                <Users size={16} />
+                Nenhum personagem encontrado{charSearch ? ` para "${charSearch}"` : ''}.
               </div>
-              <div style={{ fontWeight: 'bold', color: '#e2e8f0' }}>
-                Nenhum jogador cadastrado no sistema
-              </div>
-              <p style={{ fontSize: '10px', color: '#64748b', maxWidth: '300px', margin: 0, lineHeight: 1.4 }}>
-                Cadastre contas com o perfil <strong>Jogador</strong> na aba{' '}
-                <strong>Usuários</strong> para gerenciar o acesso e vínculos aqui.
-              </p>
-            </div>
-          ) : filteredPlayers.length === 0 ? (
-            <div
-              style={{
-                padding: '16px',
-                textAlign: 'center',
-                fontSize: '11px',
-                color: '#94a3b8',
-                background: 'rgba(2, 6, 23, 0.4)',
-                borderRadius: '10px',
-                border: '1px solid #1e293b',
-              }}
-            >
-              Nenhum jogador encontrado para "{search}".
-            </div>
-          ) : (
-            filteredPlayers.map((u) => {
-              const isAllowed =
-                editorUserIds.includes(u.id) || editorUserIds.includes(u.name);
-              const initials = (u.name || '?').slice(0, 2).toUpperCase();
+            ) : (
+              filteredCharacters.map((char) => {
+                const linkedUser = getLinkedUserForChar(char);
+                const isOnline = linkedUser ? isUserOnline(linkedUser.name) : false;
+                const isEditor = linkedUser
+                  ? editorUserIds.includes(linkedUser.id) || editorUserIds.includes(linkedUser.name)
+                  : false;
 
-              // Personagem atualmente vinculado a este usuário
-              const linkedChar = characters.find(
-                (c) =>
-                  (c.userId && c.userId === u.id) ||
-                  (!c.userId && c.playerName && c.playerName.trim().toLowerCase() === u.name.trim().toLowerCase())
-              );
-
-              const isOnline = onlinePlayerNames
-                ? onlinePlayerNames.has(u.name.trim().toLowerCase())
-                : false;
-
-              const isLinkedToSelected = selectedCharacter && linkedChar?.id === selectedCharacter.id;
-
-              return (
-                <div
-                  key={u.id}
-                  style={{
-                    padding: '5px 10px',
-                    minHeight: '38px',
-                    borderRadius: '8px',
-                    border: isLinkedToSelected
-                      ? '1px solid rgba(16, 185, 129, 0.8)'
-                      : isAllowed
-                      ? '1px solid rgba(16, 185, 129, 0.4)'
-                      : '1px solid #1e293b',
-                    background: isLinkedToSelected
-                      ? 'rgba(6, 78, 59, 0.3)'
-                      : isAllowed
-                      ? 'rgba(6, 78, 59, 0.15)'
-                      : 'rgba(2, 6, 23, 0.6)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '8px',
-                    userSelect: 'none',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {/* Avatar, Nome e Modo */}
+                return (
                   <div
-                    onClick={() => onTogglePermission(u.id)}
+                    key={char.id}
                     style={{
+                      padding: '6px 12px',
+                      minHeight: '40px',
+                      borderRadius: '8px',
+                      border: linkedUser ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid #1e293b',
+                      background: linkedUser ? 'rgba(6, 78, 59, 0.15)' : 'rgba(2, 6, 23, 0.6)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      minWidth: 0,
-                      flex: '1 1 auto',
-                      cursor: 'pointer',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      transition: 'all 0.15s ease',
                     }}
-                    title={
-                      isAllowed
-                        ? `Clique para alternar permissão de ${u.name}`
-                        : `Clique para liberar permissão de edição para ${u.name}`
-                    }
                   >
-                    <div
-                      style={{
-                        position: 'relative',
-                        width: '26px',
-                        height: '26px',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 'bold',
-                        fontSize: '10px',
-                        flexShrink: 0,
-                        background: isAllowed ? 'rgba(16, 185, 129, 0.2)' : '#1e293b',
-                        color: isAllowed ? '#6ee7b7' : '#94a3b8',
-                        border: isAllowed ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #334155',
-                      }}
-                    >
-                      {initials}
-                      {/* Indicador Online/Offline discreto */}
-                      {isOnline && (
+                    {/* Lado Esquerdo: Identificação do Personagem */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 auto' }}>
+                      <div
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '10px',
+                          flexShrink: 0,
+                          background: linkedUser ? 'rgba(16, 185, 129, 0.25)' : 'rgba(30, 41, 59, 0.8)',
+                          color: linkedUser ? '#6ee7b7' : '#94a3b8',
+                          border: linkedUser ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid #334155',
+                        }}
+                      >
+                        {(char.name || '?').slice(0, 2).toUpperCase()}
+                      </div>
+
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span
+                            style={{
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                              color: '#ffffff',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '180px',
+                            }}
+                          >
+                            {char.name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '9px',
+                              padding: '1px 4px',
+                              borderRadius: '4px',
+                              background: '#1e293b',
+                              color: '#94a3b8',
+                              border: '1px solid #334155',
+                            }}
+                          >
+                            {char.characterType === 'npc' ? 'NPC' : 'Personagem'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lado Direito: Seleção do Jogador Vinculado */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
+                        Jogador:
+                      </span>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <select
+                          value={linkedUser?.id || ''}
+                          onChange={(e) => {
+                            const val = e.target.value || null;
+                            onLinkCharacter?.(char.id, val);
+                          }}
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: linkedUser ? 'bold' : 'normal',
+                            padding: '4px 22px 4px 8px',
+                            borderRadius: '6px',
+                            background: linkedUser ? 'rgba(6, 78, 59, 0.5)' : 'rgba(15, 23, 42, 0.9)',
+                            color: linkedUser ? '#6ee7b7' : '#94a3b8',
+                            border: linkedUser ? '1px solid rgba(16, 185, 129, 0.6)' : '1px solid #334155',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            minWidth: '150px',
+                            maxWidth: '180px',
+                            appearance: 'none',
+                            WebkitAppearance: 'none',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          <option value="" style={{ background: '#0f172a', color: '#94a3b8' }}>
+                            — Nenhum (Sem jogador) —
+                          </option>
+                          {playerUsers.map((u) => (
+                            <option key={u.id} value={u.id} style={{ background: '#0f172a', color: '#ffffff' }}>
+                              {u.name}
+                            </option>
+                          ))}
+                        </select>
                         <span
                           style={{
                             position: 'absolute',
-                            bottom: '-1px',
-                            right: '-1px',
-                            width: '7px',
-                            height: '7px',
-                            borderRadius: '9999px',
-                            background: '#10b981',
-                            border: '1px solid #0f172a',
-                            boxShadow: '0 0 4px #10b981',
-                          }}
-                          title="Online"
-                        />
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexWrap: 'nowrap' }}>
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          color: '#ffffff',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: '120px',
-                        }}
-                      >
-                        {u.name}
-                      </span>
-
-                      {/* Texto "Editor" ou "Modo Espectador" */}
-                      {isAllowed ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            color: '#34d399',
-                            background: 'rgba(6, 78, 59, 0.5)',
-                            border: '1px solid rgba(16, 185, 129, 0.35)',
-                            padding: '1px 5px',
-                            borderRadius: '4px',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
+                            right: '7px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            fontSize: '9px',
+                            color: linkedUser ? '#6ee7b7' : '#64748b',
+                            pointerEvents: 'none',
                           }}
                         >
-                          <ShieldCheck size={10} style={{ flexShrink: 0 }} />
-                          Editor
+                          ▾
                         </span>
+                      </div>
+
+                      {/* Status do Jogador Vinculado: Online/Offline e Modo Editor/Espectador */}
+                      {linkedUser ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: '75px' }}>
+                          <span
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '9999px',
+                              background: isOnline ? '#10b981' : '#64748b',
+                              display: 'inline-block',
+                              boxShadow: isOnline ? '0 0 4px #10b981' : 'none',
+                            }}
+                            title={isOnline ? `${linkedUser.name} está Online` : `${linkedUser.name} está Offline`}
+                          />
+                          {isEditor ? (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 'bold',
+                                color: '#34d399',
+                                background: 'rgba(6, 78, 59, 0.6)',
+                                border: '1px solid rgba(16, 185, 129, 0.4)',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              Editor
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 500,
+                                color: '#94a3b8',
+                                background: '#1e293b',
+                                border: '1px solid #334155',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              Espectador
+                            </span>
+                          )}
+                        </div>
                       ) : (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: '#94a3b8',
-                            background: 'rgba(30, 41, 59, 0.5)',
-                            border: '1px solid #334155',
-                            padding: '1px 5px',
-                            borderRadius: '4px',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Eye size={10} style={{ flexShrink: 0 }} />
-                          Espectador
-                        </span>
+                        <div style={{ minWidth: '75px' }} />
                       )}
                     </div>
                   </div>
+                );
+              })
+            )
+          ) : (
+            /* ======================================================= */
+            /* ABA 2: LISTA DE PERMISSÕES DOS JOGADORES (ESPECT/EDITOR) */
+            /* ======================================================= */
+            filteredPlayers.length === 0 ? (
+              <div
+                style={{
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  fontSize: '11px',
+                  color: '#94a3b8',
+                  background: 'rgba(2, 6, 23, 0.4)',
+                  borderRadius: '10px',
+                  border: '1px dashed #334155',
+                }}
+              >
+                Nenhum jogador encontrado{permSearch ? ` para "${permSearch}"` : ''}.
+              </div>
+            ) : (
+              filteredPlayers.map((u) => {
+                const isAllowed =
+                  editorUserIds.includes(u.id) || editorUserIds.includes(u.name);
+                const initials = (u.name || '?').slice(0, 2).toUpperCase();
+                const isOnline = isUserOnline(u.name);
+                const userChars = getCharactersForUser(u);
 
-                  {/* Vínculo de Personagem (Dropdown integrado) */}
+                return (
                   <div
-                    onClick={(e) => e.stopPropagation()}
+                    key={u.id}
                     style={{
+                      padding: '5px 12px',
+                      minHeight: '38px',
+                      borderRadius: '8px',
+                      border: isAllowed ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #1e293b',
+                      background: isAllowed ? 'rgba(6, 78, 59, 0.15)' : 'rgba(2, 6, 23, 0.6)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      flexShrink: 0,
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      userSelect: 'none',
+                      transition: 'all 0.15s ease',
                     }}
                   >
+                    {/* Avatar, Nome e Personagens que ele controla (SEM ONCLICK NA LINHA!) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 auto' }}>
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '10px',
+                          flexShrink: 0,
+                          background: isAllowed ? 'rgba(16, 185, 129, 0.2)' : '#1e293b',
+                          color: isAllowed ? '#6ee7b7' : '#94a3b8',
+                          border: isAllowed ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #334155',
+                        }}
+                      >
+                        {initials}
+                        {isOnline && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              bottom: '-1px',
+                              right: '-1px',
+                              width: '7px',
+                              height: '7px',
+                              borderRadius: '9999px',
+                              background: '#10b981',
+                              border: '1px solid #0f172a',
+                              boxShadow: '0 0 4px #10b981',
+                            }}
+                            title="Online"
+                          />
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            color: '#ffffff',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '120px',
+                          }}
+                        >
+                          {u.name}
+                        </span>
+
+                        {/* Personagens controlados por este usuário */}
+                        {userChars.length > 0 ? (
+                          <span
+                            style={{
+                              fontSize: '9px',
+                              color: '#6ee7b7',
+                              background: 'rgba(6, 78, 59, 0.4)',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={`Personagens de ${u.name}: ${userChars.map((c) => c.name).join(', ')}`}
+                          >
+                            Controla: {userChars.map((c) => c.name).join(', ')}
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: '9px',
+                              color: '#64748b',
+                              fontStyle: 'italic',
+                            }}
+                          >
+                            (Nenhum personagem)
+                          </span>
+                        )}
+
+                        {/* Badge de Modo */}
+                        {isAllowed ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '10px',
+                              fontWeight: 600,
+                              color: '#34d399',
+                              background: 'rgba(6, 78, 59, 0.5)',
+                              border: '1px solid rgba(16, 185, 129, 0.35)',
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <ShieldCheck size={10} style={{ flexShrink: 0 }} />
+                            Modo Editor
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '10px',
+                              fontWeight: 500,
+                              color: '#94a3b8',
+                              background: 'rgba(30, 41, 59, 0.5)',
+                              border: '1px solid #334155',
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Eye size={10} style={{ flexShrink: 0 }} />
+                            Modo Espectador
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Botões Segmentados: Espectador vs Editor (Apenas eles trocam o status) */}
                     <div
                       style={{
-                        position: 'relative',
                         display: 'flex',
                         alignItems: 'center',
+                        gap: '3px',
+                        background: '#020617',
+                        padding: '2px',
+                        borderRadius: '6px',
+                        border: '1px solid #1e293b',
+                        flexShrink: 0,
                       }}
                     >
-                      <select
-                        value={linkedChar?.id || ''}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          onLinkCharacter?.(u.id, e.target.value || null);
-                        }}
-                        title={
-                          linkedChar
-                            ? `Personagem vinculado: ${linkedChar.name}. Clique para trocar ou desvincular.`
-                            : `Nenhum personagem vinculado a ${u.name}. Clique para selecionar.`
-                        }
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: linkedChar ? 'bold' : 'normal',
-                          padding: '3px 20px 3px 8px',
-                          borderRadius: '6px',
-                          background: linkedChar ? 'rgba(6, 78, 59, 0.45)' : 'rgba(15, 23, 42, 0.85)',
-                          color: linkedChar ? '#6ee7b7' : '#94a3b8',
-                          border: linkedChar ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid #334155',
-                          outline: 'none',
-                          cursor: 'pointer',
-                          maxWidth: '160px',
-                          appearance: 'none',
-                          WebkitAppearance: 'none',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        <option value="" style={{ background: '#0f172a', color: '#94a3b8' }}>
-                          — Sem Personagem —
-                        </option>
-                        {characters.map((char) => {
-                          const isCurrent = linkedChar?.id === char.id;
-                          const otherOwner = !isCurrent && users.find((other) =>
-                            other.id !== u.id &&
-                            ((char.userId && char.userId === other.id) ||
-                             (!char.userId && char.playerName && char.playerName.trim().toLowerCase() === other.name.trim().toLowerCase()))
-                          );
-                          return (
-                            <option
-                              key={char.id}
-                              value={char.id}
-                              style={{ background: '#0f172a', color: '#ffffff' }}
-                            >
-                              {char.name} {otherOwner ? `(${otherOwner.name})` : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                      <span
-                        style={{
-                          position: 'absolute',
-                          right: '6px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          fontSize: '9px',
-                          color: linkedChar ? '#6ee7b7' : '#64748b',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        ▾
-                      </span>
-                    </div>
-
-                    {/* Botão rápido para vincular a ficha selecionada */}
-                    {selectedCharacter && linkedChar?.id !== selectedCharacter.id && (
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onLinkCharacter?.(u.id, selectedCharacter.id);
+                        onClick={() => {
+                          if (isAllowed) onTogglePermission(u.id);
                         }}
                         style={{
-                          padding: '3px 7px',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
                           fontSize: '10px',
-                          fontWeight: 'bold',
-                          borderRadius: '5px',
-                          background: 'rgba(245, 158, 11, 0.2)',
-                          color: '#fbbf24',
-                          border: '1px solid rgba(245, 158, 11, 0.4)',
+                          fontWeight: !isAllowed ? 'bold' : 500,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          background: !isAllowed ? '#1e293b' : 'transparent',
+                          color: !isAllowed ? '#f1f5f9' : '#64748b',
+                          border: !isAllowed ? '1px solid #334155' : '1px solid transparent',
                           cursor: 'pointer',
-                          whiteSpace: 'nowrap',
                         }}
-                        title={`Vincular "${selectedCharacter.name}" a ${u.name}`}
                       >
-                        + Vincular
+                        <Eye size={11} />
+                        <span>Espectador</span>
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isAllowed) onTogglePermission(u.id);
+                        }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          fontWeight: isAllowed ? 'bold' : 500,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          background: isAllowed ? '#059669' : 'transparent',
+                          color: isAllowed ? '#ffffff' : '#64748b',
+                          border: isAllowed ? '1px solid #34d399' : '1px solid transparent',
+                          cursor: 'pointer',
+                          boxShadow: isAllowed ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                        }}
+                      >
+                        <Check size={11} strokeWidth={2.5} />
+                        <span>Editor</span>
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Controle Segmentado: Espectador vs Editor */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                      background: '#020617',
-                      padding: '2px',
-                      borderRadius: '6px',
-                      border: '1px solid #1e293b',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isAllowed) onTogglePermission(u.id);
-                      }}
-                      style={{
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        fontWeight: !isAllowed ? 'bold' : 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        background: !isAllowed ? '#1e293b' : 'transparent',
-                        color: !isAllowed ? '#f1f5f9' : '#64748b',
-                        border: !isAllowed ? '1px solid #334155' : '1px solid transparent',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Eye size={11} />
-                      <span>Espectador</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isAllowed) onTogglePermission(u.id);
-                      }}
-                      style={{
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        fontWeight: isAllowed ? 'bold' : 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        background: isAllowed ? '#059669' : 'transparent',
-                        color: isAllowed ? '#ffffff' : '#64748b',
-                        border: isAllowed ? '1px solid #34d399' : '1px solid transparent',
-                        cursor: 'pointer',
-                        boxShadow: isAllowed ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
-                      }}
-                    >
-                      <Check size={11} strokeWidth={2.5} />
-                      <span>Editor</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
         </div>
 
         {/* Rodapé compacto */}

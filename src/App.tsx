@@ -2497,159 +2497,54 @@ export default function App() {
     }
   };
 
-  const handleLinkCharacterToUser = (userId: string, characterId: string | null) => {
-    const targetUser = users.find((u) => u.id === userId);
+  const handleLinkCharacterToUser = (characterId: string, userId: string | null) => {
+    const targetUser = userId ? users.find((u) => u.id === userId) : null;
     const uName = targetUser?.name || '';
     const now = Date.now();
 
     let playersChanged = false;
     const nextPlayers = stateRef.current.players.map((p) => {
-      const wasLinked =
-        p.userId === userId ||
-        (!p.userId && p.playerName && p.playerName.trim().toLowerCase() === uName.trim().toLowerCase());
-
-      if (wasLinked && p.id !== characterId) {
+      if (p.id === characterId) {
         playersChanged = true;
-        return { ...p, userId: undefined, playerName: '', updatedAt: now };
+        return {
+          ...p,
+          userId: userId || undefined,
+          playerName: uName,
+          updatedAt: now,
+        };
       }
-
-      if (characterId && p.id === characterId) {
-        playersChanged = true;
-        return { ...p, userId, playerName: uName, updatedAt: now };
-      }
-
       return p;
     });
 
     if (playersChanged) {
       stateRef.current.players = nextPlayers;
       setPlayers(nextPlayers);
+      try {
+        localStorage.setItem('gurps_combat_master_players_v1', JSON.stringify(nextPlayers));
+      } catch {}
     }
 
     let combatsChanged = false;
-    const nextCombats = stateRef.current.combats.map((c) => {
-      let cChanged = false;
-      const updatedNpcs = (c.npcs || []).map((n) => {
-        const wasLinked =
-          n.userId === userId ||
-          (!n.userId && n.playerName && n.playerName.trim().toLowerCase() === uName.trim().toLowerCase());
-
-        if (wasLinked && n.id !== characterId) {
-          cChanged = true;
-          return { ...n, userId: undefined, playerName: '', updatedAt: now };
+    const nextCombats = stateRef.current.combats.map((cb) => {
+      let npcsChanged = false;
+      const updatedNpcs = (cb.npcs || []).map((nc) => {
+        if (nc.id === characterId) {
+          npcsChanged = true;
+          return {
+            ...nc,
+            userId: userId || undefined,
+            playerName: uName,
+            updatedAt: now,
+          };
         }
-
-        if (characterId && n.id === characterId) {
-          cChanged = true;
-          return { ...n, userId, playerName: uName, updatedAt: now };
-        }
-
-        return n;
+        return nc;
       });
 
-      if (cChanged) {
+      if (npcsChanged) {
         combatsChanged = true;
-        return { ...c, npcs: updatedNpcs };
+        return { ...cb, npcs: updatedNpcs };
       }
-      return c;
-    });
-
-    if (combatsChanged) {
-      stateRef.current.combats = nextCombats;
-      setCombats(nextCombats);
-    }
-
-    if (playersChanged || combatsChanged) {
-      broadcastSync(
-        combatsChanged ? nextCombats : stateRef.current.combats,
-        conditions,
-        users,
-        activeCombatId,
-        playersChanged ? nextPlayers : stateRef.current.players
-      );
-    }
-  };
-
-  const handleSetAllPlayerPermissions = (allow: boolean) => {
-    const playerUsers = users.filter((u) => u.role === 'jogador');
-    const next = allow ? playerUsers.map((u) => u.id) : [];
-    setEditorUserIds(next);
-    try {
-      localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(next));
-      broadcastChannelRef.current?.postMessage({
-        type: 'SYNC_EDITORS',
-        editorUserIds: next,
-        sourceId: onlineSyncService.getClientId(),
-      });
-      onlineSyncService.sendPayloadImmediate({
-        type: 'SYNC_EDITORS',
-        editorUserIds: next,
-        timestamp: Date.now(),
-      });
-    } catch {}
-    if (activeCombat) {
-      const updatedCombat = { ...activeCombat, editorUserIds: next };
-      const updatedCombats = combats.map((c) => (c.id === activeCombat.id ? updatedCombat : c));
-      setCombats(updatedCombats);
-      broadcastSync(updatedCombats);
-    }
-  };
-
-  const handleLinkCharacterToUser = (userId: string, characterId: string | null) => {
-    const targetUser = users.find((u) => u.id === userId);
-    const uName = targetUser?.name || '';
-    const now = Date.now();
-
-    let playersChanged = false;
-    const nextPlayers = stateRef.current.players.map((p) => {
-      const wasLinked =
-        p.userId === userId ||
-        (!p.userId && p.playerName && p.playerName.trim().toLowerCase() === uName.trim().toLowerCase());
-
-      if (wasLinked && p.id !== characterId) {
-        playersChanged = true;
-        return { ...p, userId: undefined, playerName: '', updatedAt: now };
-      }
-
-      if (characterId && p.id === characterId) {
-        playersChanged = true;
-        return { ...p, userId, playerName: uName, updatedAt: now };
-      }
-
-      return p;
-    });
-
-    if (playersChanged) {
-      stateRef.current.players = nextPlayers;
-      setPlayers(nextPlayers);
-    }
-
-    let combatsChanged = false;
-    const nextCombats = stateRef.current.combats.map((c) => {
-      let cChanged = false;
-      const updatedNpcs = (c.npcs || []).map((n) => {
-        const wasLinked =
-          n.userId === userId ||
-          (!n.userId && n.playerName && n.playerName.trim().toLowerCase() === uName.trim().toLowerCase());
-
-        if (wasLinked && n.id !== characterId) {
-          cChanged = true;
-          return { ...n, userId: undefined, playerName: '', updatedAt: now };
-        }
-
-        if (characterId && n.id === characterId) {
-          cChanged = true;
-          return { ...n, userId, playerName: uName, updatedAt: now };
-        }
-
-        return n;
-      });
-
-      if (cChanged) {
-        combatsChanged = true;
-        return { ...c, npcs: updatedNpcs };
-      }
-      return c;
+      return cb;
     });
 
     if (combatsChanged) {
@@ -4272,17 +4167,13 @@ export default function App() {
       {/* Player Permissions Modal (Mestre concede permissão de edição e vincula personagens) */}
       <PlayerPermissionsModal
         isOpen={playerPermsModalOpen}
-        onClose={() => {
-          setPlayerPermsModalOpen(false);
-          setPlayerPermsFocusCharId(null);
-        }}
+        onClose={() => setPlayerPermsModalOpen(false)}
         users={users}
         editorUserIds={effectiveEditorIds}
         onTogglePermission={handleTogglePlayerPermission}
         onSetAllPermissions={handleSetAllPlayerPermissions}
         characters={allPlayerCharacters}
         onLinkCharacter={handleLinkCharacterToUser}
-        selectedCharacterId={playerPermsFocusCharId}
         onlinePlayerNames={onlinePlayerNames}
       />
 
