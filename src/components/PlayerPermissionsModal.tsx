@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserAccount } from '../types/rpg';
+import { UserAccount, NPC } from '../types/rpg';
 import {
   ShieldCheck,
   Eye,
@@ -9,6 +9,7 @@ import {
   CheckCheck,
   Users,
   Search,
+  Sparkles,
 } from 'lucide-react';
 
 interface PlayerPermissionsModalProps {
@@ -18,6 +19,10 @@ interface PlayerPermissionsModalProps {
   editorUserIds: string[];
   onTogglePermission: (userId: string) => void;
   onSetAllPermissions: (allow: boolean) => void;
+  characters?: NPC[];
+  onLinkCharacter?: (userId: string, characterId: string | null) => void;
+  selectedCharacterId?: string | null;
+  onlinePlayerNames?: Set<string>;
 }
 
 export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
@@ -27,6 +32,10 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
   editorUserIds,
   onTogglePermission,
   onSetAllPermissions,
+  characters = [],
+  onLinkCharacter,
+  selectedCharacterId,
+  onlinePlayerNames,
 }) => {
   const [search, setSearch] = useState('');
 
@@ -51,6 +60,21 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
     return (u.name || '').toLowerCase().includes(q);
   });
 
+  // Personagem atualmente focado se aberto a partir de uma ficha
+  const selectedCharacter = selectedCharacterId
+    ? characters.find((c) => c.id === selectedCharacterId) || null
+    : null;
+
+  const selectedCharUser = selectedCharacter
+    ? users.find(
+        (u) =>
+          (selectedCharacter.userId && selectedCharacter.userId === u.id) ||
+          (!selectedCharacter.userId &&
+            selectedCharacter.playerName &&
+            selectedCharacter.playerName.trim().toLowerCase() === u.name.trim().toLowerCase())
+      ) || null
+    : null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
@@ -71,8 +95,8 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           position: 'relative',
           margin: 'auto',
           width: '100%',
-          maxWidth: '580px',
-          maxHeight: '85vh',
+          maxWidth: '680px',
+          maxHeight: '88vh',
           display: 'flex',
           flexDirection: 'column',
           background: '#0f172a',
@@ -113,10 +137,10 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             </div>
             <div style={{ minWidth: 0 }}>
               <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
-                Permissões dos Jogadores na Mesa de RPG
+                Jogadores: Permissões & Vínculo de Personagens
               </h2>
               <p style={{ fontSize: '10px', color: '#94a3b8', margin: '1px 0 0 0' }}>
-                Defina em tempo real quem pode editar fichas e movimentar tokens
+                Defina permissões (Espectador / Editor) e associe cada jogador ao seu personagem
               </p>
             </div>
           </div>
@@ -155,7 +179,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           }}
         >
           {/* Campo de Busca à esquerda */}
-          <div style={{ position: 'relative', width: '200px', maxWidth: '45%' }}>
+          <div style={{ position: 'relative', width: '220px', maxWidth: '45%' }}>
             <Search
               size={12}
               style={{
@@ -234,7 +258,39 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           </div>
         </div>
 
-        {/* Lista de jogadores: cards verticais compactos que cabem 10 itens sem rolagem */}
+        {/* Banner contextual quando aberto a partir de uma ficha específica */}
+        {selectedCharacter && (
+          <div
+            style={{
+              padding: '6px 18px',
+              background: 'rgba(245, 158, 11, 0.12)',
+              borderBottom: '1px solid rgba(245, 158, 11, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '11px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Sparkles size={13} style={{ color: '#fbbf24' }} />
+              <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>Ficha Selecionada:</span>
+              <span style={{ color: '#ffffff', fontWeight: 'bold' }}>{selectedCharacter.name}</span>
+            </div>
+            <div style={{ fontSize: '10px' }}>
+              {selectedCharUser ? (
+                <span style={{ color: '#cbd5e1' }}>
+                  Vinculado a <strong style={{ color: '#6ee7b7' }}>{selectedCharUser.name}</strong>
+                </span>
+              ) : (
+                <span style={{ color: '#f59e0b', fontWeight: 500 }}>
+                  Selecione o jogador desejado abaixo
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Lista de jogadores: cards verticais compactos */}
         <div
           style={{
             flex: '1 1 auto',
@@ -243,7 +299,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             padding: '8px 18px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
+            gap: '5px',
           }}
         >
           {playerUsers.length === 0 ? (
@@ -282,7 +338,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               </div>
               <p style={{ fontSize: '10px', color: '#64748b', maxWidth: '300px', margin: 0, lineHeight: 1.4 }}>
                 Cadastre contas com o perfil <strong>Jogador</strong> na aba{' '}
-                <strong>Usuários</strong> do Hub para gerenciar o acesso aqui.
+                <strong>Usuários</strong> para gerenciar o acesso e vínculos aqui.
               </p>
             </div>
           ) : filteredPlayers.length === 0 ? (
@@ -305,42 +361,64 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                 editorUserIds.includes(u.id) || editorUserIds.includes(u.name);
               const initials = (u.name || '?').slice(0, 2).toUpperCase();
 
+              // Personagem atualmente vinculado a este usuário
+              const linkedChar = characters.find(
+                (c) =>
+                  (c.userId && c.userId === u.id) ||
+                  (!c.userId && c.playerName && c.playerName.trim().toLowerCase() === u.name.trim().toLowerCase())
+              );
+
+              const isOnline = onlinePlayerNames
+                ? onlinePlayerNames.has(u.name.trim().toLowerCase())
+                : false;
+
+              const isLinkedToSelected = selectedCharacter && linkedChar?.id === selectedCharacter.id;
+
               return (
                 <div
                   key={u.id}
-                  onClick={() => onTogglePermission(u.id)}
                   style={{
-                    padding: '4px 10px',
-                    minHeight: '34px',
+                    padding: '5px 10px',
+                    minHeight: '38px',
                     borderRadius: '8px',
-                    border: isAllowed ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #1e293b',
-                    background: isAllowed ? 'rgba(6, 78, 59, 0.2)' : 'rgba(2, 6, 23, 0.6)',
+                    border: isLinkedToSelected
+                      ? '1px solid rgba(16, 185, 129, 0.8)'
+                      : isAllowed
+                      ? '1px solid rgba(16, 185, 129, 0.4)'
+                      : '1px solid #1e293b',
+                    background: isLinkedToSelected
+                      ? 'rgba(6, 78, 59, 0.3)'
+                      : isAllowed
+                      ? 'rgba(6, 78, 59, 0.15)'
+                      : 'rgba(2, 6, 23, 0.6)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '10px',
-                    cursor: 'pointer',
+                    gap: '8px',
                     userSelect: 'none',
                     transition: 'all 0.15s ease',
                   }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.preventDefault();
-                      onTogglePermission(u.id);
-                    }
-                  }}
-                  title={
-                    isAllowed
-                      ? `Clique para retirar permissão de edição de ${u.name}`
-                      : `Clique para dar permissão de edição para ${u.name}`
-                  }
                 >
-                  {/* Avatar, Nome e Texto de Permissão ao lado do Nome */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 auto' }}>
+                  {/* Avatar, Nome e Modo */}
+                  <div
+                    onClick={() => onTogglePermission(u.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      minWidth: 0,
+                      flex: '1 1 auto',
+                      cursor: 'pointer',
+                    }}
+                    title={
+                      isAllowed
+                        ? `Clique para alternar permissão de ${u.name}`
+                        : `Clique para liberar permissão de edição para ${u.name}`
+                    }
+                  >
                     <div
                       style={{
+                        position: 'relative',
                         width: '26px',
                         height: '26px',
                         borderRadius: '6px',
@@ -356,6 +434,23 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                       }}
                     >
                       {initials}
+                      {/* Indicador Online/Offline discreto */}
+                      {isOnline && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            bottom: '-1px',
+                            right: '-1px',
+                            width: '7px',
+                            height: '7px',
+                            borderRadius: '9999px',
+                            background: '#10b981',
+                            border: '1px solid #0f172a',
+                            boxShadow: '0 0 4px #10b981',
+                          }}
+                          title="Online"
+                        />
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexWrap: 'nowrap' }}>
@@ -367,13 +462,13 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
-                          maxWidth: '160px',
+                          maxWidth: '120px',
                         }}
                       >
                         {u.name}
                       </span>
 
-                      {/* Texto "Editor Liberado" ou "Modo Espectador" ao lado do nome */}
+                      {/* Texto "Editor" ou "Modo Espectador" */}
                       {isAllowed ? (
                         <span
                           style={{
@@ -385,14 +480,14 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                             color: '#34d399',
                             background: 'rgba(6, 78, 59, 0.5)',
                             border: '1px solid rgba(16, 185, 129, 0.35)',
-                            padding: '1px 6px',
+                            padding: '1px 5px',
                             borderRadius: '4px',
                             whiteSpace: 'nowrap',
                             flexShrink: 0,
                           }}
                         >
                           <ShieldCheck size={10} style={{ flexShrink: 0 }} />
-                          Editor Liberado
+                          Editor
                         </span>
                       ) : (
                         <span
@@ -405,17 +500,123 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                             color: '#94a3b8',
                             background: 'rgba(30, 41, 59, 0.5)',
                             border: '1px solid #334155',
-                            padding: '1px 6px',
+                            padding: '1px 5px',
                             borderRadius: '4px',
                             whiteSpace: 'nowrap',
                             flexShrink: 0,
                           }}
                         >
                           <Eye size={10} style={{ flexShrink: 0 }} />
-                          Modo Espectador
+                          Espectador
                         </span>
                       )}
                     </div>
+                  </div>
+
+                  {/* Vínculo de Personagem (Dropdown integrado) */}
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <select
+                        value={linkedChar?.id || ''}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onLinkCharacter?.(u.id, e.target.value || null);
+                        }}
+                        title={
+                          linkedChar
+                            ? `Personagem vinculado: ${linkedChar.name}. Clique para trocar ou desvincular.`
+                            : `Nenhum personagem vinculado a ${u.name}. Clique para selecionar.`
+                        }
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: linkedChar ? 'bold' : 'normal',
+                          padding: '3px 20px 3px 8px',
+                          borderRadius: '6px',
+                          background: linkedChar ? 'rgba(6, 78, 59, 0.45)' : 'rgba(15, 23, 42, 0.85)',
+                          color: linkedChar ? '#6ee7b7' : '#94a3b8',
+                          border: linkedChar ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid #334155',
+                          outline: 'none',
+                          cursor: 'pointer',
+                          maxWidth: '160px',
+                          appearance: 'none',
+                          WebkitAppearance: 'none',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        <option value="" style={{ background: '#0f172a', color: '#94a3b8' }}>
+                          — Sem Personagem —
+                        </option>
+                        {characters.map((char) => {
+                          const isCurrent = linkedChar?.id === char.id;
+                          const otherOwner = !isCurrent && users.find((other) =>
+                            other.id !== u.id &&
+                            ((char.userId && char.userId === other.id) ||
+                             (!char.userId && char.playerName && char.playerName.trim().toLowerCase() === other.name.trim().toLowerCase()))
+                          );
+                          return (
+                            <option
+                              key={char.id}
+                              value={char.id}
+                              style={{ background: '#0f172a', color: '#ffffff' }}
+                            >
+                              {char.name} {otherOwner ? `(${otherOwner.name})` : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <span
+                        style={{
+                          position: 'absolute',
+                          right: '6px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          fontSize: '9px',
+                          color: linkedChar ? '#6ee7b7' : '#64748b',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        ▾
+                      </span>
+                    </div>
+
+                    {/* Botão rápido para vincular a ficha selecionada */}
+                    {selectedCharacter && linkedChar?.id !== selectedCharacter.id && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onLinkCharacter?.(u.id, selectedCharacter.id);
+                        }}
+                        style={{
+                          padding: '3px 7px',
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          borderRadius: '5px',
+                          background: 'rgba(245, 158, 11, 0.2)',
+                          color: '#fbbf24',
+                          border: '1px solid rgba(245, 158, 11, 0.4)',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={`Vincular "${selectedCharacter.name}" a ${u.name}`}
+                      >
+                        + Vincular
+                      </button>
+                    )}
                   </div>
 
                   {/* Controle Segmentado: Espectador vs Editor */}

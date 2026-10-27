@@ -33,6 +33,7 @@ interface CombatHomeScreenProps {
   currentRound?: number;
   filterEmptyMessage?: string;
   onlinePlayerNames?: Set<string>;
+  users?: UserAccount[];
 }
 
 function getItemIcon(name: string, category?: string) {
@@ -62,6 +63,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
   currentRound = 0,
   filterEmptyMessage = 'Nenhum personagem ou NPC encontrado neste filtro.',
   onlinePlayerNames,
+  users = [],
 }) => {
   const [, setPresenceTick] = useState<number>(0);
   useEffect(() => {
@@ -74,9 +76,22 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
     };
   }, []);
 
-  const isPlayerOnline = (playerName?: string): boolean => {
-    if (!playerName || !playerName.trim()) return false;
-    const pName = playerName.trim().toLowerCase();
+  const getPlayerDisplayName = (npc: NPC) => {
+    if (npc.userId && users) {
+      const u = users.find((x) => x.id === npc.userId);
+      if (u) return u.name;
+    }
+    return npc.playerName || '';
+  };
+
+  const isPlayerOnline = (playerName?: string, userId?: string): boolean => {
+    let resolvedName = playerName;
+    if (userId && users) {
+      const u = users.find((x) => x.id === userId);
+      if (u) resolvedName = u.name;
+    }
+    if (!resolvedName || !resolvedName.trim()) return false;
+    const pName = resolvedName.trim().toLowerCase();
     const now = Date.now();
     if (onlinePlayerNames && onlinePlayerNames.has(pName)) return true;
     try {
@@ -368,16 +383,16 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       >
                         {npc.name || '(Sem Nome)'}
                       </h3>
-                      {isPlayerChar && npc.playerName && (
+                      {isPlayerChar && (getPlayerDisplayName(npc) || npc.playerName) && (
                         <span
-                          title={`Jogador: ${npc.playerName} (${isPlayerOnline(npc.playerName) ? 'Online' : 'Offline'})`}
+                          title={`Jogador: ${getPlayerDisplayName(npc)} (${isPlayerOnline(npc.playerName, npc.userId) ? 'Online' : 'Offline'})`}
                           className={`text-[10px] font-bold uppercase tracking-tighter shrink-0 px-1.5 py-0.5 rounded border ${
-                            isPlayerOnline(npc.playerName)
+                            isPlayerOnline(npc.playerName, npc.userId)
                               ? 'text-emerald-400 bg-emerald-950/80 border-emerald-800/60'
                               : 'text-slate-400 bg-slate-800/80 border-slate-700/60'
                           }`}
                         >
-                          {npc.playerName}
+                          {getPlayerDisplayName(npc)}
                         </span>
                       )}
                     </div>

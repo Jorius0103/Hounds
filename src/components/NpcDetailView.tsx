@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, MesaRole, ArmorKit, ConditionDefinition, ActiveSpell, AffectedSpell } from '../types/rpg';
+import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, MesaRole, ArmorKit, ConditionDefinition, ActiveSpell, AffectedSpell, UserAccount } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import {
   getHpStatus,
@@ -92,6 +92,10 @@ interface NpcDetailViewProps {
   hasEditPermission?: boolean;
   currentRound?: number;
   conditions?: ConditionDefinition[];
+  users?: UserAccount[];
+  onlinePlayerNames?: Set<string>;
+  allCharacters?: NPC[];
+  onOpenPlayerPermissions?: (characterId?: string) => void;
 }
 
 export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
@@ -110,12 +114,84 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   hasEditPermission = false,
   currentRound = 0,
   conditions = [],
+  users = [],
+  onlinePlayerNames,
+  allCharacters = [],
+  onOpenPlayerPermissions,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits'>('overview');
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [infoWeapon, setInfoWeapon] = useState<Weapon | null>(null);
   const [catalogWeapons, setCatalogWeapons] = useState<any[]>([]);
+
+  const [isPlayerLinkModalOpen, setIsPlayerLinkModalOpen] = useState(false);
+
+  const linkedUser = useMemo(() => {
+
+    if (npc.userId) {
+
+      const u = users.find((x) => x.id === npc.userId);
+
+      if (u) return u;
+
+    }
+
+    if (npc.playerName && npc.playerName.trim()) {
+
+      const lower = npc.playerName.trim().toLowerCase();
+
+      return users.find((x) => x.name.trim().toLowerCase() === lower) || null;
+
+    }
+
+    return null;
+
+  }, [users, npc.userId, npc.playerName]);
+
+  const displayPlayerName = linkedUser?.name || npc.playerName || '';
+
+  const isLinkedPlayerOnline = displayPlayerName
+
+    ? Boolean(onlinePlayerNames && onlinePlayerNames.has(displayPlayerName.trim().toLowerCase()))
+
+    : false;
+
+  const handleSelectLinkedUser = (selectedUser: UserAccount | null) => {
+
+    if (isViewer) return;
+
+    if (selectedUser) {
+
+      onUpdateNpc({
+
+        ...npc,
+
+        userId: selectedUser.id,
+
+        playerName: selectedUser.name,
+
+        updatedAt: Date.now(),
+
+      });
+
+    } else {
+
+      onUpdateNpc({
+
+        ...npc,
+
+        userId: undefined,
+
+        playerName: '',
+
+        updatedAt: Date.now(),
+
+      });
+
+    }
+
+  };
 
   useEffect(() => {
     loadWeaponsDatabase().then((data) => {
@@ -568,8 +644,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     });
     return Math.max(2, ...counts);
   }, [currentLocations]);
-
-
 
   // Handlers para a aba Partes do Corpo (Dano Tomado e Regras Adicionais)
   const [editingBodyPartKey, setEditingBodyPartKey] = useState<string | null>(null);
@@ -1695,17 +1769,40 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 )}
 
                 {npc.characterType === 'player' && (
-                  <div className="flex items-center gap-1 text-[11px] text-emerald-300 bg-slate-950 px-2 py-0.5 rounded-lg border border-emerald-900/50">
+                  <button
+                    type="button"
+                    disabled={isViewer}
+                    onClick={() => !isViewer && onOpenPlayerPermissions?.(npc.id)}
+                    title={
+                      isViewer
+                        ? displayPlayerName
+                          ? `Jogador: ${displayPlayerName} (${isLinkedPlayerOnline ? 'Online' : 'Offline'})`
+                          : 'Nenhum jogador vinculado'
+                        : displayPlayerName
+                        ? `Jogador vinculado: ${displayPlayerName} (${isLinkedPlayerOnline ? 'Online' : 'Offline'}) - Clique para alterar ou desvincular`
+                        : 'Clique para vincular este personagem a uma conta de usuário'
+                    }
+                    className={`flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition-all ${
+                      displayPlayerName
+                        ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-300 hover:bg-emerald-900/80 hover:border-emerald-500 shadow-sm'
+                        : 'bg-slate-950 border-dashed border-amber-700/60 text-amber-300/90 hover:bg-slate-900 hover:border-amber-500 hover:text-amber-300 shadow-sm'
+                    } ${isViewer ? 'cursor-default opacity-85' : 'cursor-pointer active:scale-95'}`}
+                  >
+                    <UserCheck size={12} className={displayPlayerName ? 'text-emerald-400' : 'text-amber-400'} />
                     <span className="text-slate-400 font-normal">Player:</span>
-                    <input
-                      type="text"
-                      value={npc.playerName || ''}
-                      readOnly={isViewer}
-                      onChange={(e) => updateField('playerName', e.target.value)}
-                      placeholder="Nome real..."
-                      className={`bg-transparent text-emerald-300 font-semibold w-20 focus:outline-none placeholder-slate-600 ${isViewer ? 'cursor-default' : ''}`}
-                    />
-                  </div>
+                    <span className="truncate max-w-[100px] sm:max-w-[130px]">
+                      {displayPlayerName || 'Vincular...'}
+                    </span>
+                    {displayPlayerName && isLinkedPlayerOnline && (
+                      <span
+                        className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/80 animate-pulse shrink-0"
+                        title="Online"
+                      />
+                    )}
+                    {!isViewer && (
+                      <span className="text-[9px] text-slate-400 font-normal ml-0.5">▾</span>
+                    )}
+                  </button>
                 )}
 
                 {/* Visibilidade exclusiva para NPCs (Apenas Mestre) */}
@@ -4218,6 +4315,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           </div>
         </div>
       )}
+
     </div>
   );
 };

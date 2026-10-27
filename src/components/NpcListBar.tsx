@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NPC, MesaRole } from '../types/rpg';
+import { NPC, MesaRole, UserAccount } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { CombatHomeScreen } from './CombatHomeScreen';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
@@ -20,6 +20,8 @@ interface NpcListBarProps {
   isHomeScreen?: boolean;
   customMasterOrder?: string[];
   onSaveMasterOrder?: (orderIds: string[]) => void;
+  onlinePlayerNames?: Set<string>;
+  users?: UserAccount[];
 }
 
 export const NpcListBar: React.FC<NpcListBarProps> = ({
@@ -37,6 +39,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   customMasterOrder,
   onSaveMasterOrder,
   onlinePlayerNames,
+  users = [],
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'players' | 'npcs' | 'alive' | 'dead'>('all');
   const [sortMode, setSortMode] = useState<'speed' | 'alpha' | 'mestre'>(() => {
@@ -71,9 +74,22 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
     };
   }, []);
 
-  const isPlayerOnline = (playerName?: string): boolean => {
-    if (!playerName || !playerName.trim()) return false;
-    const pName = playerName.trim().toLowerCase();
+  const getPlayerDisplayName = (npc: NPC) => {
+    if (npc.userId && users) {
+      const u = users.find((x) => x.id === npc.userId);
+      if (u) return u.name;
+    }
+    return npc.playerName || 'PC';
+  };
+
+  const isPlayerOnline = (playerName?: string, userId?: string): boolean => {
+    let resolvedName = playerName;
+    if (userId && users) {
+      const u = users.find((x) => x.id === userId);
+      if (u) resolvedName = u.name;
+    }
+    if (!resolvedName || !resolvedName.trim()) return false;
+    const pName = resolvedName.trim().toLowerCase();
     const now = Date.now();
     if (onlinePlayerNames && onlinePlayerNames.has(pName)) return true;
     try {
@@ -510,6 +526,8 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             currentUserRole={currentUserRole}
             currentRound={currentRound}
             filterType={filterType}
+            users={users}
+            onlinePlayerNames={onlinePlayerNames}
           />
         ) : (
         <div className="flex-1 min-w-0 w-full overflow-x-auto py-0.5 scrollbar-thin">
@@ -676,14 +694,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
                           {isPlayerChar ? (
                             <span
-                              title={`Jogador: ${npc.playerName || 'PC'} (${isPlayerOnline(npc.playerName) ? 'Online' : 'Offline'})`}
+                              title={`Jogador: ${getPlayerDisplayName(npc)} (${isPlayerOnline(npc.playerName, npc.userId) ? 'Online' : 'Offline'})`}
                               className={`text-[9px] font-bold uppercase tracking-tighter shrink-0 px-1 rounded border ${
-                                isPlayerOnline(npc.playerName)
+                                isPlayerOnline(npc.playerName, npc.userId)
                                   ? 'text-emerald-400 bg-emerald-950/80 border-emerald-800/60'
                                   : 'text-slate-400 bg-slate-800/80 border-slate-700/60'
                               }`}
                             >
-                              {npc.playerName || 'PC'}
+                              {getPlayerDisplayName(npc)}
                             </span>
                           ) : (
                             <div className="flex items-center gap-1">

@@ -196,7 +196,8 @@ export interface NPC {
   name: string;
   title: string;
   characterType?: 'player' | 'npc'; // 'player' = Jogador, 'npc' = NPC / Monstro / Inimigo
-  playerName?: string; // Nome do jogador que controla
+  userId?: string; // ID da conta do usuário vinculado (UserAccount.id)
+  playerName?: string; // Nome do jogador que controla (mantido sincronizado para compatibilidade)
   weight: string; // Peso (começa vazio para input)
   height: string; // Altura (começa vazio para input)
   avatar: string;

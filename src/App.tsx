@@ -566,6 +566,12 @@ export default function App() {
   const [systemLogModalOpen, setSystemLogModalOpen] = useState(false);
   const [systemLogsCount, setSystemLogsCount] = useState(0);
   const [playerPermsModalOpen, setPlayerPermsModalOpen] = useState(false);
+  const [playerPermsFocusCharId, setPlayerPermsFocusCharId] = useState<string | null>(null);
+
+  const handleOpenPlayerPermissions = (characterId?: string) => {
+    setPlayerPermsFocusCharId(characterId || null);
+    setPlayerPermsModalOpen(true);
+  };
   const [combatPlayersModalOpen, setCombatPlayersModalOpen] = useState(false);
   const [activeDiceRoll, setActiveDiceRoll] = useState<DiceRollResult | null>(null);
   const [hideGmRolls, setHideGmRolls] = useState<boolean>(() => {
@@ -1119,7 +1125,7 @@ export default function App() {
           } catch (e) {}
           const newActiveCombat = nextCombats.find((c) => c.id === payload.activeCombatId);
           if (newActiveCombat) {
-            const myChar = newActiveCombat.npcs?.find((n) => currentUser && (n.name === currentUser.name || n.ownerId === currentUser.id));
+            const myChar = newActiveCombat.npcs?.find((n) => currentUser && (n.userId === currentUser.id || n.ownerId === currentUser.id || n.name === currentUser.name || (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())));
             if (myChar) {
               setSelectedNpcId(myChar.id);
             } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
@@ -2491,6 +2497,79 @@ export default function App() {
     }
   };
 
+  const handleLinkCharacterToUser = (userId: string, characterId: string | null) => {
+    const targetUser = users.find((u) => u.id === userId);
+    const uName = targetUser?.name || '';
+    const now = Date.now();
+
+    let playersChanged = false;
+    const nextPlayers = stateRef.current.players.map((p) => {
+      const wasLinked =
+        p.userId === userId ||
+        (!p.userId && p.playerName && p.playerName.trim().toLowerCase() === uName.trim().toLowerCase());
+
+      if (wasLinked && p.id !== characterId) {
+        playersChanged = true;
+        return { ...p, userId: undefined, playerName: '', updatedAt: now };
+      }
+
+      if (characterId && p.id === characterId) {
+        playersChanged = true;
+        return { ...p, userId, playerName: uName, updatedAt: now };
+      }
+
+      return p;
+    });
+
+    if (playersChanged) {
+      stateRef.current.players = nextPlayers;
+      setPlayers(nextPlayers);
+    }
+
+    let combatsChanged = false;
+    const nextCombats = stateRef.current.combats.map((c) => {
+      let cChanged = false;
+      const updatedNpcs = (c.npcs || []).map((n) => {
+        const wasLinked =
+          n.userId === userId ||
+          (!n.userId && n.playerName && n.playerName.trim().toLowerCase() === uName.trim().toLowerCase());
+
+        if (wasLinked && n.id !== characterId) {
+          cChanged = true;
+          return { ...n, userId: undefined, playerName: '', updatedAt: now };
+        }
+
+        if (characterId && n.id === characterId) {
+          cChanged = true;
+          return { ...n, userId, playerName: uName, updatedAt: now };
+        }
+
+        return n;
+      });
+
+      if (cChanged) {
+        combatsChanged = true;
+        return { ...c, npcs: updatedNpcs };
+      }
+      return c;
+    });
+
+    if (combatsChanged) {
+      stateRef.current.combats = nextCombats;
+      setCombats(nextCombats);
+    }
+
+    if (playersChanged || combatsChanged) {
+      broadcastSync(
+        combatsChanged ? nextCombats : stateRef.current.combats,
+        conditions,
+        users,
+        activeCombatId,
+        playersChanged ? nextPlayers : stateRef.current.players
+      );
+    }
+  };
+
   const handleSetAllPlayerPermissions = (allow: boolean) => {
     const playerUsers = users.filter((u) => u.role === 'jogador');
     const next = allow ? playerUsers.map((u) => u.id) : [];
@@ -2513,6 +2592,79 @@ export default function App() {
       const updatedCombats = combats.map((c) => (c.id === activeCombat.id ? updatedCombat : c));
       setCombats(updatedCombats);
       broadcastSync(updatedCombats);
+    }
+  };
+
+  const handleLinkCharacterToUser = (userId: string, characterId: string | null) => {
+    const targetUser = users.find((u) => u.id === userId);
+    const uName = targetUser?.name || '';
+    const now = Date.now();
+
+    let playersChanged = false;
+    const nextPlayers = stateRef.current.players.map((p) => {
+      const wasLinked =
+        p.userId === userId ||
+        (!p.userId && p.playerName && p.playerName.trim().toLowerCase() === uName.trim().toLowerCase());
+
+      if (wasLinked && p.id !== characterId) {
+        playersChanged = true;
+        return { ...p, userId: undefined, playerName: '', updatedAt: now };
+      }
+
+      if (characterId && p.id === characterId) {
+        playersChanged = true;
+        return { ...p, userId, playerName: uName, updatedAt: now };
+      }
+
+      return p;
+    });
+
+    if (playersChanged) {
+      stateRef.current.players = nextPlayers;
+      setPlayers(nextPlayers);
+    }
+
+    let combatsChanged = false;
+    const nextCombats = stateRef.current.combats.map((c) => {
+      let cChanged = false;
+      const updatedNpcs = (c.npcs || []).map((n) => {
+        const wasLinked =
+          n.userId === userId ||
+          (!n.userId && n.playerName && n.playerName.trim().toLowerCase() === uName.trim().toLowerCase());
+
+        if (wasLinked && n.id !== characterId) {
+          cChanged = true;
+          return { ...n, userId: undefined, playerName: '', updatedAt: now };
+        }
+
+        if (characterId && n.id === characterId) {
+          cChanged = true;
+          return { ...n, userId, playerName: uName, updatedAt: now };
+        }
+
+        return n;
+      });
+
+      if (cChanged) {
+        combatsChanged = true;
+        return { ...c, npcs: updatedNpcs };
+      }
+      return c;
+    });
+
+    if (combatsChanged) {
+      stateRef.current.combats = nextCombats;
+      setCombats(nextCombats);
+    }
+
+    if (playersChanged || combatsChanged) {
+      broadcastSync(
+        combatsChanged ? nextCombats : stateRef.current.combats,
+        conditions,
+        users,
+        activeCombatId,
+        playersChanged ? nextPlayers : stateRef.current.players
+      );
     }
   };
 
@@ -2967,12 +3119,13 @@ export default function App() {
 
     if (!isMestreUser) {
       // Jogador: vincula estritamente ao personagem do usuário logado
+      const curId = currentUser?.id;
       char =
         allCharacters.find(
-          (c: NPC) => c.playerName && c.playerName.trim().toLowerCase() === curName
+          (c: NPC) => (curId && c.userId === curId) || (c.playerName && c.playerName.trim().toLowerCase() === curName)
         ) ||
         players.find(
-          (p: NPC) => p.playerName && p.playerName.trim().toLowerCase() === curName
+          (p: NPC) => (curId && p.userId === curId) || (p.playerName && p.playerName.trim().toLowerCase() === curName)
         ) ||
         null;
       charName = char?.name || currentUser?.name || 'Jogador';
@@ -3838,7 +3991,7 @@ export default function App() {
             setIsHomeScreen(false);
           }
         }}
-        onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
+        onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
         editorCount={effectiveEditorIds.length}
         canEditCurrent={canEditCurrent}
         isHomeScreen={isHomeScreen && activeViewMode === 'sheets'}
@@ -3880,6 +4033,7 @@ export default function App() {
         customMasterOrder={activeCombat?.customOrder || localMasterOrder}
         onSaveMasterOrder={handleSaveMasterOrder}
         onlinePlayerNames={onlinePlayerNames}
+        users={users}
       />
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}
@@ -3901,7 +4055,7 @@ export default function App() {
                 setActiveViewMode('split');
               }}
               hasEditPermission={canEditCurrent}
-              onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
+              onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
               editorCount={effectiveEditorIds.length}
               users={users}
               editorUserIds={effectiveEditorIds}
@@ -3923,7 +4077,7 @@ export default function App() {
                 currentUserRole={currentUser?.role || 'mestre'}
                 onOpenFullNpcSheet={(npcId) => setSelectedNpcId(npcId)}
                 hasEditPermission={canEditCurrent}
-                onOpenPlayerPermissions={() => setPlayerPermsModalOpen(true)}
+                onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
                 editorCount={effectiveEditorIds.length}
                 users={users}
                 editorUserIds={effectiveEditorIds}
@@ -3951,6 +4105,10 @@ export default function App() {
                   hasEditPermission={canEditCurrent}
                   currentRound={effectiveRound}
                   conditions={conditions}
+                  users={users}
+                  onlinePlayerNames={onlinePlayerNames}
+                  allCharacters={allCharacters}
+                  onOpenPlayerPermissions={handleOpenPlayerPermissions}
                 />
               ) : (
                 <div className="py-16 text-center text-xs text-slate-400 bg-slate-900/60 rounded-2xl border border-slate-800 p-8">
@@ -4021,6 +4179,10 @@ export default function App() {
                   hasEditPermission={canEditCurrent}
                   currentRound={effectiveRound}
                   conditions={conditions}
+                  users={users}
+                  onlinePlayerNames={onlinePlayerNames}
+                  allCharacters={allCharacters}
+                  onOpenPlayerPermissions={handleOpenPlayerPermissions}
                 />
               ) : (
                 <div className="py-12 text-center text-xs text-slate-400">
@@ -4107,14 +4269,21 @@ export default function App() {
         />
       )}
 
-      {/* Player Permissions Modal (Mestre concede permissão de edição) */}
+      {/* Player Permissions Modal (Mestre concede permissão de edição e vincula personagens) */}
       <PlayerPermissionsModal
         isOpen={playerPermsModalOpen}
-        onClose={() => setPlayerPermsModalOpen(false)}
+        onClose={() => {
+          setPlayerPermsModalOpen(false);
+          setPlayerPermsFocusCharId(null);
+        }}
         users={users}
         editorUserIds={effectiveEditorIds}
         onTogglePermission={handleTogglePlayerPermission}
         onSetAllPermissions={handleSetAllPlayerPermissions}
+        characters={allPlayerCharacters}
+        onLinkCharacter={handleLinkCharacterToUser}
+        selectedCharacterId={playerPermsFocusCharId}
+        onlinePlayerNames={onlinePlayerNames}
       />
 
       {/* Combat Players Modal (+ Personagens: Gerenciar personagens ativos no combate) */}
