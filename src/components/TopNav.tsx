@@ -397,32 +397,53 @@ export const TopNav: React.FC<TopNavProps> = ({
 
         {/* Zone 3: Bloco de Trilha Sonora / Transmissão de Áudio */}
         <div className="flex items-center gap-2.5 px-3 py-1 bg-slate-900/95 border border-slate-750 rounded-lg shadow-inner shrink-0">
-          {/* Botão de desbloqueio para Autoplay bloqueado */}
-          {audioState.needsInteraction && !audioState.isBroadcasting && (
+          {/* Botão de Ouvir Trilha quando há transmissão ativa e o navegador ainda não está tocando o áudio */}
+          {audioState.hasActiveBroadcast &&
+            !audioState.isBroadcasting &&
+            (!audioState.isPlaying || audioState.needsInteraction) &&
+            !audioState.isMuted && (
+              <button
+                type="button"
+                onClick={() => audioStreamSync.unlockAudio()}
+                className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded shadow-md animate-pulse cursor-pointer shrink-0 transition-transform active:scale-95"
+                title="Clique para ativar e ouvir a trilha sonora no seu navegador"
+              >
+                <span>▶ Ouvir Trilha</span>
+              </button>
+            )}
+
+          {/* Indicador de Transmissão com Nome do Streamer e status ao vivo */}
+          {audioState.hasActiveBroadcast && (
             <button
               type="button"
-              onClick={() => audioStreamSync.unlockAudio()}
-              className="flex items-center gap-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded shadow-md animate-pulse cursor-pointer shrink-0"
-              title="Clique para habilitar a reprodução do áudio no seu navegador"
-            >
-              <span>▶ Ouvir Trilha</span>
-            </button>
-          )}
-
-          {/* Indicador de Transmissão apenas com o Nome do Streamer */}
-          {audioState.hasActiveBroadcast && (
-            <div
-              className="flex items-center gap-1.5 max-w-[120px] sm:max-w-[160px] truncate"
-              title={`Transmitindo: ${audioState.broadcasterName || 'Mestre'}`}
+              onClick={() => {
+                if (!audioState.isBroadcasting) {
+                  audioStreamSync.unlockAudio();
+                }
+              }}
+              className="flex items-center gap-1.5 max-w-[120px] sm:max-w-[160px] truncate bg-transparent border-0 p-0 text-left cursor-pointer group"
+              title={
+                audioState.isBroadcasting
+                  ? `Você está transmitindo: ${audioState.trackTitle || 'Áudio da aba'}`
+                  : `Transmitindo: ${audioState.broadcasterName || 'Mestre'}${
+                      audioState.trackTitle ? ` • ${audioState.trackTitle}` : ''
+                    } (Clique para reconectar áudio se necessário)`
+              }
             >
               <span className="flex h-2 w-2 relative shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                {audioState.isPlaying ? (
+                  <>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </>
+                ) : (
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 animate-pulse"></span>
+                )}
               </span>
-              <span className="text-[11px] font-bold text-amber-300 truncate font-mono">
+              <span className="text-[11px] font-bold text-amber-300 truncate font-mono group-hover:underline">
                 {audioState.broadcasterName || 'Mestre'}
               </span>
-            </div>
+            </button>
           )}
 
           {/* Botão de Mute */}
