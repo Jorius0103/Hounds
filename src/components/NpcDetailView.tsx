@@ -3141,132 +3141,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setEditingSpellModalState({ isOpen: true, spell: null })}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm"
-                    title="Adicionar uma nova magia manualmente ou via catálogo"
-                  >
-                    <Plus size={14} />
-                    <span>Cadastrar Magia</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setSpellsModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 transition-colors"
-                    title="Gerenciar lista de magias em lote"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm cursor-pointer"
+                    title="Cadastrar e gerenciar magias em lote ou via catálogo"
                   >
-                    <BookOpen size={13} className="text-amber-400" />
+                    <BookOpen size={14} />
                     <span>Gerenciar em Lote</span>
                   </button>
-                </div>
-              )}
-            </div>
-
-            {/* Campo de Busca no Banco de Dados com adição rápida */}
-            <div ref={spellSearchContainerRef} className="relative">
-              <div className="flex items-center gap-2 bg-slate-950/90 border border-slate-800 focus-within:border-amber-500/70 focus-within:ring-1 focus-within:ring-amber-500/40 rounded-xl px-3 py-2 transition-all shadow-inner">
-                <Search size={15} className="text-amber-400 shrink-0" />
-                <input
-                  type="text"
-                  value={spellSearchQuery}
-                  onChange={(e) => {
-                    setSpellSearchQuery(e.target.value);
-                    setIsSpellSearchOpen(true);
-                  }}
-                  onFocus={() => setIsSpellSearchOpen(true)}
-                  placeholder="Buscar magia no catálogo para adicionar (ex: Bola de Fogo, Cura, Escudo, Sono, Luz...)"
-                  className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
-                />
-                {spellSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSpellSearchQuery('');
-                      setIsSpellSearchOpen(false);
-                    }}
-                    className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
-                    title="Limpar busca"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-
-              {/* Dropdown de resultados de busca de magias */}
-              {isSpellSearchOpen && spellSearchQuery.trim().length > 0 && (
-                <div
-                  className="absolute top-full left-0 right-0 mt-1.5 z-50 border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
-                  style={{
-                    backgroundColor: '#0f172a',
-                    zIndex: 99999,
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 10px 15px -3px rgba(0, 0, 0, 0.9)',
-                  }}
-                >
-                  <div className="px-3 py-1.5 bg-slate-950 border-b border-slate-800 text-[10px] text-amber-400 font-semibold flex items-center justify-between">
-                    <span>{spellSearchResults.length} magias encontradas</span>
-                    <span className="text-slate-500">Clique na magia para adicioná-la com NH em branco</span>
-                  </div>
-
-                  {spellSearchResults.length === 0 ? (
-                    <div className="px-4 py-4 text-center text-xs text-slate-500 italic space-y-2">
-                      <p>Nenhuma magia encontrada no catálogo para "{spellSearchQuery}".</p>
-                      {!isViewer && (
-                        <button
-                          type="button"
-                          onClick={() => handleAddManualSpellWithName(spellSearchQuery)}
-                          className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold transition-colors"
-                        >
-                          + Adicionar "{spellSearchQuery}" como magia personalizada
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      {spellSearchResults.map((s, idx) => (
-                        <button
-                          key={s.id || idx}
-                          type="button"
-                          onClick={() => handleAddSpellFromCatalog(s)}
-                          className="w-full text-left px-3 py-2 border-b border-slate-800/80 hover:bg-slate-800/90 hover:border-amber-500/40 transition-colors flex items-center justify-between gap-2 group cursor-pointer"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
-                                {s.displayName || s.name}
-                              </span>
-                              {s.college && (
-                                <span className="text-[10px] bg-slate-800 text-amber-400/90 px-1.5 py-0.5 rounded border border-slate-700">
-                                  {getCollegePt(s.college)}
-                                </span>
-                              )}
-                              {s.class && (
-                                <span className="text-[10px] text-slate-400 font-sans">
-                                  ({s.class})
-                                </span>
-                              )}
-                            </div>
-                            {s.description && (
-                              <p className="text-[11px] text-slate-400 line-clamp-1 truncate mt-0.5">
-                                {s.description}
-                              </p>
-                            )}
-                          </div>
-                          <span className="shrink-0 text-[10px] font-bold text-amber-400 bg-amber-950/60 border border-amber-500/40 px-2 py-1 rounded group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
-                            + Adicionar
-                          </span>
-                        </button>
-                      ))}
-                      {!isViewer && (
-                        <button
-                          type="button"
-                          onClick={() => handleAddManualSpellWithName(spellSearchQuery)}
-                          className="w-full text-left px-3 py-2 bg-slate-950 hover:bg-slate-800 text-xs text-amber-400 font-semibold border-t border-slate-800 flex items-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <Plus size={14} />
-                          <span>Adicionar "{spellSearchQuery}" manualmente sem estar na lista</span>
-                        </button>
-                      )}
-                    </>
-                  )}
                 </div>
               )}
             </div>
@@ -3278,10 +3159,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 {!isViewer && (
                   <button
                     type="button"
-                    onClick={() => setEditingSpellModalState({ isOpen: true, spell: null })}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg text-xs"
+                    onClick={() => setSpellsModalOpen(true)}
+                    className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
                   >
-                    + Cadastrar Primeira Magia
+                    + Cadastrar Magias em Lote
                   </button>
                 )}
               </div>

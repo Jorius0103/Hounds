@@ -78,16 +78,20 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAddRow = () => {
+  const handleAddRow = (customName?: string) => {
     setSpellList((prev) => [
       ...prev,
       {
         id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: '',
+        name: typeof customName === 'string' ? customName.trim() : '',
         nh: '', // NH em branco!
         isFavorite: false,
       },
     ]);
+    if (typeof customName === 'string') {
+      setSearchQuery('');
+      setIsSearchOpen(false);
+    }
   };
 
   const handleSelectCatalogSpell = (s: any) => {
@@ -183,32 +187,49 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
                 <span className="text-slate-500">Clique para adicionar à lista com NH em branco</span>
               </div>
               {searchResults.length === 0 ? (
-                <div className="px-4 py-3 text-center text-xs text-slate-500 italic">
-                  Nenhuma magia encontrada para "{searchQuery}".
+                <div className="px-4 py-3 text-center text-xs text-slate-500 italic space-y-2">
+                  <p>Nenhuma magia encontrada no catálogo para "{searchQuery}".</p>
+                  <button
+                    type="button"
+                    onClick={() => handleAddRow(searchQuery)}
+                    className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    + Adicionar "{searchQuery}" como magia manual
+                  </button>
                 </div>
               ) : (
-                searchResults.map((s, idx) => (
-                  <button
-                    key={s.id || idx}
-                    type="button"
-                    onClick={() => handleSelectCatalogSpell(s)}
-                    className="w-full text-left px-3 py-2 border-b border-slate-800/80 hover:bg-slate-800 flex items-center justify-between gap-2 group cursor-pointer"
-                  >
-                    <div className="min-w-0">
-                      <span className="text-xs font-bold text-white group-hover:text-amber-300">
-                        {s.displayName || s.name}
-                      </span>
-                      {s.college && (
-                        <span className="ml-2 text-[10px] bg-slate-800 text-amber-400 px-1.5 py-0.5 rounded">
-                          {getCollegePt(s.college)}
+                <>
+                  {searchResults.map((s, idx) => (
+                    <button
+                      key={s.id || idx}
+                      type="button"
+                      onClick={() => handleSelectCatalogSpell(s)}
+                      className="w-full text-left px-3 py-2 border-b border-slate-800/80 hover:bg-slate-800 flex items-center justify-between gap-2 group cursor-pointer"
+                    >
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-white group-hover:text-amber-300">
+                          {s.displayName || s.name}
                         </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-amber-400 font-bold shrink-0">
-                      + Adicionar
-                    </span>
+                        {s.college && (
+                          <span className="ml-2 text-[10px] bg-slate-800 text-amber-400 px-1.5 py-0.5 rounded">
+                            {getCollegePt(s.college)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-amber-400 font-bold shrink-0">
+                        + Adicionar
+                      </span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleAddRow(searchQuery)}
+                    className="w-full text-left px-3 py-2 bg-slate-950 hover:bg-slate-800 text-xs text-amber-400 font-semibold border-t border-slate-800 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>Adicionar "{searchQuery}" manualmente</span>
                   </button>
-                ))
+                </>
               )}
             </div>
           )}
@@ -220,11 +241,11 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
             <span>Magias Cadastradas ({spellList.length})</span>
             <button
               type="button"
-              onClick={handleAddRow}
-              className="text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold text-xs"
+              onClick={() => handleAddRow()}
+              className="text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold text-xs cursor-pointer"
             >
               <Plus size={14} />
-              <span>+ Adicionar Outra Magia</span>
+              <span>+ Adicionar Magia Manual</span>
             </button>
           </div>
 
@@ -299,11 +320,11 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
         <div className="flex items-center justify-between pt-3 border-t border-slate-800 shrink-0">
           <button
             type="button"
-            onClick={handleAddRow}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition-colors"
+            onClick={() => handleAddRow()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-amber-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer border border-slate-700"
           >
             <Plus size={14} />
-            <span>Adicionar Linha</span>
+            <span>+ Adicionar Magia Manual</span>
           </button>
 
           <div className="flex items-center gap-2">
