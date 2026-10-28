@@ -36,9 +36,15 @@ export interface Weapon {
 export interface Spell {
   id: string;
   name: string;
-  nh: number; // Nível de Habilidade
+  nh?: number | string; // Nível de Habilidade
   isFavorite?: boolean; // Favoritada (vai para o topo com destaque)
   notes?: string; // Efeitos / anotações
+  college?: string;
+  class?: string;
+  duration?: string;
+  cost?: string;
+  timeToCast?: string;
+  description?: string;
 }
 
 export interface ArmorDrModifier {

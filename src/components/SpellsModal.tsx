@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Spell } from '../types/rpg';
-import { Sparkles, Plus, Trash2, Star, X, Check, BookOpen } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Star, X, Check, Search } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
+import { loadSpellsDatabase, normalizeSpellText, getCollegePt } from './SingleSpellModal';
 
 interface SpellsModalProps {
   isOpen: boolean;
@@ -10,25 +11,6 @@ interface SpellsModalProps {
   onSave: (updatedSpells: Spell[]) => void;
   npcName: string;
 }
-
-const COMMON_GURPS_SPELLS = [
-  'Bola de Fogo (Fireball)',
-  'Cura Menor (Minor Healing)',
-  'Cura Maior (Major Healing)',
-  'Escudo Mágico (Shield)',
-  'Armadura Mágica (Armor)',
-  'Nuvem de Fumaça (Smoke)',
-  'Nevoeiro (Fog)',
-  'Luz (Light)',
-  'Relâmpago (Lightning)',
-  'Sono (Sleep)',
-  'Silêncio (Silence)',
-  'Criar Fogo (Create Fire)',
-  'Telepatia (Mind-Reading)',
-  'Pavor Mental (Fear)',
-  'Aceleração (Haste)',
-  'Detectar Magia (Detect Magic)',
-];
 
 export const SpellsModal: React.FC<SpellsModalProps> = ({
   isOpen,
@@ -40,13 +22,59 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
   const [spellList, setSpellList] = useState<Spell[]>([]);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
 
+  // Search in database state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [catalogSpells, setCatalogSpells] = useState<any[]>([]);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isOpen) {
-      setSpellList(spells.length > 0 ? JSON.parse(JSON.stringify(spells)) : [
-        { id: `spl-${Date.now()}-1`, name: '', nh: 12, isFavorite: false }
-      ]);
+      setSpellList(
+        spells.length > 0
+          ? JSON.parse(JSON.stringify(spells))
+          : [{ id: `spl-${Date.now()}-1`, name: '', nh: '', isFavorite: false }]
+      );
+      loadSpellsDatabase().then((data) => {
+        setCatalogSpells(data);
+      });
     }
   }, [isOpen, spells]);
+
+  // Click outside search dropdown to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const searchResults = useMemo(() => {
+    const q = normalizeSpellText(searchQuery);
+    if (!q) return [];
+
+    return catalogSpells
+      .filter((s) => {
+        const n1 = normalizeSpellText(s.name || '');
+        const n2 = normalizeSpellText(s.namePt || '');
+        const n3 = normalizeSpellText(s.displayName || '');
+        const col = normalizeSpellText(s.college || '');
+        const colPt = normalizeSpellText(getCollegePt(s.college));
+        const cls = normalizeSpellText(s.class || '');
+        return (
+          n1.includes(q) ||
+          n2.includes(q) ||
+          n3.includes(q) ||
+          col.includes(q) ||
+          colPt.includes(q) ||
+          cls.includes(q)
+        );
+      })
+      .slice(0, 25);
+  }, [searchQuery, catalogSpells]);
 
   if (!isOpen) return null;
 
@@ -56,10 +84,25 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
       {
         id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: '',
-        nh: 12,
+        nh: '', // NH em branco!
         isFavorite: false,
       },
     ]);
+  };
+
+  const handleSelectCatalogSpell = (s: any) => {
+    const spellName = s.displayName || (s.namePt && s.namePt !== s.name ? `${s.namePt} (${s.name})` : s.name);
+    setSpellList((prev) => [
+      ...prev,
+      {
+        id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: spellName,
+        nh: '', // NH em branco!
+        isFavorite: false,
+      },
+    ]);
+    setSearchQuery('');
+    setIsSearchOpen(false);
   };
 
   const handleUpdateRow = (index: number, field: keyof Spell, value: any) => {
@@ -72,18 +115,6 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
 
   const handleRemoveRow = (index: number) => {
     setSpellList((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleAddPreset = (spellName: string) => {
-    setSpellList((prev) => [
-      ...prev,
-      {
-        id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: spellName,
-        nh: 12,
-        isFavorite: false,
-      },
-    ]);
   };
 
   const handleSave = () => {
@@ -112,24 +143,75 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
           </button>
         </div>
 
-        {/* Quick Presets Picker */}
-        <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 shrink-0 space-y-2">
-          <div className="flex items-center gap-1.5 text-xs text-amber-300 font-semibold">
-            <BookOpen size={14} className="text-amber-400" />
-            <span>Adicionar rapidamente magias clássicas do GURPS:</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto pr-1">
-            {COMMON_GURPS_SPELLS.map((name) => (
+        {/* Database Search Input */}
+        <div ref={searchContainerRef} className="relative shrink-0">
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 focus-within:border-amber-500/70 rounded-xl px-3 py-2">
+            <Search size={15} className="text-amber-400 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsSearchOpen(true);
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              placeholder="Buscar magia no catálogo para adicionar (ex: Bola de Fogo, Cura...)"
+              className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
+            />
+            {searchQuery && (
               <button
-                key={name}
                 type="button"
-                onClick={() => handleAddPreset(name)}
-                className="text-[11px] bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-300 px-2 py-1 rounded-lg border border-slate-800 transition-colors"
+                onClick={() => {
+                  setSearchQuery('');
+                  setIsSearchOpen(false);
+                }}
+                className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
               >
-                + {name}
+                <X size={14} />
               </button>
-            ))}
+            )}
           </div>
+
+          {/* Search Dropdown */}
+          {isSearchOpen && searchQuery.trim().length > 0 && (
+            <div
+              className="absolute top-full left-0 right-0 mt-1.5 z-50 border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto"
+              style={{ backgroundColor: '#0f172a' }}
+            >
+              <div className="px-3 py-1.5 bg-slate-950 border-b border-slate-800 text-[10px] text-amber-400 font-semibold flex items-center justify-between">
+                <span>{searchResults.length} magias encontradas</span>
+                <span className="text-slate-500">Clique para adicionar à lista com NH em branco</span>
+              </div>
+              {searchResults.length === 0 ? (
+                <div className="px-4 py-3 text-center text-xs text-slate-500 italic">
+                  Nenhuma magia encontrada para "{searchQuery}".
+                </div>
+              ) : (
+                searchResults.map((s, idx) => (
+                  <button
+                    key={s.id || idx}
+                    type="button"
+                    onClick={() => handleSelectCatalogSpell(s)}
+                    className="w-full text-left px-3 py-2 border-b border-slate-800/80 hover:bg-slate-800 flex items-center justify-between gap-2 group cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-white group-hover:text-amber-300">
+                        {s.displayName || s.name}
+                      </span>
+                      {s.college && (
+                        <span className="ml-2 text-[10px] bg-slate-800 text-amber-400 px-1.5 py-0.5 rounded">
+                          {getCollegePt(s.college)}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-amber-400 font-bold shrink-0">
+                      + Adicionar
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Dynamic Multi-row Table */}
@@ -148,7 +230,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
 
           {spellList.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-500 italic">
-              Nenhuma magia na lista. Clique em "+ Adicionar Outra Magia" ou escolha uma das opções acima.
+              Nenhuma magia na lista. Digite na busca acima ou clique em "+ Adicionar Outra Magia".
             </div>
           ) : (
             <div className="space-y-2">
@@ -186,15 +268,14 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
                     />
                   </div>
 
-                  {/* NH input */}
+                  {/* NH input - em branco por padrão */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-xs text-slate-400 font-mono">NH:</span>
                     <input
-                      type="number"
-                      value={spell.nh || 10}
-                      onChange={(e) =>
-                        handleUpdateRow(index, 'nh', parseInt(e.target.value, 10) || 0)
-                      }
+                      type="text"
+                      placeholder="-"
+                      value={spell.nh !== undefined && spell.nh !== null ? spell.nh : ''}
+                      onChange={(e) => handleUpdateRow(index, 'nh', e.target.value)}
                       className="w-14 bg-slate-900 border border-amber-500/50 rounded-lg py-1.5 text-center text-xs font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -248,10 +329,8 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
       <ConfirmModal
         isOpen={deletingIndex !== null}
         title="Excluir Magia"
-        message={`Deseja excluir a magia "${deletingIndex !== null ? (spellList[deletingIndex]?.name || 'esta magia') : ''}"?`}
-        confirmText="Excluir"
-        cancelText="Cancelar"
-        isDanger={true}
+        message={`Deseja excluir a magia "${deletingIndex !== null ? spellList[deletingIndex]?.name || 'Magia' : ''}"?`}
+        confirmText="Excluir Magia"
         onConfirm={() => {
           if (deletingIndex !== null) {
             handleRemoveRow(deletingIndex);

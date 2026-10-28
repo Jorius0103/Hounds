@@ -22,6 +22,7 @@ import {
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { loadWeaponsDatabase } from './WeaponModal';
 import { SpellsModal } from './SpellsModal';
+import { SingleSpellModal, loadSpellsDatabase, normalizeSpellText, getCollegePt } from './SingleSpellModal';
 import { CombatLogCard } from './CombatLogCard';
 import { ConfirmModal } from './ConfirmModal';
 import { systemLogger } from '../utils/systemLogger';
@@ -124,6 +125,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [infoWeapon, setInfoWeapon] = useState<Weapon | null>(null);
   const [catalogWeapons, setCatalogWeapons] = useState<any[]>([]);
+  const [infoSpell, setInfoSpell] = useState<Spell | null>(null);
+  const [catalogSpells, setCatalogSpells] = useState<any[]>([]);
+  const [editingSpellModalState, setEditingSpellModalState] = useState<{ isOpen: boolean; spell: Spell | null }>({
+    isOpen: false,
+    spell: null,
+  });
+  const [spellSearchQuery, setSpellSearchQuery] = useState('');
+  const [isSpellSearchOpen, setIsSpellSearchOpen] = useState(false);
+  const spellSearchContainerRef = useRef<HTMLDivElement>(null);
 
   const [isPlayerLinkModalOpen, setIsPlayerLinkModalOpen] = useState(false);
 
@@ -197,7 +207,64 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     loadWeaponsDatabase().then((data) => {
       setCatalogWeapons(data || []);
     });
+    loadSpellsDatabase().then((data) => {
+      setCatalogSpells(data || []);
+    });
   }, []);
+
+  // Click outside spell search dropdown to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (spellSearchContainerRef.current && !spellSearchContainerRef.current.contains(e.target as Node)) {
+        setIsSpellSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filtered catalog spells for search
+  const spellSearchResults = useMemo(() => {
+    const q = normalizeSpellText(spellSearchQuery);
+    if (!q) return [];
+    return catalogSpells
+      .filter((s) => {
+        const n1 = normalizeSpellText(s.name || '');
+        const n2 = normalizeSpellText(s.namePt || '');
+        const n3 = normalizeSpellText(s.displayName || '');
+        const col = normalizeSpellText(s.college || '');
+        const colPt = normalizeSpellText(getCollegePt(s.college));
+        const cls = normalizeSpellText(s.class || '');
+        const desc = normalizeSpellText(s.description || '');
+        return (
+          n1.includes(q) ||
+          n2.includes(q) ||
+          n3.includes(q) ||
+          col.includes(q) ||
+          colPt.includes(q) ||
+          cls.includes(q) ||
+          desc.includes(q)
+        );
+      })
+      .slice(0, 30);
+  }, [spellSearchQuery, catalogSpells]);
+
+  const dbSpell = useMemo(() => {
+    if (!infoSpell || catalogSpells.length === 0) return null;
+    const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const target = norm(infoSpell.name);
+    return catalogSpells.find((s: any) => {
+      if (s.id && (infoSpell as any).catalogId && s.id === (infoSpell as any).catalogId) return true;
+      if (s.displayName && norm(s.displayName) === target) return true;
+      if (s.name && norm(s.name) === target) return true;
+      if (s.namePt && norm(s.namePt) === target) return true;
+      const sNorm = norm(s.name || '');
+      const ptNorm = norm(s.namePt || '');
+      if (sNorm && target.includes(sNorm)) return true;
+      if (ptNorm && target.includes(ptNorm)) return true;
+      return false;
+    });
+  }, [infoSpell, catalogSpells]);
 
   const dbWeapon = useMemo(() => {
     if (!infoWeapon || catalogWeapons.length === 0) return null;
@@ -706,6 +773,45 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const handleRemoveSpell = (spellId: string) => {
     const list = npc.spells.filter((s) => s.id !== spellId);
     updateField('spells', list);
+  };
+
+  const handleAddSpellFromCatalog = (s: any) => {
+    const spellName = s.displayName || (s.namePt && s.namePt !== s.name ? `${s.namePt} (${s.name})` : s.name);
+    const newSpell: Spell = {
+      id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: spellName,
+      nh: '', // NH em branco conforme solicitado!
+      isFavorite: false,
+      notes: '',
+    };
+    const updated = [...npc.spells, newSpell];
+    updateField('spells', updated);
+    setSpellSearchQuery('');
+    setIsSpellSearchOpen(false);
+  };
+
+  const handleAddManualSpellWithName = (manualName: string) => {
+    if (!manualName.trim()) return;
+    const newSpell: Spell = {
+      id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: manualName.trim(),
+      nh: '', // NH em branco!
+      isFavorite: false,
+      notes: '',
+    };
+    const updated = [...npc.spells, newSpell];
+    updateField('spells', updated);
+    setSpellSearchQuery('');
+    setIsSpellSearchOpen(false);
+  };
+
+  const handleSaveSingleSpell = (savedSpell: Spell) => {
+    const exists = npc.spells.some((s) => s.id === savedSpell.id);
+    const updated = exists
+      ? npc.spells.map((s) => (s.id === savedSpell.id ? savedSpell : s))
+      : [...npc.spells, savedSpell];
+    updateField('spells', updated);
+    setEditingSpellModalState({ isOpen: false, spell: null });
   };
 
   // =========================================================================
@@ -3020,104 +3126,319 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 9. TAB CONTENT: MAGIAS */}
       {activeTab === 'spells' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-            <div>
+        <div className="space-y-4">
+          <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles size={18} className="text-amber-400" />
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Grimório de Magias
+                  Grimório de Magias ({npc.spells.length})
                 </h3>
               </div>
-            </div>
 
-            {!isViewer && (
-              <button
-                onClick={() => setSpellsModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors self-start sm:self-auto"
-              >
-                <Plus size={14} />
-                <span>Gerenciar / Cadastrar Magias</span>
-              </button>
-            )}
-          </div>
-
-          {/* 3-Column Grid of Spells */}
-          {npc.spells.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-500 italic space-y-2">
-              <p>Nenhuma magia cadastrada.</p>
               {!isViewer && (
-                <button
-                  onClick={() => setSpellsModalOpen(true)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg text-xs"
-                >
-                  + Abrir Cadastro de Magias
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingSpellModalState({ isOpen: true, spell: null })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm"
+                    title="Adicionar uma nova magia manualmente ou via catálogo"
+                  >
+                    <Plus size={14} />
+                    <span>Cadastrar Magia</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSpellsModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 transition-colors"
+                    title="Gerenciar lista de magias em lote"
+                  >
+                    <BookOpen size={13} className="text-amber-400" />
+                    <span>Gerenciar em Lote</span>
+                  </button>
+                </div>
               )}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {sortedSpells.map((s) => (
+
+            {/* Campo de Busca no Banco de Dados com adição rápida */}
+            <div ref={spellSearchContainerRef} className="relative">
+              <div className="flex items-center gap-2 bg-slate-950/90 border border-slate-800 focus-within:border-amber-500/70 focus-within:ring-1 focus-within:ring-amber-500/40 rounded-xl px-3 py-2 transition-all shadow-inner">
+                <Search size={15} className="text-amber-400 shrink-0" />
+                <input
+                  type="text"
+                  value={spellSearchQuery}
+                  onChange={(e) => {
+                    setSpellSearchQuery(e.target.value);
+                    setIsSpellSearchOpen(true);
+                  }}
+                  onFocus={() => setIsSpellSearchOpen(true)}
+                  placeholder="Buscar magia no catálogo para adicionar (ex: Bola de Fogo, Cura, Escudo, Sono, Luz...)"
+                  className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
+                />
+                {spellSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSpellSearchQuery('');
+                      setIsSpellSearchOpen(false);
+                    }}
+                    className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+                    title="Limpar busca"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Dropdown de resultados de busca de magias */}
+              {isSpellSearchOpen && spellSearchQuery.trim().length > 0 && (
                 <div
-                  key={s.id}
-                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
-                    s.isFavorite
-                      ? 'bg-amber-950/30 border-amber-500/60 ring-1 ring-amber-500/30'
-                      : 'bg-slate-950/70 border-slate-800 hover:border-slate-750'
-                  }`}
+                  className="absolute top-full left-0 right-0 mt-1.5 z-50 border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
+                  style={{
+                    backgroundColor: '#0f172a',
+                    zIndex: 99999,
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 10px 15px -3px rgba(0, 0, 0, 0.9)',
+                  }}
                 >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {!isViewer ? (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleSpellFavorite(s.id)}
-                        className={`p-1 rounded transition-colors shrink-0 ${
-                          s.isFavorite
-                            ? 'text-amber-400 hover:text-amber-300'
-                            : 'text-slate-600 hover:text-slate-400'
-                        }`}
-                        title={s.isFavorite ? 'Remover dos favoritos' : 'Favoritar magia'}
-                      >
-                        <Star size={16} fill={s.isFavorite ? 'currentColor' : 'none'} />
-                      </button>
-                    ) : (
-                      <span className="p-1 shrink-0">
-                        <Star size={16} fill={s.isFavorite ? 'currentColor' : 'none'} className={s.isFavorite ? 'text-amber-400' : 'text-slate-600'} />
-                      </span>
-                    )}
-
-                    <span className="text-xs font-semibold text-white truncate">
-                      {s.name}
-                    </span>
+                  <div className="px-3 py-1.5 bg-slate-950 border-b border-slate-800 text-[10px] text-amber-400 font-semibold flex items-center justify-between">
+                    <span>{spellSearchResults.length} magias encontradas</span>
+                    <span className="text-slate-500">Clique na magia para adicioná-la com NH em branco</span>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-xs font-bold text-amber-300 bg-slate-900 border border-amber-500/40 px-2 py-0.5 rounded">
-                      NH {s.nh}
-                    </span>
-
-                    {!isViewer && (
-                      <button
-                        onClick={() => {
-                          setConfirmAction({
-                            isOpen: true,
-                            title: 'Excluir Magia do Grimório',
-                            message: `Deseja excluir a magia "${s.name}" do grimório de ${npc.name || 'este personagem'}?`,
-                            confirmText: 'Excluir Magia',
-                            onConfirm: () => handleRemoveSpell(s.id),
-                          });
-                        }}
-                        className="p-1 text-slate-500 hover:text-rose-400 transition-colors"
-                        title="Excluir magia"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
+                  {spellSearchResults.length === 0 ? (
+                    <div className="px-4 py-4 text-center text-xs text-slate-500 italic space-y-2">
+                      <p>Nenhuma magia encontrada no catálogo para "{spellSearchQuery}".</p>
+                      {!isViewer && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddManualSpellWithName(spellSearchQuery)}
+                          className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          + Adicionar "{spellSearchQuery}" como magia personalizada
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {spellSearchResults.map((s, idx) => (
+                        <button
+                          key={s.id || idx}
+                          type="button"
+                          onClick={() => handleAddSpellFromCatalog(s)}
+                          className="w-full text-left px-3 py-2 border-b border-slate-800/80 hover:bg-slate-800/90 hover:border-amber-500/40 transition-colors flex items-center justify-between gap-2 group cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
+                                {s.displayName || s.name}
+                              </span>
+                              {s.college && (
+                                <span className="text-[10px] bg-slate-800 text-amber-400/90 px-1.5 py-0.5 rounded border border-slate-700">
+                                  {getCollegePt(s.college)}
+                                </span>
+                              )}
+                              {s.class && (
+                                <span className="text-[10px] text-slate-400 font-sans">
+                                  ({s.class})
+                                </span>
+                              )}
+                            </div>
+                            {s.description && (
+                              <p className="text-[11px] text-slate-400 line-clamp-1 truncate mt-0.5">
+                                {s.description}
+                              </p>
+                            )}
+                          </div>
+                          <span className="shrink-0 text-[10px] font-bold text-amber-400 bg-amber-950/60 border border-amber-500/40 px-2 py-1 rounded group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+                            + Adicionar
+                          </span>
+                        </button>
+                      ))}
+                      {!isViewer && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddManualSpellWithName(spellSearchQuery)}
+                          className="w-full text-left px-3 py-2 bg-slate-950 hover:bg-slate-800 text-xs text-amber-400 font-semibold border-t border-slate-800 flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          <span>Adicionar "{spellSearchQuery}" manualmente sem estar na lista</span>
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+
+            {/* Lista de Magias Cadastradas */}
+            {npc.spells.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500 italic space-y-2">
+                <p>Nenhuma magia cadastrada para este personagem.</p>
+                {!isViewer && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingSpellModalState({ isOpen: true, spell: null })}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg text-xs"
+                  >
+                    + Cadastrar Primeira Magia
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
+                {sortedSpells.map((s) => {
+                  const norm = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const target = norm(s.name);
+                  const cat = catalogSpells.find((c: any) => {
+                    if (c.id && (s as any).catalogId && c.id === (s as any).catalogId) return true;
+                    if (c.displayName && norm(c.displayName) === target) return true;
+                    if (c.name && norm(c.name) === target) return true;
+                    if (c.namePt && norm(c.namePt) === target) return true;
+                    const cNorm = norm(c.name || '');
+                    const ptNorm = norm(c.namePt || '');
+                    if (cNorm && target.includes(cNorm)) return true;
+                    if (ptNorm && target.includes(ptNorm)) return true;
+                    return false;
+                  });
+
+                  return (
+                    <div
+                      key={s.id}
+                      style={{ ...cardGradientStyle, overflow: 'hidden', position: 'relative' }}
+                      className={`p-3 rounded-xl border flex flex-col justify-between gap-2.5 text-xs transition-all shadow-sm ${
+                        s.isFavorite
+                          ? 'border-amber-500/70 ring-1 ring-amber-500/30'
+                          : 'border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {/* Linha única: Esquerda (NH + Nome) | Meio (Informações Rápidas) | Direita (Botões fixos) */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                        {/* Esquerda: NH Badge + Nome da Magia */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, maxWidth: '45%', flexShrink: 1, overflow: 'hidden' }}>
+                          <div
+                            style={{ flexShrink: 0, minWidth: '44px', padding: '2px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+                            className="bg-amber-950/60 border border-amber-500/60 rounded-xl shadow-sm"
+                          >
+                            <span className="text-[9px] text-amber-400 font-extrabold uppercase tracking-widest leading-none">NH</span>
+                            <span className={`font-mono font-black text-amber-300 tabular-nums leading-tight ${String(s.nh || '').length > 3 ? 'text-base' : 'text-xl'}`}>
+                              {s.nh !== undefined && s.nh !== null && s.nh !== '' ? s.nh : '-'}
+                            </span>
+                          </div>
+
+                          <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }} className="space-y-0.5">
+                            <span
+                              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', width: '100%' }}
+                              className="font-bold text-white text-sm sm:text-base leading-tight"
+                              title={s.name}
+                            >
+                              {s.name}
+                            </span>
+                            {s.notes ? (
+                              <span
+                                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', width: '100%' }}
+                                className="text-[11px] text-amber-200/80 italic font-normal"
+                                title={s.notes}
+                              >
+                                • {s.notes}
+                              </span>
+                            ) : cat ? (
+                              <span
+                                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', width: '100%' }}
+                                className="text-[11px] text-slate-400 font-normal"
+                              >
+                                {cat.college ? getCollegePt(cat.college) : ''}{cat.class ? ` • ${cat.class}` : ''}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Meio: Informações rápidas (Custo, Tempo, Página) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+                          {cat && (
+                            <div
+                              style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}
+                              className="bg-slate-900/90 border border-slate-800 rounded-lg px-2 py-1 text-[11px] font-mono text-slate-300 shadow-sm"
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, overflow: 'hidden' }}>
+                                {cat.initialCost && (
+                                  <span className="shrink-0 truncate text-[10px]">
+                                    Custo: <strong className="text-white font-bold">{cat.initialCost.split('.')[0]}</strong>
+                                  </span>
+                                )}
+                                {cat.duration && (
+                                  <span className="text-slate-400 font-sans text-[10px] shrink-0 truncate max-w-[110px]">
+                                    • {cat.duration.split('.')[0]}
+                                  </span>
+                                )}
+                              </div>
+                              {cat.page && (
+                                <span className="text-slate-500 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5">
+                                  {cat.page}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Direita: Botões juntos: Info, Favoritas, Editar, Deletar */}
+                        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
+                          <button
+                            type="button"
+                            onClick={() => setInfoSpell(s)}
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 rounded-lg border border-slate-700 transition-colors"
+                            title="Informações completas da magia no banco de dados"
+                          >
+                            <Info size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSpellFavorite(s.id)}
+                            className={`p-1.5 rounded-lg border transition-colors ${
+                              s.isFavorite
+                                ? 'bg-amber-500/20 border-amber-500/60 text-amber-400 hover:text-amber-300'
+                                : 'bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-slate-300 border-slate-700'
+                            }`}
+                            title={s.isFavorite ? 'Remover dos favoritos' : 'Favoritar magia'}
+                          >
+                            <Star size={13} fill={s.isFavorite ? 'currentColor' : 'none'} />
+                          </button>
+                          {!isViewer && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setEditingSpellModalState({ isOpen: true, spell: s })}
+                                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors"
+                                title="Editar magia fora da janela Grimório"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConfirmAction({
+                                    isOpen: true,
+                                    title: 'Excluir Magia',
+                                    message: `Deseja excluir a magia "${s.name}" da ficha de ${npc.name || 'este personagem'}?`,
+                                    confirmText: 'Excluir Magia',
+                                    onConfirm: () => handleRemoveSpell(s.id),
+                                  });
+                                }}
+                                className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
+                                title="Excluir magia"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -4305,6 +4626,206 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* MODAL DE INFORMAÇÕES COMPLETAS DA MAGIA NO BANCO DE DADOS */}
+      {infoSpell && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(4px)',
+          }}
+          onClick={() => setInfoSpell(null)}
+        >
+          <div
+            style={{
+              backgroundColor: '#0f172a',
+              background: '#0f172a',
+              border: '1px solid rgba(245, 158, 11, 0.45)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 0 30px rgba(245, 158, 11, 0.15)',
+              maxWidth: '680px',
+              width: '100%',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh',
+            }}
+            className="text-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 20px',
+                borderBottom: '1px solid rgba(51, 65, 85, 0.8)',
+                background: 'linear-gradient(to right, rgba(69, 26, 3, 0.4), #0f172a, #0f172a)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fbbf24',
+                  }}
+                >
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                    {dbSpell ? (dbSpell.displayName || dbSpell.name) : infoSpell.name}
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    {dbSpell ? `${dbSpell.source || 'GURPS'} ${dbSpell.page || ''} • Grimório Oficial de Magias` : 'Grimório de Magias'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInfoSpell(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Content (Scrollable) */}
+            <div className="p-5 space-y-4 overflow-y-auto custom-scrollbar text-xs">
+              {/* Grid de Propriedades Rápidas */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Escola</span>
+                  <span className="text-amber-300 font-bold text-xs">
+                    {dbSpell?.college ? getCollegePt(dbSpell.college) : '-'}
+                  </span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Classe</span>
+                  <span className="text-slate-200 font-bold text-xs">{dbSpell?.class || '-'}</span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Dificuldade</span>
+                  <span className="text-slate-200 font-mono font-bold text-xs">
+                    {dbSpell?.difficulty ? `IQ/${dbSpell.difficulty === 'VH' ? 'Muito Difícil (VH)' : 'Difícil (H)'}` : '-'}
+                  </span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+                  <span className="text-[10px] text-amber-500 uppercase tracking-wider block font-semibold">NH na Ficha</span>
+                  <span className="text-amber-400 font-mono font-black text-sm">
+                    {infoSpell.nh !== undefined && infoSpell.nh !== null && infoSpell.nh !== '' ? infoSpell.nh : '- (Em branco)'}
+                  </span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Tempo de Conjuração</span>
+                  <span className="text-slate-300 text-xs font-mono">{dbSpell?.timeToCast || '1 segundo'}</span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Duração</span>
+                  <span className="text-slate-300 text-xs">{dbSpell?.duration || '-'}</span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5 sm:col-span-2">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Custo de Energia</span>
+                  <span className="text-slate-200 text-xs font-mono">{dbSpell?.initialCost || '-'}</span>
+                </div>
+              </div>
+
+              {/* Pré-requisitos */}
+              {dbSpell?.prerequisites && (
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider block">Pré-requisitos</span>
+                  <p className="text-xs text-slate-300 leading-relaxed">{dbSpell.prerequisites}</p>
+                </div>
+              )}
+
+              {/* Descrição Completa da Magia */}
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 space-y-2">
+                <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider block border-b border-slate-800/80 pb-1">
+                  Descrição Completa da Magia
+                </span>
+                {dbSpell?.description ? (
+                  <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+                    {dbSpell.description.split('\n\n').map((paragraph: string, idx: number) => (
+                      <p key={idx} className="whitespace-pre-wrap">{paragraph.trim()}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">
+                    Nenhuma descrição detalhada encontrada no catálogo de magias para esta magia.
+                  </p>
+                )}
+              </div>
+
+              {/* Observações da Magia pelo Personagem */}
+              {infoSpell.notes && (
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Observações do Personagem</span>
+                  <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{infoSpell.notes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: '8px',
+                padding: '12px 20px',
+                borderTop: '1px solid rgba(51, 65, 85, 0.8)',
+                background: 'rgba(2, 6, 23, 0.6)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setInfoSpell(null)}
+                className="px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                Fechar
+              </button>
+              {!isViewer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const toEdit = infoSpell;
+                    setInfoSpell(null);
+                    setEditingSpellModalState({ isOpen: true, spell: toEdit });
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm"
+                >
+                  <Edit2 size={13} />
+                  <span>Editar Magia</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA CADASTRAR OU EDITAR MAGIA FORA DO GRIMÓRIO */}
+      <SingleSpellModal
+        isOpen={editingSpellModalState.isOpen}
+        initialSpell={editingSpellModalState.spell}
+        onClose={() => setEditingSpellModalState({ isOpen: false, spell: null })}
+        onSave={handleSaveSingleSpell}
+      />
 
     </div>
   );
