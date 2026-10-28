@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Shield, X, Check, Wrench } from 'lucide-react';
+import { Search, Shield, X, Check } from 'lucide-react';
 import {
   ArmorCatalogItem,
   loadArmorCatalog,
@@ -41,14 +41,6 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
   const [selectedLocationIndex, setSelectedLocationIndex] = useState<number>(0);
   const [equippedFeedback, setEquippedFeedback] = useState<string>('');
 
-  // Manual Form States
-  const [manualName, setManualName] = useState('');
-  const [manualDr, setManualDr] = useState<number | ''>(0);
-  const [manualMod1, setManualMod1] = useState<number | ''>('');
-  const [manualMod1Type, setManualMod1Type] = useState('');
-  const [manualMod2, setManualMod2] = useState<number | ''>('');
-  const [manualMod2Type, setManualMod2Type] = useState('');
-
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
@@ -63,12 +55,6 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
 
       setSearchQuery('');
       setSelectedLocationIndex(targetLocationIndex ?? 0);
-      setManualName('');
-      setManualDr(0);
-      setManualMod1('');
-      setManualMod1Type('');
-      setManualMod2('');
-      setManualMod2Type('');
       setEquippedFeedback('');
     }
   }, [isOpen, targetLocationIndex]);
@@ -91,58 +77,6 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
     });
   }, [catalog, searchQuery]);
 
-  // Handler for manual submit
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualName.trim() && manualDr === '') return;
-
-    const baseDr = typeof manualDr === 'number' ? manualDr : parseInt(manualDr, 10) || 0;
-    const modifiers = [];
-    if (manualMod1 !== '' && manualMod1Type) {
-      modifiers.push({
-        drModifier: typeof manualMod1 === 'number' ? manualMod1 : parseInt(manualMod1, 10) || 0,
-        modifierDamageType: manualMod1Type,
-      });
-    }
-    if (manualMod2 !== '' && manualMod2Type) {
-      modifiers.push({
-        drModifier: typeof manualMod2 === 'number' ? manualMod2 : parseInt(manualMod2, 10) || 0,
-        modifierDamageType: manualMod2Type,
-      });
-    }
-
-    const parsed: ParsedArmorDR = {
-      baseDr,
-      rawDr: String(baseDr),
-      drModifiers: modifiers,
-      summary: `RD Base: ${baseDr}`,
-    };
-
-    const locName = currentLocation?.location || 'Parte selecionada';
-    onEquipArmor(
-      {
-        name: manualName.trim() || 'Armadura Personalizada',
-        dr: String(baseDr),
-        category: 'Personalizada',
-        location: currentLocation?.location,
-      },
-      parsed,
-      selectedLocationIndex
-    );
-
-    // Feedback visual sem fechar a janela
-    setEquippedFeedback(`"${manualName.trim() || 'Armadura'}" equipada em ${locName}!`);
-    setTimeout(() => setEquippedFeedback(''), 3000);
-
-    // Limpa campos manuais para próximo cadastro
-    setManualName('');
-    setManualDr(0);
-    setManualMod1('');
-    setManualMod1Type('');
-    setManualMod2('');
-    setManualMod2Type('');
-  };
-
   // Handler for catalog equip
   const handleCatalogEquip = (armor: ArmorCatalogItem, parsed: ParsedArmorDR) => {
     const locName = currentLocation?.location || 'Parte selecionada';
@@ -156,203 +90,247 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    // Não fecha ao clicar fora da janela (sem onClick={onClose} no backdrop)
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-200">
+    // Não fecha ao clicar fora da janela (sem onClose no backdrop)
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
+      style={{
+        padding: '16px',
+        overflowY: 'auto',
+        WebkitBackdropFilter: 'blur(4px)',
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
       <div
-        className="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden"
+        className="relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        style={{
+          position: 'relative',
+          margin: 'auto',
+          width: '100%',
+          maxWidth: '780px',
+          maxHeight: '88vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#0f172a',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
+          overflow: 'hidden',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header (Sem label GURPS 4e) */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-950/70">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-              <Shield size={20} />
+        {/* Cabeçalho no estilo Jogadores da Mesa de RPG */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 18px',
+            borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
+            background: 'linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '7px',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fbbf24',
+                flexShrink: 0,
+              }}
+            >
+              <Shield size={16} />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white tracking-wide">
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
                 Armaduras e Proteções
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Selecione a parte do corpo e equipe quantas peças desejar. A janela permanece aberta até clicar em Fechar.
-              </p>
+              </h2>
             </div>
           </div>
-
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            style={{
+              padding: '5px',
+              borderRadius: '7px',
+              cursor: 'pointer',
+              flexShrink: 0,
+              background: 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
             title="Fechar"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* Topo: Seleção da Parte do Corpo AO LADO do Cadastro Manual */}
-        <div className="p-3.5 border-b border-slate-800/80 bg-slate-950/40 space-y-3">
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-            {/* 1. Seleção da Parte do Corpo */}
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-bold text-slate-300 whitespace-nowrap">
-                Parte do Corpo:
-              </span>
-              <select
-                value={selectedLocationIndex}
-                onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
-                className="bg-slate-900 border border-amber-500/50 rounded-xl px-3 py-1.5 text-xs font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+        {/* Barra Superior: Seleção da Parte do Corpo */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: '#020617',
+            borderBottom: '1px solid #1e293b',
+            padding: '10px 18px',
+            gap: '12px',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', whiteSpace: 'nowrap' }}>
+            Parte do Corpo:
+          </span>
+          <select
+            value={selectedLocationIndex}
+            onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
+            style={{
+              flex: 1,
+              maxWidth: '420px',
+              background: '#0f172a',
+              border: '1px solid rgba(245, 158, 11, 0.5)',
+              borderRadius: '8px',
+              padding: '6px 10px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: '#fcd34d',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            {allLocations.map((loc, idx) => (
+              <option
+                key={loc.id || `${loc.location}-${idx}`}
+                value={idx}
+                style={{ background: '#0f172a', color: '#f8fafc' }}
               >
-                {allLocations.map((loc, idx) => (
-                  <option
-                    key={loc.id || `${loc.location}-${idx}`}
-                    value={idx}
-                    className="bg-slate-900 text-slate-100"
-                  >
-                    {loc.location} (Roll {loc.rollTarget || '—'}) {loc.armorName ? `— Atual: ${loc.armorName} (RD ${loc.dr})` : '— Sem armadura'}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {loc.location} (Roll {loc.rollTarget || '—'}) {loc.armorName ? `— Atual: ${loc.armorName} (RD ${loc.dr})` : '— Sem armadura'}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            {/* Separador vertical em telas grandes */}
-            <div className="hidden lg:block w-px h-8 bg-slate-800" />
-
-            {/* 2. Cadastro Manual ao lado da seleção de parte do corpo */}
-            <form onSubmit={handleManualSubmit} className="flex-1 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-slate-300 flex items-center gap-1 shrink-0">
-                <Wrench size={12} className="text-amber-400" />
-                <span>Manual:</span>
-              </span>
-
-              <input
-                type="text"
-                required
-                placeholder="Nome da peça (ex: Heavy Plate, Couro...)"
-                value={manualName}
-                onChange={(e) => setManualName(e.target.value)}
-                className="flex-1 min-w-[140px] bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] text-slate-400 font-semibold">RD:</span>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  placeholder="RD"
-                  value={manualDr}
-                  onChange={(e) => setManualDr(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  className="w-14 bg-slate-900 border border-amber-600/60 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-amber-300 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  placeholder="Mod"
-                  value={manualMod1}
-                  onChange={(e) => setManualMod1(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none"
-                  title="Modificador de RD (ex: -2 ou +1)"
-                />
-                <select
-                  value={manualMod1Type}
-                  onChange={(e) => setManualMod1Type(e.target.value)}
-                  className="bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none"
-                >
-                  <option value="">vs Dano</option>
-                  <option value="contusao">Contusão</option>
-                  <option value="corte">Corte</option>
-                  <option value="empalamento">Empalamento</option>
-                  <option value="perfurante">Perfurante</option>
-                  <option value="queima">Queima</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  placeholder="Mod 2"
-                  value={manualMod2}
-                  onChange={(e) => setManualMod2(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none"
-                  title="Segundo modificador (opcional)"
-                />
-                <select
-                  value={manualMod2Type}
-                  onChange={(e) => setManualMod2Type(e.target.value)}
-                  className="bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none"
-                >
-                  <option value="">vs Dano</option>
-                  <option value="contusao">Contusão</option>
-                  <option value="corte">Corte</option>
-                  <option value="empalamento">Empalamento</option>
-                  <option value="perfurante">Perfurante</option>
-                  <option value="queima">Queima</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-xs shrink-0 cursor-pointer active:scale-95"
-                title={`Equipar armadura manual em ${currentLocation?.location}`}
-              >
-                <Check size={12} />
-                <span>Equipar</span>
-              </button>
-            </form>
+        {/* Feedback visual de equipamento realizado */}
+        {equippedFeedback && (
+          <div
+            style={{
+              padding: '8px 18px',
+              background: 'rgba(6, 78, 59, 0.7)',
+              borderBottom: '1px solid rgba(5, 150, 105, 0.4)',
+              color: '#6ee7b7',
+              fontSize: '12px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Check size={14} color="#34d399" />
+              {equippedFeedback}
+            </span>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+              Selecione outra parte acima para continuar equipando
+            </span>
           </div>
+        )}
 
-          {/* Feedback visual de equipamento realizado */}
-          {equippedFeedback && (
-            <div className="px-3 py-1.5 rounded-lg bg-emerald-950/70 border border-emerald-800 text-emerald-300 text-xs font-semibold flex items-center justify-between animate-in fade-in duration-150">
-              <span className="flex items-center gap-1.5">
-                <Check size={13} className="text-emerald-400" />
-                {equippedFeedback}
-              </span>
-              <span className="text-[10px] text-slate-400">Você pode continuar equipando outras partes</span>
-            </div>
-          )}
-
-          {/* Busca logo acima da lista de peças de armaduras */}
-          <div className="relative">
+        {/* Barra de Busca logo acima da lista de peças de armaduras */}
+        <div
+          style={{
+            padding: '12px 18px',
+            borderBottom: '1px solid #1e293b',
+            background: 'rgba(15, 23, 42, 0.4)',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ position: 'relative', width: '100%' }}>
             <Search
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#94a3b8',
+              }}
             />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar armadura no catálogo logo abaixo (ex: Heavy Plate, Mail, Leather, RD 9...)"
-              className="w-full pl-9 pr-8 py-2 bg-slate-950 border border-slate-750 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"
+              placeholder="Buscar armadura por nome, tipo, livro ou RD (ex: Heavy Plate, Mail, Leather, RD 9...)"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                paddingLeft: '34px',
+                paddingRight: '32px',
+                paddingTop: '8px',
+                paddingBottom: '8px',
+                background: '#020617',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                fontSize: '12px',
+                color: '#ffffff',
+                outline: 'none',
+              }}
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '2px',
+                }}
               >
-                <X size={12} />
+                <X size={14} />
               </button>
             )}
           </div>
         </div>
 
         {/* Lista de Armaduras do Catálogo */}
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-2 divide-y divide-slate-800/40 scrollbar-thin">
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '14px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+          className="scrollbar-thin"
+        >
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: '#94a3b8', gap: '10px' }}>
               <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs">Carregando catálogo de armaduras...</p>
+              <p style={{ fontSize: '12px' }}>Carregando catálogo de armaduras...</p>
             </div>
           ) : filteredArmors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-500 space-y-3">
-              <Shield size={36} className="text-slate-700" />
-              <p className="text-xs font-medium">Nenhuma armadura encontrada.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: '#64748b', gap: '10px' }}>
+              <Shield size={36} color="#334155" />
+              <p style={{ fontSize: '12px', fontWeight: 500 }}>Nenhuma armadura encontrada.</p>
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="text-xs text-amber-400 hover:underline"
+                style={{ fontSize: '12px', color: '#fbbf24', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
               >
                 Limpar busca
               </button>
@@ -364,40 +342,65 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
               return (
                 <div
                   key={armor.id || armor.name}
-                  className="pt-2.5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-950/50 border border-slate-800/80 hover:border-amber-500/50 hover:bg-slate-850/40 transition-all group"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: '#020617',
+                    border: '1px solid #1e293b',
+                    transition: 'all 0.15s ease',
+                  }}
+                  className="hover:border-amber-500/50 group"
                 >
                   {/* Detalhes da Armadura */}
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold text-white text-sm group-hover:text-amber-300 transition-colors">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#ffffff', fontSize: '13px' }}>
                         {armor.name}
                       </span>
 
                       {armor.category && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60">
+                        <span style={{ fontSize: '10px', fontWeight: 500, padding: '1px 6px', borderRadius: '4px', background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155' }}>
                           {armor.category}
                         </span>
                       )}
 
                       {armor.tl !== undefined && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-850 text-slate-400 border border-slate-800">
+                        <span style={{ fontSize: '10px', fontFamily: 'monospace', padding: '1px 5px', borderRadius: '4px', background: '#0f172a', color: '#94a3b8', border: '1px solid #1e293b' }}>
                           TL {armor.tl}
                         </span>
                       )}
 
                       {armor.book && (
-                        <span className="text-[10px] text-slate-500">
+                        <span style={{ fontSize: '10px', color: '#64748b' }}>
                           {armor.book} {armor.page || ''}
                         </span>
                       )}
                     </div>
 
                     {/* Badges de RD e Modificadores */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs">
-                        <span>RD Base: {parsed.baseDr}</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '2px 8px',
+                          borderRadius: '5px',
+                          fontFamily: 'monospace',
+                          fontWeight: 'bold',
+                          background: 'rgba(245, 158, 11, 0.15)',
+                          color: '#fcd34d',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                        }}
+                      >
+                        RD Base: {parsed.baseDr}
                         {armor.dr.includes('*') && (
-                          <span className="text-[9px] font-normal text-amber-400" title="Flexível">
+                          <span style={{ fontSize: '9px', fontWeight: 'normal', color: '#fbbf24' }} title="Flexível">
                             *
                           </span>
                         )}
@@ -423,11 +426,19 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                         return (
                           <span
                             key={mi}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold border ${
-                              isNeg
-                                ? 'bg-rose-950/60 text-rose-300 border-rose-800/80'
-                                : 'bg-emerald-950/60 text-emerald-300 border-emerald-800/80'
-                            }`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 6px',
+                              borderRadius: '5px',
+                              fontFamily: 'monospace',
+                              fontSize: '10px',
+                              fontWeight: 'bold',
+                              background: isNeg ? 'rgba(76, 5, 25, 0.6)' : 'rgba(6, 78, 59, 0.6)',
+                              color: isNeg ? '#fda4af' : '#6ee7b7',
+                              border: isNeg ? '1px solid rgba(225, 29, 72, 0.4)' : '1px solid rgba(5, 150, 105, 0.4)',
+                            }}
                           >
                             {sign} RD vs {dtLabel}
                           </span>
@@ -435,32 +446,46 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                       })}
 
                       {armor.cost && (
-                        <span className="text-[11px] text-slate-400 px-1">
+                        <span style={{ fontSize: '11px', color: '#94a3b8', padding: '0 4px' }}>
                           {armor.cost}
                         </span>
                       )}
                       {armor.weight && (
-                        <span className="text-[11px] text-slate-400 px-1">
+                        <span style={{ fontSize: '11px', color: '#94a3b8', padding: '0 4px' }}>
                           {armor.weight} lb
                         </span>
                       )}
                     </div>
 
                     {(armor.footnotes || armor.notes) && (
-                      <p className="text-[11px] text-slate-400 line-clamp-1 italic">
+                      <p style={{ fontSize: '11px', color: '#94a3b8', margin: '2px 0 0 0', fontStyle: 'italic' }}>
                         {armor.footnotes || armor.notes}
                       </p>
                     )}
                   </div>
 
-                  {/* Botão de Equipar na Parte Selecionada (sem fechar modal) */}
-                  <div className="shrink-0">
+                  {/* Botão de Equipar na Parte Selecionada */}
+                  <div style={{ flexShrink: 0 }}>
                     <button
                       type="button"
                       onClick={() => handleCatalogEquip(armor, parsed)}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
+                      className="hover:opacity-90 active:scale-95 transition-all"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        background: '#f59e0b',
+                        color: '#020617',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        borderRadius: '7px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                      }}
                     >
-                      <Check size={13} />
+                      <Check size={12} strokeWidth={2.5} />
                       <span>Equipar em {currentLocation?.location}</span>
                     </button>
                   </div>
@@ -470,12 +495,35 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
           )}
         </div>
 
-        {/* Rodapé Limpo (sem a label removida) */}
-        <div className="flex items-center justify-end px-5 py-2.5 border-t border-slate-800 bg-slate-950/80 text-xs text-slate-400">
+        {/* Rodapé no estilo Jogadores da Mesa de RPG */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            padding: '8px 18px',
+            borderTop: '1px solid #1e293b',
+            background: 'rgba(2, 6, 23, 0.6)',
+            gap: '10px',
+          }}
+        >
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium text-xs cursor-pointer"
+            className="hover:opacity-90 active:scale-95 transition-all"
+            style={{
+              padding: '5px 14px',
+              borderRadius: '7px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              background: '#f59e0b',
+              color: '#020617',
+              border: 'none',
+              cursor: 'pointer',
+              flexShrink: 0,
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+            }}
           >
             Fechar
           </button>

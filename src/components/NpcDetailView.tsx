@@ -3561,38 +3561,27 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               </h3>
             </div>
 
-            {/* Ações e Botão de + Kit de Armadura */}
+            {/* Botão Buscar Armaduras onde estava o + Kit de Armadura */}
             {!isViewer && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTargetLocationIndex(0);
-                    setSearchTargetLocation(currentLocations[0] || null);
-                    setIsArmorSearchOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-750 hover:border-amber-500/50 text-xs font-bold rounded-lg transition-colors shadow-xs"
-                  title="Abrir o catálogo de armaduras para consultar ou equipar"
-                >
-                  <Search size={13} />
-                  <span>Buscar Armaduras</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddArmorKit}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm"
-                  title="Adicionar uma nova lista de partes do corpo (novo kit de armadura)"
-                >
-                  <Plus size={14} />
-                  <span>+ Kit de Armadura</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTargetLocationIndex(0);
+                  setSearchTargetLocation(currentLocations[0] || null);
+                  setIsArmorSearchOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm active:scale-95 cursor-pointer"
+                title="Abrir o catálogo de armaduras para consultar ou equipar"
+              >
+                <Search size={14} />
+                <span>Buscar Armaduras</span>
+              </button>
             )}
           </div>
 
           {/* Abas dos Kits de Armadura */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 pr-1">
                 <Layers size={13} className="text-amber-400" />
                 <span>Kits:</span>
@@ -3693,6 +3682,18 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   </div>
                 );
               })}
+
+              {!isViewer && (
+                <button
+                  type="button"
+                  onClick={handleAddArmorKit}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-dashed border-amber-500/40 hover:border-amber-500/80 transition-all cursor-pointer shrink-0"
+                  title="Adicionar uma nova lista de partes do corpo (novo kit de armadura)"
+                >
+                  <Plus size={13} />
+                  <span>+ Kit de Armadura</span>
+                </button>
+              )}
             </div>
           </div>
 
