@@ -17,6 +17,182 @@ export interface ArmorCatalogItem {
   don?: string;
 }
 
+export interface ArmorPresetType {
+  name: string;
+  category: string;
+  dr: string;
+  baseDr: number;
+  drModifiers: { drModifier: number; modifierDamageType: string }[];
+  description: string;
+  notes?: string;
+  location?: string;
+}
+
+export const GURPS_CORE_ARMOR_TYPES: ArmorPresetType[] = [
+  {
+    name: 'Heavy Plate (Placas Pesadas)',
+    category: 'Plate',
+    dr: '9',
+    baseDr: 9,
+    drModifiers: [],
+    description: 'Armadura pesada de placas de aço (Low-Tech). Alta proteção para qualquer parte do corpo.',
+    location: 'all',
+  },
+  {
+    name: 'Medium Plate (Placas Médias)',
+    category: 'Plate',
+    dr: '6',
+    baseDr: 6,
+    drModifiers: [],
+    description: 'Armadura média de placas de aço. Excelente equilíbrio entre proteção e mobilidade.',
+    location: 'all',
+  },
+  {
+    name: 'Light Plate (Placas Leves)',
+    category: 'Plate',
+    dr: '3',
+    baseDr: 3,
+    drModifiers: [],
+    description: 'Armadura leve de placas de aço.',
+    location: 'all',
+  },
+  {
+    name: 'Heavy Segmented Plate (Placas Articuladas Pesadas)',
+    category: 'Segmented Plate',
+    dr: '5',
+    baseDr: 5,
+    drModifiers: [],
+    description: 'Placas articuladas sobrepostas tipo Lorica Segmentata pesada.',
+    location: 'all',
+  },
+  {
+    name: 'Medium Segmented Plate (Placas Articuladas Médias)',
+    category: 'Segmented Plate',
+    dr: '4',
+    baseDr: 4,
+    drModifiers: [],
+    description: 'Placas articuladas padrão.',
+    location: 'all',
+  },
+  {
+    name: 'Light Segmented Plate (Placas Articuladas Leves)',
+    category: 'Segmented Plate',
+    dr: '3',
+    baseDr: 3,
+    drModifiers: [],
+    description: 'Placas articuladas leves.',
+    location: 'all',
+  },
+  {
+    name: 'Heavy Mail (Cota de Malha Pesada)',
+    category: 'Mail',
+    dr: '5/3*',
+    baseDr: 5,
+    drModifiers: [{ drModifier: -2, modifierDamageType: 'contusao' }],
+    description: 'Cota de malha anelada densa e pesada. -2 de RD contra contusão.',
+    location: 'all',
+  },
+  {
+    name: 'Fine Mail (Cota de Malha Fina)',
+    category: 'Mail',
+    dr: '4/2*',
+    baseDr: 4,
+    drModifiers: [{ drModifier: -2, modifierDamageType: 'contusao' }],
+    description: 'Malha anelada reforçada e flexível. -2 de RD contra contusão.',
+    location: 'all',
+  },
+  {
+    name: 'Light Mail (Cota de Malha Leve)',
+    category: 'Mail',
+    dr: '3/1*',
+    baseDr: 3,
+    drModifiers: [{ drModifier: -2, modifierDamageType: 'contusao' }],
+    description: 'Cota de malha simples e leve. -2 de RD contra contusão.',
+    location: 'all',
+  },
+  {
+    name: 'Double Mail (Malha Dupla)',
+    category: 'Mail',
+    dr: '5/3*',
+    baseDr: 5,
+    drModifiers: [{ drModifier: -2, modifierDamageType: 'contusao' }],
+    description: 'Camada dupla de malha anelada. -2 de RD contra contusão.',
+    location: 'all',
+  },
+  {
+    name: 'Heavy Leather / Hardened (Couro Pesado / Rígido)',
+    category: 'Leather',
+    dr: '3',
+    baseDr: 3,
+    drModifiers: [],
+    description: 'Couro fervido, endurecido ou multicamadas pesado.',
+    location: 'all',
+  },
+  {
+    name: 'Medium Leather (Couro Médio)',
+    category: 'Leather',
+    dr: '2*',
+    baseDr: 2,
+    drModifiers: [],
+    description: 'Armadura tradicional de couro curtido flexível.',
+    location: 'all',
+  },
+  {
+    name: 'Cloth, Padded / Light Leather (Acolchoado / Couro Leve)',
+    category: 'Cloth/Leather',
+    dr: '1*',
+    baseDr: 1,
+    drModifiers: [],
+    description: 'Tecido acolchoado ou couro fino flexível.',
+    location: 'all',
+  },
+  {
+    name: 'Heavy Scale (Escamas Pesadas)',
+    category: 'Scale',
+    dr: '5',
+    baseDr: 5,
+    drModifiers: [{ drModifier: -1, modifierDamageType: 'contusao' }],
+    description: 'Escamas metálicas sobrepostas pesadas. -1 de RD contra contusão.',
+    location: 'all',
+  },
+  {
+    name: 'Medium Scale (Escamas Médias)',
+    category: 'Scale',
+    dr: '4',
+    baseDr: 4,
+    drModifiers: [{ drModifier: -1, modifierDamageType: 'contusao' }],
+    description: 'Armadura de escamas metálicas média. -1 de RD contra contusão.',
+    location: 'all',
+  },
+  {
+    name: 'Light Scale (Escamas Leves)',
+    category: 'Scale',
+    dr: '3',
+    baseDr: 3,
+    drModifiers: [{ drModifier: -1, modifierDamageType: 'contusao' }],
+    description: 'Armadura de escamas metálicas leve. -1 de RD contra contusão.',
+    location: 'all',
+  },
+  {
+    name: 'Brigandine, Medium (Brigantina Média)',
+    category: 'Brigandine',
+    dr: '5',
+    baseDr: 5,
+    drModifiers: [],
+    description: 'Placas de aço rebitadas sob tecido ou couro resistente.',
+    location: 'all',
+  },
+  {
+    name: 'Brigandine, Light (Brigantina Leve)',
+    category: 'Brigandine',
+    dr: '3',
+    baseDr: 3,
+    drModifiers: [],
+    description: 'Brigantina leve rebitada.',
+    location: 'all',
+  },
+];
+
 export interface ParsedArmorModifier {
   drModifier: number;
   modifierDamageType: string;
@@ -37,6 +213,18 @@ export async function loadArmorCatalog(): Promise<ArmorCatalogItem[]> {
     return cachedCatalog;
   }
 
+  const coreItems: ArmorCatalogItem[] = GURPS_CORE_ARMOR_TYPES.map((t, idx) => ({
+    id: `core-armor-${idx}`,
+    name: t.name,
+    category: t.category,
+    location: 'all',
+    dr: t.dr,
+    type: 'Armor',
+    notes: t.description,
+    book: 'GURPS Low-Tech',
+    page: 'p. 100',
+  }));
+
   if (!catalogLoadingPromise) {
     catalogLoadingPromise = (async () => {
       try {
@@ -44,25 +232,27 @@ export async function loadArmorCatalog(): Promise<ArmorCatalogItem[]> {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            cachedCatalog = data;
-            return data;
+            // Remove duplicados exatos e junta com tipos essenciais no topo
+            const jsonWithoutShields = data.filter((x) => x.type !== 'Shield');
+            cachedCatalog = [...coreItems, ...jsonWithoutShields];
+            return cachedCatalog;
           }
         }
       } catch (e) {
-        // Fallback try root-relative
         try {
           const res2 = await fetch('/dados/armaduras.json');
           if (res2.ok) {
             const data2 = await res2.json();
             if (Array.isArray(data2) && data2.length > 0) {
-              cachedCatalog = data2;
-              return data2;
+              const jsonWithoutShields = data2.filter((x) => x.type !== 'Shield');
+              cachedCatalog = [...coreItems, ...jsonWithoutShields];
+              return cachedCatalog;
             }
           }
         } catch (e2) {}
       }
 
-      cachedCatalog = [];
+      cachedCatalog = coreItems;
       return cachedCatalog;
     })();
   }
@@ -190,12 +380,13 @@ export function parseArmorDr(armor: {
  */
 export function doesArmorFitLocation(armorLocStr?: string, bodyPartLoc?: string): boolean {
   if (!bodyPartLoc) return true;
-  if (!armorLocStr) return false;
+  if (!armorLocStr) return true;
 
   const aLoc = armorLocStr.toLowerCase().trim();
   const bLoc = bodyPartLoc.toLowerCase().trim();
 
-  // Full Suit e Body, Limbs cobrem praticamente tudo
+  // 'all', 'any', Full Suit e Body, Limbs cobrem tudo
+  if (aLoc === 'all' || aLoc === 'any' || aLoc === 'todos' || aLoc === 'todas') return true;
   if (aLoc.includes('full suit') || aLoc.includes('full barding')) return true;
   if (aLoc.includes('body, limbs')) {
     return !bLoc.includes('eye') && !bLoc.includes('head') && !bLoc.includes('face');

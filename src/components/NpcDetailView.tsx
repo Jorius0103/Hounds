@@ -677,19 +677,21 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   };
 
   const handleEquipArmorFromCatalog = (
-    armor: ArmorCatalogItem,
+    armor: { name: string; dr?: string | number; location?: string },
     parsed: ParsedArmorDR,
     targetIndex: number,
-    applyToAllCovered: boolean
+    scopeOrCovered: 'single' | 'whole_body' | 'covered' | boolean
   ) => {
     if (isViewer) return;
 
+    const isWholeBody = scopeOrCovered === 'whole_body';
+    const isCoveredScope = scopeOrCovered === 'covered' || scopeOrCovered === true;
     const targetLoc = currentLocations[targetIndex];
-    if (!targetLoc) return;
+    if (!targetLoc && !isWholeBody) return;
 
-    const coveredLocNames = applyToAllCovered
+    const coveredLocNames = isCoveredScope
       ? getCoveredLocationsForArmor(armor.location, currentLocations)
-      : [targetLoc.location];
+      : (targetLoc ? [targetLoc.location] : []);
 
     // Garante que haja pelo menos 2 slots de modificadores estruturados
     const standardMods =
@@ -702,9 +704,12 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
     const nextLocations = currentLocations.map((loc, idx) => {
       const isTarget = idx === targetIndex;
-      const isCovered = coveredLocNames.includes(loc.location);
+      const shouldEquip =
+        isWholeBody ||
+        (isCoveredScope && coveredLocNames.includes(loc.location)) ||
+        isTarget;
 
-      if (isTarget || (applyToAllCovered && isCovered)) {
+      if (shouldEquip) {
         return {
           ...loc,
           armorName: armor.name,
