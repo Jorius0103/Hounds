@@ -4541,6 +4541,7 @@ ArmorSearchModalComponent=({isOpen,onClose,targetLoc,targetIdx,allLocs,onEquip})
       [loading,setLoading]=(0,Pr.useState)(!1),
       [q,setQ]=(0,Pr.useState)(""),
       [selIdx,setSelIdx]=(0,Pr.useState)(0),
+      [feedback,setFeedback]=(0,Pr.useState)(""),
       [manName,setManName]=(0,Pr.useState)(""),
       [manDr,setManDr]=(0,Pr.useState)(0),
       [manMod1,setManMod1]=(0,Pr.useState)(""),
@@ -4555,6 +4556,7 @@ ArmorSearchModalComponent=({isOpen,onClose,targetLoc,targetIdx,allLocs,onEquip})
       setQ("");
       setSelIdx(targetIdx??0);
       setManName("");setManDr(0);setManMod1("");setManMod1Type("");setManMod2("");setManMod2Type("");
+      setFeedback("");
     }
   },[isOpen,targetIdx]);
 
@@ -4584,45 +4586,50 @@ ArmorSearchModalComponent=({isOpen,onClose,targetLoc,targetIdx,allLocs,onEquip})
       mods.push({drModifier:typeof manMod2==="number"?manMod2:(parseInt(manMod2,10)||0),modifierDamageType:manMod2Type});
     }
     let parsed={baseDr:bDr,rawDr:String(bDr),drModifiers:mods,summary:`RD Base: ${bDr}`};
+    let locName=curPart?.location||"Parte selecionada";
     onEquip({name:manName.trim()||"Armadura Personalizada",dr:String(bDr),category:"Personalizada",location:curPart?.location},parsed,selIdx);
-    onClose();
+    setFeedback(`"${manName.trim()||'Armadura'}" equipada em ${locName}!`);
+    setTimeout(()=>setFeedback(""),3000);
+    setManName("");setManDr(0);setManMod1("");setManMod1Type("");setManMod2("");setManMod2Type("");
+  };
+
+  let handleCatalogEquip=(armor,parsed)=>{
+    let locName=curPart?.location||"Parte selecionada";
+    onEquip(armor,parsed,selIdx);
+    setFeedback(`"${armor.name}" equipada em ${locName}!`);
+    setTimeout(()=>setFeedback(""),3000);
   };
 
   if(!isOpen)return null;
 
-  return (0,d.jsx)("div",{style:{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"14px",background:"rgba(2,6,23,0.85)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",overflowY:"auto"},onClick:onClose,children:(0,d.jsxs)("div",{style:{maxWidth:"880px",width:"100%",maxHeight:"92vh",display:"flex",flexDirection:"column"},className:"rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden",onClick:E=>E.stopPropagation(),children:[
+  return (0,d.jsx)("div",{style:{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"14px",background:"rgba(2,6,23,0.85)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",overflowY:"auto"},children:(0,d.jsxs)("div",{style:{maxWidth:"920px",width:"100%",maxHeight:"92vh",display:"flex",flexDirection:"column"},className:"rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden",onClick:E=>E.stopPropagation(),children:[
     (0,d.jsxs)("div",{className:"flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-950/70",children:[
       (0,d.jsxs)("div",{className:"flex items-center gap-3",children:[
         (0,d.jsx)("div",{className:"p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400",children:(0,d.jsx)(oa,{size:20})}),
         (0,d.jsxs)("div",{children:[
           (0,d.jsx)("h3",{className:"text-base font-bold text-white tracking-wide",children:"Armaduras e Proteções"}),
-          (0,d.jsx)("p",{className:"text-xs text-slate-400 mt-0.5",children:"Selecione a parte do corpo e a armadura desejada para cadastrar ou equipar."})
+          (0,d.jsx)("p",{className:"text-xs text-slate-400 mt-0.5",children:"Selecione a parte do corpo e equipe quantas peças desejar. A janela permanece aberta até clicar em Fechar."})
         ]})
       ]}),
       (0,d.jsx)("button",{type:"button",onClick:onClose,className:"p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors",children:"✕"})
     ]}),
     (0,d.jsxs)("div",{className:"p-3.5 border-b border-slate-800/80 bg-slate-950/40 space-y-3",children:[
-      (0,d.jsxs)("div",{className:"flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between",children:[
-        (0,d.jsxs)("div",{className:"flex items-center gap-2",children:[
-          (0,d.jsx)("span",{className:"text-xs font-bold text-slate-300 shrink-0",children:"Parte do Corpo:"}),
-          (0,d.jsx)("select",{value:selIdx,onChange:E=>setSelIdx(Number(E.target.value)),className:"bg-slate-950 border border-amber-500/50 rounded-xl px-3 py-1.5 text-xs font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner",children:(allLocs||[]).map((Loc,Idx)=>(0,d.jsxs)("option",{value:Idx,className:"bg-slate-900 text-slate-100",children:[Loc.location," (Roll ",Loc.rollTarget||"—",")",Loc.armorName?` — Atual: ${Loc.armorName} (RD ${Loc.dr})`:" — Sem armadura"]},Loc.id||`${Loc.location}-${Idx}`))})
+      (0,d.jsxs)("div",{className:"flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800",children:[
+        (0,d.jsxs)("div",{className:"flex items-center gap-2 shrink-0",children:[
+          (0,d.jsx)("span",{className:"text-xs font-bold text-slate-300 whitespace-nowrap",children:"Parte do Corpo:"}),
+          (0,d.jsx)("select",{value:selIdx,onChange:E=>setSelIdx(Number(E.target.value)),className:"bg-slate-900 border border-amber-500/50 rounded-xl px-3 py-1.5 text-xs font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner",children:(allLocs||[]).map((Loc,Idx)=>(0,d.jsxs)("option",{value:Idx,className:"bg-slate-900 text-slate-100",children:[Loc.location," (Roll ",Loc.rollTarget||"—",")",Loc.armorName?` — Atual: ${Loc.armorName} (RD ${Loc.dr})`:" — Sem armadura"]},Loc.id||`${Loc.location}-${Idx}`))})
         ]}),
-        (0,d.jsxs)("div",{className:"relative flex-1",children:[
-          (0,d.jsx)("input",{type:"text",value:q,onChange:E=>setQ(E.target.value),placeholder:"Buscar armadura no catálogo (ex: Heavy Plate, Mail, Leather, RD 9...)",className:"w-full pl-3 pr-8 py-1.5 bg-slate-950 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"}),
-          q&&(0,d.jsx)("button",{type:"button",onClick:()=>setQ(""),className:"absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1",children:"✕"})
-        ]})
-      ]}),
-      (0,d.jsxs)("div",{className:"p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2",children:[
-        (0,d.jsx)("span",{className:"text-xs font-bold text-slate-300",children:"Cadastrar Armadura Manual:"}),
-        (0,d.jsxs)("form",{onSubmit:handleManualSubmit,className:"flex flex-wrap items-center gap-2",children:[
-          (0,d.jsx)("input",{type:"text",required:!0,placeholder:"Nome da peça (ex: Heavy Plate, Couro...)",value:manName,onChange:E=>setManName(E.target.value),className:"flex-1 min-w-[170px] bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"}),
+        (0,d.jsx)("div",{className:"hidden lg:block w-px h-8 bg-slate-800"}),
+        (0,d.jsxs)("form",{onSubmit:handleManualSubmit,className:"flex-1 flex flex-wrap items-center gap-2",children:[
+          (0,d.jsx)("span",{className:"text-xs font-bold text-slate-300 shrink-0",children:"Manual:"}),
+          (0,d.jsx)("input",{type:"text",required:!0,placeholder:"Nome da peça (ex: Heavy Plate, Couro...)",value:manName,onChange:E=>setManName(E.target.value),className:"flex-1 min-w-[130px] bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"}),
           (0,d.jsxs)("div",{className:"flex items-center gap-1",children:[
             (0,d.jsx)("span",{className:"text-[11px] text-slate-400 font-semibold",children:"RD:"}),
-            (0,d.jsx)("input",{type:"number",min:"0",required:!0,placeholder:"RD",value:manDr,onChange:E=>setManDr(E.target.value===""?"":parseInt(E.target.value,10)),className:"w-14 bg-slate-950 border border-amber-600/60 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-amber-300 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"})
+            (0,d.jsx)("input",{type:"number",min:"0",required:!0,placeholder:"RD",value:manDr,onChange:E=>setManDr(E.target.value===""?"":parseInt(E.target.value,10)),className:"w-14 bg-slate-900 border border-amber-600/60 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-amber-300 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"})
           ]}),
           (0,d.jsxs)("div",{className:"flex items-center gap-1",children:[
-            (0,d.jsx)("input",{type:"number",placeholder:"Mod",value:manMod1,onChange:E=>setManMod1(E.target.value===""?"":parseInt(E.target.value,10)),className:"w-14 bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none",title:"Modificador de RD (ex: -2 ou +1)"}),
-            (0,d.jsxs)("select",{value:manMod1Type,onChange:E=>setManMod1Type(E.target.value),className:"bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none",children:[
+            (0,d.jsx)("input",{type:"number",placeholder:"Mod",value:manMod1,onChange:E=>setManMod1(E.target.value===""?"":parseInt(E.target.value,10)),className:"w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none",title:"Modificador de RD (ex: -2 ou +1)"}),
+            (0,d.jsxs)("select",{value:manMod1Type,onChange:E=>setManMod1Type(E.target.value),className:"bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none",children:[
               (0,d.jsx)("option",{value:"",children:"vs Dano"}),
               (0,d.jsx)("option",{value:"contusao",children:"Contusão"}),
               (0,d.jsx)("option",{value:"corte",children:"Corte"}),
@@ -4632,8 +4639,8 @@ ArmorSearchModalComponent=({isOpen,onClose,targetLoc,targetIdx,allLocs,onEquip})
             ]})
           ]}),
           (0,d.jsxs)("div",{className:"flex items-center gap-1",children:[
-            (0,d.jsx)("input",{type:"number",placeholder:"Mod 2",value:manMod2,onChange:E=>setManMod2(E.target.value===""?"":parseInt(E.target.value,10)),className:"w-14 bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none",title:"Segundo modificador (opcional)"}),
-            (0,d.jsxs)("select",{value:manMod2Type,onChange:E=>setManMod2Type(E.target.value),className:"bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none",children:[
+            (0,d.jsx)("input",{type:"number",placeholder:"Mod 2",value:manMod2,onChange:E=>setManMod2(E.target.value===""?"":parseInt(E.target.value,10)),className:"w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none",title:"Segundo modificador (opcional)"}),
+            (0,d.jsxs)("select",{value:manMod2Type,onChange:E=>setManMod2Type(E.target.value),className:"bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none",children:[
               (0,d.jsx)("option",{value:"",children:"vs Dano"}),
               (0,d.jsx)("option",{value:"contusao",children:"Contusão"}),
               (0,d.jsx)("option",{value:"corte",children:"Corte"}),
@@ -4642,8 +4649,16 @@ ArmorSearchModalComponent=({isOpen,onClose,targetLoc,targetIdx,allLocs,onEquip})
               (0,d.jsx)("option",{value:"queima",children:"Queima"})
             ]})
           ]}),
-          (0,d.jsxs)("button",{type:"submit",className:"px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-xs shrink-0",children:["Equipar em ",curPart?.location]})
+          (0,d.jsx)("button",{type:"submit",className:"px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-xs shrink-0 cursor-pointer active:scale-95",children:"Equipar"})
         ]})
+      ]}),
+      feedback&&(0,d.jsxs)("div",{className:"px-3 py-1.5 rounded-lg bg-emerald-950/70 border border-emerald-800 text-emerald-300 text-xs font-semibold flex items-center justify-between",children:[
+        (0,d.jsxs)("span",{children:["✓ ",feedback]}),
+        (0,d.jsx)("span",{className:"text-[10px] text-slate-400",children:"Você pode continuar equipando outras partes"})
+      ]}),
+      (0,d.jsxs)("div",{className:"relative",children:[
+        (0,d.jsx)("input",{type:"text",value:q,onChange:E=>setQ(E.target.value),placeholder:"Buscar armadura no catálogo logo abaixo (ex: Heavy Plate, Mail, Leather, RD 9...)",className:"w-full pl-3 pr-8 py-2 bg-slate-950 border border-slate-750 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"}),
+        q&&(0,d.jsx)("button",{type:"button",onClick:()=>setQ(""),className:"absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1",children:"✕"})
       ]})
     ]}),
     (0,d.jsx)("div",{className:"flex-1 overflow-y-auto p-3.5 space-y-2 divide-y divide-slate-800/40 scrollbar-thin",children:loading?(0,d.jsx)("div",{className:"py-12 text-center text-xs text-slate-400",children:"Carregando catálogo de armaduras..."}):filtered.length===0?(0,d.jsx)("div",{className:"py-12 text-center text-xs text-slate-500",children:"Nenhuma armadura encontrada."}):filtered.map(armor=>{
@@ -4653,7 +4668,7 @@ ArmorSearchModalComponent=({isOpen,onClose,targetLoc,targetIdx,allLocs,onEquip})
           (0,d.jsxs)("div",{className:"flex flex-wrap items-center gap-2",children:[
             (0,d.jsx)("span",{className:"font-bold text-white text-sm",children:armor.name}),
             armor.category&&(0,d.jsx)("span",{className:"text-[10px] font-medium px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60",children:armor.category}),
-            armor.tl!==void 0&&(0,d.jsx)("span",{className:"text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-850 text-slate-400 border border-slate-800",children:`TL ${armor.tl}`}),
+            armor.tl!==void 0&&(0,d.jsx)("span",{className:"text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-800",children:`TL ${armor.tl}`}),
             armor.book&&(0,d.jsx)("span",{className:"text-[10px] text-slate-500",children:`${armor.book} ${armor.page||""}`})
           ]}),
           (0,d.jsxs)("div",{className:"flex flex-wrap items-center gap-1.5 text-xs",children:[
@@ -4668,10 +4683,10 @@ ArmorSearchModalComponent=({isOpen,onClose,targetLoc,targetIdx,allLocs,onEquip})
           ]}),
           (armor.footnotes||armor.notes)&&(0,d.jsx)("p",{className:"text-[11px] text-slate-400 line-clamp-1 italic",children:armor.footnotes||armor.notes})
         ]}),
-        (0,d.jsx)("div",{className:"shrink-0",children:(0,d.jsxs)("button",{type:"button",onClick:()=>{onEquip(armor,parsed,selIdx);onClose()},className:"px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95",children:["Equipar em ",curPart?.location]})})
+        (0,d.jsx)("div",{className:"shrink-0",children:(0,d.jsxs)("button",{type:"button",onClick:()=>handleCatalogEquip(armor,parsed),className:"px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer",children:["Equipar em ",curPart?.location]})})
       ]});
     })}),
-    (0,d.jsx)("div",{className:"flex items-center justify-end px-5 py-2.5 border-t border-slate-800 bg-slate-950/80 text-xs text-slate-400",children:(0,d.jsx)("button",{type:"button",onClick:onClose,className:"px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium text-xs",children:"Fechar"})})
+    (0,d.jsx)("div",{className:"flex items-center justify-end px-5 py-2.5 border-t border-slate-800 bg-slate-950/80 text-xs text-slate-400",children:(0,d.jsx)("button",{type:"button",onClick:onClose,className:"px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium text-xs cursor-pointer",children:"Fechar"})})
   ]})});
 },Yp=({npc:t,onUpdateNpc:a,onDeleteNpc:e,onDuplicateNpc:r,onOpenAvatarPicker:o,onOpenConditionsCrud:i,onOpenDamageCalculator:n,onOpenWeaponModal:l,onRemoveActiveSpell,onRemoveAffectedSpell,isPlayerUser:c=!1,currentUserRole:p="mestre",currentRound:curRnd=0,conditions:allConds=[]})=>{let[m,k]=(0,Pr.useState)("overview"),[isArmSearchOpen,setIsArmSearchOpen]=(0,Pr.useState)(!1),[armSearchTargetIdx,setArmSearchTargetIdx]=(0,Pr.useState)(null),[armSearchTargetLoc,setArmSearchTargetLoc]=(0,Pr.useState)(null),[f,h]=(0,Pr.useState)(!1),[isAddAct,setIsAddAct]=(0,Pr.useState)(!1),[manActName,setManActName]=(0,Pr.useState)(""),[manActCost,setManActCost]=(0,Pr.useState)(1),[manActRnd,setManActRnd]=(0,Pr.useState)(curRnd??0),[manActDur,setManActDur]=(0,Pr.useState)(""),[manActArea,setManActArea]=(0,Pr.useState)(!1),[manActTgt,setManActTgt]=(0,Pr.useState)(""),[isAddAff,setIsAddAff]=(0,Pr.useState)(!1),[manAffName,setManAffName]=(0,Pr.useState)(""),[manAffCaster,setManAffCaster]=(0,Pr.useState)(""),[manAffRnd,setManAffRnd]=(0,Pr.useState)(curRnd??0),[manAffCost,setManAffCost]=(0,Pr.useState)(""),[manAffDur,setManAffDur]=(0,Pr.useState)(""),[infoWeapon,setInfoWeapon]=(0,Pr.useState)(null),[catalogList,setCatalogList]=(0,Pr.useState)(_mesaWpnCache||[]),[infoSpell,setInfoSpell]=(0,Pr.useState)(null),[editingSpell,setEditingSpell]=(0,Pr.useState)(null),[spellSearchQ,setSpellSearchQ]=(0,Pr.useState)(""),[isSpellSearchOpen,setIsSpellSearchOpen]=(0,Pr.useState)(!1),[catalogSpells,setCatalogSpells]=(0,Pr.useState)(_mesaSpellCache||[]),[spellFilterQ,setSpellFilterQ]=(0,Pr.useState)(""),g=p==="visualizador",N=p==="mestre",w=t.characterType==="player",u=!g&&(N||w),s=El(t.hpCurrent,t.hpMax),x=tg(t.fpCurrent,t.fpMax),M=(0,Pr.useRef)(t);(0,Pr.useEffect)(()=>{M.current=t},[t]);(0,Pr.useEffect)(()=>{let el=document.querySelector("header");if(!el)return;let u=()=>document.documentElement.style.setProperty("--mesa-top-offset",el.offsetHeight+"px");u();let ro=typeof ResizeObserver<"u"?new ResizeObserver(u):null;ro?.observe(el);window.addEventListener("resize",u);return()=>{ro?.disconnect();window.removeEventListener("resize",u)}},[]);(0,Pr.useEffect)(()=>{if(!_mesaWpnCache||_mesaWpnCache.length===0){_getMesaCatalogWeapons().then(res=>setCatalogList(res||[]));}},[]);(0,Pr.useEffect)(()=>{if(!_mesaSpellCache||_mesaSpellCache.length===0){_getMesaCatalogSpells().then(res=>setCatalogSpells(res||[]));}},[]);let y=(v,H)=>{if(g||(!N&&["hpMax","fpMax","dodge","dodgeNotes","block","blockNotes","parries","st","dx","iq","ht","per","will","basicSpeed","basicMove","naturalDr"].includes(v))||(!N&&!w&&!["assistantNotes","turnActions","extraItems","statusConditions","conditionMetadata","combatManeuver","hpCurrent","fpCurrent","activeSpells","affectedSpells","isDead","bodyPartDamageOverrides","bodyPartCustomRules","spells","weapons"].includes(v)))return;let S=Date.now(),X={...M.current,[v]:H,updatedAt:S};M.current=X,a(X)},z=v=>{let H=(t.statusConditions||[]).filter(S=>S!==v),nextMeta={...(t.conditionMetadata||{})};delete nextMeta[v];if(g)return;let S=Date.now(),X={...M.current,statusConditions:H,conditionMetadata:nextMeta,updatedAt:S};M.current=X,a(X)},T=t.parries&&t.parries.length>0?t.parries:[{id:"parry-default",weaponName:"",parryType:"",value:0,notes:""}],O=()=>{let v={id:`parry-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,weaponName:"",parryType:"",value:0,notes:""};y("parries",[...T,v])},tt=(v,H)=>{let S=[...T];S[v]=H,y("parries",S)},D=v=>{if(T.length<=1)return;let H=T.filter((S,X)=>X!==v);y("parries",H)},Ot=v=>{let H=t.weapons.filter(S=>S.id!==v);y("weapons",H)},favWeapon=v=>{let H=t.weapons.map(S=>S.id===v?{...S,isFavorite:!S.isFavorite}:S);y("weapons",H)},kits=(t.armorKits&&t.armorKits.length>0)?t.armorKits:[{id:t.activeArmorKitId||`kit-${t.id}-1`,name:"Kit Principal",isActive:!0,locations:t.armorLocations&&t.armorLocations.length>0?t.armorLocations:$createArmorLocations(t.id)}],[selKitId,setSelKitId]=(0,Pr.useState)(t.activeArmorKitId||kits[0]?.id||"kit-1"),curKit=kits.find(K=>K.id===selKitId)||kits[0],curLocs=$migrateArmorLocations(curKit?.locations||t.armorLocations||[],t.id),[editKitId,setEditKitId]=(0,Pr.useState)(null),[editKitNameDraft,setEditKitNameDraft]=(0,Pr.useState)(""),[editRuleIdx,setEditRuleIdx]=(0,Pr.useState)(null),[ruleDraft,setRuleDraft]=(0,Pr.useState)(""),[editPartRuleKey,setEditPartRuleKey]=(0,Pr.useState)(null),[partRuleDraft,setPartRuleDraft]=(0,Pr.useState)(""),handleUpdateBodyPartDmg=(pk,val)=>{let ov={...(t.bodyPartDamageOverrides||{}),[pk]:val};y("bodyPartDamageOverrides",ov)},handleResetBodyPartDmg=pk=>{let ov={...(t.bodyPartDamageOverrides||{})};delete ov[pk];y("bodyPartDamageOverrides",ov)},handleSavePartRule=()=>{if(!editPartRuleKey)return;let cr={...(t.bodyPartCustomRules||{}),[editPartRuleKey]:partRuleDraft.trim()};y("bodyPartCustomRules",cr);setEditPartRuleKey(null)},handleAddKit=()=>{let nId=`kit-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;let nKit={id:nId,name:`Kit ${kits.length+1}`,isActive:!1,locations:$createArmorLocations(t.id)};let nxt=[...kits,nKit];y("armorKits",nxt);setSelKitId(nId)},handleEquipKit=kid=>{let tg=kits.find(K=>K.id===kid);if(!tg)return;let nxt=kits.map(K=>({...K,isActive:K.id===kid}));y("armorKits",nxt);y("activeArmorKitId",kid);y("armorLocations",tg.locations)},handleRemKit=kid=>{if(kits.length<=1)return;let nxt=kits.filter(K=>K.id!==kid);let actId=t.activeArmorKitId;if(kid===actId||!nxt.some(K=>K.id===actId)){nxt[0].isActive=!0;actId=nxt[0].id;y("armorLocations",nxt[0].locations)}y("armorKits",nxt);y("activeArmorKitId",actId);if(selKitId===kid)setSelKitId(nxt[0].id)},openArmSearch=(idx,loc)=>{setArmSearchTargetIdx(idx);setArmSearchTargetLoc(loc);setIsArmSearchOpen(!0);},
 equipArmCatalog=(armor,parsed,targetIdx)=>{
@@ -4851,7 +4866,7 @@ Array.from({length:maxModSlots}).map((_,s)=>(0,d.jsxs)(d.Fragment,{children:[
   return (0,d.jsxs)("tr",{className:"hover:bg-slate-850/50 transition-colors",children:[
     (0,d.jsx)("td",{className:"py-1.5 px-1 text-center font-mono font-bold text-amber-400 text-[10px] leading-tight whitespace-nowrap bg-slate-950/30",children:Loc.rollTarget||"---"}),
     (0,d.jsx)("td",{className:"py-1.5 px-1.5 font-bold text-slate-100 text-xs whitespace-nowrap",children:Loc.location}),
-    (0,d.jsx)("td",{className:"py-1.5 px-1.5",children:(0,d.jsxs)("div",{className:"flex items-center gap-1",children:[(0,d.jsx)("input",{type:"text",disabled:g,value:Loc.armorName||"",placeholder:"Peça de armadura...",onChange:E=>updateArmLoc(Idx,{...Loc,armorName:E.target.value}),className:`w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs ${g?"cursor-default opacity-90":""}`}),!g&&(0,d.jsx)("button",{type:"button",onClick:()=>openArmSearch(Idx,Loc),className:"p-1 rounded bg-slate-900 border border-slate-700/80 hover:bg-amber-500 hover:text-slate-950 text-slate-400 hover:border-amber-400 transition-colors shrink-0",title:"Buscar armadura no banco",children:(0,d.jsx)(oa,{size:12})}),!g&&Loc.armorName&&(0,d.jsx)("button",{type:"button",onClick:()=>clearArmLoc(Idx),className:"p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition-colors shrink-0",title:"Limpar",children:(0,d.jsx)(Rt,{size:11})}),(0,d.jsx)(ArmorSearchModalComponent,{isOpen:isArmSearchOpen,onClose:()=>setIsArmSearchOpen(!1),targetLoc:armSearchTargetLoc,targetIdx:armSearchTargetIdx,allLocs:curLocs,onEquip:equipArmCatalog})]})}),
+    (0,d.jsx)("td",{className:"py-1.5 px-1.5",children:(0,d.jsxs)("div",{className:"flex items-center gap-1",children:[(0,d.jsx)("input",{type:"text",disabled:g,value:Loc.armorName||"",placeholder:"Peça de armadura...",onChange:E=>updateArmLoc(Idx,{...Loc,armorName:E.target.value}),className:`w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs ${g?"cursor-default opacity-90":""}`}),!g&&Loc.armorName&&(0,d.jsx)("button",{type:"button",onClick:()=>clearArmLoc(Idx),className:"p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition-colors shrink-0",title:"Limpar",children:(0,d.jsx)(Rt,{size:11})}),(0,d.jsx)(ArmorSearchModalComponent,{isOpen:isArmSearchOpen,onClose:()=>setIsArmSearchOpen(!1),targetLoc:armSearchTargetLoc,targetIdx:armSearchTargetIdx,allLocs:curLocs,onEquip:equipArmCatalog})]})}),
     (0,d.jsx)("td",{className:"py-1.5 px-1 text-center",children:(0,d.jsx)("div",{className:"flex items-center justify-center font-mono",children:(0,d.jsx)("input",{type:"number",min:"0",disabled:g,value:Loc.dr||"",placeholder:"0",onChange:E=>updateArmLoc(Idx,{...Loc,dr:E.target.value===""?0:Math.max(0,parseInt(E.target.value,10))}),className:`w-12 bg-slate-950 border border-amber-600/60 rounded px-1 py-1 text-center font-bold text-amber-300 text-xs focus:outline-none ${g?"opacity-90":""}`})})}),
     Array.from({length:maxModSlots}).map((_,s)=>{
       let curMod=locMods[s]||{drModifier:0,modifierDamageType:""};

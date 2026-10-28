@@ -39,6 +39,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocationIndex, setSelectedLocationIndex] = useState<number>(0);
+  const [equippedFeedback, setEquippedFeedback] = useState<string>('');
 
   // Manual Form States
   const [manualName, setManualName] = useState('');
@@ -68,6 +69,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
       setManualMod1Type('');
       setManualMod2('');
       setManualMod2Type('');
+      setEquippedFeedback('');
     }
   }, [isOpen, targetLocationIndex]);
 
@@ -116,6 +118,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
       summary: `RD Base: ${baseDr}`,
     };
 
+    const locName = currentLocation?.location || 'Parte selecionada';
     onEquipArmor(
       {
         name: manualName.trim() || 'Armadura Personalizada',
@@ -126,15 +129,37 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
       parsed,
       selectedLocationIndex
     );
-    onClose();
+
+    // Feedback visual sem fechar a janela
+    setEquippedFeedback(`"${manualName.trim() || 'Armadura'}" equipada em ${locName}!`);
+    setTimeout(() => setEquippedFeedback(''), 3000);
+
+    // Limpa campos manuais para próximo cadastro
+    setManualName('');
+    setManualDr(0);
+    setManualMod1('');
+    setManualMod1Type('');
+    setManualMod2('');
+    setManualMod2Type('');
+  };
+
+  // Handler for catalog equip
+  const handleCatalogEquip = (armor: ArmorCatalogItem, parsed: ParsedArmorDR) => {
+    const locName = currentLocation?.location || 'Parte selecionada';
+    onEquipArmor(armor, parsed, selectedLocationIndex);
+
+    // Feedback visual sem fechar a janela
+    setEquippedFeedback(`"${armor.name}" equipada em ${locName}!`);
+    setTimeout(() => setEquippedFeedback(''), 3000);
   };
 
   if (!isOpen) return null;
 
   return (
+    // Não fecha ao clicar fora da janela (sem onClick={onClose} no backdrop)
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-200">
       <div
-        className="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden"
+        className="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header (Sem label GURPS 4e) */}
@@ -148,7 +173,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                 Armaduras e Proteções
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Selecione a parte do corpo e a armadura desejada para cadastrar ou equipar.
+                Selecione a parte do corpo e equipe quantas peças desejar. A janela permanece aberta até clicar em Fechar.
               </p>
             </div>
           </div>
@@ -157,23 +182,24 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
             type="button"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            title="Fechar"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Barra de Seleção da Parte do Corpo e Busca */}
+        {/* Topo: Seleção da Parte do Corpo AO LADO do Cadastro Manual */}
         <div className="p-3.5 border-b border-slate-800/80 bg-slate-950/40 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-            {/* Seletor da Parte do Corpo */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-300 shrink-0">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+            {/* 1. Seleção da Parte do Corpo */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold text-slate-300 whitespace-nowrap">
                 Parte do Corpo:
               </span>
               <select
                 value={selectedLocationIndex}
                 onChange={(e) => setSelectedLocationIndex(Number(e.target.value))}
-                className="bg-slate-950 border border-amber-500/50 rounded-xl px-3 py-1.5 text-xs font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                className="bg-slate-900 border border-amber-500/50 rounded-xl px-3 py-1.5 text-xs font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
               >
                 {allLocations.map((loc, idx) => (
                   <option
@@ -187,46 +213,23 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
               </select>
             </div>
 
-            {/* Input de Busca */}
-            <div className="relative flex-1">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar armadura no catálogo (ex: Heavy Plate, Mail, Leather, RD 9...)"
-                className="w-full pl-9 pr-8 py-1.5 bg-slate-950 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-          </div>
+            {/* Separador vertical em telas grandes */}
+            <div className="hidden lg:block w-px h-8 bg-slate-800" />
 
-          {/* Cadastro Manual Integrado em Linha Única */}
-          <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
-            <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-              <Wrench size={13} className="text-amber-400" />
-              <span>Cadastrar Armadura Manual:</span>
-            </span>
+            {/* 2. Cadastro Manual ao lado da seleção de parte do corpo */}
+            <form onSubmit={handleManualSubmit} className="flex-1 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1 shrink-0">
+                <Wrench size={12} className="text-amber-400" />
+                <span>Manual:</span>
+              </span>
 
-            <form onSubmit={handleManualSubmit} className="flex flex-wrap items-center gap-2">
               <input
                 type="text"
                 required
                 placeholder="Nome da peça (ex: Heavy Plate, Couro...)"
                 value={manualName}
                 onChange={(e) => setManualName(e.target.value)}
-                className="flex-1 min-w-[170px] bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="flex-1 min-w-[140px] bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
 
               <div className="flex items-center gap-1">
@@ -238,7 +241,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                   placeholder="RD"
                   value={manualDr}
                   onChange={(e) => setManualDr(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  className="w-14 bg-slate-950 border border-amber-600/60 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-amber-300 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-14 bg-slate-900 border border-amber-600/60 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-amber-300 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
@@ -248,13 +251,13 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                   placeholder="Mod"
                   value={manualMod1}
                   onChange={(e) => setManualMod1(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  className="w-14 bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none"
+                  className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none"
                   title="Modificador de RD (ex: -2 ou +1)"
                 />
                 <select
                   value={manualMod1Type}
                   onChange={(e) => setManualMod1Type(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none"
+                  className="bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none"
                 >
                   <option value="">vs Dano</option>
                   <option value="contusao">Contusão</option>
@@ -271,13 +274,13 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                   placeholder="Mod 2"
                   value={manualMod2}
                   onChange={(e) => setManualMod2(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  className="w-14 bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none"
-                  title="Segundo modificador de RD (opcional)"
+                  className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-center text-xs font-bold text-white font-mono focus:outline-none"
+                  title="Segundo modificador (opcional)"
                 />
                 <select
                   value={manualMod2Type}
                   onChange={(e) => setManualMod2Type(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none"
+                  className="bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-1 text-xs text-slate-300 focus:outline-none"
                 >
                   <option value="">vs Dano</option>
                   <option value="contusao">Contusão</option>
@@ -290,12 +293,48 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
 
               <button
                 type="submit"
-                className="flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-xs shrink-0"
+                className="flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-xs shrink-0 cursor-pointer active:scale-95"
+                title={`Equipar armadura manual em ${currentLocation?.location}`}
               >
                 <Check size={12} />
-                <span>Equipar em {currentLocation?.location}</span>
+                <span>Equipar</span>
               </button>
             </form>
+          </div>
+
+          {/* Feedback visual de equipamento realizado */}
+          {equippedFeedback && (
+            <div className="px-3 py-1.5 rounded-lg bg-emerald-950/70 border border-emerald-800 text-emerald-300 text-xs font-semibold flex items-center justify-between animate-in fade-in duration-150">
+              <span className="flex items-center gap-1.5">
+                <Check size={13} className="text-emerald-400" />
+                {equippedFeedback}
+              </span>
+              <span className="text-[10px] text-slate-400">Você pode continuar equipando outras partes</span>
+            </div>
+          )}
+
+          {/* Busca logo acima da lista de peças de armaduras */}
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar armadura no catálogo logo abaixo (ex: Heavy Plate, Mail, Leather, RD 9...)"
+              className="w-full pl-9 pr-8 py-2 bg-slate-950 border border-slate-750 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -414,15 +453,12 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                     )}
                   </div>
 
-                  {/* Botão Único de Equipar na Parte Selecionada */}
+                  {/* Botão de Equipar na Parte Selecionada (sem fechar modal) */}
                   <div className="shrink-0">
                     <button
                       type="button"
-                      onClick={() => {
-                        onEquipArmor(armor, parsed, selectedLocationIndex);
-                        onClose();
-                      }}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95"
+                      onClick={() => handleCatalogEquip(armor, parsed)}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
                     >
                       <Check size={13} />
                       <span>Equipar em {currentLocation?.location}</span>
@@ -439,7 +475,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium text-xs"
+            className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium text-xs cursor-pointer"
           >
             Fechar
           </button>

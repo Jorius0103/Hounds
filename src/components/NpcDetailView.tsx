@@ -3756,16 +3756,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                               isViewer ? 'cursor-default opacity-90' : ''
                             }`}
                           />
-                          {!isViewer && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenArmorSearch(idx, loc)}
-                              className="p-1 rounded bg-slate-900 border border-slate-750 hover:bg-amber-500 hover:text-slate-950 text-slate-400 hover:border-amber-400 transition-colors shrink-0 shadow-xs"
-                              title={`Buscar armadura no banco para ${loc.location}`}
-                            >
-                              <Search size={12} />
-                            </button>
-                          )}
                           {!isViewer && loc.armorName && (
                             <button
                               type="button"
