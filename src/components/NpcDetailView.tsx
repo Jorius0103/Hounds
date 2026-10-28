@@ -2044,76 +2044,100 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       </div>
 
       {/* 2. TABS NAVIGATION (SUBIU PARA LOGO ABAIXO DO CABEÇALHO) */}
-      <div className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto text-xs font-semibold">
+      <div className="flex items-center gap-1.5 p-1.5 bg-slate-950/90 border border-slate-800 rounded-2xl overflow-x-auto text-xs font-semibold shadow-inner scrollbar-thin">
+        {/* Indicador visual de seleção de abas */}
+        <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold text-amber-400 uppercase tracking-wider select-none shrink-0 border-r border-slate-800 mr-0.5">
+          <Layers size={14} className="text-amber-400" />
+          <span>Abas da Ficha</span>
+        </div>
+
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'overview'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-md border border-amber-400/80 ring-1 ring-amber-400/40'
+              : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
           }`}
         >
-          <Users size={14} />
+          <Users size={14} className={activeTab === 'overview' ? 'text-slate-950' : 'text-amber-400'} />
           <span>Dados &amp; Status</span>
         </button>
 
         <button
           onClick={() => setActiveTab('weapons')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'weapons'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-md border border-amber-400/80 ring-1 ring-amber-400/40'
+              : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
           }`}
         >
-          <Sword size={14} />
-          <span>Armas &amp; Ataques ({npc.weapons.length})</span>
+          <Sword size={14} className={activeTab === 'weapons' ? 'text-slate-950' : 'text-amber-400'} />
+          <span>Armas &amp; Ataques</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+              activeTab === 'weapons'
+                ? 'bg-slate-950/25 text-slate-950 font-black'
+                : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+            }`}
+          >
+            {npc.weapons.length}
+          </span>
         </button>
 
         <button
           onClick={() => setActiveTab('spells')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'spells'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-md border border-amber-400/80 ring-1 ring-amber-400/40'
+              : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
           }`}
         >
-          <Sparkles size={14} />
-          <span>Magias ({(npc.spells || []).length})</span>
+          <Sparkles size={14} className={activeTab === 'spells' ? 'text-slate-950' : 'text-amber-400'} />
+          <span>Magias</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+              activeTab === 'spells'
+                ? 'bg-slate-950/25 text-slate-950 font-black'
+                : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+            }`}
+          >
+            {(npc.spells || []).length}
+          </span>
         </button>
 
         <button
           onClick={() => setActiveTab('armor')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'armor'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-md border border-amber-400/80 ring-1 ring-amber-400/40'
+              : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
           }`}
         >
-          <Shield size={14} />
+          <Shield size={14} className={activeTab === 'armor' ? 'text-slate-950' : 'text-amber-400'} />
           <span>Armadura por Localização</span>
         </button>
 
         <button
           onClick={() => setActiveTab('bodyParts')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'bodyParts'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-md border border-amber-400/80 ring-1 ring-amber-400/40'
+              : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
           }`}
         >
-          <Heart size={14} />
+          <Heart size={14} className={activeTab === 'bodyParts' ? 'text-slate-950' : 'text-amber-400'} />
           <span>Partes do Corpo</span>
         </button>
 
         <button
           onClick={() => setActiveTab('traits')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'traits'
-              ? 'bg-amber-500 text-slate-950 font-bold shadow'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-md border border-amber-400/80 ring-1 ring-amber-400/40'
+              : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
           }`}
         >
-          <Info size={14} />
+          <Info size={14} className={activeTab === 'traits' ? 'text-slate-950' : 'text-amber-400'} />
           <span>Traços &amp; Equipamentos</span>
         </button>
       </div>

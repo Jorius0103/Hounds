@@ -115,7 +115,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                   className="bg-transparent text-[11px] font-semibold text-amber-300 py-1 px-1.5 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 max-w-[140px] sm:max-w-[200px] truncate cursor-pointer"
                 >
                   <option value="" className="bg-slate-900 text-white">
-                    {activeCombats.length === 0 ? 'Sem combate (Nenhum cadastrado)' : 'Sem combate (Modo Sessão)'}
+                    Sem combate
                   </option>
                   {activeCombats.map((c) => (
                     <option key={c.id} value={c.id} className="bg-slate-900 text-white">

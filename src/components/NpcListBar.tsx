@@ -3,7 +3,7 @@ import { NPC, MesaRole, UserAccount } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { CombatHomeScreen } from './CombatHomeScreen';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
-import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X, Save, Check, ArrowUpDown } from 'lucide-react';
+import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X, Save, Check, ArrowUpDown, Crown, Zap } from 'lucide-react';
 
 interface NpcListBarProps {
   npcs: NPC[];
@@ -383,14 +383,15 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               <button
                 type="button"
                 onClick={() => handleSelectSortMode('speed')}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
                   sortMode === 'speed'
                     ? 'bg-amber-950/90 text-amber-300 shadow-sm border border-amber-500/50'
                     : 'text-slate-400 hover:text-amber-300 hover:bg-slate-900'
                 }`}
                 title="Ordenar Personagens por Speed (decrescente)"
               >
-                <span>⚡ Speed</span>
+                <Zap size={11} className={sortMode === 'speed' ? 'text-amber-400' : 'text-slate-400'} />
+                <span>Speed</span>
               </button>
               <button
                 type="button"
@@ -429,7 +430,8 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 }`}
                 title="Ordem definida pelo Mestre (clique para atualizar a ordem instantaneamente)"
               >
-                <span>👑 Mestre</span>
+                <Crown size={12} className={sortMode === 'mestre' ? 'text-purple-300' : 'text-purple-400'} />
+                <span>Mestre</span>
               </button>
 
               {/* Botão de Salvar a Ordem do Mestre */}
