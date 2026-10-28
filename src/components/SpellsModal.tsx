@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Spell } from '../types/rpg';
 import { Sparkles, Plus, Trash2, Star, X, Check, Search } from 'lucide-react';
-import { ConfirmModal } from './ConfirmModal';
 import { loadSpellsDatabase, normalizeSpellText, getCollegePt } from './SingleSpellModal';
 
 interface SpellsModalProps {
@@ -20,7 +19,6 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
   npcName,
 }) => {
   const [spellList, setSpellList] = useState<Spell[]>([]);
-  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
 
   // Search in database state
   const [searchQuery, setSearchQuery] = useState('');
@@ -242,10 +240,9 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
             <button
               type="button"
               onClick={() => handleAddRow()}
-              className="text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold text-xs cursor-pointer"
+              className="text-amber-400 hover:text-amber-300 font-bold text-xs cursor-pointer"
             >
-              <Plus size={14} />
-              <span>+ Adicionar Magia Manual</span>
+              <span>Adicionar Magia Manual</span>
             </button>
           </div>
 
@@ -301,11 +298,11 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
                     />
                   </div>
 
-                  {/* Remove row */}
+                  {/* Remove row sem confirmação */}
                   <button
                     type="button"
-                    onClick={() => setDeletingIndex(index)}
-                    className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg transition-colors shrink-0"
+                    onClick={() => handleRemoveRow(index)}
+                    className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg transition-colors shrink-0 cursor-pointer"
                     title="Excluir magia"
                   >
                     <Trash2 size={15} />
@@ -317,49 +314,24 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-800 shrink-0">
+        <div className="flex items-center justify-end pt-3 border-t border-slate-800 shrink-0 gap-2">
           <button
             type="button"
-            onClick={() => handleAddRow()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-amber-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer border border-slate-700"
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            <Plus size={14} />
-            <span>+ Adicionar Magia Manual</span>
+            Cancelar
           </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow transition-colors"
-            >
-              <Check size={14} />
-              <span>Salvar Magias</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow transition-colors cursor-pointer"
+          >
+            <Check size={14} />
+            <span>Salvar Magias</span>
+          </button>
         </div>
       </div>
-
-      <ConfirmModal
-        isOpen={deletingIndex !== null}
-        title="Excluir Magia"
-        message={`Deseja excluir a magia "${deletingIndex !== null ? spellList[deletingIndex]?.name || 'Magia' : ''}"?`}
-        confirmText="Excluir Magia"
-        onConfirm={() => {
-          if (deletingIndex !== null) {
-            handleRemoveRow(deletingIndex);
-            setDeletingIndex(null);
-          }
-        }}
-        onCancel={() => setDeletingIndex(null)}
-      />
     </div>
   );
 };

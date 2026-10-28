@@ -251,17 +251,29 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const dbSpell = useMemo(() => {
     if (!infoSpell || catalogSpells.length === 0) return null;
-    const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const target = norm(infoSpell.name);
+    const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+    const rawTarget = infoSpell.name || '';
+    const target = norm(rawTarget);
+    const parenMatch = rawTarget.match(/\(([^)]+)\)/);
+    const insideParen = parenMatch ? norm(parenMatch[1]) : '';
+
     return catalogSpells.find((s: any) => {
       if (s.id && (infoSpell as any).catalogId && s.id === (infoSpell as any).catalogId) return true;
+      if (insideParen && s.name && norm(s.name) === insideParen) return true;
       if (s.displayName && norm(s.displayName) === target) return true;
       if (s.name && norm(s.name) === target) return true;
       if (s.namePt && norm(s.namePt) === target) return true;
       const sNorm = norm(s.name || '');
       const ptNorm = norm(s.namePt || '');
-      if (sNorm && target.includes(sNorm)) return true;
-      if (ptNorm && target.includes(ptNorm)) return true;
+      if (sNorm && (target.includes(sNorm) || sNorm.includes(target))) return true;
+      if (ptNorm && (target.includes(ptNorm) || ptNorm.includes(target))) return true;
+      if (s.namePt && s.namePt.includes('|')) {
+        const parts = s.namePt.split('|');
+        for (const p of parts) {
+          const pNorm = norm(p);
+          if (pNorm && (target.includes(pNorm) || pNorm.includes(target))) return true;
+        }
+      }
       return false;
     });
   }, [infoSpell, catalogSpells]);
@@ -3169,17 +3181,29 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
                 {sortedSpells.map((s) => {
-                  const norm = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const target = norm(s.name);
+                  const norm = (str: string) => (str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+                  const rawTarget = s.name || '';
+                  const target = norm(rawTarget);
+                  const parenMatch = rawTarget.match(/\(([^)]+)\)/);
+                  const insideParen = parenMatch ? norm(parenMatch[1]) : '';
+
                   const cat = catalogSpells.find((c: any) => {
                     if (c.id && (s as any).catalogId && c.id === (s as any).catalogId) return true;
+                    if (insideParen && c.name && norm(c.name) === insideParen) return true;
                     if (c.displayName && norm(c.displayName) === target) return true;
                     if (c.name && norm(c.name) === target) return true;
                     if (c.namePt && norm(c.namePt) === target) return true;
                     const cNorm = norm(c.name || '');
                     const ptNorm = norm(c.namePt || '');
-                    if (cNorm && target.includes(cNorm)) return true;
-                    if (ptNorm && target.includes(ptNorm)) return true;
+                    if (cNorm && (target.includes(cNorm) || cNorm.includes(target))) return true;
+                    if (ptNorm && (target.includes(ptNorm) || ptNorm.includes(target))) return true;
+                    if (c.namePt && c.namePt.includes('|')) {
+                      const parts = c.namePt.split('|');
+                      for (const p of parts) {
+                        const pNorm = norm(p);
+                        if (pNorm && (target.includes(pNorm) || pNorm.includes(target))) return true;
+                      }
+                    }
                     return false;
                   });
 
@@ -3296,16 +3320,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                               </button>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setConfirmAction({
-                                    isOpen: true,
-                                    title: 'Excluir Magia',
-                                    message: `Deseja excluir a magia "${s.name}" da ficha de ${npc.name || 'este personagem'}?`,
-                                    confirmText: 'Excluir Magia',
-                                    onConfirm: () => handleRemoveSpell(s.id),
-                                  });
-                                }}
-                                className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
+                                onClick={() => handleRemoveSpell(s.id)}
+                                className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                                 title="Excluir magia"
                               >
                                 <Trash2 size={13} />
