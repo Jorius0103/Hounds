@@ -768,12 +768,24 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     setEditingBodyPartKey(null);
   };
 
+  const [spellFilterQuery, setSpellFilterQuery] = useState('');
+
   // Sorted spells: Favorites always at the top
   const sortedSpells = [...npc.spells].sort((a, b) => {
     if (a.isFavorite && !b.isFavorite) return -1;
     if (!a.isFavorite && b.isFavorite) return 1;
     return a.name.localeCompare(b.name);
   });
+
+  const displayedSpells = useMemo(() => {
+    if (!spellFilterQuery.trim()) return sortedSpells;
+    const q = spellFilterQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    return sortedSpells.filter((s) => {
+      const nm = (s.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const nt = (s.notes || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return nm.includes(q) || nt.includes(q);
+    });
+  }, [sortedSpells, spellFilterQuery]);
 
   const handleToggleSpellFavorite = (spellId: string) => {
     const updated = npc.spells.map((s) =>
@@ -3141,20 +3153,46 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         <div className="space-y-4">
           <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-amber-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Grimório de Magias ({npc.spells.length})
-                </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  <Sparkles size={18} className="text-amber-400" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                    Grimório de Magias ({npc.spells.length})
+                  </h3>
+                </div>
+
+                {/* Busca ao lado do título para localizar magias dentre as cadastradas */}
+                <div className="relative flex-1 max-w-xs">
+                  <div className="flex items-center gap-1.5 bg-slate-950/90 border border-slate-800 focus-within:border-amber-500/70 focus-within:ring-1 focus-within:ring-amber-500/40 rounded-lg px-2.5 py-1 text-xs transition-all shadow-inner">
+                    <Search size={13} className="text-amber-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={spellFilterQuery}
+                      onChange={(e) => setSpellFilterQuery(e.target.value)}
+                      placeholder="Buscar magia cadastrada..."
+                      className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
+                    />
+                    {spellFilterQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSpellFilterQuery('')}
+                        className="text-slate-400 hover:text-white p-0.5 rounded transition-colors cursor-pointer"
+                        title="Limpar busca"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {!isViewer && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => setSpellsModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm cursor-pointer whitespace-nowrap"
                     title="Cadastrar e gerenciar magias em lote ou via catálogo"
                   >
                     <BookOpen size={14} />
@@ -3178,9 +3216,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   </button>
                 )}
               </div>
+            ) : displayedSpells.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500 italic space-y-2">
+                <p>Nenhuma magia cadastrada encontrada para "{spellFilterQuery}".</p>
+                <button
+                  type="button"
+                  onClick={() => setSpellFilterQuery('')}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs cursor-pointer"
+                >
+                  Limpar Filtro
+                </button>
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
-                {sortedSpells.map((s) => {
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 items-stretch">
+                {displayedSpells.map((s) => {
                   const norm = (str: string) => (str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
                   const rawTarget = s.name || '';
                   const target = norm(rawTarget);
@@ -3211,74 +3260,77 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <div
                       key={s.id}
                       style={{ ...cardGradientStyle, overflow: 'hidden', position: 'relative' }}
-                      className={`p-3 rounded-xl border flex flex-col justify-between gap-2.5 text-xs transition-all shadow-sm ${
+                      className={`px-2.5 py-1.5 rounded-xl border flex flex-col justify-center text-xs transition-all shadow-sm ${
                         s.isFavorite
                           ? 'border-amber-500/70 ring-1 ring-amber-500/30'
                           : 'border-slate-800 hover:border-slate-700'
                       }`}
                     >
-                      {/* Linha única: Esquerda (NH + Nome) | Meio (Informações Rápidas) | Direita (Botões fixos) */}
+                      {/* Linha única: Esquerda (NH + Nome) | Meio (Informações Rápidas: Dif, Custo, Cast, Dur, Pág) | Direita (Botões) */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%', minWidth: 0, overflow: 'hidden' }}>
                         {/* Esquerda: NH Badge + Nome da Magia */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, maxWidth: '45%', flexShrink: 1, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0, maxWidth: '42%', flexShrink: 1, overflow: 'hidden' }}>
                           <div
-                            style={{ flexShrink: 0, minWidth: '44px', padding: '2px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-                            className="bg-amber-950/60 border border-amber-500/60 rounded-xl shadow-sm"
+                            style={{ flexShrink: 0, minWidth: '38px', padding: '1px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+                            className="bg-amber-950/60 border border-amber-500/60 rounded-lg shadow-sm"
                           >
-                            <span className="text-[9px] text-amber-400 font-extrabold uppercase tracking-widest leading-none">NH</span>
-                            <span className={`font-mono font-black text-amber-300 tabular-nums leading-tight ${String(s.nh || '').length > 3 ? 'text-base' : 'text-xl'}`}>
+                            <span className="text-[8px] text-amber-400 font-extrabold uppercase tracking-widest leading-none">NH</span>
+                            <span className={`font-mono font-black text-amber-300 tabular-nums leading-tight ${String(s.nh || '').length > 3 ? 'text-xs' : 'text-base'}`}>
                               {s.nh !== undefined && s.nh !== null && s.nh !== '' ? s.nh : '-'}
                             </span>
                           </div>
 
-                          <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }} className="space-y-0.5">
+                          <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
                             <span
                               style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', width: '100%' }}
-                              className="font-bold text-white text-sm sm:text-base leading-tight"
+                              className="font-bold text-white text-xs sm:text-sm leading-tight"
                               title={s.name}
                             >
                               {s.name}
                             </span>
-                            {s.notes ? (
+                            {s.notes && (
                               <span
                                 style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', width: '100%' }}
-                                className="text-[11px] text-amber-200/80 italic font-normal"
+                                className="text-[10px] text-amber-200/80 italic font-normal"
                                 title={s.notes}
                               >
                                 • {s.notes}
                               </span>
-                            ) : cat ? (
-                              <span
-                                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', width: '100%' }}
-                                className="text-[11px] text-slate-400 font-normal"
-                              >
-                                {cat.college ? getCollegePt(cat.college) : ''}{cat.class ? ` • ${cat.class}` : ''}
-                              </span>
-                            ) : null}
+                            )}
                           </div>
                         </div>
 
-                        {/* Meio: Informações rápidas (Custo, Tempo, Página) */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+                        {/* Meio: Informações rápidas em ordem: Dificuldade (Dif), Custo, Cast, Duração (Dur) e Página */}
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
                           {cat && (
                             <div
-                              style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}
-                              className="bg-slate-900/90 border border-slate-800 rounded-lg px-2 py-1 text-[11px] font-mono text-slate-300 shadow-sm"
+                              style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}
+                              className="bg-slate-900/90 border border-slate-800 rounded-lg px-2 py-0.5 text-[10px] font-mono text-slate-300 shadow-sm"
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, overflow: 'hidden' }}>
+                                {cat.difficulty && (
+                                  <span className="shrink-0 text-[10px] text-purple-300 whitespace-nowrap" title={"Dificuldade: " + cat.difficulty}>
+                                    Dif: <strong className="text-white font-bold">{cat.difficulty}</strong>
+                                  </span>
+                                )}
                                 {cat.initialCost && (
-                                  <span className="shrink-0 truncate text-[10px]">
-                                    Custo: <strong className="text-white font-bold">{cat.initialCost.split('.')[0]}</strong>
+                                  <span className="shrink-0 text-[10px] text-amber-300 whitespace-nowrap" title={"Custo: " + cat.initialCost}>
+                                    • Custo: <strong className="text-white font-bold">{cat.initialCost.split('.')[0].trim()}</strong>
+                                  </span>
+                                )}
+                                {cat.timeToCast && (
+                                  <span className="shrink-0 text-[10px] text-cyan-300 whitespace-nowrap" title={"Cast / Tempo: " + cat.timeToCast}>
+                                    • Cast: <strong className="text-white font-bold">{cat.timeToCast.split('.')[0].replace(/seconds?/i, 'seg').replace(/second/i, 'seg').trim()}</strong>
                                   </span>
                                 )}
                                 {cat.duration && (
-                                  <span className="text-slate-400 font-sans text-[10px] shrink-0 truncate max-w-[110px]">
-                                    • {cat.duration.split('.')[0]}
+                                  <span className="text-slate-400 font-sans text-[10px] shrink-0 truncate max-w-[100px]" title={"Duração: " + cat.duration}>
+                                    • Dur: {cat.duration.split('.')[0].replace(/minutes?/i, 'min').replace(/seconds?/i, 'seg').trim()}
                                   </span>
                                 )}
                               </div>
                               {cat.page && (
-                                <span className="text-slate-500 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5">
+                                <span className="text-slate-400 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5 font-semibold" title={"Página: " + cat.page}>
                                   {cat.page}
                                 </span>
                               )}

@@ -71,7 +71,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
           cls.includes(q)
         );
       })
-      .slice(0, 25);
+      .slice(0, 50);
   }, [searchQuery, catalogSpells]);
 
   if (!isOpen) return null;
@@ -177,8 +177,8 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
           {/* Search Dropdown */}
           {isSearchOpen && searchQuery.trim().length > 0 && (
             <div
-              className="absolute top-full left-0 right-0 mt-1.5 z-50 border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto"
-              style={{ backgroundColor: '#0f172a' }}
+              className="absolute top-full left-0 right-0 mt-1.5 z-50 border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden max-h-[600px] overflow-y-auto"
+              style={{ backgroundColor: '#0f172a', maxHeight: '600px' }}
             >
               <div className="px-3 py-1.5 bg-slate-950 border-b border-slate-800 text-[10px] text-amber-400 font-semibold flex items-center justify-between">
                 <span>{searchResults.length} magias encontradas</span>
