@@ -22,6 +22,9 @@ interface PlayerPermissionsModalProps {
   characters?: NPC[];
   onLinkCharacter?: (characterId: string, userId: string | null) => void;
   onlinePlayerNames?: Set<string>;
+  activePlayerIds?: string[];
+  onTogglePlayerVisibility?: (characterId: string) => void;
+  onSetAllPlayersVisibility?: (visible: boolean) => void;
 }
 
 export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
@@ -34,8 +37,11 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
   characters = [],
   onLinkCharacter,
   onlinePlayerNames,
+  activePlayerIds,
+  onTogglePlayerVisibility,
+  onSetAllPlayersVisibility,
 }) => {
-  const [activeTab, setActiveTab] = useState<'characters' | 'permissions'>('characters');
+  const [activeTab, setActiveTab] = useState<'permissions' | 'characters'>('permissions');
   const [charSearch, setCharSearch] = useState('');
   const [permSearch, setPermSearch] = useState('');
 
@@ -166,9 +172,6 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
                 Jogadores da Mesa de RPG
               </h2>
-              <p style={{ fontSize: '10px', color: '#94a3b8', margin: '1px 0 0 0' }}>
-                Gerencie o vínculo dos personagens aos usuários e permissões de edição
-              </p>
             </div>
           </div>
           <button
@@ -192,7 +195,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           </button>
         </div>
 
-        {/* Abas Superiores: Personagens & Vínculos vs Permissões */}
+        {/* Abas Superiores: Permissões vs Personagens & Vínculo */}
         <div
           style={{
             display: 'flex',
@@ -204,6 +207,41 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             flexShrink: 0,
           }}
         >
+          <button
+            type="button"
+            onClick={() => setActiveTab('permissions')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '9px 12px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              color: activeTab === 'permissions' ? '#34d399' : '#94a3b8',
+              borderBottom: activeTab === 'permissions' ? '2px solid #34d399' : '2px solid transparent',
+              background: 'transparent',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <ShieldCheck size={13} />
+            <span>Permissões</span>
+            <span
+              style={{
+                fontSize: '9px',
+                padding: '1px 5px',
+                borderRadius: '9999px',
+                background: activeTab === 'permissions' ? 'rgba(16, 185, 129, 0.2)' : '#1e293b',
+                color: activeTab === 'permissions' ? '#34d399' : '#64748b',
+              }}
+            >
+              {playerUsers.length}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('characters')}
@@ -238,41 +276,6 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               {characters.length}
             </span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('permissions')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '9px 12px',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              color: activeTab === 'permissions' ? '#34d399' : '#94a3b8',
-              borderBottom: activeTab === 'permissions' ? '2px solid #34d399' : '2px solid transparent',
-              background: 'transparent',
-              borderTop: 'none',
-              borderLeft: 'none',
-              borderRight: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <ShieldCheck size={13} />
-            <span>Permissões (Espectador / Editor)</span>
-            <span
-              style={{
-                fontSize: '9px',
-                padding: '1px 5px',
-                borderRadius: '9999px',
-                background: activeTab === 'permissions' ? 'rgba(16, 185, 129, 0.2)' : '#1e293b',
-                color: activeTab === 'permissions' ? '#34d399' : '#64748b',
-              }}
-            >
-              {playerUsers.length}
-            </span>
-          </button>
         </div>
 
         {/* Subheader / Busca e Ações Rápidas */}
@@ -289,7 +292,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
           }}
         >
           {/* Campo de Busca */}
-          <div style={{ position: 'relative', width: '240px', maxWidth: '50%' }}>
+          <div style={{ position: 'relative', width: '220px', maxWidth: '45%' }}>
             <Search
               size={12}
               style={{
@@ -322,7 +325,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             />
           </div>
 
-          {/* Ações da Aba de Permissões */}
+          {/* Ações da Aba Ativa */}
           {activeTab === 'permissions' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
               <button
@@ -371,8 +374,58 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               </button>
             </div>
           ) : (
-            <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-              Mostrando <strong style={{ color: '#fbbf24' }}>{filteredCharacters.length}</strong> de {characters.length} personagens
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                <strong style={{ color: '#fbbf24' }}>{filteredCharacters.length}</strong> de {characters.length}
+              </span>
+              {onSetAllPlayersVisibility && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onSetAllPlayersVisibility(true)}
+                    className="hover:opacity-90 active:scale-95 transition-all"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 9px',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      background: 'rgba(6, 78, 59, 0.8)',
+                      color: '#6ee7b7',
+                      border: '1px solid rgba(6, 95, 70, 0.8)',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                    }}
+                    title="Tornar todos os personagens visíveis na mesa de RPG"
+                  >
+                    <Eye size={11} />
+                    <span>Habilitar Todos</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSetAllPlayersVisibility(false)}
+                    className="hover:opacity-90 active:scale-95 transition-all"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 9px',
+                      fontSize: '10px',
+                      fontWeight: 500,
+                      background: '#1e293b',
+                      color: '#cbd5e1',
+                      border: '1px solid #334155',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                    }}
+                    title="Ocultar todos os personagens da mesa de RPG"
+                  >
+                    <EyeOff size={11} />
+                    <span>Ocultar Todos</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -414,6 +467,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                 const isEditor = linkedUser
                   ? editorUserIds.includes(linkedUser.id) || editorUserIds.includes(linkedUser.name)
                   : false;
+                const isVisible = activePlayerIds ? activePlayerIds.includes(char.id) : true;
 
                 return (
                   <div
@@ -483,7 +537,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Lado Direito: Seleção do Jogador Vinculado */}
+                    {/* Lado Direito: Seleção do Jogador Vinculado e Toggle de Visibilidade */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
                         Jogador:
@@ -505,8 +559,8 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                             border: linkedUser ? '1px solid rgba(16, 185, 129, 0.6)' : '1px solid #334155',
                             outline: 'none',
                             cursor: 'pointer',
-                            minWidth: '150px',
-                            maxWidth: '180px',
+                            minWidth: '140px',
+                            maxWidth: '170px',
                             appearance: 'none',
                             WebkitAppearance: 'none',
                             textOverflow: 'ellipsis',
@@ -582,6 +636,41 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                         </div>
                       ) : (
                         <div style={{ minWidth: '75px' }} />
+                      )}
+
+                      {/* Botão de Toggle de Visibilidade na Mesa de RPG */}
+                      {onTogglePlayerVisibility && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePlayerVisibility(char.id);
+                          }}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '5px',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            background: isVisible ? '#059669' : '#1e293b',
+                            color: isVisible ? '#ffffff' : '#94a3b8',
+                            border: isVisible ? '1px solid #34d399' : '1px solid #334155',
+                            boxShadow: isVisible ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                            transition: 'all 0.15s ease',
+                          }}
+                          title={
+                            isVisible
+                              ? 'Personagem visível na Mesa de RPG. Clique para ocultar.'
+                              : 'Personagem oculto da Mesa de RPG. Clique para tornar visível.'
+                          }
+                        >
+                          {isVisible ? <Eye size={11} /> : <EyeOff size={11} />}
+                          <span>{isVisible ? 'Visível' : 'Oculto'}</span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -828,26 +917,13 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-end',
             padding: '8px 18px',
             borderTop: '1px solid #1e293b',
             background: 'rgba(2, 6, 23, 0.6)',
             gap: '10px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: '#94a3b8' }}>
-            <span
-              style={{
-                width: '5px',
-                height: '5px',
-                borderRadius: '9999px',
-                background: '#34d399',
-                display: 'inline-block',
-                boxShadow: '0 0 5px #34d399',
-              }}
-            />
-            <span>Sincronizado em tempo real com todos os jogadores.</span>
-          </div>
           <button
             type="button"
             onClick={onClose}

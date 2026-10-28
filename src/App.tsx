@@ -4174,6 +4174,9 @@ export default function App() {
         onSetAllPermissions={handleSetAllPlayerPermissions}
         characters={allPlayerCharacters}
         onLinkCharacter={handleLinkCharacterToUser}
+        activePlayerIds={activeCombatPlayerIds}
+        onTogglePlayerVisibility={handleTogglePlayerInCombat}
+        onSetAllPlayersVisibility={handleSetAllPlayersInCombat}
         onlinePlayerNames={onlinePlayerNames}
       />
 
