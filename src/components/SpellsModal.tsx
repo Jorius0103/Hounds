@@ -60,16 +60,10 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
         const n1 = normalizeSpellText(s.name || '');
         const n2 = normalizeSpellText(s.namePt || '');
         const n3 = normalizeSpellText(s.displayName || '');
-        const col = normalizeSpellText(s.college || '');
-        const colPt = normalizeSpellText(getCollegePt(s.college));
-        const cls = normalizeSpellText(s.class || '');
         return (
           n1.includes(q) ||
           n2.includes(q) ||
-          n3.includes(q) ||
-          col.includes(q) ||
-          colPt.includes(q) ||
-          cls.includes(q)
+          n3.includes(q)
         );
       })
       .slice(0, 50);

@@ -3379,17 +3379,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           )}
                         </div>
 
-                        {* Direita: Botões juntos: Info, Favoritas, Editar, Deletar */}
+                        {/* Direita: Botões juntos: Favoritas, Info, Editar, Deletar */}
                         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
-                          <button
-                            type="button"
-                            onClick={() => setInfoSpell(s)}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 rounded-lg border border-slate-700 transition-colors"
-                            title="Informações completas da magia no banco de dados"
-                          >
-                            <Info size={13} />
-                          </button>
-                          <button
+                                                    <button
                             type="button"
                             onClick={() => handleToggleSpellFavorite(s.id)}
                             className={`p-1.5 rounded-lg border transition-colors ${
@@ -3401,7 +3393,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           >
                             <Star size={13} fill={s.isFavorite ? 'currentColor' : 'none'} />
                           </button>
-                          {!isViewer && (
+                          <button
+                            type="button"
+                            onClick={() => setInfoSpell(s)}
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 rounded-lg border border-slate-700 transition-colors"
+                            title="Informações completas da magia no banco de dados"
+                          >
+                            <Info size={13} />
+                          </button>
+                        {!isViewer && (
                             <>
                               <button
                                 type="button"
