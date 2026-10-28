@@ -10,10 +10,17 @@ export interface HitLocationTemplate {
 }
 
 /**
- * Tabela de Armadura por Localização conforme modelo do Excel:
+ * Tabela de Armadura por Localização conforme modelo do Excel ordenada de cima para baixo pelo corpo humano:
  * Roll | Parte do corpo | Vida total | Regra adicional
  */
 export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
+  {
+    rollTarget: '3-4',
+    location: 'Head',
+    penalty: '-7',
+    additionalRule: 'Tem +2 de RD / Qualquer dano vira 4X',
+    hpFormulaLabel: '---',
+  },
   {
     rollTarget: '-',
     location: 'Eye',
@@ -23,13 +30,6 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
     hpDivisor: 10,
   },
   {
-    rollTarget: '3-4',
-    location: 'Head',
-    penalty: '-7',
-    additionalRule: 'Tem +2 de RD / Qualquer dano vira 4X',
-    hpFormulaLabel: '---',
-  },
-  {
     rollTarget: '5',
     location: 'Face',
     penalty: '-5',
@@ -37,36 +37,25 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
     hpFormulaLabel: '---',
   },
   {
-    rollTarget: '13-14',
-    location: 'Left Leg',
-    penalty: '-2',
-    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    hpFormulaLabel: '=Pontos de Vida / 2',
-    hpDivisor: 2,
+    rollTarget: '17-18',
+    location: 'Neck',
+    penalty: '-5',
+    additionalRule: 'Contusão vira 1,5, corte vai de 1,5 para 2.0',
+    hpFormulaLabel: '---',
   },
   {
-    rollTarget: '6-7',
-    location: 'Right Leg',
-    penalty: '-2',
-    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    hpFormulaLabel: '=Pontos de Vida / 2',
-    hpDivisor: 2,
+    rollTarget: '9-10',
+    location: 'Torso',
+    penalty: '0',
+    additionalRule: '',
+    hpFormulaLabel: '---',
   },
   {
-    rollTarget: '13-14',
-    location: 'Left Shins',
-    penalty: '-2',
-    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    hpFormulaLabel: '=Pontos de Vida / 2',
-    hpDivisor: 2,
-  },
-  {
-    rollTarget: '6-7',
-    location: 'Right Shins',
-    penalty: '-2',
-    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    hpFormulaLabel: '=Pontos de Vida / 2',
-    hpDivisor: 2,
+    rollTarget: '-',
+    location: 'Vitals',
+    penalty: '-3',
+    additionalRule: 'Empalamento e perfuração vira x3',
+    hpFormulaLabel: '---',
   },
   {
     rollTarget: '12',
@@ -101,11 +90,20 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
     hpDivisor: 2,
   },
   {
-    rollTarget: '9-10',
-    location: 'Torso',
-    penalty: '0',
-    additionalRule: '',
-    hpFormulaLabel: '---',
+    rollTarget: '15',
+    location: 'Left Hand',
+    penalty: '-4',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+  },
+  {
+    rollTarget: '15',
+    location: 'Right Hand',
+    penalty: '-4',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
   },
   {
     rollTarget: '11',
@@ -116,8 +114,40 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
     hpDivisor: 3,
   },
   {
-    rollTarget: '15',
-    location: 'Hand',
+    rollTarget: '13-14',
+    location: 'Left Leg',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '6-7',
+    location: 'Right Leg',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '13-14',
+    location: 'Left Shins',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '6-7',
+    location: 'Right Shins',
+    penalty: '-2',
+    additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+  },
+  {
+    rollTarget: '16',
+    location: 'Left Foot',
     penalty: '-4',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 3',
@@ -125,25 +155,11 @@ export const GURPS_EXCEL_HIT_LOCATIONS: HitLocationTemplate[] = [
   },
   {
     rollTarget: '16',
-    location: 'Feet',
+    location: 'Right Foot',
     penalty: '-4',
     additionalRule: 'Perfurante, perfurante grande e empalamento vira x1',
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
-  },
-  {
-    rollTarget: '17-18',
-    location: 'Neck',
-    penalty: '-5',
-    additionalRule: 'Contusão vira 1,5, corte vai de 1,5 para 2.0',
-    hpFormulaLabel: '---',
-  },
-  {
-    rollTarget: '-',
-    location: 'Vitals',
-    penalty: '-3',
-    additionalRule: 'Empalamento e perfuração vira x3',
-    hpFormulaLabel: '---',
   },
 ];
 
@@ -164,6 +180,26 @@ export function normalizeLocationKey(name: string): string {
   if (lower === 'eye' || lower === 'olho' || lower === 'olhos') return 'eye';
   if (lower === 'head' || lower === 'cabeça' || lower === 'cabeca' || lower === 'skull' || lower === 'crânio' || lower === 'cranio') return 'head';
   if (lower === 'face' || lower === 'rosto') return 'face';
+  if (lower === 'neck' || lower === 'pescoço' || lower === 'pescoco') return 'neck';
+  if (lower === 'torso' || lower === 'tronco') return 'torso';
+  if (lower === 'vitals' || lower === 'vitais' || lower.includes('vital') || lower.includes('órgãos vitais') || lower.includes('orgaos vitais')) return 'vitals';
+  if (lower === 'groin' || lower === 'virilha') return 'groin';
+
+  // Hands (antes de arm)
+  const isHand = lower.includes('hand') || lower.includes('mão') || lower.includes('mao');
+  if (isHand) {
+    if (lower.includes('left') || lower.includes('esquerd')) return 'left_hand';
+    if (lower.includes('right') || lower.includes('direit')) return 'right_hand';
+    return 'hand';
+  }
+
+  // Feet / Foot
+  const isFoot = lower.includes('foot') || lower.includes('feet') || lower.includes('pé') || lower.includes('pe');
+  if (isFoot) {
+    if (lower.includes('left') || lower.includes('esquerd')) return 'left_foot';
+    if (lower.includes('right') || lower.includes('direit')) return 'right_foot';
+    return 'feet';
+  }
 
   // Forearms (antes de Arm pois contém 'arm')
   const isForearm = lower.includes('forearm') || lower.includes('antebraço') || lower.includes('antebraco');
@@ -197,12 +233,6 @@ export function normalizeLocationKey(name: string): string {
     return 'leg';
   }
 
-  if (lower === 'torso' || lower === 'tronco') return 'torso';
-  if (lower === 'groin' || lower === 'virilha') return 'groin';
-  if (lower === 'hand' || lower === 'mão' || lower === 'mãos' || lower === 'mao' || lower === 'maos') return 'hand';
-  if (lower === 'foot' || lower === 'feet' || lower === 'pé' || lower === 'pés' || lower === 'pe' || lower === 'pes') return 'feet';
-  if (lower === 'neck' || lower === 'pescoço' || lower === 'pescoco') return 'neck';
-  if (lower === 'vitals' || lower === 'vitais' || lower.includes('vital') || lower.includes('órgãos vitais') || lower.includes('orgaos vitais')) return 'vitals';
   return lower;
 }
 
@@ -246,31 +276,12 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
     return defaults;
   }
 
-  const hasLeftLeg = existingLocs.some((l) => normalizeLocationKey(l.location) === 'left_leg');
-  const hasRightLeg = existingLocs.some((l) => normalizeLocationKey(l.location) === 'right_leg');
-  const hasLeftArm = existingLocs.some((l) => normalizeLocationKey(l.location) === 'left_arm');
-  const hasRightArm = existingLocs.some((l) => normalizeLocationKey(l.location) === 'right_arm');
-
-  if (hasLeftLeg && hasRightLeg && hasLeftArm && hasRightArm) {
-    return defaults.map((def) => {
-      const found = existingLocs.find((e) => isSameLocation(e.location, def.location));
-      if (found) {
-        return {
-          ...def,
-          ...found,
-          additionalRule: sanitizeHitLocationRule(found.additionalRule || def.additionalRule),
-          rollTarget: def.rollTarget,
-          penalty: def.penalty,
-        };
-      }
-      return def;
-    });
-  }
-
   const legacyLeg = existingLocs.find((l) => normalizeLocationKey(l.location) === 'leg');
   const legacyShins = existingLocs.find((l) => normalizeLocationKey(l.location) === 'shins');
   const legacyArm = existingLocs.find((l) => normalizeLocationKey(l.location) === 'arm');
   const legacyForearms = existingLocs.find((l) => normalizeLocationKey(l.location) === 'forearms');
+  const legacyHand = existingLocs.find((l) => normalizeLocationKey(l.location) === 'hand');
+  const legacyFeet = existingLocs.find((l) => normalizeLocationKey(l.location) === 'feet');
 
   return defaults.map((def) => {
     const norm = normalizeLocationKey(def.location);
@@ -285,6 +296,26 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
       };
     }
 
+    if ((norm === 'left_hand' || norm === 'right_hand') && legacyHand) {
+      return {
+        ...def,
+        armorName: legacyHand.armorName || '',
+        dr: legacyHand.dr || 0,
+        drModifier: legacyHand.drModifier || 0,
+        modifierDamageType: legacyHand.modifierDamageType || '',
+        drModifiers: legacyHand.drModifiers,
+      };
+    }
+    if ((norm === 'left_foot' || norm === 'right_foot') && legacyFeet) {
+      return {
+        ...def,
+        armorName: legacyFeet.armorName || '',
+        dr: legacyFeet.dr || 0,
+        drModifier: legacyFeet.drModifier || 0,
+        modifierDamageType: legacyFeet.modifierDamageType || '',
+        drModifiers: legacyFeet.drModifiers,
+      };
+    }
     if ((norm === 'left_leg' || norm === 'right_leg') && legacyLeg) {
       return {
         ...def,
@@ -332,11 +363,7 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
 
 /**
  * Configuração das Partes do Corpo para a aba "Partes do Corpo".
- * Unifica:
- * - Arms e Forearms Left -> Arms Left (Left Arm)
- * - Arms e Forearms Right -> Arms Right (Right Arm)
- * - Legs e Shins Left -> Leg Left (Left Leg)
- * - Legs e Shins Right -> Leg Right (Right Leg)
+ * Ordenada de cima para baixo pelo corpo humano.
  */
 export interface BodyPartConfig {
   key: string;
@@ -350,6 +377,13 @@ export interface BodyPartConfig {
 
 export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
+    key: 'head',
+    name: 'Head',
+    hpFormulaLabel: '---',
+    defaultRule: 'Tem +2 de RD / Qualquer dano vira 4X',
+    logKeys: ['head'],
+  },
+  {
     key: 'eye',
     name: 'Eye',
     hpFormulaLabel: '=Pontos de Vida / 10',
@@ -358,18 +392,32 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
     logKeys: ['eye'],
   },
   {
-    key: 'head',
-    name: 'Head',
-    hpFormulaLabel: '---',
-    defaultRule: 'Tem +2 de RD / Qualquer dano vira 4X',
-    logKeys: ['head'],
-  },
-  {
     key: 'face',
     name: 'Face',
     hpFormulaLabel: '---',
     defaultRule: '',
     logKeys: ['face'],
+  },
+  {
+    key: 'neck',
+    name: 'Neck',
+    hpFormulaLabel: '---',
+    defaultRule: 'Contusão vira 1,5, corte vai de 1,5 para 2.0',
+    logKeys: ['neck'],
+  },
+  {
+    key: 'torso',
+    name: 'Torso',
+    hpFormulaLabel: '---',
+    defaultRule: '',
+    logKeys: ['torso'],
+  },
+  {
+    key: 'vitals',
+    name: 'Vitals',
+    hpFormulaLabel: '---',
+    defaultRule: 'Empalamento e perfuração vira x3',
+    logKeys: ['vitals'],
   },
   {
     key: 'left_arm',
@@ -390,11 +438,20 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
     logKeys: ['right_arm', 'right_forearm'],
   },
   {
-    key: 'torso',
-    name: 'Torso',
-    hpFormulaLabel: '---',
-    defaultRule: '',
-    logKeys: ['torso'],
+    key: 'left_hand',
+    name: 'Left Hand',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['left_hand', 'hand'],
+  },
+  {
+    key: 'right_hand',
+    name: 'Right Hand',
+    hpFormulaLabel: '=Pontos de Vida / 3',
+    hpDivisor: 3,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['right_hand', 'hand'],
   },
   {
     key: 'groin',
@@ -423,34 +480,20 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
     logKeys: ['right_leg', 'right_shins'],
   },
   {
-    key: 'hand',
-    name: 'Hand',
+    key: 'left_foot',
+    name: 'Left Foot',
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['hand'],
+    logKeys: ['left_foot', 'left_feet', 'foot', 'feet'],
   },
   {
-    key: 'feet',
-    name: 'Feet',
+    key: 'right_foot',
+    name: 'Right Foot',
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['feet', 'foot'],
-  },
-  {
-    key: 'neck',
-    name: 'Neck',
-    hpFormulaLabel: '---',
-    defaultRule: 'Contusão vira 1,5, corte vai de 1,5 para 2.0',
-    logKeys: ['neck'],
-  },
-  {
-    key: 'vitals',
-    name: 'Vitals',
-    hpFormulaLabel: '---',
-    defaultRule: 'Empalamento e perfuração vira x3',
-    logKeys: ['vitals'],
+    logKeys: ['right_foot', 'right_feet', 'foot', 'feet'],
   },
 ];
 
@@ -485,8 +528,12 @@ export function isLimbOrExtremity(locationName: string): boolean {
     norm === 'left_leg' ||
     norm === 'right_leg' ||
     norm === 'hand' ||
+    norm === 'left_hand' ||
+    norm === 'right_hand' ||
     norm === 'feet' ||
     norm === 'foot' ||
+    norm === 'left_foot' ||
+    norm === 'right_foot' ||
     norm === 'arm' ||
     norm === 'leg' ||
     norm === 'left_forearm' ||
@@ -789,11 +836,17 @@ export function calculateLocationDamage(params: {
     normKey === 'left_shins' ||
     normKey === 'right_shins' ||
     normKey === 'hand' ||
+    normKey === 'left_hand' ||
+    normKey === 'right_hand' ||
     normKey === 'feet' ||
     normKey === 'foot' ||
+    normKey === 'left_foot' ||
+    normKey === 'right_foot' ||
     normKey.includes('arm') ||
     normKey.includes('leg') ||
-    normKey.includes('shin')
+    normKey.includes('shin') ||
+    normKey.includes('hand') ||
+    normKey.includes('foot')
   ) {
     // Regra Membros/Extremidades: "Perfurante, perfurante grande e empalamento vira x1"
     if (

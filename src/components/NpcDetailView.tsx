@@ -55,7 +55,10 @@ import {
   Check,
   Layers,
   X,
+  Search,
 } from 'lucide-react';
+import { ArmorSearchModal } from './ArmorSearchModal';
+import { ArmorCatalogItem, ParsedArmorDR, getCoveredLocationsForArmor } from '../utils/armorCatalog';
 
 const getItemIcon = (name: string, category?: string) => {
   const cat = category || '';
@@ -134,6 +137,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const [spellSearchQuery, setSpellSearchQuery] = useState('');
   const [isSpellSearchOpen, setIsSpellSearchOpen] = useState(false);
   const spellSearchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Busca no Banco de Armaduras
+  const [isArmorSearchOpen, setIsArmorSearchOpen] = useState(false);
+  const [searchTargetLocationIndex, setSearchTargetLocationIndex] = useState<number | null>(null);
+  const [searchTargetLocation, setSearchTargetLocation] = useState<BodyArmorLocation | null>(null);
 
   const [isPlayerLinkModalOpen, setIsPlayerLinkModalOpen] = useState(false);
 
@@ -644,6 +652,76 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     updateField('armorKits', nextKits);
 
     // Se o kit editado for o ativo, mantém npc.armorLocations sincronizado!
+    if (currentKit.isActive || currentKit.id === npc.activeArmorKitId) {
+      updateField('armorLocations', nextLocations);
+    }
+  };
+
+  const handleOpenArmorSearch = (index: number, loc: BodyArmorLocation) => {
+    if (isViewer) return;
+    setSearchTargetLocationIndex(index);
+    setSearchTargetLocation(loc);
+    setIsArmorSearchOpen(true);
+  };
+
+  const handleClearArmorLocation = (index: number) => {
+    if (isViewer) return;
+    handleUpdateArmorLocation(index, {
+      ...currentLocations[index],
+      armorName: '',
+      dr: 0,
+      drModifier: 0,
+      modifierDamageType: '',
+      drModifiers: undefined,
+    });
+  };
+
+  const handleEquipArmorFromCatalog = (
+    armor: ArmorCatalogItem,
+    parsed: ParsedArmorDR,
+    targetIndex: number,
+    applyToAllCovered: boolean
+  ) => {
+    if (isViewer) return;
+
+    const targetLoc = currentLocations[targetIndex];
+    if (!targetLoc) return;
+
+    const coveredLocNames = applyToAllCovered
+      ? getCoveredLocationsForArmor(armor.location, currentLocations)
+      : [targetLoc.location];
+
+    // Garante que haja pelo menos 2 slots de modificadores estruturados
+    const standardMods =
+      parsed.drModifiers && parsed.drModifiers.length > 0
+        ? [...parsed.drModifiers]
+        : [{ drModifier: 0, modifierDamageType: '' }, { drModifier: 0, modifierDamageType: '' }];
+    while (standardMods.length < 2) {
+      standardMods.push({ drModifier: 0, modifierDamageType: '' });
+    }
+
+    const nextLocations = currentLocations.map((loc, idx) => {
+      const isTarget = idx === targetIndex;
+      const isCovered = coveredLocNames.includes(loc.location);
+
+      if (isTarget || (applyToAllCovered && isCovered)) {
+        return {
+          ...loc,
+          armorName: armor.name,
+          dr: parsed.baseDr,
+          drModifier: standardMods[0]?.drModifier || 0,
+          modifierDamageType: standardMods[0]?.modifierDamageType || '',
+          drModifiers: standardMods,
+        };
+      }
+      return loc;
+    });
+
+    const nextKits = kits.map((k) =>
+      k.id === currentKit.id ? { ...k, locations: nextLocations } : k
+    );
+    updateField('armorKits', nextKits);
+
     if (currentKit.isActive || currentKit.id === npc.activeArmorKitId) {
       updateField('armorLocations', nextLocations);
     }
@@ -3496,6 +3574,19 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => {
+                    setSearchTargetLocationIndex(0);
+                    setSearchTargetLocation(currentLocations[0] || null);
+                    setIsArmorSearchOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-750 hover:border-amber-500/50 text-xs font-bold rounded-lg transition-colors shadow-xs"
+                  title="Abrir o catálogo de armaduras para consultar ou equipar"
+                >
+                  <Search size={13} />
+                  <span>Buscar Armaduras</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleAddArmorKit}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm"
                   title="Adicionar uma nova lista de partes do corpo (novo kit de armadura)"
@@ -3658,20 +3749,42 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         {loc.location}
                       </td>
 
-                      {/* 3. Armadura (Editável) */}
+                      {/* 3. Armadura (Editável + Botão de Busca no Banco) */}
                       <td className="py-1.5 px-1.5">
-                        <input
-                          type="text"
-                          disabled={isViewer}
-                          value={loc.armorName || ''}
-                          placeholder="Peça de armadura..."
-                          onChange={(e) =>
-                            handleUpdateArmorLocation(idx, { ...loc, armorName: e.target.value })
-                          }
-                          className={`w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs ${
-                            isViewer ? 'cursor-default opacity-90' : ''
-                          }`}
-                        />
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            disabled={isViewer}
+                            value={loc.armorName || ''}
+                            placeholder="Peça de armadura..."
+                            onChange={(e) =>
+                              handleUpdateArmorLocation(idx, { ...loc, armorName: e.target.value })
+                            }
+                            className={`w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs ${
+                              isViewer ? 'cursor-default opacity-90' : ''
+                            }`}
+                          />
+                          {!isViewer && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenArmorSearch(idx, loc)}
+                              className="p-1 rounded bg-slate-900 border border-slate-750 hover:bg-amber-500 hover:text-slate-950 text-slate-400 hover:border-amber-400 transition-colors shrink-0 shadow-xs"
+                              title={`Buscar armadura no banco para ${loc.location}`}
+                            >
+                              <Search size={12} />
+                            </button>
+                          )}
+                          {!isViewer && loc.armorName && (
+                            <button
+                              type="button"
+                              onClick={() => handleClearArmorLocation(idx)}
+                              className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition-colors shrink-0"
+                              title="Limpar armadura desta parte"
+                            >
+                              <X size={11} />
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       {/* 4. RD Base (Editável) */}
@@ -4862,6 +4975,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         initialSpell={editingSpellModalState.spell}
         onClose={() => setEditingSpellModalState({ isOpen: false, spell: null })}
         onSave={handleSaveSingleSpell}
+      />
+
+      {/* MODAL PARA BUSCAR E EQUIPAR ARMADURAS DO BANCO DE DADOS */}
+      <ArmorSearchModal
+        isOpen={isArmorSearchOpen}
+        onClose={() => {
+          setIsArmorSearchOpen(false);
+          setSearchTargetLocationIndex(null);
+          setSearchTargetLocation(null);
+        }}
+        targetLocation={searchTargetLocation}
+        targetLocationIndex={searchTargetLocationIndex}
+        allLocations={currentLocations}
+        onEquipArmor={handleEquipArmorFromCatalog}
       />
 
     </div>
