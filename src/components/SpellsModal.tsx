@@ -28,16 +28,17 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      const list = spells && Array.isArray(spells) ? spells : [];
       setSpellList(
-        spells.length > 0
-          ? JSON.parse(JSON.stringify(spells))
+        list.length > 0
+          ? JSON.parse(JSON.stringify(list))
           : [{ id: `spl-${Date.now()}-1`, name: '', nh: '', isFavorite: false }]
       );
       loadSpellsDatabase().then((data) => {
         setCatalogSpells(data);
       });
     }
-  }, [isOpen, spells]);
+  }, [isOpen]);
 
   // Click outside search dropdown to close
   useEffect(() => {
@@ -94,15 +95,17 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
 
   const handleSelectCatalogSpell = (s: any) => {
     const spellName = s.displayName || (s.namePt && s.namePt !== s.name ? `${s.namePt} (${s.name})` : s.name);
-    setSpellList((prev) => [
-      ...prev,
-      {
-        id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: spellName,
-        nh: '', // NH em branco!
-        isFavorite: false,
-      },
-    ]);
+    const newSpell: Spell = {
+      id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: spellName,
+      nh: '', // NH em branco!
+      isFavorite: false,
+    };
+    setSpellList((prev) => {
+      const next = [...prev.filter((x) => x.name && x.name.trim() !== ''), newSpell];
+      onSave(next); // Auto-salva imediatamente ao selecionar do catálogo!
+      return next;
+    });
     setSearchQuery('');
     setIsSearchOpen(false);
   };
@@ -126,9 +129,17 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
     onClose();
   };
 
+  const handleClose = () => {
+    const filtered = spellList.filter((s) => s.name && s.name.trim() !== '');
+    if (filtered.length > 0) {
+      onSave(filtered);
+    }
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4 h-[80vh] min-h-[580px] max-h-[88vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
           <div className="flex items-center gap-2">
@@ -138,7 +149,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
             </h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
           >
             <X size={18} />

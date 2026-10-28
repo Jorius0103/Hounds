@@ -274,6 +274,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           if (pNorm && (target.includes(pNorm) || pNorm.includes(target))) return true;
         }
       }
+      if (rawTarget.includes('|') || rawTarget.includes('/')) {
+        const rParts = rawTarget.split(/[|\/]/);
+        for (const rp of rParts) {
+          const rpNorm = norm(rp);
+          if (rpNorm && (sNorm === rpNorm || ptNorm === rpNorm || (sNorm && rpNorm.includes(sNorm)) || (ptNorm && rpNorm.includes(ptNorm)))) return true;
+        }
+      }
       return false;
     });
   }, [infoSpell, catalogSpells]);
@@ -460,6 +467,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         'isDead',
         'bodyPartDamageOverrides',
         'bodyPartCustomRules',
+        'spells',
+        'weapons',
       ];
       if (!allowedNpcFields.includes(field)) return;
     }
@@ -771,7 +780,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   const [spellFilterQuery, setSpellFilterQuery] = useState('');
 
   // Sorted spells: Favorites always at the top
-  const sortedSpells = [...npc.spells].sort((a, b) => {
+  const sortedSpells = [...(npc.spells || [])].sort((a, b) => {
     if (a.isFavorite && !b.isFavorite) return -1;
     if (!a.isFavorite && b.isFavorite) return 1;
     return a.name.localeCompare(b.name);
@@ -788,14 +797,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   }, [sortedSpells, spellFilterQuery]);
 
   const handleToggleSpellFavorite = (spellId: string) => {
-    const updated = npc.spells.map((s) =>
+    const updated = (npc.spells || []).map((s) =>
       s.id === spellId ? { ...s, isFavorite: !s.isFavorite } : s
     );
     updateField('spells', updated);
   };
 
   const handleRemoveSpell = (spellId: string) => {
-    const list = npc.spells.filter((s) => s.id !== spellId);
+    const list = (npc.spells || []).filter((s) => s.id !== spellId);
     updateField('spells', list);
   };
 
@@ -808,7 +817,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       isFavorite: false,
       notes: '',
     };
-    const updated = [...npc.spells, newSpell];
+    const updated = [...(npc.spells || []), newSpell];
     updateField('spells', updated);
     setSpellSearchQuery('');
     setIsSpellSearchOpen(false);
@@ -823,17 +832,17 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       isFavorite: false,
       notes: '',
     };
-    const updated = [...npc.spells, newSpell];
+    const updated = [...(npc.spells || []), newSpell];
     updateField('spells', updated);
     setSpellSearchQuery('');
     setIsSpellSearchOpen(false);
   };
 
   const handleSaveSingleSpell = (savedSpell: Spell) => {
-    const exists = npc.spells.some((s) => s.id === savedSpell.id);
+    const exists = (npc.spells || []).some((s) => s.id === savedSpell.id);
     const updated = exists
-      ? npc.spells.map((s) => (s.id === savedSpell.id ? savedSpell : s))
-      : [...npc.spells, savedSpell];
+      ? (npc.spells || []).map((s) => (s.id === savedSpell.id ? savedSpell : s))
+      : [...(npc.spells || []), savedSpell];
     updateField('spells', updated);
     setEditingSpellModalState({ isOpen: false, spell: null });
   };
@@ -2065,7 +2074,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           }`}
         >
           <Sparkles size={14} />
-          <span>Magias ({npc.spells.length})</span>
+          <span>Magias ({(npc.spells || []).length})</span>
         </button>
 
         <button
@@ -3158,7 +3167,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 <div className="flex items-center gap-2 shrink-0">
                   <Sparkles size={18} className="text-amber-400" />
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap">
-                    Grimório de Magias ({npc.spells.length})
+                    Grimório de Magias ({(npc.spells || []).length})
                   </h3>
                 </div>
 
@@ -3203,7 +3212,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
 
             {/* Lista de Magias Cadastradas */}
-            {npc.spells.length === 0 ? (
+            {(npc.spells || []).length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-500 italic space-y-2">
                 <p>Nenhuma magia cadastrada para este personagem.</p>
                 {!isViewer && (
@@ -3230,7 +3239,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 items-stretch">
                 {displayedSpells.map((s) => {
-                  const norm = (str: string) => (str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+                  const norm = (str: string) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
                   const rawTarget = s.name || '';
                   const target = norm(rawTarget);
                   const parenMatch = rawTarget.match(/\(([^)]+)\)/);
@@ -3253,6 +3262,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         if (pNorm && (target.includes(pNorm) || pNorm.includes(target))) return true;
                       }
                     }
+                    if (rawTarget.includes('|') || rawTarget.includes('/')) {
+                      const rParts = rawTarget.split(/[|\/]/);
+                      for (const rp of rParts) {
+                        const rpNorm = norm(rp);
+                        if (rpNorm && (cNorm === rpNorm || ptNorm === rpNorm || (cNorm && rpNorm.includes(cNorm)) || (ptNorm && rpNorm.includes(ptNorm)))) return true;
+                      }
+                    }
                     return false;
                   });
 
@@ -3260,16 +3276,16 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <div
                       key={s.id}
                       style={{ ...cardGradientStyle, overflow: 'hidden', position: 'relative' }}
-                      className={`px-2.5 py-1.5 rounded-xl border flex flex-col justify-center text-xs transition-all shadow-sm ${
+                      className={`px-2.5 py-2 rounded-xl border flex flex-col justify-center text-xs transition-all shadow-sm ${
                         s.isFavorite
                           ? 'border-amber-500/70 ring-1 ring-amber-500/30'
                           : 'border-slate-800 hover:border-slate-700'
                       }`}
                     >
-                      {/* Linha única: Esquerda (NH + Nome) | Meio (Informações Rápidas: Dif, Custo, Cast, Dur, Pág) | Direita (Botões) */}
+                      {/* Linha única: Esquerda (NH + Nome) | Meio (Informações Rápidas: 2 Linhas) | Direita (Botões) */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%', minWidth: 0, overflow: 'hidden' }}>
-                        {/* Esquerda: NH Badge + Nome da Magia */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0, maxWidth: '42%', flexShrink: 1, overflow: 'hidden' }}>
+                        {/* Esquerda: NH Badge + Nome da Magia (quebra em 2 linhas se longo) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0, maxWidth: '46%', flexShrink: 1, overflow: 'hidden' }}>
                           <div
                             style={{ flexShrink: 0, minWidth: '38px', padding: '1px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                             className="bg-amber-950/60 border border-amber-500/60 rounded-lg shadow-sm"
@@ -3282,15 +3298,29 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                           <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
                             <span
-                              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', width: '100%' }}
-                              className="font-bold text-white text-xs sm:text-sm leading-tight"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                wordBreak: 'break-word',
+                                lineHeight: '1.25',
+                              }}
+                              className="font-bold text-white text-xs sm:text-sm"
                               title={s.name}
                             >
                               {s.name}
                             </span>
                             {s.notes && (
                               <span
-                                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', width: '100%' }}
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 1,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
                                 className="text-[10px] text-amber-200/80 italic font-normal"
                                 title={s.notes}
                               >
@@ -3300,37 +3330,48 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           </div>
                         </div>
 
-                        {/* Meio: Informações rápidas em ordem: Dificuldade (Dif), Custo, Cast, Duração (Dur) e Página */}
+                        {/* Meio: Informações rápidas em 2 linhas (Linha 1: Dif & Custo | Linha 2: Cast & Dur | Direita: Página) */}
                         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
                           {cat && (
                             <div
-                              style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}
-                              className="bg-slate-900/90 border border-slate-800 rounded-lg px-2 py-0.5 text-[10px] font-mono text-slate-300 shadow-sm"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}
+                              className="bg-slate-900/90 border border-slate-800 rounded-lg px-2 py-1 text-[10px] font-mono text-slate-300 shadow-sm"
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, overflow: 'hidden' }}>
-                                {cat.difficulty && (
-                                  <span className="shrink-0 text-[10px] text-purple-300 whitespace-nowrap" title={"Dificuldade: " + cat.difficulty}>
-                                    Dif: <strong className="text-white font-bold">{cat.difficulty}</strong>
-                                  </span>
-                                )}
-                                {cat.initialCost && (
-                                  <span className="shrink-0 text-[10px] text-amber-300 whitespace-nowrap" title={"Custo: " + cat.initialCost}>
-                                    • Custo: <strong className="text-white font-bold">{cat.initialCost.split('.')[0].trim()}</strong>
-                                  </span>
-                                )}
-                                {cat.timeToCast && (
-                                  <span className="shrink-0 text-[10px] text-cyan-300 whitespace-nowrap" title={"Cast / Tempo: " + cat.timeToCast}>
-                                    • Cast: <strong className="text-white font-bold">{cat.timeToCast.split('.')[0].replace(/seconds?/i, 'seg').replace(/second/i, 'seg').trim()}</strong>
-                                  </span>
-                                )}
-                                {cat.duration && (
-                                  <span className="text-slate-400 font-sans text-[10px] shrink-0 truncate max-w-[100px]" title={"Duração: " + cat.duration}>
-                                    • Dur: {cat.duration.split('.')[0].replace(/minutes?/i, 'min').replace(/seconds?/i, 'seg').trim()}
-                                  </span>
-                                )}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, overflow: 'hidden' }}>
+                                {/* Linha 1: Dif & Custo */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, overflow: 'hidden' }}>
+                                  {cat.difficulty && (
+                                    <span className="shrink-0 text-[10px] text-purple-300 whitespace-nowrap" title={"Dificuldade: " + cat.difficulty}>
+                                      Dif: <strong className="text-white font-bold">{cat.difficulty}</strong>
+                                    </span>
+                                  )}
+                                  {cat.initialCost && (
+                                    <span className="shrink-0 text-[10px] text-amber-300 truncate max-w-[130px]" title={"Custo: " + cat.initialCost}>
+                                      {cat.difficulty ? "• Custo: " : "Custo: "}
+                                      <strong className="text-white font-bold">{cat.initialCost.split('.')[0].trim()}</strong>
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Linha 2: Cast & Duração */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, overflow: 'hidden' }}>
+                                  {cat.timeToCast && (
+                                    <span className="shrink-0 text-[10px] text-cyan-300 whitespace-nowrap" title={"Cast / Tempo: " + cat.timeToCast}>
+                                      Cast: <strong className="text-white font-bold">{cat.timeToCast.split('.')[0].replace(/seconds?/i, 'seg').replace(/second/i, 'seg').trim()}</strong>
+                                    </span>
+                                  )}
+                                  {cat.duration && (
+                                    <span className="text-slate-400 font-sans text-[10px] shrink-0 truncate max-w-[120px]" title={"Duração: " + cat.duration}>
+                                      {cat.timeToCast ? "• Dur: " : "Dur: "}
+                                      {cat.duration.split('.')[0].replace(/minutes?/i, 'min').replace(/seconds?/i, 'seg').trim()}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               {cat.page && (
-                                <span className="text-slate-400 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5 font-semibold" title={"Página: " + cat.page}>
+                                <span
+                                  className="text-slate-400 text-[10px] shrink-0 font-sans border-l border-slate-800 pl-1.5 ml-0.5 font-semibold"
+                                  title={"Página: " + cat.page}
+                                >
                                   {cat.page}
                                 </span>
                               )}
@@ -3338,7 +3379,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           )}
                         </div>
 
-                        {/* Direita: Botões juntos: Info, Favoritas, Editar, Deletar */}
+                        {* Direita: Botões juntos: Info, Favoritas, Editar, Deletar */}
                         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
                           <button
                             type="button"
@@ -3995,7 +4036,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       <SpellsModal
         isOpen={spellsModalOpen}
         onClose={() => setSpellsModalOpen(false)}
-        spells={npc.spells}
+        spells={npc.spells || []}
         onSave={(updatedSpells) => updateField('spells', updatedSpells)}
         npcName={npc.name || 'NPC'}
       />
