@@ -1,4 +1,4 @@
-!doctype html>
+<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><script src="js/three.min.js"></script><script src="js/dice-roller-3d.js?v=20261021_1300"></script><script src="js/audio-stream-sync.js?v=20261022_1"></script><script>if(typeof window.THREE==="undefined"&&window.parent&&window.parent.THREE)window.THREE=window.parent.THREE;if(typeof window.DiceRoller3D==="undefined"&&window.parent&&window.parent.DiceRoller3D)window.DiceRoller3D=window.parent.DiceRoller3D;</script>
 <title>Mesa de RPG</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -3722,92 +3722,95 @@ Error generating stack: `+r.message+`
                   ]
                 })
               ]
-            }):(0,q.jsxs)("div",{
-              style:{display:"flex",alignItems:"center",gap:"8px",flexShrink:0},
-              children:[
-                (0,q.jsxs)("span",{
-                  style:{fontSize:"11px",color:"#94a3b8"},
-                  children:[
-                    (0,q.jsx)("strong",{style:{color:"#fbbf24"},children:charList.length}),
-                    " personagens"
-                  ]
-                }),
-                propOnSetAllPlayers?(0,q.jsxs)(q.Fragment,{
-                  children:[
-                    (0,q.jsxs)("button",{
-                      type:"button",
-                      onClick:()=>propOnSetAllPlayers(!0),
-                      style:{
-                        display:"flex",
-                        alignItems:"center",
-                        gap:"4px",
-                        padding:"4px 9px",
-                        fontSize:"10px",
-                        fontWeight:"bold",
-                        background:"rgba(6, 78, 59, 0.8)",
-                        color:"#6ee7b7",
-                        border:"1px solid rgba(6, 95, 70, 0.8)",
-                        borderRadius:"5px",
-                        cursor:"pointer"
-                      },
-                      title:"Tornar todos os personagens visíveis na mesa",
-                      children:[
-                        (0,q.jsxs)("svg",{
-                          viewBox:"0 0 24 24",
-                          fill:"none",
-                          stroke:"currentColor",
-                          strokeWidth:"2",
-                          strokeLinecap:"round",
-                          strokeLinejoin:"round",
-                          style:{width:"11px",height:"11px"},
-                          children:[
-                            (0,q.jsx)("path",{d:"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"}),
-                            (0,q.jsx)("circle",{cx:"12",cy:"12",r:"3"})
-                          ]
-                        }),
-                        "Habilitar Todos"
-                      ]
-                    }),
-                    (0,q.jsxs)("button",{
-                      type:"button",
-                      onClick:()=>propOnSetAllPlayers(!1),
-                      style:{
-                        display:"flex",
-                        alignItems:"center",
-                        gap:"4px",
-                        padding:"4px 9px",
-                        fontSize:"10px",
-                        fontWeight:500,
-                        background:"#1e293b",
-                        color:"#cbd5e1",
-                        border:"1px solid #334155",
-                        borderRadius:"5px",
-                        cursor:"pointer"
-                      },
-                      title:"Ocultar todos os personagens da mesa",
-                      children:[
-                        (0,q.jsxs)("svg",{
-                          viewBox:"0 0 24 24",
-                          fill:"none",
-                          stroke:"currentColor",
-                          strokeWidth:"2",
-                          strokeLinecap:"round",
-                          strokeLinejoin:"round",
-                          style:{width:"11px",height:"11px"},
-                          children:[
-                            (0,q.jsx)("path",{d:"M9.88 9.88a3 3 0 1 0 4.24 4.24"}),
-                            (0,q.jsx)("path",{d:"M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"}),
-                            (0,q.jsx)("path",{d:"M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"}),
-                            (0,q.jsx)("line",{x1:"2",y1:"2",x2:"22",y2:"22"})
-                          ]
-                        }),
-                        "Ocultar Todos"
-                      ]
-                    })
-                  ]
-                }):null
-              ]
-            })
+            }):(()=>{
+              let charList=propAllChars&&propAllChars.length>0?propAllChars:(propPlayers||[]);
+              return (0,q.jsxs)("div",{
+                style:{display:"flex",alignItems:"center",gap:"8px",flexShrink:0},
+                children:[
+                  (0,q.jsxs)("span",{
+                    style:{fontSize:"11px",color:"#94a3b8"},
+                    children:[
+                      (0,q.jsx)("strong",{style:{color:"#fbbf24"},children:charList.length}),
+                      " personagens"
+                    ]
+                  }),
+                  propOnSetAllPlayers?(0,q.jsxs)(q.Fragment,{
+                    children:[
+                      (0,q.jsxs)("button",{
+                        type:"button",
+                        onClick:()=>propOnSetAllPlayers(!0),
+                        style:{
+                          display:"flex",
+                          alignItems:"center",
+                          gap:"4px",
+                          padding:"4px 9px",
+                          fontSize:"10px",
+                          fontWeight:"bold",
+                          background:"rgba(6, 78, 59, 0.8)",
+                          color:"#6ee7b7",
+                          border:"1px solid rgba(6, 95, 70, 0.8)",
+                          borderRadius:"5px",
+                          cursor:"pointer"
+                        },
+                        title:"Tornar todos os personagens visíveis na mesa",
+                        children:[
+                          (0,q.jsxs)("svg",{
+                            viewBox:"0 0 24 24",
+                            fill:"none",
+                            stroke:"currentColor",
+                            strokeWidth:"2",
+                            strokeLinecap:"round",
+                            strokeLinejoin:"round",
+                            style:{width:"11px",height:"11px"},
+                            children:[
+                              (0,q.jsx)("path",{d:"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"}),
+                              (0,q.jsx)("circle",{cx:"12",cy:"12",r:"3"})
+                            ]
+                          }),
+                          "Habilitar Todos"
+                        ]
+                      }),
+                      (0,q.jsxs)("button",{
+                        type:"button",
+                        onClick:()=>propOnSetAllPlayers(!1),
+                        style:{
+                          display:"flex",
+                          alignItems:"center",
+                          gap:"4px",
+                          padding:"4px 9px",
+                          fontSize:"10px",
+                          fontWeight:500,
+                          background:"#1e293b",
+                          color:"#cbd5e1",
+                          border:"1px solid #334155",
+                          borderRadius:"5px",
+                          cursor:"pointer"
+                        },
+                        title:"Ocultar todos os personagens da mesa",
+                        children:[
+                          (0,q.jsxs)("svg",{
+                            viewBox:"0 0 24 24",
+                            fill:"none",
+                            stroke:"currentColor",
+                            strokeWidth:"2",
+                            strokeLinecap:"round",
+                            strokeLinejoin:"round",
+                            style:{width:"11px",height:"11px"},
+                            children:[
+                              (0,q.jsx)("path",{d:"M9.88 9.88a3 3 0 1 0 4.24 4.24"}),
+                              (0,q.jsx)("path",{d:"M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"}),
+                              (0,q.jsx)("path",{d:"M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"}),
+                              (0,q.jsx)("line",{x1:"2",y1:"2",x2:"22",y2:"22"})
+                            ]
+                          }),
+                          "Ocultar Todos"
+                        ]
+                      })
+                    ]
+                  }):null
+                ]
+              });
+            })()
           ]
         }),
 
@@ -3993,7 +3996,59 @@ Error generating stack: `+r.message+`
                             },
                             children:isEditor?"Editor":"Espectador"
                           })
-                        }):(0,q.jsx)("div",{style:{minWidth:"70px"}})
+                        }):(0,q.jsx)("div",{style:{minWidth:"70px"}}),
+                        (()=>{
+                          let isVisible=!propActivePlayerIds||propActivePlayerIds.length===0||propActivePlayerIds.includes(char.id);
+                          return propOnTogglePlayer?(0,q.jsxs)("button",{
+                            type:"button",
+                            onClick:x=>{x.stopPropagation();propOnTogglePlayer(char.id)},
+                            style:{
+                              padding:"3px 8px",
+                              borderRadius:"5px",
+                              fontSize:"10px",
+                              fontWeight:"bold",
+                              display:"flex",
+                              alignItems:"center",
+                              gap:"4px",
+                              cursor:"pointer",
+                              flexShrink:0,
+                              background:isVisible?"#059669":"#1e293b",
+                              color:isVisible?"#ffffff":"#94a3b8",
+                              border:isVisible?"1px solid #10b981":"1px solid #334155"
+                            },
+                            title:isVisible?"Personagem vis\u00EDvel na mesa (Clique para ocultar)":"Personagem oculto da mesa (Clique para exibir)",
+                            children:[
+                              isVisible?(0,q.jsxs)("svg",{
+                                viewBox:"0 0 24 24",
+                                fill:"none",
+                                stroke:"currentColor",
+                                strokeWidth:"2",
+                                strokeLinecap:"round",
+                                strokeLinejoin:"round",
+                                style:{width:"11px",height:"11px"},
+                                children:[
+                                  (0,q.jsx)("path",{d:"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"}),
+                                  (0,q.jsx)("circle",{cx:"12",cy:"12",r:"3"})
+                                ]
+                              }):(0,q.jsxs)("svg",{
+                                viewBox:"0 0 24 24",
+                                fill:"none",
+                                stroke:"currentColor",
+                                strokeWidth:"2",
+                                strokeLinecap:"round",
+                                strokeLinejoin:"round",
+                                style:{width:"11px",height:"11px"},
+                                children:[
+                                  (0,q.jsx)("path",{d:"M9.88 9.88a3 3 0 1 0 4.24 4.24"}),
+                                  (0,q.jsx)("path",{d:"M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"}),
+                                  (0,q.jsx)("path",{d:"M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"}),
+                                  (0,q.jsx)("line",{x1:"2",y1:"2",x2:"22",y2:"22"})
+                                ]
+                              }),
+                              (0,q.jsx)("span",{children:isVisible?"Vis\u00EDvel":"Oculto"})
+                            ]
+                          }):null;
+                        })()
                       ]
                     })
                   ]
