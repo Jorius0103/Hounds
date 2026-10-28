@@ -93,7 +93,7 @@ export async function loadSpellsDatabase(): Promise<any[]> {
         const transMap = traducoes || {};
         const list = (magias || []).map((s: any) => {
           const pt = transMap[s.name] || '';
-          const displayName = pt && pt !== s.name ? `${pt} (${s.name})` : s.name;
+          const displayName = pt && pt !== s.name ? `${s.name} (${pt})` : s.name;
           return {
             ...s,
             namePt: pt,
@@ -110,6 +110,85 @@ export async function loadSpellsDatabase(): Promise<any[]> {
   }
 
   return spellsCatalogPromise;
+}
+
+
+export function matchSpellInCatalog(name: string, catalog?: any[]): any | null {
+  if (!name) return null;
+  const cat = catalog || cachedSpellsCatalog;
+  if (!cat || !cat.length) return null;
+  const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  const raw = String(name || '');
+  const target = norm(raw);
+  const pm = raw.match(/^([^(]+)\s*(?:\(([^)]+)\))?/);
+  const beforeParen = pm && pm[1] ? norm(pm[1]) : '';
+  const insideParen = pm && pm[2] ? norm(pm[2]) : '';
+
+  for (let i = 0; i < cat.length; i++) {
+    const s = cat[i];
+    const sNorm = norm(s.name || '');
+    const ptNorm = norm(s.namePt || '');
+    if (beforeParen && sNorm && sNorm === beforeParen) return s;
+    if (beforeParen && ptNorm && ptNorm === beforeParen) return s;
+    if (insideParen && sNorm && sNorm === insideParen) return s;
+    if (insideParen && ptNorm && ptNorm === insideParen) return s;
+    if (s.displayName && norm(s.displayName) === target) return s;
+    if (s.name && norm(s.name) === target) return s;
+    if (s.namePt && norm(s.namePt) === target) return s;
+    if (sNorm && (target.includes(sNorm) || sNorm.includes(target))) return s;
+    if (ptNorm && (target.includes(ptNorm) || ptNorm.includes(target))) return s;
+    if (s.namePt && s.namePt.includes('|')) {
+      const parts = s.namePt.split('|');
+      for (const p of parts) {
+        const pNorm = norm(p);
+        if (pNorm && (target.includes(pNorm) || pNorm.includes(target))) return s;
+      }
+    }
+    if (raw.includes('|') || raw.includes('/')) {
+      const rawParts = raw.split(/[|\/]/);
+      for (const rp of rawParts) {
+        const rpNorm = norm(rp);
+        if (rpNorm && (sNorm === rpNorm || ptNorm === rpNorm || (sNorm && rpNorm.includes(sNorm)) || (ptNorm && rpNorm.includes(ptNorm)))) return s;
+      }
+    }
+  }
+  return null;
+}
+
+export function getSpellEnglishName(name: string, catalog?: any[]): string {
+  if (!name) return '';
+  const raw = String(name).trim();
+  const cat = matchSpellInCatalog(raw, catalog);
+  if (cat && cat.name) return cat.name;
+  const m = raw.match(/^([^(]+)\s*(?:\(([^)]+)\))?/);
+  if (m && m[2]) {
+    const p1 = m[1].trim();
+    const p2 = m[2].trim();
+    if (/[áàâãéêíóôõúç]/i.test(p1) && !/[áàâãéêíóôõúç]/i.test(p2)) {
+      return p2;
+    }
+    return p1;
+  }
+  return raw;
+}
+
+export function formatSpellNameEnPt(name: string, catalog?: any[]): string {
+  if (!name) return '';
+  const raw = String(name).trim();
+  const cat = matchSpellInCatalog(raw, catalog);
+  if (cat && cat.name && cat.namePt && cat.namePt !== cat.name) {
+    return `${cat.name} (${cat.namePt})`;
+  }
+  const m = raw.match(/^([^(]+)\s*\(([^)]+)\)$/);
+  if (m) {
+    const p1 = m[1].trim();
+    const p2 = m[2].trim();
+    if (/[áàâãéêíóôõúç]/i.test(p1) && !/[áàâãéêíóôõúç]/i.test(p2)) {
+      return `${p2} (${p1})`;
+    }
+    return raw;
+  }
+  return raw;
 }
 
 export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
@@ -181,7 +260,7 @@ export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
   }, [searchQuery, catalogSpells]);
 
   const handleSelectCatalogSpell = (s: any) => {
-    const selectedName = s.displayName || (s.namePt && s.namePt !== s.name ? `${s.namePt} (${s.name})` : s.name);
+    const selectedName = s.displayName || (s.namePt && s.namePt !== s.name ? `${s.name} (${s.namePt})` : s.name);
     setName(selectedName);
     // NH permanece em branco como solicitado pelo usuário
     setNh('');

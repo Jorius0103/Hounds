@@ -22,7 +22,7 @@ import {
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { loadWeaponsDatabase } from './WeaponModal';
 import { SpellsModal } from './SpellsModal';
-import { SingleSpellModal, loadSpellsDatabase, normalizeSpellText, getCollegePt } from './SingleSpellModal';
+import { SingleSpellModal, loadSpellsDatabase, normalizeSpellText, getCollegePt, getSpellEnglishName, formatSpellNameEnPt } from './SingleSpellModal';
 import { CombatLogCard } from './CombatLogCard';
 import { ConfirmModal } from './ConfirmModal';
 import { systemLogger } from '../utils/systemLogger';
@@ -779,11 +779,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const [spellFilterQuery, setSpellFilterQuery] = useState('');
 
-  // Sorted spells: Favorites always at the top
+  // Sorted spells: Favorites always at the top, then alphabetical by English name
   const sortedSpells = [...(npc.spells || [])].sort((a, b) => {
     if (a.isFavorite && !b.isFavorite) return -1;
     if (!a.isFavorite && b.isFavorite) return 1;
-    return a.name.localeCompare(b.name);
+    const nameA = getSpellEnglishName(a.name, catalogSpells);
+    const nameB = getSpellEnglishName(b.name, catalogSpells);
+    return nameA.localeCompare(nameB);
   });
 
   const displayedSpells = useMemo(() => {
@@ -792,9 +794,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     return sortedSpells.filter((s) => {
       const nm = (s.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const nt = (s.notes || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return nm.includes(q) || nt.includes(q);
+      const en = (getSpellEnglishName(s.name, catalogSpells) || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const disp = (formatSpellNameEnPt(s.name, catalogSpells) || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return nm.includes(q) || nt.includes(q) || en.includes(q) || disp.includes(q);
     });
-  }, [sortedSpells, spellFilterQuery]);
+  }, [sortedSpells, spellFilterQuery, catalogSpells]);
 
   const handleToggleSpellFavorite = (spellId: string) => {
     const updated = (npc.spells || []).map((s) =>
@@ -3239,6 +3243,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 items-stretch">
                 {displayedSpells.map((s) => {
+                  const spellDisplayName = formatSpellNameEnPt(s.name, catalogSpells);
                   const norm = (str: string) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
                   const rawTarget = s.name || '';
                   const target = norm(rawTarget);
@@ -3308,9 +3313,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                                 lineHeight: '1.25',
                               }}
                               className="font-bold text-white text-xs sm:text-sm"
-                              title={s.name}
+                              title={spellDisplayName}
                             >
-                              {s.name}
+                              {spellDisplayName}
                             </span>
                             {s.notes && (
                               <span

@@ -88,7 +88,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
   };
 
   const handleSelectCatalogSpell = (s: any) => {
-    const spellName = s.displayName || (s.namePt && s.namePt !== s.name ? `${s.namePt} (${s.name})` : s.name);
+    const spellName = s.displayName || (s.namePt && s.namePt !== s.name ? `${s.name} (${s.namePt})` : s.name);
     const newSpell: Spell = {
       id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: spellName,
