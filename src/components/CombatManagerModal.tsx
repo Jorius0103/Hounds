@@ -156,7 +156,15 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const validCombats = Array.isArray(combats) ? combats : [];
+  const validCombats = Array.isArray(combats)
+    ? combats.filter(
+        (c) =>
+          c &&
+          c.id !== 'combat-vazio' &&
+          !c.name?.toLowerCase().includes('vazio') &&
+          c.name?.toLowerCase().trim() !== 'sem combate'
+      )
+    : [];
 
   // Handlers da Aba 1: Combates
   const handleCreate = (e: React.FormEvent) => {
@@ -651,7 +659,27 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
               <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Combates Cadastrados ({validCombats.length})
               </div>
-              {validCombats.map((c) => {
+              {validCombats.length === 0 ? (
+                <div
+                  style={{
+                    padding: '24px 16px',
+                    textAlign: 'center',
+                    background: 'rgba(2, 6, 23, 0.4)',
+                    border: '1px dashed #334155',
+                    borderRadius: '10px',
+                    color: '#94a3b8',
+                  }}
+                >
+                  <Swords size={28} style={{ margin: '0 auto 8px', color: '#64748b', opacity: 0.7 }} />
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                    Nenhum combate cadastrado
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748b', maxWidth: '380px', margin: '0 auto' }}>
+                    A mesa está funcionando no modo livre para acompanhamento dos personagens. Crie um combate acima quando for iniciar um encontro com NPCs.
+                  </div>
+                </div>
+              ) : (
+                validCombats.map((c) => {
                 const isCurrentlySelected = c.id === activeCombatId;
                 const isEditing = editingCombatId === c.id;
                 const isDeleting = deletingCombatId === c.id;
@@ -895,7 +923,30 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
-                          {!isCurrentlySelected && !isInactive && (
+                          {isCurrentlySelected ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onSelectCombat('');
+                                onClose();
+                              }}
+                              className="hover:bg-slate-700 active:scale-95 transition-all"
+                              style={{
+                                height: '26px',
+                                padding: '0 8px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                background: '#1e293b',
+                                border: '1px solid #334155',
+                                color: '#94a3b8',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                              }}
+                              title="Sair deste combate e retornar para o Modo Sessão (sem combate ativo)"
+                            >
+                              Sair (Modo Sessão)
+                            </button>
+                          ) : !isInactive ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -917,7 +968,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                             >
                               Selecionar
                             </button>
-                          )}
+                          ) : null}
                           {onToggleCombatActive && (
                             <button
                               type="button"
@@ -961,33 +1012,32 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
                           >
                             <Edit2 size={13} />
                           </button>
-                          {validCombats.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setDeletingCombatId(c.id)}
-                              style={{
-                                width: '26px',
-                                height: '26px',
-                                background: '#0f172a',
-                                border: '1px solid rgba(244, 63, 94, 0.3)',
-                                color: '#fb7185',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                              title="Excluir combate"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setDeletingCombatId(c.id)}
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              background: '#0f172a',
+                              border: '1px solid rgba(244, 63, 94, 0.3)',
+                              color: '#fb7185',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            title="Excluir combate"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       </>
                     )}
                   </div>
                 );
-              })}
+              })
+            )}
             </div>
           </div>
         )}

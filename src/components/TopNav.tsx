@@ -76,24 +76,24 @@ export const TopNav: React.FC<TopNavProps> = ({
   useEffect(() => {
     return audioStreamSync.subscribe((s) => setAudioState(s));
   }, []);
-  // Filtra combates ativos para exibição na barra principal
+  // Filtra combates ativos para exibição na barra principal (excluindo combat-vazio dummy)
   const activeCombats = useMemo(() => {
-    return combats.filter((c) => c.isActive !== false);
+    return combats.filter(
+      (c) =>
+        c.isActive !== false &&
+        c.id !== 'combat-vazio' &&
+        !c.name?.toLowerCase().includes('vazio') &&
+        c.name?.toLowerCase().trim() !== 'sem combate'
+    );
   }, [combats]);
 
   const isVazio =
+    !activeCombatId ||
     activeCombatId === 'combat-vazio' ||
-    combats.find((c) => c.id === activeCombatId)?.name?.toLowerCase().includes('vazio');
+    !combats.some((c) => c.id === activeCombatId);
 
   const handleSelectVazio = () => {
-    const emptyCombat = combats.find(
-      (c) => c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio')
-    );
-    if (emptyCombat) {
-      onSelectCombat(emptyCombat.id);
-    } else {
-      onNewCombat();
-    }
+    onSelectCombat('');
   };
 
   return (
@@ -110,13 +110,16 @@ export const TopNav: React.FC<TopNavProps> = ({
                 </span>
 
                 <select
-                  value={activeCombatId}
+                  value={activeCombatId || ''}
                   onChange={(e) => onSelectCombat(e.target.value)}
                   className="bg-transparent text-[11px] font-semibold text-amber-300 py-1 px-1.5 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 max-w-[140px] sm:max-w-[200px] truncate cursor-pointer"
                 >
+                  <option value="" className="bg-slate-900 text-white">
+                    {activeCombats.length === 0 ? 'Sem combate (Nenhum cadastrado)' : 'Sem combate (Modo Sessão)'}
+                  </option>
                   {activeCombats.map((c) => (
                     <option key={c.id} value={c.id} className="bg-slate-900 text-white">
-                      {c.id === 'combat-vazio' || c.name.toLowerCase().includes('vazio') || c.name.toLowerCase().trim() === 'sem combate' ? 'Sem combate' : `${c.name} (${c.totalNpcs != null ? c.totalNpcs : (c.npcs?.length || 0)} NPCs)`}
+                      {c.name} ({c.totalNpcs != null ? c.totalNpcs : (c.npcs?.length || 0)} NPCs)
                     </option>
                   ))}
                 </select>

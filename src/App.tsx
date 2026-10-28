@@ -245,22 +245,20 @@ const DEFAULT_USERS: UserAccount[] = [
 ];
 
 export default function App() {
-  // 1. Initial Combats State from LocalStorage (guarda os combates e seus NPCs)
+  // 1. Combates Cadastrados (Opcionais; permite 0 combates para foco total no dia a dia dos personagens)
   const [combats, setCombats] = useState<Combat[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const empty = parsed.find((c: Combat) => isEmptyCombat(c)) || EMPTY_COMBAT_PRESET;
-          const others = parsed.filter((c: Combat) => c.id !== empty.id && !isEmptyCombat(c));
-          return [{ ...empty, id: 'combat-vazio', name: 'Sem combate', npcs: [] }, ...others];
+        if (Array.isArray(parsed)) {
+          return parsed.filter((c: Combat) => c && c.id !== 'combat-vazio' && !isEmptyCombat(c));
         }
       }
     } catch (e) {
       console.error('Failed to load saved combats', e);
     }
-    return INITIAL_COMBATS;
+    return [];
   });
 
   // 2. Personagens Fixos (Globais, persistem independente do combate selecionado)
@@ -368,7 +366,7 @@ export default function App() {
         }
       }
     } catch (e) {}
-    return combats[0]?.id || 'combat-vazio';
+    return combats[0]?.id || '';
   });
 
   // Salva Combate Ativo no LocalStorage
@@ -378,10 +376,28 @@ export default function App() {
     } catch (e) {}
   }, [activeCombatId]);
 
-  const activeCombat = combats.find((c) => c.id === activeCombatId) || combats[0];
-  const isNoCombat = !activeCombat || activeCombat.id === 'combat-vazio' || activeCombat.name?.toLowerCase().includes('vazio') || activeCombat.name?.toLowerCase().trim() === 'sem combate';
+  const activeCombat = activeCombatId ? combats.find((c) => c.id === activeCombatId) : undefined;
+  const isNoCombat = !activeCombat || activeCombat.id === 'combat-vazio' || isEmptyCombat(activeCombat);
   // Rodada efetiva: no modo "Sem combate" todos os registros ficam na Rodada 0
   const effectiveRound = isNoCombat ? 0 : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
+
+  // Eventos de sessão geral (rolagens e anotações quando nenhum combate estiver ativo)
+  const [sessionEvents, setSessionEvents] = useState<ActionLogEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('gurps_session_events_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gurps_session_events_v1', JSON.stringify(sessionEvents));
+    } catch (e) {}
+  }, [sessionEvents]);
 
   // Presence tracking for online players
   const [onlineUsersMap, setOnlineUsersMap] = useState<Record<string, number>>({});
@@ -470,38 +486,30 @@ export default function App() {
     return set;
   }, [currentUser?.name, onlineUsersMap, presenceClock]);
 
-  // IDs dos personagens de jogadores visíveis no combate ativo (por padrão, todos)
+  // IDs dos personagens de jogadores visíveis no combate ativo (ou todos fora de combate)
   const activeCombatPlayerIds = useMemo(() => {
-    if (activeCombat && Array.isArray(activeCombat.playerIds)) {
+    if (!isNoCombat && activeCombat && Array.isArray(activeCombat.playerIds)) {
       return activeCombat.playerIds;
     }
     return players.map((p) => p.id);
-  }, [activeCombat, players]);
+  }, [isNoCombat, activeCombat, players]);
 
-  // Lista unificada: Personagens Habilitados na Mesa + NPCs específicos do combate ativo
+  // Lista unificada: Personagens da campanha (sempre presentes) + NPCs específicos do combate ativo
   const allCharacters = useMemo(() => {
     const list: NPC[] = [];
     const seen = new Set<string>();
     const activePlayerSet = new Set(activeCombatPlayerIds);
 
-    // Apenas os personagens habilitados na mesa entram na barra do combate ativo
+    // Personagens da campanha sempre mantidos e sincronizados
     for (const p of players) {
-      if (p.characterType !== 'npc' && activePlayerSet.has(p.id) && !seen.has(p.id)) {
+      if (p.characterType !== 'npc' && (isNoCombat || activePlayerSet.has(p.id)) && !seen.has(p.id)) {
         seen.add(p.id);
         list.push(p);
       }
     }
-    for (const c of combats) {
-      for (const n of c.npcs || []) {
-        if (n.characterType === 'player' && activePlayerSet.has(n.id) && !seen.has(n.id)) {
-          seen.add(n.id);
-          list.push({ ...n, isVisibleToPlayer: true });
-        }
-      }
-    }
-    // NPCs específicos do combate ativo (nunca exibidos no modo Sem combate)
-    if (!isNoCombat) {
-      for (const n of activeCombat?.npcs || []) {
+    // NPCs específicos do combate ativo (apenas quando um combate real estiver ativo)
+    if (!isNoCombat && activeCombat) {
+      for (const n of activeCombat.npcs || []) {
         if (n.characterType !== 'player' && !seen.has(n.id)) {
           seen.add(n.id);
           list.push(n);
@@ -509,7 +517,7 @@ export default function App() {
       }
     }
     return list;
-  }, [players, combats, activeCombat, activeCombatPlayerIds, isNoCombat]);
+  }, [players, activeCombat, activeCombatPlayerIds, isNoCombat]);
 
   // Lista unificada de Personagens de Jogadores (para modais e recarga de recursos)
   const allPlayerCharacters = useMemo(() => {
@@ -1498,6 +1506,17 @@ export default function App() {
   const handleSelectCombat = (id: string) => {
     if (currentUser && currentUser.role !== 'mestre') return;
 
+    if (!id || id === 'combat-vazio') {
+      setActiveCombatId('');
+      stateRef.current.activeCombatId = '';
+      setIsHomeScreen(false);
+      try {
+        localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(''));
+      } catch (e) {}
+      broadcastSync(undefined, undefined, undefined, '');
+      return;
+    }
+
     // Salva o combate que estava ativo no pool antes de trocar
     const prevActive = stateRef.current.combats.find((c) => c.id === stateRef.current.activeCombatId);
     if (prevActive && prevActive.id !== 'combat-vazio' && prevActive.npcs && prevActive.npcs.length > 0) {
@@ -1656,15 +1675,24 @@ export default function App() {
       description: description || '',
       createdAt: new Date().toLocaleDateString('pt-BR'),
       npcs: [],
-      playerIds: players.map((p) => p.id), // Todos os personagens criados sempre entram nos combates
+      playerIds: players.map((p) => p.id),
       isActive: true,
+      currentRound: 0,
+      round: 0,
+      events: [],
+      editorUserIds: [],
     };
-    const empty = combats.find((c) => isEmptyCombat(c)) || EMPTY_COMBAT_PRESET;
-    const others = combats.filter((c) => c.id !== empty.id && !isEmptyCombat(c));
-    const updated = [{ ...empty, id: 'combat-vazio', name: 'Sem combate', npcs: [] }, newCombat, ...others];
+    const cleanCombats = combats.filter((c) => c.id !== 'combat-vazio' && !isEmptyCombat(c));
+    const updated = [newCombat, ...cleanCombats];
     setCombats(updated);
-    // Cria o combate sem mudar de tela e sem fechar o modal
-    broadcastSync(updated, undefined, undefined, activeCombatId);
+    stateRef.current.combats = updated;
+    setActiveCombatId(newCombat.id);
+    stateRef.current.activeCombatId = newCombat.id;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(newCombat.id));
+    } catch (e) {}
+    broadcastSync(updated, undefined, undefined, newCombat.id);
   };
 
   const handleToggleCombatActive = (id: string) => {
@@ -1678,10 +1706,7 @@ export default function App() {
       const remainingActive = updated.filter(
         (c) => c.isActive !== false && !isEmptyCombat(c)
       );
-      const nextId =
-        remainingActive.length > 0
-          ? remainingActive[0].id
-          : updated.find((c) => isEmptyCombat(c))?.id || 'combat-vazio';
+      const nextId = remainingActive.length > 0 ? remainingActive[0].id : '';
       setActiveCombatId(nextId);
       broadcastSync(updated, undefined, undefined, nextId);
     } else {
@@ -1751,16 +1776,16 @@ export default function App() {
   };
 
   const handleDeleteCombat = (id: string) => {
-    if (id === 'combat-vazio') return;
-    const remaining = combats.filter((c) => c.id !== id);
-    const empty = remaining.find((c) => isEmptyCombat(c)) || EMPTY_COMBAT_PRESET;
-    const others = remaining.filter((c) => c.id !== empty.id && !isEmptyCombat(c));
-    const nextCombats = [{ ...empty, id: 'combat-vazio', name: 'Sem combate', npcs: [] }, ...others];
+    const nextCombats = combats.filter((c) => c.id !== id && c.id !== 'combat-vazio' && !isEmptyCombat(c));
     setCombats(nextCombats);
-    const nextActiveId = activeCombatId === id ? nextCombats[0].id : activeCombatId;
-    if (activeCombatId === id && remaining.length > 0) {
-      setActiveCombatId(nextActiveId);
-    }
+    stateRef.current.combats = nextCombats;
+    const nextActiveId = activeCombatId === id ? (nextCombats[0]?.id || '') : activeCombatId;
+    setActiveCombatId(nextActiveId);
+    stateRef.current.activeCombatId = nextActiveId;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
+      localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(nextActiveId));
+    } catch (e) {}
     broadcastSync(nextCombats, undefined, undefined, nextActiveId);
   };
 
@@ -3081,6 +3106,16 @@ export default function App() {
       );
       setCombats(updatedCombats);
       broadcastSync(updatedCombats);
+    } else {
+      // Vincula aos eventos gerais da sessão (quando em Modo Sessão livre)
+      setSessionEvents((prev) => [newEntry, ...prev.filter((e) => e.id !== newEntry.id)]);
+      try {
+        broadcastChannelRef.current?.postMessage({
+          type: 'SYNC_SESSION_EVENT',
+          logEntry: newEntry,
+          sourceId: onlineSyncService.getClientId(),
+        });
+      } catch (e) {}
     }
 
     const rollData: DiceRollResult = {
@@ -4091,6 +4126,7 @@ export default function App() {
               <GeneralCombatLog
                 activeCombat={activeCombat}
                 additionalCharacters={allCharacters}
+                sessionEvents={sessionEvents}
                 onSelectNpc={(npcId) => {
                   setSelectedNpcId(npcId);
                   setIsHomeScreen(false);

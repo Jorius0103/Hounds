@@ -9,6 +9,7 @@ const PAGE_SIZE = 10;
 interface GeneralCombatLogProps {
   activeCombat: Combat | undefined;
   additionalCharacters?: NPC[];
+  sessionEvents?: any[];
   onSelectNpc: (npcId: string) => void;
   selectedNpcId: string;
   currentUserRole: UserRole;
@@ -21,6 +22,7 @@ interface GeneralCombatLogProps {
 export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   activeCombat,
   additionalCharacters,
+  sessionEvents = [],
   onSelectNpc,
   selectedNpcId,
   currentUserRole,
@@ -59,8 +61,9 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
     const list: any[] = [];
     const seenIds = new Set<string>();
 
-    // 1. Eventos e rolagens gerais do combate (rolagens de todos os usuários)
-    for (const ev of activeCombat?.events || []) {
+    // 1. Eventos e rolagens gerais (do combate ativo ou da sessão livre)
+    const baseEvents = activeCombat ? (activeCombat.events || []) : (sessionEvents || []);
+    for (const ev of baseEvents) {
       if (currentUserRole === 'jogador' && (ev.isSecret || (ev as any).hiddenFromPlayers)) {
         continue;
       }
