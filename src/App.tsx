@@ -4002,7 +4002,7 @@ export default function App() {
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}
       {!(isHomeScreen && activeViewMode === 'sheets') && (
-      <main className="flex-1 w-full p-2.5 sm:p-3.5 lg:px-5">
+      <main className="flex-1 w-full p-2.5 sm:p-3.5 lg:px-5" style={{ paddingBottom: '80vh' }}>
         {activeViewMode === 'tactical' ? (
           /* MODO MESA TÁTICA COMPLETA */
           <div className="w-full">

@@ -405,33 +405,11 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                   title="Cadastrar Novo Personagem na Campanha"
                 >
                   <Plus size={12} />
-                  <span>Criar novo personagem</span>
+                  <span>Criar Personagem</span>
                 </button>
               )}
               {onSetAllPlayersVisibility && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => onSetAllPlayersVisibility(true)}
-                    className="hover:opacity-90 active:scale-95 transition-all"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '4px 9px',
-                      fontSize: '10px',
-                      fontWeight: 'bold',
-                      background: 'rgba(6, 78, 59, 0.8)',
-                      color: '#6ee7b7',
-                      border: '1px solid rgba(6, 95, 70, 0.8)',
-                      borderRadius: '5px',
-                      cursor: 'pointer',
-                    }}
-                    title="Tornar todos os personagens visíveis na mesa de RPG"
-                  >
-                    <Eye size={11} />
-                    <span>Habilitar Todos</span>
-                  </button>
                   <button
                     type="button"
                     onClick={() => onSetAllPlayersVisibility(false)}
@@ -453,6 +431,28 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                   >
                     <EyeOff size={11} />
                     <span>Ocultar Todos</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSetAllPlayersVisibility(true)}
+                    className="hover:opacity-90 active:scale-95 transition-all"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 9px',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      background: 'rgba(6, 78, 59, 0.8)',
+                      color: '#6ee7b7',
+                      border: '1px solid rgba(6, 95, 70, 0.8)',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                    }}
+                    title="Tornar todos os personagens visíveis na mesa de RPG"
+                  >
+                    <Eye size={11} />
+                    <span>Habilitar Todos</span>
                   </button>
                 </>
               )}
@@ -620,53 +620,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                         </span>
                       </div>
 
-                      {/* Status do Jogador Vinculado: Online/Offline e Modo Editor/Espectador */}
-                      {linkedUser ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: '75px' }}>
-                          <span
-                            style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '9999px',
-                              background: isOnline ? '#10b981' : '#64748b',
-                              display: 'inline-block',
-                              boxShadow: isOnline ? '0 0 4px #10b981' : 'none',
-                            }}
-                            title={isOnline ? `${linkedUser.name} está Online` : `${linkedUser.name} está Offline`}
-                          />
-                          {isEditor ? (
-                            <span
-                              style={{
-                                fontSize: '9px',
-                                fontWeight: 'bold',
-                                color: '#34d399',
-                                background: 'rgba(6, 78, 59, 0.6)',
-                                border: '1px solid rgba(16, 185, 129, 0.4)',
-                                padding: '1px 5px',
-                                borderRadius: '4px',
-                              }}
-                            >
-                              Editor
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: '9px',
-                                fontWeight: 500,
-                                color: '#94a3b8',
-                                background: '#1e293b',
-                                border: '1px solid #334155',
-                                padding: '1px 5px',
-                                borderRadius: '4px',
-                              }}
-                            >
-                              Espectador
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div style={{ minWidth: '75px' }} />
-                      )}
+
 
                       {/* Botão de Toggle de Visibilidade na Mesa de RPG */}
                       {onTogglePlayerVisibility && (
