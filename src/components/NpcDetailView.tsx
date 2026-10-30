@@ -1870,30 +1870,36 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   return (
     <div className="space-y-4">
-      {/* 1. CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas (Fixo ao rolar com respiro) */}
+      {/* 1 & 2. CABEÇALHO DO NPC + MENU DE ABAS (Travados juntos no topo na rolagem) */}
       <div
         style={{
           position: 'sticky',
           top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
           zIndex: 30,
-          border: npc.isDead
-            ? '1px solid rgba(220, 38, 38, 0.5)'
-            : npc.characterType === 'player'
-            ? '1px solid rgba(16, 185, 129, 0.4)'
-            : '1px solid rgba(168, 85, 247, 0.4)',
-          background: npc.isDead
-            ? 'rgba(2, 6, 23, 0.95)'
-            : npc.characterType === 'player'
-            ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.30) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)'
-            : 'linear-gradient(135deg, rgba(88, 28, 135, 0.30) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)',
-          boxShadow: npc.isDead
-            ? '0 10px 30px -5px rgba(220, 38, 38, 0.2)'
-            : npc.characterType === 'player'
-            ? '0 10px 30px -5px rgba(6, 78, 59, 0.25)'
-            : '0 10px 30px -5px rgba(88, 28, 135, 0.25)',
         }}
-        className="sticky z-30 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
+        className="space-y-2.5"
       >
+        {/* CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas */}
+        <div
+          style={{
+            border: npc.isDead
+              ? '1px solid rgba(220, 38, 38, 0.5)'
+              : npc.characterType === 'player'
+              ? '1px solid rgba(16, 185, 129, 0.4)'
+              : '1px solid rgba(168, 85, 247, 0.4)',
+            background: npc.isDead
+              ? 'rgba(2, 6, 23, 0.95)'
+              : npc.characterType === 'player'
+              ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.30) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)'
+              : 'linear-gradient(135deg, rgba(88, 28, 135, 0.30) 0%, rgba(15, 23, 42, 0.95) 60%, rgba(2, 6, 23, 0.98) 100%)',
+            boxShadow: npc.isDead
+              ? '0 10px 30px -5px rgba(220, 38, 38, 0.2)'
+              : npc.characterType === 'player'
+              ? '0 10px 30px -5px rgba(6, 78, 59, 0.25)'
+              : '0 10px 30px -5px rgba(88, 28, 135, 0.25)',
+          }}
+          className="backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 transition-all"
+        >
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           {/* Esquerda: Avatar + Identidade */}
           <div className="flex items-center gap-3.5 w-full lg:w-auto min-w-0">
@@ -2115,8 +2121,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 2. TABS NAVIGATION (CENTRALIZADA, DESIGN SYSTEM DA FICHA, SEM JITTER) */}
-      <div className="flex items-center justify-center gap-2 p-1.5 backdrop-blur-md rounded-2xl border border-slate-800/80 bg-slate-950/80 shadow-lg overflow-x-auto scrollbar-none w-full">
+      {/* 2. TABS NAVIGATION (Com o degradê do design system, fixo junto ao cabeçalho) */}
+      <div
+        style={cardGradientStyle}
+        className="flex items-center justify-center gap-2 p-1.5 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-lg overflow-x-auto scrollbar-none w-full"
+      >
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
@@ -2230,6 +2239,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             <span className="absolute -bottom-1 left-2.5 right-2.5 h-0.5 bg-amber-400 rounded-full shadow-sm" />
           )}
         </button>
+      </div>
       </div>
 
       {/* 3. TAB CONTENT: DADOS & STATUS (PRIMEIRA ABA) */}

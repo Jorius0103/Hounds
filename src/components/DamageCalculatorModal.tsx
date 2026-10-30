@@ -586,11 +586,11 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                       Multiplicador de Dano:
                     </label>
                   </div>
-                  <div className="relative flex items-center min-w-[70px] max-w-[90px] bg-slate-900 border border-slate-800 focus-within:border-amber-500 rounded-lg overflow-hidden px-2 py-0.5">
-                    <span className="text-amber-400 font-mono font-bold text-xs mr-1">x</span>
+                  <div className="relative flex items-center w-[65px] bg-slate-900 border border-slate-800 focus-within:border-amber-500 rounded-lg overflow-hidden px-1.5 py-0.5">
+                    <span className="text-amber-400 font-mono font-bold text-xs mr-2 select-none">x</span>
                     <input
                       type="number"
-                      step="0.1"
+                      step="0.5"
                       min="0"
                       placeholder="1.0"
                       value={customMultiplier}
