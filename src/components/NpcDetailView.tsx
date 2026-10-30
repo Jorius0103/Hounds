@@ -128,12 +128,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const handleTabClick = (tab: 'overview' | 'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits') => {
     setActiveTab(tab);
-    setTimeout(() => {
-      const el = tabsNavRef.current || document.getElementById('fichaTabsNav');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 50);
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
   };
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -1881,8 +1882,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   return (
     <div className="space-y-4">
-      {/* 1 & 2. CABEÇALHO DO NPC + MENU DE ABAS */}
-      <div className="space-y-2.5">
+      {/* 1 & 2. CABEÇALHO DO NPC + MENU DE ABAS (Travados juntos no topo na rolagem) */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
+          zIndex: 30,
+        }}
+        className="space-y-2.5"
+      >
         {/* CABEÇALHO DO NPC: Identidade, Badges & Ações Rápidas */}
         <div
           style={{
@@ -2131,14 +2139,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       <div
         ref={tabsNavRef}
         id="fichaTabsNav"
-        style={{
-          ...cardGradientStyle,
-          position: 'sticky',
-          top: 'calc(var(--mesa-top-offset, 48px) + 8px)',
-          zIndex: 35,
-          scrollMarginTop: 'calc(var(--mesa-top-offset, 48px) + 8px)',
-        }}
-        className="flex items-center justify-center gap-2 p-1.5 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-lg overflow-x-auto scrollbar-none w-full scroll-mt-24"
+        style={cardGradientStyle}
+        className="flex items-center justify-center gap-2 p-1.5 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-lg overflow-x-auto scrollbar-none w-full"
       >
         <button
           type="button"
@@ -2258,7 +2260,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 3. TAB CONTENT: DADOS & STATUS (PRIMEIRA ABA) */}
       {activeTab === 'overview' && (
-        <div className="space-y-3 min-h-[calc(100vh-140px)]">
+        <div className="space-y-3 ">
           {/* 1. LINHA SUPERIOR: PV & FP (Esquerda) e Defesas & Ações do Turno (Direita) - Rigorosamente com a mesma altura */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
             {/* Esquerda (6 cols): Pontos de Vida e Pontos de Fadiga Lado a Lado */}
@@ -3096,7 +3098,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 8. TAB CONTENT: ARMAS & ATAQUES (NH MAIOR + PERÍCIAS E PERKS DE COMBATE ABAIXO) */}
       {activeTab === 'weapons' && (
-        <div className="space-y-4 min-h-[calc(100vh-140px)]">
+        <div className="space-y-4 ">
           <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
@@ -3301,7 +3303,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 9. TAB CONTENT: MAGIAS */}
       {activeTab === 'spells' && (
-        <div className="space-y-4 min-h-[calc(100vh-140px)]">
+        <div className="space-y-4 ">
           <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
@@ -3577,7 +3579,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 10. TAB CONTENT: ARMADURA POR LOCALIZAÇÃO (MODELO EXCEL + KITS + REGRAS) */}
       {activeTab === 'armor' && (
-        <div style={{ minHeight: 'calc(100vh - 140px)' }} style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+        <div  style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
           {/* Header com Kits de Armadura */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
@@ -3910,7 +3912,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 11. TAB CONTENT: PARTES DO CORPO (NOVA ABA ENTRE ARMADURA E TRAÇOS) */}
       {activeTab === 'bodyParts' && (
-        <div style={{ minHeight: 'calc(100vh - 140px)' }} style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+        <div  style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <Heart size={18} className="text-amber-400" />
@@ -4164,7 +4166,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 11. TAB CONTENT: TRAÇOS & EQUIPAMENTOS */}
       {activeTab === 'traits' && (
-        <div style={{ minHeight: 'calc(100vh - 140px)' }} style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+        <div  style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2.5">
