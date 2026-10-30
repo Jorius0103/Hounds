@@ -137,6 +137,16 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     return migrateArmorLocations(rawLocs, npc.id);
   }, [activeKit, npc.armorLocations, npc.id]);
 
+  // Ordenação por número de acerto (rollTarget) na ordem de rolagem 3d6 exclusiva para a seleção de local nesta janela
+  const sortedDropdownLocations = React.useMemo(() => {
+    const parseRollTarget = (r?: string) => {
+      if (!r || r === '-' || r === '—') return 999;
+      const match = r.match(/\d+/);
+      return match ? parseInt(match[0], 10) : 999;
+    };
+    return [...effectiveLocations].sort((a, b) => parseRollTarget(a.rollTarget) - parseRollTarget(b.rollTarget));
+  }, [effectiveLocations]);
+
   if (!isOpen) return null;
 
   const isNoLocation = selectedLocationId === 'sem-parte';
@@ -519,7 +529,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 <option value="sem-parte" className="bg-slate-900 text-amber-300 font-bold">
                   ⚡ Sem parte do Corpo (Dano Direto / Sem Armadura)
                 </option>
-                {effectiveLocations.map((loc) => {
+                {sortedDropdownLocations.map((loc) => {
                   const locMods = getEffectiveLocModifiers(loc);
                   const modText = locMods.length > 0
                     ? ` [${locMods.map((m) => `${m.drModifier >= 0 ? `+${m.drModifier}` : m.drModifier} vs ${m.modifierDamageType}`).join(', ')}]`
@@ -579,15 +589,18 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
             {/* Caixa para definir Multiplicador Livre quando o Tipo de Dano "Personalizado" é selecionado */}
             {damageType === 'personalizado' && (
               <div className="p-3 bg-slate-950/90 border border-amber-500/50 rounded-xl space-y-2 animate-in fade-in">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-amber-400 font-bold text-xs">⚡</span>
-                    <label className="text-xs font-bold text-amber-300">
+                    <label className="text-xs font-bold text-amber-300 whitespace-nowrap">
                       Multiplicador de Dano:
                     </label>
                   </div>
-                  <div className="relative flex items-center w-[65px] bg-slate-900 border border-slate-800 focus-within:border-amber-500 rounded-lg overflow-hidden px-1.5 py-0.5">
-                    <span className="text-amber-400 font-mono font-bold text-xs mr-2 select-none">x</span>
+                  <div
+                    style={{ width: '56px', minWidth: '56px', maxWidth: '56px', flexShrink: 0 }}
+                    className="relative flex items-center justify-between bg-slate-900 border border-slate-800 focus-within:border-amber-500 rounded-lg overflow-hidden px-1.5 py-0.5"
+                  >
+                    <span className="text-amber-400 font-mono font-bold text-xs mr-2 select-none shrink-0">x</span>
                     <input
                       type="number"
                       step="0.5"
@@ -595,7 +608,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                       placeholder="1.0"
                       value={customMultiplier}
                       onChange={(e) => setCustomMultiplier(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
-                      className="w-full bg-transparent text-white font-mono font-bold text-xs text-right focus:outline-none"
+                      className="w-full bg-transparent text-white font-mono font-bold text-xs text-center focus:outline-none p-0 m-0"
                     />
                   </div>
                 </div>
