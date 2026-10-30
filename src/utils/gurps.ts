@@ -260,14 +260,26 @@ export function createDefaultArmorLocations(ownerId: string = ''): BodyArmorLoca
 
 export function sanitizeHitLocationRule(rule?: string): string {
   if (!rule) return '';
+  // Remove leading info emojis, icons and their UTF-8 / Windows-1252 mojibake representations (e.g. â„¹ï¸, ℹ️, \u2139\ufe0f)
+  let cleaned = String(rule)
+    .replace(/^[\s\u2139\ufe0f\u00e2\u201e\u00b9\u00ef\u00b8\u008f\ufffd\u2022\u25cf\u25b6\u2757\u26a0\ufe0f\s]+/, '')
+    .trim();
+
   if (
-    rule.includes('alertar antes de registrar') ||
-    rule.includes('danos de impaling, piercing ou magia') ||
-    rule.includes('danos de impaling')
+    cleaned.includes('consegue acertar o olho') ||
+    cleaned.includes('alertar antes de registrar') ||
+    cleaned.includes('danos de impaling, piercing ou magia') ||
+    cleaned.includes('danos de impaling') ||
+    cleaned.includes('olho danos')
   ) {
     return 'Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia';
   }
-  return rule;
+
+  return cleaned
+    .replace(/S[\ufffd\u00ef\u00bf\u00bd] consegue/g, 'Só consegue')
+    .replace(/Contus[\ufffd\u00ef\u00bf\u00bd]o/g, 'Contusão')
+    .replace(/perfura[\ufffd\u00ef\u00bf\u00bd]o/g, 'perfuração')
+    .replace(/Localiza[\ufffd\u00ef\u00bf\u00bd]o/g, 'Localização');
 }
 
 export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerId: string = ''): BodyArmorLocation[] {
