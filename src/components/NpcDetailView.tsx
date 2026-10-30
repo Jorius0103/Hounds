@@ -128,13 +128,34 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const handleTabClick = (tab: 'overview' | 'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits') => {
     setActiveTab(tab);
-    try {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
-      document.body.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {
-      window.scrollTo(0, 0);
-    }
+    setTimeout(() => {
+      try {
+        const anchor = document.getElementById('fichaSheetTopAnchor');
+        const header = document.querySelector('header');
+        const headerH = header ? header.offsetHeight : 48;
+        const topOffset = headerH + 10;
+        const curY = window.pageYOffset || document.documentElement.scrollTop || 0;
+        if (anchor) {
+          const anchorDocTop = curY + anchor.getBoundingClientRect().top;
+          const targetY = Math.max(0, Math.round(anchorDocTop - topOffset));
+          if (curY > targetY + 2) {
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+          }
+        } else {
+          const nav = document.getElementById('fichaTabsNav');
+          const parent = nav ? nav.parentElement : null;
+          const refEl = parent || nav;
+          if (refEl) {
+            const targetY = Math.max(0, Math.round((refEl.offsetTop || 311) - topOffset));
+            if (curY > targetY + 2) {
+              window.scrollTo({ top: targetY, behavior: 'smooth' });
+            }
+          }
+        }
+      } catch {
+        // Silently catch scroll errors
+      }
+    }, 10);
   };
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -1882,8 +1903,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // =========================================================================
   return (
     <div className="space-y-4">
+      {/* Âncora estática para medir o topo da ficha sem sofrer deslocamento sticky */}
+      <div id="fichaSheetTopAnchor" style={{ position: 'relative', height: 0, width: 0, pointerEvents: 'none' }} />
+
       {/* 1 & 2. CABEÇALHO DO NPC + MENU DE ABAS (Travados juntos no topo na rolagem) */}
-      <div
+      <div id="fichaStickyHeader" 
         style={{
           position: 'sticky',
           top: 'calc(var(--mesa-top-offset, 48px) + 10px)',
