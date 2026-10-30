@@ -4138,63 +4138,111 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         </div>
       )}
 
-      {/* 11. TAB CONTENT: TRAÇOS & EQUIPAMENTOS (LIMPO CONFORME SOLICITADO) */}
+      {/* 11. TAB CONTENT: TRAÇOS & EQUIPAMENTOS */}
       {activeTab === 'traits' && (
-        <div className="space-y-4">
+        <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2.5">
+              <Info size={18} className="text-amber-400" />
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Traços & Equipamentos
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Vantagens, desvantagens, perícias gerais e inventário carregado
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid dos 4 Blocos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Vantagens */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-amber-400 block">
-                Vantagens
-              </label>
+            {/* 1. Vantagens */}
+            <div className="bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-xl p-3.5 space-y-2.5 transition-all shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Star size={14} className="text-amber-400" />
+                  <label className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                    Vantagens
+                  </label>
+                </div>
+              </div>
               <textarea
-                rows={3}
-                value={npc.advantages}
+                rows={4}
+                value={npc.advantages || ''}
                 readOnly={isViewer}
+                placeholder="Ex: Senso do Dever, Magia Oculta, Reflexos Rápidos..."
                 onChange={(e) => updateField('advantages', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className={`w-full bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none transition-colors ${
+                  isViewer ? 'opacity-90 cursor-default' : ''
+                }`}
               />
             </div>
 
-            {/* Desvantagens */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-rose-400 block">
-                Desvantagens
-              </label>
+            {/* 2. Desvantagens */}
+            <div className="bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-xl p-3.5 space-y-2.5 transition-all shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle size={14} className="text-rose-400" />
+                  <label className="text-xs font-bold uppercase tracking-wider text-rose-400">
+                    Desvantagens
+                  </label>
+                </div>
+              </div>
               <textarea
-                rows={3}
-                value={npc.disadvantages}
+                rows={4}
+                value={npc.disadvantages || ''}
                 readOnly={isViewer}
+                placeholder="Ex: Código de Honra, Curiosidade, Honestidade..."
                 onChange={(e) => updateField('disadvantages', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className={`w-full bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-rose-500 resize-none transition-colors ${
+                  isViewer ? 'opacity-90 cursor-default' : ''
+                }`}
               />
             </div>
 
-            {/* Perícias Gerais */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-amber-400 block">
-                Perícias Gerais
-              </label>
+            {/* 3. Perícias Gerais */}
+            <div className="bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-xl p-3.5 space-y-2.5 transition-all shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-blue-400" />
+                  <label className="text-xs font-bold uppercase tracking-wider text-blue-400">
+                    Perícias Gerais
+                  </label>
+                </div>
+              </div>
               <textarea
-                rows={3}
-                value={npc.skills}
+                rows={4}
+                value={npc.skills || ''}
                 readOnly={isViewer}
+                placeholder="Ex: Furtividade NH 14, Sobrevivência NH 12, Trato Social NH 13..."
                 onChange={(e) => updateField('skills', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className={`w-full bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none transition-colors ${
+                  isViewer ? 'opacity-90 cursor-default' : ''
+                }`}
               />
             </div>
 
-            {/* Equipamentos Carregados */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
-                Equipamentos Carregados (Inventory)
-              </label>
+            {/* 4. Equipamentos Carregados */}
+            <div className="bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-xl p-3.5 space-y-2.5 transition-all shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Package size={14} className="text-emerald-400" />
+                  <label className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                    Equipamentos Carregados (Inventory)
+                  </label>
+                </div>
+              </div>
               <textarea
-                rows={3}
-                value={npc.equipment}
+                rows={4}
+                value={npc.equipment || ''}
                 readOnly={isViewer}
+                placeholder="Ex: Mochila, Corda 20m, Tochas (3), Cantil de Água..."
                 onChange={(e) => updateField('equipment', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className={`w-full bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none transition-colors ${
+                  isViewer ? 'opacity-90 cursor-default' : ''
+                }`}
               />
             </div>
           </div>

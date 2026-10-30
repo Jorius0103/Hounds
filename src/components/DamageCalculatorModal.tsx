@@ -583,31 +583,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   <div className="flex items-center gap-1.5">
                     <span className="text-amber-400 font-bold text-xs">⚡</span>
                     <label className="text-xs font-bold text-amber-300">
-                      Multiplicador Customizado
+                      Multiplicador de Dano:
                     </label>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    Multiplica o dano penetrante
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
-                    {[0.5, 1.0, 1.5, 2.0, 3.0, 4.0].map((val) => (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => setCustomMultiplier(val)}
-                        className={`px-2.5 py-1 text-xs font-mono font-bold rounded-md transition-all ${
-                          customMultiplier === val
-                            ? 'bg-amber-500 text-slate-950 shadow-sm'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
-                        }`}
-                      >
-                        x{val}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="relative flex items-center min-w-[70px] max-w-[85px] bg-slate-900 border border-slate-800 focus-within:border-amber-500 rounded-lg overflow-hidden px-2 py-1">
+                  <div className="relative flex items-center min-w-[70px] max-w-[90px] bg-slate-900 border border-slate-800 focus-within:border-amber-500 rounded-lg overflow-hidden px-2 py-0.5">
                     <span className="text-amber-400 font-mono font-bold text-xs mr-1">x</span>
                     <input
                       type="number"
@@ -619,6 +598,22 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                       className="w-full bg-transparent text-white font-mono font-bold text-xs text-right focus:outline-none"
                     />
                   </div>
+                </div>
+                <div className="flex items-center justify-between gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
+                  {[0.5, 1.0, 1.5, 2.0, 3.0, 4.0].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setCustomMultiplier(val)}
+                      className={`flex-1 py-1 text-xs font-mono font-bold rounded-md transition-all text-center ${
+                        customMultiplier === val
+                          ? 'bg-amber-500 text-slate-950 shadow-sm'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                      }`}
+                    >
+                      x{val}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
