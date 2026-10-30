@@ -128,9 +128,15 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const handleTabClick = (tab: 'overview' | 'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits') => {
     setActiveTab(tab);
-    if (tabsNavRef.current) {
-      tabsNavRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    setTimeout(() => {
+      if (tabsNavRef.current) {
+        const header = document.querySelector('header');
+        const headerH = header ? header.offsetHeight : 72;
+        const navRect = tabsNavRef.current.getBoundingClientRect();
+        const targetY = window.pageYOffset + navRect.top - headerH - 10;
+        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+      }
+    }, 50);
   };
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -2134,8 +2140,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       {/* 2. TABS NAVIGATION (Com o degradê do design system, fixo junto ao cabeçalho) */}
       <div
         ref={tabsNavRef}
+        id="fichaTabsNav"
         style={cardGradientStyle}
-        className="flex items-center justify-center gap-2 p-1.5 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-lg overflow-x-auto scrollbar-none w-full"
+        className="flex items-center justify-center gap-2 p-1.5 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-lg overflow-x-auto scrollbar-none w-full scroll-mt-24"
       >
         <button
           type="button"
