@@ -336,28 +336,6 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
               <button
                 type="button"
-                onClick={() => onSetAllPermissions(true)}
-                className="hover:opacity-90 active:scale-95 transition-all"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 10px',
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  background: 'rgba(6, 78, 59, 0.8)',
-                  color: '#6ee7b7',
-                  border: '1px solid rgba(6, 95, 70, 0.8)',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                }}
-                title="Conceder permissão de edição a todos os jogadores"
-              >
-                <CheckCheck size={11} />
-                <span>Liberar Todos</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => onSetAllPermissions(false)}
                 className="hover:opacity-90 active:scale-95 transition-all"
                 style={{
@@ -377,6 +355,28 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               >
                 <EyeOff size={11} />
                 <span>Bloquear Todos</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetAllPermissions(true)}
+                className="hover:opacity-90 active:scale-95 transition-all"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  background: 'rgba(6, 78, 59, 0.8)',
+                  color: '#6ee7b7',
+                  border: '1px solid rgba(6, 95, 70, 0.8)',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                }}
+                title="Conceder permissão de edição a todos os jogadores"
+              >
+                <CheckCheck size={11} />
+                <span>Liberar Todos</span>
               </button>
             </div>
           ) : (

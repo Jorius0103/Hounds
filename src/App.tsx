@@ -488,11 +488,11 @@ export default function App() {
 
   // IDs dos personagens de jogadores visíveis no combate ativo (ou todos fora de combate)
   const activeCombatPlayerIds = useMemo(() => {
-    if (!isNoCombat && activeCombat && Array.isArray(activeCombat.playerIds)) {
+    if (activeCombat && Array.isArray(activeCombat.playerIds)) {
       return activeCombat.playerIds;
     }
     return players.map((p) => p.id);
-  }, [isNoCombat, activeCombat, players]);
+  }, [activeCombat, players]);
 
   // Lista unificada: Personagens da campanha (sempre presentes) + NPCs específicos do combate ativo
   const allCharacters = useMemo(() => {
@@ -502,7 +502,7 @@ export default function App() {
 
     // Personagens da campanha sempre mantidos e sincronizados
     for (const p of players) {
-      if (p.characterType !== 'npc' && (isNoCombat || activePlayerSet.has(p.id)) && !seen.has(p.id)) {
+      if (p.characterType !== 'npc' && activePlayerSet.has(p.id) && !seen.has(p.id)) {
         seen.add(p.id);
         list.push(p);
       }
@@ -1727,10 +1727,13 @@ export default function App() {
     const targetPlayer = players.find((p) => p.id === playerId);
     
     const updatedCombats = combats.map((c) =>
-      c.id === activeCombat.id ? { ...c, playerIds: updatedIds } : c
+      c.id === activeCombat.id ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true } : c
     );
     setCombats(updatedCombats);
     broadcastSync(updatedCombats);
+    try {
+      localStorage.setItem('gurps_combat_master_data_v2', JSON.stringify(updatedCombats));
+    } catch (e) {}
     if (!isPresent) {
       setSelectedNpcId(playerId);
     } else if (selectedNpcId === playerId) {
@@ -1743,10 +1746,13 @@ export default function App() {
     if (!activeCombat) return;
     const updatedIds = show ? players.map((p) => p.id) : [];
     const updatedCombats = combats.map((c) =>
-      c.id === activeCombat.id ? { ...c, playerIds: updatedIds } : c
+      c.id === activeCombat.id ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true } : c
     );
     setCombats(updatedCombats);
     broadcastSync(updatedCombats);
+    try {
+      localStorage.setItem('gurps_combat_master_data_v2', JSON.stringify(updatedCombats));
+    } catch (e) {}
     if (show && players.length > 0) {
       setSelectedNpcId(players[0].id);
     }
