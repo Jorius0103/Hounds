@@ -540,6 +540,11 @@ export default function App() {
     return allCharacters[0]?.id || '';
   });
 
+  const [activeFilterInfo, setActiveFilterInfo] = useState<{ filter: string; count: number }>({
+    filter: 'all',
+    count: 1,
+  });
+
   const selectedNpc = allCharacters.find((n: NPC) => n.id === selectedNpcId) || allCharacters[0];
 
   // Online Sync Status State
@@ -1815,6 +1820,27 @@ export default function App() {
     setSelectedNpcId(newPlayer.id);
     setIsHomeScreen(false);
     broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
+  };
+
+  // Exclusão de Personagem (Fixo / Global)
+  const handleDeletePlayer = (playerId: string) => {
+    const updatedPlayers = players.filter((p) => p.id !== playerId);
+    const updatedCombats = combats.map((cb) =>
+      Array.isArray(cb.playerIds) ? { ...cb, playerIds: cb.playerIds.filter((id) => id !== playerId) } : cb
+    );
+    setPlayers(updatedPlayers);
+    stateRef.current.players = updatedPlayers;
+    setCombats(updatedCombats);
+    stateRef.current.combats = updatedCombats;
+    try {
+      localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(updatedPlayers));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+    } catch (e) {}
+    broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
+    if (selectedNpcId === playerId) {
+      const remaining = allCharacters.filter((c) => c.id !== playerId);
+      setSelectedNpcId(remaining[0]?.id || '');
+    }
   };
 
   // Criação de NPC (Específico do Combate Ativo)
@@ -3952,7 +3978,9 @@ export default function App() {
           setIsHomeScreen(false);
         }}
         onAddNewNpc={handleAddNewNpc}
-        onAddNewPlayer={() => setCombatPlayersModalOpen(true)}
+        onOpenPassDayModal={() => setPassDayModalOpen(true)}
+        canPassDay={canEditCurrent}
+        onFilterChange={(filter, count) => setActiveFilterInfo({ filter, count })}
         onUpdateNpc={handlePartialUpdateNpc}
         currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
         currentRound={effectiveRound}
@@ -4052,7 +4080,17 @@ export default function App() {
           <div className="flex flex-col xl:flex-row gap-4 items-start w-full">
             {/* Coluna da Esquerda: Ficha do Personagem/NPC Selecionado */}
             <div className="flex-1 min-w-0 w-full">
-              {allCharacters.length === 0 ? (
+              {activeFilterInfo.filter !== 'all' && activeFilterInfo.count === 0 ? (
+                <div className="py-20 text-center space-y-3 max-w-md mx-auto bg-slate-900/60 border border-slate-800 rounded-2xl p-8 shadow-xl">
+                  <div className="w-12 h-12 rounded-xl bg-slate-800 text-amber-400 mx-auto flex items-center justify-center">
+                    <Search size={24} />
+                  </div>
+                  <h2 className="text-base font-bold text-white">Nenhum resultado encontrado</h2>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Não há {activeFilterInfo.filter === 'players' ? 'personagens' : activeFilterInfo.filter === 'npcs' ? 'NPCs' : activeFilterInfo.filter === 'alive' ? 'combatentes vivos' : 'combatentes mortos'} para exibir com o filtro selecionado.
+                  </p>
+                </div>
+              ) : allCharacters.length === 0 ? (
                 isPlayerUser ? (
                   <div className="py-20 text-center space-y-3 max-w-md mx-auto bg-slate-900/60 border border-slate-800 rounded-2xl p-8 shadow-xl">
                     <div className="w-12 h-12 rounded-xl bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
@@ -4200,7 +4238,7 @@ export default function App() {
         />
       )}
 
-      {/* Player Permissions Modal (Mestre concede permissão de edição e vincula personagens) */}
+      {/* Player Permissions Modal (Jogadores e Personagens: permissões, criação, exclusão e vínculo) */}
       <PlayerPermissionsModal
         isOpen={playerPermsModalOpen}
         onClose={() => setPlayerPermsModalOpen(false)}
@@ -4208,12 +4246,14 @@ export default function App() {
         editorUserIds={effectiveEditorIds}
         onTogglePermission={handleTogglePlayerPermission}
         onSetAllPermissions={handleSetAllPlayerPermissions}
-        characters={allPlayerCharacters}
+        characters={players}
         onLinkCharacter={handleLinkCharacterToUser}
         activePlayerIds={activeCombatPlayerIds}
         onTogglePlayerVisibility={handleTogglePlayerInCombat}
         onSetAllPlayersVisibility={handleSetAllPlayersInCombat}
         onlinePlayerNames={onlinePlayerNames}
+        onAddNewPlayer={handleAddNewPlayer}
+        onDeleteCharacter={handleDeletePlayer}
       />
 
       {/* Combat Players Modal (+ Personagens: Gerenciar personagens ativos no combate) */}

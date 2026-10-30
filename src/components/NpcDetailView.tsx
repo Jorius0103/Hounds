@@ -124,6 +124,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   onOpenPlayerPermissions,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits'>('overview');
+  const tabsNavRef = React.useRef<HTMLDivElement>(null);
+
+  const handleTabClick = (tab: 'overview' | 'weapons' | 'spells' | 'armor' | 'bodyParts' | 'traits') => {
+    setActiveTab(tab);
+    if (tabsNavRef.current) {
+      tabsNavRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
   const [spellsModalOpen, setSpellsModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [infoWeapon, setInfoWeapon] = useState<Weapon | null>(null);
@@ -1938,14 +1946,16 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmOpen(true)}
-                    title={npc.characterType === 'player' ? 'Remover personagem deste combate' : 'Excluir NPC do combate'}
-                    className="p-1 text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/50 transition-colors flex items-center justify-center shadow-xs"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  {npc.characterType !== 'player' && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmOpen(true)}
+                      title="Excluir NPC do combate"
+                      className="p-1 text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/50 transition-colors flex items-center justify-center shadow-xs"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -2123,12 +2133,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 2. TABS NAVIGATION (Com o degradê do design system, fixo junto ao cabeçalho) */}
       <div
+        ref={tabsNavRef}
         style={cardGradientStyle}
         className="flex items-center justify-center gap-2 p-1.5 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-lg overflow-x-auto scrollbar-none w-full"
       >
         <button
           type="button"
-          onClick={() => setActiveTab('overview')}
+          onClick={() => handleTabClick('overview')}
           className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all select-none cursor-pointer shrink-0 border ${
             activeTab === 'overview'
               ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-400/30'
@@ -2144,7 +2155,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('weapons')}
+          onClick={() => handleTabClick('weapons')}
           className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all select-none cursor-pointer shrink-0 border ${
             activeTab === 'weapons'
               ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-400/30'
@@ -2169,7 +2180,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('spells')}
+          onClick={() => handleTabClick('spells')}
           className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all select-none cursor-pointer shrink-0 border ${
             activeTab === 'spells'
               ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-400/30'
@@ -2194,7 +2205,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('armor')}
+          onClick={() => handleTabClick('armor')}
           className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all select-none cursor-pointer shrink-0 border ${
             activeTab === 'armor'
               ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-400/30'
@@ -2210,7 +2221,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('bodyParts')}
+          onClick={() => handleTabClick('bodyParts')}
           className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all select-none cursor-pointer shrink-0 border ${
             activeTab === 'bodyParts'
               ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-400/30'
@@ -2226,7 +2237,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('traits')}
+          onClick={() => handleTabClick('traits')}
           className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all select-none cursor-pointer shrink-0 border ${
             activeTab === 'traits'
               ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-400/30'

@@ -158,19 +158,19 @@ export const TopNav: React.FC<TopNavProps> = ({
             </div>
           )}
 
-          {/* Botão Mestre: Permissões de Edição dos Jogadores */}
+          {/* Botão Mestre: Jogadores e Personagens (Permissões de Edição e Vínculo) */}
           {currentUser?.role === 'mestre' && onOpenPlayerPermissions && (
             <button
               type="button"
               onClick={onOpenPlayerPermissions}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-lg text-slate-300 hover:text-white transition-all shadow-sm font-medium"
-              title="Gerenciar quais jogadores possuem permissão de edição"
+              title="Gerenciar jogadores, permissões e personagens da mesa"
             >
               <Users
                 size={13}
                 className={editorCount > 0 ? 'text-emerald-400' : 'text-amber-400'}
               />
-              <span className="text-[11px]">Jogadores</span>
+              <span className="text-[11px]">Jogadores e Personagens</span>
               <span
                 className={`text-[10px] px-1.5 rounded-full font-bold font-mono border ${
                   editorCount > 0

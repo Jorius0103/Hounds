@@ -10,6 +10,8 @@ import {
   Users,
   Search,
   UserCheck,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 
 interface PlayerPermissionsModalProps {
@@ -25,6 +27,8 @@ interface PlayerPermissionsModalProps {
   activePlayerIds?: string[];
   onTogglePlayerVisibility?: (characterId: string) => void;
   onSetAllPlayersVisibility?: (visible: boolean) => void;
+  onAddNewPlayer?: () => void;
+  onDeleteCharacter?: (characterId: string) => void;
 }
 
 export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
@@ -40,6 +44,8 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
   activePlayerIds,
   onTogglePlayerVisibility,
   onSetAllPlayersVisibility,
+  onAddNewPlayer,
+  onDeleteCharacter,
 }) => {
   const [activeTab, setActiveTab] = useState<'permissions' | 'characters'>('permissions');
   const [charSearch, setCharSearch] = useState('');
@@ -378,6 +384,30 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>
                 <strong style={{ color: '#fbbf24' }}>{filteredCharacters.length}</strong> de {characters.length}
               </span>
+              {onAddNewPlayer && (
+                <button
+                  type="button"
+                  onClick={onAddNewPlayer}
+                  className="hover:opacity-90 active:scale-95 transition-all"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    background: '#059669',
+                    color: '#ffffff',
+                    border: '1px solid rgba(16, 185, 129, 0.5)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                  }}
+                  title="Cadastrar Novo Personagem na Campanha"
+                >
+                  <Plus size={12} />
+                  <span>Criar novo personagem</span>
+                </button>
+              )}
               {onSetAllPlayersVisibility && (
                 <>
                   <button
@@ -670,6 +700,40 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                         >
                           {isVisible ? <Eye size={11} /> : <EyeOff size={11} />}
                           <span>{isVisible ? 'Visível' : 'Oculto'}</span>
+                        </button>
+                      )}
+
+                      {/* Botão de Excluir Personagem */}
+                      {onDeleteCharacter && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              window.confirm(
+                                `Tem certeza que deseja excluir o personagem "${char.name}"? Esta ação removerá o personagem da campanha.`
+                              )
+                            ) {
+                              onDeleteCharacter(char.id);
+                            }
+                          }}
+                          style={{
+                            padding: '4px 6px',
+                            borderRadius: '5px',
+                            fontSize: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            background: 'rgba(159, 18, 57, 0.4)',
+                            color: '#f43f5e',
+                            border: '1px solid rgba(225, 29, 72, 0.4)',
+                            transition: 'all 0.15s ease',
+                          }}
+                          title={`Excluir personagem ${char.name} da campanha`}
+                        >
+                          <Trash2 size={11} />
                         </button>
                       )}
                     </div>

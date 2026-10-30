@@ -3,14 +3,16 @@ import { NPC, MesaRole, UserAccount } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { CombatHomeScreen } from './CombatHomeScreen';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
-import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X, Save, Check, ArrowUpDown, Crown, Zap } from 'lucide-react';
+import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X, Save, Check, ArrowUpDown, Crown, Zap, Sun } from 'lucide-react';
 
 interface NpcListBarProps {
   npcs: NPC[];
   selectedNpcId: string;
   onSelectNpc: (id: string) => void;
   onAddNewNpc: () => void;
-  onAddNewPlayer?: () => void;
+  onOpenPassDayModal?: () => void;
+  canPassDay?: boolean;
+  onFilterChange?: (filter: 'all' | 'players' | 'npcs' | 'alive' | 'dead', count: number) => void;
   onUpdateNpc?: (id: string, updates: Partial<NPC>) => void;
   currentUserRole?: MesaRole;
   currentRound?: number;
@@ -29,7 +31,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   selectedNpcId,
   onSelectNpc,
   onAddNewNpc,
-  onAddNewPlayer,
+  onOpenPassDayModal,
+  canPassDay,
+  onFilterChange,
   currentUserRole = 'mestre',
   currentRound = 0,
   onUpdateRound,
@@ -233,6 +237,24 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
     return true;
   });
 
+  useEffect(() => {
+    onFilterChange?.(filterType, filteredNpcs.length);
+  }, [filterType, filteredNpcs.length, onFilterChange]);
+
+  const handleSelectFilter = (type: 'all' | 'players' | 'npcs' | 'alive' | 'dead') => {
+    setFilterType(type);
+    const matches = rawDisplayedNpcs.filter((n) => {
+      if (type === 'players') return n.characterType === 'player';
+      if (type === 'npcs') return n.characterType !== 'player';
+      if (type === 'alive') return !n.isDead;
+      if (type === 'dead') return Boolean(n.isDead);
+      return true;
+    });
+    if (matches.length > 0 && !matches.some((m) => m.id === selectedNpcId)) {
+      onSelectNpc(matches[0].id);
+    }
+  };
+
   // Ordenação:
   // 1. Mestre: segue a ordem customizada salva pelo Mestre via drag-and-drop.
   // 2. Speed: decrescente por velocidade básica.
@@ -310,7 +332,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             <div className="flex items-center flex-wrap bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs shadow-inner">
               <button
                 type="button"
-                onClick={() => setFilterType('all')}
+                onClick={() => handleSelectFilter('all')}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
                   filterType === 'all'
                     ? 'bg-slate-800 text-amber-400 shadow-sm border border-amber-500/40'
@@ -323,7 +345,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
               <button
                 type="button"
-                onClick={() => setFilterType('players')}
+                onClick={() => handleSelectFilter('players')}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
                   filterType === 'players'
                     ? 'bg-emerald-950 text-emerald-300 shadow-sm border border-emerald-600/70'
@@ -336,7 +358,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
               <button
                 type="button"
-                onClick={() => setFilterType('npcs')}
+                onClick={() => handleSelectFilter('npcs')}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
                   filterType === 'npcs'
                     ? 'bg-purple-950 text-purple-300 shadow-sm border border-purple-600/70'
@@ -348,7 +370,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
               <button
                 type="button"
-                onClick={() => setFilterType('alive')}
+                onClick={() => handleSelectFilter('alive')}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
                   filterType === 'alive'
                     ? 'bg-teal-950 text-teal-300 shadow-sm border border-teal-600/70'
@@ -362,7 +384,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
               <button
                 type="button"
-                onClick={() => setFilterType('dead')}
+                onClick={() => handleSelectFilter('dead')}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] ${
                   filterType === 'dead'
                     ? 'bg-red-950 text-red-300 shadow-sm border border-red-600/70'
@@ -507,14 +529,15 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               );
             })()}
 
-            {currentUserRole === 'mestre' && onAddNewPlayer && (
+            {(currentUserRole === 'mestre' || canPassDay) && onOpenPassDayModal && (
               <button
-                onClick={onAddNewPlayer}
-                className="flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-800 hover:bg-emerald-700 text-emerald-100 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap border border-emerald-600/50"
-                title="Gerenciar personagens no combate ativo ou cadastrar novo"
+                type="button"
+                onClick={onOpenPassDayModal}
+                className="flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap border border-amber-500/50 cursor-pointer"
+                title="Passar o dia: recarregar recursos dos personagens"
               >
-                <UserPlus size={12} className="text-emerald-300" />
-                <span>Personagens</span>
+                <Sun size={12} className="text-amber-400" />
+                <span>Passar o dia</span>
               </button>
             )}
           </div>
