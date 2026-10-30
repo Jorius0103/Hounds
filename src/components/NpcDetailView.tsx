@@ -575,7 +575,9 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     return kits.find((k) => k.id === selectedKitId) || kits[0];
   }, [kits, selectedKitId]);
 
-  const currentLocations = currentKit?.locations || npc.armorLocations;
+  const currentLocations = useMemo(() => {
+    return migrateArmorLocations(currentKit?.locations || npc.armorLocations, npc.id);
+  }, [currentKit, npc.armorLocations, npc.id]);
 
   const handleAddArmorKit = () => {
     if (isViewer) return;

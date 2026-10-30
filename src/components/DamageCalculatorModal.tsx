@@ -127,9 +127,15 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [eyeConfirmed, setEyeConfirmed] = useState<boolean>(false);
   const [customMultiplier, setCustomMultiplier] = useState<number | ''>(1.0);
 
+  const activeKit = React.useMemo(() => {
+    if (!npc.armorKits || npc.armorKits.length === 0) return null;
+    return npc.armorKits.find((k) => k.isActive || k.id === npc.activeArmorKitId) || npc.armorKits[0];
+  }, [npc.armorKits, npc.activeArmorKitId]);
+
   const effectiveLocations = React.useMemo(() => {
-    return migrateArmorLocations(npc.armorLocations, npc.id);
-  }, [npc.armorLocations, npc.id]);
+    const rawLocs = activeKit?.locations || npc.armorLocations;
+    return migrateArmorLocations(rawLocs, npc.id);
+  }, [activeKit, npc.armorLocations, npc.id]);
 
   if (!isOpen) return null;
 
@@ -509,7 +515,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 onChange={(e) => setSelectedLocationId(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
               >
-                <option value="" disabled>-- Selecione o Local do Corpo --</option>
+                <option value="" disabled hidden>-- Selecione o Local do Corpo --</option>
                 <option value="sem-parte" className="bg-slate-900 text-amber-300 font-bold">
                   ⚡ Sem parte do Corpo (Dano Direto / Sem Armadura)
                 </option>
@@ -572,40 +578,46 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
             {/* Caixa para definir Multiplicador Livre quando o Tipo de Dano "Personalizado" é selecionado */}
             {damageType === 'personalizado' && (
-              <div className="p-3 bg-slate-950/90 border border-amber-500/60 rounded-xl space-y-2 animate-in fade-in">
+              <div className="p-3 bg-slate-950/90 border border-amber-500/50 rounded-xl space-y-2 animate-in fade-in">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-amber-300">
-                    Multiplicador de Dano:
-                  </label>
-                  <span className="text-[10px] text-slate-400">
-                    Multiplicador customizado (Ex: 0.5, 1, 1.5, 2, 3...)
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-amber-400 font-bold text-xs">⚡</span>
+                    <label className="text-xs font-bold text-amber-300">
+                      Multiplicador Customizado
+                    </label>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    Multiplica o dano penetrante
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder="1.0"
-                    value={customMultiplier}
-                    onChange={(e) => setCustomMultiplier(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 border border-amber-500/50 rounded-lg px-3 py-1.5 text-sm font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
                     {[0.5, 1.0, 1.5, 2.0, 3.0, 4.0].map((val) => (
                       <button
                         key={val}
                         type="button"
                         onClick={() => setCustomMultiplier(val)}
-                        className={`px-2 py-1 text-[11px] font-mono font-bold rounded-md border transition-all ${
+                        className={`px-2.5 py-1 text-xs font-mono font-bold rounded-md transition-all ${
                           customMultiplier === val
-                            ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-xs'
-                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-750'
+                            ? 'bg-amber-500 text-slate-950 shadow-sm'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
                         }`}
                       >
                         x{val}
                       </button>
                     ))}
+                  </div>
+                  <div className="relative flex items-center min-w-[70px] max-w-[85px] bg-slate-900 border border-slate-800 focus-within:border-amber-500 rounded-lg overflow-hidden px-2 py-1">
+                    <span className="text-amber-400 font-mono font-bold text-xs mr-1">x</span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      placeholder="1.0"
+                      value={customMultiplier}
+                      onChange={(e) => setCustomMultiplier(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
+                      className="w-full bg-transparent text-white font-mono font-bold text-xs text-right focus:outline-none"
+                    />
                   </div>
                 </div>
               </div>
@@ -825,17 +837,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               />
             </div>
 
-            {!isDamageFormReady && (
-              <p className="text-[11px] text-amber-400 text-center font-medium bg-amber-950/40 border border-amber-800/40 rounded-lg p-2">
-                {!selectedLocationId
-                  ? 'Selecione o Local do Corpo (ou "Sem parte do Corpo") e informe o Dano Bruto.'
-                  : !rawDamage && rawDamage !== 0
-                  ? 'Informe o Dano Bruto rolado.'
-                  : requiresEyeConfirmation && !eyeConfirmed
-                  ? 'Confirme o alerta do Olho acima para permitir o registro.'
-                  : 'Selecione o Tipo de Dano.'}
-              </p>
-            )}
+
 
             <button
               onClick={handleConfirmDamage}
