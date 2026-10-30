@@ -368,6 +368,7 @@ export function migrateArmorLocations(existingLocs?: BodyArmorLocation[], ownerI
 export interface BodyPartConfig {
   key: string;
   name: string;
+  rollTarget?: string;
   sublabel?: string;
   hpFormulaLabel: string;
   hpDivisor?: number;
@@ -379,6 +380,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'head',
     name: 'Head',
+    rollTarget: '3-4',
     hpFormulaLabel: '---',
     defaultRule: 'Tem +2 de RD / Qualquer dano vira 4X',
     logKeys: ['head'],
@@ -386,6 +388,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'eye',
     name: 'Eye',
+    rollTarget: '-',
     hpFormulaLabel: '=Pontos de Vida / 10',
     hpDivisor: 10,
     defaultRule: 'Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia',
@@ -394,6 +397,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'face',
     name: 'Face',
+    rollTarget: '5',
     hpFormulaLabel: '---',
     defaultRule: '',
     logKeys: ['face'],
@@ -401,6 +405,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'neck',
     name: 'Neck',
+    rollTarget: '17-18',
     hpFormulaLabel: '---',
     defaultRule: 'Contusão vira 1,5, corte vai de 1,5 para 2.0',
     logKeys: ['neck'],
@@ -408,6 +413,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'torso',
     name: 'Torso',
+    rollTarget: '9-10',
     hpFormulaLabel: '---',
     defaultRule: '',
     logKeys: ['torso'],
@@ -415,6 +421,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'vitals',
     name: 'Vitals',
+    rollTarget: '-',
     hpFormulaLabel: '---',
     defaultRule: 'Empalamento e perfuração vira x3',
     logKeys: ['vitals'],
@@ -422,24 +429,43 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'left_arm',
     name: 'Left Arm',
-    sublabel: 'Left Arm + Left Forearm',
+    rollTarget: '12',
     hpFormulaLabel: '=Pontos de Vida / 2',
     hpDivisor: 2,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['left_arm', 'left_forearm'],
+    logKeys: ['left_arm', 'arm'],
   },
   {
     key: 'right_arm',
     name: 'Right Arm',
-    sublabel: 'Right Arm + Right Forearm',
+    rollTarget: '8',
     hpFormulaLabel: '=Pontos de Vida / 2',
     hpDivisor: 2,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['right_arm', 'right_forearm'],
+    logKeys: ['right_arm', 'arm'],
+  },
+  {
+    key: 'left_forearm',
+    name: 'Left Forearm',
+    rollTarget: '12',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['left_forearm', 'forearms'],
+  },
+  {
+    key: 'right_forearm',
+    name: 'Right Forearm',
+    rollTarget: '8',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['right_forearm', 'forearms'],
   },
   {
     key: 'left_hand',
     name: 'Left Hand',
+    rollTarget: '15',
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
@@ -448,6 +474,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'right_hand',
     name: 'Right Hand',
+    rollTarget: '15',
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
@@ -456,6 +483,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'groin',
     name: 'Groin',
+    rollTarget: '11',
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: '',
@@ -464,24 +492,43 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'left_leg',
     name: 'Left Leg',
-    sublabel: 'Left Leg + Left Shins',
+    rollTarget: '13-14',
     hpFormulaLabel: '=Pontos de Vida / 2',
     hpDivisor: 2,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['left_leg', 'left_shins'],
+    logKeys: ['left_leg', 'leg'],
   },
   {
     key: 'right_leg',
     name: 'Right Leg',
-    sublabel: 'Right Leg + Right Shins',
+    rollTarget: '6-7',
     hpFormulaLabel: '=Pontos de Vida / 2',
     hpDivisor: 2,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['right_leg', 'right_shins'],
+    logKeys: ['right_leg', 'leg'],
+  },
+  {
+    key: 'left_shins',
+    name: 'Left Shins',
+    rollTarget: '13-14',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['left_shins', 'shins'],
+  },
+  {
+    key: 'right_shins',
+    name: 'Right Shins',
+    rollTarget: '6-7',
+    hpFormulaLabel: '=Pontos de Vida / 2',
+    hpDivisor: 2,
+    defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
+    logKeys: ['right_shins', 'shins'],
   },
   {
     key: 'left_foot',
     name: 'Left Foot',
+    rollTarget: '16',
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
@@ -490,6 +537,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   {
     key: 'right_foot',
     name: 'Right Foot',
+    rollTarget: '16',
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',

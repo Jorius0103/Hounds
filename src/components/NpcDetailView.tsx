@@ -3884,165 +3884,189 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
       {/* 11. TAB CONTENT: PARTES DO CORPO (NOVA ABA ENTRE ARMADURA E TRAÇOS) */}
       {activeTab === 'bodyParts' && (
-        <div className="space-y-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Heart size={18} className="text-amber-400" />
-                <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    Partes do Corpo
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Vida total por membros, cálculo automático de dano pelo log e regras adicionais específicas.
-                  </p>
-                </div>
+        <div style={cardGradientStyle} className="border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <Heart size={18} className="text-amber-400" />
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Partes do Corpo
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Acompanhamento de vida por membros, dano sofrido e regras específicas.
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* Tabela de Partes do Corpo */}
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px] bg-slate-950/80">
-                    <th className="py-2.5 px-3 min-w-[160px]">Parte do Corpo</th>
-                    <th className="py-2.5 px-3 w-28 text-center">Vida Total</th>
-                    <th className="py-2.5 px-3 min-w-[160px] text-center">Dano Tomado</th>
-                    <th className="py-2.5 px-3 min-w-[260px]">Regra Adicional</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 font-sans">
-                  {BODY_PARTS_CONFIG.map((part) => {
-                    const hpInfo = calculateLocationHp(part.name, npc.hpMax);
-                    const logDmg = calculateLogDamageForBodyPart(npc.history || [], part.logKeys);
-                    const isOverridden = npc.bodyPartDamageOverrides?.[part.key] !== undefined;
-                    const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[part.key] ?? 0) : logDmg;
-                    const partStatus = getBodyPartStatus(part.name, effectiveDmg, hpInfo.value);
-                    const customRule = npc.bodyPartCustomRules?.[part.key];
-                    const activeRule = sanitizeHitLocationRule(customRule !== undefined ? customRule : part.defaultRule);
+          {/* Tabela de Partes do Corpo */}
+          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px] bg-slate-950/80">
+                  <th className="py-2 px-1 w-12 text-center whitespace-nowrap">Roll</th>
+                  <th className="py-2 px-2 w-28 whitespace-nowrap">Parte do Corpo</th>
+                  <th className="py-2 px-1.5 w-20 text-center whitespace-nowrap">Vida Total</th>
+                  <th className="py-2 px-2 w-20 text-center whitespace-nowrap">Dano (Log)</th>
+                  <th className="py-2 px-2 w-28 text-center whitespace-nowrap">Dano Manual</th>
+                  <th className="py-2 px-2 w-28 text-center whitespace-nowrap">Total & Status</th>
+                  <th className="py-2 px-2 min-w-[130px] max-w-[200px]">Regra Adicional</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-sans">
+                {BODY_PARTS_CONFIG.map((part) => {
+                  const hpInfo = calculateLocationHp(part.name, npc.hpMax);
+                  const logDmg = calculateLogDamageForBodyPart(npc.history || [], part.logKeys);
+                  const isOverridden = npc.bodyPartDamageOverrides?.[part.key] !== undefined;
+                  const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[part.key] ?? 0) : logDmg;
+                  const partStatus = getBodyPartStatus(part.name, effectiveDmg, hpInfo.value);
+                  const customRule = npc.bodyPartCustomRules?.[part.key];
+                  const activeRule = sanitizeHitLocationRule(customRule !== undefined ? customRule : part.defaultRule);
 
-                    return (
-                      <tr key={part.key} className="hover:bg-slate-850/50 transition-colors">
-                        {/* 1. Parte do Corpo */}
-                        <td className="py-2.5 px-3 font-bold text-slate-100 text-xs">
-                          <div className="flex flex-col">
-                            <span className="text-white font-bold">{part.name}</span>
-                            {part.sublabel && (
-                              <span className="text-[10px] text-amber-400/80 font-normal">
-                                {part.sublabel}
-                              </span>
-                            )}
+                  return (
+                    <tr key={part.key} className="hover:bg-slate-850/50 transition-colors">
+                      {/* 1. Roll */}
+                      <td className="py-1.5 px-1 text-center font-mono font-bold text-amber-400 text-[10px] leading-tight whitespace-nowrap bg-slate-950/30">
+                        {part.rollTarget || '---'}
+                      </td>
+
+                      {/* 2. Parte do Corpo */}
+                      <td className="py-1.5 px-2 font-bold text-slate-100 text-xs whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-white font-bold">{part.name}</span>
+                          {part.sublabel && (
+                            <span className="text-[10px] text-amber-400/80 font-normal">
+                              {part.sublabel}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 3. Vida Total */}
+                      <td className="py-1.5 px-1.5 text-center font-mono">
+                        {hpInfo.value !== null ? (
+                          <div className="flex flex-col items-center" title={`Vida Total: ${hpInfo.formulaLabel} (${hpInfo.display} PV)`}>
+                            <span className="font-bold text-emerald-400 text-xs">
+                              {hpInfo.display}
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-sans tracking-tight">
+                              {hpInfo.formulaLabel}
+                            </span>
                           </div>
-                        </td>
+                        ) : (
+                          <span className="text-slate-600 text-xs font-mono">---</span>
+                        )}
+                      </td>
 
-                        {/* 2. Vida Total */}
-                        <td className="py-2.5 px-3 text-center font-mono">
-                          {hpInfo.value !== null ? (
-                            <div className="flex flex-col items-center" title={`Vida Total: ${hpInfo.formulaLabel} (${hpInfo.display} PV)`}>
-                              <span className="font-bold text-emerald-400 text-xs">
-                                {hpInfo.display}
-                              </span>
-                              <span className="text-[9px] text-slate-500 font-sans tracking-tight">
-                                {hpInfo.formulaLabel}
+                      {/* 4. Dano do Log (Automático) */}
+                      <td className="py-1.5 px-2 text-center font-mono">
+                        {logDmg > 0 ? (
+                          <span
+                            className="px-2 py-0.5 rounded font-mono font-bold text-xs bg-slate-900 text-amber-300 border border-amber-500/40 shadow-xs inline-block"
+                            title={`Dano calculado pelo histórico do log: ${logDmg} PV`}
+                          >
+                            {logDmg}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 text-xs font-mono">0</span>
+                        )}
+                      </td>
+
+                      {/* 5. Dano Manual (Ajuste) */}
+                      <td className="py-1.5 px-2 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            disabled={isViewer}
+                            value={isOverridden ? (effectiveDmg || '') : ''}
+                            placeholder={isOverridden ? '' : 'Auto'}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                              handleUpdateBodyPartDamage(part.key, val);
+                            }}
+                            className={`w-14 bg-slate-950 border rounded px-1.5 py-1 text-center font-bold text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+                              isOverridden
+                                ? 'text-amber-300 border-amber-500/80 bg-amber-950/30 ring-1 ring-amber-500/50'
+                                : 'text-slate-400 border-slate-800 placeholder-slate-600'
+                            } ${isViewer ? 'opacity-90' : ''}`}
+                            title={
+                              isOverridden
+                                ? `Ajustado manualmente: ${effectiveDmg} (Automático do Log: ${logDmg})`
+                                : `Automático do Log: ${logDmg}. Digite para ajustar manualmente.`
+                            }
+                          />
+
+                          {/* Botão Reset para voltar aos dados do log quando editado */}
+                          {isOverridden && !isViewer && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetBodyPartDamage(part.key)}
+                              className="p-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-600/50 rounded flex items-center transition-colors shadow-xs"
+                              title={`Resetar para o dano automático do log (${logDmg} PV)`}
+                            >
+                              <RotateCcw size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 6. Total Efetivo & Status */}
+                      <td className="py-1.5 px-2 text-center font-mono">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className={`font-mono font-bold text-xs ${effectiveDmg > 0 ? 'text-rose-400' : 'text-slate-500'}`}>
+                            {effectiveDmg}
+                          </span>
+                          {partStatus.label && (
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${partStatus.badgeClass}`}
+                              title={`Dano efetivo (${effectiveDmg}) em relação à vida da parte (${hpInfo.value} PV)!`}
+                            >
+                              {partStatus.label}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 7. Regra Adicional (Compacta) */}
+                      <td className="py-1.5 px-2">
+                        <div className="flex items-center gap-1.5 group">
+                          {activeRule ? (
+                            <div
+                              className="flex-1 flex items-center gap-1.5 bg-slate-950/70 border border-slate-800 hover:border-slate-700 rounded-lg px-2 py-0.5 cursor-help transition-colors min-w-0"
+                              title={activeRule}
+                            >
+                              <Info size={12} className="text-amber-400 shrink-0" />
+                              <span className="text-[11px] text-slate-300 truncate max-w-[150px]">
+                                {activeRule}
                               </span>
                             </div>
                           ) : (
-                            <span className="text-slate-600 text-xs font-mono">---</span>
-                          )}
-                        </td>
-
-                        {/* 3. Dano Tomado (Baseado no Log, editável com botão Reset) */}
-                        <td className="py-2.5 px-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <input
-                              type="number"
-                              min="0"
-                              disabled={isViewer}
-                              value={effectiveDmg || ''}
-                              placeholder="0"
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
-                                handleUpdateBodyPartDamage(part.key, val);
-                              }}
-                              className={`w-14 bg-slate-950 border rounded px-1 py-1 text-center font-bold text-xs font-mono focus:outline-none ${
-                                effectiveDmg > 0
-                                  ? 'text-rose-400 border-rose-800/80 bg-rose-950/30'
-                                  : 'text-slate-400 border-slate-800'
-                              } ${isOverridden ? 'ring-1 ring-amber-500/60' : ''} ${isViewer ? 'opacity-90' : ''}`}
-                              title={
-                                isOverridden
-                                  ? `Editado manualmente: ${effectiveDmg} (Dano calculado pelo Log: ${logDmg})`
-                                  : `Dano calculado pelo Log: ${logDmg}`
-                              }
-                            />
-
-                            {/* Botão Reset para voltar aos dados do log quando editado */}
-                            {isOverridden && !isViewer && (
-                              <button
-                                type="button"
-                                onClick={() => handleResetBodyPartDamage(part.key)}
-                                className="px-1.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-600/50 rounded flex items-center gap-1 text-[10px] font-semibold transition-colors shadow-sm"
-                                title={`Resetar para os dados do log (${logDmg} de dano)`}
-                              >
-                                <RotateCcw size={10} className="shrink-0" />
-                                <span>Reset</span>
-                              </button>
-                            )}
-
-                            {partStatus.label && (
-                              <span
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${partStatus.badgeClass}`}
-                                title={`Dano acumulado (${effectiveDmg}) em relação à vida da parte (${hpInfo.value} PV)!`}
-                              >
-                                {partStatus.label}
-                              </span>
-                            )}
-                          </div>
-                          {isOverridden && (
-                            <span className="text-[9px] text-amber-400/90 font-mono block mt-0.5">
-                              (Manual • Log: {logDmg})
+                            <span className="text-slate-600 italic text-[11px] px-1 flex-1">
+                              ---
                             </span>
                           )}
-                        </td>
 
-                        {/* 4. Regra Adicional */}
-                        <td className="py-2.5 px-3">
-                          <div className="flex items-center gap-1.5 group">
-                            {activeRule ? (
-                              <div
-                                className="flex-1 flex items-center gap-1.5 bg-slate-950/70 border border-slate-800 hover:border-slate-700 rounded-lg px-2.5 py-1 cursor-help transition-colors"
-                                title={activeRule}
-                              >
-                                <Info size={13} className="text-amber-400 shrink-0" />
-                                <span className="text-[11px] text-slate-300 truncate max-w-[280px]">
-                                  {activeRule}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-600 italic text-[11px] px-1 flex-1">
-                                ---
-                              </span>
-                            )}
-
-                            {!isViewer && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditBodyPartRule(part.key, activeRule)}
-                                className="p-1 text-slate-500 hover:text-amber-400 hover:bg-slate-800 rounded transition-colors shrink-0"
-                                title="Cadastrar ou editar regra adicional para esta parte do corpo"
-                              >
-                                <Edit2 size={12} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          {!isViewer && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditBodyPartRule(part.key, activeRule)}
+                              className="p-1 text-slate-500 hover:text-amber-400 hover:bg-slate-800 rounded transition-colors shrink-0"
+                              title="Cadastrar ou editar regra adicional para esta parte do corpo"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
+        </div>
+      )}
 
           {/* Modal / Diálogo para Cadastrar / Editar Regra Adicional em Partes do Corpo */}
           {editingBodyPartKey !== null && (
