@@ -16,11 +16,12 @@
 | O editor de texto das anotações | `js/editor-texto.js` |
 | A escolha de usuário | `js/gate.js` |
 | Os dados da Mesa no banco | `js/mesa-sync.js` |
+| A Mesa de Combate (cards, fichas, log, dano, magias, retratos, barra superior e modais) | `src/` (React). Depois de mudar, rode `npm run build:mesa` e faça o commit do `mesa.html` junto. Nunca edite o `mesa.html` à mão: a checagem do PR falha. Veja "Mesa de Combate (src/)" abaixo |
 | Estilos | `css/` (veja os nomes dos arquivos) |
 
 ## Regras do código
 
-O site não tem build. Os arquivos de `js/` são scripts comuns, carregados em ordem pelo fim do `index.html`. Por isso:
+O hub não tem build (a Mesa de Combate tem; veja a seção dela abaixo). Os arquivos de `js/` são scripts comuns, carregados em ordem pelo fim do `index.html`. Por isso:
 
 1. **Tudo que é declarado no nível superior de um arquivo é global.** Uma função `renderX` em `tab-mapas.js` é visível em todos os outros arquivos. Antes de criar um nome, procure no projeto se ele já existe. Um nome repetido substitui o anterior sem nenhum aviso.
 2. **A ordem dos `<script>` importa.** Um arquivo só pode *usar no momento em que carrega* o que veio antes dele. Dentro de funções, chamadas para outros arquivos funcionam em qualquer ordem, porque só rodam depois que tudo carregou. Uma aba nova entra na lista de "Abas", antes do `app.js`.
@@ -35,7 +36,20 @@ O VS Code checa os arquivos de `js/` como TypeScript, sem build: o `jsconfig.jso
 - Ao pendurar algo novo em `window`, declare em `types/globais.d.ts`.
 - Use `/** @type {...} */` quando o editor não conseguir deduzir um tipo, como nos exemplos do código. Evite `@ts-ignore`; quando for intencional, use `// @ts-expect-error -- motivo`.
 
-Em cada Pull Request, o GitHub roda a mesma checagem e o `tools/checar-globais.mjs`, que acusa nomes globais declarados em mais de um arquivo (a checagem de tipos não pega isso). O PR mostra ✗ se algum falhar.
+Em cada Pull Request, o GitHub roda a mesma checagem e o `tools/checar-globais.mjs`, que acusa nomes globais declarados em mais de um arquivo (a checagem de tipos não pega isso). Para a Mesa, roda também o `tsc` do `src/`, o `npm run build:mesa` e um `git diff` que acusa um `mesa.html` diferente do build. O PR mostra ✗ se algum falhar.
+
+A publicação é outro workflow, o **Publicar** (`.github/workflows/publicar.yml`): a cada push na `main`, ele roda o `npm run build:mesa` e envia o site ao GitHub Pages. A Checagem não bloqueia a publicação; um build que falha, sim, e o site fica na versão anterior.
+
+## Mesa de Combate (src/)
+
+A Mesa é um app React (Vite e Tailwind) em `src/`. O `npm run build:mesa` gera o `mesa.html` da raiz num arquivo único, com o CSS e o JS embutidos, porque o hub o busca e o coloca no `srcdoc` do iframe (`js/mesa-frame.js`).
+
+1. Uma vez: `npm install` (precisa do Node LTS).
+2. Edite o `src/`. O `npx tsc --noEmit` checa os tipos; no VS Code, os erros aparecem na aba **Problemas**.
+3. Rode `npm run build:mesa` e teste a Mesa dentro do hub (veja "Rodar no computador" no README).
+4. Faça o commit do `src/` e do `mesa.html` juntos. Se esquecer de gerar, ou se o `mesa.html` for editado à mão, a checagem falha.
+
+O que a Mesa usa do hub: o usuário (`window.hubUser` e o evento `hub:user`), a sincronização (`window.parent.hubMesaBus`, em `src/utils/hubBus.ts`), a trilha sonora (`window.audioStreamSync`, em `src/utils/hubAudio.ts`) e os scripts `js/three.min.js`, `js/dice-roller-3d.js` e `js/audio-stream-sync.js`, carregados no `<head>` de `src/mesa.html`.
 
 ## Fluxo de trabalho
 

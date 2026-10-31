@@ -11,7 +11,7 @@ O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, 
 | `js/` | O código do hub. Base (utilitários, banco, modelo do mundo, rotas, menu, modal), `busca-catalogos.js` (a busca em português nos catálogos de GURPS, com os nomes de `dados/traducoes.json`), `explorer.js`, `editor-texto.js`, `tabuleiro-geo.js` (a geometria dos tabuleiros: grade, linha de visão, paredes e área explorada), `tabuleiro-dados.js` (a rolagem de dados dos tabuleiros e o teste de GURPS), `tabuleiro-janela.js` (as janelas flutuantes do tabuleiro), `tabuleiro-chat.js` (o chat da mesa), `tabuleiro-turnos.js` (a ordem de turno), `tabuleiro-diario.js` (o Diário), `tabuleiro-arte.js` (a biblioteca de arte), `tabuleiro-paginas.js` (a barra de páginas e a fita dos jogadores), a sincronização da Mesa e `app.js`, que inicializa tudo. |
 | `js/store/` | Acesso ao banco: API genérica e IndexedDB local (`store.js`), `firebase.js` e `supabase.js`. |
 | `js/tabs/` | Uma aba por arquivo: `tab-inicio`, `tab-tabuleiros`, `tab-mapas`, `tab-locais`, `tab-personagens`, `tab-fichas`, `tab-organizacoes`, `tab-eventos`, `tab-magias`, `tab-vantagens`, `tab-desvantagens`, `tab-pericias`, `tab-combate`, `tab-armas`, `tab-armaduras`, `tab-itens`, `tab-melhoramentos`, `tab-anotacoes`, `tab-usuarios`. |
-| `mesa.html` | A Mesa de Combate (Dash RPG) compilada. O hub a carrega no iframe por `js/mesa-frame.js`. |
+| `mesa.html` | A Mesa de Combate (Dash RPG), gerada do `src/` por `npm run build:mesa`. Nunca é editada à mão: a checagem dos PRs falha se ela não bater com o build. O hub a carrega no iframe por `js/mesa-frame.js`. |
 | `dados/` | Cópia dos dados salvos no site, em JSON. |
 | `imagens/` | As imagens enviadas (mapas, locais, personagens). O nome do arquivo é o `ref` usado nos dados. |
 | `supabase-config.js` | Configuração do banco de dados (Supabase). Veja [SUPABASE.md](SUPABASE.md). |
@@ -20,8 +20,8 @@ O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, 
 | `firebase-config.js` | Configuração do banco de dados (Firebase). Veja [FIREBASE.md](FIREBASE.md). |
 | `firestore.rules` | Regras de acesso do banco: só a conta da campanha lê e grava. |
 | `types/`, `jsconfig.json` | Tipos dos dados para a checagem do VS Code (não vão para o navegador). Veja [CONTRIBUTING.md](CONTRIBUTING.md). |
-| `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase, `validar-migracao.mjs` (compara os dados antigos com as tabelas do Supabase) e `checar-globais.mjs`, usado na checagem dos PRs. `gurps-traducoes.mjs` lista os nomes dos catálogos de GURPS que ainda não têm tradução em `dados/traducoes.json`. |
-| `src/`, `vite.config.ts`, `package.json` | Código-fonte React da Mesa (trazido do AI Studio). Ainda não gera o `mesa.html`. |
+| `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase, `validar-migracao.mjs` (compara os dados antigos com as tabelas do Supabase) e `checar-globais.mjs`, usado na checagem dos PRs. `gurps-traducoes.mjs` lista os nomes dos catálogos de GURPS que ainda não têm tradução em `dados/traducoes.json`. `comparar-mesa.mjs` compara dois `mesa.html` pelos textos, classes e integrações com o hub. |
+| `src/`, `vite.mesa.config.ts`, `package.json` | Código-fonte React da Mesa de Combate. `npm run build:mesa` gera o `mesa.html` (veja "Rodar no computador" e [CONTRIBUTING.md](CONTRIBUTING.md)). [docs/diferencas-mesa.md](docs/diferencas-mesa.md) registra como o `src/` foi alinhado ao `mesa.html` que era editado à mão. |
 
 ### Arquivos de dados (`dados/`)
 
@@ -44,9 +44,18 @@ A página precisa ser aberta por um servidor HTTP: abrindo o `index.html` direto
 
 Com o `supabase-config.js` preenchido, o site local usa o **mesmo banco de produção**. Para testar sem mexer nos dados reais, esvazie a `url` localmente (sem fazer commit) e a página passa a salvar só no navegador.
 
+Rodar o site não precisa de Node: o `mesa.html` já vem gerado no repositório. Só quem muda a Mesa de Combate precisa do Node (versão LTS):
+
+1. Uma vez: `npm install`.
+2. Edite o `src/`.
+3. Rode `npm run build:mesa` (gera o `mesa.html` em menos de um segundo) e recarregue a página.
+4. Faça o commit do `src/` e do `mesa.html` juntos.
+
 ## Onde roda
 
-O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. A página escolhe onde guardar os dados, nesta ordem:
+O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. Cada push na `main` dispara o workflow **Publicar** (`.github/workflows/publicar.yml`), que gera a Mesa a partir do `src/` e publica o site em cerca de 2 minutos; o andamento aparece na aba **Actions** do GitHub. Se o build falhar, o site continua na versão anterior. O `mesa.html` segue no repositório só para o site abrir no computador sem Node.
+
+A página escolhe onde guardar os dados, nesta ordem:
 
 1. **Artifact do claude.ai:** usa o banco de dados e o armazenamento de imagens da plataforma.
 2. **Supabase:** quando `supabase-config.js` está preenchido. Dados em tabelas relacionais do PostgreSQL e imagens no Storage. Cada mudança aparece na hora para quem altera; nos outros navegadores, as da Mesa de Combate e dos Tabuleiros chegam em uma fração de segundo, pelo Realtime, e as do resto do site ao recarregar a página. Configuração e detalhes da sincronização em [SUPABASE.md](SUPABASE.md).

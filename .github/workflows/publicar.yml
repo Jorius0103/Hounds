@@ -1,0 +1,43 @@
+# Publica o site no GitHub Pages a cada push na main: gera a Mesa (npm run build:mesa) a partir do src/
+# e envia a raiz do repositório, sem o que só serve para o build. Se o build falhar, o site fica na versão anterior.
+# Requer Settings → Pages → Source: "GitHub Actions".
+name: Publicar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Um push novo espera a publicação em andamento terminar, em vez de cancelá-la no meio.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Dependências da Mesa
+        run: npm ci
+      - name: Build da Mesa (mesa.html)
+        run: npm run build:mesa
+      - name: Montar o site
+        run: rsync -a --exclude .git --exclude .github --exclude node_modules --exclude dist --exclude src --exclude _site ./ _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
