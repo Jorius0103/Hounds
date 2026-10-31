@@ -171,7 +171,7 @@ var MesaSync = (function () {
   function inOrder(fn) { recvQ = recvQ.then(fn).catch(function (e) { console.warn('Hounds: mensagem da Mesa ignorada.', e); }); }
 
   function loaded() { return listeners.length > 0; }
-  function shown() { return loaded() && location.hash === '#mesa'; }
+  function shown() { return loaded(); }
   function push(obj) { var msg = JSON.stringify(obj); listeners.slice().forEach(function (fn) { try { fn(msg); } catch (e) {} }); }
   function pushState() { push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, state)); }
   // With edits of this browser not saved yet, the Mesa answers with its merged state (see publish).
@@ -194,6 +194,7 @@ var MesaSync = (function () {
   function applyRemote(rev, st) {
     remember(rev); loadedRev = rev;
     if (pending || writing) mergedRevs = mergedRevs.concat([rev]).slice(-50);
+    try { toLocal(st); } catch (e) {}
     var open = shown();
     if (open) push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, st));
     state = mergeState(state, st);
@@ -300,7 +301,29 @@ var MesaSync = (function () {
     var rev = m.rev;
     remember(rev); // its head, from the database, needs no download
     inOrder(function () {
-      return unpack(m, 'state').then(function (st) { if (st) applyRemote(rev, st); }, function (e) { delete known[rev]; throw e; });
+      return unpack(m, 'state').then(function (st) {
+        if (!st) return;
+        if (Array.isArray(st.combats)) {
+          st.combats.forEach(function (c) {
+            if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+              combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
+            }
+          });
+        }
+        var activeId = st.activeCombatId || (st.combats && st.combats[0] && st.combats[0].id) || 'combat-vazio';
+        if (activeId && activeId !== 'combat-vazio' && combatsArchive[activeId]) {
+          st.combats = (st.combats || []).map(function (c) {
+            if (c.id === activeId && (!c.npcs || c.npcs.length === 0)) {
+              return Object.assign({}, c, {
+                npcs: combatsArchive[activeId].npcs || [],
+                events: combatsArchive[activeId].events || c.events || []
+              });
+            }
+            return c;
+          });
+        }
+        applyRemote(rev, st);
+      }, function (e) { delete known[rev]; throw e; });
     });
   }
   function onNpc(m) {
@@ -460,22 +483,44 @@ var MesaSync = (function () {
         rt().on('mesa-active-combat', function (m) {
           if (m && m.activeCombatId !== undefined) {
             var newId = m.activeCombatId || '';
+            var combatsToSend = m.combats;
+            if (!combatsToSend || !Array.isArray(combatsToSend) || combatsToSend.length === 0) {
+              combatsToSend = (state && state.combats) || (localState() && localState().combats) || [];
+            }
             if (m.combats && Array.isArray(m.combats)) {
               m.combats.forEach(function (c) {
                 if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
                   combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
                 }
               });
-              try { localStorage.setItem(MESA_LS.combats, JSON.stringify(m.combats)); } catch (e) {}
+            }
+            if (newId && combatsArchive[newId]) {
+              combatsToSend = combatsToSend.map(function (c) {
+                if (c.id === newId && (!c.npcs || c.npcs.length === 0)) {
+                  return Object.assign({}, c, {
+                    npcs: combatsArchive[newId].npcs || [],
+                    events: combatsArchive[newId].events || c.events || []
+                  });
+                }
+                return c;
+              });
+            }
+            try { localStorage.setItem(MESA_LS.activeCombatId, JSON.stringify(newId)); } catch (e) {}
+            if (combatsToSend && combatsToSend.length > 0) {
+              try { localStorage.setItem(MESA_LS.combats, JSON.stringify(combatsToSend)); } catch (e) {}
             }
             if (state) {
               state = Object.assign({}, state, { activeCombatId: newId });
-              if (m.combats && Array.isArray(m.combats)) {
-                state.combats = m.combats;
+              if (combatsToSend && combatsToSend.length > 0) {
+                state.combats = combatsToSend;
               }
             }
-            try { localStorage.setItem(MESA_LS.activeCombatId, JSON.stringify(newId)); } catch (e) {}
-            if (loaded()) push({ type: 'SYNC_ACTIVE_COMBAT', activeCombatId: newId, combats: m.combats, timestamp: m.ts || Date.now() });
+            if (loaded()) {
+              push({ type: 'SYNC_ACTIVE_COMBAT', activeCombatId: newId, combats: combatsToSend, timestamp: m.ts || Date.now() });
+              if (state) {
+                push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, state));
+              }
+            }
           }
         });
         rt().on('mesa-snapshots', function (m) {
@@ -585,14 +630,18 @@ var MesaSync = (function () {
           });
           try { localStorage.setItem(MESA_LS.combats, JSON.stringify(m.combats)); } catch (e) {}
         }
-        if (rt() && canSave()) rt().send('mesa-active-combat', { activeCombatId: newId, combats: m.combats, ts: m.timestamp || Date.now() });
         var curStAc = state || localState() || {};
         curStAc.activeCombatId = newId;
         if (m.combats && Array.isArray(m.combats)) {
           curStAc.combats = m.combats;
         }
         state = curStAc;
-        pending = { st: state, rev: newRev() };
+        var rAc = newRev();
+        if (rt() && canSave()) {
+          rt().send('mesa-active-combat', { activeCombatId: newId, combats: m.combats, ts: m.timestamp || Date.now() });
+          send('mesa', 'state', state, JSON.stringify(state), { rev: rAc });
+        }
+        pending = { st: state, rev: rAc };
         if (!timer) timer = setTimeout(flush, delay());
         return;
       }

@@ -1214,28 +1214,108 @@ export default function App() {
         try {
           localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(targetId));
         } catch (e) {}
+
         if (targetId) {
-          const newActiveCombat = currentCombats.find((c) => c.id === targetId);
-          if (newActiveCombat) {
-            const myChar = newActiveCombat.npcs?.find(
-              (n) =>
-                currentUser &&
-                (n.userId === currentUser.id ||
-                  n.ownerId === currentUser.id ||
-                  n.name === currentUser.name ||
-                  (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
-            ) || (stateRef.current.players || []).find(
+          let targetCombat = currentCombats.find((c) => c.id === targetId);
+          // Se não encontrou o combate ativo ou se está sem NPCs, recupera do pool, do localStorage ou snapshots
+          if (!targetCombat || !targetCombat.npcs || targetCombat.npcs.length === 0) {
+            let recoveredNpcs: NPC[] = [];
+            let recoveredEvents: ActionLogEntry[] = [];
+            let recoveredName = targetCombat?.name;
+
+            const pooled = combatsPoolRef.current[targetId];
+            if (pooled && Array.isArray(pooled.npcs) && pooled.npcs.length > 0) {
+              recoveredNpcs = pooled.npcs;
+              recoveredEvents = pooled.events || [];
+            } else {
+              try {
+                const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                if (Array.isArray(stored)) {
+                  const f = stored.find((c: any) => c.id === targetId);
+                  if (f && Array.isArray(f.npcs) && f.npcs.length > 0) {
+                    recoveredNpcs = f.npcs;
+                    recoveredEvents = f.events || [];
+                    if (!recoveredName) recoveredName = f.name;
+                  }
+                }
+              } catch (e) {}
+              if (recoveredNpcs.length === 0) {
+                try {
+                  const snaps = JSON.parse(localStorage.getItem('hounds_mesa_snapshots_v1') || '[]');
+                  if (Array.isArray(snaps)) {
+                    for (const s of snaps) {
+                      const list = s?.data?.combats || s?.combats || [];
+                      if (Array.isArray(list)) {
+                        const f = list.find((c: any) => c.id === targetId);
+                        if (f && Array.isArray(f.npcs) && f.npcs.length > 0) {
+                          recoveredNpcs = f.npcs;
+                          recoveredEvents = f.events || [];
+                          if (!recoveredName) recoveredName = f.name;
+                          break;
+                        }
+                      }
+                    }
+                  }
+                } catch (e) {}
+              }
+            }
+
+            if (recoveredNpcs.length > 0) {
+              combatsPoolRef.current[targetId] = { npcs: recoveredNpcs, events: recoveredEvents };
+              currentCombats = currentCombats.map((c) => {
+                if (c.id === targetId) {
+                  return {
+                    ...c,
+                    npcs: recoveredNpcs,
+                    events: recoveredEvents.length > 0 ? recoveredEvents : c.events,
+                    totalNpcs: recoveredNpcs.length,
+                  };
+                }
+                return c;
+              });
+              if (!currentCombats.some((c) => c.id === targetId)) {
+                currentCombats = [
+                  ...currentCombats,
+                  {
+                    id: targetId,
+                    name: recoveredName || targetId,
+                    isActive: true,
+                    npcs: recoveredNpcs,
+                    events: recoveredEvents,
+                    totalNpcs: recoveredNpcs.length,
+                  } as Combat,
+                ];
+              }
+              stateRef.current.combats = currentCombats;
+              setCombats(currentCombats);
+              targetCombat = currentCombats.find((c) => c.id === targetId);
+            } else {
+              onlineSyncService.requestSync();
+            }
+          }
+
+          if (targetCombat) {
+            const myChar = (stateRef.current.players || []).find(
               (p) =>
                 currentUser &&
                 (p.userId === currentUser.id ||
                   p.ownerId === currentUser.id ||
                   p.name === currentUser.name ||
                   (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+            ) || targetCombat.npcs?.find(
+              (n) =>
+                currentUser &&
+                (n.userId === currentUser.id ||
+                  n.ownerId === currentUser.id ||
+                  n.name === currentUser.name ||
+                  (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
             );
             if (myChar) {
               setSelectedNpcId(myChar.id);
-            } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
-              setSelectedNpcId(newActiveCombat.npcs[0].id);
+            } else if (targetCombat.npcs && targetCombat.npcs.length > 0) {
+              setSelectedNpcId(targetCombat.npcs[0].id);
+            } else if (stateRef.current.players && stateRef.current.players.length > 0) {
+              setSelectedNpcId(stateRef.current.players[0].id);
             }
           }
         } else {
@@ -1291,6 +1371,16 @@ export default function App() {
           setCombats(nextCombats);
         }
 
+        // Armazena no pool qualquer combate recebido com NPCs carregados
+        nextCombats.forEach((c) => {
+          if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+            combatsPoolRef.current[c.id] = {
+              npcs: c.npcs,
+              events: c.events || []
+            };
+          }
+        });
+
         if (playersChanged || combatsChanged) {
           systemLogger.addLog(
             'SYNC_RECV',
@@ -1315,17 +1405,33 @@ export default function App() {
             return Array.from(map.values());
           });
         }
-        if (payload.activeCombatId !== undefined && payload.activeCombatId !== stateRef.current.activeCombatId) {
-          stateRef.current.activeCombatId = payload.activeCombatId;
-          setActiveCombatId(payload.activeCombatId);
+
+        const effectiveActiveId = payload.activeCombatId !== undefined ? payload.activeCombatId : stateRef.current.activeCombatId;
+        const activeCombatIdChanged = payload.activeCombatId !== undefined && payload.activeCombatId !== stateRef.current.activeCombatId;
+
+        if (activeCombatIdChanged) {
+          stateRef.current.activeCombatId = effectiveActiveId;
+          setActiveCombatId(effectiveActiveId);
           setIsHomeScreen(false);
           try {
-            localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(payload.activeCombatId));
+            localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(effectiveActiveId));
           } catch (e) {}
-          if (payload.activeCombatId) {
-            const newActiveCombat = nextCombats.find((c) => c.id === payload.activeCombatId);
-            if (newActiveCombat) {
-              const myChar = newActiveCombat.npcs?.find(
+        }
+
+        if (effectiveActiveId) {
+          const newActiveCombat = nextCombats.find((c) => c.id === effectiveActiveId);
+          if (newActiveCombat) {
+            const currentSelectedValid = (newActiveCombat.npcs || []).some((n) => n.id === selectedNpcId) ||
+              (nextPlayers || []).some((p) => p.id === selectedNpcId);
+            if (!currentSelectedValid || activeCombatIdChanged) {
+              const myChar = (nextPlayers || []).find(
+                (p) =>
+                  currentUser &&
+                  (p.userId === currentUser.id ||
+                    p.ownerId === currentUser.id ||
+                    p.name === currentUser.name ||
+                    (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+              ) || newActiveCombat.npcs?.find(
                 (n) =>
                   currentUser &&
                   (n.userId === currentUser.id ||
@@ -1337,9 +1443,14 @@ export default function App() {
                 setSelectedNpcId(myChar.id);
               } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
                 setSelectedNpcId(newActiveCombat.npcs[0].id);
+              } else if (nextPlayers && nextPlayers.length > 0) {
+                setSelectedNpcId(nextPlayers[0].id);
               }
             }
-          } else {
+          }
+        } else {
+          const currentSelectedValid = (nextPlayers || []).some((p) => p.id === selectedNpcId);
+          if (!currentSelectedValid || activeCombatIdChanged) {
             const myPlayerChar = (nextPlayers || []).find(
               (p) =>
                 currentUser &&
@@ -1657,28 +1768,105 @@ export default function App() {
           try {
             localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(targetId));
           } catch (e) {}
+
           if (targetId) {
-            const newActiveCombat = currentCombats.find((c) => c.id === targetId);
-            if (newActiveCombat) {
-              const myChar = newActiveCombat.npcs?.find(
-                (n) =>
-                  currentUser &&
-                  (n.userId === currentUser.id ||
-                    n.ownerId === currentUser.id ||
-                    n.name === currentUser.name ||
-                    (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
-              ) || (stateRef.current.players || []).find(
+            let targetCombat = currentCombats.find((c) => c.id === targetId);
+            if (!targetCombat || !targetCombat.npcs || targetCombat.npcs.length === 0) {
+              let recoveredNpcs: NPC[] = [];
+              let recoveredEvents: ActionLogEntry[] = [];
+              let recoveredName = targetCombat?.name;
+
+              const pooled = combatsPoolRef.current[targetId];
+              if (pooled && Array.isArray(pooled.npcs) && pooled.npcs.length > 0) {
+                recoveredNpcs = pooled.npcs;
+                recoveredEvents = pooled.events || [];
+              } else {
+                try {
+                  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                  if (Array.isArray(stored)) {
+                    const f = stored.find((c: any) => c.id === targetId);
+                    if (f && Array.isArray(f.npcs) && f.npcs.length > 0) {
+                      recoveredNpcs = f.npcs;
+                      recoveredEvents = f.events || [];
+                      if (!recoveredName) recoveredName = f.name;
+                    }
+                  }
+                } catch (e) {}
+                if (recoveredNpcs.length === 0) {
+                  try {
+                    const snaps = JSON.parse(localStorage.getItem('hounds_mesa_snapshots_v1') || '[]');
+                    if (Array.isArray(snaps)) {
+                      for (const s of snaps) {
+                        const list = s?.data?.combats || s?.combats || [];
+                        if (Array.isArray(list)) {
+                          const f = list.find((c: any) => c.id === targetId);
+                          if (f && Array.isArray(f.npcs) && f.npcs.length > 0) {
+                            recoveredNpcs = f.npcs;
+                            recoveredEvents = f.events || [];
+                            if (!recoveredName) recoveredName = f.name;
+                            break;
+                          }
+                        }
+                      }
+                    }
+                  } catch (e) {}
+                }
+              }
+
+              if (recoveredNpcs.length > 0) {
+                combatsPoolRef.current[targetId] = { npcs: recoveredNpcs, events: recoveredEvents };
+                currentCombats = currentCombats.map((c) => {
+                  if (c.id === targetId) {
+                    return {
+                      ...c,
+                      npcs: recoveredNpcs,
+                      events: recoveredEvents.length > 0 ? recoveredEvents : c.events,
+                      totalNpcs: recoveredNpcs.length,
+                    };
+                  }
+                  return c;
+                });
+                if (!currentCombats.some((c) => c.id === targetId)) {
+                  currentCombats = [
+                    ...currentCombats,
+                    {
+                      id: targetId,
+                      name: recoveredName || targetId,
+                      isActive: true,
+                      npcs: recoveredNpcs,
+                      events: recoveredEvents,
+                      totalNpcs: recoveredNpcs.length,
+                    } as Combat,
+                  ];
+                }
+                stateRef.current.combats = currentCombats;
+                setCombats(currentCombats);
+                targetCombat = currentCombats.find((c) => c.id === targetId);
+              }
+            }
+
+            if (targetCombat) {
+              const myChar = (stateRef.current.players || []).find(
                 (p) =>
                   currentUser &&
                   (p.userId === currentUser.id ||
                     p.ownerId === currentUser.id ||
                     p.name === currentUser.name ||
                     (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+              ) || targetCombat.npcs?.find(
+                (n) =>
+                  currentUser &&
+                  (n.userId === currentUser.id ||
+                    n.ownerId === currentUser.id ||
+                    n.name === currentUser.name ||
+                    (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
               );
               if (myChar) {
                 setSelectedNpcId(myChar.id);
-              } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
-                setSelectedNpcId(newActiveCombat.npcs[0].id);
+              } else if (targetCombat.npcs && targetCombat.npcs.length > 0) {
+                setSelectedNpcId(targetCombat.npcs[0].id);
+              } else if (stateRef.current.players && stateRef.current.players.length > 0) {
+                setSelectedNpcId(stateRef.current.players[0].id);
               }
             }
           } else {
@@ -1731,6 +1919,15 @@ export default function App() {
             setCombats(nextCombats);
           }
 
+          nextCombats.forEach((c) => {
+            if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+              combatsPoolRef.current[c.id] = {
+                npcs: c.npcs,
+                events: c.events || []
+              };
+            }
+          });
+
           if (playersChanged || combatsChanged) {
             systemLogger.addLog('BROADCAST', `Sincronização entre abas mesclada`, {
               playersChanged,
@@ -1747,9 +1944,66 @@ export default function App() {
             stateRef.current.users = event.data.users;
             setUsers(event.data.users);
           }
-          if (event.data.activeCombatId !== undefined) {
-            stateRef.current.activeCombatId = event.data.activeCombatId;
-            setActiveCombatId(event.data.activeCombatId);
+
+          const effectiveActiveId = event.data.activeCombatId !== undefined ? event.data.activeCombatId : stateRef.current.activeCombatId;
+          const activeCombatIdChanged = event.data.activeCombatId !== undefined && event.data.activeCombatId !== stateRef.current.activeCombatId;
+
+          if (activeCombatIdChanged) {
+            stateRef.current.activeCombatId = effectiveActiveId;
+            setActiveCombatId(effectiveActiveId);
+            setIsHomeScreen(false);
+            try {
+              localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(effectiveActiveId));
+            } catch (e) {}
+          }
+
+          if (effectiveActiveId) {
+            const newActiveCombat = nextCombats.find((c) => c.id === effectiveActiveId);
+            if (newActiveCombat) {
+              const currentSelectedValid = (newActiveCombat.npcs || []).some((n) => n.id === selectedNpcId) ||
+                (nextPlayers || []).some((p) => p.id === selectedNpcId);
+              if (!currentSelectedValid || activeCombatIdChanged) {
+                const myChar = (nextPlayers || []).find(
+                  (p) =>
+                    currentUser &&
+                    (p.userId === currentUser.id ||
+                      p.ownerId === currentUser.id ||
+                      p.name === currentUser.name ||
+                      (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                ) || newActiveCombat.npcs?.find(
+                  (n) =>
+                    currentUser &&
+                    (n.userId === currentUser.id ||
+                      n.ownerId === currentUser.id ||
+                      n.name === currentUser.name ||
+                      (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                );
+                if (myChar) {
+                  setSelectedNpcId(myChar.id);
+                } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
+                  setSelectedNpcId(newActiveCombat.npcs[0].id);
+                } else if (nextPlayers && nextPlayers.length > 0) {
+                  setSelectedNpcId(nextPlayers[0].id);
+                }
+              }
+            }
+          } else {
+            const currentSelectedValid = (nextPlayers || []).some((p) => p.id === selectedNpcId);
+            if (!currentSelectedValid || activeCombatIdChanged) {
+              const myPlayerChar = (nextPlayers || []).find(
+                (p) =>
+                  currentUser &&
+                  (p.userId === currentUser.id ||
+                    p.ownerId === currentUser.id ||
+                    p.name === currentUser.name ||
+                    (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+              );
+              if (myPlayerChar) {
+                setSelectedNpcId(myPlayerChar.id);
+              } else if (nextPlayers && nextPlayers.length > 0) {
+                setSelectedNpcId(nextPlayers[0].id);
+              }
+            }
           }
         }
       };
