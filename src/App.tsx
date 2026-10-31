@@ -4477,7 +4477,19 @@ export default function App() {
         onDeleteCombat={handleDeleteCombat}
         onRenameCombat={handleRenameCombat}
         onToggleCombatActive={handleToggleCombatActive}
-        onRestoreFullSnapshot={(data) => handleRestoreSnapshot({ data })}
+        onRestoreFullSnapshot={(data, name) => handleRestoreSnapshot({ data, name })}
+        getFullCombats={() =>
+          stateRef.current.combats.map((c) => {
+            const pooled = combatsPoolRef.current[c.id];
+            if (!pooled) return c;
+            return {
+              ...c,
+              npcs: c.npcs && c.npcs.length > 0 ? c.npcs : pooled.npcs,
+              events: c.events && c.events.length > 0 ? c.events : pooled.events,
+            };
+          })
+        }
+        players={players}
       />
 
       {/* System Debug / Sync Log Modal */}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { hubAlert } from '../utils/hubDialog';
+import { onlineSyncService } from '../utils/onlineSync';
 import {
   Swords,
   Archive,
@@ -25,18 +26,23 @@ export interface CombatSnapshotSummary {
   activeCombatName?: string;
 }
 
+export interface CombatSnapshotData {
+  combats: any[];
+  activeCombatId: string | null;
+  players?: any[];
+  conditions?: any[];
+  deletedCombatIds?: string[];
+  editors?: string[];
+}
+
 export interface CombatSnapshot {
   id: string;
   name: string;
-  createdAt: number;
+  createdAt: number | string; // número nos retratos antigos do src/, data ISO nos do mesa.html
   formattedDate: string;
   description?: string;
   summary?: CombatSnapshotSummary;
-  data: {
-    combats: any[];
-    activeCombatId: string | null;
-    players?: any[];
-  };
+  data: CombatSnapshotData;
 }
 
 export interface CombatManagerModalProps {
@@ -49,12 +55,34 @@ export interface CombatManagerModalProps {
   onDeleteCombat: (id: string) => void;
   onRenameCombat: (id: string, newName: string, newDescription?: string) => void;
   onToggleCombatActive?: (id: string) => void;
-  onRestoreFullSnapshot?: (data: { combats: any[]; activeCombatId: string | null; players?: any[] }) => void;
+  onRestoreFullSnapshot?: (data: CombatSnapshotData, snapshotName: string) => void;
+  /** Combates com os NPCs dos inativos preenchidos (o estado da tela guarda os inativos sem NPCs) */
+  getFullCombats?: () => any[];
   players?: any[];
 }
 
-const STORAGE_KEY = 'hounds_combat_snapshots_v1';
+// Mesma chave do mesa.html que estava no ar, onde ficam os retratos já salvos
+const STORAGE_KEY = 'hounds_mesa_snapshots_v1';
 const REPO_DATA_PATH = 'dados/retratos-mesa.json';
+const SNAPSHOT_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+};
+
+function readStoredJson(key: string): any {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+const isRealCombat = (c: any) =>
+  c && c.id !== 'combat-vazio' && !c.name?.toLowerCase().includes('vazio') && c.name?.toLowerCase().trim() !== 'sem combate';
 
 export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   isOpen,
@@ -67,6 +95,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   onRenameCombat,
   onToggleCombatActive,
   onRestoreFullSnapshot,
+  getFullCombats,
   players = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'combats' | 'backups'>('combats');
@@ -99,42 +128,51 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Carregar snapshots do localStorage ou do repo ao abrir
+  // Lista alterada em outra aba ou recebida pela sincronização (o App grava e dispara o evento)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed)) setSnapshots(parsed);
+      } catch {}
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Ao abrir: os retratos locais mais os do repositório (dados/retratos-mesa.json); o local vence no mesmo id
   useEffect(() => {
     if (!isOpen) return;
 
+    let localList: CombatSnapshot[] = [];
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSnapshots(parsed);
-          return;
-        }
+      const parsed = readStoredJson(STORAGE_KEY);
+      if (Array.isArray(parsed)) {
+        localList = parsed;
+        setSnapshots(parsed);
       }
     } catch (e) {
-      console.warn('Erro ao ler snapshots do localStorage:', e);
+      console.error('Erro ao carregar snapshots:', e);
     }
 
-    fetch(REPO_DATA_PATH)
-      .then((res) => {
-        if (!res.ok) throw new Error('Não foi possível carregar retratos padrão do repositório');
-        return res.json();
-      })
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setSnapshots(data);
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-          } catch (e) {
-            console.warn('Erro ao salvar no localStorage:', e);
-          }
-        }
+    fetch(`${REPO_DATA_PATH}?v=${Date.now()}`)
+      .then((res) => res.json())
+      .then((repoSnapshots) => {
+        if (!Array.isArray(repoSnapshots) || repoSnapshots.length === 0) return;
+        const byId = new Map<string, CombatSnapshot>();
+        repoSnapshots.forEach((s: CombatSnapshot) => byId.set(s.id, s));
+        localList.forEach((s) => byId.set(s.id, s));
+        const merged = Array.from(byId.values());
+        setSnapshots(merged);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        } catch {}
       })
       .catch(() => {});
   }, [isOpen]);
 
-  // Salvar snapshots no localStorage
+  // Grava a lista e a transmite para todos (hub e sala online)
   const persistSnapshots = (updated: CombatSnapshot[]) => {
     setSnapshots(updated);
     try {
@@ -142,6 +180,38 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     } catch (e) {
       console.error('Erro ao salvar snapshots no localStorage:', e);
     }
+    const message = { type: 'SYNC_SNAPSHOTS_LIST' as const, snapshots: updated, timestamp: Date.now() };
+    try {
+      (window as any).parent?.hubMesaBus?.publish(JSON.stringify(message));
+    } catch {}
+    try {
+      onlineSyncService.sendPayloadImmediate(message);
+    } catch {}
+  };
+
+  // Dados atuais da Mesa para um retrato: combates completos, personagens, condições, excluídos e editores
+  const captureCurrentData = (): { data: CombatSnapshotData; summary: CombatSnapshotSummary } => {
+    const allCombats: any[] = getFullCombats?.() || readStoredJson('gurps_combat_master_data_v2') || combats || [];
+    const realCombats = allCombats.filter(isRealCombat);
+    const currentPlayers: any[] = readStoredJson('gurps_fixed_personagens_v1') || players || [];
+    const currentActiveId: string | null = readStoredJson('gurps_combat_master_active_combat_id_v1') || activeCombatId;
+    const totalNpcs = realCombats.reduce((sum, c) => sum + (Array.isArray(c.npcs) ? c.npcs.length : 0), 0);
+    return {
+      data: {
+        combats: JSON.parse(JSON.stringify(realCombats)),
+        players: JSON.parse(JSON.stringify(currentPlayers)),
+        conditions: readStoredJson('gurps_combat_master_conditions_v2') || [],
+        activeCombatId: currentActiveId,
+        deletedCombatIds: readStoredJson('gurps_combat_master_deleted_v1') || [],
+        editors: readStoredJson('gurps_combat_master_editors_v1') || [],
+      },
+      summary: {
+        totalCombats: realCombats.length,
+        totalNpcs,
+        totalPlayers: currentPlayers.length,
+        activeCombatName: realCombats.find((c) => c.id === currentActiveId)?.name || 'Sem combate',
+      },
+    };
   };
 
   // Fechar com ESC
@@ -191,67 +261,40 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   };
 
   // Handlers da Aba 2: Snapshots
+  const newSnapshotId = () => `snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
   const handleStartCreateSnapshot = () => {
-    const activeCombat = validCombats.find((c) => c.id === activeCombatId);
-    const defaultName = activeCombat
-      ? `Retrato: ${activeCombat.name}`
-      : `Retrato da Mesa - ${new Date().toLocaleDateString('pt-BR')}`;
-    setNewSnapshotName(defaultName);
+    setNewSnapshotName(`Retrato - ${new Date().toLocaleString('pt-BR', SNAPSHOT_DATE_FORMAT)}`);
     setNewSnapshotDesc('');
     setIsCreatingSnapshot(true);
   };
 
   const handleConfirmCreateSnapshot = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSnapshotName.trim()) return;
-
-    let totalNpcs = 0;
-    validCombats.forEach((c) => {
-      if (Array.isArray(c.npcs)) totalNpcs += c.npcs.length;
-      else if (typeof c.totalNpcs === 'number') totalNpcs += c.totalNpcs;
-    });
-
-    const activeCombat = validCombats.find((c) => c.id === activeCombatId);
-
-    const now = Date.now();
+    const now = new Date();
+    const current = captureCurrentData();
     const newSnapshot: CombatSnapshot = {
-      id: `snap-${now}-${Math.random().toString(36).slice(2, 7)}`,
-      name: newSnapshotName.trim(),
-      createdAt: now,
-      formattedDate: new Date(now).toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      id: newSnapshotId(),
+      name: newSnapshotName.trim() || `Retrato - ${now.toLocaleDateString('pt-BR')}`,
       description: newSnapshotDesc.trim() || undefined,
-      summary: {
-        totalCombats: validCombats.length,
-        totalNpcs,
-        totalPlayers: Array.isArray(players) ? players.length : 0,
-        activeCombatName: activeCombat ? activeCombat.name : undefined,
-      },
-      data: {
-        combats: JSON.parse(JSON.stringify(validCombats)),
-        activeCombatId,
-        players: JSON.parse(JSON.stringify(players || [])),
-      },
+      createdAt: now.toISOString(),
+      formattedDate: now.toLocaleString('pt-BR', { ...SNAPSHOT_DATE_FORMAT, second: '2-digit' }),
+      summary: current.summary,
+      data: current.data,
     };
 
-    const updated = [newSnapshot, ...snapshots];
-    persistSnapshots(updated);
+    persistSnapshots([newSnapshot, ...snapshots]);
     setIsCreatingSnapshot(false);
     setNewSnapshotName('');
     setNewSnapshotDesc('');
-    showToast('Retrato da mesa salvo com sucesso!');
+    showToast(`Retrato "${newSnapshot.name}" salvo com sucesso!`);
   };
 
   const handleDeleteSnapshot = (id: string) => {
     const updated = snapshots.filter((s) => s.id !== id);
     persistSnapshots(updated);
     setDeletingSnapshotId(null);
-    showToast('Retrato excluído.');
+    showToast('Backup excluído.');
   };
 
   const handleStartEditSnapshot = (snap: CombatSnapshot) => {
@@ -273,7 +316,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     );
     persistSnapshots(updated);
     setEditingSnapshotId(null);
-    showToast('Retrato atualizado!');
+    showToast('Backup atualizado com sucesso!');
   };
 
   const handleRestoreSnapshot = (snap: CombatSnapshot) => {
@@ -282,85 +325,167 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
       return;
     }
 
+    // Backup automático do estado atual, como um retrato da lista, para desfazer a restauração
     try {
-      const totalNpcs = validCombats.reduce((acc, c) => acc + (c.npcs?.length || 0), 0);
+      const now = new Date();
+      const current = captureCurrentData();
       const autoBackup: CombatSnapshot = {
-        id: `snap-auto-${Date.now()}`,
-        name: `Backup Automático (Pré-restauração de "${snap.name}")`,
-        createdAt: Date.now(),
-        formattedDate: new Date().toLocaleString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+        id: newSnapshotId(),
+        name: `Backup automático antes de restaurar "${snap.name}"`,
         description: 'Criado automaticamente antes de restaurar um retrato antigo.',
-        summary: {
-          totalCombats: validCombats.length,
-          totalNpcs,
-          totalPlayers: players.length,
-          activeCombatName: validCombats.find((c) => c.id === activeCombatId)?.name,
-        },
-        data: {
-          combats: JSON.parse(JSON.stringify(validCombats)),
-          activeCombatId,
-          players: JSON.parse(JSON.stringify(players || [])),
-        },
+        createdAt: now.toISOString(),
+        formattedDate: now.toLocaleString('pt-BR', SNAPSHOT_DATE_FORMAT),
+        summary: current.summary,
+        data: current.data,
       };
       persistSnapshots([autoBackup, ...snapshots]);
     } catch (e) {
       console.warn('Erro ao criar backup automático:', e);
     }
 
-    onRestoreFullSnapshot(snap.data);
-    setRestoringSnapshotId(null);
-    showToast(`Retrato "${snap.name}" restaurado com sucesso na Mesa!`);
+    try {
+      onRestoreFullSnapshot(snap.data, snap.name);
+      setRestoringSnapshotId(null);
+      showToast(`Retrato "${snap.name}" restaurado e transmitido para todos os usuários!`);
+    } catch (err: any) {
+      hubAlert('Erro ao restaurar: ' + (err?.message || 'Falha'));
+    }
+  };
+
+  const downloadJson = (content: unknown, fileName: string) => {
+    const blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   };
 
   const handleExportSnapshot = (snap: CombatSnapshot) => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(snap, null, 2));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute('href', dataStr);
-    const safeName = snap.name.toLowerCase().replace(/[^a-z0-9]/gi, '_');
-    dlAnchorElem.setAttribute('download', `retrato_mesa_${safeName}.json`);
-    dlAnchorElem.click();
+    const safeName = snap.name.toLowerCase().replace(/[^a-z0-9]/gi, '-').slice(0, 30);
+    downloadJson(
+      {
+        app: 'Hounds GURPS',
+        snapshotId: snap.id,
+        snapshotName: snap.name,
+        exportedAt: new Date().toISOString(),
+        summary: snap.summary,
+        snapshot: snap,
+      },
+      `hounds-backup-${safeName}-${new Date().toISOString().slice(0, 10)}.json`
+    );
   };
 
   const handleExportAllForRepo = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(snapshots, null, 2));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute('href', dataStr);
-    dlAnchorElem.setAttribute('download', 'retratos-mesa.json');
-    dlAnchorElem.click();
-    showToast('Arquivo retratos-mesa.json pronto para ser salvo na pasta dados/');
+    downloadJson(snapshots, 'retratos-mesa.json');
+    showToast('Arquivo retratos-mesa.json baixado! Salve-o na pasta dados/ do repositório.');
   };
 
+  // Aceita: retrato exportado ({ snapshot }), backup do hub ({ localStorage }), lista de combates,
+  // lista de retratos e retrato avulso
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileReader = new FileReader();
     const file = e.target.files?.[0];
     if (!file) return;
-
-    fileReader.readAsText(file, 'UTF-8');
-    fileReader.onload = (event) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
+        const now = new Date();
+        const formattedDate = now.toLocaleString('pt-BR', SNAPSHOT_DATE_FORMAT);
+        const countNpcs = (list: any) =>
+          Array.isArray(list) ? list.reduce((sum: number, c: any) => sum + (Array.isArray(c.npcs) ? c.npcs.length : 0), 0) : 0;
+
+        if (parsed?.snapshot?.data) {
+          const imported: CombatSnapshot = {
+            ...parsed.snapshot,
+            id: newSnapshotId(),
+            name: `${parsed.snapshot.name || 'Importado'} (Importado)`,
+            formattedDate,
+          };
+          persistSnapshots([imported, ...snapshots]);
+          showToast('Backup importado para a lista com sucesso!');
+          return;
+        }
+
+        if (parsed?.localStorage) {
+          const st = parsed.localStorage;
+          const combatList = st['gurps_combat_master_data_v2'] || [];
+          const playerList = st['gurps_fixed_personagens_v1'] || [];
+          persistSnapshots([
+            {
+              id: newSnapshotId(),
+              name: `Backup Importado - ${now.toLocaleDateString('pt-BR')}`,
+              description: `Arquivo importado em ${now.toLocaleTimeString('pt-BR')}`,
+              createdAt: now.toISOString(),
+              formattedDate,
+              summary: {
+                totalCombats: Array.isArray(combatList) ? combatList.length : 0,
+                totalNpcs: countNpcs(combatList),
+                totalPlayers: Array.isArray(playerList) ? playerList.length : 0,
+                activeCombatName: 'Importado',
+              },
+              data: {
+                combats: combatList,
+                players: playerList,
+                conditions: st['gurps_combat_master_conditions_v2'] || [],
+                activeCombatId: st['gurps_combat_master_active_combat_id_v1'] || null,
+                deletedCombatIds: st['gurps_combat_master_deleted_v1'] || [],
+                editors: st['gurps_combat_master_editors_v1'] || [],
+              },
+            },
+            ...snapshots,
+          ]);
+          showToast('Arquivo adicionado à lista de backups com sucesso!');
+          return;
+        }
+
+        if (parsed && !Array.isArray(parsed) && (parsed.combats || parsed.gurps_combat_master_data_v2)) {
+          const combatList = parsed.combats || parsed.gurps_combat_master_data_v2 || [];
+          const playerList = parsed.players || parsed.gurps_fixed_personagens_v1 || [];
+          persistSnapshots([
+            {
+              id: newSnapshotId(),
+              name: `Combates Importados - ${now.toLocaleDateString('pt-BR')}`,
+              description: 'Importado de arquivo JSON',
+              createdAt: now.toISOString(),
+              formattedDate,
+              summary: {
+                totalCombats: Array.isArray(combatList) ? combatList.length : 0,
+                totalNpcs: countNpcs(combatList),
+                totalPlayers: Array.isArray(playerList) ? playerList.length : 0,
+                activeCombatName: 'Importado',
+              },
+              data: { combats: combatList, players: playerList, activeCombatId: null },
+            },
+            ...snapshots,
+          ]);
+          showToast('Backup adicionado à lista de snapshots!');
+          return;
+        }
 
         if (Array.isArray(parsed)) {
           const valid = parsed.filter((item) => item && item.id && item.data && item.data.combats);
           if (valid.length === 0) throw new Error('Arquivo JSON não contém retratos válidos.');
           persistSnapshots([...valid, ...snapshots]);
           showToast(`${valid.length} retratos importados com sucesso!`);
-        } else if (parsed && parsed.id && parsed.data && parsed.data.combats) {
+          return;
+        }
+
+        if (parsed?.id && parsed?.data?.combats) {
           persistSnapshots([parsed, ...snapshots]);
           showToast(`Retrato "${parsed.name}" importado com sucesso!`);
-        } else {
-          throw new Error('Formato de arquivo incompatível.');
+          return;
         }
+
+        throw new Error('Formato não reconhecido');
       } catch (err: any) {
-        hubAlert('Erro ao importar arquivo: ' + (err.message || 'JSON inválido'));
+        hubAlert('Erro ao importar: ' + (err?.message || 'Arquivo corrompido'));
       }
     };
+    reader.readAsText(file, 'UTF-8');
     e.target.value = '';
   };
 

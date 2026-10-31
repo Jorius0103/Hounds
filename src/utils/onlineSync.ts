@@ -1,4 +1,4 @@
-import mqtt, { MqttClient } from 'mqtt';
+import { connectHubBus, HubBusClient } from './hubBus';
 import { Combat, ConditionDefinition, UserAccount, NPC, ActionLogEntry } from '../types/rpg';
 
 export interface RemoteSyncPayload {
@@ -38,18 +38,11 @@ export type SyncStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
 
 const CLIENT_ID = `gurps-${Math.random().toString(36).slice(2, 9)}-${Date.now()}`;
 
-// List of public SSL WebSocket brokers for high availability and cross-browser reliability
-const BROKER_URLS = [
-  'wss://broker.emqx.io:8084/mqtt',      // EMQX public broker (very reliable on port 8084)
-  'wss://broker.hivemq.com:8884/mqtt',   // HiveMQ public broker (fallback on port 8884)
-  'wss://test.mosquitto.org:8081/mqtt',  // Mosquitto public broker (port 8081 SSL)
-];
-
 class OnlineSyncService {
-  private client: MqttClient | null = null;
+  // Canal do hub com a interface do MQTT (src/utils/hubBus.ts): nada vai para brokers públicos
+  private client: HubBusClient | null = null;
   private currentRoom: string = 'THE-HOUNDS';
   private status: SyncStatus = 'disconnected';
-  private brokerIndex: number = 0;
   private statusListeners: ((status: SyncStatus) => void)[] = [];
   private messageListeners: ((payload: RemoteSyncPayload) => void)[] = [];
   private lastSentHash: string = '';
@@ -117,16 +110,9 @@ class OnlineSyncService {
   private startWatchdog() {
     if (this.watchdogTimer) clearInterval(this.watchdogTimer);
     this.watchdogTimer = setInterval(() => {
-      const now = Date.now();
-      // Se não estiver conectado ou client nulo, reconecta
-      if (this.status !== 'connected' || !this.client || !(this.client as any).connected) {
-        this.connect();
-        return;
-      }
-      // Se passou mais de 45 segundos sem nenhuma mensagem recebida do broker (possível conexão zumbi)
-      if (now - this.lastMessageTime > 45000) {
-        console.warn('[OnlineSync] Watchdog: Conexão inativa há mais de 45s. Forçando reconexão e re-sync.');
-        this.brokerIndex = (this.brokerIndex + 1) % BROKER_URLS.length;
+      // Se não estiver conectado (por exemplo, o hub ainda não tinha o canal pronto), tenta de novo.
+      // A conexão em si é do hub; não há conexão zumbi para derrubar por falta de mensagens.
+      if (this.status !== 'connected' || !this.client || !this.client.connected) {
         this.connect();
       }
     }, 10000);
@@ -207,17 +193,10 @@ class OnlineSyncService {
 
     this.setStatus('connecting');
 
-    const brokerUrl = BROKER_URLS[this.brokerIndex % BROKER_URLS.length];
     const topic = `gurps_rpg_sync_v2/${this.currentRoom}`;
 
     try {
-      this.client = mqtt.connect(brokerUrl, {
-        clientId: CLIENT_ID,
-        clean: true,
-        connectTimeout: 7000,
-        reconnectPeriod: 4000,
-        keepalive: 30,
-      });
+      this.client = connectHubBus();
 
       this.client.on('connect', () => {
         this.setStatus('connected');
@@ -245,10 +224,8 @@ class OnlineSyncService {
       });
 
       this.client.on('error', (err) => {
-        console.warn(`MQTT connection error with broker ${brokerUrl}:`, err);
+        console.warn('Sincronização pelo hub indisponível:', err);
         this.setStatus('error');
-        // Switch to alternative broker on next retry
-        this.brokerIndex = (this.brokerIndex + 1) % BROKER_URLS.length;
       });
 
       this.client.on('message', (receivedTopic, message) => {
