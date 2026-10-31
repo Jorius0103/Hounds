@@ -1031,9 +1031,8 @@ export default function App() {
             );
           }
 
-          if (!cId) {
-            setSessionEvents((prev) => [entry, ...(prev || []).filter((e) => e.id !== entry.id)]);
-          }
+          // SEMPRE adiciona ao log global da Mesa
+          setSessionEvents((prev) => [entry, ...(prev || []).filter((e) => e.id !== entry.id)]);
 
           setCombats((prev) =>
             prev.map((c) => {
@@ -1544,37 +1543,22 @@ export default function App() {
       try {
         const bus = (window as any).parent?.hubMesaBus;
         if (bus && typeof bus.getRecentRolls === 'function') {
-          bus.getRecentRolls(stateRef.current.activeCombatId, 60).then((rows: any[]) => {
+          bus.getRecentRolls(null, 60).then((rows: any[]) => {
             if (!Array.isArray(rows) || rows.length === 0) return;
-            let combatsChanged = false;
-            const currentCombats = stateRef.current.combats;
             const isMestre = currentUser?.role === 'mestre' || !currentUser;
-
-            const newCombats = currentCombats.map((cb) => {
-              const cbEvents = cb.events || [];
-              const missingEvents: any[] = [];
-              rows.forEach((r) => {
-                const log = r.dados_completos?.logEntry;
-                if (!log) return;
-                if (log.isSecret && !isMestre) return;
-                const matchCb = !log.combatId || log.combatId === cb.id;
-                if (matchCb && !cbEvents.some((e: any) => e.id === log.id)) {
-                  missingEvents.push(log);
-                }
-              });
-              if (missingEvents.length > 0) {
-                combatsChanged = true;
-                return {
-                  ...cb,
-                  events: [...missingEvents, ...cbEvents],
-                };
-              }
-              return cb;
+            const missingSessionEvents: any[] = [];
+            rows.forEach((r) => {
+              const log = r.dados_completos?.logEntry;
+              if (!log) return;
+              if (log.isSecret && !isMestre) return;
+              missingSessionEvents.push(log);
             });
-
-            if (combatsChanged) {
-              setCombats(newCombats);
-              stateRef.current.combats = newCombats;
+            if (missingSessionEvents.length > 0) {
+              setSessionEvents((prev) => {
+                const existingIds = new Set((prev || []).map((e) => e.id));
+                const toAdd = missingSessionEvents.filter((e) => !existingIds.has(e.id));
+                return toAdd.length > 0 ? [...toAdd, ...(prev || [])] : prev;
+              });
             }
           }).catch(() => {});
         }
@@ -1644,9 +1628,8 @@ export default function App() {
               );
             }
 
-            if (!cId) {
-              setSessionEvents((prev) => [entry, ...(prev || []).filter((e) => e.id !== entry.id)]);
-            }
+            // SEMPRE adiciona ao log global da Mesa
+            setSessionEvents((prev) => [entry, ...(prev || []).filter((e) => e.id !== entry.id)]);
 
             setCombats((prev) =>
               prev.map((c) => {
@@ -2305,9 +2288,6 @@ export default function App() {
       if (snap.data.deletedCombatIds) {
         localStorage.setItem(DELETED_KEY, JSON.stringify(snap.data.deletedCombatIds));
       }
-      if (snap.data.editors) {
-        localStorage.setItem(EDITORS_STORAGE_KEY, JSON.stringify(snap.data.editors));
-      }
     } catch (e) {}
 
     broadcastSync(
@@ -2664,13 +2644,15 @@ export default function App() {
           }
           return combatNpcsChanged ? { ...c, npcs: nextNpcs } : c;
         });
+        // SEMPRE adiciona ao log global da Mesa (sessionEvents)
+        setSessionEvents((prev) => [logEntry, ...(prev || []).filter((e) => e.id !== logEntry.id)]);
         setCombats(nextCombats);
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
         } catch (e) {}
         broadcastSync(nextCombats, undefined, undefined, undefined, updatedPlayers);
       } else {
-        setSessionEvents((prev) => [logEntry, ...prev.filter((e) => e.id !== logEntry.id)]);
+        setSessionEvents((prev) => [logEntry, ...(prev || []).filter((e) => e.id !== logEntry.id)]);
         broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
       }
     }
@@ -3904,23 +3886,16 @@ export default function App() {
       });
     }
 
+    // SEMPRE adiciona ao log global da Mesa (sessionEvents)
+    setSessionEvents((prev) => [newEntry, ...prev.filter((e) => e.id !== newEntry.id)]);
+
     if (activeCombat) {
-      // Vincula SEMPRE aos eventos gerais do combate para que todos os rolamentos de todos os usuários apareçam no log
+      // Vincula também aos eventos do combate para histórico e compatibilidade
       const updatedCombats = combats.map((c) =>
         c.id === activeCombat.id ? { ...c, events: [newEntry, ...(c.events || []).filter((e) => e.id !== newEntry.id)] } : c
       );
       setCombats(updatedCombats);
       broadcastSync(updatedCombats);
-    } else {
-      // Vincula aos eventos gerais da sessão (quando em Modo Sessão livre)
-      setSessionEvents((prev) => [newEntry, ...prev.filter((e) => e.id !== newEntry.id)]);
-      try {
-        broadcastChannelRef.current?.postMessage({
-          type: 'SYNC_SESSION_EVENT',
-          logEntry: newEntry,
-          sourceId: onlineSyncService.getClientId(),
-        });
-      } catch (e) {}
     }
 
     const rollData: DiceRollResult = {
@@ -3998,6 +3973,10 @@ export default function App() {
       history: [],
       updatedAt: now,
     }));
+    setSessionEvents([]);
+    try {
+      localStorage.removeItem('gurps_session_events_v1');
+    } catch (e) {}
     stateRef.current.combats = updatedCombats;
     stateRef.current.players = updatedPlayers;
     setCombats(updatedCombats);
@@ -4444,6 +4423,10 @@ export default function App() {
       return c;
     });
 
+    setSessionEvents((prev) =>
+      (prev || []).map((e) => (e.id === entryId ? { ...e, comment } : e))
+    );
+
     if (plChanged) {
       stateRef.current.players = nextPlayers;
       setPlayers(nextPlayers);
@@ -4583,6 +4566,7 @@ export default function App() {
     }
 
     // 4. Aplica atualizações de estado síncronas e assíncronas
+    setSessionEvents((prev) => (prev || []).filter((e) => e.id !== entryId));
     stateRef.current.players = nextPlayers;
     stateRef.current.combats = nextCombats;
     if (playersChanged) setPlayers(nextPlayers);

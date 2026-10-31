@@ -189,10 +189,13 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     } catch {}
   };
 
-  // Dados atuais da Mesa para um retrato: combates completos, personagens, condições, excluídos e editores
+  // Dados atuais da Mesa para um retrato: combates completos, personagens, condições e excluídos (sem dados globais como editores ou logs de combates)
   const captureCurrentData = (): { data: CombatSnapshotData; summary: CombatSnapshotSummary } => {
     const allCombats: any[] = getFullCombats?.() || readStoredJson('gurps_combat_master_data_v2') || combats || [];
-    const realCombats = allCombats.filter(isRealCombat);
+    const realCombats = allCombats.filter(isRealCombat).map((c) => {
+      const { events, ...rest } = c;
+      return { ...rest, events: [] };
+    });
     const currentPlayers: any[] = readStoredJson('gurps_fixed_personagens_v1') || players || [];
     const currentActiveId: string | null = readStoredJson('gurps_combat_master_active_combat_id_v1') || activeCombatId;
     const totalNpcs = realCombats.reduce((sum, c) => sum + (Array.isArray(c.npcs) ? c.npcs.length : 0), 0);
@@ -203,7 +206,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
         conditions: readStoredJson('gurps_combat_master_conditions_v2') || [],
         activeCombatId: currentActiveId,
         deletedCombatIds: readStoredJson('gurps_combat_master_deleted_v1') || [],
-        editors: readStoredJson('gurps_combat_master_editors_v1') || [],
       },
       summary: {
         totalCombats: realCombats.length,
