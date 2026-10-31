@@ -431,6 +431,18 @@ export default function App() {
     } catch (e) {}
   }, [activeCombatId]);
 
+  // Mantém currentUser sincronizado no hubUser (window e window.parent) para permissões e sync realtime
+  useEffect(() => {
+    if (currentUser && typeof window !== 'undefined') {
+      (window as any).hubUser = currentUser;
+      try {
+        if ((window as any).parent && (window as any).parent !== window) {
+          (window as any).parent.hubUser = currentUser;
+        }
+      } catch (e) {}
+    }
+  }, [currentUser]);
+
   const activeCombat = activeCombatId ? combats.find((c) => c.id === activeCombatId) : undefined;
   const isNoCombat = !activeCombat || activeCombat.id === 'combat-vazio' || isEmptyCombat(activeCombat);
   // Rodada efetiva: no modo "Sem combate" todos os registros ficam na Rodada 0
@@ -1187,6 +1199,15 @@ export default function App() {
 
       if ((payload as any).type === 'SYNC_ACTIVE_COMBAT') {
         const targetId = (payload as any).activeCombatId !== undefined ? (payload as any).activeCombatId : '';
+        let currentCombats = stateRef.current.combats;
+        if ((payload as any).combats && Array.isArray((payload as any).combats) && (payload as any).combats.length > 0) {
+          const res = mergeCombats(stateRef.current.combats, (payload as any).combats);
+          if (res.changed) {
+            currentCombats = res.merged;
+            stateRef.current.combats = res.merged;
+            setCombats(res.merged);
+          }
+        }
         stateRef.current.activeCombatId = targetId;
         setActiveCombatId(targetId);
         setIsHomeScreen(false);
@@ -1194,7 +1215,7 @@ export default function App() {
           localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(targetId));
         } catch (e) {}
         if (targetId) {
-          const newActiveCombat = stateRef.current.combats.find((c) => c.id === targetId);
+          const newActiveCombat = currentCombats.find((c) => c.id === targetId);
           if (newActiveCombat) {
             const myChar = newActiveCombat.npcs?.find(
               (n) =>
@@ -1203,6 +1224,13 @@ export default function App() {
                   n.ownerId === currentUser.id ||
                   n.name === currentUser.name ||
                   (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+            ) || (stateRef.current.players || []).find(
+              (p) =>
+                currentUser &&
+                (p.userId === currentUser.id ||
+                  p.ownerId === currentUser.id ||
+                  p.name === currentUser.name ||
+                  (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
             );
             if (myChar) {
               setSelectedNpcId(myChar.id);
@@ -1614,6 +1642,15 @@ export default function App() {
 
         if (event.data?.type === 'SYNC_ACTIVE_COMBAT') {
           const targetId = event.data.activeCombatId !== undefined ? event.data.activeCombatId : '';
+          let currentCombats = stateRef.current.combats;
+          if (event.data.combats && Array.isArray(event.data.combats) && event.data.combats.length > 0) {
+            const res = mergeCombats(stateRef.current.combats, event.data.combats);
+            if (res.changed) {
+              currentCombats = res.merged;
+              stateRef.current.combats = res.merged;
+              setCombats(res.merged);
+            }
+          }
           stateRef.current.activeCombatId = targetId;
           setActiveCombatId(targetId);
           setIsHomeScreen(false);
@@ -1621,7 +1658,7 @@ export default function App() {
             localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(targetId));
           } catch (e) {}
           if (targetId) {
-            const newActiveCombat = stateRef.current.combats.find((c) => c.id === targetId);
+            const newActiveCombat = currentCombats.find((c) => c.id === targetId);
             if (newActiveCombat) {
               const myChar = newActiveCombat.npcs?.find(
                 (n) =>
@@ -1630,6 +1667,13 @@ export default function App() {
                     n.ownerId === currentUser.id ||
                     n.name === currentUser.name ||
                     (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+              ) || (stateRef.current.players || []).find(
+                (p) =>
+                  currentUser &&
+                  (p.userId === currentUser.id ||
+                    p.ownerId === currentUser.id ||
+                    p.name === currentUser.name ||
+                    (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
               );
               if (myChar) {
                 setSelectedNpcId(myChar.id);
@@ -1760,6 +1804,7 @@ export default function App() {
       const syncMsg = {
         type: 'SYNC_ACTIVE_COMBAT' as const,
         activeCombatId: '',
+        combats: stateRef.current.combats,
         sourceId: onlineSyncService.getClientId(),
         timestamp: Date.now(),
       };
@@ -1771,7 +1816,7 @@ export default function App() {
         }
       } catch (e) {}
 
-      broadcastSync(undefined, undefined, undefined, '', undefined, undefined, true);
+      broadcastSync(stateRef.current.combats, undefined, undefined, '', undefined, undefined, true);
       return;
     }
 
@@ -1849,6 +1894,7 @@ export default function App() {
     const syncMsg = {
       type: 'SYNC_ACTIVE_COMBAT' as const,
       activeCombatId: id,
+      combats: updatedCombats,
       sourceId: onlineSyncService.getClientId(),
       timestamp: Date.now(),
     };
@@ -2810,6 +2856,10 @@ export default function App() {
     setCurrentUser(null);
     try {
       localStorage.removeItem('hounds_active_user');
+      if (typeof window !== 'undefined') {
+        (window as any).hubUser = null;
+        if ((window as any).parent) (window as any).parent.hubUser = null;
+      }
     } catch {}
     setLoginModalOpen(true);
   };
@@ -4643,6 +4693,10 @@ export default function App() {
           setCurrentUser(user);
           try {
             localStorage.setItem('hounds_active_user', JSON.stringify(user));
+            if (typeof window !== 'undefined') {
+              (window as any).hubUser = user;
+              if ((window as any).parent) (window as any).parent.hubUser = user;
+            }
           } catch {}
           setLoginModalOpen(false);
         }}

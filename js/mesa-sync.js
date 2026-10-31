@@ -314,8 +314,27 @@ var MesaSync = (function () {
       });
     });
   }
+  function getHubUser() {
+    if (window.hubUser) return window.hubUser;
+    try {
+      if (window.parent && window.parent.hubUser) return window.parent.hubUser;
+    } catch (e) {}
+    try {
+      var saved = localStorage.getItem('hounds_active_user');
+      if (saved) {
+        var parsed = JSON.parse(saved);
+        if (parsed && (parsed.id || parsed.name)) {
+          window.hubUser = parsed;
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
   function canSave() {
-    var u = window.hubUser; if (!u || !W.store || !canWrite()) return false;
+    var u = getHubUser();
+    if (!u) return false;
+    if (W.store && typeof W.store.canWrite === 'function' && !W.store.canWrite()) return false;
     if (u.role === 'mestre') return true;
     // Jogador por padrão tem permissão de espectador (somente leitura)
     // Só pode salvar no banco se tiver recebido permissão de edição do Mestre
@@ -347,7 +366,8 @@ var MesaSync = (function () {
   function write(st, rev, json, covers) {
     json = json || JSON.stringify(st);
     var prev = head && head.n > 0 ? head.rev : null, t = now(), size = W.store.chunkSize || CH;
-    var meta = { rev: rev, by: (window.hubUser && window.hubUser.id) || null, createdAt: (head && head.createdAt) || t, updatedAt: t };
+    var u = getHubUser();
+    var meta = { rev: rev, by: (u && u.id) || null, createdAt: (head && head.createdAt) || t, updatedAt: t };
     if (covers && covers.length) meta.covers = covers;
     var w;
     if (json.length <= (W.store.inlineMax || 0)) {
@@ -440,9 +460,22 @@ var MesaSync = (function () {
         rt().on('mesa-active-combat', function (m) {
           if (m && m.activeCombatId !== undefined) {
             var newId = m.activeCombatId || '';
-            if (state) state = Object.assign({}, state, { activeCombatId: newId });
+            if (m.combats && Array.isArray(m.combats)) {
+              m.combats.forEach(function (c) {
+                if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+                  combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
+                }
+              });
+              try { localStorage.setItem(MESA_LS.combats, JSON.stringify(m.combats)); } catch (e) {}
+            }
+            if (state) {
+              state = Object.assign({}, state, { activeCombatId: newId });
+              if (m.combats && Array.isArray(m.combats)) {
+                state.combats = m.combats;
+              }
+            }
             try { localStorage.setItem(MESA_LS.activeCombatId, JSON.stringify(newId)); } catch (e) {}
-            if (loaded()) push({ type: 'SYNC_ACTIVE_COMBAT', activeCombatId: newId, timestamp: m.ts || Date.now() });
+            if (loaded()) push({ type: 'SYNC_ACTIVE_COMBAT', activeCombatId: newId, combats: m.combats, timestamp: m.ts || Date.now() });
           }
         });
         rt().on('mesa-snapshots', function (m) {
@@ -459,7 +492,7 @@ var MesaSync = (function () {
           }
         });
         var sendHubPresence = function () {
-          var u = window.hubUser;
+          var u = getHubUser();
           if (rt()) {
             var unm = (u && u.name) || 'Visitante-' + cid.slice(-4);
             rt().send('mesa-presence', { userName: unm, role: (u && u.role) || 'jogador', ts: Date.now() });
@@ -476,7 +509,8 @@ var MesaSync = (function () {
         if (state) { toLocal(state); return; }
         if (head) return;
         var loc = localState();
-        if (loc && window.hubUser && window.hubUser.role === 'mestre') return save({ st: loc, rev: newRev() }).catch(function () {});
+        var u = getHubUser();
+        if (loc && u && u.role === 'mestre') return save({ st: loc, rev: newRev() }).catch(function () {});
       });
     },
     publish: function (str) {
@@ -543,9 +577,20 @@ var MesaSync = (function () {
       if (m.type === 'SYNC_ACTIVE_COMBAT' && m.activeCombatId !== undefined) {
         var newId = m.activeCombatId || '';
         try { localStorage.setItem(MESA_LS.activeCombatId, JSON.stringify(newId)); } catch (e) {}
-        if (rt() && canSave()) rt().send('mesa-active-combat', { activeCombatId: newId, ts: m.timestamp || Date.now() });
+        if (m.combats && Array.isArray(m.combats)) {
+          m.combats.forEach(function (c) {
+            if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+              combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
+            }
+          });
+          try { localStorage.setItem(MESA_LS.combats, JSON.stringify(m.combats)); } catch (e) {}
+        }
+        if (rt() && canSave()) rt().send('mesa-active-combat', { activeCombatId: newId, combats: m.combats, ts: m.timestamp || Date.now() });
         var curStAc = state || localState() || {};
         curStAc.activeCombatId = newId;
+        if (m.combats && Array.isArray(m.combats)) {
+          curStAc.combats = m.combats;
+        }
         state = curStAc;
         pending = { st: state, rev: newRev() };
         if (!timer) timer = setTimeout(flush, delay());
