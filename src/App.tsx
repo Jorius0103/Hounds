@@ -23,7 +23,7 @@ import { SystemLogModal } from './components/SystemLogModal';
 import { PassDayModal } from './components/PassDayModal';
 import { DiceRollOverlay, DiceRollResult } from './components/DiceRollOverlay';
 import { systemLogger } from './utils/systemLogger';
-import { audioStreamSync } from './utils/audioStreamSync';
+import { hubAudio } from './utils/hubAudio';
 import { Swords, Plus, EyeOff, Search } from 'lucide-react';
 import { hubAlert } from './utils/hubDialog';
 
@@ -949,7 +949,7 @@ export default function App() {
   // Connect online sync on mount
   useEffect(() => {
     onlineSyncService.connect();
-    audioStreamSync.init(onlineSyncService.getClientId(), (payload) => {
+    hubAudio().init(onlineSyncService.getClientId(), (payload) => {
       onlineSyncService.sendPayloadImmediate(payload as any);
     });
 
@@ -962,7 +962,7 @@ export default function App() {
       if ((payload as any).authorName) markUserOnline((payload as any).authorName);
       if ((payload as any).type === 'PRESENCE_PING') return;
       if ((payload as any).type?.startsWith('AUDIO_STREAM_') || (payload as any).type?.startsWith('RTC_')) {
-        audioStreamSync.handleSignalMessage(payload);
+        hubAudio().handleSignalMessage(payload);
         return;
       }
 

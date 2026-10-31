@@ -3,7 +3,7 @@ import { Combat, UserAccount } from '../types/rpg';
 import { SyncStatus } from '../utils/onlineSync';
 import { Settings, Plus, EyeOff, Map, Columns, FileText, ShieldCheck, Eye, Users, LayoutGrid, Dices, Sun, Volume2, VolumeX, Radio, Square } from 'lucide-react';
 import { DicePickerModal } from './DicePickerModal';
-import { audioStreamSync, AudioStreamState } from '../utils/audioStreamSync';
+import { hubAudio, AudioStreamState } from '../utils/hubAudio';
 
 export type ViewMode = 'sheets' | 'tactical' | 'split';
 
@@ -58,7 +58,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   const [dicePickerOpen, setDicePickerOpen] = useState(false);
   const [dicePickerCoords, setDicePickerCoords] = useState<{ top: number; right: number } | null>(null);
   const diceButtonRef = useRef<HTMLButtonElement>(null);
-  const [audioState, setAudioState] = useState<AudioStreamState>(() => audioStreamSync.getState());
+  const [audioState, setAudioState] = useState<AudioStreamState>(() => hubAudio().getState());
 
   const handleToggleDicePicker = () => {
     if (!dicePickerOpen && diceButtonRef.current) {
@@ -74,7 +74,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   };
 
   useEffect(() => {
-    return audioStreamSync.subscribe((s) => setAudioState(s));
+    return hubAudio().subscribe((s) => setAudioState(s));
   }, []);
   // Filtra combates ativos para exibição na barra principal (excluindo combat-vazio dummy)
   const activeCombats = useMemo(() => {
@@ -378,59 +378,38 @@ export const TopNav: React.FC<TopNavProps> = ({
 
         {/* Zone 3: Bloco de Trilha Sonora / Transmissão de Áudio */}
         <div className="flex items-center gap-2.5 px-3 py-1 bg-slate-900/95 border border-slate-750 rounded-lg shadow-inner shrink-0">
-          {/* Botão de Ouvir Trilha quando há transmissão ativa e o navegador ainda não está tocando o áudio */}
-          {audioState.hasActiveBroadcast &&
-            !audioState.isBroadcasting &&
-            (!audioState.isPlaying || audioState.needsInteraction) &&
-            !audioState.isMuted && (
-              <button
-                type="button"
-                onClick={() => audioStreamSync.unlockAudio()}
-                className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded shadow-md animate-pulse cursor-pointer shrink-0 transition-transform active:scale-95"
-                title="Clique para ativar e ouvir a trilha sonora no seu navegador"
-              >
-                <span>▶ Ouvir Trilha</span>
-              </button>
-            )}
-
-          {/* Indicador de Transmissão com Nome do Streamer e status ao vivo */}
-          {audioState.hasActiveBroadcast && (
+          {/* Ouvir Trilha: só quando o navegador bloqueou a reprodução automática */}
+          {audioState.needsInteraction && !audioState.isBroadcasting && (
             <button
               type="button"
-              onClick={() => {
-                if (!audioState.isBroadcasting) {
-                  audioStreamSync.unlockAudio();
-                }
-              }}
-              className="flex items-center gap-1.5 max-w-[120px] sm:max-w-[160px] truncate bg-transparent border-0 p-0 text-left cursor-pointer group"
-              title={
-                audioState.isBroadcasting
-                  ? `Você está transmitindo: ${audioState.trackTitle || 'Áudio da aba'}`
-                  : `Transmitindo: ${audioState.broadcasterName || 'Mestre'}${
-                      audioState.trackTitle ? ` • ${audioState.trackTitle}` : ''
-                    } (Clique para reconectar áudio se necessário)`
-              }
+              onClick={() => hubAudio().unlockAudio()}
+              className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded shadow-md animate-pulse cursor-pointer shrink-0 transition-transform active:scale-95"
+              title="Clique para habilitar a reprodução do áudio no seu navegador"
+            >
+              <span>▶ Ouvir Trilha</span>
+            </button>
+          )}
+
+          {/* Indicador de transmissão com o nome de quem transmite */}
+          {audioState.hasActiveBroadcast && (
+            <div
+              className="flex items-center gap-1.5 max-w-[120px] sm:max-w-[160px] truncate"
+              title={`Transmitindo: ${audioState.broadcasterName || 'Mestre'}`}
             >
               <span className="flex h-2 w-2 relative shrink-0">
-                {audioState.isPlaying ? (
-                  <>
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </>
-                ) : (
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 animate-pulse"></span>
-                )}
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="text-[11px] font-bold text-amber-300 truncate font-mono group-hover:underline">
+              <span className="text-[11px] font-bold text-amber-300 truncate font-mono">
                 {audioState.broadcasterName || 'Mestre'}
               </span>
-            </button>
+            </div>
           )}
 
           {/* Botão de Mute */}
           <button
             type="button"
-            onClick={() => audioStreamSync.toggleMute()}
+            onClick={() => hubAudio().toggleMute()}
             className={`p-1 rounded-md transition-all cursor-pointer shrink-0 ${
               audioState.isMuted
                 ? 'text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/50'
@@ -448,7 +427,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               min={0}
               max={100}
               value={audioState.isMuted ? 0 : audioState.volume}
-              onChange={(e) => audioStreamSync.setVolume(Number(e.target.value))}
+              onChange={(e) => hubAudio().setVolume(Number(e.target.value))}
               className="w-16 sm:w-24 h-1.5 bg-slate-750 rounded-lg appearance-none cursor-pointer accent-amber-500"
               style={{ width: '80px' }}
               title={`Volume: ${audioState.isMuted ? 'Mutado' : `${audioState.volume}%`}`}
@@ -462,7 +441,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           {audioState.isBroadcasting ? (
             <button
               type="button"
-              onClick={() => audioStreamSync.stopBroadcasting()}
+              onClick={() => hubAudio().stopBroadcasting()}
               className="flex items-center gap-1 px-2 py-0.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-[11px] font-bold rounded border border-rose-700/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0"
               title="Encerrar transmissão da trilha sonora"
             >
@@ -472,7 +451,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           ) : (
             <button
               type="button"
-              onClick={() => audioStreamSync.startBroadcasting(currentUser?.name || (isMestre ? 'Mestre' : 'Jogador'))}
+              onClick={() => hubAudio().startBroadcasting(currentUser?.name || (isMestre ? 'Mestre' : 'Jogador'))}
               className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-[11px] font-bold rounded border border-slate-700 hover:border-emerald-600/60 transition-all cursor-pointer shadow-xs ml-0.5 shrink-0"
               title="Transmitir áudio de uma aba do Spotify, YouTube ou do sistema para todos os jogadores"
             >
