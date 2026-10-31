@@ -65,12 +65,11 @@
   function ensureAudio() {
     if (typeof document === 'undefined') return null;
     if (!audioElement) {
-      var el = document.getElementById('gurps-stream-audio-player');
+      var el = /** @type {HTMLAudioElement} */ (document.getElementById('gurps-stream-audio-player'));
       if (!el) {
         el = document.createElement('audio');
         el.id = 'gurps-stream-audio-player';
         el.autoplay = true;
-        el.playsInline = true;
         el.style.display = 'none';
         document.body.appendChild(el);
       }

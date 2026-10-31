@@ -17,7 +17,21 @@ interface Window {
   hubMesaSource(): Promise<string>;
   hubMesaPrepare(): Promise<unknown>;
   hubMesaFlush(): unknown;
-  hubMesaBus: { publish: (msg: string) => void; subscribe: (fn: (msg: string) => void) => () => void };
+  hubMesaBus: {
+    publish: (msg: string) => void;
+    subscribe: (fn: (msg: string) => void) => () => void;
+    /** Rolagens de dados guardadas no banco (Supabase), para o log da Mesa. */
+    getRecentRolls(combatId: string, limit?: number): Promise<any[]>;
+    saveRoll(rollData: any, logEntry?: any): Promise<unknown>;
+  };
+  /** Quem deu sinal de vida na Mesa: { nome em minúsculas: horário } (js/mesa-sync.js). */
+  hubOnlineUsers?: Record<string, number>;
+  /** Trilha sonora compartilhada pelo Mestre (js/audio-stream-sync.js). */
+  audioStreamSync: any;
+  /** Os dados 3D (js/dice-roller-3d.js); a Mesa, no iframe, também os lê e escreve em window.parent. */
+  DiceRoller3D: any;
+  /** three.js; a Mesa, no iframe, copia o da janela do hub (window.parent.THREE). */
+  THREE: any;
   /** Na janela da Mesa (iframe): reabre a escolha de jogo. */
   __mesaOpenPicker?(): void;
   /** firebase-config.js */

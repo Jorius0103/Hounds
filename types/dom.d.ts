@@ -23,3 +23,9 @@ interface EventTarget {
   id?: string;
   checked?: boolean;
 }
+
+// Opção do Chrome para não tocar de volta, no próprio computador, o áudio capturado da aba
+// (js/audio-stream-sync.js); ainda não está nos tipos do TypeScript.
+interface MediaTrackConstraintSet {
+  suppressLocalAudioPlayback?: ConstrainBoolean;
+}

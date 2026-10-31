@@ -309,7 +309,7 @@ function gearWhere(g, id) {
    and packs not in use are free: the same line can be in several. Nothing is blocked: the sections
    and the lists warn (gearConflictsHtml, gearWarn), and a save that makes a new one says so. */
 function gearPlaces(g, bodies, packs, homes) {
-  var by = gearIndex(g.equip), out = [];
+  var by = gearIndex(g.equip), out = /** @type {{ key: string, kind: string, label: string, ids: string[], home?: SheetHome }[]} */ ([]);
   var body = (bodies || g.bodies).filter(function (b) { return b.active; })[0], pack = (packs || g.packs).filter(function (x) { return x.inUse; })[0];
   function ids(u) { return Object.keys(u).filter(function (id) { return by[id] && u[id] > 0; }); }
   if (body) out.push({ key: 'b:' + body.id, kind: 'body', label: 'no corpo em uso “' + body.name + '”', ids: ids(bodyUnits(body, by)) });
