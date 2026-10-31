@@ -611,7 +611,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
                 if (isSelected) {
                   cardColorClasses =
-                    'bg-blue-950/50 border-blue-500 text-blue-100 ring-2 ring-blue-400 shadow-md shadow-blue-950/50';
+                    'bg-blue-950/60 border-blue-500 text-blue-100 shadow-md shadow-blue-950/50 outline-none';
                   nameColor = 'text-blue-100 font-black';
                 } else if (isDeadChar) {
                   cardColorClasses =
@@ -640,6 +640,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                     style={{
                       borderWidth: '2px',
                       borderStyle: 'solid',
+                      outline: 'none',
                       borderColor: isSelected
                         ? '#3b82f6'
                         : isDeadChar
@@ -647,6 +648,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         : hasAlerts
                         ? '#f59e0b'
                         : '#059669',
+                      boxShadow: isSelected ? '0 0 10px rgba(59, 130, 246, 0.45)' : undefined,
                       background: isSelected
                         ? 'linear-gradient(135deg, rgba(30, 58, 138, 0.50) 0%, rgba(15, 23, 42, 0.95) 100%)'
                         : isDeadChar
@@ -657,7 +659,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                       width: 'calc((100% - 50px) / 9)',
                       minWidth: '150px',
                     }}
-                    className={`group relative flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all border-2 shrink-0 ${cardColorClasses} ${
+                    className={`group relative flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all border-2 shrink-0 outline-none focus:outline-none ${cardColorClasses} ${
                       canDrag ? 'cursor-grab active:cursor-grabbing hover:brightness-110' : 'cursor-pointer'
                     } ${draggedId === npc.id ? 'opacity-35 scale-95' : ''} ${
                       dragOverId === npc.id ? 'ring-2 ring-purple-400 border-purple-400 bg-purple-950/60 shadow-lg' : ''
