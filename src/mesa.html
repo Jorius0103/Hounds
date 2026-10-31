@@ -1,0 +1,23 @@
+<!doctype html>
+<!--
+  Entrada da Mesa de Combate para o build (npm run build:mesa → dist/mesa.html).
+  O hub carrega a Mesa num iframe (js/mesa-frame.js), então os caminhos js/... são da raiz do site.
+  three.js, o rolador de dados 3D e o áudio ficam fora do bundle: o hub também os usa, e o
+  último script reaproveita o THREE e o DiceRoller3D que o hub já carregou.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="js/three.min.js"></script>
+<script src="js/dice-roller-3d.js?v=20261021_1300"></script>
+<script src="js/audio-stream-sync.js?v=20261022_1"></script>
+<script>if(typeof window.THREE==="undefined"&&window.parent&&window.parent.THREE)window.THREE=window.parent.THREE;if(typeof window.DiceRoller3D==="undefined"&&window.parent&&window.parent.DiceRoller3D)window.DiceRoller3D=window.parent.DiceRoller3D;</script>
+<title>Mesa de RPG</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased font-sans">
+<div id="root"></div>
+<script type="module" src="./main.tsx"></script>
+</body>
+</html>
