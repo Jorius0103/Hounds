@@ -1148,6 +1148,9 @@ export default function App() {
             nextPlayers = res.merged;
             playersChanged = true;
           }
+        } else if (incomingNpc.characterType === 'player') {
+          nextPlayers = [...nextPlayers, incomingNpc];
+          playersChanged = true;
         }
 
         let nextCombats = stateRef.current.combats;
@@ -1236,6 +1239,9 @@ export default function App() {
         const incomingCombats: Combat[] = Array.isArray((payload as any).combats) ? [...(payload as any).combats] : [];
         if ((payload as any).activeCombat && (payload as any).activeCombat.id) {
           const ac = (payload as any).activeCombat;
+          if (Array.isArray(ac.npcs) && ac.npcs.length > 0) {
+            combatsPoolRef.current[ac.id] = { npcs: ac.npcs, events: ac.events || [] };
+          }
           const exIdx = incomingCombats.findIndex((c) => c.id === ac.id);
           if (exIdx >= 0) incomingCombats[exIdx] = { ...incomingCombats[exIdx], ...ac };
           else incomingCombats.push(ac);
@@ -1838,6 +1844,9 @@ export default function App() {
           const incomingCombats: Combat[] = Array.isArray(event.data.combats) ? [...event.data.combats] : [];
           if (event.data.activeCombat && event.data.activeCombat.id) {
             const ac = event.data.activeCombat;
+            if (Array.isArray(ac.npcs) && ac.npcs.length > 0) {
+              combatsPoolRef.current[ac.id] = { npcs: ac.npcs, events: ac.events || [] };
+            }
             const exIdx = incomingCombats.findIndex((c) => c.id === ac.id);
             if (exIdx >= 0) incomingCombats[exIdx] = { ...incomingCombats[exIdx], ...ac };
             else incomingCombats.push(ac);
