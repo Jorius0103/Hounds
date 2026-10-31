@@ -250,48 +250,50 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
             });
           }
 
-          // 2. Pontos de Vida & 3. Pontos de Fadiga & Membros Inutilizados (Exclusivos para o Mestre ou Personagens)
-          if (isMaster || isPlayerChar) {
-            const hpWarns =
-              hpStatus.warningTexts && hpStatus.warningTexts.length > 0
-                ? hpStatus.warningTexts
-                : hpStatus.warningText
-                ? [hpStatus.warningText]
-                : [];
-            hpWarns.forEach((w, ix) => {
-              criticalAlerts.push({
-                id: `hp-warn-${ix}`,
-                text: `PV: ${w}`,
-                badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
-                icon: AlertTriangle,
-              });
+          // 2. Pontos de Vida & 3. Pontos de Fadiga & Membros Inutilizados (Visíveis para todos; em NPCs, apenas "Move e Esquiva pela metade!" é ocultado para jogadores)
+          const hpWarns =
+            hpStatus.warningTexts && hpStatus.warningTexts.length > 0
+              ? hpStatus.warningTexts
+              : hpStatus.warningText
+              ? [hpStatus.warningText]
+              : [];
+          hpWarns.forEach((w, ix) => {
+            // Regra: Não exibe apenas o "PV: Move e Esquiva pela metade!" em NPCs para jogadores; os outros alertas são exibidos
+            if (currentUserRole !== 'mestre' && !isPlayerChar && (w.includes('Move e Esquiva pela metade') || w.includes('Movimento e Esquiva'))) {
+              return;
+            }
+            criticalAlerts.push({
+              id: `hp-warn-${ix}`,
+              text: `PV: ${w}`,
+              badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
+              icon: AlertTriangle,
             });
+          });
 
-            const fpWarns =
-              fpStatus.warningTexts && fpStatus.warningTexts.length > 0
-                ? fpStatus.warningTexts
-                : fpStatus.warningText
-                ? [fpStatus.warningText]
-                : [];
-            fpWarns.forEach((w, ix) => {
-              criticalAlerts.push({
-                id: `fp-warn-${ix}`,
-                text: `FP: ${w}`,
-                badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-                icon: Zap,
-              });
+          const fpWarns =
+            fpStatus.warningTexts && fpStatus.warningTexts.length > 0
+              ? fpStatus.warningTexts
+              : fpStatus.warningText
+              ? [fpStatus.warningText]
+              : [];
+          fpWarns.forEach((w, ix) => {
+            criticalAlerts.push({
+              id: `fp-warn-${ix}`,
+              text: `FP: ${w}`,
+              badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
+              icon: Zap,
             });
+          });
 
-            getCrippledBodyParts(npc).forEach((p) => {
-              criticalAlerts.push({
-                id: `crippled-${p.part.key}`,
-                text: `${p.part.name}: ${p.statusLabel || 'Inutilizado'}`,
-                badgeClass: p.badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
-                tooltip: `${p.part.name} ${p.statusLabel || 'Inutilizado'}: Dano acumulado (${p.effectiveDmg}) atingiu o limiar da vida da parte (${p.maxHp} PV)!`,
-                icon: AlertTriangle,
-              });
+          getCrippledBodyParts(npc).forEach((p) => {
+            criticalAlerts.push({
+              id: `crippled-${p.part.key}`,
+              text: `${p.part.name}: ${p.statusLabel || 'Inutilizado'}`,
+              badgeClass: p.badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
+              tooltip: `${p.part.name} ${p.statusLabel || 'Inutilizado'}: Dano acumulado (${p.effectiveDmg}) atingiu o limiar da vida da parte (${p.maxHp} PV)!`,
+              icon: AlertTriangle,
             });
-          }
+          });
 
           if (npc.statusConditions && npc.statusConditions.length > 0) {
             npc.statusConditions.forEach((cond) => {

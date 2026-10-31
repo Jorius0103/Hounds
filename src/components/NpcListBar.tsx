@@ -583,16 +583,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const activeManeuver = getCombatManeuver(npc.combatManeuver);
 
                 const hasConditions = Boolean(npc.statusConditions && npc.statusConditions.length > 0);
-                const hasCriticalHpFp =
-                  (isPlayerChar || currentUserRole === 'mestre') &&
-                  Boolean(
-                    (hpStat.warningTexts || (hpStat.warningText ? [hpStat.warningText] : [])).length > 0 ||
-                    (fpStat.warningTexts && fpStat.warningTexts.length > 0)
-                  );
-                const hasCrippledParts =
-                  (isPlayerChar || currentUserRole === 'mestre')
-                    ? getCrippledBodyParts(npc).length > 0
-                    : false;
+                const hpWarnsFiltered = (hpStat.warningTexts || (hpStat.warningText ? [hpStat.warningText] : [])).filter(
+                  (w) => !(currentUserRole !== 'mestre' && !isPlayerChar && (w.includes('Move e Esquiva pela metade') || w.includes('Movimento e Esquiva')))
+                );
+                const hasCriticalHpFp = Boolean(
+                  hpWarnsFiltered.length > 0 ||
+                  (fpStat.warningTexts && fpStat.warningTexts.length > 0)
+                );
+                const hasCrippledParts = getCrippledBodyParts(npc).length > 0;
 
                 const hasAlerts = hasConditions || hasCriticalHpFp || hasCrippledParts;
                 const showDeadMarker = isDeadChar;

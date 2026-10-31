@@ -978,34 +978,39 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 2. Pontos de Vida & 3. Pontos de Fadiga (Exclusivos para o Mestre ou Personagens: jogadores não veem alertas de PV e Fadiga de NPCs)
-    if (isMaster || isPlayerChar) {
-      const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
-        ? hpStat.warningTexts
-        : (hpStat.warningText ? [hpStat.warningText] : []);
+    // 2. Pontos de Vida & 3. Pontos de Fadiga (visíveis para Mestre e Jogadores; em NPCs, apenas "Move e Esquiva pela metade!" é ocultado para jogadores)
+    const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
+      ? hpStat.warningTexts
+      : (hpStat.warningText ? [hpStat.warningText] : []);
 
-      hpWarnings.forEach((warn, idx) => {
-        alerts.push({
-          id: `hp-warn-${idx}`,
-          badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
-          text: `PV: ${warn}`,
-          icon: AlertTriangle,
-        });
+    const isPlayerChar = npc.characterType === 'player';
+    const isPlayerUser = !isMaster;
+
+    hpWarnings.forEach((warn, idx) => {
+      // Regra: Não exibe apenas o "PV: Move e Esquiva pela metade!" em NPCs para jogadores; os outros alertas são exibidos
+      if (isPlayerUser && !isPlayerChar && (warn.includes('Move e Esquiva pela metade') || warn.includes('Movimento e Esquiva'))) {
+        return;
+      }
+      alerts.push({
+        id: `hp-warn-${idx}`,
+        badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
+        text: `PV: ${warn}`,
+        icon: AlertTriangle,
       });
+    });
 
-      const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
-        ? fpStat.warningTexts
-        : (fpStat.warningText ? [fpStat.warningText] : []);
+    const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
+      ? fpStat.warningTexts
+      : (fpStat.warningText ? [fpStat.warningText] : []);
 
-      fpWarnings.forEach((warn, idx) => {
-        alerts.push({
-          id: `fp-warn-${idx}`,
-          badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-          text: `FP: ${warn}`,
-          icon: Zap,
-        });
+    fpWarnings.forEach((warn, idx) => {
+      alerts.push({
+        id: `fp-warn-${idx}`,
+        badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
+        text: `FP: ${warn}`,
+        icon: Zap,
       });
-    }
+    });
 
     // 4. Lista todas as Condições & Estados Críticos
     if (npc.statusConditions && npc.statusConditions.length > 0) {
@@ -1020,18 +1025,16 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     }
 
     // 5. Partes do Corpo Inutilizadas (quando o dano tomado na parte supera a vida total calculada)
-    if (isMaster || npc.characterType === 'player') {
-      const crippledParts = getCrippledBodyParts(npc);
-      crippledParts.forEach(({ part, effectiveDmg, maxHp, statusLabel, badgeClass }) => {
-        alerts.push({
-          id: `crippled-${part.key}`,
-          badgeClass: badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
-          text: `${part.name}: ${statusLabel}`,
-          tooltip: `${part.name} ${statusLabel}: Dano acumulado (${effectiveDmg}) em relação à vida da parte (${maxHp} PV)!`,
-          icon: AlertTriangle,
-        });
+    const crippledParts = getCrippledBodyParts(npc);
+    crippledParts.forEach(({ part, effectiveDmg, maxHp, statusLabel, badgeClass }) => {
+      alerts.push({
+        id: `crippled-${part.key}`,
+        badgeClass: badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
+        text: `${part.name}: ${statusLabel}`,
+        tooltip: `${part.name} ${statusLabel}: Dano acumulado (${effectiveDmg}) em relação à vida da parte (${maxHp} PV)!`,
+        icon: AlertTriangle,
       });
-    }
+    });
 
     if (alerts.length === 0) return null;
 
