@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Combat, UserRole, NPC, ActionLogEntry } from '../types/rpg';
 import { CombatLogCard } from './CombatLogCard';
-import { ScrollText, Trash2, Search, X, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ScrollText, Trash2, Search, X, SlidersHorizontal } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 
 const PAGE_SIZE = 10;
@@ -486,11 +486,10 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               type="button"
               disabled={safePage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, Math.min(p, totalPages) - 1))}
-              className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold flex items-center gap-0.5 transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold transition-colors"
               title="Página anterior"
             >
-              <ChevronLeft size={12} />
-              <span>Ant.</span>
+              « Ant.
             </button>
             <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-300 font-mono font-bold text-[10px]">
               Pág. {safePage}/{totalPages}
@@ -499,11 +498,10 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               type="button"
               disabled={safePage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, Math.min(p, totalPages) + 1))}
-              className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold flex items-center gap-0.5 transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold transition-colors"
               title="Próxima página"
             >
-              <span>Próx.</span>
-              <ChevronRight size={12} />
+              Próx. »
             </button>
           </div>
         </div>

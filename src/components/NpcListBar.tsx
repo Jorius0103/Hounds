@@ -3,7 +3,7 @@ import { NPC, MesaRole, UserAccount } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { CombatHomeScreen } from './CombatHomeScreen';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
-import { Eye, EyeOff, Skull, Plus, Minus, Users, Shield, UserPlus, Heart, X, Save, Check, ArrowUpDown, Crown, Zap, Sun } from 'lucide-react';
+import { Eye, EyeOff, Skull, Users, Shield, UserPlus, Heart, X, ArrowUpDown, Sun } from 'lucide-react';
 
 interface NpcListBarProps {
   npcs: NPC[];
@@ -405,15 +405,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               <button
                 type="button"
                 onClick={() => handleSelectSortMode('speed')}
-                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold transition-all text-[11px] cursor-pointer ${
                   sortMode === 'speed'
                     ? 'bg-amber-950/90 text-amber-300 shadow-sm border border-amber-500/50'
                     : 'text-slate-400 hover:text-amber-300 hover:bg-slate-900'
                 }`}
                 title="Ordenar Personagens por Speed (decrescente)"
               >
-                <Zap size={11} className={sortMode === 'speed' ? 'text-amber-400' : 'text-slate-400'} />
-                <span>Speed</span>
+                <span>⚡ Speed</span>
               </button>
               <button
                 type="button"
@@ -452,8 +451,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 }`}
                 title="Ordem definida pelo Mestre (clique para atualizar a ordem instantaneamente)"
               >
-                <Crown size={12} className={sortMode === 'mestre' ? 'text-purple-300' : 'text-purple-400'} />
-                <span>Mestre</span>
+                <span>👑 Mestre</span>
               </button>
 
               {/* Botão de Salvar a Ordem do Mestre */}
@@ -468,10 +466,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                       ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 ring-2 ring-amber-300'
                       : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-500/60'
                   }`}
-                  title="Salvar esta nova ordem dos cards para todos os usuários"
+                  title="Salvar esta ordem para todos os usuários"
                 >
-                  {savedToast ? <Check size={11} /> : <Save size={11} />}
-                  <span>{savedToast ? 'Ordem Salva!' : hasUnsavedOrder ? 'Salvar Ordem *' : 'Salvar Ordem'}</span>
+                  <span>{savedToast ? '✓ Ordem Salva!' : hasUnsavedOrder ? 'Salvar Ordem *' : 'Salvar Ordem'}</span>
                 </button>
               )}
             </div>
@@ -500,30 +497,25 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                         type="button"
                         disabled={currentRound <= 0}
                         onClick={() => onUpdateRound && onUpdateRound(Math.max(0, currentRound - 1))}
-                        className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-600 disabled:opacity-25 disabled:cursor-not-allowed transition-all active:scale-90 shadow-xs"
-                        title="Diminuir rodada (-1)"
+                        className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-900 border border-slate-750 text-slate-300 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-sm transition-all active:scale-95"
+                        title="Diminuir Rodada"
                       >
-                        <Minus size={12} strokeWidth={3} />
+                        −
                       </button>
                     )}
 
-                    <div className="flex items-center gap-1 px-2 py-0.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none font-sans">
-                        Rodada
-                      </span>
-                      <span className="text-xs font-black text-amber-400 font-mono tracking-wider select-none min-w-[14px] text-center">
-                        {currentRound}
-                      </span>
-                    </div>
+                    <span className="text-xs font-black text-amber-400 font-mono tracking-wider px-2 select-none whitespace-nowrap">
+                      RODADA {currentRound}
+                    </span>
 
                     {canEditRound && (
                       <button
                         type="button"
                         onClick={() => onUpdateRound && onUpdateRound(currentRound + 1)}
-                        className="w-6 h-6 flex items-center justify-center rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black border border-amber-400/80 transition-all active:scale-90 shadow-xs"
-                        title="Avançar rodada (+1)"
+                        className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-900 border border-slate-750 text-slate-300 hover:text-white hover:border-slate-600 font-bold text-sm transition-all active:scale-95"
+                        title="Avançar Rodada"
                       >
-                        <Plus size={12} strokeWidth={3} />
+                        +
                       </button>
                     )}
                   </div>
@@ -535,7 +527,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                   type="button"
                   onClick={onOpenPassDayModal}
                   className="flex items-center justify-center gap-1.5 px-2.5 h-7 text-[11px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-xl shadow-sm transition-all active:scale-95 whitespace-nowrap border border-amber-500/50 cursor-pointer shrink-0"
-                  title="Passar o dia: recarregar recursos dos personagens"
+                  title="Passar o dia na Mesa de RPG"
                 >
                   <Sun size={12} className="text-amber-400" />
                   <span>Passar o dia</span>

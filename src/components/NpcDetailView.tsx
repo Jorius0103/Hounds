@@ -1850,7 +1850,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         isExpired
                           ? `⚠️ ALERTA: ${cond} finalizou sua duração de ${duration} rodada(s) na rodada ${startRound + duration}! Remova manualmente.`
                           : duration
-                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration} rodadas, expira na R${startRound + duration})`
+                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration}R, expira na R${startRound + duration})`
                           : `${cond}: ${getConditionDescription(cond)}`
                       }
                     >
@@ -2704,7 +2704,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         isExpired
                           ? `⚠️ ALERTA: ${cond} finalizou sua duração de ${duration} rodada(s) na rodada ${startRound + duration}! Remova manualmente.`
                           : duration
-                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration} rodadas, expira na R${startRound + duration})`
+                          ? `${cond}: ${getConditionDescription(cond)} (Início: R${startRound}, Duração: ${duration}R, expira na R${startRound + duration})`
                           : `${cond}: ${getConditionDescription(cond)}`
                       }
                     >
@@ -4014,7 +4014,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         {logDmg > 0 ? (
                           <span
                             className="px-2 py-0.5 rounded font-mono font-bold text-xs bg-slate-900 text-amber-300 border border-amber-500/40 shadow-xs inline-block"
-                            title={`Dano calculado pelo histórico do log: ${logDmg} PV`}
+                            title={`Dano vindo do histórico de combate: ${logDmg} PV`}
                           >
                             {logDmg}
                           </span>
@@ -4071,7 +4071,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           {partStatus.label && (
                             <span
                               className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${partStatus.badgeClass}`}
-                              title={`Dano efetivo (${effectiveDmg}) em relação à vida da parte (${hpInfo.value} PV)!`}
+                              title={`Dano acumulado: ${effectiveDmg} / Vida: ${hpInfo.value}`}
                             >
                               {partStatus.label}
                             </span>
@@ -5011,7 +5011,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               {/* Descrição Completa da Magia */}
               <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 space-y-2">
                 <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider block border-b border-slate-800/80 pb-1">
-                  Descrição Completa da Magia
+                  Descrição Completa
                 </span>
                 {dbSpell?.description ? (
                   <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
@@ -5021,7 +5021,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400 italic">
-                    Nenhuma descrição detalhada encontrada no catálogo de magias para esta magia.
+                    Nenhuma descrição encontrada no catálogo.
                   </p>
                 )}
               </div>

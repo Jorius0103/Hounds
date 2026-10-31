@@ -962,7 +962,7 @@ export function calculateLocationDamage(params: {
       isDamageCapped = true;
       finalDamage = partHp;
       bodyPartDamage = fullDamage;
-      appliedRules.push(`${locationName}: Dano nos PV limitado a ${partHp} PV (Vida da parte). Dano no membro: ${fullDamage} PV`);
+      appliedRules.push(`Dano limitado ao PV do membro (${partHp} PV)`);
     }
   }
 

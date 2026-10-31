@@ -254,9 +254,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       ? `${attackerPrefix}${customDescription.trim()}`
       : (isNoLocation
         ? `${attackerPrefix}Dano Direto (Sem parte do corpo) | Dano: ${numericRawDamage}${damageType ? ` (${descDamageTypeLabel})` : ''} | RD: 0 | Final: -${finalDamage} PV`
-        : isDamageCapped
-        ? `${attackerPrefix}Local: ${locName} | Dano: ${numericRawDamage} (${descDamageTypeLabel}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Dano no Membro: ${bodyPartDamage} PV | Final nos PV: -${finalDamage} PV (Limitado pela Vida da Parte)`
-        : `${attackerPrefix}Local: ${locName} | Dano: ${numericRawDamage} (${descDamageTypeLabel}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Final: -${finalDamage} PV`);
+        : `${attackerPrefix}Local: ${locName} | Dano: ${numericRawDamage} (${descDamageTypeLabel}) | RD: ${locationDr} (${armorNotes} + ${naturalDr} nat${bonusDrText}) | Penetrante: ${penetratingDamage} | Mod: x${multiplier} | Dano na Parte: ${bodyPartDamage} PV | Final no Personagem: -${finalDamage} PV${isDamageCapped ? ` [Dano limitado ao PV do membro: ${finalDamage} PV]` : ''}`);
 
     onApplyDamage(npc.id, finalDamage, {
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -740,7 +738,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                 </div>
                 {!isNoLocation && (
                   <div className="flex justify-between text-slate-400">
-                    <span>RD Natural + Bônus:</span>
+                    <span>RD Natural do NPC:</span>
                     <span className="text-amber-400 font-bold">
                       {naturalDr}{locationBonusDr > 0 ? ` (+${locationBonusDr} Crânio)` : ''}
                     </span>
@@ -765,7 +763,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   <div className={`flex justify-between text-xs font-mono ${
                     isDamageCapped ? 'text-amber-300 bg-amber-950/40 p-2 rounded-lg border border-amber-600/40 font-sans' : 'text-slate-400'
                   }`}>
-                    <span>Dano Total no Membro ({selectedLoc.location}):</span>
+                    <span>Dano Total no Membro:</span>
                     <span className="text-white font-bold">
                       {bodyPartDamage} PV{isDamageCapped ? ` (Limite PV do Membro: ${partHp} PV)` : (partHp ? ` (Vida: ${partHp} PV)` : '')}
                     </span>

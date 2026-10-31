@@ -103,7 +103,7 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
                   onChange={(e) => setRole(e.target.value as UserRole)}
                   className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
                 >
-                  <option value="jogador">Jogador (Padrão: modo espectador)</option>
+                  <option value="jogador">Jogador (Vê só NPCs liberados)</option>
                   <option value="mestre">Mestre (Acesso total)</option>
                 </select>
               </div>

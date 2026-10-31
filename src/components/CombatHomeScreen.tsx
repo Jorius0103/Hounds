@@ -289,7 +289,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
               id: `crippled-${p.part.key}`,
               text: `${p.part.name}: ${p.statusLabel || 'Inutilizado'}`,
               badgeClass: p.badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
-              tooltip: `${p.part.name} ${p.statusLabel || 'Inutilizado'}: Dano acumulado (${p.effectiveDmg}) atingiu o limiar (${p.maxHp} PV)!`,
+              tooltip: `${p.part.name} ${p.statusLabel || 'Inutilizado'}: Dano acumulado (${p.effectiveDmg}) atingiu o limiar da vida da parte (${p.maxHp} PV)!`,
               icon: AlertTriangle,
             });
           });

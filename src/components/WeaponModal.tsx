@@ -20,7 +20,7 @@ export const GURPS_4E_WEAPONS_CATALOG = [
       { name: 'Golpe de Corte', damage: 'sw+1 corte', type: 'Corte', reach: '1' },
       { name: 'Estocada', damage: 'thr+1 perf', type: 'Perfurante', reach: '1' },
     ],
-    notes: 'Espada de uma mão clássica. GURPS Basic Set B271 | ST: 10',
+    notes: 'Espada de uma mão clássica.',
   },
   {
     name: 'Espada Curta (Shortsword)',
@@ -30,7 +30,7 @@ export const GURPS_4E_WEAPONS_CATALOG = [
       { name: 'Golpe de Corte', damage: 'sw corte', type: 'Corte', reach: '1' },
       { name: 'Estocada', damage: 'thr perf', type: 'Perfurante', reach: '1' },
     ],
-    notes: 'Ágil e compacta. GURPS Basic Set B273 | ST: 8',
+    notes: 'Ágil e compacta.',
   },
   {
     name: 'Espada de Duas Mãos / Montante (Greatsword)',
@@ -40,7 +40,7 @@ export const GURPS_4E_WEAPONS_CATALOG = [
       { name: 'Golpe de Corte (2 mãos)', damage: 'sw+3 corte', type: 'Corte', reach: '1, 2' },
       { name: 'Estocada (2 mãos)', damage: 'thr+2 perf', type: 'Perfurante', reach: '2' },
     ],
-    notes: 'Requer duas mãos (†). GURPS Basic Set B274 | ST: 12†',
+    notes: 'Requer duas mãos (†).',
   },
   {
     name: 'Lança (Spear)',
@@ -51,7 +51,7 @@ export const GURPS_4E_WEAPONS_CATALOG = [
       { name: 'Duas Mãos', damage: 'thr+3 perf', type: 'Perfurante', reach: '1, 2*' },
       { name: 'Arremesso', damage: 'thr+3 perf', type: 'Perfurante', reach: '10/20 yd' },
     ],
-    notes: 'Versátil em 1 ou 2 mãos. GURPS Basic Set B273 | ST: 9',
+    notes: 'Versátil em 1 ou 2 mãos.',
   },
   {
     name: 'Adaga / Faca Grande (Large Knife)',
@@ -62,7 +62,7 @@ export const GURPS_4E_WEAPONS_CATALOG = [
       { name: 'Estocada', damage: 'thr perf', type: 'Perfurante', reach: 'C' },
       { name: 'Arremesso', damage: 'thr perf', type: 'Perfurante', reach: '5/10 yd' },
     ],
-    notes: 'Pode ser arremessada. GURPS Basic Set B272 | ST: 6',
+    notes: 'Pode ser arremessada.',
   },
   {
     name: 'Rapieira / Florete (Rapier)',
@@ -71,7 +71,7 @@ export const GURPS_4E_WEAPONS_CATALOG = [
     modes: [
       { name: 'Estocada', damage: 'thr+1 perf', type: 'Perfurante', reach: '1, 2' },
     ],
-    notes: 'Arma de esgrima. GURPS Basic Set B273 | ST: 9',
+    notes: 'Arma de esgrima.',
   },
   {
     name: 'Machado de Batalha (Battleaxe)',
@@ -81,17 +81,17 @@ export const GURPS_4E_WEAPONS_CATALOG = [
       { name: 'Uma Mão', damage: 'sw+2 corte', type: 'Corte', reach: '1, 2' },
       { name: 'Duas Mãos', damage: 'sw+3 corte', type: 'Corte', reach: '1, 2' },
     ],
-    notes: 'Desbalanceada (0U). GURPS Basic Set B271 | ST: 11',
+    notes: 'Desbalanceada (0U).',
   },
   {
-    name: 'Machadinha (Small Axe)',
-    namePt: 'Machadinha',
+    name: 'Machadinha de Arremesso (Small Axe)',
+    namePt: 'Machadinha de Arremesso',
     nh: 12,
     modes: [
       { name: 'Corpo a Corpo', damage: 'sw+1 corte', type: 'Corte', reach: '1' },
       { name: 'Arremesso', damage: 'sw+1 corte', type: 'Corte', reach: '10/15 yd' },
     ],
-    notes: 'Pode ser arremessada. GURPS Basic Set B271 | ST: 8',
+    notes: 'Pode ser arremessada.',
   },
   {
     name: 'Maça / Clava (Mace)',
@@ -100,16 +100,16 @@ export const GURPS_4E_WEAPONS_CATALOG = [
     modes: [
       { name: 'Golpe Contuso', damage: 'sw+3 cont', type: 'Contusão', reach: '1' },
     ],
-    notes: 'Desbalanceada (0U). GURPS Basic Set B271 | ST: 12',
+    notes: 'Desbalanceada (0U).',
   },
   {
-    name: 'Arco Regular / Longo (Bow)',
-    namePt: 'Arco',
+    name: 'Arco Composto / Longo (Regular Bow)',
+    namePt: 'Arco Composto',
     nh: 12,
     modes: [
       { name: 'Disparo de Flecha', damage: 'thr+1 perf', type: 'Perfurante', reach: '150/200 yd' },
     ],
-    notes: 'Penetra armaduras leves. GURPS Basic Set B275 | ST: 10†',
+    notes: 'Penetra armaduras leves.',
   },
   {
     name: 'Besta (Crossbow)',
@@ -118,7 +118,7 @@ export const GURPS_4E_WEAPONS_CATALOG = [
     modes: [
       { name: 'Tiro de Virote', damage: 'thr+4 perf', type: 'Perfurante', reach: '200/250 yd' },
     ],
-    notes: 'Requer 4 segundos para recarregar. GURPS Basic Set B276 | ST: 7†',
+    notes: 'Requer 4 segundos para recarregar.',
   },
   {
     name: 'Desarmado / Soco (Punch)',
@@ -128,7 +128,7 @@ export const GURPS_4E_WEAPONS_CATALOG = [
       { name: 'Soco Direto', damage: 'thr-1 cont', type: 'Contusão', reach: 'C' },
       { name: 'Chute', damage: 'thr cont', type: 'Contusão', reach: 'C, 1' },
     ],
-    notes: 'Briga, Boxe ou Karatê.',
+    notes: 'Briga ou Boxe.',
   }
 ];
 

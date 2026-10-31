@@ -356,7 +356,7 @@ export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
                 {initialSpell ? 'Editar Magia' : 'Cadastrar Magia'}
               </h2>
               <p style={{ fontSize: '11px', color: '#94a3b8', margin: '2px 0 0 0' }}>
-                Configure o nome, Nível de Habilidade (NH) e anotações da magia
+                Configure o nome, NH e anotações da magia
               </p>
             </div>
           </div>
@@ -493,7 +493,7 @@ export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Bola de Fogo, Cura Menor, Escudo Mágico..."
+              placeholder="Ex: Bola de Fogo, Cura Menor..."
               className="w-full bg-slate-900 border border-slate-750 focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none"
             />
           </div>
@@ -508,11 +508,11 @@ export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
                 type="text"
                 value={nh}
                 onChange={(e) => setNh(e.target.value)}
-                placeholder="Em branco ou número (ex: 12, 14...)"
+                placeholder="Ex: 12 ou em branco"
                 className="w-32 bg-slate-900 border border-amber-500/40 focus:border-amber-500 rounded-xl px-3 py-2 text-xs font-mono font-bold text-amber-300 placeholder-slate-500 focus:outline-none"
               />
               <span className="text-[11px] text-slate-400 italic">
-                (Pode ficar em branco se o personagem ainda não comprou NH)
+                (Pode ficar em branco)
               </span>
             </div>
           </div>
@@ -520,13 +520,13 @@ export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
           {/* Anotações / Notas */}
           <div className="space-y-1">
             <label className="text-[11px] font-bold uppercase tracking-wider text-amber-400 block">
-              Anotações / Efeitos da Magia
+              Anotações / Efeitos
             </label>
             <textarea
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ex: Custo: 1 a 3 FP. Duração: Instantânea. Dano 1d por FP..."
+              placeholder="Ex: Custo: 1-3 FP. Duração: Instantânea..."
               className="w-full bg-slate-900 border border-slate-750 focus:border-amber-500 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
             />
           </div>

@@ -2,6 +2,16 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Spell } from '../types/rpg';
 import { Sparkles, Plus, Trash2, Star, X, Check, Search } from 'lucide-react';
 import { loadSpellsDatabase, normalizeSpellText, getCollegePt } from './SingleSpellModal';
+import {
+  MODAL_BACKDROP_STYLE,
+  modalCardStyle,
+  MODAL_HEADER_STYLE,
+  MODAL_HEADER_ICON_STYLE,
+  MODAL_TITLE_STYLE,
+  MODAL_SUBTITLE_STYLE,
+  MODAL_CLOSE_STYLE,
+  MODAL_FOOTER_STYLE,
+} from './modalStyles';
 
 interface SpellsModalProps {
   isOpen: boolean;
@@ -132,28 +142,39 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4 h-[80vh] min-h-[580px] max-h-[88vh] flex flex-col">
+    <div style={MODAL_BACKDROP_STYLE}>
+      <div style={modalCardStyle('680px', { height: '80vh', minHeight: '580px', maxHeight: '88vh' })}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <Sparkles size={20} className="text-amber-400" />
-            <h3 className="text-base font-bold text-white">
-              Grimório de Magias: <span className="text-amber-400">{npcName}</span>
-            </h3>
+        <div style={MODAL_HEADER_STYLE}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <div style={MODAL_HEADER_ICON_STYLE}>
+              <Sparkles size={18} className="text-amber-400" />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={MODAL_TITLE_STYLE}>
+                Grimório de Magias: <span style={{ color: '#fbbf24' }}>{npcName}</span>
+              </h2>
+              <p style={MODAL_SUBTITLE_STYLE}>Cadastre e gerencie magias em lote, via catálogo ou manualmente</p>
+            </div>
           </div>
           <button
+            type="button"
             onClick={handleClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+            style={MODAL_CLOSE_STYLE}
+            className="hover:text-white hover:bg-slate-800 transition-colors"
+            title="Fechar (Esc)"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Database Search Input */}
-        <div ref={searchContainerRef} className="relative shrink-0">
-          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 focus-within:border-amber-500/70 rounded-xl px-3 py-2">
-            <Search size={15} className="text-amber-400 shrink-0" />
+        <div
+          ref={searchContainerRef}
+          style={{ flexShrink: 0, padding: '10px 18px', borderBottom: '1px solid #1e293b', background: 'rgba(15, 23, 42, 0.7)', position: 'relative' }}
+        >
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 focus-within:border-amber-500/70 rounded-xl px-3 py-2 transition-all shadow-inner">
+            <Search size={14} className="text-amber-400 shrink-0" />
             <input
               type="text"
               value={searchQuery}
@@ -162,7 +183,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              placeholder="Buscar magia no catálogo para adicionar (ex: Bola de Fogo, Cura...)"
+              placeholder="Buscar magia no catálogo para adicionar (ex: Bola de Fogo, Cura, Escudo, Sono...)"
               className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
             />
             {searchQuery && (
@@ -172,7 +193,8 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
                   setSearchQuery('');
                   setIsSearchOpen(false);
                 }}
-                className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+                className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
+                title="Limpar busca"
               >
                 <X size={14} />
               </button>
@@ -182,12 +204,12 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
           {/* Search Dropdown */}
           {isSearchOpen && searchQuery.trim().length > 0 && (
             <div
-              className="absolute top-full left-0 right-0 mt-1.5 z-50 border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden max-h-[600px] overflow-y-auto"
-              style={{ backgroundColor: '#0f172a', maxHeight: '600px' }}
+              className="border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden mt-1"
+              style={{ position: 'absolute', top: '100%', left: '18px', right: '18px', zIndex: 99999, backgroundColor: '#0f172a', maxHeight: '600px', overflowY: 'auto' }}
             >
               <div className="px-3 py-1.5 bg-slate-950 border-b border-slate-800 text-[10px] text-amber-400 font-semibold flex items-center justify-between">
                 <span>{searchResults.length} magias encontradas</span>
-                <span className="text-slate-500">Clique para adicionar à lista com NH em branco</span>
+                <span className="text-slate-500">Clique para adicionar com NH em branco</span>
               </div>
               {searchResults.length === 0 ? (
                 <div className="px-4 py-3 text-center text-xs text-slate-500 italic space-y-2">
@@ -209,17 +231,21 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
                       onClick={() => handleSelectCatalogSpell(s)}
                       className="w-full text-left px-3 py-2 border-b border-slate-800/80 hover:bg-slate-800 flex items-center justify-between gap-2 group cursor-pointer"
                     >
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-white group-hover:text-amber-300">
-                          {s.displayName || s.name}
-                        </span>
-                        {s.college && (
-                          <span className="ml-2 text-[10px] bg-slate-800 text-amber-400 px-1.5 py-0.5 rounded">
-                            {getCollegePt(s.college)}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white group-hover:text-amber-300">
+                            {s.displayName || s.name}
                           </span>
-                        )}
+                          {s.college && (
+                            <span className="text-[10px] bg-slate-800 text-amber-400 px-1.5 py-0.5 rounded border border-slate-700">
+                              {getCollegePt(s.college)}
+                            </span>
+                          )}
+                          {s.class && <span className="text-[10px] text-slate-400">({s.class})</span>}
+                        </div>
+                        {s.description && <p className="text-[11px] text-slate-400 truncate mt-0.5">{s.description}</p>}
                       </div>
-                      <span className="text-[10px] text-amber-400 font-bold shrink-0">
+                      <span className="shrink-0 text-[10px] text-amber-400 font-bold bg-amber-950/60 border border-amber-500/40 px-2 py-1 rounded group-hover:bg-amber-500 group-hover:text-slate-950">
                         + Adicionar
                       </span>
                     </button>
@@ -239,7 +265,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
         </div>
 
         {/* Dynamic Multi-row Table */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-2">
+        <div style={{ minHeight: 0, overflowY: 'auto', padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
           <div className="text-xs font-semibold text-slate-400 flex items-center justify-between">
             <span>Magias Cadastradas ({spellList.length})</span>
             <button
@@ -253,7 +279,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
 
           {spellList.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-500 italic">
-              Nenhuma magia na lista. Digite na busca acima ou clique em "+ Adicionar Outra Magia".
+              Nenhuma magia na lista. Digite na busca acima ou clique em "+ Adicionar Magia Manual".
             </div>
           ) : (
             <div className="space-y-2">
@@ -319,7 +345,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-end pt-3 border-t border-slate-800 shrink-0 gap-2">
+        <div style={MODAL_FOOTER_STYLE}>
           <button
             type="button"
             onClick={onClose}

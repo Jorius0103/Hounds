@@ -107,12 +107,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <Swords size={24} />
           </div>
           <h2 className="text-lg font-bold text-white tracking-tight">
-            GURPS Combat Master
+            Mesa de Combate
           </h2>
           <p className="text-xs text-slate-400">
             {isResetStep
               ? 'Definição de Nova Senha'
-              : 'Entre com sua conta de Mestre ou Jogador'}
+              : 'Escolha seu usuário para entrar'}
           </p>
         </div>
 

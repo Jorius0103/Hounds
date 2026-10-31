@@ -24,3 +24,67 @@
   --color-amber-900: #451a03;
   --color-amber-950: #291104;
 }
+
+:root {
+  color-scheme: dark;
+}
+html,
+body {
+  margin: 0;
+  background: #020617;
+  color: #f1f5f9;
+}
+
+/* Grade dos cards da Tela Inicial: 1, 2 ou 3 colunas conforme a largura */
+.combat-home-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.625rem;
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .combat-home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1180px) {
+  .combat-home-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.combat-home-subgrid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+.combat-home-subgrid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+
+/* Tons fixos de borda e o texto de 15px, iguais aos do mesa.html que estava no ar */
+.border-emerald-600,
+.border-emerald-600\/80,
+.border-emerald-600\/90 {
+  border-color: #059669 !important;
+}
+.border-emerald-700,
+.border-emerald-700\/80,
+.border-emerald-700\/90 {
+  border-color: #047857 !important;
+}
+.border-amber-500,
+.border-amber-500\/70,
+.border-amber-500\/80,
+.border-amber-400 {
+  border-color: #f59e0b !important;
+}
+.border-red-600,
+.border-red-600\/80,
+.border-red-600\/90 {
+  border-color: #dc2626 !important;
+}
+.text-\[15px\] {
+  font-size: 15px !important;
+}
