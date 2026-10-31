@@ -1764,7 +1764,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     );
                   })()}
 
-                  {!isViewer && (
+                  {/* Botão Lançar Dano / Fadiga com label Espectador logo acima */}
+                  <div className="flex flex-col items-start gap-1 shrink-0">
+                    {isViewer && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-900/90 border border-slate-700/80 rounded-md text-slate-400 text-[10px] font-semibold leading-none shadow-sm">
+                        <Eye size={11} className="text-slate-400" />
+                        <span>Espectador</span>
+                      </span>
+                    )}
                     <button
                       onClick={() => onOpenDamageCalculator(npc)}
                       className="flex items-center gap-1 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
@@ -1772,7 +1779,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       <Heart size={13} />
                       <span>Lançar Dano / Fadiga</span>
                     </button>
-                  )}
+                  </div>
                 </div>
                 
               </div>
@@ -1782,13 +1789,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto self-start lg:self-center">
               {renderTurnActionsBox()}
               {renderCriticalAlertsBox(true)}
-
-              {isViewer && (
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
-                  <Eye size={14} />
-                  <span>Espectador</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -2131,8 +2131,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   );
                 })()}
 
-                {/* Botão Lançar Dano / Fadiga (separado e com folga dos botões de exclusão que ficam sob a foto) */}
-                {!isViewer && (
+                {/* Botão Lançar Dano / Fadiga com label Espectador logo acima */}
+                <div className="flex flex-col items-start gap-1 shrink-0">
+                  {isViewer && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-900/90 border border-slate-700/80 rounded-md text-slate-400 text-[10px] font-semibold leading-none shadow-sm">
+                      <Eye size={11} className="text-slate-400" />
+                      <span>Espectador</span>
+                    </span>
+                  )}
                   <button
                     onClick={() => onOpenDamageCalculator(npc)}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
@@ -2140,7 +2146,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <Heart size={13} />
                     <span>Lançar Dano / Fadiga</span>
                   </button>
-                )}
+                </div>
 
                 </div>
             </div>
@@ -2150,12 +2156,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto self-start lg:self-center">
             {renderTurnActionsBox()}
             {renderCriticalAlertsBox(false)}
-            {isViewer && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
-                <Eye size={14} />
-                <span>Espectador</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
