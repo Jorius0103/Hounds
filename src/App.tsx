@@ -550,21 +550,16 @@ export default function App() {
     return set;
   }, [currentUser?.name, onlineUsersMap, presenceClock]);
 
-  // IDs dos personagens de jogadores visíveis no combate ativo (ou na sessão fora de combate)
-  const activeCombatPlayerIds = useMemo(() => {
-    if (activeCombat && Array.isArray(activeCombat.playerIds)) {
-      return activeCombat.playerIds;
-    }
-    return sessionPlayerIds;
-  }, [activeCombat, sessionPlayerIds]);
+  // IDs dos personagens de jogadores visíveis na Mesa de RPG (Global, independe de combates)
+  const activeCombatPlayerIds = sessionPlayerIds;
 
-  // Lista unificada: Personagens da campanha (sempre presentes) + NPCs específicos do combate ativo
+  // Lista unificada: Personagens da campanha (sempre presentes conforme visibilidade global da Mesa) + NPCs específicos do combate ativo
   const allCharacters = useMemo(() => {
     const list: NPC[] = [];
     const seen = new Set<string>();
-    const activePlayerSet = new Set(activeCombatPlayerIds);
+    const activePlayerSet = new Set(sessionPlayerIds);
 
-    // Personagens da campanha sempre mantidos e sincronizados
+    // Personagens da campanha sempre mantidos e sincronizados conforme visibilidade global da Mesa
     for (const p of players) {
       if (p.characterType !== 'npc' && activePlayerSet.has(p.id) && !seen.has(p.id)) {
         seen.add(p.id);
@@ -581,7 +576,7 @@ export default function App() {
       }
     }
     return list;
-  }, [players, activeCombat, activeCombatPlayerIds, isNoCombat]);
+  }, [players, activeCombat, sessionPlayerIds, isNoCombat]);
 
   // Lista unificada de Personagens de Jogadores (para modais e recarga de recursos)
   const allPlayerCharacters = useMemo(() => {
@@ -802,7 +797,7 @@ export default function App() {
   const lastLocalEditTimestampRef = useRef<number>(0);
   const lastAppliedRemoteTimestampRef = useRef<number>(0);
 
-  const stateRef = useRef({ combats, conditions, users, activeCombatId, players });
+  const stateRef = useRef({ combats, conditions, users, activeCombatId, players, sessionPlayerIds, editorUserIds });
   const combatsPoolRef = useRef<Record<string, { npcs: NPC[]; events: ActionLogEntry[] }>>((() => {
     const pool: Record<string, { npcs: NPC[]; events: ActionLogEntry[] }> = {};
     try {
@@ -846,8 +841,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    stateRef.current = { combats, conditions, users, activeCombatId, players };
-  }, [combats, conditions, users, activeCombatId, players]);
+    stateRef.current = { combats, conditions, users, activeCombatId, players, sessionPlayerIds, editorUserIds };
+  }, [combats, conditions, users, activeCombatId, players, sessionPlayerIds, editorUserIds]);
 
   // Broadcast function: Syncs to local tabs (BroadcastChannel) AND online cross-browser (MQTT WebSocket & Supabase)
   const broadcastSync = (
@@ -2392,21 +2387,22 @@ export default function App() {
   };
 
   const handleTogglePlayerInCombat = (playerId: string) => {
-    const current = activeCombatPlayerIds;
+    const current = sessionPlayerIds;
     const isPresent = current.includes(playerId);
     const updatedIds = isPresent ? current.filter((id) => id !== playerId) : [...current, playerId];
     
     setSessionPlayerIds(updatedIds);
+    stateRef.current.sessionPlayerIds = updatedIds;
     try {
       localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedIds));
     } catch (e) {}
 
-    const targetCombatId = activeCombat?.id || 'combat-vazio';
-    const updatedCombats = combats.map((c) =>
-      c.id === targetCombatId || (isNoCombat && (c.id === 'combat-vazio' || isEmptyCombat(c)))
-        ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true }
-        : c
-    );
+    // Sincroniza playerIds em todos os combates para garantir visibilidade global independente do combate ativo
+    const updatedCombats = combats.map((c) => ({
+      ...c,
+      playerIds: updatedIds,
+      playerIdsMigratedV2: true,
+    }));
     setCombats(updatedCombats);
     stateRef.current.combats = updatedCombats;
     try {
@@ -2426,16 +2422,17 @@ export default function App() {
   const handleSetAllPlayersInCombat = (show: boolean) => {
     const updatedIds = show ? players.map((p) => p.id) : [];
     setSessionPlayerIds(updatedIds);
+    stateRef.current.sessionPlayerIds = updatedIds;
     try {
       localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedIds));
     } catch (e) {}
 
-    const targetCombatId = activeCombat?.id || 'combat-vazio';
-    const updatedCombats = combats.map((c) =>
-      c.id === targetCombatId || (isNoCombat && (c.id === 'combat-vazio' || isEmptyCombat(c)))
-        ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true }
-        : c
-    );
+    // Sincroniza playerIds em todos os combates para garantir visibilidade global independente do combate ativo
+    const updatedCombats = combats.map((c) => ({
+      ...c,
+      playerIds: updatedIds,
+      playerIdsMigratedV2: true,
+    }));
     setCombats(updatedCombats);
     stateRef.current.combats = updatedCombats;
     try {
@@ -2539,6 +2536,7 @@ export default function App() {
     setSessionPlayerIds(updatedSessionPlayerIds);
     setPlayers(updatedPlayers);
     stateRef.current.players = updatedPlayers;
+    stateRef.current.sessionPlayerIds = updatedSessionPlayerIds;
     setCombats(updatedCombats);
     stateRef.current.combats = updatedCombats;
     try {
@@ -2546,7 +2544,7 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
       localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedSessionPlayerIds));
     } catch (e) {}
-    broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
+    broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers, undefined, true, false, updatedSessionPlayerIds);
     if (selectedNpcId === playerId) {
       const remaining = allCharacters.filter((c) => c.id !== playerId);
       setSelectedNpcId(remaining[0]?.id || '');
@@ -3064,12 +3062,8 @@ export default function App() {
   const handleDeleteNpc = (npcId: string) => {
     const isPlayer = players.some((p) => p.id === npcId);
     if (isPlayer) {
-      const remaining = players.filter((p) => p.id !== npcId);
-      setPlayers(remaining);
-      broadcastSync(undefined, undefined, undefined, undefined, remaining);
-      if (selectedNpcId === npcId) {
-        setSelectedNpcId(remaining[0]?.id || activeCombat?.npcs?.find((n: NPC) => n.characterType !== 'player')?.id || '');
-      }
+      handleDeletePlayer(npcId);
+      return;
     } else if (activeCombat) {
       const updated = combats.map((c) => {
         if (c.id !== activeCombat.id) return c;
@@ -3077,6 +3071,10 @@ export default function App() {
         return { ...c, npcs: updatedList };
       });
       setCombats(updated);
+      stateRef.current.combats = updated;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {}
       broadcastSync(updated);
       if (selectedNpcId === npcId) {
         const remainingNpcs = activeCombat.npcs.filter((n: NPC) => n.id !== npcId && n.characterType !== 'player');
@@ -3267,6 +3265,7 @@ export default function App() {
       : [...editorUserIds, targetId, ...(targetName && targetName !== targetId ? [targetName] : [])];
 
     setEditorUserIds(next);
+    stateRef.current.editorUserIds = next;
     try {
       localStorage.setItem(EDITORS_STORAGE_KEY, JSON.stringify(next));
       broadcastChannelRef.current?.postMessage({
@@ -3285,12 +3284,13 @@ export default function App() {
         );
       }
     } catch {}
-    if (activeCombat) {
-      const updatedCombat = { ...activeCombat, editorUserIds: next };
-      const updatedCombats = combats.map((c) => (c.id === activeCombat.id ? updatedCombat : c));
-      setCombats(updatedCombats);
-      broadcastSync(updatedCombats);
-    }
+    const updatedCombats = combats.map((c) => ({ ...c, editorUserIds: next }));
+    setCombats(updatedCombats);
+    stateRef.current.combats = updatedCombats;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+    } catch {}
+    broadcastSync(updatedCombats);
   };
 
   // Habilita ou retira a edição de todos os jogadores de uma vez (id e nome, como no Toggle individual)
@@ -3298,6 +3298,7 @@ export default function App() {
     const playerUsers = (Array.isArray(users) ? users : []).filter((u) => u.role !== 'mestre');
     const next = allow ? playerUsers.flatMap((u) => (u.name ? [u.id, u.name] : [u.id])) : [];
     setEditorUserIds(next);
+    stateRef.current.editorUserIds = next;
     try {
       localStorage.setItem(EDITORS_STORAGE_KEY, JSON.stringify(next));
       broadcastChannelRef.current?.postMessage({
@@ -3310,19 +3311,20 @@ export default function App() {
         editorUserIds: next,
         timestamp: Date.now(),
       });
-      const currentCombats = stateRef.current.combats || combats;
-      const updatedCombats = currentCombats.map((c) =>
-        c.id === activeCombatId ? { ...c, editorUserIds: next } : c
-      );
-      stateRef.current.combats = updatedCombats;
-      setCombats(updatedCombats);
-      broadcastSync(updatedCombats);
       if ((window as any).parent?.hubMesaBus) {
         (window as any).parent.hubMesaBus.publish(
           JSON.stringify({ type: 'SYNC_EDITORS', editorUserIds: next, timestamp: Date.now() })
         );
       }
     } catch {}
+    const currentCombats = stateRef.current.combats || combats;
+    const updatedCombats = currentCombats.map((c) => ({ ...c, editorUserIds: next }));
+    stateRef.current.combats = updatedCombats;
+    setCombats(updatedCombats);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+    } catch {}
+    broadcastSync(updatedCombats);
   };
 
   const handleLinkCharacterToUser =(characterId: string, userId: string | null) => {
@@ -3348,7 +3350,7 @@ export default function App() {
       stateRef.current.players = nextPlayers;
       setPlayers(nextPlayers);
       try {
-        localStorage.setItem('gurps_combat_master_players_v1', JSON.stringify(nextPlayers));
+        localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(nextPlayers));
       } catch {}
     }
 
@@ -4678,9 +4680,7 @@ export default function App() {
 
   const isPlayerUser = currentUser?.role === 'jogador';
   const isMaster = currentUser?.role === 'mestre';
-  const effectiveEditorIds = [
-    ...new Set([...(activeCombat?.editorUserIds || []), ...editorUserIds]),
-  ];
+  const effectiveEditorIds = [...new Set(editorUserIds)];
   const isEditor = effectiveEditorIds.some((x) => {
     if (!x) return false;
     const s = String(x).toLowerCase().trim();
