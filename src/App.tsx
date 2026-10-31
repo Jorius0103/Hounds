@@ -4678,7 +4678,6 @@ export default function App() {
     e.target.value = '';
   };
 
-  const isPlayerUser = currentUser?.role === 'jogador';
   const isMaster = currentUser?.role === 'mestre';
   const effectiveEditorIds = [...new Set(editorUserIds)];
   const isEditor = effectiveEditorIds.some((x) => {
@@ -4692,6 +4691,8 @@ export default function App() {
     return s === cid || s === cnm || sC === cidC || sC === cnmC || s === `user-${cnmC}` || cid === `user-${sC}`;
   });
   const canEditCurrent = isMaster || isEditor;
+  const isPlayerUser = !isMaster;
+  const effectiveRole: MesaRole = isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
@@ -4774,7 +4775,7 @@ export default function App() {
         canPassDay={canEditCurrent}
         onFilterChange={(filter, count) => setActiveFilterInfo({ filter, count })}
         onUpdateNpc={handlePartialUpdateNpc}
-        currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
+        currentUserRole={effectiveRole}
         currentRound={effectiveRound}
         onUpdateRound={handleUpdateCombatRound}
         canControlRound={canEditCurrent}
@@ -4799,7 +4800,7 @@ export default function App() {
               selectedNpcId={selectedNpcId}
               onSelectNpc={setSelectedNpcId}
               onUpdateNpc={handleUpdateNpc}
-              currentUserRole={currentUser?.role || 'mestre'}
+              currentUserRole={effectiveRole}
               onOpenFullNpcSheet={(npcId) => {
                 setSelectedNpcId(npcId);
                 setActiveViewMode('split');
@@ -4824,7 +4825,7 @@ export default function App() {
                 selectedNpcId={selectedNpcId}
                 onSelectNpc={setSelectedNpcId}
                 onUpdateNpc={handleUpdateNpc}
-                currentUserRole={currentUser?.role || 'mestre'}
+                currentUserRole={effectiveRole}
                 onOpenFullNpcSheet={(npcId) => setSelectedNpcId(npcId)}
                 hasEditPermission={canEditCurrent}
                 onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
@@ -4851,7 +4852,7 @@ export default function App() {
                   onRemoveActiveSpell={handleRemoveActiveSpell}
                   onRemoveAffectedSpell={handleRemoveAffectedSpell}
                   isPlayerUser={isPlayerUser}
-                  currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
+                  currentUserRole={effectiveRole}
                   hasEditPermission={canEditCurrent}
                   currentRound={effectiveRound}
                   conditions={conditions}
@@ -4936,7 +4937,7 @@ export default function App() {
                   onRemoveActiveSpell={handleRemoveActiveSpell}
                   onRemoveAffectedSpell={handleRemoveAffectedSpell}
                   isPlayerUser={isPlayerUser}
-                  currentUserRole={isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador'}
+                  currentUserRole={effectiveRole}
                   hasEditPermission={canEditCurrent}
                   currentRound={effectiveRound}
                   conditions={conditions}
@@ -4963,7 +4964,7 @@ export default function App() {
                   setIsHomeScreen(false);
                 }}
                 selectedNpcId={selectedNpcId}
-                currentUserRole={currentUser?.role || 'mestre'}
+                currentUserRole={effectiveRole}
                 currentUserName={currentUser?.name}
                 onClearHistory={handleClearActiveCombatHistory}
                 onDeleteEntry={handleDeleteLogEntry}
@@ -5105,7 +5106,7 @@ export default function App() {
               }
             }
           }}
-          isPlayerView={isPlayerUser}
+          isPlayerView={!isMaster}
           combatants={allCharacters}
           currentRound={effectiveRound}
           currentUserName={currentUser?.name}

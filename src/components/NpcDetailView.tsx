@@ -978,37 +978,34 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 2. Pontos de Vida & 3. Pontos de Fadiga (visíveis para Mestre e Jogadores em todos os personagens/NPCs)
-    const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
-      ? hpStat.warningTexts
-      : (hpStat.warningText ? [hpStat.warningText] : []);
+    // 2. Pontos de Vida & 3. Pontos de Fadiga (Exclusivos para o Mestre ou Personagens: jogadores não veem alertas de PV e Fadiga de NPCs)
+    if (isMaster || isPlayerChar) {
+      const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
+        ? hpStat.warningTexts
+        : (hpStat.warningText ? [hpStat.warningText] : []);
 
-    const isPlayerChar = npc.characterType === 'player';
-    const isPlayerRole = currentUserRole === 'jogador';
-    hpWarnings.forEach((warn, idx) => {
-      if (isPlayerRole && !isPlayerChar && warn.includes('Teste de morte (HT) a cada múltiplo')) {
-        return;
-      }
-      alerts.push({
-        id: `hp-warn-${idx}`,
-        badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
-        text: `PV: ${warn}`,
-        icon: AlertTriangle,
+      hpWarnings.forEach((warn, idx) => {
+        alerts.push({
+          id: `hp-warn-${idx}`,
+          badgeClass: 'bg-red-950/90 border-red-600 text-red-300 font-bold',
+          text: `PV: ${warn}`,
+          icon: AlertTriangle,
+        });
       });
-    });
 
-    const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
-      ? fpStat.warningTexts
-      : (fpStat.warningText ? [fpStat.warningText] : []);
+      const fpWarnings = fpStat.warningTexts && fpStat.warningTexts.length > 0
+        ? fpStat.warningTexts
+        : (fpStat.warningText ? [fpStat.warningText] : []);
 
-    fpWarnings.forEach((warn, idx) => {
-      alerts.push({
-        id: `fp-warn-${idx}`,
-        badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
-        text: `FP: ${warn}`,
-        icon: Zap,
+      fpWarnings.forEach((warn, idx) => {
+        alerts.push({
+          id: `fp-warn-${idx}`,
+          badgeClass: 'bg-cyan-950/90 border-cyan-600 text-cyan-300 font-bold',
+          text: `FP: ${warn}`,
+          icon: Zap,
+        });
       });
-    });
+    }
 
     // 4. Lista todas as Condições & Estados Críticos
     if (npc.statusConditions && npc.statusConditions.length > 0) {
@@ -1666,7 +1663,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // PERFIL JOGADOR / VISUALIZADOR PARA NPCs
   // (Jogadores e visualizadores NÃO podem ver PV, FP, defesas, atributos ou abas dos NPCs)
   // =========================================================================
-  if (isPlayerUser && !isPlayerChar) {
+  if (!isMaster && !isPlayerChar) {
     return (
       <div className="space-y-4">
         {/* Identidade do NPC + Botão Lançar Dano (Fixo ao rolar com respiro) */}

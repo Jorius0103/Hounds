@@ -583,14 +583,12 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const activeManeuver = getCombatManeuver(npc.combatManeuver);
 
                 const hasConditions = Boolean(npc.statusConditions && npc.statusConditions.length > 0);
-                const isPlayerRole = currentUserRole === 'jogador';
-                const hpWarnsFiltered = (hpStat.warningTexts || (hpStat.warningText ? [hpStat.warningText] : [])).filter(
-                  (w) => !(isPlayerRole && !isPlayerChar && w.includes('Teste de morte (HT) a cada múltiplo'))
-                );
-                const hasCriticalHpFp = Boolean(
-                  hpWarnsFiltered.length > 0 ||
-                  (fpStat.warningTexts && fpStat.warningTexts.length > 0)
-                );
+                const hasCriticalHpFp =
+                  (isPlayerChar || currentUserRole === 'mestre') &&
+                  Boolean(
+                    (hpStat.warningTexts || (hpStat.warningText ? [hpStat.warningText] : [])).length > 0 ||
+                    (fpStat.warningTexts && fpStat.warningTexts.length > 0)
+                  );
                 const hasCrippledParts =
                   (isPlayerChar || currentUserRole === 'mestre')
                     ? getCrippledBodyParts(npc).length > 0
