@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {useHub} from '../data';
-import {openDialog} from '../Dialog';
-import {Icon} from '../Icon';
+import {openDialog} from '../ui/Dialog';
+import {Icon} from '../ui/Icon';
 import {PasswordForm, UserForm} from './UsuarioForm';
 
 // Página Usuários (#usuarios), com as mesmas classes da versão antiga (css/paginas.css). O que os formulários

@@ -1,6 +1,6 @@
 import {useRef, useState, type ReactNode} from 'react';
 import {useHub} from '../data';
-import {closeDialog, Dialog} from '../Dialog';
+import {closeDialog, Dialog} from '../ui/Dialog';
 
 const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 

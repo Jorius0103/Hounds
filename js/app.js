@@ -24,6 +24,7 @@ var topTitle = $('topTitle');
 
 var EYE_ON = '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>';
 // The button goes after the title, or first in the page's buttons when it marks them with data-vis-host (Ficha).
+// The React pages draw their own (src/hub/ui/Visibility.tsx).
 function tagPage(item, col) {
   var h1 = pageRoot.querySelector('h1'); if (!h1 || !item || h1.querySelector('.secret-tag') || pageRoot.querySelector('.vis-toggle')) return;
   var secret = isSecret(item), host = pageRoot.querySelector('[data-vis-host]');
@@ -113,11 +114,9 @@ renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'char
 var _rOrg = renderOrgPage;
 // @ts-expect-error -- idem, tab-organizacoes.js
 renderOrgPage = function () { _rOrg(); tagPage(orgById(S.route.orgId), 'organizations'); };
-var _rSheet = renderSheetPage, _rEvent = renderEventPage;
+var _rSheet = renderSheetPage;
 // @ts-expect-error -- idem, tab-fichas.js
 renderSheetPage = function () { _rSheet(); tagPage(sheetById(S.route.sheetId), 'sheets'); };
-// @ts-expect-error -- idem, tab-eventos.js
-renderEventPage = function () { _rEvent(); tagPage(eventById(S.route.eventId), 'events'); };
 var _rSpell = renderSpellPage;
 // @ts-expect-error -- idem, tab-magias.js
 renderSpellPage = function () { _rSpell(); tagPage(spellById(S.route.spellId), 'spells'); };
@@ -191,8 +190,6 @@ function renderPage() {
   else if (r.page === 'char') renderCharPage();
   else if (r.page === 'sheets') renderSheetsPage();
   else if (r.page === 'sheet') renderSheetPage();
-  else if (r.page === 'events') renderEventsPage();
-  else if (r.page === 'event') renderEventPage();
   else if (r.page === 'orgs') renderOrgsPage();
   else if (r.page === 'org') renderOrgPage();
   else if (r.page === 'spells') renderSpellsPage();
@@ -306,7 +303,6 @@ function onData(kind) {
   if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
   if (S.route.page === 'orgs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'orgSearch') { renderOrgList(); return; }
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
-  if (S.route.page === 'events' && document.activeElement && document.activeElement.id === 'eventSearch') { renderEventList(); return; }
   if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }
   if ((S.route.page === 'advs' || S.route.page === 'perks') && kind !== 'maps' && document.activeElement && document.activeElement.id === 'advSearch') { renderAdvList(); return; }
   if (S.route.page === 'disadvs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'disadvSearch') { renderDisadvList(); return; }
