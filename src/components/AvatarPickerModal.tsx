@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { PRESET_AVATARS } from './NpcAvatar';
-import { Upload, Link as LinkIcon, Trash2, X, Check } from 'lucide-react';
+import { Upload, Link as LinkIcon, Trash2, Check, Sword } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
+import { ModalHeader } from './ModalHeader';
+import { MODAL_BACKDROP_STYLE, modalCardStyle, MODAL_FOOTER_STYLE } from './modalStyles';
 import { hubAlert } from '../utils/hubDialog';
 
 interface AvatarPickerModalProps {
@@ -61,20 +63,20 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 className="text-base font-bold text-white">
-            Foto / Token de <span className="text-amber-400">{npcName}</span>
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div style={MODAL_BACKDROP_STYLE}>
+      <div style={modalCardStyle('540px')}>
+        <ModalHeader
+          icon={<Sword size={16} className="text-amber-400" />}
+          title={
+            <>
+              Foto / Token de <span style={{ color: '#fbbf24' }}>{npcName}</span>
+            </>
+          }
+          subtitle="Selecione um token pré-definido ou insira URL personalizada"
+          onClose={onClose}
+        />
 
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
         {/* Current Preview */}
         <div className="flex items-center gap-4 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
           <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-700 shrink-0 flex items-center justify-center bg-slate-900">
@@ -229,9 +231,10 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
             </div>
           </div>
         </div>
+        </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-3">
+        <div style={MODAL_FOOTER_STYLE}>
           <button
             onClick={onClose}
             className="px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"

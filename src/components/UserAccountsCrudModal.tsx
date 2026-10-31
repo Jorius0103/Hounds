@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { UserAccount, UserRole } from '../types/rpg';
-import { Users, Plus, KeyRound, Trash2, X, Check, ShieldCheck, UserCheck, Eye } from 'lucide-react';
+import { Users, Plus, KeyRound, Trash2, Check, ShieldCheck, UserCheck, Eye } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
+import { ModalHeader } from './ModalHeader';
+import { MODAL_BACKDROP_STYLE, modalCardStyle, MODAL_FOOTER_STYLE } from './modalStyles';
 
 interface UserAccountsCrudModalProps {
   isOpen: boolean;
@@ -48,23 +50,16 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Users size={20} className="text-amber-400" />
-            <h3 className="text-base font-bold text-white">
-              Controle de Acesso: Mestres e Jogadores (CRUD)
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div style={MODAL_BACKDROP_STYLE}>
+      <div style={modalCardStyle('580px')}>
+        <ModalHeader
+          icon={<Users size={16} className="text-amber-400" />}
+          title="Controle de Acesso: Mestres e Jogadores"
+          subtitle="Gerencie contas, papéis e permissões de acesso ao sistema"
+          onClose={onClose}
+        />
 
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-xs text-slate-400">
             Gerencie quem pode acessar o sistema como Mestre ou como Jogador assistente.
@@ -250,8 +245,9 @@ export const UserAccountsCrudModal: React.FC<UserAccountsCrudModalProps> = ({
             );
           })}
         </div>
+        </div>
 
-        <div className="flex justify-end pt-2 border-t border-slate-800">
+        <div style={MODAL_FOOTER_STYLE}>
           <button
             onClick={onClose}
             className="px-4 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl"

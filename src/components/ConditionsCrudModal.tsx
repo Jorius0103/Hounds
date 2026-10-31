@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ConditionDefinition } from '../types/rpg';
-import { Plus, Trash2, Edit2, Check, X, Search, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, Search, AlertCircle } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
+import { ModalHeader } from './ModalHeader';
+import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
 
 interface ConditionsCrudModalProps {
   isOpen: boolean;
@@ -78,26 +80,17 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <AlertCircle size={18} className="text-amber-400" />
-              <span>Gerenciador de Condições & Estados (CRUD)</span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Crie, edite, exclua e ative estados de combate no NPC selecionado.
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div style={MODAL_BACKDROP_STYLE}>
+      <div style={modalCardStyle('640px', { borderRadius: '18px' })}>
+        <ModalHeader
+          size="large"
+          icon={<AlertCircle size={16} className="text-amber-400" />}
+          title={<span style={{ fontSize: '16px' }}>Gerenciador de Condições & Estados (CRUD)</span>}
+          subtitle="Crie, edite, exclua e ative estados de combate no NPC selecionado."
+          onClose={onClose}
+        />
 
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
         {/* Search and New Button */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -294,11 +287,41 @@ export const ConditionsCrudModal: React.FC<ConditionsCrudModalProps> = ({
             })
           )}
         </div>
+        </div>
 
-        <div className="flex justify-end pt-2 border-t border-slate-800">
+        {/* Rodapé fixo: total de condições e quantas estão ativas no NPC */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            background: '#020617',
+            borderTop: '1px solid #1e293b',
+            gap: '12px',
+          }}
+        >
+          <span style={{ fontSize: '12px', color: '#cbd5e1', fontWeight: 500 }}>
+            <strong style={{ color: '#fbbf24', fontWeight: 'bold' }}>{conditions.length}</strong>
+            {` ${conditions.length === 1 ? 'condição cadastrada' : 'condições cadastradas'}`}
+            {activeNpcConditions.length > 0
+              ? ` (${activeNpcConditions.length} ativa${activeNpcConditions.length > 1 ? 's' : ''} no NPC)`
+              : ''}
+          </span>
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl"
+            style={{
+              padding: '8px 20px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              background: '#f59e0b',
+              color: '#020617',
+              border: 'none',
+              cursor: 'pointer',
+            }}
           >
             Concluir
           </button>

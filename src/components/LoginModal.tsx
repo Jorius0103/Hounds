@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount } from '../types/rpg';
 import { Swords, Lock, User, KeyRound, AlertTriangle, ArrowRight } from 'lucide-react';
+import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -99,8 +100,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-5">
+    <div style={MODAL_BACKDROP_STYLE}>
+      <div style={modalCardStyle('440px', { overflowY: 'auto' })} className="p-6 space-y-5">
         {/* Header */}
         <div className="text-center space-y-1">
           <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg">

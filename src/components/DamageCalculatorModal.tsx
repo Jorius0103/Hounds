@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { NPC, ActionLogEntry, ExtraItem, BodyArmorLocation } from '../types/rpg';
-import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info, Crosshair } from 'lucide-react';
+import { Shield, Zap, Heart, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info, Crosshair } from 'lucide-react';
 import { calculateLocationDamage, migrateArmorLocations, normalizeLocationKey, sanitizeHitLocationRule } from '../utils/gurps';
+import { ModalHeader } from './ModalHeader';
+import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
 
 interface DamageCalculatorModalProps {
   npc: NPC;
@@ -450,23 +452,29 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const effectiveMode = isRestrictedNpcView && (mode === 'item' || mode === 'heal') ? 'damage' : mode;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Heart className="text-rose-400" size={20} />
-            <h3 className="text-base font-bold text-white">
-              Lançar Dano / Fadiga{isRestrictedNpcView ? '' : ' / Itens'}: <span className="text-amber-400">{npc.name || 'NPC'}</span>
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div
+      style={{ ...MODAL_BACKDROP_STYLE, padding: '24px 16px', overflowY: undefined }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div style={modalCardStyle('620px', { borderRadius: '18px' })}>
+        <ModalHeader
+          size="large"
+          icon={<Heart size={17} className="text-amber-400" />}
+          title={
+            <>
+              Lançar Dano / Fadiga{isRestrictedNpcView ? '' : ' / Itens'}: <span style={{ color: '#fbbf24' }}>{npc.name || 'NPC'}</span>
+            </>
+          }
+          subtitle="Aplique dano com cálculo de RD ou ajuste fadiga e itens de mana"
+          onClose={onClose}
+        />
 
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
         {/* Tab Mode: Damage / Fatigue / Heal / Item */}
         <div className="flex items-center p-1 bg-slate-950 rounded-xl border border-slate-800 gap-1 flex-wrap sm:flex-nowrap">
           <button
@@ -1456,6 +1464,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
             </button>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { systemLogger, SystemLogEntry } from '../utils/systemLogger';
 import { X, Trash2, Copy, Check, Activity, ShieldAlert, Radio, Laptop } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
+import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
 
 interface SystemLogModalProps {
   isOpen: boolean;
@@ -66,10 +67,20 @@ export const SystemLogModal: React.FC<SystemLogModalProps> = ({ isOpen, onClose 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+    <div style={MODAL_BACKDROP_STYLE}>
+      <div style={modalCardStyle('640px')}>
         {/* Header */}
-        <div className="p-4 sm:px-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 18px',
+            borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
+            background: 'linear-gradient(to right, rgba(69, 26, 3, 0.3), #0f172a, #0f172a)',
+          }}
+        >
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
               <Activity size={17} />

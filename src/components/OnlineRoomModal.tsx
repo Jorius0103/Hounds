@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { SyncStatus, onlineSyncService } from '../utils/onlineSync';
-import { Wifi, Copy, Check, RefreshCw, X, Radio, ExternalLink } from 'lucide-react';
+import { Wifi, Copy, Check, RefreshCw, Radio, ExternalLink } from 'lucide-react';
+import { ModalHeader } from './ModalHeader';
+import { MODAL_BACKDROP_STYLE, modalCardStyle, MODAL_FOOTER_STYLE } from './modalStyles';
 
 interface OnlineRoomModalProps {
   isOpen: boolean;
@@ -38,24 +40,16 @@ export const OnlineRoomModal: React.FC<OnlineRoomModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Radio size={20} className={syncStatus === 'connected' ? 'text-emerald-400' : 'text-amber-400'} />
-            <h3 className="text-base font-bold text-white">
-              Sincronização Online entre Navegadores
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div style={MODAL_BACKDROP_STYLE}>
+      <div style={modalCardStyle('480px')}>
+        <ModalHeader
+          icon={<Radio size={16} className={syncStatus === 'connected' ? 'text-emerald-400' : 'text-amber-400'} />}
+          title="Sincronização Online entre Navegadores"
+          subtitle="Conecte mestres e jogadores à mesma sala em tempo real"
+          onClose={onClose}
+        />
 
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
         {/* Status Badge */}
         <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs">
@@ -137,9 +131,10 @@ export const OnlineRoomModal: React.FC<OnlineRoomModalProps> = ({
             </button>
           </div>
         </form>
+        </div>
 
         {/* Force Sync button */}
-        <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+        <div style={{ ...MODAL_FOOTER_STYLE, justifyContent: 'space-between' }}>
           <button
             type="button"
             onClick={onForceSync}

@@ -59,6 +59,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { ArmorSearchModal } from './ArmorSearchModal';
+import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
 import { ArmorCatalogItem, ParsedArmorDR, getCoveredLocationsForArmor } from '../utils/armorCatalog';
 
 const getItemIcon = (name: string, category?: string) => {
@@ -4119,8 +4120,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
           {/* Modal / Diálogo para Cadastrar / Editar Regra Adicional em Partes do Corpo */}
           {editingBodyPartKey !== null && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <div style={MODAL_BACKDROP_STYLE} className="animate-fade-in">
+              <div style={modalCardStyle('480px', { overflowY: 'auto' })} className="p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <Heart size={18} className="text-amber-400" />

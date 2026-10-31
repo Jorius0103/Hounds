@@ -2,16 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Spell } from '../types/rpg';
 import { Sparkles, Plus, Trash2, Star, X, Check, Search } from 'lucide-react';
 import { loadSpellsDatabase, normalizeSpellText, getCollegePt } from './SingleSpellModal';
-import {
-  MODAL_BACKDROP_STYLE,
-  modalCardStyle,
-  MODAL_HEADER_STYLE,
-  MODAL_HEADER_ICON_STYLE,
-  MODAL_TITLE_STYLE,
-  MODAL_SUBTITLE_STYLE,
-  MODAL_CLOSE_STYLE,
-  MODAL_FOOTER_STYLE,
-} from './modalStyles';
+import { MODAL_BACKDROP_STYLE, modalCardStyle, MODAL_FOOTER_STYLE } from './modalStyles';
+import { ModalHeader } from './ModalHeader';
 
 interface SpellsModalProps {
   isOpen: boolean;
@@ -145,28 +137,17 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
     <div style={MODAL_BACKDROP_STYLE}>
       <div style={modalCardStyle('680px', { height: '80vh', minHeight: '580px', maxHeight: '88vh' })}>
         {/* Header */}
-        <div style={MODAL_HEADER_STYLE}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-            <div style={MODAL_HEADER_ICON_STYLE}>
-              <Sparkles size={18} className="text-amber-400" />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <h2 style={MODAL_TITLE_STYLE}>
-                Grimório de Magias: <span style={{ color: '#fbbf24' }}>{npcName}</span>
-              </h2>
-              <p style={MODAL_SUBTITLE_STYLE}>Cadastre e gerencie magias em lote, via catálogo ou manualmente</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            style={MODAL_CLOSE_STYLE}
-            className="hover:text-white hover:bg-slate-800 transition-colors"
-            title="Fechar (Esc)"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        <ModalHeader
+          size="standard"
+          icon={<Sparkles size={18} className="text-amber-400" />}
+          title={
+            <>
+              Grimório de Magias: <span style={{ color: '#fbbf24' }}>{npcName}</span>
+            </>
+          }
+          subtitle="Cadastre e gerencie magias em lote, via catálogo ou manualmente"
+          onClose={handleClose}
+        />
 
         {/* Database Search Input */}
         <div
