@@ -489,57 +489,59 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               </button>
             )}
 
-            {/* Controle de Rodadas (iniciando em 0, com botões aprimorados de menos e mais) */}
-            {!isNoCombat && (() => {
-              const canEditRound = canControlRound ?? (currentUserRole === 'mestre');
-              return (
-                <div className="flex items-center bg-slate-900 border border-slate-750 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0">
-                  {canEditRound && (
-                    <button
-                      type="button"
-                      disabled={currentRound <= 0}
-                      onClick={() => onUpdateRound && onUpdateRound(Math.max(0, currentRound - 1))}
-                      className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-600 disabled:opacity-25 disabled:cursor-not-allowed transition-all active:scale-90 shadow-xs"
-                      title="Diminuir rodada (-1)"
-                    >
-                      <Minus size={12} strokeWidth={3} />
-                    </button>
-                  )}
+            {/* Controle de Rodadas e Passar o Dia alinhados horizontalmente */}
+            <div className="flex items-center gap-2 shrink-0">
+              {!isNoCombat && (() => {
+                const canEditRound = canControlRound ?? (currentUserRole === 'mestre');
+                return (
+                  <div className="flex items-center h-7 bg-slate-900 border border-slate-750 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0">
+                    {canEditRound && (
+                      <button
+                        type="button"
+                        disabled={currentRound <= 0}
+                        onClick={() => onUpdateRound && onUpdateRound(Math.max(0, currentRound - 1))}
+                        className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-600 disabled:opacity-25 disabled:cursor-not-allowed transition-all active:scale-90 shadow-xs"
+                        title="Diminuir rodada (-1)"
+                      >
+                        <Minus size={12} strokeWidth={3} />
+                      </button>
+                    )}
 
-                  <div className="flex items-center gap-1 px-2 py-0.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none font-sans">
-                      Rodada
-                    </span>
-                    <span className="text-xs font-black text-amber-400 font-mono tracking-wider select-none min-w-[14px] text-center">
-                      {currentRound}
-                    </span>
+                    <div className="flex items-center gap-1 px-2 py-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none font-sans">
+                        Rodada
+                      </span>
+                      <span className="text-xs font-black text-amber-400 font-mono tracking-wider select-none min-w-[14px] text-center">
+                        {currentRound}
+                      </span>
+                    </div>
+
+                    {canEditRound && (
+                      <button
+                        type="button"
+                        onClick={() => onUpdateRound && onUpdateRound(currentRound + 1)}
+                        className="w-6 h-6 flex items-center justify-center rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black border border-amber-400/80 transition-all active:scale-90 shadow-xs"
+                        title="Avançar rodada (+1)"
+                      >
+                        <Plus size={12} strokeWidth={3} />
+                      </button>
+                    )}
                   </div>
+                );
+              })()}
 
-                  {canEditRound && (
-                    <button
-                      type="button"
-                      onClick={() => onUpdateRound && onUpdateRound(currentRound + 1)}
-                      className="w-6 h-6 flex items-center justify-center rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black border border-amber-400/80 transition-all active:scale-90 shadow-xs"
-                      title="Avançar rodada (+1)"
-                    >
-                      <Plus size={12} strokeWidth={3} />
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
-
-            {(currentUserRole === 'mestre' || canPassDay) && onOpenPassDayModal && (
-              <button
-                type="button"
-                onClick={onOpenPassDayModal}
-                className="flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap border border-amber-500/50 cursor-pointer"
-                title="Passar o dia: recarregar recursos dos personagens"
-              >
-                <Sun size={12} className="text-amber-400" />
-                <span>Passar o dia</span>
-              </button>
-            )}
+              {(currentUserRole === 'mestre' || canPassDay) && onOpenPassDayModal && (
+                <button
+                  type="button"
+                  onClick={onOpenPassDayModal}
+                  className="flex items-center justify-center gap-1.5 px-2.5 h-7 text-[11px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-xl shadow-sm transition-all active:scale-95 whitespace-nowrap border border-amber-500/50 cursor-pointer shrink-0"
+                  title="Passar o dia: recarregar recursos dos personagens"
+                >
+                  <Sun size={12} className="text-amber-400" />
+                  <span>Passar o dia</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -608,10 +610,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 let nameColor = '';
 
                 if (isSelected) {
-                  cardColorClasses = isPlayerChar
-                    ? 'bg-emerald-950/50 border-emerald-400 text-emerald-100 shadow-md shadow-emerald-950/50'
-                    : 'bg-purple-950/50 border-purple-400 text-purple-100 shadow-md shadow-purple-950/50';
-                  nameColor = 'text-white';
+                  cardColorClasses =
+                    'bg-blue-950/50 border-blue-500 text-blue-100 ring-2 ring-blue-400 shadow-md shadow-blue-950/50';
+                  nameColor = 'text-blue-100 font-black';
                 } else if (isDeadChar) {
                   cardColorClasses =
                     'bg-red-950/35 border-red-600 hover:bg-red-950/45 text-red-200';
@@ -621,10 +622,9 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                     'bg-amber-950/25 border-amber-400 hover:bg-amber-950/35 text-amber-200';
                   nameColor = 'text-amber-200';
                 } else {
-                  cardColorClasses = isPlayerChar
-                    ? 'bg-emerald-950/25 border-emerald-700/80 hover:border-emerald-500 hover:bg-emerald-950/35 text-emerald-200'
-                    : 'bg-purple-950/25 border-purple-700/80 hover:border-purple-500 hover:bg-purple-950/35 text-purple-200';
-                  nameColor = isPlayerChar ? 'text-emerald-200' : 'text-purple-200';
+                  cardColorClasses =
+                    'bg-emerald-950/25 border-emerald-700/80 hover:border-emerald-500 hover:bg-emerald-950/35 text-emerald-200';
+                  nameColor = 'text-emerald-200';
                 }
 
                 return (
@@ -641,25 +641,19 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                       borderWidth: '2px',
                       borderStyle: 'solid',
                       borderColor: isSelected
-                        ? isPlayerChar ? '#10b981' : '#a855f7'
+                        ? '#3b82f6'
                         : isDeadChar
                         ? '#dc2626'
                         : hasAlerts
                         ? '#f59e0b'
-                        : isPlayerChar
-                        ? '#059669'
-                        : '#7c3aed',
+                        : '#059669',
                       background: isSelected
-                        ? isPlayerChar
-                          ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.45) 0%, rgba(15, 23, 42, 0.95) 100%)'
-                          : 'linear-gradient(135deg, rgba(88, 28, 135, 0.45) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                        ? 'linear-gradient(135deg, rgba(30, 58, 138, 0.50) 0%, rgba(15, 23, 42, 0.95) 100%)'
                         : isDeadChar
                         ? 'rgba(69, 10, 10, 0.35)'
                         : hasAlerts
                         ? 'linear-gradient(135deg, rgba(120, 53, 15, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%)'
-                        : isPlayerChar
-                        ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.22) 0%, rgba(15, 23, 42, 0.96) 100%)'
-                        : 'linear-gradient(135deg, rgba(88, 28, 135, 0.22) 0%, rgba(15, 23, 42, 0.96) 100%)',
+                        : 'linear-gradient(135deg, rgba(6, 78, 59, 0.22) 0%, rgba(15, 23, 42, 0.96) 100%)',
                       width: 'calc((100% - 50px) / 9)',
                       minWidth: '150px',
                     }}

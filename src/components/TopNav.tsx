@@ -171,28 +171,6 @@ export const TopNav: React.FC<TopNavProps> = ({
                 className={editorCount > 0 ? 'text-emerald-400' : 'text-amber-400'}
               />
               <span className="text-[11px]">Jogadores e Personagens</span>
-              <span
-                className={`text-[10px] px-1.5 rounded-full font-bold font-mono border ${
-                  editorCount > 0
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                    : 'bg-slate-800 text-slate-400 border-slate-700'
-                }`}
-              >
-                {editorCount}
-              </span>
-            </button>
-          )}
-
-          {/* Botão Passar o Dia (Mestre ou Jogador com Permissão de Edição) */}
-          {(currentUser?.role === 'mestre' || canEditCurrent) && onOpenPassDayModal && (
-            <button
-              type="button"
-              onClick={onOpenPassDayModal}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all shadow-sm font-medium border bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-amber-300 hover:text-white cursor-pointer"
-              title="Passar o Dia: recarregar +1 de mana nos recursos dos Personagens"
-            >
-              <Sun size={13} className="text-amber-400" />
-              <span className="text-[11px] font-semibold whitespace-nowrap">Passar o Dia</span>
             </button>
           )}
 

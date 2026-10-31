@@ -2036,11 +2036,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     }
                     className={`flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold rounded-lg border select-none cursor-default ${
                       displayPlayerName
-                        ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-300 shadow-sm'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 shadow-sm'
+                        ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-400'
                     }`}
                   >
-                    <UserCheck size={12} className={displayPlayerName ? 'text-emerald-400' : 'text-slate-500'} />
                     <span className="text-slate-400 font-normal">Player:</span>
                     <span className="truncate max-w-[100px] sm:max-w-[130px]">
                       {displayPlayerName || 'Nenhum'}
