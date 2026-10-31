@@ -545,6 +545,13 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
             currentUserRole={currentUserRole}
             currentRound={currentRound}
             filterType={filterType}
+            filterEmptyMessage={
+              currentUserRole !== 'mestre'
+                ? 'Nenhum personagem ou NPC visível no momento.'
+                : filterType === 'players'
+                ? 'Nenhum Personagem cadastrado. Clique em "+ Personagem" acima.'
+                : 'Nenhum registro encontrado neste filtro.'
+            }
             users={users}
             onlinePlayerNames={onlinePlayerNames}
           />

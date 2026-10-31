@@ -13,6 +13,7 @@ import {
   Target,
   Star,
   Package,
+  Sword,
 } from 'lucide-react';
 import { NPC, MesaRole, UserAccount } from '../types/rpg';
 import {
@@ -136,7 +137,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
 
   return (
     <div className="w-full pt-0.5 pb-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
+      <div className="combat-home-grid">
         {npcs.map((npc) => {
           const isPlayerChar = npc.characterType === 'player';
           const isDead = Boolean(npc.isDead);
@@ -165,13 +166,12 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
           const affectedSpells = npc.affectedSpells || [];
           const hasSpells = activeSpells.length > 0 || affectedSpells.length > 0;
 
-          // Observações Gerais (assistantNotes / masterNotes)
-          const generalNotes = (
-            (npc.assistantNotes || '') +
-            (isMaster && npc.masterNotes ? `${npc.assistantNotes ? ' • ' : ''}[Mestre] ${npc.masterNotes}` : '') ||
-            (npc as any).notes ||
-            ''
-          ).trim();
+          // Observações gerais (compartilhadas) e do Mestre (confidenciais, só para o Mestre)
+          const generalNotes = ((npc.assistantNotes || '').trim() || ((npc as any).notes || '').trim()) as string;
+          const masterNotes = (isMaster && (npc.masterNotes || '').trim()) || '';
+
+          // Armas favoritadas na ficha
+          const favoriteWeapons = (npc.weapons || []).filter((wp) => wp && wp.isFavorite);
 
           // Alertas de Defesas & Ações do Turno
           const ta = npc.turnActions || DEFAULT_TURN_ACTIONS;
@@ -372,9 +372,9 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+                    <div className="flex items-baseline gap-1.5 min-w-0">
                       <h3
-                        className={`text-lg font-black truncate leading-tight ${
+                        className={`text-base font-black truncate leading-tight ${
                           isDead
                             ? 'text-red-400 line-through'
                             : isPlayerChar
@@ -385,6 +385,9 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                       >
                         {npc.name || '(Sem Nome)'}
                       </h3>
+                    </div>
+                    {/* Jogador abaixo do nome do personagem, junto dos selos */}
+                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                       {isPlayerChar && (getPlayerDisplayName(npc) || npc.playerName) && (
                         <span
                           title={`Jogador: ${getPlayerDisplayName(npc)} (${isPlayerOnline(npc.playerName, npc.userId) ? 'Online' : 'Offline'})`}
@@ -397,24 +400,22 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                           {getPlayerDisplayName(npc)}
                         </span>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                       {!isPlayerChar && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-300 bg-purple-950/80 px-1.5 py-0.2 rounded border border-purple-700/60">
-                          <Users size={11} className="text-purple-400" />
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-300 bg-purple-950/80 px-1.5 py-0.2 rounded border border-purple-700/60">
+                          <Users size={10} className="text-purple-400" />
                           NPC
                         </span>
                       )}
                       {!isPlayerChar && isMaster && (
                         <span
                           title={npc.isVisibleToPlayer ? 'Visível para Jogadores' : 'Oculto para Jogadores'}
-                          className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1 py-0.2 rounded border ${
+                          className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.2 rounded border ${
                             npc.isVisibleToPlayer
                               ? 'bg-blue-950/70 border-blue-700/60 text-blue-300'
                               : 'bg-slate-950 border-slate-800 text-slate-500'
                           }`}
                         >
-                          {npc.isVisibleToPlayer ? <Eye size={11} /> : <EyeOff size={11} />}
+                          {npc.isVisibleToPlayer ? <Eye size={10} /> : <EyeOff size={10} />}
                         </span>
                       )}
                     </div>
@@ -423,16 +424,20 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
 
                 {/* CENTRO DO CABEÇALHO: PV E FP COM BARRAS */}
                 {showDetailedStats && (
-                  <div className="flex flex-col shrink-0 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1 min-w-[155px] sm:min-w-[170px]">
+                  <div
+                    className="flex flex-col shrink-0 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1"
+                    style={{ minWidth: '155px' }}
+                  >
                     {/* Linha com PV e FP */}
-                    <div className="flex items-center justify-between gap-3 text-xs leading-tight font-mono">
+                    <div className="flex items-center justify-between gap-2 text-xs leading-tight font-mono">
                       <div className="flex items-center gap-1.5">
                         <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
                           <Heart size={11} className="text-emerald-400 fill-emerald-400/20 shrink-0" />
                           PV
                         </span>
                         <span className="font-black text-emerald-400">
-                          {npc.hpCurrent} <span className="text-slate-500 text-[10px]">/</span> {npc.hpMax}
+                          {npc.hpCurrent} <span className="text-slate-500 text-[10px] mx-0.5">/</span>{' '}
+                          <span className="text-emerald-400/80 text-[10px]">{npc.hpMax}</span>
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -441,7 +446,8 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                           FP
                         </span>
                         <span className="font-black text-cyan-300">
-                          {npc.fpCurrent} <span className="text-slate-500 text-[10px]">/</span> {npc.fpMax}
+                          {npc.fpCurrent} <span className="text-slate-500 text-[10px] mx-0.5">/</span>{' '}
+                          <span className="text-cyan-300/80 text-[10px]">{npc.fpMax}</span>
                         </span>
                       </div>
                     </div>
@@ -494,14 +500,71 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                 </div>
               </div>
 
+              {/* LINHA DE ATRIBUTOS: primários (ST, DX, IQ, HT) e secundários (Per, Will, Spd, Move) */}
+              {showDetailedStats && (
+                <div
+                  className="w-full flex items-center px-2.5 py-1 bg-slate-950/70 border border-slate-800/80 rounded-lg select-none text-[11px] gap-x-2 gap-y-0.5 flex-wrap"
+                  title="Atributos: ST, DX, IQ, HT, Per, Will, Spd, Move"
+                >
+                  {[
+                    { label: 'ST', title: 'Força (ST)', value: npc.st ?? 10 },
+                    { label: 'DX', title: 'Destreza (DX)', value: npc.dx ?? 10 },
+                    { label: 'IQ', title: 'Inteligência (IQ)', value: npc.iq ?? 10 },
+                    { label: 'HT', title: 'Vitalidade (HT)', value: npc.ht ?? 10 },
+                  ].map((attr) => (
+                    <span key={attr.label} className="inline-flex items-center gap-1 shrink-0" title={attr.title}>
+                      <span className="font-bold text-slate-400 text-[10px] mr-0.5">{attr.label}</span>
+                      <span className="font-mono font-black text-amber-300 text-xs">{attr.value}</span>
+                    </span>
+                  ))}
+                  <span className="inline-flex items-center gap-1 shrink-0" title="Percepção (Per)">
+                    <span className="font-bold text-teal-400 text-[10px] mr-0.5">Per</span>
+                    <span className="font-mono font-black text-teal-200 text-xs">{npc.per ?? npc.iq ?? 10}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 shrink-0" title="Vontade (Will)">
+                    <span className="font-bold text-indigo-300 text-[10px] mr-0.5">Will</span>
+                    <span className="font-mono font-black text-indigo-200 text-xs">{npc.will ?? npc.iq ?? 10}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 shrink-0" title="Basic Speed (Spd)">
+                    <span className="font-bold text-amber-400 text-[10px] mr-0.5">Spd</span>
+                    <span className="font-mono font-black text-amber-300 text-xs">{npc.basicSpeed ?? 0}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 shrink-0" title="Basic Move (Move)">
+                    <span className="font-bold text-emerald-400 text-[10px] mr-0.5">Move</span>
+                    <span className="font-mono font-black text-emerald-300 text-xs whitespace-nowrap">
+                      {npc.basicMove !== undefined && npc.basicMove !== null && String(npc.basicMove).trim() !== ''
+                        ? npc.basicMove
+                        : npc.basicSpeed
+                        ? Math.floor(npc.basicSpeed)
+                        : 0}
+                    </span>
+                  </span>
+                </div>
+              )}
+
               {/* CONTEÚDO PRINCIPAL (DISTRIBUIÇÃO DINÂMICA EM 2 COLUNAS SEM GAPS VERTICAIS) */}
               {(() => {
-                const contentBlocks: React.ReactNode[] = [];
+                // Cada bloco vai para a coluna mais baixa até ali, pela altura estimada em px,
+                // para as duas colunas terminarem perto uma da outra
+                const colLeft: React.ReactNode[] = [];
+                const colRight: React.ReactNode[] = [];
+                let heightLeft = 0;
+                let heightRight = 0;
+                const pushBlock = (node: React.ReactNode, estimatedHeight: number) => {
+                  if (heightLeft <= heightRight) {
+                    colLeft.push(node);
+                    heightLeft += estimatedHeight + (colLeft.length > 1 ? 6 : 0);
+                  } else {
+                    colRight.push(node);
+                    heightRight += estimatedHeight + (colRight.length > 1 ? 6 : 0);
+                  }
+                };
 
                 // 1. Bloco de Defesas Ativas (SEM TÍTULO "DEFESAS ATIVAS")
                 if (hasDefenses) {
                   const hasBlock = (npc.block ?? 0) > 0;
-                  contentBlocks.push(
+                  const defenseRows = Math.ceil((1 + (hasBlock ? 1 : 0) + (parry1 ? 1 : 0) + (parry2 ? 1 : 0)) / 2);
+                  pushBlock(
                     <div key="defenses" className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5">
                       <div className="grid grid-cols-2 gap-1">
                         {/* Esquiva */}
@@ -554,13 +617,14 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                           <div className="min-h-[24px]" />
                         ) : null}
                       </div>
-                    </div>
+                    </div>,
+                    18 + Math.max(1, defenseRows) * 30
                   );
                 }
 
                 // 2. Bloco de Recursos Favoritados (SEM TÍTULO "RECURSOS FAVORITADOS")
                 if (hasFavoriteItems) {
-                  contentBlocks.push(
+                  pushBlock(
                     <div key="resources" className="bg-slate-950/90 border border-slate-800/90 rounded-lg p-1.5 space-y-1">
                       {favoriteItems.map((it) => (
                         <div
@@ -579,13 +643,67 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                           </span>
                         </div>
                       ))}
-                    </div>
+                    </div>,
+                    12 + favoriteItems.length * 24
                   );
                 }
 
+                // 2b. Armas favoritadas: um bloco por arma, com NH e os modos de ataque
+                favoriteWeapons.forEach((wp) => {
+                  const modeCount = wp.modes && wp.modes.length > 0 ? wp.modes.length : 1;
+                  pushBlock(
+                    <div
+                      key={wp.id || `fav-wpn-${wp.name}`}
+                      className="bg-slate-950/90 border border-amber-500/40 rounded-lg p-2 text-[11px] space-y-1 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <Sword size={13} className="text-amber-400 shrink-0" />
+                          <span className="font-bold text-white text-xs truncate" title={wp.name}>
+                            {wp.name}
+                          </span>
+                        </div>
+                        <span
+                          className="font-mono font-black text-amber-300 bg-amber-950/80 border border-amber-500/50 px-2 py-0.5 rounded text-[11px] shrink-0 tabular-nums shadow-xs"
+                          title="Nível de Habilidade (NH)"
+                        >
+                          NH {wp.nh}
+                        </span>
+                      </div>
+                      {wp.modes && wp.modes.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                          {wp.modes.map((md, mi) => (
+                            <div
+                              key={md.id || mi}
+                              className="bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] font-mono flex items-center gap-1.5 text-slate-300"
+                              title={`Ataque: ${md.name || 'Ataque'} | Dano: ${md.damage || '-'} (${md.type || ''}) | Alcance: ${md.reach || '-'}`}
+                            >
+                              {md.name && <span className="font-bold text-amber-400 font-sans">{md.name}:</span>}
+                              <span>
+                                Dano <strong className="text-white">{md.damage || '-'}</strong>
+                              </span>
+                              {md.type && <span className="text-slate-400 font-sans">({md.type})</span>}
+                              {md.reach && <span className="text-slate-400">Alc {md.reach}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : wp.damage ? (
+                        <div className="bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] font-mono inline-flex items-center gap-1.5 text-slate-300">
+                          <span>
+                            Dano <strong className="text-white">{wp.damage}</strong>
+                          </span>
+                          {wp.type && <span className="text-slate-400 font-sans">({wp.type})</span>}
+                          {wp.reach && <span className="text-slate-400">Alc {wp.reach}</span>}
+                        </div>
+                      ) : null}
+                    </div>,
+                    44 + modeCount * 28
+                  );
+                });
+
                   // 3. Bloco de Magias (MANTÉM TÍTULOS DE "Magias Ativas" E "Sob Efeito")
                   if (hasSpells) {
-                    contentBlocks.push(
+                    pushBlock(
                       <div key="spells" className="bg-slate-950/90 border border-purple-900/40 rounded-lg p-1.5">
                         {/* Magias Ativas */}
                         {activeSpells.length > 0 && (
@@ -649,13 +767,14 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                             </div>
                           </div>
                         )}
-                      </div>
+                      </div>,
+                      28 + Math.min(3, activeSpells.length + affectedSpells.length) * 26
                     );
                   }
 
                   // 4. Bloco de Alertas de Turno (SEM TÍTULO "Turno:")
                   if (hasAlerts) {
-                    contentBlocks.push(
+                    pushBlock(
                       <div key="alerts" className="bg-slate-950/90 border border-slate-800/90 rounded-lg px-2 py-1 flex items-center gap-1 flex-wrap">
                         {turnAlerts.map((alert) => {
                           const IconComp = alert.icon;
@@ -687,25 +806,31 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                             {ta.notes}
                           </span>
                         )}
-                      </div>
+                      </div>,
+                      28 + Math.ceil((turnAlerts.length + criticalAlerts.length + (ta.notes ? 1 : 0)) / 2) * 22
                     );
                   }
 
-                  // 5. Bloco de Observações (SEM TÍTULO "Obs:")
+                  // 5. Observações gerais (todos veem) e do Mestre (só o Mestre), em blocos separados
+                  const notesHeight = (text: string) => Math.min(90, 24 + Math.ceil(text.length / 45) * 16);
                   if (generalNotes) {
-                    contentBlocks.push(
-                      <div key="obs" className="bg-slate-950/80 border border-slate-800/80 rounded-lg px-2 py-1 text-[11px] text-slate-300">
-                        <span className="italic line-clamp-2" title={generalNotes}>
-                          {generalNotes}
-                        </span>
-                      </div>
+                    pushBlock(
+                      <div key="obs-gerais" className="bg-slate-950/90 border border-slate-800/80 rounded-lg p-2 text-[11px]" title={generalNotes}>
+                        <p className="text-slate-300 italic line-clamp-3 text-xs leading-relaxed">{generalNotes}</p>
+                      </div>,
+                      notesHeight(generalNotes)
+                    );
+                  }
+                  if (masterNotes) {
+                    pushBlock(
+                      <div key="obs-mestre" className="bg-purple-950/30 border border-purple-800/50 rounded-lg p-2 text-[11px]" title={masterNotes}>
+                        <p className="text-purple-200 italic line-clamp-3 text-xs leading-relaxed">{masterNotes}</p>
+                      </div>,
+                      notesHeight(masterNotes)
                     );
                   }
 
-                  if (contentBlocks.length === 0) return null;
-
-                  const colLeft = contentBlocks.filter((_, i) => i % 2 === 0);
-                  const colRight = contentBlocks.filter((_, i) => i % 2 === 1);
+                  if (colLeft.length === 0 && colRight.length === 0) return null;
 
                   return (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 items-start">
