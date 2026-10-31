@@ -34,6 +34,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   onOpenPassDayModal,
   canPassDay,
   onFilterChange,
+  onUpdateNpc,
   currentUserRole = 'mestre',
   currentRound = 0,
   onUpdateRound,
@@ -726,12 +727,19 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                           ) : (
                             <div className="flex items-center gap-1">
                               {currentUserRole === 'mestre' && (
-                                <span
-                                  title={npc.isVisibleToPlayer ? 'Visível para Jogadores' : 'Oculto para Jogadores'}
-                                  className={npc.isVisibleToPlayer ? 'text-blue-400' : 'text-slate-500'}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUpdateNpc?.(npc.id, { isVisibleToPlayer: !npc.isVisibleToPlayer });
+                                  }}
+                                  title={npc.isVisibleToPlayer ? 'Visível para Jogadores (Clique para ocultar)' : 'Oculto para Jogadores (Clique para exibir)'}
+                                  className={`p-0.5 rounded hover:bg-slate-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center ${
+                                    npc.isVisibleToPlayer ? 'text-blue-400 hover:text-blue-300' : 'text-slate-500 hover:text-slate-400'
+                                  }`}
                                 >
                                   {npc.isVisibleToPlayer ? <Eye size={11} /> : <EyeOff size={11} />}
-                                </span>
+                                </button>
                               )}
                               <span className="text-[9px] font-bold text-purple-400 uppercase tracking-tighter bg-purple-950/80 px-1 rounded border border-purple-800/60">
                                 NPC

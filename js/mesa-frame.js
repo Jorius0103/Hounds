@@ -94,6 +94,7 @@
   }
   var mesaHtml = null;
   // Promise of the Mesa's HTML, fetched once.
+  /** @param {boolean} [forceReload] */
   window.hubMesaSource = function (forceReload) {
     if (forceReload) { mesaHtml = null; }
     if (!mesaHtml) {

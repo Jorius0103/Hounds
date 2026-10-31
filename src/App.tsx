@@ -109,18 +109,15 @@ function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]
       const incomingTime = incoming.updatedAt || 0;
       const existingTime = existing.updatedAt || 0;
 
-      const hasContentDiff =
-        incoming.hpCurrent !== existing.hpCurrent ||
-        incoming.fpCurrent !== existing.fpCurrent ||
-        (incoming.history?.length !== existing.history?.length) ||
-        JSON.stringify(incoming.history || []) !== JSON.stringify(existing.history || []) ||
-        JSON.stringify(incoming.statusConditions || []) !== JSON.stringify(existing.statusConditions || []) ||
-        JSON.stringify(incoming.extraItems || []) !== JSON.stringify(existing.extraItems || []) ||
-        JSON.stringify(incoming.activeSpells || []) !== JSON.stringify(existing.activeSpells || []) ||
-        JSON.stringify(incoming.affectedSpells || []) !== JSON.stringify(existing.affectedSpells || []) ||
-        JSON.stringify(incoming.turnActions || {}) !== JSON.stringify(existing.turnActions || {});
+      // Qualquer diferença real de conteúdo entre o recebido e o existente
+      const hasContentDiff = JSON.stringify(incoming) !== JSON.stringify(existing);
 
-      if (incomingTime > existingTime || (incomingTime === existingTime && hasContentDiff)) {
+      if (
+        incomingTime > existingTime ||
+        (incomingTime === existingTime && hasContentDiff) ||
+        (!incomingTime && hasContentDiff) ||
+        (hasContentDiff && incoming.isVisibleToPlayer !== existing.isVisibleToPlayer)
+      ) {
         currentMap.set(incoming.id, incoming);
         changed = true;
       } else if (incomingTime === existingTime) {
@@ -861,7 +858,8 @@ export default function App() {
     updatedPlayers?: NPC[],
     updatedNpc?: NPC,
     isImmediate?: boolean,
-    isFullSnapshot?: boolean
+    isFullSnapshot?: boolean,
+    updatedSessionPlayerIds?: string[]
   ) => {
     const editTimestamp = updatedNpc?.updatedAt || Date.now();
     lastLocalEditTimestampRef.current = editTimestamp;
@@ -872,6 +870,7 @@ export default function App() {
     const finalActiveCombat =
       updatedActiveCombatId !== undefined ? updatedActiveCombatId : stateRef.current.activeCombatId;
     const finalPlayers = updatedPlayers || stateRef.current.players;
+    const finalSessionPlayerIds = updatedSessionPlayerIds || sessionPlayerIds;
 
     // Guarda NPCs no pool para qualquer combate com NPCs carregados
     finalCombats.forEach((c) => {
@@ -949,6 +948,7 @@ export default function App() {
         users: finalUsers,
         activeCombatId: finalActiveCombat,
         players: finalPlayers,
+        sessionPlayerIds: finalSessionPlayerIds,
         deletedCombatIds: getDeletedCombatIds(),
       });
     } catch (e) {}
@@ -962,6 +962,7 @@ export default function App() {
       users: finalUsers,
       activeCombatId: finalActiveCombat,
       players: finalPlayers,
+      sessionPlayerIds: finalSessionPlayerIds,
       deletedCombatIds: getDeletedCombatIds(),
     };
 
@@ -1150,21 +1151,52 @@ export default function App() {
         }
 
         let nextCombats = stateRef.current.combats;
-        if (nextCombats.some((c) => c.npcs.some((n) => n.id === incomingNpc.id))) {
-          nextCombats = nextCombats.map((c) => ({
-            ...c,
-            npcs: mergeNpcLists(c.npcs, [incomingNpc]).merged,
-          }));
-          combatsChanged = true;
-        }
+        let foundInCombats = false;
+        nextCombats = nextCombats.map((c) => {
+          if (Array.isArray(c.npcs) && c.npcs.some((n) => n.id === incomingNpc.id)) {
+            foundInCombats = true;
+            return {
+              ...c,
+              npcs: mergeNpcLists(c.npcs, [incomingNpc]).merged,
+            };
+          }
+          if (c.id === stateRef.current.activeCombatId && incomingNpc.characterType !== 'player') {
+            foundInCombats = true;
+            return {
+              ...c,
+              npcs: mergeNpcLists(c.npcs || [], [incomingNpc]).merged,
+            };
+          }
+          return c;
+        });
+        if (foundInCombats) combatsChanged = true;
+
+        // Atualiza combatsPoolRef
+        Object.keys(combatsPoolRef.current).forEach((cbId) => {
+          const poolEntry = combatsPoolRef.current[cbId];
+          if (poolEntry && Array.isArray(poolEntry.npcs)) {
+            const idx = poolEntry.npcs.findIndex((n) => n.id === incomingNpc.id);
+            if (idx >= 0) {
+              poolEntry.npcs[idx] = incomingNpc;
+            } else if (incomingNpc.characterType !== 'player' && cbId === stateRef.current.activeCombatId) {
+              poolEntry.npcs.push(incomingNpc);
+            }
+          }
+        });
 
         if (playersChanged) {
           stateRef.current.players = nextPlayers;
           setPlayers(nextPlayers);
+          try {
+            localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(nextPlayers));
+          } catch (e) {}
         }
         if (combatsChanged) {
           stateRef.current.combats = nextCombats;
           setCombats(nextCombats);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
+          } catch (e) {}
         }
 
         if (playersChanged || combatsChanged) {
@@ -1172,6 +1204,7 @@ export default function App() {
             'SYNC_RECV',
             `Ficha de "${incomingNpc.name}" atualizada em tempo real (${payload.clientId?.slice(0, 10)}...)`,
             {
+              isVisibleToPlayer: incomingNpc.isVisibleToPlayer,
               parryCount: incomingNpc.turnActions?.parryCount ?? 0,
               dodgeCount: incomingNpc.turnActions?.dodgeCount ?? 0,
               blockCount: incomingNpc.turnActions?.blockCount ?? 0,
@@ -1200,8 +1233,15 @@ export default function App() {
       if ((payload as any).type === 'SYNC_ACTIVE_COMBAT') {
         const targetId = (payload as any).activeCombatId !== undefined ? (payload as any).activeCombatId : '';
         let currentCombats = stateRef.current.combats;
-        if ((payload as any).combats && Array.isArray((payload as any).combats) && (payload as any).combats.length > 0) {
-          const res = mergeCombats(stateRef.current.combats, (payload as any).combats);
+        const incomingCombats: Combat[] = Array.isArray((payload as any).combats) ? [...(payload as any).combats] : [];
+        if ((payload as any).activeCombat && (payload as any).activeCombat.id) {
+          const ac = (payload as any).activeCombat;
+          const exIdx = incomingCombats.findIndex((c) => c.id === ac.id);
+          if (exIdx >= 0) incomingCombats[exIdx] = { ...incomingCombats[exIdx], ...ac };
+          else incomingCombats.push(ac);
+        }
+        if (incomingCombats.length > 0) {
+          const res = mergeCombats(stateRef.current.combats, incomingCombats);
           if (res.changed) {
             currentCombats = res.merged;
             stateRef.current.combats = res.merged;
@@ -1406,6 +1446,14 @@ export default function App() {
           });
         }
 
+        if (Array.isArray((payload as any).sessionPlayerIds)) {
+          const sIds = (payload as any).sessionPlayerIds;
+          setSessionPlayerIds(sIds);
+          try {
+            localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(sIds));
+          } catch (e) {}
+        }
+
         const effectiveActiveId = payload.activeCombatId !== undefined ? payload.activeCombatId : stateRef.current.activeCombatId;
         const activeCombatIdChanged = payload.activeCombatId !== undefined && payload.activeCombatId !== stateRef.current.activeCombatId;
 
@@ -1481,6 +1529,7 @@ export default function App() {
             users: stateRef.current.users,
             activeCombatId: stateRef.current.activeCombatId,
             players: stateRef.current.players,
+            sessionPlayerIds: sessionPlayerIds,
             deletedCombatIds: getDeletedCombatIds(),
             timestamp: lastLocalEditTimestampRef.current || 1,
           });
@@ -1710,25 +1759,57 @@ export default function App() {
           }
 
           let nextCombats = stateRef.current.combats;
-          if (nextCombats.some((c) => c.npcs.some((n) => n.id === incomingNpc.id))) {
-            nextCombats = nextCombats.map((c) => ({
-              ...c,
-              npcs: mergeNpcLists(c.npcs, [incomingNpc]).merged,
-            }));
-            combatsChanged = true;
-          }
+          let foundInCombats = false;
+          nextCombats = nextCombats.map((c) => {
+            if (Array.isArray(c.npcs) && c.npcs.some((n) => n.id === incomingNpc.id)) {
+              foundInCombats = true;
+              return {
+                ...c,
+                npcs: mergeNpcLists(c.npcs, [incomingNpc]).merged,
+              };
+            }
+            if (c.id === stateRef.current.activeCombatId && incomingNpc.characterType !== 'player') {
+              foundInCombats = true;
+              return {
+                ...c,
+                npcs: mergeNpcLists(c.npcs || [], [incomingNpc]).merged,
+              };
+            }
+            return c;
+          });
+          if (foundInCombats) combatsChanged = true;
+
+          // Atualiza combatsPoolRef
+          Object.keys(combatsPoolRef.current).forEach((cbId) => {
+            const poolEntry = combatsPoolRef.current[cbId];
+            if (poolEntry && Array.isArray(poolEntry.npcs)) {
+              const idx = poolEntry.npcs.findIndex((n) => n.id === incomingNpc.id);
+              if (idx >= 0) {
+                poolEntry.npcs[idx] = incomingNpc;
+              } else if (incomingNpc.characterType !== 'player' && cbId === stateRef.current.activeCombatId) {
+                poolEntry.npcs.push(incomingNpc);
+              }
+            }
+          });
 
           if (playersChanged) {
             stateRef.current.players = nextPlayers;
             setPlayers(nextPlayers);
+            try {
+              localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(nextPlayers));
+            } catch (e) {}
           }
           if (combatsChanged) {
             stateRef.current.combats = nextCombats;
             setCombats(nextCombats);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
+            } catch (e) {}
           }
 
           if (playersChanged || combatsChanged) {
             systemLogger.addLog('BROADCAST', `Ficha de "${incomingNpc.name}" atualizada via aba local`, {
+              isVisibleToPlayer: incomingNpc.isVisibleToPlayer,
               parryCount: incomingNpc.turnActions?.parryCount ?? 0,
               dodgeCount: incomingNpc.turnActions?.dodgeCount ?? 0,
               blockCount: incomingNpc.turnActions?.blockCount ?? 0,
@@ -1754,8 +1835,15 @@ export default function App() {
         if (event.data?.type === 'SYNC_ACTIVE_COMBAT') {
           const targetId = event.data.activeCombatId !== undefined ? event.data.activeCombatId : '';
           let currentCombats = stateRef.current.combats;
-          if (event.data.combats && Array.isArray(event.data.combats) && event.data.combats.length > 0) {
-            const res = mergeCombats(stateRef.current.combats, event.data.combats);
+          const incomingCombats: Combat[] = Array.isArray(event.data.combats) ? [...event.data.combats] : [];
+          if (event.data.activeCombat && event.data.activeCombat.id) {
+            const ac = event.data.activeCombat;
+            const exIdx = incomingCombats.findIndex((c) => c.id === ac.id);
+            if (exIdx >= 0) incomingCombats[exIdx] = { ...incomingCombats[exIdx], ...ac };
+            else incomingCombats.push(ac);
+          }
+          if (incomingCombats.length > 0) {
+            const res = mergeCombats(stateRef.current.combats, incomingCombats);
             if (res.changed) {
               currentCombats = res.merged;
               stateRef.current.combats = res.merged;
@@ -1943,6 +2031,13 @@ export default function App() {
           if (event.data.users && Array.isArray(event.data.users)) {
             stateRef.current.users = event.data.users;
             setUsers(event.data.users);
+          }
+
+          if (Array.isArray(event.data.sessionPlayerIds)) {
+            setSessionPlayerIds(event.data.sessionPlayerIds);
+            try {
+              localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(event.data.sessionPlayerIds));
+            } catch (e) {}
           }
 
           const effectiveActiveId = event.data.activeCombatId !== undefined ? event.data.activeCombatId : stateRef.current.activeCombatId;
@@ -2297,18 +2392,19 @@ export default function App() {
       localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedIds));
     } catch (e) {}
 
-    if (activeCombat) {
-      const updatedCombats = combats.map((c) =>
-        c.id === activeCombat.id ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true } : c
-      );
-      setCombats(updatedCombats);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
-      } catch (e) {}
-      broadcastSync(updatedCombats);
-    } else {
-      broadcastSync();
-    }
+    const targetCombatId = activeCombat?.id || 'combat-vazio';
+    const updatedCombats = combats.map((c) =>
+      c.id === targetCombatId || (isNoCombat && (c.id === 'combat-vazio' || isEmptyCombat(c)))
+        ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true }
+        : c
+    );
+    setCombats(updatedCombats);
+    stateRef.current.combats = updatedCombats;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+    } catch (e) {}
+
+    broadcastSync(updatedCombats, undefined, undefined, undefined, undefined, undefined, true, false, updatedIds);
 
     if (!isPresent) {
       setSelectedNpcId(playerId);
@@ -2325,18 +2421,19 @@ export default function App() {
       localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedIds));
     } catch (e) {}
 
-    if (activeCombat) {
-      const updatedCombats = combats.map((c) =>
-        c.id === activeCombat.id ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true } : c
-      );
-      setCombats(updatedCombats);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
-      } catch (e) {}
-      broadcastSync(updatedCombats);
-    } else {
-      broadcastSync();
-    }
+    const targetCombatId = activeCombat?.id || 'combat-vazio';
+    const updatedCombats = combats.map((c) =>
+      c.id === targetCombatId || (isNoCombat && (c.id === 'combat-vazio' || isEmptyCombat(c)))
+        ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true }
+        : c
+    );
+    setCombats(updatedCombats);
+    stateRef.current.combats = updatedCombats;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+    } catch (e) {}
+
+    broadcastSync(updatedCombats, undefined, undefined, undefined, undefined, undefined, true, false, updatedIds);
 
     if (show && players.length > 0) {
       setSelectedNpcId(players[0].id);
@@ -2852,7 +2949,7 @@ export default function App() {
     const oldNpc = stateRef.current.players.find((p) => p.id === updatedNpc.id) ||
       stateRef.current.combats.flatMap((c) => c.npcs || []).find((n) => n.id === updatedNpc.id);
     const autoLoggedNpc = hubAuto(updatedNpc, oldNpc);
-    const editTimestamp = autoLoggedNpc.updatedAt || Date.now();
+    const editTimestamp = Date.now();
     const npcWithTimestamp: NPC = {
       ...autoLoggedNpc,
       updatedAt: editTimestamp,
@@ -2871,10 +2968,10 @@ export default function App() {
 
     let combatsChanged = false;
     let nextCombats = stateRef.current.combats;
-    if (nextCombats.some((c: Combat) => c.npcs.some((n: NPC) => n.id === npcWithTimestamp.id))) {
+    if (nextCombats.some((c: Combat) => (c.npcs || []).some((n: NPC) => n.id === npcWithTimestamp.id))) {
       nextCombats = nextCombats.map((c: Combat) => ({
         ...c,
-        npcs: c.npcs.map((n: NPC) => (n.id === npcWithTimestamp.id ? npcWithTimestamp : n)),
+        npcs: (c.npcs || []).map((n: NPC) => (n.id === npcWithTimestamp.id ? npcWithTimestamp : n)),
       }));
       combatsChanged = true;
     } else if (npcWithTimestamp.characterType !== 'player') {
@@ -2883,20 +2980,39 @@ export default function App() {
         c.id === currentActiveId
           ? {
               ...c,
-              npcs: c.npcs.map((n: NPC) => (n.id === npcWithTimestamp.id ? npcWithTimestamp : n)),
+              npcs: [...(c.npcs || []).filter((n) => n.id !== npcWithTimestamp.id), npcWithTimestamp],
             }
           : c
       );
       combatsChanged = true;
     }
 
+    // Atualiza combatsPoolRef
+    Object.keys(combatsPoolRef.current).forEach((cbId) => {
+      const poolEntry = combatsPoolRef.current[cbId];
+      if (poolEntry && Array.isArray(poolEntry.npcs)) {
+        const idx = poolEntry.npcs.findIndex((n) => n.id === npcWithTimestamp.id);
+        if (idx >= 0) {
+          poolEntry.npcs[idx] = npcWithTimestamp;
+        } else if (npcWithTimestamp.characterType !== 'player' && cbId === stateRef.current.activeCombatId) {
+          poolEntry.npcs.push(npcWithTimestamp);
+        }
+      }
+    });
+
     if (playersChanged) {
       stateRef.current.players = nextPlayers;
       setPlayers(nextPlayers);
+      try {
+        localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(nextPlayers));
+      } catch (e) {}
     }
     if (combatsChanged) {
       stateRef.current.combats = nextCombats;
       setCombats(nextCombats);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
+      } catch (e) {}
     }
 
     systemLogger.addLog(
@@ -2911,6 +3027,7 @@ export default function App() {
         dodgeCount: npcWithTimestamp.turnActions?.dodgeCount ?? 0,
         blockCount: npcWithTimestamp.turnActions?.blockCount ?? 0,
         extraItemsCount: npcWithTimestamp.extraItems?.length ?? 0,
+        isVisibleToPlayer: npcWithTimestamp.isVisibleToPlayer,
         updatedAt: npcWithTimestamp.updatedAt,
       }
     );
@@ -2921,7 +3038,8 @@ export default function App() {
       undefined,
       undefined,
       playersChanged ? nextPlayers : undefined,
-      npcWithTimestamp
+      npcWithTimestamp,
+      true
     );
   };
 
