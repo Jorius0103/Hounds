@@ -4,7 +4,8 @@
 
 | Quero mexer em… | Arquivo |
 |---|---|
-| Uma aba (Mapas, Locais, Personagens, Fichas, Organizações, Eventos, Magias, Anotações, Usuários, Início) | `js/tabs/tab-<aba>.js` |
+| Uma aba (Mapas, Locais, Personagens, Fichas, Organizações, Eventos, Magias, Anotações, Início) | `js/tabs/tab-<aba>.js` |
+| A página Usuários | `src/hub/paginas/Usuarios.tsx` (React). Os perfis, as permissões e os formulários de criar, editar e definir senha continuam em `js/tabs/tab-usuarios.js` |
 | Como os dados são salvos, ou regras de visibilidade | `js/mundo.js` (operações `Ops.*` e visibilidade) e `js/store/` (bancos) |
 | Tabelas, campos ou regras do banco no Supabase | Uma migration nova em `supabase/migrations/` (nunca edite uma que já rodou). Um campo novo num documento precisa de coluna, de leitura na view `<tabela>_doc` e de gravação em `hounds_interno.salvar_<entidade>`. Veja [SUPABASE.md](SUPABASE.md). |
 | Uma rota nova (`#algo`) | `js/rotas.js` (`parseRoute`, `hrefFor`) e `js/app.js` (`renderPage`). Quem acompanha o endereço é a casca React (`src/hub/HubApp.tsx`): a cada mudança ela chama o `onRoute` do `app.js` |
@@ -50,6 +51,16 @@ O hub está sendo migrado para React aos poucos. A casca (`src/hub/main.tsx` e `
 - Uma página registrada em `PAGES` (`src/hub/pages.ts`) é desenhada pela casca no `#reactPage`, e o `#pageRoot` fica escondido. As outras continuam com o `renderPage` de `js/app.js`.
 - Os dados: uma página React lê `W`, `S` e o usuário com o hook `useHub()` (`src/hub/data.ts`) e redesenha sozinha quando eles mudam. Os avisos são os eventos `hub:data` (uma coleção chegou do banco, disparado pelo `onData` de `js/app.js`), `hub:users` (a lista de usuários) e `hub:user` (troca de usuário). `W` e `S` continuam sendo os mesmos objetos, alimentados pelo `js/app.js`.
 - Os tipos: o `src/` usa os mesmos de `types/dados.d.ts` e `types/globais.d.ts` (`World`, `PageState`, `Route`, `window.hubUser`…). O `src/hub/legacy.d.ts` declara as funções de `js/` que a casca chama; ao usar mais uma numa página React, declare-a ali.
+
+Páginas já migradas: **Usuários** (`src/hub/paginas/Usuarios.tsx`).
+
+Para migrar uma página:
+
+1. Crie o componente em `src/hub/paginas/` com o mesmo HTML da versão antiga: as mesmas tags, classes e textos, porque o CSS de `css/` continua o mesmo. Os ícones usam `<Icon>` (`src/hub/Icon.tsx`), que monta o mesmo `<svg>` do `svg()` de `js/utils.js`; o aviso do topo vem do `noticeText()` de `js/pagina.js`.
+2. Registre-o em `PAGES` (`src/hub/pages.ts`) e declare no `src/hub/legacy.d.ts` as funções de `js/` que ele chama.
+3. Apague a função `render…Page` antiga, a linha dela no `renderPage` de `js/app.js` e as chamadas a ela que redesenhavam a página quando os dados mudavam: o React redesenha sozinho com os avisos de dados.
+4. Os formulários podem continuar no modal antigo (`showModal`), chamados do componente, até o modal ganhar uma versão React.
+5. Teste com Mestre e Jogador, criando, editando e excluindo, e compare com o site publicado.
 
 Para testar: `npm run dev` (veja "Rodar no computador" no README). Antes do commit, `npx tsc --noEmit` e `npm run build` devem passar.
 

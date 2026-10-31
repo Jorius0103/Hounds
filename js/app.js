@@ -216,7 +216,6 @@ function renderPage() {
   else if (r.page === 'item') renderItemPage();
   else if (r.page === 'improvements') renderImprovementsPage();
   else if (r.page === 'improvement') renderImprovementPage();
-  else if (r.page === 'users') renderUsersPage();
   else if (r.page === 'notes') renderNotesPage();
   else if (r.page === 'nb') renderNotebookPage();
   else if (r.page === 'note') renderNotePage();

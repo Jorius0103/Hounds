@@ -14,4 +14,34 @@ declare global {
   function parseRoute(): Route | null;
   /** js/app.js: aplica o endereço atual ao menu, ao título e às telas, e desenha a página antiga. */
   function onRoute(): void;
+
+  /** js/utils.js: os desenhos dos ícones (o miolo de um <svg>; veja src/hub/Icon.tsx). */
+  var ICON: Record<string, string>;
+  /** js/utils.js: as iniciais de um nome, para o avatar. */
+  function initials(name: string): string;
+  /** js/utils.js: ordem alfabética pelo nome, em português. */
+  function byName(a: {name?: string}, b: {name?: string}): number;
+  /** js/utils.js: o aviso no rodapé da tela; bad o mostra como erro. */
+  function toast(msg: string, bad?: boolean): void;
+  /** js/store/supabase.js: a mensagem de um erro do banco, em português. */
+  function errorText(e: unknown): string;
+
+  /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */
+  function canWrite(): boolean;
+  /** js/pagina.js: o aviso do topo das páginas (só neste navegador, ou só leitura); '' quando não há. */
+  function noticeText(): string;
+
+  /** js/tabs/tab-usuarios.js: os perfis, na ordem em que a lista de usuários os mostra. */
+  var ROLES: {id: string; label: string; help: string}[];
+  function roleId(role: string): string;
+  function roleLabel(role: string): string;
+  /** O Mestre e o Admin gerenciam usuários; o Admin não edita nem exclui um Mestre. */
+  function canManageUsers(): boolean;
+  function canManageUser(u: HubUser): boolean;
+  /** Com o Supabase, cada pessoa entra com email e senha; com as contas, o Mestre as cria pelo hub. */
+  function usersLogin(): boolean;
+  function usersAccounts(): boolean;
+  /** Os formulários (modal antigo): criar (null) ou editar um usuário, e definir a senha da conta. */
+  function openUserForm(u: HubUser | null): void;
+  function openPasswordForm(u: HubUser): void;
 }

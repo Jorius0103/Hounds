@@ -1,5 +1,7 @@
 /* =====================================================================
    Hounds — Aba Usuários
+   A página é desenhada pelo React (src/hub/paginas/Usuarios.tsx); aqui
+   ficam os perfis, as permissões, a lista no banco e os formulários.
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
@@ -58,59 +60,7 @@ function onUsers(list) {
   W.users = list; W.loaded.users = true;
   if (!list.length) { seedUsers(); return; }
   mirrorUsers();
-  try { window.dispatchEvent(new CustomEvent('hub:users')); } catch (e) {}
-  if (S.route && S.route.page === 'users' && !modalOpen) renderUsersPage();
-}
-
-
-function renderUsersPage() {
-  if (!canManageUsers()) { pageRoot.innerHTML = '<h1>Usuários</h1><p class="notice">Só o Mestre e o Admin podem gerenciar usuários.</p>'; return; }
-  var can = canWrite(), me = window.hubUser && window.hubUser.id, ui = S.ui;
-  var login = usersLogin();
-  var head = '<div class="head-row"><div><h1>Usuários</h1><p class="lede">' + (login
-      ? 'As pessoas que entram no hub, cada uma com o próprio email e senha. Ao criar um usuário com senha, a conta de login é criada junto; passe o email e a senha para a pessoa. O perfil define o que cada uma vê e pode fazer.'
-      : 'As pessoas que aparecem na escolha de usuário ao abrir o hub. O perfil define o que cada uma vê e pode fazer.') + '</p></div>' +
-    (can ? '<button class="btn primary" type="button" id="newUserBtn">' + svg(ICON.plus, 16, 2.4) + 'Novo usuário</button>' : '') + '</div>' + notice();
-  var body;
-  if (!W.loaded.users) body = '<p class="lede">Carregando usuários…</p>';
-  else if (!W.users.length) body = '<p class="lede">Preparando a lista de usuários…</p>';
-  else body = '<div class="user-list">' + W.users.slice().sort(function (a, b) {
-      var ra = ROLES.map(function (r) { return r.id; }).indexOf(a.role), rb = ROLES.map(function (r) { return r.id; }).indexOf(b.role);
-      return (ra - rb) || byName(a, b);
-    }).map(function (u) {
-      var r = roleId(u.role);
-      if (ui.delUser === u.id) return '<div class="user-row confirm"><span class="nm"><strong>Excluir ' + esc(u.name) + '?</strong><span class="you">' + (login ? 'Não vai mais conseguir entrar.' : 'Ele não aparecerá mais na escolha de usuário.') + '</span>' +
-        (usersAccounts() && u.email ? '<label class="you del-acct"><input type="checkbox" id="delAcct" checked> Excluir também a conta de login (' + esc(u.email) + ')</label>' : '') +
-        '</span><span class="acts"><button class="btn ghost" type="button" data-act="del-no">Cancelar</button><button class="btn danger" type="button" data-act="del-yes" data-id="' + esc(u.id) + '">Excluir</button></span></div>';
-      var mail = login ? '<span class="you">' + (u.email ? esc(u.email) : 'sem email: não consegue entrar') + '</span>' : '';
-      return '<div class="user-row"><span class="av">' + esc(initials(u.name)) + '</span><span class="nm"><strong>' + esc(u.name) + '</strong><span class="role-tag ' + r + '">' + esc(roleLabel(r)) + '</span>' + (u.id === me ? '<span class="you">(você)</span>' : '') + mail + '</span>' +
-        (can ? '<span class="acts">' + (usersAccounts() && u.email ? '<button class="icon-btn" type="button" data-act="pass" data-id="' + esc(u.id) + '" title="Definir senha" aria-label="Definir a senha de ' + esc(u.name) + '">' + svg(ICON.key, 16) + '</button>' : '') +
-          (canManageUser(u) ? '<button class="icon-btn" type="button" data-act="edit" data-id="' + esc(u.id) + '" title="Editar" aria-label="Editar ' + esc(u.name) + '">' + svg(ICON.edit, 16) + '</button>' : '') +
-          (u.id === me || !canManageUser(u) ? '' : '<button class="icon-btn" type="button" data-act="del" data-id="' + esc(u.id) + '" title="Excluir" aria-label="Excluir ' + esc(u.name) + '">' + svg(ICON.trash, 16) + '</button>') + '</span>' : '') + '</div>';
-    }).join('') + '</div>';
-  pageRoot.innerHTML = head + body;
-  var nb = $('newUserBtn'); if (nb) nb.onclick = function () { openUserForm(null); };
-  pageRoot.querySelectorAll('.user-list [data-act]').forEach(function (b) {
-    b.onclick = function () {
-      var act = b.getAttribute('data-act'), id = b.getAttribute('data-id'), u = W.users.filter(function (x) { return x.id === id; })[0];
-      if (u && act !== 'pass' && !canManageUser(u)) return;
-      if (act === 'edit' && u) openUserForm(u);
-      else if (act === 'pass' && u) openPasswordForm(u);
-      else if (act === 'del') { ui.delUser = id; renderUsersPage(); }
-      else if (act === 'del-no') { ui.delUser = null; renderUsersPage(); }
-      else if (act === 'del-yes' && u) {
-        var mestres = W.users.filter(function (x) { return x.role === 'mestre'; });
-        if (u.role === 'mestre' && mestres.length <= 1) { toast('É preciso manter pelo menos um Mestre.', true); return; }
-        b.disabled = true;
-        var acct = $('delAcct'), viaAccount = usersAccounts() && !!u.email;
-        (viaAccount ? W.store.account('excluir', { id: u.id, excluirConta: !!(acct && acct.checked) }) : W.store.remove('users', u.id)).then(function (r) {
-          ui.delUser = null;
-          toast(r && r.aviso ? r.aviso : r && r.contaExcluida ? 'Usuário e conta de login excluídos.' : 'Usuário excluído.', !!(r && r.aviso));
-          if (window.hubMesaStale) window.hubMesaStale();
-        }, function (er) { b.disabled = false; toast(errorText(er), true); });
-      }
-    };
-  });
+  try { window.dispatchEvent(new CustomEvent('hub:users')); } catch (e) {} // redraws the page (React)
 }
 
 function openUserForm(u) {

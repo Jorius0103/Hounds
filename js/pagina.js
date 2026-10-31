@@ -26,12 +26,15 @@ function fillImages(root) {
     W.store.imageUrl(ref).then(function (u) { if (u && el.isConnected) el.innerHTML = '<img src="' + esc(u) + '" alt="" loading="lazy">'; });
   });
 }
-function notice() {
+// The warning at the top of the pages (data kept only in this browser, or read-only); '' when there is none.
+// noticeText is also used by the React pages (src/hub/).
+function noticeText() {
   if (!W.store) return '';
-  if (W.store.kind === 'local') return '<p class="notice">Os dados estão sendo salvos só neste navegador, porque o armazenamento compartilhado não está disponível nesta visualização.</p>';
-  if (!canWrite()) return '<p class="notice">Você pode ver mapas, locais e marcadores, mas não criar ou editar.</p>';
+  if (W.store.kind === 'local') return 'Os dados estão sendo salvos só neste navegador, porque o armazenamento compartilhado não está disponível nesta visualização.';
+  if (!canWrite()) return 'Você pode ver mapas, locais e marcadores, mas não criar ou editar.';
   return '';
 }
+function notice() { var t = noticeText(); return t ? '<p class="notice">' + esc(t) + '</p>' : ''; }
 function mapRow(m, here, extra) {
   var k = childMaps(m.id).length, L = mapLocations(m.id).length;
   var meta = [k ? plural(k, 'submapa', 'submapas') : '', L ? plural(L, 'local', 'locais') : ''].filter(Boolean).join(' · ');
