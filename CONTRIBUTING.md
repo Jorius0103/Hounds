@@ -48,7 +48,8 @@ O hub está sendo migrado para React aos poucos. A casca (`src/hub/main.tsx` e `
 - O endereço continua nos formatos de sempre (`#ficha~id`, `#map~id~explorar`…), porque há links gravados nos dados. A casca o lê com o `parseRoute` de `js/rotas.js` e, a cada mudança, chama o `onRoute` de `js/app.js`, que atualiza o menu, o título e as telas.
 - O `go()` de `js/rotas.js` avisa a casca com o evento `hub:route` quando redesenha o mesmo endereço ou o troca sem criar histórico (`replaceState`), porque nesses casos o navegador não dispara `hashchange`.
 - Uma página registrada em `PAGES` (`src/hub/pages.ts`) é desenhada pela casca no `#reactPage`, e o `#pageRoot` fica escondido. As outras continuam com o `renderPage` de `js/app.js`.
-- O `src/hub/legacy.d.ts` declara o que a casca usa dos scripts de `js/`.
+- Os dados: uma página React lê `W`, `S` e o usuário com o hook `useHub()` (`src/hub/data.ts`) e redesenha sozinha quando eles mudam. Os avisos são os eventos `hub:data` (uma coleção chegou do banco, disparado pelo `onData` de `js/app.js`), `hub:users` (a lista de usuários) e `hub:user` (troca de usuário). `W` e `S` continuam sendo os mesmos objetos, alimentados pelo `js/app.js`.
+- Os tipos: o `src/` usa os mesmos de `types/dados.d.ts` e `types/globais.d.ts` (`World`, `PageState`, `Route`, `window.hubUser`…). O `src/hub/legacy.d.ts` declara as funções de `js/` que a casca chama; ao usar mais uma numa página React, declare-a ali.
 
 Para testar: `npm run dev` (veja "Rodar no computador" no README). Antes do commit, `npx tsc --noEmit` e `npm run build` devem passar.
 

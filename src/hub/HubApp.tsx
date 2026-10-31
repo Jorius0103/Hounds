@@ -24,7 +24,7 @@ const snapshot = () => `${version}${location.hash}`;
 
 export function HubApp() {
   const current = useSyncExternalStore(subscribe, snapshot);
-  const route = parseRoute() ?? {page: 'home', node: null};
+  const route: Route = parseRoute() ?? {page: 'home', node: null};
   const Page = PAGES[route.page];
 
   // Antes da pintura: mostra o contêiner certo e deixa o js/app.js aplicar a rota (menu, título, telas e,

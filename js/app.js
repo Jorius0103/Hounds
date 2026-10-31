@@ -289,6 +289,8 @@ function onData(kind) {
   if (kind === 'boards') { indexBoards(); BoardView.sync(); }
   migrateOrganizations();
   renderMenu();
+  // The React pages (src/hub/data.ts) redraw on this, even with a form open; the old ones wait below.
+  try { window.dispatchEvent(new CustomEvent('hub:data', { detail: kind })); } catch (e) {}
   if (!S.route) return;
   topTitle.textContent = byId[S.route.node] ? byId[S.route.node].label : topTitle.textContent;
   if (Explorer.isOpen() && S.route.explore) {

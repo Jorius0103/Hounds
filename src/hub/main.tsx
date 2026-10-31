@@ -1,4 +1,5 @@
 import {createRoot} from 'react-dom/client';
+import './data';
 import {HubApp} from './HubApp';
 import {PAGES} from './pages';
 

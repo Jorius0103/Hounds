@@ -24,5 +24,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src", "vite.config.ts", "vite.mesa.config.ts"]
+  "include": ["src", "types/dados.d.ts", "types/globais.d.ts", "vite.config.ts", "vite.mesa.config.ts"]
 }
