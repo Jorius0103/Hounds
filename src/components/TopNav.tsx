@@ -143,7 +143,9 @@ export const TopNav: React.FC<TopNavProps> = ({
             >
               <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">Combate:</span>
               <span className="text-[11px] font-bold text-amber-300 max-w-[160px] sm:max-w-[220px] truncate">
-                {activeCombats.find((c) => c.id === activeCombatId)?.name || 'Sem combate'}
+                {combats.find((c) => c.id === activeCombatId)?.name ||
+                  activeCombats.find((c) => c.id === activeCombatId)?.name ||
+                  (activeCombatId && activeCombatId !== 'combat-vazio' ? activeCombatId : 'Sem combate')}
               </span>
             </div>
           )}
