@@ -2249,7 +2249,6 @@ export default function App() {
     if (!snap || !snap.data) return;
     const newCombats = snap.data.combats || [];
     const newPlayers = snap.data.players || [];
-    const newConditions = snap.data.conditions || [];
     const newActiveId = snap.data.activeCombatId || (newCombats[0]?.id || 'combat-vazio');
 
     // Popula imediatamente o pool de combates com todos os combates do snapshot restaurado
@@ -2264,13 +2263,11 @@ export default function App() {
 
     setCombats(newCombats);
     if (newPlayers.length > 0) setPlayers(newPlayers);
-    if (newConditions.length > 0) setConditions(newConditions);
     setActiveCombatId(newActiveId);
     setIsHomeScreen(false);
 
     stateRef.current.combats = newCombats;
     if (newPlayers.length > 0) stateRef.current.players = newPlayers;
-    if (newConditions.length > 0) stateRef.current.conditions = newConditions;
     stateRef.current.activeCombatId = newActiveId;
 
     const targetActive = newCombats.find((c: any) => c.id === newActiveId);
@@ -2283,7 +2280,6 @@ export default function App() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newCombats));
       if (newPlayers.length > 0) localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(newPlayers));
-      if (newConditions.length > 0) localStorage.setItem(CONDITIONS_KEY, JSON.stringify(newConditions));
       localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(newActiveId));
       if (snap.data.deletedCombatIds) {
         localStorage.setItem(DELETED_KEY, JSON.stringify(snap.data.deletedCombatIds));
@@ -2292,7 +2288,7 @@ export default function App() {
 
     broadcastSync(
       newCombats,
-      newConditions,
+      undefined, // Preserva as condições globais da Mesa sem sobrescrever
       undefined,
       newActiveId,
       newPlayers,
@@ -3118,7 +3114,7 @@ export default function App() {
     setWeaponModalState({ isOpen: false, weapon: null });
   };
 
-  // Conditions CRUD Handlers
+  // Conditions CRUD Handlers (Globais da Mesa de RPG)
   const handleCreateCondition = (conditionData: Omit<ConditionDefinition, 'id'>) => {
     const newCond: ConditionDefinition = {
       ...conditionData,
@@ -3126,24 +3122,40 @@ export default function App() {
     };
     const updated = [...conditions, newCond];
     setConditions(updated);
+    stateRef.current.conditions = updated;
+    try {
+      localStorage.setItem(CONDITIONS_KEY, JSON.stringify(updated));
+    } catch (e) {}
     broadcastSync(undefined, updated);
   };
 
   const handleUpdateCondition = (id: string, updatedData: Omit<ConditionDefinition, 'id'>) => {
     const updated = conditions.map((c) => (c.id === id ? { ...updatedData, id } : c));
     setConditions(updated);
+    stateRef.current.conditions = updated;
+    try {
+      localStorage.setItem(CONDITIONS_KEY, JSON.stringify(updated));
+    } catch (e) {}
     broadcastSync(undefined, updated);
   };
 
   const handleDeleteCondition = (conditionId: string) => {
     const updated = conditions.filter((c) => c.id !== conditionId);
     setConditions(updated);
+    stateRef.current.conditions = updated;
+    try {
+      localStorage.setItem(CONDITIONS_KEY, JSON.stringify(updated));
+    } catch (e) {}
     // Remove também de qualquer NPC ou Personagem que a possua
     const updatedPlayers = players.map((p) => ({
       ...p,
       statusConditions: (p.statusConditions || []).filter((id) => id !== conditionId),
     }));
     setPlayers(updatedPlayers);
+    stateRef.current.players = updatedPlayers;
+    try {
+      localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(updatedPlayers));
+    } catch (e) {}
 
     const updatedCombats = combats.map((c) => ({
       ...c,
@@ -3153,6 +3165,10 @@ export default function App() {
       })),
     }));
     setCombats(updatedCombats);
+    stateRef.current.combats = updatedCombats;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+    } catch (e) {}
     broadcastSync(updatedCombats, updated, undefined, undefined, updatedPlayers);
   };
 
