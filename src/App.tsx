@@ -24,13 +24,15 @@ import { PassDayModal } from './components/PassDayModal';
 import { DiceRollOverlay, DiceRollResult } from './components/DiceRollOverlay';
 import { systemLogger } from './utils/systemLogger';
 import { audioStreamSync } from './utils/audioStreamSync';
-import { Swords, Plus, EyeOff } from 'lucide-react';
+import { Swords, Plus, EyeOff, Search } from 'lucide-react';
 
 const STORAGE_KEY = 'gurps_combat_master_data_v2';
 const CONDITIONS_KEY = 'gurps_combat_master_conditions_v2';
 const USERS_STORAGE_KEY = 'gurps_combat_master_users_v2';
 const PLAYERS_STORAGE_KEY = 'gurps_fixed_personagens_v1';
 const ACTIVE_COMBAT_KEY = 'gurps_combat_master_active_combat_id_v1';
+const DELETED_KEY = 'gurps_combat_master_deleted_v1';
+const EDITORS_STORAGE_KEY = 'gurps_combat_master_editors_v1';
 const SYNC_CHANNEL_NAME = 'gurps_combat_realtime_sync_v2';
 const MESA_VIEW_STATE_KEY = 'hounds_mesa_view_state_v1';
 
@@ -691,8 +693,8 @@ export default function App() {
   const lastAppliedRemoteTimestampRef = useRef<number>(0);
 
   const stateRef = useRef({ combats, conditions, users, activeCombatId, players });
-  const combatsPoolRef = useRef<Record<string, { npcs: NPC[]; events: unknown[] }>>((() => {
-    const pool: Record<string, { npcs: NPC[]; events: unknown[] }> = {};
+  const combatsPoolRef = useRef<Record<string, { npcs: NPC[]; events: ActionLogEntry[] }>>((() => {
+    const pool: Record<string, { npcs: NPC[]; events: ActionLogEntry[] }> = {};
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
       if (Array.isArray(stored)) {
@@ -1632,7 +1634,7 @@ export default function App() {
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newCombats));
-      if (newPlayers.length > 0) localStorage.setItem(PLAYERS_KEY, JSON.stringify(newPlayers));
+      if (newPlayers.length > 0) localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(newPlayers));
       if (newConditions.length > 0) localStorage.setItem(CONDITIONS_KEY, JSON.stringify(newConditions));
       localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(newActiveId));
       if (snap.data.deletedCombatIds) {
@@ -2554,7 +2556,39 @@ export default function App() {
     }
   };
 
-  const handleLinkCharacterToUser = (characterId: string, userId: string | null) => {
+  // Habilita ou retira a edição de todos os jogadores de uma vez (id e nome, como no Toggle individual)
+  const handleSetAllPlayerPermissions = (allow: boolean) => {
+    const playerUsers = (Array.isArray(users) ? users : []).filter((u) => u.role !== 'mestre');
+    const next = allow ? playerUsers.flatMap((u) => (u.name ? [u.id, u.name] : [u.id])) : [];
+    setEditorUserIds(next);
+    try {
+      localStorage.setItem(EDITORS_STORAGE_KEY, JSON.stringify(next));
+      broadcastChannelRef.current?.postMessage({
+        type: 'SYNC_EDITORS',
+        editorUserIds: next,
+        sourceId: onlineSyncService.getClientId(),
+      });
+      onlineSyncService.sendPayloadImmediate({
+        type: 'SYNC_EDITORS',
+        editorUserIds: next,
+        timestamp: Date.now(),
+      });
+      const currentCombats = stateRef.current.combats || combats;
+      const updatedCombats = currentCombats.map((c) =>
+        c.id === activeCombatId ? { ...c, editorUserIds: next } : c
+      );
+      stateRef.current.combats = updatedCombats;
+      setCombats(updatedCombats);
+      broadcastSync(updatedCombats);
+      if ((window as any).parent?.hubMesaBus) {
+        (window as any).parent.hubMesaBus.publish(
+          JSON.stringify({ type: 'SYNC_EDITORS', editorUserIds: next, timestamp: Date.now() })
+        );
+      }
+    } catch {}
+  };
+
+  const handleLinkCharacterToUser =(characterId: string, userId: string | null) => {
     const targetUser = userId ? users.find((u) => u.id === userId) : null;
     const uName = targetUser?.name || '';
     const now = Date.now();
@@ -3241,7 +3275,7 @@ export default function App() {
       ...npc,
       turnActions: { ...npc.turnActions },
       extraItems: npc.extraItems ? [...npc.extraItems] : undefined,
-      armorLocations: npc.armorLocations ? [...npc.armorLocations] : undefined,
+      armorLocations: npc.armorLocations ? [...npc.armorLocations] : npc.armorLocations,
       armorKits: npc.armorKits ? [...npc.armorKits] : undefined,
       activeSpells: npc.activeSpells ? [...npc.activeSpells] : undefined,
       affectedSpells: npc.affectedSpells ? [...npc.affectedSpells] : undefined,
@@ -3543,7 +3577,7 @@ export default function App() {
       }
 
       // Checagens adicionais por descrição para 'ta.' caso não tenha vindo em keys
-      if (!keys.some((k) => k.startsWith('ta.'))) {
+      if (!keys.some((k: string) => k.startsWith('ta.'))) {
         const nextTa = { ...updated.turnActions };
         let taUpdated = false;
         if (desc.includes('Recuo utilizado no turno')) {
@@ -3698,9 +3732,9 @@ export default function App() {
     // Envio IMEDIATO dedicado para que todos os clientes vejam o comentário no exato instante do clique em Salvar
     try {
       const commentPayload = {
-        type: 'SYNC_ENTRY_COMMENT',
+        type: 'SYNC_ENTRY_COMMENT' as const,
         entryId,
-        npcId: npcId || updatedChar?.id,
+        npcId: npcId || (updatedChar as NPC | null)?.id,
         comment: comment || '',
         timestamp: now,
       };
@@ -4343,7 +4377,7 @@ export default function App() {
         onDeleteCombat={handleDeleteCombat}
         onRenameCombat={handleRenameCombat}
         onToggleCombatActive={handleToggleCombatActive}
-        onRestoreSnapshot={handleRestoreSnapshot}
+        onRestoreFullSnapshot={(data) => handleRestoreSnapshot({ data })}
       />
 
       {/* System Debug / Sync Log Modal */}

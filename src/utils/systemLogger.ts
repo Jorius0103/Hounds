@@ -2,7 +2,7 @@ export interface SystemLogEntry {
   id: string;
   timestamp: string; // HH:mm:ss.SSS
   rawTime: number;
-  category: 'LOCAL_EDIT' | 'DELETE_ITEM' | 'SYNC_SEND' | 'SYNC_RECV' | 'SYNC_REJECT' | 'BROADCAST' | 'ERROR';
+  category: 'LOCAL_EDIT' | 'DELETE_ITEM' | 'LOG_REVERT' | 'SYNC_SEND' | 'SYNC_RECV' | 'SYNC_REJECT' | 'BROADCAST' | 'ERROR';
   title: string;
   details?: any;
 }

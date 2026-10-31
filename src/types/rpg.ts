@@ -31,6 +31,7 @@ export interface Weapon {
   reach?: string; // Alcance primário (ou legado)
   modes?: WeaponAttackMode[]; // Múltiplas opções de Dano / Tipo / Alcance
   notes?: string; // Propriedades especiais, observações
+  isFavorite?: boolean; // Favoritada (vai para o topo com destaque)
 }
 
 export interface Spell {
@@ -161,6 +162,10 @@ export interface ActionLogEntry {
   // Comentário ou anotação da rolagem (editável pelo mestre/jogadores autorizados)
   comment?: string;
 
+  // Rolagem secreta (só o Mestre vê o resultado) e jogador que rolou
+  isSecret?: boolean;
+  playerName?: string;
+
   // Metadados para agrupamento inteligente de cliques consecutivos na mesma variável
   variableKey?: string;
   initialValue?: any;
@@ -203,6 +208,7 @@ export interface NPC {
   title: string;
   characterType?: 'player' | 'npc'; // 'player' = Jogador, 'npc' = NPC / Monstro / Inimigo
   userId?: string; // ID da conta do usuário vinculado (UserAccount.id)
+  ownerId?: string; // ID do dono, usado por dados antigos antes do userId
   playerName?: string; // Nome do jogador que controla (mantido sincronizado para compatibilidade)
   weight: string; // Peso (começa vazio para input)
   height: string; // Altura (começa vazio para input)
@@ -295,7 +301,7 @@ export interface Combat {
   tacticalState?: TacticalState;
   currentRound?: number;
   round?: number; // O mesmo que currentRound, com o nome usado nos dados mais antigos
-  events?: unknown[]; // Eventos do combate (usados só pelo mesa.html compilado)
+  events?: ActionLogEntry[]; // Eventos e rolagens gerais do combate
   roundLog?: { round: number; endedAt: number }[]; // Fim de cada rodada (usado só pelo mesa.html compilado)
   editorUserIds?: string[]; // IDs dos jogadores que possuem permissão de edição
   playerIds?: string[]; // IDs dos personagens de jogadores visíveis/ativos neste combate

@@ -1,4 +1,5 @@
-# Checa os tipos (jsconfig.json + types/) e os nomes globais repetidos em cada PR e na main.
+# Checa os tipos do hub (jsconfig.json + types/), os tipos da Mesa (src/, tsconfig.json)
+# e os nomes globais repetidos em cada PR e na main.
 name: Checagem
 
 on:
@@ -14,6 +15,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Dependências da Mesa
+        run: npm ci
+      - name: Tipos da Mesa (src/)
+        run: npx tsc --noEmit
       - name: Tipos
         run: npx --yes -p typescript@6.0 tsc -p jsconfig.json
       - name: Nomes globais repetidos

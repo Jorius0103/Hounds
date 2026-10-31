@@ -13,7 +13,7 @@ interface CombatLogCardProps {
   currentUserName?: string;
   isPlayer?: boolean;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
-  onUpdateEntryComment?: (entryId: string, npcId?: string, comment: string) => void;
+  onUpdateEntryComment?: (entryId: string, npcId: string | undefined, comment: string) => void;
 }
 
 export const CombatLogCard: React.FC<CombatLogCardProps> = ({

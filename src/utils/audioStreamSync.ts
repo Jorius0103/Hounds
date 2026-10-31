@@ -129,7 +129,7 @@ class AudioStreamSyncService {
         el = document.createElement('audio');
         el.id = 'gurps-stream-audio-player';
         el.autoplay = true;
-        el.playsInline = true;
+        (el as any).playsInline = true;
         (el as any).webkitPlaysInline = true;
         // Evita display: none que suspende áudio em background no Chrome/Edge
         el.style.position = 'fixed';

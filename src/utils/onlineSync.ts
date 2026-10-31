@@ -1,9 +1,19 @@
 import mqtt, { MqttClient } from 'mqtt';
-import { Combat, ConditionDefinition, UserAccount, NPC } from '../types/rpg';
+import { Combat, ConditionDefinition, UserAccount, NPC, ActionLogEntry } from '../types/rpg';
 
 export interface RemoteSyncPayload {
   clientId: string;
-  type: 'SYNC_FULL' | 'SYNC_NPC' | 'REQUEST_SYNC' | 'SYNC_ROUND' | 'SYNC_EDITORS';
+  type:
+    | 'SYNC_FULL'
+    | 'SYNC_NPC'
+    | 'REQUEST_SYNC'
+    | 'SYNC_ROUND'
+    | 'SYNC_EDITORS'
+    | 'SYNC_MASTER_ORDER'
+    | 'SYNC_DICE_ROLL'
+    | 'SYNC_ENTRY_COMMENT'
+    | 'SYNC_SNAPSHOT_RESTORED'
+    | 'SYNC_SNAPSHOTS_LIST';
   timestamp: number;
   npc?: NPC;
   combats?: Combat[];
@@ -14,6 +24,13 @@ export interface RemoteSyncPayload {
   combatId?: string;
   round?: number;
   editorUserIds?: string[];
+  customOrder?: string[]; // SYNC_MASTER_ORDER
+  rollData?: any; // SYNC_DICE_ROLL
+  logEntry?: ActionLogEntry; // SYNC_DICE_ROLL
+  entryId?: string; // SYNC_ENTRY_COMMENT
+  npcId?: string; // SYNC_ENTRY_COMMENT
+  comment?: string; // SYNC_ENTRY_COMMENT
+  snapshots?: any[]; // SYNC_SNAPSHOTS_LIST
 }
 
 export type SyncStatus = 'connected' | 'connecting' | 'disconnected' | 'error';

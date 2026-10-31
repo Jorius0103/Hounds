@@ -90,7 +90,7 @@ export async function loadSpellsDatabase(): Promise<any[]> {
       fetch('dados/traducoes.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
     ])
       .then(([magias, traducoes]) => {
-        const transMap = traducoes || {};
+        const transMap: Record<string, string> = traducoes || {};
         const list = (magias || []).map((s: any) => {
           const pt = transMap[s.name] || '';
           const displayName = pt && pt !== s.name ? `${s.name} (${pt})` : s.name;

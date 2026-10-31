@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Combat, UserRole, NPC } from '../types/rpg';
+import { Combat, UserRole, NPC, ActionLogEntry } from '../types/rpg';
 import { CombatLogCard } from './CombatLogCard';
 import { ScrollText, Trash2, Search, X, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
@@ -16,7 +16,7 @@ interface GeneralCombatLogProps {
   currentUserName?: string;
   onClearHistory?: () => void;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
-  onUpdateEntryComment?: (entryId: string, npcId?: string, comment: string) => void;
+  onUpdateEntryComment?: (entryId: string, npcId: string | undefined, comment: string) => void;
 }
 
 export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
@@ -35,7 +35,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   const [selectedRoundFilter, setSelectedRoundFilter] = useState<number | 'all'>('all');
 
   // Filtro 2: Tipo de Personagem / Rolagens (Todos | Jogadores | NPCs | Rolagens)
-  const [characterFilter, setCharacterFilter] = useState<'all' | 'players' | 'npcs' | 'rolls'>('all');
+  const [characterFilter, setCharacterFilter] = useState<'all' | 'players' | 'npcs' | 'rolls' | 'status'>('all');
 
   // Filtro 3: Busca Livre
   const [searchTerm, setSearchTerm] = useState('');

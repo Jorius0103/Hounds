@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { NPC, Weapon, ParryEntry, BodyArmorLocation, ExtraItem, MesaRole, ArmorKit, ConditionDefinition, ActiveSpell, AffectedSpell, UserAccount } from '../types/rpg';
+import { NPC, Weapon, Spell, ParryEntry, BodyArmorLocation, ExtraItem, MesaRole, ArmorKit, ConditionDefinition, ActiveSpell, AffectedSpell, UserAccount } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import {
   getHpStatus,
@@ -56,6 +56,7 @@ import {
   Layers,
   X,
   Search,
+  BookOpen,
 } from 'lucide-react';
 import { ArmorSearchModal } from './ArmorSearchModal';
 import { ArmorCatalogItem, ParsedArmorDR, getCoveredLocationsForArmor } from '../utils/armorCatalog';
@@ -3114,8 +3115,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             )}
           </div>
         </div>
-        </div>
-      </div>
+          </div>
         </div>
       )}
 
@@ -4116,8 +4116,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               </tbody>
             </table>
           </div>
-        </div>
-      )}
 
           {/* Modal / Diálogo para Cadastrar / Editar Regra Adicional em Partes do Corpo */}
           {editingBodyPartKey !== null && (

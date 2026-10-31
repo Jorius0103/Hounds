@@ -187,7 +187,7 @@ export async function loadWeaponsDatabase(): Promise<any[]> {
       fetch('dados/armas.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch('dados/traducoes.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
     ]).then(([armas, traducoes]) => {
-      const transMap = traducoes || {};
+      const transMap: Record<string, string> = traducoes || {};
       const list = (armas || []).map((w: any) => {
         const pt = transMap[w.name] || '';
         const displayName = pt && pt !== w.name ? `${pt} (${w.name})` : w.name;
@@ -197,11 +197,12 @@ export async function loadWeaponsDatabase(): Promise<any[]> {
           displayName,
         };
       });
-      cachedCatalog = list.length > 0 ? list : GURPS_4E_WEAPONS_CATALOG;
-      return cachedCatalog;
+      const catalog: any[] = list.length > 0 ? list : GURPS_4E_WEAPONS_CATALOG;
+      cachedCatalog = catalog;
+      return catalog;
     }).catch(() => {
       cachedCatalog = GURPS_4E_WEAPONS_CATALOG;
-      return cachedCatalog;
+      return GURPS_4E_WEAPONS_CATALOG;
     });
   }
 

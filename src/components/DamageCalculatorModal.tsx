@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NPC, ActionLogEntry, ExtraItem } from '../types/rpg';
+import { NPC, ActionLogEntry, ExtraItem, BodyArmorLocation } from '../types/rpg';
 import { Shield, Zap, Heart, X, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info, Crosshair } from 'lucide-react';
 import { calculateLocationDamage, migrateArmorLocations, normalizeLocationKey, sanitizeHitLocationRule } from '../utils/gurps';
 

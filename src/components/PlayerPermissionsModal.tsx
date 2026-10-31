@@ -926,7 +926,8 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                   </div>
                 );
               })
-            )}
+            )
+          )}
         </div>
 
         {/* Rodapé compacto */}

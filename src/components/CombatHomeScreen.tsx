@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Heart,
   Zap,
@@ -14,23 +14,23 @@ import {
   Star,
   Package,
 } from 'lucide-react';
+import { NPC, MesaRole, UserAccount } from '../types/rpg';
 import {
-  NPC,
-  UserRole,
   getHpStatus,
   getFpStatus,
   getCombatManeuver,
   getConditionDescription,
   getCrippledBodyParts,
   DEFAULT_TURN_ACTIONS,
-} from '../types';
+} from '../utils/gurps';
 import { NpcAvatar } from './NpcAvatar';
 
 interface CombatHomeScreenProps {
   npcs: NPC[];
   onSelectNpc: (id: string) => void;
-  currentUserRole?: UserRole;
+  currentUserRole?: MesaRole;
   currentRound?: number;
+  filterType?: string;
   filterEmptyMessage?: string;
   onlinePlayerNames?: Set<string>;
   users?: UserAccount[];
@@ -286,10 +286,10 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
 
           getCrippledBodyParts(npc).forEach((p) => {
             criticalAlerts.push({
-              id: `crippled-${p.key}`,
-              text: `${p.name}: ${p.statusLabel || 'Inutilizado'}`,
+              id: `crippled-${p.part.key}`,
+              text: `${p.part.name}: ${p.statusLabel || 'Inutilizado'}`,
               badgeClass: p.badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
-              tooltip: `${p.name} ${p.statusLabel || 'Inutilizado'}: Dano acumulado (${p.damage}) atingiu o limiar (${p.displayHp} PV)!`,
+              tooltip: `${p.part.name} ${p.statusLabel || 'Inutilizado'}: Dano acumulado (${p.effectiveDmg}) atingiu o limiar (${p.maxHp} PV)!`,
               icon: AlertTriangle,
             });
           });
@@ -306,6 +306,8 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
           }
 
           const hasWarning = isDead || criticalAlerts.length > 0;
+          const hasAlerts =
+            turnAlerts.length > 0 || criticalAlerts.length > 0 || Boolean(ta.notes && ta.notes.trim() !== '');
 
           return (
             <div
@@ -415,7 +417,12 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                           {npc.isVisibleToPlayer ? <Eye size={11} /> : <EyeOff size={11} />}
                         </span>
                       )}
-                      {showDetailedStats && (
+                    </div>
+                  </div>
+                </div>
+
+                {/* CENTRO DO CABEÇALHO: PV E FP COM BARRAS */}
+                {showDetailedStats && (
                   <div className="flex flex-col shrink-0 bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1 min-w-[155px] sm:min-w-[170px]">
                     {/* Linha com PV e FP */}
                     <div className="flex items-center justify-between gap-3 text-xs leading-tight font-mono">
