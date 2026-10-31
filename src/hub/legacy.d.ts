@@ -19,12 +19,31 @@ declare global {
   var ICON: Record<string, string>;
   /** js/utils.js: as iniciais de um nome, para o avatar. */
   function initials(name: string): string;
+  /** js/utils.js: o texto sem maiúsculas nem acentos, para comparar e buscar. */
+  function norm(s: string): string;
+  /** js/utils.js: um id novo (data e acaso, em base 36). */
+  function uid(): string;
   /** js/utils.js: ordem alfabética pelo nome, em português. */
   function byName(a: {name?: string}, b: {name?: string}): number;
   /** js/utils.js: o aviso no rodapé da tela; bad o mostra como erro. */
   function toast(msg: string, bad?: boolean): void;
   /** js/store/supabase.js: a mensagem de um erro do banco, em português. */
   function errorText(e: unknown): string;
+
+  /** js/app.js: redesenha a página antiga aberta (as React redesenham sozinhas). */
+  function renderPage(): void;
+
+  /** js/modal.js: o modal aberto, antigo ou React (src/hub/Dialog.tsx); null quando não há. */
+  interface LegacyModal {
+    last: HTMLElement | null;
+    onClose?: () => void;
+    busy: boolean;
+    base: string | null;
+    touched: boolean;
+    /** Só no modal React: o X, o clique fora e o Esc (requestCloseModal de js/modal.js) passam por aqui. */
+    requestClose?(fromEsc?: boolean): void;
+  }
+  var modalOpen: LegacyModal | null;
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */
   function canWrite(): boolean;
@@ -33,6 +52,7 @@ declare global {
 
   /** js/tabs/tab-usuarios.js: os perfis, na ordem em que a lista de usuários os mostra. */
   var ROLES: {id: string; label: string; help: string}[];
+  function isMestre(): boolean;
   function roleId(role: string): string;
   function roleLabel(role: string): string;
   /** O Mestre e o Admin gerenciam usuários; o Admin não edita nem exclui um Mestre. */
@@ -41,7 +61,4 @@ declare global {
   /** Com o Supabase, cada pessoa entra com email e senha; com as contas, o Mestre as cria pelo hub. */
   function usersLogin(): boolean;
   function usersAccounts(): boolean;
-  /** Os formulários (modal antigo): criar (null) ou editar um usuário, e definir a senha da conta. */
-  function openUserForm(u: HubUser | null): void;
-  function openPasswordForm(u: HubUser): void;
 }

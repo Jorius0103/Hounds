@@ -1,10 +1,11 @@
 import {useState} from 'react';
 import {useHub} from '../data';
+import {openDialog} from '../Dialog';
 import {Icon} from '../Icon';
+import {PasswordForm, UserForm} from './UsuarioForm';
 
-// Página Usuários (#usuarios), com as mesmas classes da versão antiga (css/paginas.css). Os formulários de
-// criar, editar e definir senha continuam em js/tabs/tab-usuarios.js (openUserForm, openPasswordForm), no
-// modal antigo; o que eles salvam volta pela lista de usuários (hub:users) e redesenha a página.
+// Página Usuários (#usuarios), com as mesmas classes da versão antiga (css/paginas.css). O que os formulários
+// (UsuarioForm.tsx) salvam volta pela lista de usuários (hub:users) e redesenha a página.
 export function UsersPage() {
   const {W, user} = useHub();
   // A linha em confirmação de exclusão, a opção de excluir também a conta de login e a exclusão em andamento.
@@ -90,12 +91,12 @@ export function UsersPage() {
         {can ? (
           <span className="acts">
             {accounts && u.email ? (
-              <button className="icon-btn" type="button" data-act="pass" data-id={u.id} title="Definir senha" aria-label={'Definir a senha de ' + u.name} onClick={() => openPasswordForm(u)}>
+              <button className="icon-btn" type="button" data-act="pass" data-id={u.id} title="Definir senha" aria-label={'Definir a senha de ' + u.name} onClick={() => openDialog(<PasswordForm user={u} />)}>
                 <Icon paths={ICON.key} size={16} />
               </button>
             ) : null}
             {canManageUser(u) ? (
-              <button className="icon-btn" type="button" data-act="edit" data-id={u.id} title="Editar" aria-label={'Editar ' + u.name} onClick={() => canManageUser(u) && openUserForm(u)}>
+              <button className="icon-btn" type="button" data-act="edit" data-id={u.id} title="Editar" aria-label={'Editar ' + u.name} onClick={() => canManageUser(u) && openDialog(<UserForm user={u} />)}>
                 <Icon paths={ICON.edit} size={16} />
               </button>
             ) : null}
@@ -122,7 +123,7 @@ export function UsersPage() {
           </p>
         </div>
         {can ? (
-          <button className="btn primary" type="button" id="newUserBtn" onClick={() => openUserForm(null)}>
+          <button className="btn primary" type="button" id="newUserBtn" onClick={() => openDialog(<UserForm user={null} />)}>
             <Icon paths={ICON.plus} size={16} stroke={2.4} />
             Novo usuário
           </button>

@@ -40,8 +40,10 @@ modal.addEventListener('click', function (e) { if (modalOpen && e.target.closest
 
 // X, click outside and Esc. With unsaved changes, asks before discarding; Esc while asking keeps editing.
 // The Cancel buttons call closeModal() directly: they already say "discard".
+// A React dialog (src/hub/Dialog.tsx) sets modalOpen too, with its own requestClose: Esc (explorer.js) goes there.
 function requestCloseModal(fromEsc) {
   if (!modalOpen || modalOpen.busy) return;
+  if (modalOpen.requestClose) { modalOpen.requestClose(fromEsc); return; }
   var bar = modal.querySelector('.modal-discard');
   if (bar) { if (fromEsc) keepEditing(); else bar.querySelector('#mdKeep').focus(); return; }
   if (!modalDirty()) { closeModal(); return; }

@@ -1,5 +1,6 @@
 import {useLayoutEffect, useSyncExternalStore} from 'react';
 import {createPortal} from 'react-dom';
+import {DialogHost} from './Dialog';
 import {PAGES} from './pages';
 
 // O endereço é a fonte da rota, nos formatos de sempre (#ficha~id, #map~id~explorar…), porque há links
@@ -35,5 +36,10 @@ export function HubApp() {
     onRoute();
   }, [current]);
 
-  return Page ? createPortal(<Page route={route} />, document.getElementById('reactPage')!) : null;
+  return (
+    <>
+      {Page ? createPortal(<Page route={route} />, document.getElementById('reactPage')!) : null}
+      <DialogHost />
+    </>
+  );
 }
