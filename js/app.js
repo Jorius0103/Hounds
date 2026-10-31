@@ -177,6 +177,7 @@ function renderPage() {
   if (r.page !== 'sheet') paintAllyView(false);
   if (r.page === 'mesa') return;
   if (r.page === 'board') { renderBoardPage(); return; }
+  if (window.hubIsReactPage && window.hubIsReactPage(r.page)) return; // drawn by the React shell (src/hub/)
   // The long card lists use the width of the screen; the other pages keep a reading width.
   pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs' || r.page === 'perks' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
@@ -220,6 +221,7 @@ function renderPage() {
   else if (r.page === 'nb') renderNotebookPage();
   else if (r.page === 'note') renderNotePage();
 }
+// Called by the React shell (src/hub/HubApp.tsx) on every address change, and once when it starts.
 function onRoute() {
   var r = parseRoute();
   if (!r) r = { page: 'home', node: null };
@@ -264,7 +266,6 @@ function onRoute() {
   if (prev && prev.node !== r.node) { var pg = $('view-page'); if (pg) pg.scrollTop = 0; }
   renderPage();
 }
-window.addEventListener('hashchange', onRoute);
 
 function onData(kind) {
   migrateVisibility();
@@ -335,7 +336,7 @@ if (!location.hash && pageReloaded()) {
     try { location.hash = savedRoute; } catch (e) {}
   }
 }
-onRoute();
+// The first page is drawn by the React shell, which loads after the other scripts (index.html).
 
 function connect() {
   var use = window.claude && typeof window.claude.use === 'function' ? function (n) { return window.claude.use(n).catch(function () { return null; }); } : function () { return Promise.resolve(null); };

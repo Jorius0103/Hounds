@@ -32,6 +32,8 @@ interface Window {
   DiceRoller3D: any;
   /** three.js; a Mesa, no iframe, copia o da janela do hub (window.parent.THREE). */
   THREE: any;
+  /** A casca React (src/hub/main.tsx): se a página já foi migrada e é desenhada por ela, não pelo renderPage. */
+  hubIsReactPage?(page: string): boolean;
   /** Na janela da Mesa (iframe): reabre a escolha de jogo. */
   __mesaOpenPicker?(): void;
   /** firebase-config.js */

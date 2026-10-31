@@ -6,7 +6,7 @@ O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, 
 
 | Caminho | O que é |
 |---|---|
-| `index.html` | Só o esqueleto da página (menu, áreas de conteúdo, modais) e a lista de CSS e JS carregados, em ordem. |
+| `index.html` | Só o esqueleto da página (menu, áreas de conteúdo, modais) e a lista de CSS e JS carregados, em ordem, mais a casca React (`src/hub/`). É a entrada do `npm run build`, que gera o `index.html` publicado. |
 | `css/` | Estilos, divididos por área. A ordem dos `<link>` no `index.html` importa. |
 | `js/` | O código do hub. Base (utilitários, banco, modelo do mundo, rotas, menu, modal), `busca-catalogos.js` (a busca em português nos catálogos de GURPS, com os nomes de `dados/traducoes.json`), `explorer.js`, `editor-texto.js`, `tabuleiro-geo.js` (a geometria dos tabuleiros: grade, linha de visão, paredes e área explorada), `tabuleiro-dados.js` (a rolagem de dados dos tabuleiros e o teste de GURPS), `tabuleiro-janela.js` (as janelas flutuantes do tabuleiro), `tabuleiro-chat.js` (o chat da mesa), `tabuleiro-turnos.js` (a ordem de turno), `tabuleiro-diario.js` (o Diário), `tabuleiro-arte.js` (a biblioteca de arte), `tabuleiro-paginas.js` (a barra de páginas e a fita dos jogadores), a sincronização da Mesa e `app.js`, que inicializa tudo. |
 | `js/store/` | Acesso ao banco: API genérica e IndexedDB local (`store.js`), `firebase.js` e `supabase.js`. |
@@ -21,6 +21,7 @@ O código do hub da campanha e uma cópia dos dados. Para trabalhar no código, 
 | `firestore.rules` | Regras de acesso do banco: só a conta da campanha lê e grava. |
 | `types/`, `jsconfig.json` | Tipos dos dados para a checagem do VS Code (não vão para o navegador). Veja [CONTRIBUTING.md](CONTRIBUTING.md). |
 | `tools/` | Scripts que importam os JSON e as imagens para o Supabase ou Firebase, `validar-migracao.mjs` (compara os dados antigos com as tabelas do Supabase) e `checar-globais.mjs`, usado na checagem dos PRs. `gurps-traducoes.mjs` lista os nomes dos catálogos de GURPS que ainda não têm tradução em `dados/traducoes.json`. `comparar-mesa.mjs` compara dois `mesa.html` pelos textos, classes e integrações com o hub. |
+| `src/hub/`, `vite.config.ts` | A casca React do hub: lê o endereço (`#ficha~id`…), aplica a rota e desenha as páginas já migradas para React (`src/hub/pages.ts`); as outras continuam nos scripts de `js/`. `npm run build` gera o `index.html` publicado e o bundle em `assets/`. |
 | `src/`, `vite.mesa.config.ts`, `package.json` | Código-fonte React da Mesa de Combate. `npm run build:mesa` gera o `mesa.html` (veja "Rodar no computador" e [CONTRIBUTING.md](CONTRIBUTING.md)). [docs/diferencas-mesa.md](docs/diferencas-mesa.md) registra como o `src/` foi alinhado ao `mesa.html` que era editado à mão. |
 
 ### Arquivos de dados (`dados/`)
@@ -36,24 +37,22 @@ Cada arquivo é um objeto `{ id: documento }`.
 
 ## Rodar no computador
 
-A página precisa ser aberta por um servidor HTTP: abrindo o `index.html` direto (`file://`), o navegador bloqueia o carregamento da Mesa de Combate. Qualquer servidor estático serve, por exemplo:
+O hub tem uma casca React (`src/hub/`), então precisa do Node (versão LTS) e do servidor do Vite. Um servidor estático comum (Live Server, `python -m http.server`) não serve mais: ele não compila o `src/hub/main.tsx` e o site fica sem rotas.
 
-- VS Code: extensão **Live Server**, botão "Go Live".
-- Node: `npx serve .`
-- Python: `python -m http.server 8000`
+1. Uma vez: `npm install`.
+2. `npm run dev` e abra http://localhost:3000. As mudanças no `src/hub/` aparecem na hora; nos arquivos de `js/` e `css/`, recarregue a página.
 
 Com o `supabase-config.js` preenchido, o site local usa o **mesmo banco de produção**. Para testar sem mexer nos dados reais, esvazie a `url` localmente (sem fazer commit) e a página passa a salvar só no navegador.
 
-Rodar o site não precisa de Node: o `mesa.html` já vem gerado no repositório. Só quem muda a Mesa de Combate precisa do Node (versão LTS):
+A Mesa de Combate não é recompilada pelo `npm run dev`: o hub carrega o `mesa.html` da raiz. Quem muda a Mesa:
 
-1. Uma vez: `npm install`.
-2. Edite o `src/`.
-3. Rode `npm run build:mesa` (gera o `mesa.html` em menos de um segundo) e recarregue a página.
-4. Faça o commit do `src/` e do `mesa.html` juntos.
+1. Edite o `src/` (fora de `src/hub/`).
+2. Rode `npm run build:mesa` (gera o `mesa.html` em menos de um segundo) e recarregue a página.
+3. Faça o commit do `src/` e do `mesa.html` juntos.
 
 ## Onde roda
 
-O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. Cada push na `main` dispara o workflow **Publicar** (`.github/workflows/publicar.yml`), que gera a Mesa a partir do `src/` e publica o site em cerca de 2 minutos; o andamento aparece na aba **Actions** do GitHub. Se o build falhar, o site continua na versão anterior. O `mesa.html` segue no repositório só para o site abrir no computador sem Node.
+O site fica no GitHub Pages: https://jorius0103.github.io/Hounds/. Cada push na `main` dispara o workflow **Publicar** (`.github/workflows/publicar.yml`), que gera a Mesa e o hub a partir do `src/` e publica o site em cerca de 2 minutos; o andamento aparece na aba **Actions** do GitHub. Se um build falhar, o site continua na versão anterior. O `index.html` publicado é o gerado pelo `npm run build`, não o do repositório.
 
 A página escolhe onde guardar os dados, nesta ordem:
 

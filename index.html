@@ -76,6 +76,8 @@
 
     <section class="view page" id="view-page" aria-live="polite" hidden>
       <div class="page-inner" id="pageRoot"></div>
+      <!-- As páginas já migradas para React (src/hub/pages.ts) são desenhadas aqui, e o pageRoot fica escondido. -->
+      <div class="page-inner" id="reactPage" hidden></div>
     </section>
     <section class="view board-view" id="view-board" aria-label="Tabuleiro" hidden></section>
   </main>
@@ -135,9 +137,10 @@
 <script src="supabase-config.js"></script>
 
 <!--
-  Scripts clássicos (sem módulos nem build). As funções e variáveis de nível
-  superior de cada arquivo são globais e usadas pelos seguintes, por isso a
-  ordem importa: base primeiro, depois as abas, app.js e gate.js por último.
+  Scripts clássicos (sem módulos; o Vite os publica como estão, veja vite.config.ts).
+  As funções e variáveis de nível superior de cada arquivo são globais e usadas pelos
+  seguintes, por isso a ordem importa: base primeiro, depois as abas, app.js e gate.js
+  por último. A casca React (src/hub/) vem depois de todos e cuida das rotas.
 -->
 <!-- Base -->
 <script src="js/utils.js?v=20261022_1"></script>
@@ -206,5 +209,7 @@
 <!-- Mesa de RPG e escolha de usuário -->
 <script src="js/mesa-frame.js?v=20261024_6"></script>
 <script src="js/gate.js?v=20261024_6"></script>
+<!-- Casca React: lê o endereço (#ficha~id…) e desenha a página; roda depois dos scripts acima. -->
+<script type="module" src="./src/hub/main.tsx"></script>
 </body>
 </html>

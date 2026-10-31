@@ -107,8 +107,10 @@ function hrefFor(node) {
 function mapHref(id) { return hrefFor('map:' + id); }
 function locHref(id) { return hrefFor('loc:' + id); }
 function spellHref(id) { return hrefFor('spell:' + id); }
+// The React shell (src/hub/HubApp.tsx) draws the page when the address changes. Redrawing the same
+// address, or changing it with replaceState, fires no hashchange, so go() tells the shell with hub:route.
 function go(hash, replace) {
-  if (location.hash === hash) { onRoute(); return; }
-  if (replace) { try { history.replaceState(null, '', hash); } catch (e) {} onRoute(); }
+  if (location.hash === hash) { window.dispatchEvent(new Event('hub:route')); return; }
+  if (replace) { try { history.replaceState(null, '', hash); } catch (e) {} window.dispatchEvent(new Event('hub:route')); }
   else location.hash = hash;
 }

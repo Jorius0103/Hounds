@@ -1,5 +1,6 @@
-# Publica o site no GitHub Pages a cada push na main: gera a Mesa (npm run build:mesa) a partir do src/
-# e envia a raiz do repositório, sem o que só serve para o build. Se o build falhar, o site fica na versão anterior.
+# Publica o site no GitHub Pages a cada push na main: gera a Mesa (npm run build:mesa) e o hub (npm run build:
+# index.html e a casca React em assets/) a partir do src/, e envia a raiz do repositório com esses arquivos por
+# cima, sem o que só serve para o build. Se um build falhar, o site fica na versão anterior.
 # Requer Settings → Pages → Source: "GitHub Actions".
 name: Publicar
 
@@ -34,8 +35,12 @@ jobs:
         run: npm ci
       - name: Build da Mesa (mesa.html)
         run: npm run build:mesa
+      - name: Build do hub (index.html e assets/)
+        run: npm run build
       - name: Montar o site
-        run: rsync -a --exclude .git --exclude .github --exclude node_modules --exclude dist --exclude src --exclude _site ./ _site/
+        run: |
+          rsync -a --exclude .git --exclude .github --exclude node_modules --exclude dist --exclude src --exclude _site ./ _site/
+          cp -r dist/hub/. _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
