@@ -3623,7 +3623,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   setIsArmorSearchOpen(true);
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm active:scale-95 cursor-pointer"
-                title="Abrir o catálogo de armaduras para consultar ou equipar"
+                title="Abrir catálogo de armaduras"
               >
                 <Search size={14} />
                 <span>Buscar Armaduras</span>
@@ -3740,7 +3740,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   type="button"
                   onClick={handleAddArmorKit}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-dashed border-amber-500/40 hover:border-amber-500/80 transition-all cursor-pointer shrink-0"
-                  title="Adicionar uma nova lista de partes do corpo (novo kit de armadura)"
+                  title="Adicionar novo kit de armadura"
                 >
                   <Plus size={13} />
                   <span>+ Kit de Armadura</span>
@@ -4313,7 +4313,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         message={`Remover "${npc.name || 'este personagem'}" deste combate?\n\n${
           npc.characterType === 'player'
             ? 'A ficha continuará salva globalmente e poderá ser adicionada novamente a qualquer combate.'
-            : 'O NPC e seus registros serão excluídos permanentemente deste combate.'
+            : 'O NPC será apagado deste combate.'
         }`}
         confirmText="Confirmar Exclusão"
         isDanger={true}

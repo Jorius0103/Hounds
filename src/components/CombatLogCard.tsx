@@ -481,7 +481,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
                 autoFocus
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Adicionar anotação (ex: Ataque espada no braço, Teste ST...)"
+                placeholder="Adicionar anotação (ex: Ataque espada no braço...)"
                 className="flex-1 bg-slate-900 border border-amber-500/60 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
               <button

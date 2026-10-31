@@ -869,7 +869,7 @@ export default function App() {
       };
     });
 
-    systemLogger.addLog('SYNC_SEND', 'Sincronização enviada (Broadcast, MQTT & Supabase)', {
+    systemLogger.addLog('SYNC_SEND', 'Sincronização enviada (Broadcast & MQTT)', {
       combatsCount: lightweightCombats.length,
       playersCount: finalPlayers.length,
       editTimestamp,
@@ -4225,7 +4225,7 @@ export default function App() {
                   <div className="w-12 h-12 rounded-xl bg-slate-800 text-amber-400 mx-auto flex items-center justify-center">
                     <Search size={24} />
                   </div>
-                  <h2 className="text-base font-bold text-white">Nenhum resultado encontrado</h2>
+                  <h2 className="text-base font-bold text-white">Nenhum combatente encontrado</h2>
                   <p className="text-xs text-slate-400 leading-relaxed">
                     Não há {activeFilterInfo.filter === 'players' ? 'personagens' : activeFilterInfo.filter === 'npcs' ? 'NPCs' : activeFilterInfo.filter === 'alive' ? 'combatentes vivos' : 'combatentes mortos'} para exibir com o filtro selecionado.
                   </p>
@@ -4251,8 +4251,9 @@ export default function App() {
                       Use os botões na barra superior esquerda para cadastrar novos Personagens ou NPCs.
                     </p>
                     <div className="pt-2 flex items-center justify-center gap-2">
+                      {/* Abre a lista dos personagens salvos (pôr de volta no jogo ou criar um novo), como no mesa.html */}
                       <button
-                        onClick={handleAddNewPlayer}
+                        onClick={() => setCombatPlayersModalOpen(true)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-colors"
                       >
                         <Plus size={15} />
@@ -4404,7 +4405,11 @@ export default function App() {
         activePlayerIds={activeCombatPlayerIds}
         onTogglePlayer={handleTogglePlayerInCombat}
         onSetAllPlayers={handleSetAllPlayersInCombat}
-        onAddNewPlayer={handleAddNewPlayer}
+        onAddNewPlayer={() => {
+          handleAddNewPlayer();
+          setCombatPlayersModalOpen(false);
+        }}
+        onDeletePlayer={handleDeletePlayer}
       />
 
       {/* Login & Redefinição de Senha Modal */}

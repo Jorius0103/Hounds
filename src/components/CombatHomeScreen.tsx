@@ -436,7 +436,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                           PV
                         </span>
                         <span className="font-black text-emerald-400">
-                          {npc.hpCurrent} <span className="text-slate-500 text-[10px] mx-0.5">/</span>{' '}
+                          {npc.hpCurrent} <span className="text-slate-500 text-[10px]">/</span>{' '}
                           <span className="text-emerald-400/80 text-[10px]">{npc.hpMax}</span>
                         </span>
                       </div>
@@ -446,7 +446,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                           FP
                         </span>
                         <span className="font-black text-cyan-300">
-                          {npc.fpCurrent} <span className="text-slate-500 text-[10px] mx-0.5">/</span>{' '}
+                          {npc.fpCurrent} <span className="text-slate-500 text-[10px]">/</span>{' '}
                           <span className="text-cyan-300/80 text-[10px]">{npc.fpMax}</span>
                         </span>
                       </div>
@@ -503,7 +503,7 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
               {/* LINHA DE ATRIBUTOS: primários (ST, DX, IQ, HT) e secundários (Per, Will, Spd, Move) */}
               {showDetailedStats && (
                 <div
-                  className="w-full flex items-center px-2.5 py-1 bg-slate-950/70 border border-slate-800/80 rounded-lg select-none text-[11px] gap-x-2 gap-y-0.5 flex-wrap"
+                  className="w-full flex items-center justify-between px-2.5 py-1 bg-slate-950/70 border border-slate-800/80 rounded-lg select-none text-[11px] gap-x-1 gap-y-0.5 flex-wrap"
                   title="Atributos: ST, DX, IQ, HT, Per, Will, Spd, Move"
                 >
                   {[
@@ -513,24 +513,24 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
                     { label: 'HT', title: 'Vitalidade (HT)', value: npc.ht ?? 10 },
                   ].map((attr) => (
                     <span key={attr.label} className="inline-flex items-center gap-1 shrink-0" title={attr.title}>
-                      <span className="font-bold text-slate-400 text-[10px] mr-0.5">{attr.label}</span>
+                      <span className="font-bold text-slate-400 text-[10px]">{attr.label}</span>
                       <span className="font-mono font-black text-amber-300 text-xs">{attr.value}</span>
                     </span>
                   ))}
                   <span className="inline-flex items-center gap-1 shrink-0" title="Percepção (Per)">
-                    <span className="font-bold text-teal-400 text-[10px] mr-0.5">Per</span>
+                    <span className="font-bold text-teal-400 text-[10px]">Per</span>
                     <span className="font-mono font-black text-teal-200 text-xs">{npc.per ?? npc.iq ?? 10}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 shrink-0" title="Vontade (Will)">
-                    <span className="font-bold text-indigo-300 text-[10px] mr-0.5">Will</span>
+                    <span className="font-bold text-indigo-300 text-[10px]">Will</span>
                     <span className="font-mono font-black text-indigo-200 text-xs">{npc.will ?? npc.iq ?? 10}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 shrink-0" title="Basic Speed (Spd)">
-                    <span className="font-bold text-amber-400 text-[10px] mr-0.5">Spd</span>
+                    <span className="font-bold text-amber-400 text-[10px]">Spd</span>
                     <span className="font-mono font-black text-amber-300 text-xs">{npc.basicSpeed ?? 0}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 shrink-0" title="Basic Move (Move)">
-                    <span className="font-bold text-emerald-400 text-[10px] mr-0.5">Move</span>
+                    <span className="font-bold text-emerald-400 text-[10px]">Move</span>
                     <span className="font-mono font-black text-emerald-300 text-xs whitespace-nowrap">
                       {npc.basicMove !== undefined && npc.basicMove !== null && String(npc.basicMove).trim() !== ''
                         ? npc.basicMove

@@ -649,8 +649,8 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                           }}
                           title={
                             isVisible
-                              ? 'Personagem visível na Mesa de RPG. Clique para ocultar.'
-                              : 'Personagem oculto da Mesa de RPG. Clique para tornar visível.'
+                              ? 'Personagem visível na mesa (Clique para ocultar)'
+                              : 'Personagem oculto da mesa (Clique para exibir)'
                           }
                         >
                           {isVisible ? <Eye size={11} /> : <EyeOff size={11} />}
@@ -665,7 +665,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                           onClick={(e) => {
                             e.stopPropagation();
                             hubConfirm(
-                              `Tem certeza que deseja excluir o personagem "${char.name}"? Esta ação removerá o personagem da campanha.`
+                              `Tem certeza que deseja excluir o personagem "${char.name}"? Esta ação não pode ser desfeita.`
                             ).then((ok) => {
                               if (ok) onDeleteCharacter(char.id);
                             });
@@ -684,7 +684,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                             border: '1px solid rgba(225, 29, 72, 0.4)',
                             transition: 'all 0.15s ease',
                           }}
-                          title={`Excluir personagem ${char.name} da campanha`}
+                          title="Excluir personagem permanentemente"
                         >
                           <Trash2 size={11} />
                         </button>

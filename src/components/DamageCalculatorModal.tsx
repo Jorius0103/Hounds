@@ -1299,14 +1299,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
             <div className="py-8 text-center text-xs text-slate-400 italic space-y-1.5 bg-slate-950/40 rounded-xl border border-slate-800 p-4">
               <p className="font-bold text-amber-300 flex items-center justify-center gap-1.5 not-italic">
                 <Star size={15} className="fill-amber-400 text-amber-400" />
-                <span>Nenhum item extra favoritado</span>
+                <span>Nenhum item favoritado</span>
               </p>
-              <p className="text-[11px] text-slate-300 not-italic">
-                Apenas os itens marcados como favoritos aparecem nesta tela de ações rápidas.
-              </p>
-              <p className="text-[10px] text-slate-500">
-                Favorite itens clicando na estrela ⭐ na seção &quot;Itens Extras &amp; Recursos&quot; da ficha para usá-los aqui.
-              </p>
+              <p className="text-[11px] text-slate-300 not-italic">Favorite itens (★) na ficha para listá-los aqui.</p>
             </div>
           ) : (
             <div className="space-y-4">

@@ -486,7 +486,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                       }}
                     >
                       <Check size={12} strokeWidth={2.5} />
-                      <span>Equipar em {currentLocation?.location}</span>
+                      <span>✓ Equipar em {currentLocation?.location}</span>
                     </button>
                   </div>
                 </div>

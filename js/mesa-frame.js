@@ -1,7 +1,7 @@
 /* =====================================================================
-   Hounds — Mesa de Combate: carrega o mesa.html (versão compilada da
-   Mesa) e prepara o HTML que vai no srcdoc do iframe, com o tema claro
-   e o botão de sair apontando para a página inicial.
+   Hounds — Mesa de Combate: carrega o mesa.html (gerado do src/ por
+   npm run build:mesa) e prepara o HTML que vai no srcdoc do iframe,
+   com o cache-bust dos scripts e o tema claro.
    Precisa de um servidor HTTP (GitHub Pages ou servidor local): por
    file:// o navegador bloqueia o fetch.
    ===================================================================== */
@@ -104,9 +104,7 @@
         var bust = Date.now();
         html = html.replace(/js\/dice-roller-3d\.js(\?v=[^"']*)?/g, 'js/dice-roller-3d.js?v=' + bust);
         html = html.replace(/js\/audio-stream-sync\.js(\?v=[^"']*)?/g, 'js/audio-stream-sync.js?v=' + bust);
-        return html.replace('</head>', MESA_THEME + '</head>')
-          // Its exit button now leads to the hub's home page (see hubMesaFlush).
-          .replace('title:"Salvar e voltar para a escolha de jogo"', 'title:"Salvar e voltar para a página inicial"');
+        return html.replace('</head>', MESA_THEME + '</head>');
       });
       mesaHtml.catch(function () { mesaHtml = null; });
     }

@@ -3,7 +3,9 @@
 // Serve para montar e conferir a lista de docs/diferencas-mesa.md; nomes de variáveis não
 // entram, porque o minificador os encurta de um jeito diferente em cada build.
 //
-// Uso: npm run build:mesa && node tools/comparar-mesa.mjs [--json saida.json]
+// Uso: npm run build:mesa && node tools/comparar-mesa.mjs [--ar arquivo.html] [--json saida.json]
+// Desde a Etapa 4, o mesa.html da raiz é o próprio build; para comparar com o que estava no ar antes,
+// extraia a versão antiga (git show 9be607b:mesa.html > antigo.html) e passe --ar antigo.html.
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,7 +49,9 @@ async function srcText(dir) {
   return parts.join('\n');
 }
 
-const live = await readFile(path.join(ROOT, 'mesa.html'), 'utf8');
+const arIndex = process.argv.indexOf('--ar');
+const liveFile = arIndex > 0 && process.argv[arIndex + 1] ? path.resolve(process.argv[arIndex + 1]) : path.join(ROOT, 'mesa.html');
+const live = await readFile(liveFile, 'utf8');
 const built = await readFile(path.join(ROOT, 'dist', 'mesa.html'), 'utf8');
 const src = await srcText(path.join(ROOT, 'src'));
 const jsLive = inlineScripts(live).join('\n');

@@ -1,4 +1,4 @@
-# Checa os tipos e o build da Mesa (src/, tsconfig.json, npm run build:mesa), os tipos do hub
+# Checa os tipos e o build da Mesa (src/, tsconfig.json, npm run build:mesa, mesa.html igual ao build), os tipos do hub
 # (jsconfig.json + types/) e os nomes globais repetidos em cada PR e na main.
 name: Checagem
 
@@ -19,8 +19,10 @@ jobs:
         run: npm ci
       - name: Tipos da Mesa (src/)
         run: npx tsc --noEmit
-      - name: Build da Mesa (dist/mesa.html)
+      - name: Build da Mesa (mesa.html)
         run: npm run build:mesa
+      - name: mesa.html igual ao build (editar no src/, nunca à mão)
+        run: git diff --exit-code mesa.html
       - name: Tipos
         run: npx --yes -p typescript@6.0 tsc -p jsconfig.json
       - name: Nomes globais repetidos

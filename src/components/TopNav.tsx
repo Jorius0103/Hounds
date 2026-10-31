@@ -165,7 +165,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               type="button"
               onClick={onOpenPlayerPermissions}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-lg text-slate-300 hover:text-white transition-all shadow-sm font-medium whitespace-nowrap"
-              title="Gerenciar jogadores, permissões e personagens da mesa"
+              title="Gerenciar quais jogadores possuem permissão de edição no combate"
             >
               <Users
                 size={13}
@@ -186,7 +186,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               style={{ height: '28px', flexShrink: 0 }}
               title={
                 canEditCurrent
-                  ? 'Permissão de edição concedida pelo Mestre (você pode alterar sua ficha e movimentar seus tokens)'
+                  ? 'Permissão de edição concedida pelo Mestre (você pode alterar sua ficha e tokens)'
                   : 'Modo Espectador: visualização em tempo real (somente leitura)'
               }
             >
