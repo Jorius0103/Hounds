@@ -857,7 +857,8 @@ export default function App() {
     const finalCombats = updatedCombats || stateRef.current.combats;
     const finalConditions = updatedConditions || stateRef.current.conditions;
     const finalUsers = updatedUsers || stateRef.current.users;
-    const finalActiveCombat = updatedActiveCombatId || stateRef.current.activeCombatId;
+    const finalActiveCombat =
+      updatedActiveCombatId !== undefined ? updatedActiveCombatId : stateRef.current.activeCombatId;
     const finalPlayers = updatedPlayers || stateRef.current.players;
 
     // Guarda NPCs no pool para qualquer combate com NPCs carregados
@@ -1022,6 +1023,10 @@ export default function App() {
             );
           }
 
+          if (!cId) {
+            setSessionEvents((prev) => [entry, ...(prev || []).filter((e) => e.id !== entry.id)]);
+          }
+
           setCombats((prev) =>
             prev.map((c) => {
               const matchesCombat = !cId || c.id === cId;
@@ -1180,6 +1185,50 @@ export default function App() {
         return;
       }
 
+      if ((payload as any).type === 'SYNC_ACTIVE_COMBAT') {
+        const targetId = (payload as any).activeCombatId !== undefined ? (payload as any).activeCombatId : '';
+        stateRef.current.activeCombatId = targetId;
+        setActiveCombatId(targetId);
+        setIsHomeScreen(false);
+        try {
+          localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(targetId));
+        } catch (e) {}
+        if (targetId) {
+          const newActiveCombat = stateRef.current.combats.find((c) => c.id === targetId);
+          if (newActiveCombat) {
+            const myChar = newActiveCombat.npcs?.find(
+              (n) =>
+                currentUser &&
+                (n.userId === currentUser.id ||
+                  n.ownerId === currentUser.id ||
+                  n.name === currentUser.name ||
+                  (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+            );
+            if (myChar) {
+              setSelectedNpcId(myChar.id);
+            } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
+              setSelectedNpcId(newActiveCombat.npcs[0].id);
+            }
+          }
+        } else {
+          // Sem combate ativo: seleciona o personagem do jogador na lista de personagens
+          const myPlayerChar = (stateRef.current.players || []).find(
+            (p) =>
+              currentUser &&
+              (p.userId === currentUser.id ||
+                p.ownerId === currentUser.id ||
+                p.name === currentUser.name ||
+                (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+          );
+          if (myPlayerChar) {
+            setSelectedNpcId(myPlayerChar.id);
+          } else if (stateRef.current.players.length > 0) {
+            setSelectedNpcId(stateRef.current.players[0].id);
+          }
+        }
+        return;
+      }
+
       if (payload.type === 'SYNC_FULL') {
         const msgTime = payload.timestamp || 0;
 
@@ -1238,20 +1287,43 @@ export default function App() {
             return Array.from(map.values());
           });
         }
-        if (payload.activeCombatId && payload.activeCombatId !== stateRef.current.activeCombatId) {
+        if (payload.activeCombatId !== undefined && payload.activeCombatId !== stateRef.current.activeCombatId) {
           stateRef.current.activeCombatId = payload.activeCombatId;
           setActiveCombatId(payload.activeCombatId);
           setIsHomeScreen(false);
           try {
             localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(payload.activeCombatId));
           } catch (e) {}
-          const newActiveCombat = nextCombats.find((c) => c.id === payload.activeCombatId);
-          if (newActiveCombat) {
-            const myChar = newActiveCombat.npcs?.find((n) => currentUser && (n.userId === currentUser.id || n.ownerId === currentUser.id || n.name === currentUser.name || (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())));
-            if (myChar) {
-              setSelectedNpcId(myChar.id);
-            } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
-              setSelectedNpcId(newActiveCombat.npcs[0].id);
+          if (payload.activeCombatId) {
+            const newActiveCombat = nextCombats.find((c) => c.id === payload.activeCombatId);
+            if (newActiveCombat) {
+              const myChar = newActiveCombat.npcs?.find(
+                (n) =>
+                  currentUser &&
+                  (n.userId === currentUser.id ||
+                    n.ownerId === currentUser.id ||
+                    n.name === currentUser.name ||
+                    (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+              );
+              if (myChar) {
+                setSelectedNpcId(myChar.id);
+              } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
+                setSelectedNpcId(newActiveCombat.npcs[0].id);
+              }
+            }
+          } else {
+            const myPlayerChar = (nextPlayers || []).find(
+              (p) =>
+                currentUser &&
+                (p.userId === currentUser.id ||
+                  p.ownerId === currentUser.id ||
+                  p.name === currentUser.name ||
+                  (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+            );
+            if (myPlayerChar) {
+              setSelectedNpcId(myPlayerChar.id);
+            } else if (nextPlayers && nextPlayers.length > 0) {
+              setSelectedNpcId(nextPlayers[0].id);
             }
           }
         }
@@ -1383,6 +1455,10 @@ export default function App() {
               );
             }
 
+            if (!cId) {
+              setSessionEvents((prev) => [entry, ...(prev || []).filter((e) => e.id !== entry.id)]);
+            }
+
             setCombats((prev) =>
               prev.map((c) => {
                 const matchesCombat = !cId || c.id === cId;
@@ -1425,6 +1501,10 @@ export default function App() {
                 : p;
             })
           );
+          setSessionEvents((prev) =>
+            (prev || []).map((e) => (e.id === entryId ? { ...e, comment } : e))
+          );
+
           setCombats((prev) =>
             prev.map((c) => {
               const evHas = (c.events || []).some((e) => e.id === entryId);
@@ -1532,6 +1612,49 @@ export default function App() {
           return;
         }
 
+        if (event.data?.type === 'SYNC_ACTIVE_COMBAT') {
+          const targetId = event.data.activeCombatId !== undefined ? event.data.activeCombatId : '';
+          stateRef.current.activeCombatId = targetId;
+          setActiveCombatId(targetId);
+          setIsHomeScreen(false);
+          try {
+            localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(targetId));
+          } catch (e) {}
+          if (targetId) {
+            const newActiveCombat = stateRef.current.combats.find((c) => c.id === targetId);
+            if (newActiveCombat) {
+              const myChar = newActiveCombat.npcs?.find(
+                (n) =>
+                  currentUser &&
+                  (n.userId === currentUser.id ||
+                    n.ownerId === currentUser.id ||
+                    n.name === currentUser.name ||
+                    (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+              );
+              if (myChar) {
+                setSelectedNpcId(myChar.id);
+              } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
+                setSelectedNpcId(newActiveCombat.npcs[0].id);
+              }
+            }
+          } else {
+            const myPlayerChar = (stateRef.current.players || []).find(
+              (p) =>
+                currentUser &&
+                (p.userId === currentUser.id ||
+                  p.ownerId === currentUser.id ||
+                  p.name === currentUser.name ||
+                  (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+            );
+            if (myPlayerChar) {
+              setSelectedNpcId(myPlayerChar.id);
+            } else if (stateRef.current.players.length > 0) {
+              setSelectedNpcId(stateRef.current.players[0].id);
+            }
+          }
+          return;
+        }
+
         if (event.data?.type === 'SYNC_STATE') {
           let playersChanged = false;
           let combatsChanged = false;
@@ -1580,7 +1703,7 @@ export default function App() {
             stateRef.current.users = event.data.users;
             setUsers(event.data.users);
           }
-          if (event.data.activeCombatId) {
+          if (event.data.activeCombatId !== undefined) {
             stateRef.current.activeCombatId = event.data.activeCombatId;
             setActiveCombatId(event.data.activeCombatId);
           }
@@ -1632,7 +1755,23 @@ export default function App() {
       try {
         localStorage.setItem(ACTIVE_COMBAT_KEY, JSON.stringify(''));
       } catch (e) {}
-      broadcastSync(undefined, undefined, undefined, '');
+
+      // Sincronização em tempo real imediata da troca para "Sem combate"
+      const syncMsg = {
+        type: 'SYNC_ACTIVE_COMBAT' as const,
+        activeCombatId: '',
+        sourceId: onlineSyncService.getClientId(),
+        timestamp: Date.now(),
+      };
+      try {
+        broadcastChannelRef.current?.postMessage(syncMsg);
+        onlineSyncService.sendPayloadImmediate(syncMsg);
+        if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+          (window as any).parent.hubMesaBus.publish(JSON.stringify(syncMsg));
+        }
+      } catch (e) {}
+
+      broadcastSync(undefined, undefined, undefined, '', undefined, undefined, true);
       return;
     }
 
@@ -1706,6 +1845,21 @@ export default function App() {
         setSelectedNpcId(players[0].id);
       }
     }
+    // Sincronização em tempo real imediata da troca de combate
+    const syncMsg = {
+      type: 'SYNC_ACTIVE_COMBAT' as const,
+      activeCombatId: id,
+      sourceId: onlineSyncService.getClientId(),
+      timestamp: Date.now(),
+    };
+    try {
+      broadcastChannelRef.current?.postMessage(syncMsg);
+      onlineSyncService.sendPayloadImmediate(syncMsg);
+      if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
+        (window as any).parent.hubMesaBus.publish(JSON.stringify(syncMsg));
+      }
+    } catch (e) {}
+
     broadcastSync(updatedCombats, undefined, undefined, id, undefined, undefined, true);
   };
 
@@ -1958,6 +2112,11 @@ export default function App() {
       ],
     };
     const updatedPlayers = [...players, newPlayer];
+    const updatedSession = [...sessionPlayerIds, newPlayer.id];
+    setSessionPlayerIds(updatedSession);
+    try {
+      localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedSession));
+    } catch (e) {}
     setPlayers(updatedPlayers);
     setSelectedNpcId(newPlayer.id);
     setIsHomeScreen(false);
@@ -2051,28 +2210,27 @@ export default function App() {
         localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(updatedPlayers));
       } catch (e) {}
 
-      broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
+      const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dayLabel = effectiveDays > 1 ? `${effectiveDays} Dias` : '1 Dia';
+      const descText = summaryDetails.length > 0
+        ? `Passar ${dayLabel} (+${effectiveDays} Mana): ${summaryDetails.join(' | ')}.`
+        : `Passar ${dayLabel} (+${effectiveDays} Mana): Recursos de mana dos Personagens recuperados em +${effectiveDays} ponto(s).`;
+      const logEntry: ActionLogEntry = {
+        id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: timeStr,
+        timestampMs: now,
+        round: effectiveRound,
+        author: currentUser?.role === 'jogador' ? 'assistente' : 'mestre',
+        authorName: currentUser?.name || (currentUser?.role === 'jogador' ? 'Jogador' : 'Mestre'),
+        type: 'item',
+        npcName: 'Personagens',
+        npcCharacterType: 'player',
+        itemName: 'Passar o Dia',
+        amount: effectiveDays,
+        description: descText,
+      };
 
       if (activeCombat) {
-        const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const dayLabel = effectiveDays > 1 ? `${effectiveDays} Dias` : '1 Dia';
-        const descText = summaryDetails.length > 0
-          ? `Passar ${dayLabel} (+${effectiveDays} Mana): ${summaryDetails.join(' | ')}.`
-          : `Passar ${dayLabel} (+${effectiveDays} Mana): Recursos de mana dos Personagens recuperados em +${effectiveDays} ponto(s).`;
-        const logEntry: ActionLogEntry = {
-          id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
-          timestamp: timeStr,
-          timestampMs: now,
-          round: effectiveRound,
-          author: currentUser?.role === 'jogador' ? 'assistente' : 'mestre',
-          authorName: currentUser?.name || (currentUser?.role === 'jogador' ? 'Jogador' : 'Mestre'),
-          type: 'item',
-          npcName: 'Personagens',
-          npcCharacterType: 'player',
-          itemName: 'Passar o Dia',
-          amount: effectiveDays,
-          description: descText,
-        };
         const nextCombats = combats.map((c) => {
           let combatNpcsChanged = false;
           const nextNpcs = (c.npcs || []).map((npc) => {
@@ -2107,6 +2265,9 @@ export default function App() {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
         } catch (e) {}
         broadcastSync(nextCombats, undefined, undefined, undefined, updatedPlayers);
+      } else {
+        setSessionEvents((prev) => [logEntry, ...prev.filter((e) => e.id !== logEntry.id)]);
+        broadcastSync(undefined, undefined, undefined, undefined, updatedPlayers);
       }
     }
   };

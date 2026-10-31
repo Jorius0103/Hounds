@@ -233,7 +233,7 @@ var MesaSync = (function () {
       combats: combats.filter(function (c) { return del.indexOf(c.id) < 0; }),
       conditions: inc.conditions && inc.conditions.length ? inc.conditions : base.conditions,
       players: mergeList(base.players, inc.players).filter(function (p) { return p && p.characterType !== 'npc'; }),
-      activeCombatId: inc.activeCombatId || base.activeCombatId,
+      activeCombatId: inc.activeCombatId !== undefined ? inc.activeCombatId : base.activeCombatId,
       deletedCombatIds: del,
       editors: inc.editors || base.editors
     };
@@ -437,6 +437,14 @@ var MesaSync = (function () {
         rt().on('mesa-audio', function (m) {
           if (m && loaded()) push(m);
         });
+        rt().on('mesa-active-combat', function (m) {
+          if (m && m.activeCombatId !== undefined) {
+            var newId = m.activeCombatId || '';
+            if (state) state = Object.assign({}, state, { activeCombatId: newId });
+            try { localStorage.setItem(MESA_LS.activeCombatId, JSON.stringify(newId)); } catch (e) {}
+            if (loaded()) push({ type: 'SYNC_ACTIVE_COMBAT', activeCombatId: newId, timestamp: m.ts || Date.now() });
+          }
+        });
         rt().on('mesa-snapshots', function (m) {
           if (m && Array.isArray(m.snapshots)) {
             try { localStorage.setItem('hounds_mesa_snapshots_v1', JSON.stringify(m.snapshots)); } catch (e) {}
@@ -529,6 +537,17 @@ var MesaSync = (function () {
         curSt.editors = m.editorUserIds;
         var r0 = newRev();
         pending = { st: curSt, rev: r0 };
+        if (!timer) timer = setTimeout(flush, delay());
+        return;
+      }
+      if (m.type === 'SYNC_ACTIVE_COMBAT' && m.activeCombatId !== undefined) {
+        var newId = m.activeCombatId || '';
+        try { localStorage.setItem(MESA_LS.activeCombatId, JSON.stringify(newId)); } catch (e) {}
+        if (rt() && canSave()) rt().send('mesa-active-combat', { activeCombatId: newId, ts: m.timestamp || Date.now() });
+        var curStAc = state || localState() || {};
+        curStAc.activeCombatId = newId;
+        state = curStAc;
+        pending = { st: state, rev: newRev() };
         if (!timer) timer = setTimeout(flush, delay());
         return;
       }

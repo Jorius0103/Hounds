@@ -9,6 +9,7 @@ export interface RemoteSyncPayload {
     | 'REQUEST_SYNC'
     | 'SYNC_ROUND'
     | 'SYNC_EDITORS'
+    | 'SYNC_ACTIVE_COMBAT'
     | 'SYNC_MASTER_ORDER'
     | 'SYNC_DICE_ROLL'
     | 'SYNC_ENTRY_COMMENT'
@@ -265,7 +266,7 @@ class OnlineSyncService {
   public sendPayload(
     payload: Omit<RemoteSyncPayload, 'clientId' | 'timestamp'> & { clientId?: string; timestamp?: number }
   ) {
-    if (payload.type === 'REQUEST_SYNC' || payload.type === 'SYNC_NPC' || payload.type === 'SYNC_ROUND') {
+    if (payload.type === 'REQUEST_SYNC' || payload.type === 'SYNC_NPC' || payload.type === 'SYNC_ROUND' || payload.type === 'SYNC_ACTIVE_COMBAT') {
       this.sendPayloadImmediate(payload);
       return;
     }
