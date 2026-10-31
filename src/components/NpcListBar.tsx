@@ -492,7 +492,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               {!isNoCombat && (() => {
                 const canEditRound = canControlRound ?? (currentUserRole === 'mestre');
                 return (
-                  <div className="flex items-center h-7 bg-slate-900 border border-slate-750 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0">
+                  <div className="flex items-center h-7 bg-slate-900 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0">
                     {canEditRound && (
                       <button
                         type="button"
