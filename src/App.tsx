@@ -25,6 +25,7 @@ import { DiceRollOverlay, DiceRollResult } from './components/DiceRollOverlay';
 import { systemLogger } from './utils/systemLogger';
 import { audioStreamSync } from './utils/audioStreamSync';
 import { Swords, Plus, EyeOff, Search } from 'lucide-react';
+import { hubAlert } from './utils/hubDialog';
 
 const STORAGE_KEY = 'gurps_combat_master_data_v2';
 const CONDITIONS_KEY = 'gurps_combat_master_conditions_v2';
@@ -35,6 +36,10 @@ const DELETED_KEY = 'gurps_combat_master_deleted_v1';
 const EDITORS_STORAGE_KEY = 'gurps_combat_master_editors_v1';
 const SYNC_CHANNEL_NAME = 'gurps_combat_realtime_sync_v2';
 const MESA_VIEW_STATE_KEY = 'hounds_mesa_view_state_v1';
+
+// Mapa tático e Visão Dividida: prontos no src/, mas fora do ar até decisão da equipe
+// (docs/diferencas-mesa.md, item S1). Com false, a Mesa fica sempre em Fichas & Log.
+const TACTICAL_MAP_ENABLED = false;
 
 function getMesaSessionStorage(): Storage | null {
   try {
@@ -139,21 +144,51 @@ function isEmptyCombat(c?: Combat | null): boolean {
   return c.id === 'combat-vazio' || n.includes('vazio') || n === 'sem combate';
 }
 
-function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { merged: Combat[]; changed: boolean } {
+// Combates excluídos: a lista viaja em toda sincronização e fica guardada, para que um cliente
+// com a lista antiga não traga de volta um combate que alguém apagou.
+let deletedCombatIdsMemory: string[] = [];
+
+function getDeletedCombatIds(): string[] {
+  let saved: unknown = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(DELETED_KEY) || 'null');
+  } catch {}
+  return [...new Set([...(Array.isArray(saved) ? saved : []), ...deletedCombatIdsMemory])];
+}
+
+function addDeletedCombatIds(ids: unknown): string[] {
+  const current = getDeletedCombatIds();
+  const before = current.length;
+  if (Array.isArray(ids)) {
+    for (const id of ids) if (typeof id === 'string' && !current.includes(id)) current.push(id);
+  }
+  deletedCombatIdsMemory = current;
+  if (current.length !== before) {
+    try {
+      localStorage.setItem(DELETED_KEY, JSON.stringify(current));
+    } catch {}
+  }
+  return current;
+}
+
+// Junta os combates locais com os recebidos: nenhum combate some por não ter vindo na lista,
+// só os que estão na lista de excluídos (a local mais a que veio junto).
+function mergeCombats(
+  currentCombats: Combat[],
+  incomingCombats: Combat[],
+  incomingDeletedIds?: unknown
+): { merged: Combat[]; changed: boolean } {
   let changed = false;
-  const currentMap = new Map<string, Combat>();
-  currentCombats.forEach((c) => currentMap.set(c.id, c));
-
-  const incomingMap = new Map<string, Combat>();
-  incomingCombats.forEach((c) => incomingMap.set(c.id, c));
-
-  const merged: Combat[] = [];
+  const deleted = new Set(addDeletedCombatIds(incomingDeletedIds));
+  const mergedMap = new Map<string, Combat>();
+  currentCombats.forEach((c) => mergedMap.set(c.id, isEmptyCombat(c) ? { ...c, npcs: [] } : c));
 
   for (const incoming of incomingCombats) {
-    const existing = currentMap.get(incoming.id);
+    if (deleted.has(incoming.id)) continue;
+    const existing = mergedMap.get(incoming.id);
     if (!existing) {
       const sanitized = isEmptyCombat(incoming) ? { ...incoming, npcs: [] } : incoming;
-      merged.push(sanitized);
+      mergedMap.set(incoming.id, sanitized);
       changed = true;
     } else {
       const isNoCombatEntry = isEmptyCombat(existing) || isEmptyCombat(incoming);
@@ -203,7 +238,7 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
       if (npcsChanged || playerIdsChanged || editorIdsChanged || nameChanged || isActiveChanged || roundChanged || tacticalChanged || eventsChanged || customOrderChanged) {
         changed = true;
       }
-      merged.push({
+      mergedMap.set(incoming.id, {
         ...existing,
         ...incoming,
         npcs: mergedNpcs,
@@ -218,12 +253,11 @@ function mergeCombats(currentCombats: Combat[], incomingCombats: Combat[]): { me
     }
   }
 
-  // Se havia combates locais que foram excluídos remotamente
-  if (currentCombats.some((c) => !incomingMap.has(c.id))) {
-    changed = true;
+  for (const id of deleted) {
+    if (mergedMap.delete(id)) changed = true;
   }
 
-  return { merged, changed };
+  return { merged: Array.from(mergedMap.values()), changed };
 }
 
 const DEFAULT_USERS: UserAccount[] = [
@@ -619,6 +653,7 @@ export default function App() {
 
   // View Mode: 'sheets' | 'tactical' | 'split'
   const [activeViewMode, setActiveViewMode] = useState<ViewMode>(() => {
+    if (!TACTICAL_MAP_ENABLED) return 'sheets';
     if (initialMesaViewState?.activeViewMode && ['sheets', 'tactical', 'split'].includes(initialMesaViewState.activeViewMode)) {
       return initialMesaViewState.activeViewMode;
     }
@@ -659,6 +694,53 @@ export default function App() {
     };
     window.addEventListener('message', handleResetHome);
     return () => window.removeEventListener('message', handleResetHome);
+  }, []);
+
+  // Editores alterados em outra aba
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== EDITORS_STORAGE_KEY) return;
+      try {
+        const next = JSON.parse(e.newValue || '[]');
+        if (Array.isArray(next)) setEditorUserIds(next);
+      } catch {}
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Troca de usuário no hub: o hub grava hounds_active_user, avisa por mensagem e dispara hub:user (js/gate.js)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'hounds_active_user' || !e.newValue) return;
+      try {
+        const user = JSON.parse(e.newValue);
+        if (user && user.id) setCurrentUser(user);
+      } catch {}
+    };
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'HUB_USER_UPDATE' && e.data.user) setCurrentUser(e.data.user);
+    };
+    const onHubUser = (e: Event) => {
+      const user = (e as CustomEvent).detail;
+      if (user) setCurrentUser(user);
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('message', onMessage);
+    let hubWindow: Window | null = null;
+    try {
+      if (window.parent && window.parent !== window) {
+        hubWindow = window.parent;
+        hubWindow.addEventListener('hub:user', onHubUser);
+      }
+    } catch {}
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('message', onMessage);
+      try {
+        hubWindow?.removeEventListener('hub:user', onHubUser);
+      } catch {}
+    };
   }, []);
 
   useEffect(() => {
@@ -835,6 +917,7 @@ export default function App() {
         users: finalUsers,
         activeCombatId: finalActiveCombat,
         players: finalPlayers,
+        deletedCombatIds: getDeletedCombatIds(),
       });
     } catch (e) {}
 
@@ -847,6 +930,7 @@ export default function App() {
       users: finalUsers,
       activeCombatId: finalActiveCombat,
       players: finalPlayers,
+      deletedCombatIds: getDeletedCombatIds(),
     };
 
     if (isImmediate) {
@@ -1091,7 +1175,7 @@ export default function App() {
         }
 
         if (payload.combats && Array.isArray(payload.combats) && payload.combats.length > 0) {
-          const res = mergeCombats(stateRef.current.combats, payload.combats);
+          const res = mergeCombats(stateRef.current.combats, payload.combats, payload.deletedCombatIds);
           if (res.changed) {
             nextCombats = res.merged;
             combatsChanged = true;
@@ -1163,6 +1247,7 @@ export default function App() {
             users: stateRef.current.users,
             activeCombatId: stateRef.current.activeCombatId,
             players: stateRef.current.players,
+            deletedCombatIds: getDeletedCombatIds(),
             timestamp: lastLocalEditTimestampRef.current || 1,
           });
         }
@@ -1436,7 +1521,7 @@ export default function App() {
           }
 
           if (event.data.combats && Array.isArray(event.data.combats)) {
-            const res = mergeCombats(stateRef.current.combats, event.data.combats);
+            const res = mergeCombats(stateRef.current.combats, event.data.combats, event.data.deletedCombatIds);
             if (res.changed) {
               nextCombats = res.merged;
               combatsChanged = true;
@@ -1790,6 +1875,8 @@ export default function App() {
 
   const handleDeleteCombat = (id: string) => {
     const nextCombats = combats.filter((c) => c.id !== id && c.id !== 'combat-vazio' && !isEmptyCombat(c));
+    addDeletedCombatIds([id]);
+    systemLogger.addLog('DELETE_ITEM', 'Combate removido: ' + (combats.find((c) => c.id === id)?.name || id), { combatId: id });
     setCombats(nextCombats);
     stateRef.current.combats = nextCombats;
     const nextActiveId = activeCombatId === id ? (nextCombats[0]?.id || '') : activeCombatId;
@@ -3921,18 +4008,18 @@ export default function App() {
           setActiveCombatId(parsed.combats[0]?.id || '');
           setSelectedNpcId(parsed.players?.[0]?.id || parsed.combats[0]?.npcs[0]?.id || '');
           broadcastSync(parsed.combats, parsed.conditions, parsed.users, parsed.combats[0]?.id, parsed.players);
-          alert('Campanha importada com sucesso!');
+          hubAlert('Campanha importada com sucesso!');
         } else if (Array.isArray(parsed) && parsed.length > 0) {
           setCombats(parsed);
           setActiveCombatId(parsed[0].id);
           setSelectedNpcId(parsed[0].npcs[0]?.id || '');
           broadcastSync(parsed);
-          alert('Combates importados com sucesso!');
+          hubAlert('Combates importados com sucesso!');
         } else {
-          alert('Arquivo JSON inválido.');
+          hubAlert('Arquivo JSON inválido.');
         }
       } catch (err) {
-        alert('Erro ao importar JSON. Verifique a formatação do arquivo.');
+        hubAlert('Erro ao importar JSON. Verifique a formatação do arquivo.');
       }
     };
     reader.readAsText(file);
@@ -3973,7 +4060,16 @@ export default function App() {
         onExport={handleExport}
         onImport={handleImport}
         currentUser={currentUser}
-        onOpenUserAccounts={() => setUserAccountsModalOpen(true)}
+        onOpenUserAccounts={() => {
+          // Dentro do hub, as contas são geridas na aba Usuários dele
+          try {
+            if (window.parent && window.parent !== window) {
+              window.parent.location.hash = 'usuarios';
+              return;
+            }
+          } catch {}
+          setUserAccountsModalOpen(true);
+        }}
         onSwitchUser={handleSwitchUser}
         syncStatus={syncStatus}
         currentRoom={currentRoom}
@@ -3981,12 +4077,16 @@ export default function App() {
         onOpenSystemLog={() => setSystemLogModalOpen(true)}
         systemLogsCount={systemLogsCount}
         activeViewMode={activeViewMode}
-        onSelectViewMode={(mode) => {
-          setActiveViewMode(mode);
-          if (mode !== 'sheets') {
-            setIsHomeScreen(false);
-          }
-        }}
+        onSelectViewMode={
+          TACTICAL_MAP_ENABLED
+            ? (mode) => {
+                setActiveViewMode(mode);
+                if (mode !== 'sheets') {
+                  setIsHomeScreen(false);
+                }
+              }
+            : undefined
+        }
         onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
         editorCount={effectiveEditorIds.length}
         canEditCurrent={canEditCurrent}

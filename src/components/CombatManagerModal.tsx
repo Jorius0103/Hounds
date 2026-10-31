@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { hubAlert } from '../utils/hubDialog';
 import {
   Swords,
   Archive,
@@ -277,7 +278,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
 
   const handleRestoreSnapshot = (snap: CombatSnapshot) => {
     if (!onRestoreFullSnapshot) {
-      alert('Restauração não implementada no callback da mesa.');
+      hubAlert('Restauração não implementada no callback da mesa.');
       return;
     }
 
@@ -357,7 +358,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
           throw new Error('Formato de arquivo incompatível.');
         }
       } catch (err: any) {
-        alert('Erro ao importar arquivo: ' + (err.message || 'JSON inválido'));
+        hubAlert('Erro ao importar arquivo: ' + (err.message || 'JSON inválido'));
       }
     };
     e.target.value = '';

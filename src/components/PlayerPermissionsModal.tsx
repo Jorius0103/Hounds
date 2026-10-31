@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserAccount, NPC } from '../types/rpg';
+import { hubConfirm } from '../utils/hubDialog';
 import {
   ShieldCheck,
   Eye,
@@ -663,13 +664,11 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (
-                              window.confirm(
-                                `Tem certeza que deseja excluir o personagem "${char.name}"? Esta ação removerá o personagem da campanha.`
-                              )
-                            ) {
-                              onDeleteCharacter(char.id);
-                            }
+                            hubConfirm(
+                              `Tem certeza que deseja excluir o personagem "${char.name}"? Esta ação removerá o personagem da campanha.`
+                            ).then((ok) => {
+                              if (ok) onDeleteCharacter(char.id);
+                            });
                           }}
                           style={{
                             padding: '4px 6px',

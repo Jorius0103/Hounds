@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { PRESET_AVATARS } from './NpcAvatar';
 import { Upload, Link as LinkIcon, Trash2, X, Check } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
+import { hubAlert } from '../utils/hubDialog';
 
 interface AvatarPickerModalProps {
   currentAvatar?: string;
@@ -34,7 +35,7 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
 
     // Check size limit (max 3MB for good localStorage performance)
     if (file.size > 3 * 1024 * 1024) {
-      alert('A imagem é muito grande. Escolha uma imagem de até 3MB.');
+      hubAlert('A imagem é muito grande. Escolha uma imagem de até 3MB.');
       return;
     }
 

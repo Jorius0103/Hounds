@@ -31,6 +31,7 @@ export interface RemoteSyncPayload {
   npcId?: string; // SYNC_ENTRY_COMMENT
   comment?: string; // SYNC_ENTRY_COMMENT
   snapshots?: any[]; // SYNC_SNAPSHOTS_LIST
+  deletedCombatIds?: string[]; // SYNC_FULL: combates excluídos, para não voltarem na mesclagem
 }
 
 export type SyncStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
