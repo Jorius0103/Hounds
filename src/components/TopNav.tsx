@@ -134,17 +134,6 @@ export const TopNav: React.FC<TopNavProps> = ({
                   <Settings size={13} />
                 </button>
               </div>
-
-              {/* Botão direto: Gerenciar Combates (CRUD). Só em telas largas: nas outras a barra não
-                  comporta, e a roldana ao lado do seletor abre a mesma tela */}
-              <button
-                onClick={onNewCombat}
-                className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-lg text-slate-300 hover:text-white transition-all shadow-sm font-medium whitespace-nowrap"
-                title="Criar, renomear ou excluir combates"
-              >
-                <Plus size={13} className="text-amber-400" />
-                <span className="text-[11px]">Gerenciar Combates</span>
-              </button>
             </>
           ) : (
             /* Jogador: Indicador fixo somente leitura do combate definido pelo Mestre */

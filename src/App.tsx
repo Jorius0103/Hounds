@@ -34,6 +34,7 @@ const PLAYERS_STORAGE_KEY = 'gurps_fixed_personagens_v1';
 const ACTIVE_COMBAT_KEY = 'gurps_combat_master_active_combat_id_v1';
 const DELETED_KEY = 'gurps_combat_master_deleted_v1';
 const EDITORS_STORAGE_KEY = 'gurps_combat_master_editors_v1';
+const SESSION_VISIBLE_PLAYERS_KEY = 'gurps_mesa_visible_players_v1';
 const SYNC_CHANNEL_NAME = 'gurps_combat_realtime_sync_v2';
 const MESA_VIEW_STATE_KEY = 'hounds_mesa_view_state_v1';
 
@@ -338,6 +339,24 @@ export default function App() {
     } catch (e) {}
   }, [players]);
 
+  // Personagens visíveis na sessão (persiste mesmo sem combate ativo)
+  const [sessionPlayerIds, setSessionPlayerIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(SESSION_VISIBLE_PLAYERS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return players.map((p) => p.id);
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(sessionPlayerIds));
+    } catch {}
+  }, [sessionPlayerIds]);
+
   // 3. Conditions CRUD State from LocalStorage
   const [conditions, setConditions] = useState<ConditionDefinition[]>(() => {
     try {
@@ -522,13 +541,13 @@ export default function App() {
     return set;
   }, [currentUser?.name, onlineUsersMap, presenceClock]);
 
-  // IDs dos personagens de jogadores visíveis no combate ativo (ou todos fora de combate)
+  // IDs dos personagens de jogadores visíveis no combate ativo (ou na sessão fora de combate)
   const activeCombatPlayerIds = useMemo(() => {
     if (activeCombat && Array.isArray(activeCombat.playerIds)) {
       return activeCombat.playerIds;
     }
-    return players.map((p) => p.id);
-  }, [activeCombat, players]);
+    return sessionPlayerIds;
+  }, [activeCombat, sessionPlayerIds]);
 
   // Lista unificada: Personagens da campanha (sempre presentes) + NPCs específicos do combate ativo
   const allCharacters = useMemo(() => {
@@ -1076,7 +1095,11 @@ export default function App() {
       }
 
       if ((payload as any).type === 'SYNC_EDITORS' && Array.isArray((payload as any).editorUserIds)) {
-        setEditorUserIds((payload as any).editorUserIds);
+        const ids = (payload as any).editorUserIds;
+        setEditorUserIds(ids);
+        try {
+          localStorage.setItem(EDITORS_STORAGE_KEY, JSON.stringify(ids));
+        } catch {}
         return;
       }
 
@@ -1433,7 +1456,11 @@ export default function App() {
         }
 
         if (event.data?.type === 'SYNC_EDITORS' && Array.isArray(event.data.editorUserIds)) {
-          setEditorUserIds(event.data.editorUserIds);
+          const ids = event.data.editorUserIds;
+          setEditorUserIds(ids);
+          try {
+            localStorage.setItem(EDITORS_STORAGE_KEY, JSON.stringify(ids));
+          } catch {}
           return;
         }
 
@@ -1807,41 +1834,61 @@ export default function App() {
   };
 
   const handleTogglePlayerInCombat = (playerId: string) => {
-    if (!activeCombat) return;
     const current = activeCombatPlayerIds;
     const isPresent = current.includes(playerId);
     const updatedIds = isPresent ? current.filter((id) => id !== playerId) : [...current, playerId];
-    const targetPlayer = players.find((p) => p.id === playerId);
     
-    const updatedCombats = combats.map((c) =>
-      c.id === activeCombat.id ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true } : c
-    );
-    setCombats(updatedCombats);
-    broadcastSync(updatedCombats);
+    setSessionPlayerIds(updatedIds);
     try {
-      localStorage.setItem('gurps_combat_master_data_v2', JSON.stringify(updatedCombats));
+      localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedIds));
     } catch (e) {}
+
+    if (activeCombat) {
+      const updatedCombats = combats.map((c) =>
+        c.id === activeCombat.id ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true } : c
+      );
+      setCombats(updatedCombats);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+      } catch (e) {}
+      broadcastSync(updatedCombats);
+    } else {
+      broadcastSync();
+    }
+
     if (!isPresent) {
       setSelectedNpcId(playerId);
     } else if (selectedNpcId === playerId) {
       const rem = allCharacters.filter((c) => c.id !== playerId);
-      if (rem.length > 0) setSelectedNpcId(rem[0].id);
+      setSelectedNpcId(rem.length > 0 ? rem[0].id : '');
     }
   };
 
   const handleSetAllPlayersInCombat = (show: boolean) => {
-    if (!activeCombat) return;
     const updatedIds = show ? players.map((p) => p.id) : [];
-    const updatedCombats = combats.map((c) =>
-      c.id === activeCombat.id ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true } : c
-    );
-    setCombats(updatedCombats);
-    broadcastSync(updatedCombats);
+    setSessionPlayerIds(updatedIds);
     try {
-      localStorage.setItem('gurps_combat_master_data_v2', JSON.stringify(updatedCombats));
+      localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedIds));
     } catch (e) {}
+
+    if (activeCombat) {
+      const updatedCombats = combats.map((c) =>
+        c.id === activeCombat.id ? { ...c, playerIds: updatedIds, playerIdsMigratedV2: true } : c
+      );
+      setCombats(updatedCombats);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+      } catch (e) {}
+      broadcastSync(updatedCombats);
+    } else {
+      broadcastSync();
+    }
+
     if (show && players.length > 0) {
       setSelectedNpcId(players[0].id);
+    } else if (!show) {
+      const remNpcs = (!isNoCombat && activeCombat) ? (activeCombat.npcs || []) : [];
+      setSelectedNpcId(remNpcs.length > 0 ? remNpcs[0].id : '');
     }
   };
 
@@ -1923,6 +1970,8 @@ export default function App() {
     const updatedCombats = combats.map((cb) =>
       Array.isArray(cb.playerIds) ? { ...cb, playerIds: cb.playerIds.filter((id) => id !== playerId) } : cb
     );
+    const updatedSessionPlayerIds = sessionPlayerIds.filter((id) => id !== playerId);
+    setSessionPlayerIds(updatedSessionPlayerIds);
     setPlayers(updatedPlayers);
     stateRef.current.players = updatedPlayers;
     setCombats(updatedCombats);
@@ -1930,6 +1979,7 @@ export default function App() {
     try {
       localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(updatedPlayers));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+      localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(updatedSessionPlayerIds));
     } catch (e) {}
     broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
     if (selectedNpcId === playerId) {
@@ -2597,6 +2647,9 @@ export default function App() {
 
   const handleSwitchUser = () => {
     setCurrentUser(null);
+    try {
+      localStorage.removeItem('hounds_active_user');
+    } catch {}
     setLoginModalOpen(true);
   };
 
@@ -2619,11 +2672,11 @@ export default function App() {
           const qnm = String(targetName || '').toLowerCase().trim();
           return !(s === qid || (qnm && s === qnm) || s === qid.replace(/^user-/, '') || qid === `user-${s}`);
         })
-      : [...editorUserIds, targetId];
+      : [...editorUserIds, targetId, ...(targetName && targetName !== targetId ? [targetName] : [])];
 
     setEditorUserIds(next);
     try {
-      localStorage.setItem('gurps_combat_master_editors_v1', JSON.stringify(next));
+      localStorage.setItem(EDITORS_STORAGE_KEY, JSON.stringify(next));
       broadcastChannelRef.current?.postMessage({
         type: 'SYNC_EDITORS',
         editorUserIds: next,
@@ -2634,6 +2687,11 @@ export default function App() {
         editorUserIds: next,
         timestamp: Date.now(),
       });
+      if ((window as any).parent?.hubMesaBus) {
+        (window as any).parent.hubMesaBus.publish(
+          JSON.stringify({ type: 'SYNC_EDITORS', editorUserIds: next, timestamp: Date.now() })
+        );
+      }
     } catch {}
     if (activeCombat) {
       const updatedCombat = { ...activeCombat, editorUserIds: next };
@@ -4028,7 +4086,9 @@ export default function App() {
 
   const isPlayerUser = currentUser?.role === 'jogador';
   const isMaster = currentUser?.role === 'mestre';
-  const effectiveEditorIds = activeCombat?.editorUserIds || editorUserIds;
+  const effectiveEditorIds = [
+    ...new Set([...(activeCombat?.editorUserIds || []), ...editorUserIds]),
+  ];
   const isEditor = effectiveEditorIds.some((x) => {
     if (!x) return false;
     const s = String(x).toLowerCase().trim();
@@ -4039,7 +4099,7 @@ export default function App() {
     const cnmC = cnm.replace(/^user-/, '');
     return s === cid || s === cnm || sC === cidC || sC === cnmC || s === `user-${cnmC}` || cid === `user-${sC}`;
   });
-  const canEditCurrent = isMaster || (currentUser?.role === 'jogador' && isEditor);
+  const canEditCurrent = isMaster || isEditor;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
@@ -4420,6 +4480,9 @@ export default function App() {
         onClose={() => setLoginModalOpen(false)}
         onLoginSuccess={(user) => {
           setCurrentUser(user);
+          try {
+            localStorage.setItem('hounds_active_user', JSON.stringify(user));
+          } catch {}
           setLoginModalOpen(false);
         }}
         onUpdateUserPassword={handleUpdateUserPassword}

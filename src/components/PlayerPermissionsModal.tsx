@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserAccount, NPC } from '../types/rpg';
 import { hubConfirm } from '../utils/hubDialog';
+import { NpcAvatar } from './NpcAvatar';
 import {
   ShieldCheck,
   Eye,
@@ -177,8 +178,11 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
             </div>
             <div style={{ minWidth: 0 }}>
               <h2 style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
-                Jogadores da Mesa de RPG
+                Jogadores e Personagens
               </h2>
+              <p style={{ fontSize: '10px', color: '#94a3b8', margin: '1px 0 0 0' }}>
+                Defina em tempo real permissões de edição, visibilidade na mesa e vínculos dos personagens
+              </p>
             </div>
           </div>
           <button
@@ -496,7 +500,13 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                 const linkedUser = getLinkedUserForChar(char);
                 const isOnline = linkedUser ? isUserOnline(linkedUser.name) : false;
                 const isEditor = linkedUser
-                  ? editorUserIds.includes(linkedUser.id) || editorUserIds.includes(linkedUser.name)
+                  ? editorUserIds.some((x) => {
+                      if (!x) return false;
+                      const s = String(x).toLowerCase().trim();
+                      const uid = String(linkedUser.id || '').toLowerCase().trim();
+                      const unm = String(linkedUser.name || '').toLowerCase().trim();
+                      return s === uid || s === unm || s.replace(/^user-/, '') === uid.replace(/^user-/, '') || s.replace(/^user-/, '') === unm;
+                    })
                   : false;
                 const isVisible = activePlayerIds ? activePlayerIds.includes(char.id) : true;
 
@@ -518,23 +528,14 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
                   >
                     {/* Lado Esquerdo: Identificação do Personagem */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 auto' }}>
-                      <div
-                        style={{
-                          width: '26px',
-                          height: '26px',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                          fontSize: '10px',
-                          flexShrink: 0,
-                          background: linkedUser ? 'rgba(16, 185, 129, 0.25)' : 'rgba(30, 41, 59, 0.8)',
-                          color: linkedUser ? '#6ee7b7' : '#94a3b8',
-                          border: linkedUser ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid #334155',
-                        }}
-                      >
-                        {(char.name || '?').slice(0, 2).toUpperCase()}
+                      <div className="relative shrink-0 flex items-center justify-center">
+                        <NpcAvatar
+                          avatar={char.avatar}
+                          preset={char.avatarPreset}
+                          name={char.name || 'Personagem'}
+                          size="sm"
+                          className="!w-7 !h-7 rounded-lg shrink-0 shadow-sm"
+                        />
                       </div>
 
                       <div style={{ minWidth: 0 }}>
@@ -714,8 +715,13 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
               </div>
             ) : (
               filteredPlayers.map((u) => {
-                const isAllowed =
-                  editorUserIds.includes(u.id) || editorUserIds.includes(u.name);
+                const isAllowed = editorUserIds.some((x) => {
+                  if (!x) return false;
+                  const s = String(x).toLowerCase().trim();
+                  const uid = String(u.id || '').toLowerCase().trim();
+                  const unm = String(u.name || '').toLowerCase().trim();
+                  return s === uid || s === unm || s.replace(/^user-/, '') === uid.replace(/^user-/, '') || s.replace(/^user-/, '') === unm;
+                });
                 const initials = (u.name || '?').slice(0, 2).toUpperCase();
                 const isOnline = isUserOnline(u.name);
                 const userChars = getCharactersForUser(u);
