@@ -34,6 +34,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
   onOpenPassDayModal,
   canPassDay,
   onFilterChange,
+  onUpdateNpc,
   currentUserRole = 'mestre',
   currentRound = 0,
   onUpdateRound,
@@ -491,7 +492,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               {!isNoCombat && (() => {
                 const canEditRound = canControlRound ?? (currentUserRole === 'mestre');
                 return (
-                  <div className="flex items-center h-7 bg-slate-900 border border-slate-750 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0">
+                  <div className="flex items-center h-7 bg-slate-900 rounded-xl p-0.5 shadow-md shadow-slate-950/60 shrink-0">
                     {canEditRound && (
                       <button
                         type="button"
@@ -582,18 +583,14 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                 const activeManeuver = getCombatManeuver(npc.combatManeuver);
 
                 const hasConditions = Boolean(npc.statusConditions && npc.statusConditions.length > 0);
-                const isPlayerRole = currentUserRole === 'jogador';
                 const hpWarnsFiltered = (hpStat.warningTexts || (hpStat.warningText ? [hpStat.warningText] : [])).filter(
-                  (w) => !(isPlayerRole && !isPlayerChar && w.includes('Teste de morte (HT) a cada múltiplo'))
+                  (w) => !(currentUserRole !== 'mestre' && !isPlayerChar && (w.includes('Move e Esquiva pela metade') || w.includes('Movimento e Esquiva')))
                 );
                 const hasCriticalHpFp = Boolean(
                   hpWarnsFiltered.length > 0 ||
                   (fpStat.warningTexts && fpStat.warningTexts.length > 0)
                 );
-                const hasCrippledParts =
-                  (isPlayerChar || currentUserRole === 'mestre')
-                    ? getCrippledBodyParts(npc).length > 0
-                    : false;
+                const hasCrippledParts = getCrippledBodyParts(npc).length > 0;
 
                 const hasAlerts = hasConditions || hasCriticalHpFp || hasCrippledParts;
                 const showDeadMarker = isDeadChar;
@@ -726,12 +723,19 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
                           ) : (
                             <div className="flex items-center gap-1">
                               {currentUserRole === 'mestre' && (
-                                <span
-                                  title={npc.isVisibleToPlayer ? 'Visível para Jogadores' : 'Oculto para Jogadores'}
-                                  className={npc.isVisibleToPlayer ? 'text-blue-400' : 'text-slate-500'}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUpdateNpc?.(npc.id, { isVisibleToPlayer: !npc.isVisibleToPlayer });
+                                  }}
+                                  title={npc.isVisibleToPlayer ? 'Visível para Jogadores (Clique para ocultar)' : 'Oculto para Jogadores (Clique para exibir)'}
+                                  className={`p-0.5 rounded hover:bg-slate-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center ${
+                                    npc.isVisibleToPlayer ? 'text-blue-400 hover:text-blue-300' : 'text-slate-500 hover:text-slate-400'
+                                  }`}
                                 >
                                   {npc.isVisibleToPlayer ? <Eye size={11} /> : <EyeOff size={11} />}
-                                </span>
+                                </button>
                               )}
                               <span className="text-[9px] font-bold text-purple-400 uppercase tracking-tighter bg-purple-950/80 px-1 rounded border border-purple-800/60">
                                 NPC

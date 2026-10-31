@@ -250,15 +250,16 @@ export const CombatHomeScreen: React.FC<CombatHomeScreenProps> = ({
             });
           }
 
+          // 2. Pontos de Vida & 3. Pontos de Fadiga & Membros Inutilizados (Visíveis para todos; em NPCs, apenas "Move e Esquiva pela metade!" é ocultado para jogadores)
           const hpWarns =
             hpStatus.warningTexts && hpStatus.warningTexts.length > 0
               ? hpStatus.warningTexts
               : hpStatus.warningText
               ? [hpStatus.warningText]
               : [];
-          const isPlayerRole = currentUserRole === 'jogador';
           hpWarns.forEach((w, ix) => {
-            if (isPlayerRole && !isPlayerChar && w.includes('Teste de morte (HT) a cada múltiplo')) {
+            // Regra: Não exibe apenas o "PV: Move e Esquiva pela metade!" em NPCs para jogadores; os outros alertas são exibidos
+            if (currentUserRole !== 'mestre' && !isPlayerChar && (w.includes('Move e Esquiva pela metade') || w.includes('Movimento e Esquiva'))) {
               return;
             }
             criticalAlerts.push({

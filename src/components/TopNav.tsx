@@ -145,7 +145,24 @@ export const TopNav: React.FC<TopNavProps> = ({
               <span className="text-[11px] font-bold text-amber-300 max-w-[160px] sm:max-w-[220px] truncate">
                 {combats.find((c) => c.id === activeCombatId)?.name ||
                   activeCombats.find((c) => c.id === activeCombatId)?.name ||
-                  (activeCombatId && activeCombatId !== 'combat-vazio' ? activeCombatId : 'Sem combate')}
+                  (() => {
+                    try {
+                      const stored = JSON.parse(localStorage.getItem('gurps_combat_master_data_v2') || '[]');
+                      if (Array.isArray(stored)) {
+                        const found = stored.find((c: any) => c.id === activeCombatId);
+                        if (found && found.name) return found.name;
+                      }
+                      const snaps = JSON.parse(localStorage.getItem('hounds_mesa_snapshots_v1') || '[]');
+                      if (Array.isArray(snaps)) {
+                        for (const s of snaps) {
+                          const list = s?.data?.combats || s?.combats || [];
+                          const found = list.find((c: any) => c.id === activeCombatId);
+                          if (found && found.name) return found.name;
+                        }
+                      }
+                    } catch (e) {}
+                    return activeCombatId && activeCombatId !== 'combat-vazio' ? 'Carregando combate...' : 'Sem combate';
+                  })()}
               </span>
             </div>
           )}

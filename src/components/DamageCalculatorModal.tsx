@@ -470,7 +470,11 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               Lançar Dano / Fadiga{isRestrictedNpcView ? '' : ' / Itens'}: <span style={{ color: '#fbbf24' }}>{npc.name || 'NPC'}</span>
             </>
           }
-          subtitle="Aplique dano com cálculo de RD ou ajuste fadiga e itens de mana"
+          subtitle={
+            isRestrictedNpcView
+              ? 'Lance dano bruto ou fadiga no NPC alvo'
+              : 'Aplique dano com cálculo de RD ou ajuste fadiga e itens de mana'
+          }
           onClose={onClose}
         />
 

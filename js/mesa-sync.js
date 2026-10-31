@@ -35,7 +35,7 @@
    Images the Mesa embeds as text (avatars) are sent once to the image
    storage and the state carries their address (see hostImgs).
    ===================================================================== */
-var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1', editors: 'gurps_combat_master_editors_v1' };
+var MESA_LS = { combats: 'gurps_combat_master_data_v2', conditions: 'gurps_combat_master_conditions_v2', players: 'gurps_fixed_personagens_v1', activeCombatId: 'gurps_combat_master_active_combat_id_v1', deletedCombatIds: 'gurps_combat_master_deleted_v1', editors: 'gurps_combat_master_editors_v1', sessionPlayerIds: 'gurps_mesa_visible_players_v1' };
 var MesaSync = (function () {
   var CH = 60000, head = null, loadedRev = null, state = null, listeners = [], timer = null, pending = null, writing = false;
   var readyRes, ready = new Promise(function (r) { readyRes = r; }), gotHead = false, lastJson = null, lastRaw = null, askTimer = null, hiddenTimer = 0;
@@ -80,7 +80,7 @@ var MesaSync = (function () {
   }
   function fetchRev(h) {
     // A head written with the state inline (no pieces) is read as is.
-    if (Array.isArray(h.combats)) return Promise.resolve({ combats: h.combats, conditions: h.conditions, players: h.players, activeCombatId: h.activeCombatId || null, deletedCombatIds: h.deletedCombatIds, editors: h.editors || null });
+    if (Array.isArray(h.combats)) return Promise.resolve({ combats: h.combats, conditions: h.conditions, players: h.players, activeCombatId: h.activeCombatId || null, deletedCombatIds: h.deletedCombatIds, editors: h.editors || null, sessionPlayerIds: h.sessionPlayerIds || null });
     if (!(h.n > 0)) return Promise.resolve(null);
     return W.store.query('mesa_chunks', 'rev', h.rev).then(function (rows) {
       if (rows.length < h.n) return null;
@@ -171,7 +171,7 @@ var MesaSync = (function () {
   function inOrder(fn) { recvQ = recvQ.then(fn).catch(function (e) { console.warn('Hounds: mensagem da Mesa ignorada.', e); }); }
 
   function loaded() { return listeners.length > 0; }
-  function shown() { return loaded() && location.hash === '#mesa'; }
+  function shown() { return loaded(); }
   function push(obj) { var msg = JSON.stringify(obj); listeners.slice().forEach(function (fn) { try { fn(msg); } catch (e) {} }); }
   function pushState() { push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, state)); }
   // With edits of this browser not saved yet, the Mesa answers with its merged state (see publish).
@@ -194,6 +194,7 @@ var MesaSync = (function () {
   function applyRemote(rev, st) {
     remember(rev); loadedRev = rev;
     if (pending || writing) mergedRevs = mergedRevs.concat([rev]).slice(-50);
+    try { toLocal(st); } catch (e) {}
     var open = shown();
     if (open) push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, st));
     state = mergeState(state, st);
@@ -235,7 +236,8 @@ var MesaSync = (function () {
       players: mergeList(base.players, inc.players).filter(function (p) { return p && p.characterType !== 'npc'; }),
       activeCombatId: inc.activeCombatId !== undefined ? inc.activeCombatId : base.activeCombatId,
       deletedCombatIds: del,
-      editors: inc.editors || base.editors
+      editors: inc.editors || base.editors,
+      sessionPlayerIds: inc.sessionPlayerIds !== undefined ? inc.sessionPlayerIds : (base ? base.sessionPlayerIds : undefined)
     };
   }
   // One character in a copy of the state (a saved player and/or an NPC of a combat). Someone else's
@@ -300,7 +302,29 @@ var MesaSync = (function () {
     var rev = m.rev;
     remember(rev); // its head, from the database, needs no download
     inOrder(function () {
-      return unpack(m, 'state').then(function (st) { if (st) applyRemote(rev, st); }, function (e) { delete known[rev]; throw e; });
+      return unpack(m, 'state').then(function (st) {
+        if (!st) return;
+        if (Array.isArray(st.combats)) {
+          st.combats.forEach(function (c) {
+            if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
+              combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
+            }
+          });
+        }
+        var activeId = st.activeCombatId || (st.combats && st.combats[0] && st.combats[0].id) || 'combat-vazio';
+        if (activeId && activeId !== 'combat-vazio' && combatsArchive[activeId]) {
+          st.combats = (st.combats || []).map(function (c) {
+            if (c.id === activeId && (!c.npcs || c.npcs.length === 0)) {
+              return Object.assign({}, c, {
+                npcs: combatsArchive[activeId].npcs || [],
+                events: combatsArchive[activeId].events || c.events || []
+              });
+            }
+            return c;
+          });
+        }
+        applyRemote(rev, st);
+      }, function (e) { delete known[rev]; throw e; });
     });
   }
   function onNpc(m) {
@@ -308,7 +332,17 @@ var MesaSync = (function () {
     inOrder(function () {
       return unpack(m, 'npc').then(function (npc) {
         if (!npc || !npc.id) return;
-        if (state) state = withNpc(state, npc, false);
+        var curSt = state || localState();
+        if (curSt) {
+          state = withNpc(curSt, npc, false);
+          try { toLocal(state); } catch (e) {}
+        }
+        Object.keys(combatsArchive).forEach(function (cbId) {
+          if (combatsArchive[cbId] && Array.isArray(combatsArchive[cbId].npcs)) {
+            var nIdx = combatsArchive[cbId].npcs.findIndex(function (n) { return n.id === npc.id; });
+            if (nIdx >= 0) combatsArchive[cbId].npcs[nIdx] = Object.assign({}, combatsArchive[cbId].npcs[nIdx], npc);
+          }
+        });
         if (shown()) push({ type: 'SYNC_NPC', clientId: 'hub', timestamp: m.ts || Date.now(), npc: npc });
         else if (loaded()) pushHidden();
       });
@@ -460,22 +494,54 @@ var MesaSync = (function () {
         rt().on('mesa-active-combat', function (m) {
           if (m && m.activeCombatId !== undefined) {
             var newId = m.activeCombatId || '';
+            var combatsToSend = m.combats;
+            if (!combatsToSend || !Array.isArray(combatsToSend) || combatsToSend.length === 0) {
+              combatsToSend = (state && state.combats) || (localState() && localState().combats) || [];
+            }
             if (m.combats && Array.isArray(m.combats)) {
               m.combats.forEach(function (c) {
                 if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
                   combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
                 }
               });
-              try { localStorage.setItem(MESA_LS.combats, JSON.stringify(m.combats)); } catch (e) {}
+            }
+            if (m.activeCombat && m.activeCombat.id) {
+              if (Array.isArray(m.activeCombat.npcs) && m.activeCombat.npcs.length > 0) {
+                combatsArchive[m.activeCombat.id] = { npcs: m.activeCombat.npcs, events: m.activeCombat.events || [] };
+              }
+              var exIdx = combatsToSend.findIndex(function (c) { return c.id === m.activeCombat.id; });
+              if (exIdx >= 0) combatsToSend[exIdx] = Object.assign({}, combatsToSend[exIdx], m.activeCombat);
+              else combatsToSend.push(m.activeCombat);
+            }
+            if (newId && combatsArchive[newId]) {
+              combatsToSend = combatsToSend.map(function (c) {
+                if (c.id === newId && (!c.npcs || c.npcs.length === 0)) {
+                  return Object.assign({}, c, {
+                    npcs: combatsArchive[newId].npcs || [],
+                    events: combatsArchive[newId].events || c.events || []
+                  });
+                }
+                return c;
+              });
+            }
+            try { localStorage.setItem(MESA_LS.activeCombatId, JSON.stringify(newId)); } catch (e) {}
+            if (combatsToSend && combatsToSend.length > 0) {
+              try { localStorage.setItem(MESA_LS.combats, JSON.stringify(combatsToSend)); } catch (e) {}
             }
             if (state) {
               state = Object.assign({}, state, { activeCombatId: newId });
-              if (m.combats && Array.isArray(m.combats)) {
-                state.combats = m.combats;
+              if (combatsToSend && combatsToSend.length > 0) {
+                state.combats = combatsToSend;
               }
             }
-            try { localStorage.setItem(MESA_LS.activeCombatId, JSON.stringify(newId)); } catch (e) {}
-            if (loaded()) push({ type: 'SYNC_ACTIVE_COMBAT', activeCombatId: newId, combats: m.combats, timestamp: m.ts || Date.now() });
+            if (loaded()) {
+              var actCombatObj = m.activeCombat || (combatsToSend || []).find(function (c) { return c.id === newId; }) || (newId && combatsArchive[newId] ? Object.assign({ id: newId }, combatsArchive[newId]) : null);
+              push({ type: 'SYNC_ACTIVE_COMBAT', activeCombatId: newId, activeCombat: actCombatObj, combats: combatsToSend, timestamp: m.ts || Date.now() });
+              var fullSt = state || localState();
+              if (fullSt) {
+                push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, fullSt));
+              }
+            }
           }
         });
         rt().on('mesa-snapshots', function (m) {
@@ -525,6 +591,22 @@ var MesaSync = (function () {
       if (!m) return;
       // Without embedded images there is nothing to send to the image storage nor to swap.
       var imgs = str.indexOf('data:image/') >= 0;
+      if (m.type === 'REQUEST_SYNC') {
+        var curStReq = state || localState();
+        if (curStReq) {
+          var actIdReq = curStReq.activeCombatId;
+          if (actIdReq && combatsArchive[actIdReq] && Array.isArray(curStReq.combats)) {
+            curStReq.combats = curStReq.combats.map(function (c) {
+              if (c.id === actIdReq && (!c.npcs || c.npcs.length === 0)) {
+                return Object.assign({}, c, { npcs: combatsArchive[actIdReq].npcs || [], events: combatsArchive[actIdReq].events || c.events || [] });
+              }
+              return c;
+            });
+          }
+          push(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, curStReq));
+        }
+        return;
+      }
       if (m.type === 'SYNC_DICE_ROLL' && m.rollData) {
         if (rt()) rt().send('mesa-dice', { rollData: m.rollData, logEntry: m.logEntry, ts: m.timestamp || Date.now() });
         if (W.store && typeof W.store.saveRoll === 'function') {
@@ -585,14 +667,20 @@ var MesaSync = (function () {
           });
           try { localStorage.setItem(MESA_LS.combats, JSON.stringify(m.combats)); } catch (e) {}
         }
-        if (rt() && canSave()) rt().send('mesa-active-combat', { activeCombatId: newId, combats: m.combats, ts: m.timestamp || Date.now() });
         var curStAc = state || localState() || {};
         curStAc.activeCombatId = newId;
         if (m.combats && Array.isArray(m.combats)) {
           curStAc.combats = m.combats;
         }
         state = curStAc;
-        pending = { st: state, rev: newRev() };
+        var rAc = newRev();
+        if (rt() && canSave()) {
+          var actCb = (m.combats || []).find(function (c) { return c.id === newId; }) || (newId && combatsArchive[newId] ? Object.assign({ id: newId }, combatsArchive[newId]) : null);
+          var actCbClean = actCb ? (imgs ? swapImgs(actCb) : actCb) : null;
+          rt().send('mesa-active-combat', { activeCombatId: newId, activeCombat: actCbClean, ts: m.timestamp || Date.now() });
+          send('mesa', 'state', state, JSON.stringify(state), { rev: rAc });
+        }
+        pending = { st: state, rev: rAc };
         if (!timer) timer = setTimeout(flush, delay());
         return;
       }
@@ -620,6 +708,12 @@ var MesaSync = (function () {
           pending = { st: state, rev: newRev() };
           if (!timer) timer = setTimeout(flush, delay());
         }
+        Object.keys(combatsArchive).forEach(function (cbId) {
+          if (combatsArchive[cbId] && Array.isArray(combatsArchive[cbId].npcs)) {
+            var nIdx = combatsArchive[cbId].npcs.findIndex(function (n) { return n.id === npcObj.id; });
+            if (nIdx >= 0) combatsArchive[cbId].npcs[nIdx] = Object.assign({}, combatsArchive[cbId].npcs[nIdx], npcObj);
+          }
+        });
         return;
       }
       if (m.type !== 'SYNC_FULL') return;
@@ -664,7 +758,7 @@ var MesaSync = (function () {
         return Object.assign({}, c, { npcs: [], events: [], totalNpcs: total });
       });
 
-      var st = { combats: processedCombats, conditions: m.conditions, players: m.players, activeCombatId: activeId, deletedCombatIds: del, editors: eds || [] };
+      var st = { combats: processedCombats, conditions: m.conditions, players: m.players, activeCombatId: activeId, deletedCombatIds: del, editors: eds || [], sessionPlayerIds: m.sessionPlayerIds || (state && state.sessionPlayerIds) || [] };
       if (imgs) st = swapImgs(st);
       var json = JSON.stringify(st);
       if (json === lastJson) return;

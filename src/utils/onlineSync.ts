@@ -33,6 +33,7 @@ export interface RemoteSyncPayload {
   comment?: string; // SYNC_ENTRY_COMMENT
   snapshots?: any[]; // SYNC_SNAPSHOTS_LIST
   deletedCombatIds?: string[]; // SYNC_FULL: combates excluídos, para não voltarem na mesclagem
+  sessionPlayerIds?: string[]; // IDs dos personagens de jogadores visíveis na sessão/combate
 }
 
 export type SyncStatus = 'connected' | 'connecting' | 'disconnected' | 'error';

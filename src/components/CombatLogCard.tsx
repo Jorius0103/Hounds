@@ -40,7 +40,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
     setCommentText(entry.comment || '');
   }, [entry.comment]);
 
-  const isPlayerView = isPlayer || currentUserRole === 'jogador';
+  const isPlayerView = isPlayer || currentUserRole !== 'mestre';
   const canEditComment = currentUserRole === 'mestre' || currentUserRole === 'jogador';
   const isNpcTarget = (entry as any).npcCharacterType !== 'player';
 
@@ -56,7 +56,11 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       entry.description.includes('Penetrante:') ||
       entry.description.includes('Mod:') ||
       entry.description.includes('Dano Rolado') ||
-      entry.description.startsWith('Local:')
+      entry.description.includes('Local:') ||
+      entry.description.includes('Final no Personagem:') ||
+      entry.description.includes('Dano na Parte:') ||
+      entry.description.includes('Dano Direto') ||
+      entry.description.includes('Final:')
     ) {
       return '';
     }
@@ -66,8 +70,9 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       .replace(/\|?\s*RD\s*[^|,\n]*/gi, '')
       .replace(/\|?\s*Penetrante\s*[^|,\n]*/gi, '')
       .replace(/\|?\s*Mod\s*[^|,\n]*/gi, '')
+      .replace(/\|?\s*Final\s*[^|,\n]*/gi, '')
       .trim();
-  }, [entry.description, isPlayerView]);
+  }, [entry.description, isPlayerView, isNpcTarget]);
 
   // Formatted timestamp (fallback gracefully for ISO strings)
   const formattedTimestamp = useMemo(() => {

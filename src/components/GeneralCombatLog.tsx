@@ -61,8 +61,11 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
     const list: any[] = [];
     const seenIds = new Set<string>();
 
-    // 1. Eventos e rolagens gerais (do combate ativo ou da sessão livre)
-    const baseEvents = activeCombat ? (activeCombat.events || []) : (sessionEvents || []);
+    // 1. Eventos e rolagens gerais da Mesa de RPG (Globais, não pertencem a combates)
+    const baseEvents = [
+      ...(sessionEvents || []),
+      ...(activeCombat?.events || [])
+    ];
     for (const ev of baseEvents) {
       if (currentUserRole === 'jogador' && (ev.isSecret || (ev as any).hiddenFromPlayers)) {
         continue;

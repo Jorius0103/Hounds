@@ -978,15 +978,17 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       });
     }
 
-    // 2. Pontos de Vida & 3. Pontos de Fadiga (visíveis para Mestre e Jogadores em todos os personagens/NPCs)
+    // 2. Pontos de Vida & 3. Pontos de Fadiga (visíveis para Mestre e Jogadores; em NPCs, apenas "Move e Esquiva pela metade!" é ocultado para jogadores)
     const hpWarnings = hpStat.warningTexts && hpStat.warningTexts.length > 0
       ? hpStat.warningTexts
       : (hpStat.warningText ? [hpStat.warningText] : []);
 
     const isPlayerChar = npc.characterType === 'player';
-    const isPlayerRole = currentUserRole === 'jogador';
+    const isPlayerUser = !isMaster;
+
     hpWarnings.forEach((warn, idx) => {
-      if (isPlayerRole && !isPlayerChar && warn.includes('Teste de morte (HT) a cada múltiplo')) {
+      // Regra: Não exibe apenas o "PV: Move e Esquiva pela metade!" em NPCs para jogadores; os outros alertas são exibidos
+      if (isPlayerUser && !isPlayerChar && (warn.includes('Move e Esquiva pela metade') || warn.includes('Movimento e Esquiva'))) {
         return;
       }
       alerts.push({
@@ -1023,18 +1025,16 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     }
 
     // 5. Partes do Corpo Inutilizadas (quando o dano tomado na parte supera a vida total calculada)
-    if (isMaster || npc.characterType === 'player') {
-      const crippledParts = getCrippledBodyParts(npc);
-      crippledParts.forEach(({ part, effectiveDmg, maxHp, statusLabel, badgeClass }) => {
-        alerts.push({
-          id: `crippled-${part.key}`,
-          badgeClass: badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
-          text: `${part.name}: ${statusLabel}`,
-          tooltip: `${part.name} ${statusLabel}: Dano acumulado (${effectiveDmg}) em relação à vida da parte (${maxHp} PV)!`,
-          icon: AlertTriangle,
-        });
+    const crippledParts = getCrippledBodyParts(npc);
+    crippledParts.forEach(({ part, effectiveDmg, maxHp, statusLabel, badgeClass }) => {
+      alerts.push({
+        id: `crippled-${part.key}`,
+        badgeClass: badgeClass || 'bg-rose-950/90 border-rose-600 text-rose-300 font-bold',
+        text: `${part.name}: ${statusLabel}`,
+        tooltip: `${part.name} ${statusLabel}: Dano acumulado (${effectiveDmg}) em relação à vida da parte (${maxHp} PV)!`,
+        icon: AlertTriangle,
       });
-    }
+    });
 
     if (alerts.length === 0) return null;
 
@@ -1666,7 +1666,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   // PERFIL JOGADOR / VISUALIZADOR PARA NPCs
   // (Jogadores e visualizadores NÃO podem ver PV, FP, defesas, atributos ou abas dos NPCs)
   // =========================================================================
-  if (isPlayerUser && !isPlayerChar) {
+  if (!isMaster && !isPlayerChar) {
     return (
       <div className="space-y-4">
         {/* Identidade do NPC + Botão Lançar Dano (Fixo ao rolar com respiro) */}
@@ -1764,14 +1764,23 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     );
                   })()}
 
-                  {!isViewer && (
+                  {/* Botão Lançar Dano / Fadiga OU label Espectador no lugar do mesmo tamanho */}
+                  {!isViewer ? (
                     <button
                       onClick={() => onOpenDamageCalculator(npc)}
-                      className="flex items-center gap-1 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
                     >
                       <Heart size={13} />
                       <span>Lançar Dano / Fadiga</span>
                     </button>
+                  ) : (
+                    <div
+                      className="flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-bold bg-slate-900 border border-slate-750 text-slate-400 rounded-lg whitespace-nowrap shrink-0 shadow-sm select-none cursor-default"
+                      title="Modo Espectador: visualização em tempo real (somente leitura)"
+                    >
+                      <Eye size={13} className="text-slate-400" />
+                      <span>Espectador</span>
+                    </div>
                   )}
                 </div>
                 
@@ -1782,13 +1791,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto self-start lg:self-center">
               {renderTurnActionsBox()}
               {renderCriticalAlertsBox(true)}
-
-              {isViewer && (
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
-                  <Eye size={14} />
-                  <span>Espectador</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -2131,8 +2133,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   );
                 })()}
 
-                {/* Botão Lançar Dano / Fadiga (separado e com folga dos botões de exclusão que ficam sob a foto) */}
-                {!isViewer && (
+                {/* Botão Lançar Dano / Fadiga OU label Espectador no lugar do mesmo tamanho */}
+                {!isViewer ? (
                   <button
                     onClick={() => onOpenDamageCalculator(npc)}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow transition-all active:scale-95 whitespace-nowrap shrink-0"
@@ -2140,6 +2142,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                     <Heart size={13} />
                     <span>Lançar Dano / Fadiga</span>
                   </button>
+                ) : (
+                  <div
+                    className="flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-bold bg-slate-900 border border-slate-750 text-slate-400 rounded-lg whitespace-nowrap shrink-0 shadow-sm select-none cursor-default"
+                    title="Modo Espectador: visualização em tempo real (somente leitura)"
+                  >
+                    <Eye size={13} className="text-slate-400" />
+                    <span>Espectador</span>
+                  </div>
                 )}
 
                 </div>
@@ -2150,12 +2160,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto self-start lg:self-center">
             {renderTurnActionsBox()}
             {renderCriticalAlertsBox(false)}
-            {isViewer && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-750 rounded-xl text-slate-400 text-xs font-semibold shrink-0">
-                <Eye size={14} />
-                <span>Espectador</span>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -63,6 +63,7 @@ export interface CombatManagerModalProps {
 
 // Mesma chave do mesa.html que estava no ar, onde ficam os retratos já salvos
 const STORAGE_KEY = 'hounds_mesa_snapshots_v1';
+const DELETED_SNAPSHOTS_KEY = 'hounds_mesa_snapshots_deleted_v1';
 const REPO_DATA_PATH = 'dados/retratos-mesa.json';
 const SNAPSHOT_DATE_FORMAT: Intl.DateTimeFormatOptions = {
   day: '2-digit',
@@ -145,12 +146,19 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    let deletedIds: string[] = [];
+    try {
+      deletedIds = JSON.parse(localStorage.getItem(DELETED_SNAPSHOTS_KEY) || '[]');
+    } catch {}
+    const deletedSet = new Set(deletedIds);
+
     let localList: CombatSnapshot[] = [];
     try {
       const parsed = readStoredJson(STORAGE_KEY);
       if (Array.isArray(parsed)) {
-        localList = parsed;
-        setSnapshots(parsed);
+        localList = parsed.filter((s: CombatSnapshot) => !deletedSet.has(s.id) && s.id !== 'snapshot-oficial-campanha-base');
+        setSnapshots(localList);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(localList));
       }
     } catch (e) {
       console.error('Erro ao carregar snapshots:', e);
@@ -161,7 +169,11 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
       .then((repoSnapshots) => {
         if (!Array.isArray(repoSnapshots) || repoSnapshots.length === 0) return;
         const byId = new Map<string, CombatSnapshot>();
-        repoSnapshots.forEach((s: CombatSnapshot) => byId.set(s.id, s));
+        repoSnapshots.forEach((s: CombatSnapshot) => {
+          if (!deletedSet.has(s.id) && s.id !== 'snapshot-oficial-campanha-base') {
+            byId.set(s.id, s);
+          }
+        });
         localList.forEach((s) => byId.set(s.id, s));
         const merged = Array.from(byId.values());
         setSnapshots(merged);
@@ -189,10 +201,13 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     } catch {}
   };
 
-  // Dados atuais da Mesa para um retrato: combates completos, personagens, condições, excluídos e editores
+  // Dados atuais da Mesa para um retrato: combates completos, personagens e excluídos (sem dados globais como condições, editores ou logs de combates)
   const captureCurrentData = (): { data: CombatSnapshotData; summary: CombatSnapshotSummary } => {
     const allCombats: any[] = getFullCombats?.() || readStoredJson('gurps_combat_master_data_v2') || combats || [];
-    const realCombats = allCombats.filter(isRealCombat);
+    const realCombats = allCombats.filter(isRealCombat).map((c) => {
+      const { events, ...rest } = c;
+      return { ...rest, events: [] };
+    });
     const currentPlayers: any[] = readStoredJson('gurps_fixed_personagens_v1') || players || [];
     const currentActiveId: string | null = readStoredJson('gurps_combat_master_active_combat_id_v1') || activeCombatId;
     const totalNpcs = realCombats.reduce((sum, c) => sum + (Array.isArray(c.npcs) ? c.npcs.length : 0), 0);
@@ -200,10 +215,8 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
       data: {
         combats: JSON.parse(JSON.stringify(realCombats)),
         players: JSON.parse(JSON.stringify(currentPlayers)),
-        conditions: readStoredJson('gurps_combat_master_conditions_v2') || [],
         activeCombatId: currentActiveId,
         deletedCombatIds: readStoredJson('gurps_combat_master_deleted_v1') || [],
-        editors: readStoredJson('gurps_combat_master_editors_v1') || [],
       },
       summary: {
         totalCombats: realCombats.length,
@@ -291,6 +304,13 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   };
 
   const handleDeleteSnapshot = (id: string) => {
+    try {
+      const deleted = JSON.parse(localStorage.getItem(DELETED_SNAPSHOTS_KEY) || '[]');
+      if (Array.isArray(deleted) && !deleted.includes(id)) {
+        deleted.push(id);
+        localStorage.setItem(DELETED_SNAPSHOTS_KEY, JSON.stringify(deleted));
+      }
+    } catch {}
     const updated = snapshots.filter((s) => s.id !== id);
     persistSnapshots(updated);
     setDeletingSnapshotId(null);
