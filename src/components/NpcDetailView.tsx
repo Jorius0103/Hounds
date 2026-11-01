@@ -26,6 +26,7 @@ import { SingleSpellModal, loadSpellsDatabase, normalizeSpellText, getCollegePt,
 import { CombatLogCard } from './CombatLogCard';
 import { ConfirmModal } from './ConfirmModal';
 import { systemLogger } from '../utils/systemLogger';
+import { HOUNDS_PLAYERS } from '../utils/presets';
 import {
   Shield,
   Heart,
@@ -890,8 +891,25 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const [spellFilterQuery, setSpellFilterQuery] = useState('');
 
+  // Magias efetivas: se o personagem não tiver magias salvas mas o preset tiver (ex: Warren), usa as magias do preset
+  const effectiveNpcSpells = useMemo(() => {
+    if (npc.spells && Array.isArray(npc.spells) && npc.spells.length > 0) return npc.spells;
+    const preset = HOUNDS_PLAYERS.find(
+      (hp) => hp.id === npc.id || (hp.name && npc.name && hp.name.trim().toLowerCase() === npc.name.trim().toLowerCase())
+    );
+    if (preset && preset.spells && preset.spells.length > 0) return preset.spells;
+    return [];
+  }, [npc.id, npc.name, npc.spells]);
+
+  // Se o personagem for do preset com magias mas ainda estiver com lista vazia no state, persiste as magias
+  useEffect(() => {
+    if ((!npc.spells || npc.spells.length === 0) && effectiveNpcSpells.length > 0) {
+      updateField('spells', effectiveNpcSpells);
+    }
+  }, [npc.spells, effectiveNpcSpells]);
+
   // Sorted spells: Favorites always at the top, then alphabetical by English name
-  const sortedSpells = [...(npc.spells || [])].sort((a, b) => {
+  const sortedSpells = [...(effectiveNpcSpells || [])].sort((a, b) => {
     if (a.isFavorite && !b.isFavorite) return -1;
     if (!a.isFavorite && b.isFavorite) return 1;
     const nameA = getSpellEnglishName(a.name, catalogSpells);
@@ -2228,7 +2246,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 : 'bg-slate-800 text-slate-300 border-slate-700/60'
             }`}
           >
-            {(npc.spells || []).length}
+            {(effectiveNpcSpells || []).length}
           </span>
         </button>
 
@@ -3325,7 +3343,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 <div className="flex items-center gap-2 shrink-0">
                   <Sparkles size={18} className="text-amber-400" />
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap">
-                    Grimório de Magias ({(npc.spells || []).length})
+                    Grimório de Magias ({(effectiveNpcSpells || []).length})
                   </h3>
                 </div>
 
@@ -3370,7 +3388,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             </div>
 
             {/* Lista de Magias Cadastradas */}
-            {(npc.spells || []).length === 0 ? (
+            {(effectiveNpcSpells || []).length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-500 italic space-y-2">
                 <p>Nenhuma magia cadastrada para este personagem.</p>
                 {!isViewer && (
@@ -4291,7 +4309,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       <SpellsModal
         isOpen={spellsModalOpen}
         onClose={() => setSpellsModalOpen(false)}
-        spells={npc.spells || []}
+        spells={effectiveNpcSpells || []}
         onSave={(updatedSpells) => updateField('spells', updatedSpells)}
         npcName={npc.name || 'NPC'}
       />

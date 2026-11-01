@@ -102,6 +102,17 @@ function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]
 
   for (const incoming of incomingList) {
     const existing = currentMap.get(incoming.id);
+    const preset = HOUNDS_PLAYERS.find(
+      (hp) => hp.id === incoming.id || (hp.name && incoming.name && hp.name.trim().toLowerCase() === incoming.name.trim().toLowerCase())
+    );
+    if (!incoming.spells || incoming.spells.length === 0) {
+      if (existing && existing.spells && existing.spells.length > 0) {
+        incoming.spells = existing.spells;
+      } else if (preset && preset.spells && preset.spells.length > 0) {
+        incoming.spells = preset.spells;
+      }
+    }
+
     if (!existing) {
       currentMap.set(incoming.id, incoming);
       changed = true;
@@ -313,7 +324,20 @@ export default function App() {
       if (saved !== null) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.filter((c: Combat) => c && c.id !== 'combat-vazio' && !isEmptyCombat(c));
+          return parsed
+            .filter((c: Combat) => c && c.id !== 'combat-vazio' && !isEmptyCombat(c))
+            .map((c: Combat) => ({
+              ...c,
+              npcs: (c.npcs || []).map((n: NPC) => {
+                const preset = HOUNDS_PLAYERS.find(
+                  (hp) => hp.id === n.id || (hp.name && n.name && hp.name.trim().toLowerCase() === n.name.trim().toLowerCase())
+                );
+                if (preset && preset.spells && preset.spells.length > 0 && (!n.spells || n.spells.length === 0)) {
+                  return { ...n, spells: preset.spells };
+                }
+                return n;
+              }),
+            }));
         }
       }
     } catch (e) {
@@ -329,7 +353,16 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter((p: NPC) => p && p.characterType !== 'npc');
+          const list = parsed.filter((p: NPC) => p && p.characterType !== 'npc');
+          return list.map((p: NPC) => {
+            const preset = HOUNDS_PLAYERS.find(
+              (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
+            );
+            if (preset && preset.spells && preset.spells.length > 0 && (!p.spells || p.spells.length === 0)) {
+              return { ...p, spells: preset.spells };
+            }
+            return p;
+          });
         }
       }
       // Se não havia chave específica, recupera os personagens de combates anteriores
@@ -347,7 +380,17 @@ export default function App() {
               }
             }
           }
-          if (found.length > 0) return found;
+          if (found.length > 0) {
+            return found.map((p: NPC) => {
+              const preset = HOUNDS_PLAYERS.find(
+                (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
+              );
+              if (preset && preset.spells && preset.spells.length > 0 && (!p.spells || p.spells.length === 0)) {
+                return { ...p, spells: preset.spells };
+              }
+              return p;
+            });
+          }
         }
       }
     } catch (e) {
@@ -362,6 +405,54 @@ export default function App() {
       localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(players));
     } catch (e) {}
   }, [players]);
+
+  // Auto-sincronização de Magias e Dados Faltantes dos Personagens Pré-definidos
+  useEffect(() => {
+    setPlayers((prev) => {
+      let changed = false;
+      const updated = prev.map((p) => {
+        const preset = HOUNDS_PLAYERS.find(
+          (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
+        );
+        if (preset && preset.spells && preset.spells.length > 0 && (!p.spells || p.spells.length === 0)) {
+          changed = true;
+          return { ...p, spells: preset.spells, updatedAt: Date.now() };
+        }
+        return p;
+      });
+      if (changed) {
+        try {
+          localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      }
+      return prev;
+    });
+
+    setCombats((prev) => {
+      let changed = false;
+      const updated = prev.map((c) => ({
+        ...c,
+        npcs: (c.npcs || []).map((n) => {
+          const preset = HOUNDS_PLAYERS.find(
+            (hp) => hp.id === n.id || (hp.name && n.name && hp.name.trim().toLowerCase() === n.name.trim().toLowerCase())
+          );
+          if (preset && preset.spells && preset.spells.length > 0 && (!n.spells || n.spells.length === 0)) {
+            changed = true;
+            return { ...n, spells: preset.spells, updatedAt: Date.now() };
+          }
+          return n;
+        }),
+      }));
+      if (changed) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      }
+      return prev;
+    });
+  }, []);
 
   // Personagens visíveis na sessão (persiste mesmo sem combate ativo)
   const [sessionPlayerIds, setSessionPlayerIds] = useState<string[]>(() => {
@@ -599,7 +690,14 @@ export default function App() {
     for (const p of players) {
       if (p.characterType !== 'npc' && activePlayerSet.has(p.id) && !seen.has(p.id)) {
         seen.add(p.id);
-        list.push(p);
+        const preset = HOUNDS_PLAYERS.find(
+          (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
+        );
+        if (preset && preset.spells && preset.spells.length > 0 && (!p.spells || p.spells.length === 0)) {
+          list.push({ ...p, spells: preset.spells });
+        } else {
+          list.push(p);
+        }
       }
     }
     // NPCs específicos do combate ativo (apenas quando um combate real estiver ativo)
@@ -607,7 +705,14 @@ export default function App() {
       for (const n of activeCombat.npcs || []) {
         if (n.characterType !== 'player' && !seen.has(n.id)) {
           seen.add(n.id);
-          list.push(n);
+          const preset = HOUNDS_PLAYERS.find(
+            (hp) => hp.id === n.id || (hp.name && n.name && hp.name.trim().toLowerCase() === n.name.trim().toLowerCase())
+          );
+          if (preset && preset.spells && preset.spells.length > 0 && (!n.spells || n.spells.length === 0)) {
+            list.push({ ...n, spells: preset.spells });
+          } else {
+            list.push(n);
+          }
         }
       }
     }
