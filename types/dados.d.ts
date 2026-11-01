@@ -646,6 +646,8 @@ interface Store {
   saveRoll?(rollData: any, logEntry?: any): Promise<unknown>;
   /** Supabase: as últimas rolagens de um combate, da mais nova para a mais antiga. */
   getRecentRolls?(combatId: string, limit?: number): Promise<any[]>;
+  /** Supabase: apaga uma rolagem de dados da Mesa (tabela mesa_rolagens). */
+  deleteRoll?(rollId: string): Promise<unknown>;
   /** Supabase: o Mestre apaga o chat inteiro (hounds_limpar_chat), inclusive os sussurros que não lê. */
   clearChat?(): Promise<unknown>;
   /** Supabase: o banco rola os dados do chat; o site manda a rolagem sem o resultado. */
