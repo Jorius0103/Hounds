@@ -648,11 +648,23 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                           {/* Coluna 4: Tipo */}
                           <td className="py-2.5 px-3 whitespace-nowrap">
                             {isRoll ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/70">
-                                Rolagem
-                              </span>
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/70 inline-block">
+                                  Rolagem
+                                </span>
+                                <span
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-1 ${
+                                    entry.isSecret
+                                      ? 'bg-rose-950/80 text-rose-300 border-rose-700/60'
+                                      : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+                                  }`}
+                                  title={entry.isSecret ? 'Rolagem Oculta do Mestre' : 'Rolagem Visível para todos'}
+                                >
+                                  {entry.isSecret ? '👁️‍🗨️ Oculta' : '👁️ Visível'}
+                                </span>
+                              </div>
                             ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/70">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/70 inline-block">
                                 Status ({entry.type})
                               </span>
                             )}

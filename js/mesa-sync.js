@@ -485,6 +485,14 @@ var MesaSync = (function () {
             if (loaded()) push({ type: 'SYNC_ENTRY_COMMENT', entryId: m.entryId, npcId: m.npcId, comment: m.comment, timestamp: m.ts || Date.now() });
           }
         });
+        rt().on('mesa-delete', function (m) {
+          if (m && m.entryId) {
+            if (W.store && typeof W.store.deleteRoll === 'function') {
+              try { W.store.deleteRoll(m.entryId); } catch (e) {}
+            }
+            if (loaded()) push({ type: 'SYNC_ENTRY_DELETE', entryId: m.entryId, timestamp: m.ts || Date.now() });
+          }
+        });
         rt().on('mesa-restored', function (m) {
           if (m && loaded()) push({ type: 'SYNC_SNAPSHOT_RESTORED', snapshotName: m.snapshotName, timestamp: m.ts || Date.now() });
         });
@@ -636,6 +644,13 @@ var MesaSync = (function () {
       }
       if (m.type === 'SYNC_ENTRY_COMMENT' && m.entryId) {
         if (rt()) rt().send('mesa-comment', { entryId: m.entryId, npcId: m.npcId, comment: m.comment, ts: m.timestamp || Date.now() });
+        return;
+      }
+      if (m.type === 'SYNC_ENTRY_DELETE' && m.entryId) {
+        if (rt()) rt().send('mesa-delete', { entryId: m.entryId, ts: m.timestamp || Date.now() });
+        if (W.store && typeof W.store.deleteRoll === 'function') {
+          try { W.store.deleteRoll(m.entryId); } catch (e) {}
+        }
         return;
       }
       if (m.type === 'SYNC_SNAPSHOT_RESTORED') {
@@ -803,6 +818,12 @@ window.hubMesaBus = {
   saveRoll: function (rollData, logEntry) {
     if (W.store && typeof W.store.saveRoll === 'function') {
       return W.store.saveRoll(rollData, logEntry);
+    }
+    return Promise.resolve();
+  },
+  deleteRoll: function (rollId) {
+    if (W.store && typeof W.store.deleteRoll === 'function') {
+      return W.store.deleteRoll(rollId);
     }
     return Promise.resolve();
   }

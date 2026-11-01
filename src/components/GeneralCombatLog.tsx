@@ -481,7 +481,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                 currentUserRole={currentUserRole}
                 currentUserName={currentUserName}
                 isPlayer={currentUserRole === 'jogador'}
-                onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
+                onDeleteEntry={undefined}
                 onUpdateEntryComment={onUpdateEntryComment}
               />
             </div>

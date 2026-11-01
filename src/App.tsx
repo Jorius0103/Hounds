@@ -1123,6 +1123,38 @@ export default function App() {
         return;
       }
 
+      if ((payload as any).type === 'SYNC_ENTRY_DELETE' && (payload as any).entryId) {
+        const delId = (payload as any).entryId;
+        setSessionEvents((prev) => (prev || []).filter((e) => e.id !== delId));
+        setPlayers((prev) =>
+          prev.map((p) => ({
+            ...p,
+            history: (p.history || []).filter((h) => h.id !== delId),
+          }))
+        );
+        setCombats((prev) =>
+          prev.map((c) => ({
+            ...c,
+            events: (c.events || []).filter((e) => e.id !== delId),
+            npcs: (c.npcs || []).map((n) => ({
+              ...n,
+              history: (n.history || []).filter((h) => h.id !== delId),
+            })),
+          }))
+        );
+        Object.keys(combatsPoolRef.current).forEach((cid) => {
+          const pool = combatsPoolRef.current[cid];
+          if (pool) {
+            pool.events = (pool.events || []).filter((e) => e.id !== delId);
+            pool.npcs = (pool.npcs || []).map((n) => ({
+              ...n,
+              history: (n.history || []).filter((h) => h.id !== delId),
+            }));
+          }
+        });
+        return;
+      }
+
       if ((payload as any).type === 'SYNC_EDITORS' && Array.isArray((payload as any).editorUserIds)) {
         const ids = (payload as any).editorUserIds;
         setEditorUserIds(ids);
@@ -1558,23 +1590,34 @@ export default function App() {
 
     const fetchSupabaseRolls = () => {
       try {
-        const bus = (window as any).parent?.hubMesaBus;
+        const bus = (typeof window !== 'undefined' && ((window as any).parent?.hubMesaBus || (window as any).hubMesaBus));
         if (bus && typeof bus.getRecentRolls === 'function') {
-          bus.getRecentRolls(null, 60).then((rows: any[]) => {
+          bus.getRecentRolls(null, 100).then((rows: any[]) => {
             if (!Array.isArray(rows) || rows.length === 0) return;
             const isMestre = currentUser?.role === 'mestre' || !currentUser;
-            const missingSessionEvents: any[] = [];
+            const fetchedLogEntries: any[] = [];
             rows.forEach((r) => {
               const log = r.dados_completos?.logEntry;
               if (!log) return;
               if (log.isSecret && !isMestre) return;
-              missingSessionEvents.push(log);
+              fetchedLogEntries.push(log);
             });
-            if (missingSessionEvents.length > 0) {
+            if (fetchedLogEntries.length > 0) {
               setSessionEvents((prev) => {
-                const existingIds = new Set((prev || []).map((e) => e.id));
-                const toAdd = missingSessionEvents.filter((e) => !existingIds.has(e.id));
-                return toAdd.length > 0 ? [...toAdd, ...(prev || [])] : prev;
+                const existingMap = new Map((prev || []).map((e) => [e.id, e]));
+                let changed = false;
+                fetchedLogEntries.forEach((entry) => {
+                  if (!existingMap.has(entry.id)) {
+                    existingMap.set(entry.id, entry);
+                    changed = true;
+                  }
+                });
+                if (!changed) return prev;
+                return Array.from(existingMap.values()).sort((a, b) => {
+                  const ta = a.timestampMs || (a.timestamp ? Date.parse(a.timestamp) : 0) || 0;
+                  const tb = b.timestampMs || (b.timestamp ? Date.parse(b.timestamp) : 0) || 0;
+                  return tb - ta;
+                });
               });
             }
           }).catch(() => {});
@@ -1584,6 +1627,7 @@ export default function App() {
 
     fetchSupabaseRolls();
     window.addEventListener('focus', fetchSupabaseRolls);
+    const rollsPollInterval = setInterval(fetchSupabaseRolls, 6000);
 
     let unsubHub: (() => void) | null = null;
     if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus?.subscribe) {
@@ -1607,6 +1651,7 @@ export default function App() {
           unsubHub();
         } catch (e) {}
       }
+      clearInterval(rollsPollInterval);
       window.removeEventListener('focus', fetchSupabaseRolls);
     };
   }, []);
@@ -1721,6 +1766,38 @@ export default function App() {
               };
             })
           );
+          return;
+        }
+
+        if (event.data?.type === 'SYNC_ENTRY_DELETE' && event.data.entryId) {
+          const delId = event.data.entryId;
+          setSessionEvents((prev) => (prev || []).filter((e) => e.id !== delId));
+          setPlayers((prev) =>
+            prev.map((p) => ({
+              ...p,
+              history: (p.history || []).filter((h) => h.id !== delId),
+            }))
+          );
+          setCombats((prev) =>
+            prev.map((c) => ({
+              ...c,
+              events: (c.events || []).filter((e) => e.id !== delId),
+              npcs: (c.npcs || []).map((n) => ({
+                ...n,
+                history: (n.history || []).filter((h) => h.id !== delId),
+              })),
+            }))
+          );
+          Object.keys(combatsPoolRef.current).forEach((cid) => {
+            const pool = combatsPoolRef.current[cid];
+            if (pool) {
+              pool.events = (pool.events || []).filter((e) => e.id !== delId);
+              pool.npcs = (pool.npcs || []).map((n) => ({
+                ...n,
+                history: (n.history || []).filter((h) => h.id !== delId),
+              }));
+            }
+          });
           return;
         }
 
@@ -4518,13 +4595,47 @@ export default function App() {
   const handleDeleteLogEntry = (entryId: string, npcId?: string, revertValues: boolean = true) => {
     const now = Date.now();
 
-    // 1. Identifica o personagem que contém o registro
+    // 0. Exclusão permanente do banco de dados (Supabase mesa_rolagens) se for rolagem
+    const bus = (typeof window !== 'undefined' && ((window as any).parent?.hubMesaBus || (window as any).hubMesaBus));
+    if (bus && typeof bus.deleteRoll === 'function') {
+      try {
+        bus.deleteRoll(entryId);
+      } catch (e) {}
+    }
+
+    // 1. Sempre remove de sessionEvents e do pool de combates
+    setSessionEvents((prev) => (prev || []).filter((e) => e.id !== entryId));
+
+    Object.keys(combatsPoolRef.current).forEach((cid) => {
+      const pool = combatsPoolRef.current[cid];
+      if (pool) {
+        pool.events = (pool.events || []).filter((e) => e.id !== entryId);
+        pool.npcs = (pool.npcs || []).map((n) => ({
+          ...n,
+          history: (n.history || []).filter((h) => h.id !== entryId),
+        }));
+      }
+    });
+
+    // Envia payload de exclusão para todas as abas e clientes conectados
+    const deletePayload = { type: 'SYNC_ENTRY_DELETE', entryId, timestamp: now };
+    onlineSyncService.sendPayloadImmediate(deletePayload);
+    if (broadcastChannelRef.current) {
+      try { broadcastChannelRef.current.postMessage(deletePayload); } catch (e) {}
+    }
+    if (bus && typeof bus.publish === 'function') {
+      try { bus.publish(JSON.stringify(deletePayload)); } catch (e) {}
+    }
+
+    // Identifica o personagem que contém o registro
     const targetCharacter =
       (npcId ? (players.find((p) => p.id === npcId) || combats.flatMap((c) => c.npcs || []).find((n) => n.id === npcId)) : undefined) ||
       allCharacters.find((c) => (c.history || []).some((h) => h.id === entryId));
 
-    if (!targetCharacter) {
-      // Se não encontrou o combatente dono, apenas filtra o histórico em todos por segurança
+    const entryToDelete = targetCharacter?.history?.find((h) => h.id === entryId);
+
+    if (!targetCharacter || !entryToDelete) {
+      // Se não encontrou combatente ou o log era uma rolagem avulsa, apenas filtra o histórico em todos por segurança
       const updatedPlayers = players.map((p) => ({
         ...p,
         history: (p.history || []).filter((h) => h.id !== entryId),
@@ -4532,6 +4643,7 @@ export default function App() {
       }));
       const updatedCombats = combats.map((c) => ({
         ...c,
+        events: (c.events || []).filter((e) => e.id !== entryId),
         npcs: c.npcs.map((n) => ({
           ...n,
           history: (n.history || []).filter((h) => h.id !== entryId),
@@ -4545,9 +4657,6 @@ export default function App() {
       broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
       return;
     }
-
-    const entryToDelete = (targetCharacter.history || []).find((h) => h.id === entryId);
-    if (!entryToDelete) return;
 
     // 2. Se revertValues for true, reverte status/atributos. Se false ("Confirmar sem Registrar"), apenas remove do histórico sem alterar valores
     let finalNpc: NPC;
@@ -4567,9 +4676,12 @@ export default function App() {
 
     const isPlayer = players.some((p) => p.id === finalNpc.id);
     let nextPlayers = [...players];
-    let nextCombats = [...combats];
+    let nextCombats = combats.map((c) => ({
+      ...c,
+      events: (c.events || []).filter((e) => e.id !== entryId),
+    }));
     let playersChanged = false;
-    let combatsChanged = false;
+    let combatsChanged = true;
 
     if (isPlayer) {
       nextPlayers = nextPlayers.map((p) => (p.id === finalNpc.id ? finalNpc : p));
@@ -4579,7 +4691,6 @@ export default function App() {
         ...c,
         npcs: c.npcs.map((n) => (n.id === finalNpc.id ? finalNpc : n)),
       }));
-      combatsChanged = true;
     }
 
     // 3. Se havia magia ativa associada e revertValues é true, limpa também de affectedSpells nos alvos
@@ -4610,11 +4721,10 @@ export default function App() {
     }
 
     // 4. Aplica atualizações de estado síncronas e assíncronas
-    setSessionEvents((prev) => (prev || []).filter((e) => e.id !== entryId));
     stateRef.current.players = nextPlayers;
     stateRef.current.combats = nextCombats;
     if (playersChanged) setPlayers(nextPlayers);
-    if (combatsChanged) setCombats(nextCombats);
+    setCombats(nextCombats);
 
     systemLogger.addLog(
       'LOG_REVERT',
@@ -4633,7 +4743,7 @@ export default function App() {
     );
 
     broadcastSync(
-      combatsChanged ? nextCombats : undefined,
+      nextCombats,
       undefined,
       undefined,
       undefined,

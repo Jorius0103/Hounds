@@ -306,7 +306,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           >
             {entry.authorName || (entry.author === 'assistente' ? (currentUserName || 'Jogador') : entry.author)}
           </span>
-          {entry.type === 'roll' && entry.author === 'mestre' && (
+          {entry.type === 'roll' && (
             <span
               className={`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-0.5 ${
                 entry.isSecret
@@ -315,7 +315,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
               }`}
               title={entry.isSecret ? 'Rolagem Oculta do Mestre' : 'Rolagem Visível para todos'}
             >
-              {entry.isSecret ? '👁️‍🗨️ Oculto' : '👁️ Visível'}
+              {entry.isSecret ? '👁️‍🗨️ Oculta' : '👁️ Visível'}
             </span>
           )}
           <span className="text-[10px] text-slate-500 font-mono">
