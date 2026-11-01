@@ -55,7 +55,7 @@ Ops.deleteItem = function (item) {
 // Typing in the search waits a moment before redrawing the list.
 var itemSearchTimer = 0;
 var ITEM_SEARCH_FIELDS = ['name', 'category', 'cost', 'description'];
-// Search, filters and page of the list: kept while the site is open (see spellView).
+// Search, filters and page of the list: kept while the site is open, so opening an entry and coming back returns to the same page.
 var itemView = { q: '', mine: false, category: '', book: '', page: 1 };
 
 /* =====================================================================

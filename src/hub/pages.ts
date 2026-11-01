@@ -3,6 +3,8 @@ import {EventPage} from './paginas/Evento';
 import {EventsPage} from './paginas/Eventos';
 import {LocaisPage} from './paginas/Locais';
 import {LocalPage} from './paginas/Local';
+import {SpellPage} from './paginas/Magia';
+import {SpellsPage} from './paginas/Magias';
 import {MapPage} from './paginas/Mapa';
 import {MapsPage} from './paginas/Mapas';
 import {OrgPage} from './paginas/Organizacao';
@@ -29,4 +31,10 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   map: MapPage,
   chars: CharsPage,
   char: CharPage,
+  spells: SpellsPage,
+  spell: SpellPage,
 };
+
+// As listas longas de cartões usam a largura da tela (a classe wide do .page-inner), como as antigas que o renderPage de
+// js/app.js marca.
+export const WIDE_PAGES = new Set(['spells']);

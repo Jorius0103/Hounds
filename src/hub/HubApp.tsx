@@ -1,7 +1,7 @@
-import {useLayoutEffect, useSyncExternalStore} from 'react';
+import {useLayoutEffect, useState, useSyncExternalStore} from 'react';
 import {createPortal} from 'react-dom';
 import {DialogHost} from './ui/Dialog';
-import {PAGES} from './pages';
+import {PAGES, WIDE_PAGES} from './pages';
 
 // O endereço é a fonte da rota, nos formatos de sempre (#ficha~id, #map~id~explorar…), porque há links
 // gravados em anotações e personagens. O go() de js/rotas.js redesenha o mesmo endereço ou o troca com
@@ -25,15 +25,22 @@ const snapshot = () => `${version}${location.hash}`;
 
 export function HubApp() {
   const current = useSyncExternalStore(subscribe, snapshot);
+  const [, setMenuReady] = useState('');
   const route: Route = parseRoute() ?? {page: 'home', node: null};
   const Page = PAGES[route.page];
 
   // Antes da pintura: mostra o contêiner certo e deixa o js/app.js aplicar a rota (menu, título, telas e,
   // nas páginas antigas, o desenho).
   useLayoutEffect(() => {
+    const react = document.getElementById('reactPage')!;
     document.getElementById('pageRoot')!.hidden = !!Page;
-    document.getElementById('reactPage')!.hidden = !Page;
+    react.hidden = !Page;
+    react.classList.toggle('wide', WIDE_PAGES.has(route.page));
+    const missing = !!route.node && !byId[route.node];
     onRoute();
+    // Um item que o menu só lista quando está aberto (uma magia) entra nele no onRoute, depois de a página desenhar: ela
+    // desenha de novo, ainda antes da pintura, para ter a trilha (Crumbs).
+    if (missing && byId[route.node!]) setMenuReady(current);
   }, [current]);
 
   // A chave remonta a página a cada item (de um evento para outro, por exemplo): o estado de interface dela

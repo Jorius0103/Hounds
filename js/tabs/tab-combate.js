@@ -85,7 +85,7 @@ Ops.deleteTechnique = function (tech) {
   return W.store.remove('techniques', tech.id);
 };
 
-// Which list, search, filters and page: kept while the site is open (see spellView).
+// Which list, search, filters and page: kept while the site is open, so opening an entry and coming back returns to the same page.
 // tab: 'skills' (combat skills), 'techs' or 'styles'; kind (techniques only): 'combat', 'other' or '' for all.
 var combatView = { tab: 'skills', q: '', mine: false, diff: '', book: '', kind: 'combat', page: 1 };
 var combatSearchTimer = 0;

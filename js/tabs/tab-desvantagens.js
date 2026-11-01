@@ -71,7 +71,7 @@ Ops.deleteDisadvantage = function (dis) {
 // Typing in the search waits a moment before redrawing the list.
 var disadvSearchTimer = 0;
 var DISADV_SEARCH_FIELDS = ['name', 'cost', 'type', 'classes', 'description'];
-// Search, filters and page of the list: kept while the site is open (see spellView).
+// Search, filters and page of the list: kept while the site is open, so opening an entry and coming back returns to the same page.
 var disadvView = { q: '', mine: false, type: '', cls: '', book: '', self: false, page: 1 };
 
 /* =====================================================================

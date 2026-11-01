@@ -128,7 +128,7 @@ function weaponSearchText(w) {
   if (weaponSearchCache) weaponSearchCache.set(w, t);
   return t;
 }
-// Search, filters and page of the list: kept while the site is open (see spellView).
+// Search, filters and page of the list: kept while the site is open, so opening an entry and coming back returns to the same page.
 var weaponView = { q: '', mine: false, type: '', skill: '', book: '', page: 1 };
 
 /* =====================================================================

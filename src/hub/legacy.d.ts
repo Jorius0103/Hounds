@@ -169,6 +169,33 @@ declare global {
   /** O formulário de escolher a ficha de um personagem, no modal antigo. */
   function openSheetLinkForm(c: Character): void;
 
+  /** js/mundo.js: os catálogos de GURPS (magias, vantagens…). Busca o arquivo dos livros na primeira vez; a lista, com os documentos do Mestre por cima, chega pelo aviso hub:data. */
+  function loadCatalog(col: string): Promise<void>;
+  /** failed: o arquivo dos livros não carregou; deleted: as entradas dos livros que o Mestre excluiu (só para ele). */
+  var CATALOG: Record<string, {failed: boolean; deleted: Doc[]}>;
+  /** O texto de busca de uma entrada: os campos, normalizados (guardado na primeira vez). */
+  function searchText(x: object, fields: string[]): string;
+  /** js/busca-catalogos.js: as entradas que combinam com a busca, as mais parecidas primeiro (também pelo nome em português); sem busca, a lista toda. */
+  function searchCatalog<T extends {name: string}>(list: T[], q: string, textOf?: (x: T) => string): T[];
+  /** O nome em português de uma entrada; '' quando não há, ou quando é o mesmo do livro. */
+  function ptName(x: {name: string}): string;
+  /** js/pagina.js: a fatia da lista na página (de 1 em diante, dentro das que existem), PAGE_SIZE por página. */
+  function pageOf<T>(list: T[], page: number): {page: number; pages: number; from: number; items: T[]};
+
+  /** js/mundo.js e js/rotas.js: uma magia pelo id (ou, num link antigo, pelo nome que o id traz) e o endereço dela. */
+  function spellById(id: string | null | undefined): Spell | null;
+  function spellHref(id: string): string;
+  /** js/tabs/tab-magias.js: as escolas e as classes de GURPS e as já usadas, em ordem alfabética. */
+  function spellColleges(): string[];
+  function spellClasses(): string[];
+  /** Os grupos de resistência de uma magia ('HT', 'Will'…, ou 'none'), e os que têm magias: [chave, rótulo, quantas]. */
+  function spellResistance(s: Spell): string[];
+  function spellResistances(): [string, string, number][];
+  /** Os livros da lista, com quantas magias cada um tem: [livro, quantas]. */
+  function spellBooks(): [string, number][];
+  /** O que o Mestre mudou na magia: 'created', 'edited', 'hidden' (só para ele) ou '' (como no livro). */
+  function spellChange(s: Spell): string;
+
   /** js/mundo.js e as abas de js/tabs/: as operações que gravam no banco. */
   var Ops: {
     createMap(name: string, parentId: string | null, file: File, dims: {w: number; h: number}, visible: boolean, shared: string[]): Promise<string>;
@@ -221,6 +248,31 @@ declare global {
     deleteCharacter(c: Character): Promise<unknown>;
     /** A ficha do personagem (null: nenhuma); quem mais tinha essa ficha fica sem. */
     setCharSheet(charId: string, sheetId: string | null, justCreated?: boolean): Promise<unknown>;
+    /** Só o Mestre. Numa magia dos livros, o documento com o id dela guarda as alterações; a fonte vazia fica "Manual". */
+    saveSpell(
+      s: Spell | null,
+      fields: {
+        name: string;
+        college: string;
+        class: string;
+        difficulty: string;
+        timeToCast: string;
+        duration: string;
+        initialCost: string;
+        maintenanceCost: string;
+        prerequisites: string;
+        item: string;
+        description: string;
+        page: string;
+        source: string;
+        visible: boolean;
+        sharedWith: string[];
+      },
+    ): Promise<string>;
+    /** Uma magia dos livros fica marcada como excluída (o Mestre pode restaurá-la); a do Mestre sai do banco. */
+    deleteSpell(s: Spell): Promise<unknown>;
+    /** Desfaz as alterações do Mestre numa entrada dos livros: ela volta como no livro. */
+    restoreCatalogItem(col: string, item: Doc): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */

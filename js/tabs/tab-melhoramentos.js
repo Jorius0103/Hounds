@@ -62,7 +62,7 @@ Ops.deleteImprovement = function (item) {
 // Typing in the search waits a moment before redrawing the list.
 var improvementSearchTimer = 0;
 var IMPROVEMENT_SEARCH_FIELDS = ['name', 'category', 'restriction', 'cost', 'description'];
-// Search, filters and page of the list: kept while the site is open (see spellView).
+// Search, filters and page of the list: kept while the site is open, so opening an entry and coming back returns to the same page.
 var improvementView = { q: '', mine: false, kind: '', category: '', book: '', page: 1 };
 
 /* =====================================================================

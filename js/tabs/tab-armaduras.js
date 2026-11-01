@@ -68,7 +68,7 @@ Ops.deleteArmor = function (armor) {
 // Typing in the search waits a moment before redrawing the list.
 var armorSearchTimer = 0;
 var ARMOR_SEARCH_FIELDS = ['name', 'location', 'category', 'table', 'skill', 'notes', 'footnotes'];
-// Search, filters and page of the list: kept while the site is open (see spellView).
+// Search, filters and page of the list: kept while the site is open, so opening an entry and coming back returns to the same page.
 var armorView = { q: '', mine: false, type: '', category: '', book: '', page: 1 };
 
 /* =====================================================================

@@ -69,7 +69,7 @@ Ops.deleteAdvantage = function (adv) {
 // Typing in the search waits a moment before redrawing the list.
 var advSearchTimer = 0;
 var ADV_SEARCH_FIELDS = ['name', 'cost', 'type', 'description'];
-// Search, filters and page of the list: kept while the site is open (see spellView).
+// Search, filters and page of the list: kept while the site is open, so opening an entry and coming back returns to the same page.
 var advView = { q: '', mine: false, advType: '', advBook: '', page: 1 };
 var perkView = { q: '', mine: false, advType: '', advBook: '', page: 1 };
 // The list open: Perks (true) or Vantagens.

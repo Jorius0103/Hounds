@@ -80,7 +80,7 @@ Ops.deleteSkill = function (skill) {
 // Typing in the search waits a moment before redrawing the list.
 var skillSearchTimer = 0;
 var SKILL_SEARCH_FIELDS = ['name', 'type', 'defaults', 'description'];
-// Search, filters and page of the list: kept while the site is open (see spellView).
+// Search, filters and page of the list: kept while the site is open, so opening an entry and coming back returns to the same page.
 var skillView = { q: '', mine: false, attr: '', diff: '', book: '', page: 1 };
 
 /* =====================================================================
