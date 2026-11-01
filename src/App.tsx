@@ -2722,15 +2722,14 @@ export default function App() {
         ? `Passar ${dayLabel} (+${effectiveDays} Mana): ${summaryDetails.join(' | ')}.`
         : `Passar ${dayLabel} (+${effectiveDays} Mana): Recursos de mana dos Personagens recuperados em +${effectiveDays} ponto(s).`;
       const logEntry: ActionLogEntry = {
-        id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+        id: `passday-${now}-${Math.random().toString(36).slice(2, 6)}`,
         timestamp: timeStr,
         timestampMs: now,
         round: effectiveRound,
         author: currentUser?.role === 'jogador' ? 'assistente' : 'mestre',
         authorName: currentUser?.name || (currentUser?.role === 'jogador' ? 'Jogador' : 'Mestre'),
         type: 'item',
-        npcName: 'Personagens',
-        npcCharacterType: 'player',
+        npcName: 'Passar o Dia',
         itemName: 'Passar o Dia',
         amount: effectiveDays,
         description: descText,
@@ -5138,6 +5137,7 @@ export default function App() {
                 selectedNpcId={selectedNpcId}
                 currentUserRole={effectiveRole}
                 currentUserName={currentUser?.name}
+                canDelete={canEditCurrent}
                 onClearHistory={handleClearActiveCombatHistory}
                 onDeleteEntry={handleDeleteLogEntry}
                 onUpdateEntryComment={handleUpdateLogEntryComment}

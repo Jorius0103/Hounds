@@ -12,6 +12,7 @@ interface GeneralCombatLogProps {
   selectedNpcId: string;
   currentUserRole: MesaRole;
   currentUserName?: string;
+  canDelete?: boolean;
   onClearHistory?: () => void;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
   onUpdateEntryComment?: (entryId: string, npcId: string | undefined, comment: string) => void;
@@ -25,10 +26,13 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   selectedNpcId,
   currentUserRole,
   currentUserName,
+  canDelete,
   onClearHistory,
   onDeleteEntry,
   onUpdateEntryComment,
 }) => {
+  const userCanDelete = canDelete !== undefined ? canDelete : (currentUserRole === 'mestre');
+
   // Filtro de Rodada ('all' ou número da rodada)
   const [selectedRoundFilter, setSelectedRoundFilter] = useState<number | 'all'>('all');
 
@@ -42,7 +46,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(50);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -481,7 +485,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                 currentUserRole={currentUserRole}
                 currentUserName={currentUserName}
                 isPlayer={currentUserRole === 'jogador'}
-                onDeleteEntry={undefined}
+                onDeleteEntry={userCanDelete ? onDeleteEntry : undefined}
                 onUpdateEntryComment={onUpdateEntryComment}
               />
             </div>
@@ -552,6 +556,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         activeCombat={activeCombat}
         currentUserRole={currentUserRole}
         currentUserName={currentUserName}
+        canDelete={userCanDelete}
         onClearHistory={onClearHistory}
         onDeleteEntry={onDeleteEntry}
         onUpdateEntryComment={onUpdateEntryComment}

@@ -250,6 +250,12 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   const isFp = isFatigue || vk === 'fpCurrent' || desc.startsWith('FP:');
   const isDef = vk.startsWith('ta.parry') || vk.startsWith('ta.dodge') || vk.startsWith('ta.block') || vk === 'ta.shock';
 
+  const isPassDay =
+    entry.itemName === 'Passar o Dia' ||
+    entry.npcName === 'Passar o Dia' ||
+    (entry.id && String(entry.id).includes('passday')) ||
+    (entry.description && entry.description.startsWith('Passar '));
+
   return (
     <div
       className={`bg-slate-950/80 border rounded-xl transition-all shadow-sm ${
@@ -268,17 +274,23 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {showNpcInfo && (
-            <div className="flex items-center gap-1.5 min-w-0">
-              <NpcAvatar
-                avatar={entry.npcAvatar}
-                preset={entry.npcPreset}
-                name={entry.npcName || 'NPC'}
-                size="sm"
-              />
-              <span className="text-xs font-bold text-white truncate max-w-[120px] sm:max-w-[150px]">
-                {entry.npcName || 'NPC'}
+            isPassDay ? (
+              <span className="text-[11px] font-bold text-amber-300 bg-amber-950/70 border border-amber-800/80 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                🌅 Passar o Dia
               </span>
-            </div>
+            ) : (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <NpcAvatar
+                  avatar={entry.npcAvatar}
+                  preset={entry.npcPreset}
+                  name={entry.npcName || 'NPC'}
+                  size="sm"
+                />
+                <span className="text-xs font-bold text-white truncate max-w-[120px] sm:max-w-[150px]">
+                  {entry.npcName || 'NPC'}
+                </span>
+              </div>
+            )
           )}
 
           <span

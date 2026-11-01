@@ -29,6 +29,7 @@ interface DetailedLogModalProps {
   activeCombat?: Combat;
   currentUserRole: MesaRole;
   currentUserName?: string;
+  canDelete?: boolean;
   onClearHistory?: () => void;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
   onUpdateEntryComment?: (entryId: string, npcId: string | undefined, comment: string) => void;
@@ -93,6 +94,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
   activeCombat,
   currentUserRole,
   currentUserName,
+  canDelete,
   onClearHistory,
   onDeleteEntry,
   onUpdateEntryComment,
@@ -102,12 +104,14 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
   initialRoundFilter = 'all',
   initialSearch = '',
 }) => {
+  const userCanDelete = canDelete !== undefined ? canDelete : (currentUserRole === 'mestre');
+
   const [entityFilter, setEntityFilter] = useState<'all' | 'players' | 'npcs'>(initialEntityFilter);
   const [typeFilter, setTypeFilter] = useState<'all' | 'status' | 'rolls'>(initialTypeFilter);
   const [roundFilter, setRoundFilter] = useState<number | 'all'>(initialRoundFilter);
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState(initialSearch);
-  const [pageSize, setPageSize] = useState<number>(20);
+  const [pageSize, setPageSize] = useState<number>(50);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [copied, setCopied] = useState(false);
@@ -367,118 +371,121 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
 
         {/* Barra de Filtros e Controles */}
         <div className="p-3 sm:px-6 sm:py-3 border-b border-slate-800 bg-slate-950/60 space-y-2.5 shrink-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5 items-center">
-            {/* Filtro 1: Entidade */}
-            <div className="md:col-span-3 flex items-center gap-1.5 text-xs">
-              <span className="text-slate-500 font-semibold shrink-0 text-[11px]">Origem:</span>
-              <div className="flex-1 flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setEntityFilter('all')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
-                    entityFilter === 'all'
-                      ? 'bg-slate-800 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEntityFilter('players')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
-                    entityFilter === 'players'
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60 shadow-xs'
-                      : 'text-slate-400 hover:text-emerald-300'
-                  }`}
-                >
-                  Personagens
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEntityFilter('npcs')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
-                    entityFilter === 'npcs'
-                      ? 'bg-purple-950 text-purple-300 border border-purple-700/60 shadow-xs'
-                      : 'text-slate-400 hover:text-purple-300'
-                  }`}
-                >
-                  NPCs
-                </button>
-              </div>
-            </div>
-
-            {/* Filtro 2: Tipo de Evento */}
-            <div className="md:col-span-3 flex items-center gap-1.5 text-xs">
-              <span className="text-slate-500 font-semibold shrink-0 text-[11px]">Tipo:</span>
-              <div className="flex-1 flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setTypeFilter('all')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
-                    typeFilter === 'all'
-                      ? 'bg-slate-800 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTypeFilter('status')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
-                    typeFilter === 'status'
-                      ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow-xs'
-                      : 'text-slate-400 hover:text-cyan-300'
-                  }`}
-                  title="Alterações de status e condições"
-                >
-                  Status
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTypeFilter('rolls')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
-                    typeFilter === 'rolls'
-                      ? 'bg-amber-950 text-amber-300 border border-amber-600/60 shadow-xs'
-                      : 'text-slate-400 hover:text-amber-300'
-                  }`}
-                  title="Rolagens de dados"
-                >
-                  Rolagens
-                </button>
-              </div>
-            </div>
-
-            {/* Filtro 3: Data */}
-            <div className="md:col-span-3 flex items-center gap-1.5 text-xs">
-              <span className="text-slate-500 font-semibold shrink-0 text-[11px] flex items-center gap-1">
-                <Calendar size={12} className="text-amber-400" />
-                Data:
-              </span>
-              <div className="flex-1 flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800">
-                <input
-                  type="date"
-                  value={dateFilter === 'all' ? '' : dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value || 'all')}
-                  className="bg-transparent text-xs text-white font-mono focus:outline-none cursor-pointer w-full [color-scheme:dark]"
-                  title="Filtrar eventos por data"
-                />
-                {dateFilter !== 'all' && (
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            {/* Bloco 1: Origem e Tipo */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Filtro 1: Entidade */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-slate-500 font-semibold shrink-0 text-[11px]">Origem:</span>
+                <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
                   <button
                     type="button"
-                    onClick={() => setDateFilter('all')}
-                    className="p-0.5 text-slate-400 hover:text-white cursor-pointer shrink-0"
-                    title="Limpar filtro de data"
+                    onClick={() => setEntityFilter('all')}
+                    className={`px-2 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
+                      entityFilter === 'all'
+                        ? 'bg-slate-800 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
                   >
-                    <X size={12} />
+                    Todos
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setEntityFilter('players')}
+                    className={`px-2 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
+                      entityFilter === 'players'
+                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60 shadow-xs'
+                        : 'text-slate-400 hover:text-emerald-300'
+                    }`}
+                  >
+                    Personagens
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntityFilter('npcs')}
+                    className={`px-2 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
+                      entityFilter === 'npcs'
+                        ? 'bg-purple-950 text-purple-300 border border-purple-700/60 shadow-xs'
+                        : 'text-slate-400 hover:text-purple-300'
+                    }`}
+                  >
+                    NPCs
+                  </button>
+                </div>
+              </div>
+
+              {/* Filtro 2: Tipo de Evento */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-slate-500 font-semibold shrink-0 text-[11px]">Tipo:</span>
+                <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setTypeFilter('all')}
+                    className={`px-2 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
+                      typeFilter === 'all'
+                        ? 'bg-slate-800 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTypeFilter('status')}
+                    className={`px-2 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
+                      typeFilter === 'status'
+                        ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow-xs'
+                        : 'text-slate-400 hover:text-cyan-300'
+                    }`}
+                    title="Alterações de status e condições"
+                  >
+                    Status
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTypeFilter('rolls')}
+                    className={`px-2 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
+                      typeFilter === 'rolls'
+                        ? 'bg-amber-950 text-amber-300 border border-amber-600/60 shadow-xs'
+                        : 'text-slate-400 hover:text-amber-300'
+                    }`}
+                    title="Rolagens de dados"
+                  >
+                    Rolagens
+                  </button>
+                </div>
+              </div>
+
+              {/* Filtro 3: Data (Compacto) */}
+              <div className="flex items-center gap-1 text-xs shrink-0">
+                <span className="text-slate-500 font-semibold shrink-0 text-[11px] flex items-center gap-1">
+                  <Calendar size={12} className="text-amber-400" />
+                  Data:
+                </span>
+                <div className="flex items-center gap-1 bg-slate-900 px-1.5 py-1 rounded-lg border border-slate-800">
+                  <input
+                    type="date"
+                    value={dateFilter === 'all' ? '' : dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value || 'all')}
+                    className="bg-transparent text-[11px] text-white font-mono focus:outline-none cursor-pointer w-[105px] max-w-[110px] [color-scheme:dark] p-0"
+                    title="Filtrar eventos por data"
+                  />
+                  {dateFilter !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setDateFilter('all')}
+                      className="p-0.5 text-slate-400 hover:text-white cursor-pointer shrink-0"
+                      title="Limpar filtro de data"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Rodada + Alternância de Visualização */}
-            <div className="md:col-span-3 flex items-center gap-2 justify-end">
+            {/* Bloco 2: Rodada + Alternância de Visualização */}
+            <div className="flex items-center gap-2 shrink-0">
               <div className="flex items-center gap-1">
                 <span className="text-slate-500 font-semibold text-[11px]">Rodada:</span>
                 <select
@@ -630,7 +637,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                       currentUserRole={currentUserRole}
                       currentUserName={currentUserName}
                       isPlayer={currentUserRole === 'jogador'}
-                      onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
+                      onDeleteEntry={userCanDelete ? onDeleteEntry : undefined}
                       onUpdateEntryComment={onUpdateEntryComment}
                     />
                   </div>
@@ -649,7 +656,6 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                       <th className="py-2.5 px-3">Combatente / Alvo</th>
                       <th className="py-2.5 px-3">Tipo</th>
                       <th className="py-2.5 px-3">Descrição / Efeito</th>
-                      <th className="py-2.5 px-3">Comentário</th>
                       <th className="py-2.5 px-3 text-right">Ações</th>
                     </tr>
                   </thead>
@@ -657,6 +663,11 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                     {paginatedLogs.map((entry) => {
                       const isRoll = entry.type === 'roll';
                       const isPlayerChar = entry.npcCharacterType === 'player';
+                      const isPassDay =
+                        entry.itemName === 'Passar o Dia' ||
+                        entry.npcName === 'Passar o Dia' ||
+                        (entry.id && String(entry.id).includes('passday')) ||
+                        (entry.description && entry.description.startsWith('Passar '));
                       const dt = getEntryDateTime(entry);
                       const rNum = entry.round !== undefined ? entry.round : 0;
                       return (
@@ -679,17 +690,25 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
 
                           {/* Coluna 3: Combatente / Alvo */}
                           <td className="py-2.5 px-3 whitespace-nowrap">
-                            <div className="font-bold text-slate-200">
-                              {entry.npcName || 'Mesa'}
-                            </div>
-                            <div className="text-[10px]">
-                              {isPlayerChar ? (
-                                <span className="text-emerald-400 font-semibold">Personagem</span>
-                              ) : (
-                                <span className="text-purple-400 font-semibold">NPC</span>
-                              )}
-                              {entry.playerName ? ` (${entry.playerName})` : ''}
-                            </div>
+                            {isPassDay ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-800/70 inline-flex items-center gap-1">
+                                🌅 Passar o dia
+                              </span>
+                            ) : (
+                              <>
+                                <div className="font-bold text-slate-200">
+                                  {entry.npcName || 'Mesa'}
+                                </div>
+                                <div className="text-[10px]">
+                                  {isPlayerChar ? (
+                                    <span className="text-emerald-400 font-semibold">Personagem</span>
+                                  ) : (
+                                    <span className="text-purple-400 font-semibold">NPC</span>
+                                  )}
+                                  {entry.playerName ? ` (${entry.playerName})` : ''}
+                                </div>
+                              </>
+                            )}
                           </td>
 
                           {/* Coluna 4: Tipo */}
@@ -720,18 +739,18 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                           </td>
 
                           {/* Coluna 5: Descrição / Efeito */}
-                          <td className="py-2.5 px-3 text-slate-300 max-w-xs break-words text-[11px]">
-                            {entry.description || '—'}
+                          <td className="py-2.5 px-3 text-slate-300 max-w-sm break-words text-[11px]">
+                            <span>{entry.description || '—'}</span>
+                            {entry.comment && (
+                              <span className="text-amber-300/90 italic font-sans ml-1">
+                                ({entry.comment})
+                              </span>
+                            )}
                           </td>
 
-                          {/* Coluna 6: Comentário */}
-                          <td className="py-2.5 px-3 text-slate-400 italic text-[11px] max-w-xs break-words">
-                            {entry.comment || '—'}
-                          </td>
-
-                          {/* Coluna 7: Ações */}
+                          {/* Coluna 6: Ações */}
                           <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                            {currentUserRole === 'mestre' && onDeleteEntry && (
+                            {userCanDelete && onDeleteEntry && (
                               <button
                                 type="button"
                                 onClick={() => onDeleteEntry(entry.id, entry.npcId, false)}
