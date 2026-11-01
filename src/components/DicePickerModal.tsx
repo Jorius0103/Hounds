@@ -96,16 +96,6 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
   const [customSides, setCustomSides] = useState<number>(6);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const handleRollClick = (count: number, sides: number) => {
@@ -125,11 +115,10 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
       className="fixed inset-0 select-none pointer-events-auto"
       style={{ zIndex: 99999 }}
     >
-      {/* Backdrop invisível para fechar ao clicar fora */}
+      {/* Backdrop invisível para bloquear cliques no fundo (não fecha ao clicar fora) */}
       <div
         className="fixed inset-0 bg-transparent"
         style={{ position: 'fixed', inset: 0, zIndex: 99998, background: 'transparent' }}
-        onClick={onClose}
       />
       {/* Popover Card estilizado no padrão unificado da Mesa */}
       <div
@@ -200,7 +189,7 @@ export const DicePickerModal: React.FC<DicePickerModalProps> = ({
               justifyContent: 'center',
               color: '#94a3b8',
             }}
-            title="Fechar (Esc)"
+            title="Fechar"
           >
             <X size={15} />
           </button>

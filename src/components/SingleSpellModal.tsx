@@ -298,12 +298,6 @@ export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
       }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div
         className="relative flex flex-col overflow-hidden"

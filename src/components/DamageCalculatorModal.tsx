@@ -454,12 +454,6 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   return (
     <div
       style={{ ...MODAL_BACKDROP_STYLE, padding: '24px 16px', overflowY: undefined }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div style={modalCardStyle('620px', { borderRadius: '18px' })}>
         <ModalHeader

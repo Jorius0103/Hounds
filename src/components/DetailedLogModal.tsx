@@ -130,17 +130,6 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
     }
   }, [isOpen, initialEntityFilter, initialTypeFilter, initialRoundFilter, initialSearch]);
 
-  // Tecla Escape para fechar
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !clearConfirmOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, clearConfirmOpen, onClose]);
-
   // Reset de página ao alterar filtros
   useEffect(() => {
     setCurrentPage(1);

@@ -4344,7 +4344,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
             backdropFilter: 'blur(4px)',
           }}
-          onClick={() => setInfoWeapon(null)}
         >
           <div
             style={{
@@ -4689,7 +4688,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             backgroundColor: 'rgba(0, 0, 0, 0.75)',
             backdropFilter: 'blur(4px)',
           }}
-          onClick={() => setInfoWeapon(null)}
         >
           <div
             style={{
@@ -4886,7 +4884,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
             backdropFilter: 'blur(4px)',
           }}
-          onClick={() => setInfoSpell(null)}
         >
           <div
             style={{

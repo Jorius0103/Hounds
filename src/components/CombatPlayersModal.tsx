@@ -27,16 +27,6 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  // Fecha com a tecla Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const filteredPlayers = players
@@ -67,7 +57,6 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
       }}
       role="dialog"
       aria-modal="true"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         className="relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
@@ -469,6 +458,27 @@ export const CombatPlayersModal: React.FC<CombatPlayersModalProps> = ({
               );
             })
           )}
+        </div>
+
+        {/* Rodapé fixo com botão Fechar */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            padding: '10px 18px',
+            borderTop: '1px solid #1e293b',
+            background: 'rgba(2, 6, 23, 0.6)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+          >
+            Fechar
+          </button>
         </div>
       </div>
     </div>

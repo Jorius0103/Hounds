@@ -39,9 +39,6 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         overflowY: 'auto',
         WebkitBackdropFilter: 'blur(4px)',
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
       role="dialog"
       aria-modal="true"
     >

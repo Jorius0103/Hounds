@@ -227,17 +227,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
     };
   };
 
-  // Fechar com ESC
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const validCombats = Array.isArray(combats)
@@ -526,9 +515,6 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
       }}
       role="dialog"
       aria-modal="true"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div
         style={{

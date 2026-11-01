@@ -53,16 +53,6 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
   const [charSearch, setCharSearch] = useState('');
   const [permSearch, setPermSearch] = useState('');
 
-  // Fecha com a tecla Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   // Filtra apenas os usuários com perfil de jogador (apenas dois perfis no sistema: mestre e jogador)
@@ -126,9 +116,6 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
       }}
       role="dialog"
       aria-modal="true"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div
         className="relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"

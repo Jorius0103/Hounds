@@ -80,7 +80,7 @@ export const ModalHeader: React.FC<ModalHeaderProps> = ({ icon, title, subtitle,
               color: '#94a3b8',
             }}
             className="hover:text-white hover:bg-slate-800 transition-colors"
-            title="Fechar (Esc)"
+            title="Fechar"
           >
             <X size={s.close} />
           </button>
