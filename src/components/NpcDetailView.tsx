@@ -848,6 +848,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     if (isViewer) return;
     const nextOverrides = { ...(npc.bodyPartDamageOverrides || {}) };
     delete nextOverrides[key];
+    if (key === 'left_arm') delete nextOverrides['left_forearm'];
+    if (key === 'right_arm') delete nextOverrides['right_forearm'];
+    if (key === 'left_leg') delete nextOverrides['left_shins'];
+    if (key === 'right_leg') delete nextOverrides['right_shins'];
     updateField('bodyPartDamageOverrides', nextOverrides);
   };
 

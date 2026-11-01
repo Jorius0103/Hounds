@@ -13,6 +13,7 @@ export interface RemoteSyncPayload {
     | 'SYNC_MASTER_ORDER'
     | 'SYNC_DICE_ROLL'
     | 'SYNC_ENTRY_COMMENT'
+    | 'SYNC_ENTRY_DELETE'
     | 'SYNC_SNAPSHOT_RESTORED'
     | 'SYNC_SNAPSHOTS_LIST';
   timestamp: number;

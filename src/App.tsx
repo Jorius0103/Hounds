@@ -4618,7 +4618,7 @@ export default function App() {
     });
 
     // Envia payload de exclusão para todas as abas e clientes conectados
-    const deletePayload = { type: 'SYNC_ENTRY_DELETE', entryId, timestamp: now };
+    const deletePayload = { type: 'SYNC_ENTRY_DELETE' as const, entryId, timestamp: now };
     onlineSyncService.sendPayloadImmediate(deletePayload);
     if (broadcastChannelRef.current) {
       try { broadcastChannelRef.current.postMessage(deletePayload); } catch (e) {}
