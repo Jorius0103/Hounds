@@ -109,9 +109,6 @@ window.addEventListener('hashchange', function () { revealDraft = null; });
 var _rSheet = renderSheetPage;
 // @ts-expect-error -- substitui a função de tab-fichas.js por uma que também desenha o botão de visibilidade
 renderSheetPage = function () { _rSheet(); tagPage(sheetById(S.route.sheetId), 'sheets'); };
-var _rAdv = renderAdvantagePage;
-// @ts-expect-error -- idem, tab-vantagens.js
-renderAdvantagePage = function () { _rAdv(); tagPage(advById(S.route.advId), 'advantages'); };
 var _rDisadv = renderDisadvantagePage;
 // @ts-expect-error -- idem, tab-desvantagens.js
 renderDisadvantagePage = function () { _rDisadv(); tagPage(disadvById(S.route.disadvId), 'disadvantages'); };
@@ -169,16 +166,12 @@ function renderPage() {
   if (r.page === 'map' && W.store) { watchMarkersFor(r.mapId); var em = mapById(r.mapId); if (r.explore && em) Explorer.open(em); }
   if (window.hubIsReactPage && window.hubIsReactPage(r.page)) return; // drawn by the React shell (src/hub/)
   // The long card lists use the width of the screen; the other pages keep a reading width.
-  pageRoot.classList.toggle('wide', r.page === 'advs' || r.page === 'perks' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
+  pageRoot.classList.toggle('wide', r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
   else if (r.page === 'boards') renderBoardsPage();
   else if (r.page === 'sheets') renderSheetsPage();
   else if (r.page === 'sheet') renderSheetPage();
-  else if (r.page === 'advs') renderAdvantagesPage();
-  else if (r.page === 'adv') renderAdvantagePage();
-  else if (r.page === 'perks') renderAdvantagesPage(true);
-  else if (r.page === 'perk') renderAdvantagePage();
   else if (r.page === 'disadvs') renderDisadvantagesPage();
   else if (r.page === 'disadv') renderDisadvantagePage();
   else if (r.page === 'skills') renderSkillsPage();
@@ -207,7 +200,7 @@ function onRoute() {
   // Another ally of the same sheet: its own drafts and choices, in the same tab (Ficha, Equip. or Magia).
   else if (r.page === 'sheet' && prev.allyId !== r.allyId) S.ui = { q: '', sheetTab: S.ui.sheetTab };
   S.route = r;
-  if (r.node && !byId[r.node] && /^(spell|adv|disadv|c?skill|tech|style|weapon|armor|item):/.test(r.node)) renderMenu(); // the menu lists only the open one
+  if (r.node && !byId[r.node] && /^(spell|adv|perk|disadv|c?skill|tech|style|weapon|armor|item):/.test(r.node)) renderMenu(); // the menu lists only the open one
   // The Mesa and a board use the whole screen: the menu stays collapsed and opens over them.
   var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa' || r.page === 'board';
   app.classList.toggle('on-mesa', isMesa);
@@ -280,7 +273,6 @@ function onData(kind) {
   if (S.route.page === 'sheet' && (S.ui.attrDraft || sheetDraftOpen() || gearEditing() || S.ui.dragging)) return; // a section being edited; the page redraws on save or cancel
   if (S.route.page === 'sheet' && document.activeElement && document.activeElement.classList.contains('gpts-in')) { S.ui.ptsStale = true; return; } // points being typed in the table; redraws when the field is left
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
-  if ((S.route.page === 'advs' || S.route.page === 'perks') && kind !== 'maps' && document.activeElement && document.activeElement.id === 'advSearch') { renderAdvList(); return; }
   if (S.route.page === 'disadvs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'disadvSearch') { renderDisadvList(); return; }
   if (S.route.page === 'skills' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'skillSearch') { renderSkillList(); return; }
   if (S.route.page === 'combat' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'combatSearch') { renderCombatList(); return; }

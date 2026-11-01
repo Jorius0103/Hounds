@@ -1,10 +1,11 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useMemo, useRef, useState} from 'react';
 import {useHub} from '../data';
 import {Crumbs} from '../ui/Crumbs';
 import {openDialog} from '../ui/Dialog';
 import {Icon} from '../ui/Icon';
+import {useListView} from '../ui/listView';
 import {MestreOnly} from '../ui/MestreOnly';
-import {PageCount, Pager, usePageJump} from '../ui/Pager';
+import {PageCount, Pager} from '../ui/Pager';
 import {SpellForm} from './MagiaForm';
 
 // Os campos em que a busca procura o texto (o nome, também em português, conta mais; js/busca-catalogos.js).
@@ -22,8 +23,7 @@ const CHANGE_TAGS: Record<string, string> = {created: 'Criada pelo Mestre', edit
 const CARD_TOP = {display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8};
 const CARD_TAGS = {display: 'flex', flexWrap: 'wrap', gap: 4} as const;
 
-// Busca, filtros e página da lista: ficam enquanto o site está aberto, então abrir uma magia e voltar devolve à mesma
-// página (a casca remonta a página a cada endereço).
+// Busca, filtros e página da lista, guardados enquanto o site está aberto (useListView).
 const view = {q: '', mine: false, college: '', spellClass: '', resistance: '', difficulty: '', book: '', change: '', page: 1};
 type SpellView = typeof view;
 
@@ -55,38 +55,14 @@ function filterSpells(v: SpellView) {
 // mesmas classes da versão antiga (css/paginas.css); os dados e as funções de magia continuam em js/tabs/tab-magias.js.
 export function SpellsPage() {
   const {W, version} = useHub();
-  const [v, setV] = useState<SpellView>(() => ({...view}));
-  // O campo de busca; a lista o segue 150 ms depois da última tecla (v.q).
-  const [typed, setTyped] = useState(view.q);
-  const timer = useRef(0);
   const results = useRef<HTMLDivElement>(null);
-  const toPage = usePageJump(results, page => setV(cur => ({...cur, page})));
+  const {v, typed, loaded, all, pg, filter, search, toPage} = useListView('spells', view, filterSpells, results);
   const can = isMestre(), warning = noticeText();
-
-  useEffect(() => {
-    loadCatalog('spells');
-    return () => clearTimeout(timer.current);
-  }, []);
-
-  // São mais de mil magias: a lista e as opções dos filtros só são refeitas quando os filtros ou os dados mudam.
-  const all = useMemo(() => (W.loaded.spells ? filterSpells(v) : []), [v, version]);
+  // As opções dos filtros saem das mais de mil magias: só são refeitas quando os dados mudam.
   const options = useMemo(() => ({books: spellBooks(), colleges: spellColleges(), classes: spellClasses(), resistances: spellResistances()}), [version]);
-  const pg = pageOf(all, v.page);
-
-  useEffect(() => {
-    Object.assign(view, v, {q: typed}, W.loaded.spells ? {page: pg.page} : null);
-  });
-
-  // Cada filtro novo volta à primeira página.
-  const filter = (p: Partial<SpellView>) => setV(cur => ({...cur, ...p, page: 1}));
-  function search(q: string) {
-    setTyped(q);
-    clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => filter({q}), 150);
-  }
 
   function list() {
-    if (!W.loaded.spells) return <p className="lede">Carregando magias…</p>;
+    if (!loaded) return <p className="lede">Carregando magias…</p>;
     if (!all.length) {
       if (!(W.spells || []).length && !v.change) {
         return (

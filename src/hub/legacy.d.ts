@@ -196,6 +196,31 @@ declare global {
   /** O que o Mestre mudou na magia: 'created', 'edited', 'hidden' (só para ele) ou '' (como no livro). */
   function spellChange(s: Spell): string;
 
+  /** js/tabs/tab-vantagens.js: uma vantagem pelo id (ou o de uma entrada que mudou de página no livro) e o endereço dela, em Vantagens ou, num perk, em Perks. */
+  function advById(id: string | null | undefined): Advantage | null;
+  function advHref(id: string): string;
+  /** Se a entrada é um perk (o tipo Perk), que tem a lista e as páginas dele (#perks, #perk~id). */
+  function isPerkEntry(a: Advantage | null): boolean;
+  /** Os valores já usados num campo (os tipos, os livros), em ordem alfabética. */
+  function advValues(field: 'type' | 'book'): string[];
+  /** A chave do tipo ('adv', 'perk', 'talent', 'exp', 'ref'), o rótulo em português (Vantagem, Perk…) e a classe do selo. */
+  function advTypeKey(t: string | undefined): string;
+  function advTypeLabel(t: string | undefined): string;
+  function advTypeClass(t: string | undefined): string;
+  /** js/tabs/ficha-efeitos.js: os efeitos cadastrados de uma vantagem, limpos; e, sem eles, os do livro para uma linha da ficha (o nome e os pontos). */
+  function advEffects(a: Advantage): AdvEffect[];
+  function advBookFx(a: Advantage, row: {name: string; pts: number}): AdvEffect[];
+  /** "+1 por nível (máx. +3) em ST · não acumula · só quando: …" */
+  function advEffectText(e: AdvEffect): string;
+  /** As vantagens que a ficha já aplica sozinha (Combat Reflexes, Magery, talentos…): efeitos cadastrados nelas não somam. */
+  var ADV_FX_BUILTIN_RE: RegExp;
+  /** Os alvos de um efeito, [valor, rótulo], e os campos de um alvo (atributos, defesas…); [] nos que levam nomes ou valem para todos. */
+  var ADV_FX_TARGETS: [string, string][];
+  function advFxKeys(target: string): [string, string][];
+  /** Um efeito do formulário, com os campos como estão (os números e os nomes em texto), limpo; um efeito por nomes precisa de ao menos um. */
+  function cleanAdvEffect(e: Partial<Record<keyof AdvEffect, unknown>>): AdvEffect;
+  function advEffectOk(e: AdvEffect): boolean;
+
   /** js/mundo.js e as abas de js/tabs/: as operações que gravam no banco. */
   var Ops: {
     createMap(name: string, parentId: string | null, file: File, dims: {w: number; h: number}, visible: boolean, shared: string[]): Promise<string>;
@@ -273,6 +298,13 @@ declare global {
     deleteSpell(s: Spell): Promise<unknown>;
     /** Desfaz as alterações do Mestre numa entrada dos livros: ela volta como no livro. */
     restoreCatalogItem(col: string, item: Doc): Promise<unknown>;
+    /** Só o Mestre. O tipo vazio fica "Vantagem"; os efeitos são limpos, e os que precisam de nomes e não têm saem. */
+    saveAdvantage(
+      a: Advantage | null,
+      fields: {name: string; cost: string; type: string; book: string; page: string; description: string; effects: AdvEffect[]; visible: boolean; sharedWith: string[]},
+    ): Promise<string>;
+    /** Uma vantagem dos livros fica marcada como excluída; a do Mestre sai do banco. */
+    deleteAdvantage(a: Advantage): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */

@@ -6,6 +6,7 @@ import {openDialog} from '../ui/Dialog';
 import {FoldBox} from '../ui/FoldBox';
 import {Icon} from '../ui/Icon';
 import {PtName} from '../ui/PtName';
+import {RestoreButton} from '../ui/RestoreButton';
 import {VisibilityControls} from '../ui/Visibility';
 import {SpellForm} from './MagiaForm';
 
@@ -87,7 +88,7 @@ export function SpellPage({route}: HubPageProps) {
         </div>
         {can ? (
           <div className="btn-row">
-            {s.catalog && rawHas('spells', s.id) ? <RestoreButton s={s} /> : null}
+            {s.catalog && rawHas('spells', s.id) ? <RestoreButton col="spells" item={s} id="restoreSpellBtn" done="Magia restaurada como no livro." /> : null}
             <button className="btn" type="button" id="editSpellBtn" onClick={() => openDialog(<SpellForm s={s} />)}>
               <Icon paths={ICON.edit} size={15} />
               Editar magia
@@ -165,26 +166,5 @@ function BoxSection({title, text}: {title: string; text: string}) {
         <p style={{margin: 0, fontSize: 14, lineHeight: 1.6}}>{text}</p>
       </div>
     </section>
-  );
-}
-
-// "Restaurar original" de uma magia dos livros que o Mestre mudou: o documento dele sai e ela volta como no livro. O
-// botão fica desativado depois do clique, até sumir com a mudança nos dados; quando aparece de novo, começa ativo.
-function RestoreButton({s}: {s: Spell}) {
-  const [busy, setBusy] = useState(false);
-  function restore() {
-    setBusy(true);
-    Ops.restoreCatalogItem('spells', s).then(
-      () => toast('Magia restaurada como no livro.'),
-      er => {
-        setBusy(false);
-        toast(errorText(er), true);
-      },
-    );
-  }
-  return (
-    <button className="btn" type="button" id="restoreSpellBtn" title="Desfaz as alterações do Mestre nesta entrada" disabled={busy} onClick={restore}>
-      Restaurar original
-    </button>
   );
 }
