@@ -6,22 +6,27 @@ export type TextPickerOption<T> = {label: string; sub?: string; pick: T};
 
 /**
  * Seletor em que cada escolhido tem ao lado um campo curto de texto livre (o cargo de um membro), como o
- * textPicker de js/tabs/tab-organizacoes.js: a busca abre a lista de sugestões, navegável pelo teclado, e cada
- * escolha vira uma linha com o campo de texto, que ganha o foco; Enter nele volta para a busca.
+ * textPicker que saiu de js/tabs/tab-organizacoes.js: a busca abre a lista de sugestões, navegável pelo teclado, e
+ * cada escolha vira uma linha com o campo de texto, que ganha o foco; Enter nele volta para a busca.
  *   sel/onChange: os escolhidos, cada um com o seu text · find(q, raw): as opções para a busca já normalizada (q)
  *   e como foi digitada (raw), na ordem de exibição · chip(s): como mostrar um escolhido, ou null quando não dá
  *   · name(s): o nome dele, para os rótulos · rowKey(s): a chave da linha · datalist: as sugestões do campo de
- *   texto · empty: sem opções, a busca fica desativada com esse texto
+ *   texto · empty: sem opções, a busca fica desativada com esse texto · optionId: o começo do id de cada opção
+ *   (sem ele, o id do campo + 'opt') · textAria(s): o rótulo do campo de texto de um escolhido (sem ele, textLabel
+ *   + ' de ' + o nome) · subAlways: o <small> de cada opção mesmo sem texto
  */
 export function TextPicker<T extends {text: string}>({
   id,
   listId,
   boxId,
+  optionId,
   label,
   placeholder,
   empty = '',
   hint,
   textLabel,
+  textAria,
+  subAlways = false,
   datalist,
   sel,
   onChange,
@@ -33,11 +38,14 @@ export function TextPicker<T extends {text: string}>({
   id: string;
   listId: string;
   boxId: string;
+  optionId?: string;
   label: string;
   placeholder: string;
   empty?: string;
   hint?: ReactNode;
   textLabel: string;
+  textAria?: (s: T) => string;
+  subAlways?: boolean;
   datalist: {id: string; options: string[]};
   sel: T[];
   onChange: (sel: T[]) => void;
@@ -57,6 +65,7 @@ export function TextPicker<T extends {text: string}>({
   // O foco depois que a seleção nova é desenhada: o campo de texto da linha escolhida (o índice), ou a busca depois
   // de tirar um escolhido ('input'), para a lista que o foco abre já oferecer de novo o que saiu.
   const focusAfter = useRef<number | 'input' | null>(null);
+  const optId = optionId || id + 'opt';
 
   useEffect(() => {
     const f = focusAfter.current;
@@ -73,7 +82,7 @@ export function TextPicker<T extends {text: string}>({
     const a = Math.min(want, found.length - 1);
     setActive(a);
     setOpen(true);
-    setActiveId(id + 'opt' + a);
+    setActiveId(optId + a);
   }
 
   function pick(i: number) {
@@ -120,7 +129,7 @@ export function TextPicker<T extends {text: string}>({
                   maxLength={60}
                   autoComplete="off"
                   placeholder={textLabel}
-                  aria-label={textLabel + ' de ' + name(s)}
+                  aria-label={textAria ? textAria(s) : textLabel + ' de ' + name(s)}
                   value={s.text}
                   onChange={e => onChange(sel.map((x, j) => (j === i ? {...x, text: e.target.value} : x)))}
                   onKeyDown={e => {
@@ -172,9 +181,9 @@ export function TextPicker<T extends {text: string}>({
         />
         <div className="suggest" id={listId} role="listbox" hidden={!open} onMouseDown={e => e.preventDefault()}>
           {options.map((x, i) => (
-            <button type="button" role="option" id={id + 'opt' + i} data-i={i} key={i} className={i === active ? 'act' : ''} aria-selected={i === active} onClick={() => pick(i)}>
+            <button type="button" role="option" id={optId + i} data-i={i} key={i} className={i === active ? 'act' : ''} aria-selected={i === active} onClick={() => pick(i)}>
               {x.label}
-              {x.sub ? <small>{x.sub}</small> : null}
+              {x.sub || subAlways ? <small>{x.sub}</small> : null}
             </button>
           ))}
         </div>

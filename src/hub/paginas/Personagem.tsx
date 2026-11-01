@@ -2,16 +2,18 @@ import {Fragment, useState} from 'react';
 import type {HubPageProps} from '../pages';
 import {useHub} from '../data';
 import {Crumbs} from '../ui/Crumbs';
+import {openDialog} from '../ui/Dialog';
 import {FoldBox} from '../ui/FoldBox';
 import {Icon} from '../ui/Icon';
 import {useImageUrl} from '../ui/ImageSlot';
 import {RowLink} from '../ui/RowLink';
 import {VisibilityControls} from '../ui/Visibility';
+import {CharForm} from './PersonagemForm';
 
 // Página de um personagem (#personagem~id): a raça e as organizações, o retrato, a descrição e as caixas do lado
 // (informações, a ficha, relacionamentos, eventos, mapas e locais), com as mesmas classes da versão antiga
-// (css/paginas.css). Os formulários continuam no modal antigo: o do personagem no openCharForm de
-// js/tabs/tab-personagens.js e o de escolher a ficha no openSheetLinkForm de js/tabs/tab-fichas.js.
+// (css/paginas.css). O formulário de escolher a ficha continua no modal antigo (o openSheetLinkForm de
+// js/tabs/tab-fichas.js).
 export function CharPage({route}: HubPageProps) {
   const {W} = useHub();
   const c = charById(route.charId);
@@ -93,7 +95,7 @@ export function CharPage({route}: HubPageProps) {
         </div>
         {can ? (
           <div className="btn-row">
-            <button className="btn" type="button" id="editCharBtn" onClick={() => openCharForm(c)}>
+            <button className="btn" type="button" id="editCharBtn" onClick={() => openDialog(<CharForm c={c} />)}>
               <Icon paths={ICON.edit} size={15} />
               Editar personagem
             </button>

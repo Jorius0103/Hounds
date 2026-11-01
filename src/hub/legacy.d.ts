@@ -126,8 +126,10 @@ declare global {
   function charMaps(c: Character): HMap[];
   /** As relações que o personagem declarou e, depois, as que outros declararam com ele (back), cada outro uma vez. */
   function charRelations(c: Character): {c: Character; type: string; back?: boolean}[];
-  /** O formulário de criar (c null) e editar um personagem, no modal antigo. */
-  function openCharForm(c: Character | null): void;
+  /** As sugestões do formulário: os valores já usados num campo (as raças), as raças padrão e os tipos de relação. */
+  function distinct(field: 'race'): string[];
+  var RACE_DEFAULTS: string[];
+  function relationTypes(): string[];
   /** A apresentação de um personagem na tela de todos (o botão dos cartões da lista). */
   var CharPresentation: {broadcast(id: string): void};
 
@@ -204,6 +206,17 @@ declare global {
     deleteLocation(l: HLocation): Promise<unknown>;
     /** Os ids dos personagens escolhidos, criando os que ainda não existem (da Mesa ou nomes novos). */
     ensureCharacters(sel: {id?: string; name: string; source?: string; mesaId?: string | null}[], visible: boolean, shared: string[]): Promise<string[]>;
+    /** locIds: os locais do personagem (o vínculo fica no local, em characterIds). */
+    saveCharacter(
+      c: Character | null,
+      fields: {name: string; description: string; race: string; mapIds: string[]; relations: Relation[]; visible: boolean; sharedWith: string[]},
+      newFile: File | null,
+      newDims: {w: number; h: number} | null,
+      removeImage: boolean,
+      locIds: string[],
+    ): Promise<string>;
+    /** As organizações do personagem com os cargos; um nome novo (id null) vira uma organização. */
+    setCharOrgs(charId: string, picks: {id: string | null; name?: string; text: string}[], visible: boolean, shared: string[]): Promise<unknown>;
     /** O personagem sai dos locais, das relações dos outros, das organizações e dos eventos. */
     deleteCharacter(c: Character): Promise<unknown>;
     /** A ficha do personagem (null: nenhuma); quem mais tinha essa ficha fica sem. */

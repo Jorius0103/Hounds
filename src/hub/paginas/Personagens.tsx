@@ -1,13 +1,15 @@
 import {useState} from 'react';
 import {useHub} from '../data';
 import {Crumbs} from '../ui/Crumbs';
+import {openDialog} from '../ui/Dialog';
 import {Icon} from '../ui/Icon';
 import {ImageSlot} from '../ui/ImageSlot';
+import {CharForm} from './PersonagemForm';
 
 // Página Personagens (#personagens): todos os personagens em cartões, com a busca por nome, raça, organização,
 // descrição, locais, mapas e relacionamentos, e em cada cartão o botão de apresentar o personagem para todos. As
-// mesmas classes da versão antiga (css/paginas.css); os dados, a gravação, o formulário (openCharForm) e a
-// apresentação (CharPresentation) continuam em js/tabs/tab-personagens.js.
+// mesmas classes da versão antiga (css/paginas.css); os dados, a gravação e a apresentação (CharPresentation)
+// continuam em js/tabs/tab-personagens.js.
 export function CharsPage() {
   const {W} = useHub();
   const [q, setQ] = useState('');
@@ -72,7 +74,7 @@ export function CharsPage() {
           <p className="lede">Jogadores, aliados e NPCs do mundo. Cada personagem pode ter raça, organização e locais onde vive ou costuma estar.</p>
         </div>
         {can ? (
-          <button className="btn primary" type="button" id="newCharBtn" onClick={() => openCharForm(null)}>
+          <button className="btn primary" type="button" id="newCharBtn" onClick={() => openDialog(<CharForm c={null} />)}>
             <Icon paths={ICON.plus} size={16} stroke={2.4} />
             Novo personagem
           </button>

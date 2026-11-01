@@ -2,8 +2,8 @@
    Hounds — Aba Organizações (Mundo › Organizações)
    A lista, a página da organização e o formulário são React (src/hub/
    paginas/Organizacoes.tsx, Organizacao.tsx e OrganizacaoForm.tsx); aqui
-   ficam os dados, a gravação (Ops), a migração do campo antigo e o que o
-   formulário de personagem usa (textPicker, rankTypes).
+   ficam os dados (como os cargos, rankTypes, que o formulário de
+   personagem também usa), a gravação (Ops) e a migração do campo antigo.
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
@@ -30,7 +30,6 @@ function withDefaults(defaults, used) {
 }
 function rankTypes() { var used = []; W.organizations.forEach(function (o) { (o.members || []).forEach(function (m) { used.push(m.rank); }); }); return withDefaults(RANK_DEFAULTS, used); }
 function reputations() { return withDefaults(REPUTATION_DEFAULTS, W.organizations.map(function (o) { return o.reputation; })); }
-function datalistHtml(id, list) { return '<datalist id="' + id + '">' + list.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>'; }
 function rankOrder(rank) { var r = norm(rank); if (!r) return RANK_DEFAULTS.length + 1; for (var i = 0; i < RANK_DEFAULTS.length; i++) if (norm(RANK_DEFAULTS[i]) === r) return i; return RANK_DEFAULTS.length; }
 // Visible members as [{ c, rank }]: by rank (Líder first, unranked last), then by name.
 function orgMembers(o) {
@@ -128,46 +127,4 @@ function migrateOrganizations() {
       return g.chars.reduce(function (q, c) { return q.then(function () { return W.store.patch('characters', c.id, { organization: '', updatedAt: t }); }); }, Promise.resolve());
     }).catch(function () {});
   });
-}
-
-// A picker whose picks each carry a short free-text field (a member's rank). Used by the character form;
-// the React version is src/hub/ui/TextPicker.tsx.
-//   sel: [{ id, text, … }] (edited in place) · find(q, raw): [{ label, sub, pick }] · chip(s), name(s): how a pick shows.
-function textPicker(o) {
-  var input = $(o.input), list = $(o.list), box = $(o.box), sel = o.sel, active = 0, options = [];
-  function paintSel() {
-    box.innerHTML = sel.map(function (s, i) {
-      return '<div class="rel-row">' + o.chip(s) +
-        '<input type="text" data-ti="' + i + '" list="' + o.datalist + '" maxlength="60" autocomplete="off" placeholder="' + esc(o.textLabel) + '" aria-label="' + esc(o.textLabel + ' de ' + o.name(s)) + '" value="' + esc(s.text) + '">' +
-        '<button class="icon-btn" type="button" data-rm="' + i + '" aria-label="Remover ' + esc(o.name(s)) + '">' + svg(ICON.x, 14, 2.6) + '</button></div>';
-    }).join('');
-    fillImages(box);
-  }
-  function paintList() {
-    options = o.find(norm(input.value.trim()), input.value.trim()).slice(0, 40);
-    if (!options.length) { list.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
-    active = Math.min(active, options.length - 1);
-    list.innerHTML = options.map(function (x, i) { return '<button type="button" role="option" id="' + o.input + 'opt' + i + '" data-i="' + i + '" class="' + (i === active ? 'act' : '') + '" aria-selected="' + (i === active) + '">' + esc(x.label) + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</button>'; }).join('');
-    list.hidden = false; input.setAttribute('aria-expanded', 'true'); input.setAttribute('aria-activedescendant', o.input + 'opt' + active);
-  }
-  function pick(i) {
-    var x = options[i]; if (!x) return;
-    sel.push(x.pick); input.value = ''; active = 0; paintSel(); list.hidden = true; input.setAttribute('aria-expanded', 'false');
-    var t = box.querySelector('[data-ti="' + (sel.length - 1) + '"]'); if (t) t.focus();
-  }
-  input.addEventListener('focus', paintList);
-  input.addEventListener('input', function () { active = 0; paintList(); });
-  input.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowDown') { e.preventDefault(); if (list.hidden) { active = 0; paintList(); } else { active = Math.min(options.length - 1, active + 1); paintList(); } }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(0, active - 1); paintList(); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (!list.hidden && options.length) pick(active); }
-    else if (e.key === 'Escape' && !list.hidden) { e.stopPropagation(); list.hidden = true; }
-  });
-  input.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement !== input) list.hidden = true; }, 150); });
-  list.addEventListener('mousedown', function (e) { e.preventDefault(); });
-  list.addEventListener('click', function (e) { var b = e.target.closest('[data-i]'); if (b) pick(+b.getAttribute('data-i')); });
-  box.addEventListener('input', function (e) { var t = e.target.closest('[data-ti]'); if (t) sel[+t.getAttribute('data-ti')].text = t.value; });
-  box.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('[data-ti]')) { e.preventDefault(); input.focus(); } });
-  box.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; sel.splice(+b.getAttribute('data-rm'), 1); paintSel(); input.focus(); });
-  paintSel();
 }
