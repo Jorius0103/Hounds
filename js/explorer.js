@@ -225,7 +225,7 @@ var Explorer = (function () {
     return '<option value="">Nenhum</option>' + (here.length ? '<optgroup label="Neste mapa">' + here.map(opt).join('') + '</optgroup>' : '') + (others.length ? '<optgroup label="Outros locais">' + others.map(opt).join('') + '</optgroup>' : '');
   }
   // Every map in hierarchy order, this one shown but not selectable (so its submaps read as
-  // its own). Unlike mapOptions, the maps inside this one stay: a city inside the kingdom is the usual link.
+  // its own). Unlike the map selects of the forms (src/hub/ui/options.ts), the maps inside this one stay: a city inside the kingdom is the usual link.
   function linkMapOptions(selectedId) {
     var out = '<option value="">Nenhum</option>';
     (function walk(pid, depth) {

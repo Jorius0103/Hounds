@@ -15,7 +15,9 @@ function watchMarkersFor(mapId) {
   S.markersFor = mapId; S.markers = [];
   S.unMarkers = W.store.watch('maps/' + mapId + '/markers', function (list) {
     S.rawMarkers = list; S.markers = list = pub(list);
-    if (S.route && S.route.mapId === mapId) { if (S.route.explore) Explorer.setMarkers(list); else renderMapPage(); }
+    if (S.route && S.route.mapId === mapId && S.route.explore) Explorer.setMarkers(list);
+    // The map page is React (src/hub/paginas/Mapa.tsx): it redraws on this, reading S.markers.
+    try { window.dispatchEvent(new CustomEvent('hub:data', { detail: 'markers' })); } catch (e) {}
   }, function () { toast('Não foi possível carregar os marcadores.', true); });
 }
 var topTitle = $('topTitle');
@@ -104,10 +106,8 @@ function revealMenu(put, icon, item, col) {
 document.addEventListener('mousedown', function (e) { if (revealDraft && !(e.target.closest && e.target.closest('.vis-menu'))) closeReveal(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && revealDraft) { closeReveal(); var b = $('visToggle'); if (b) b.focus(); } });
 window.addEventListener('hashchange', function () { revealDraft = null; });
-var _rMap = renderMapPage, _rChar = renderCharPage;
-// @ts-expect-error -- substitui a função de tab-mapas.js por uma que também desenha o botão de visibilidade
-renderMapPage = function () { _rMap(); tagPage(mapById(S.route.mapId), 'maps'); };
-// @ts-expect-error -- idem, tab-personagens.js
+var _rChar = renderCharPage;
+// @ts-expect-error -- substitui a função de tab-personagens.js por uma que também desenha o botão de visibilidade
 renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'characters'); };
 var _rSheet = renderSheetPage;
 // @ts-expect-error -- idem, tab-fichas.js
@@ -171,14 +171,14 @@ function renderPage() {
   if (r.page !== 'sheet') paintAllyView(false);
   if (r.page === 'mesa') return;
   if (r.page === 'board') { renderBoardPage(); return; }
+  // The map page is React; the markers it shows (S.markers) and the explorer over it are still started here.
+  if (r.page === 'map' && W.store) { watchMarkersFor(r.mapId); var em = mapById(r.mapId); if (r.explore && em) Explorer.open(em); }
   if (window.hubIsReactPage && window.hubIsReactPage(r.page)) return; // drawn by the React shell (src/hub/)
   // The long card lists use the width of the screen; the other pages keep a reading width.
   pageRoot.classList.toggle('wide', r.page === 'spells' || r.page === 'advs' || r.page === 'perks' || r.page === 'disadvs' || r.page === 'skills' || r.page === 'combat' || r.page === 'weapons' || r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
   else if (r.page === 'boards') renderBoardsPage();
-  else if (r.page === 'maps') renderMapsPage();
-  else if (r.page === 'map') { watchMarkersFor(r.mapId); renderMapPage(); var m = mapById(r.mapId); if (r.explore && m) Explorer.open(m); }
   else if (r.page === 'chars') renderCharsPage();
   else if (r.page === 'char') renderCharPage();
   else if (r.page === 'sheets') renderSheetsPage();
@@ -289,7 +289,6 @@ function onData(kind) {
   if (S.route.page === 'note' && S.ui.editing) return;
   if (S.route.page === 'sheet' && (S.ui.attrDraft || sheetDraftOpen() || gearEditing() || S.ui.dragging)) return; // a section being edited; the page redraws on save or cancel
   if (S.route.page === 'sheet' && document.activeElement && document.activeElement.classList.contains('gpts-in')) { S.ui.ptsStale = true; return; } // points being typed in the table; redraws when the field is left
-  if (S.route.page === 'maps' && document.activeElement && document.activeElement.id === 'mapSearch') { renderMapList(); return; }
   if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
   if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }

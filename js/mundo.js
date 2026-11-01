@@ -218,34 +218,6 @@ function locChain(id) { var out = [], cur = id, guard = 0; while (cur && W.locId
 function locDescendants(id) { var out = []; childLocs(id).forEach(function (c) { out.push(c.id); out = out.concat(locDescendants(c.id)); }); return out; }
 function locPathText(id) { return locChain(id).map(function (l) { return l.name; }).join(' › '); }
 function badLocParents(id) { var bad = {}; if (id) { bad[id] = true; locDescendants(id).forEach(function (d) { bad[d] = true; }); } return bad; }
-function locParentOptions(selected, exclude, noneLabel) {
-  var out = '<option value="">' + esc(noneLabel) + '</option>';
-  (function walk(pid, depth) {
-    childLocs(pid).forEach(function (l) {
-      if (exclude && exclude[l.id]) return;
-      var pre = depth ? '   '.repeat(depth - 1) + '└ ' : '';
-      out += '<option value="' + esc(l.id) + '"' + (l.id === selected ? ' selected' : '') + '>' + pre + esc(l.name) + '</option>';
-      walk(l.id, depth + 1);
-    });
-  })(null, 0);
-  return out;
-}
-
-// Hierarchical <option>s, reused by every map selector.
-function mapOptions(selected, exclude, noneLabel) {
-  var out = '<option value="">' + esc(noneLabel) + '</option>';
-  (function walk(pid, depth) {
-    childMaps(pid).forEach(function (m) {
-      if (!exclude || !exclude[m.id]) {
-        var pre = depth ? '   '.repeat(depth - 1) + '└ ' : '';
-        out += '<option value="' + esc(m.id) + '"' + (m.id === selected ? ' selected' : '') + '>' + pre + esc(m.name) + '</option>';
-        walk(m.id, depth + 1);
-      }
-    });
-  })(null, 0);
-  return out;
-}
-
 
 /* ---------- visibility ----------
    What people create here (maps, places, characters, markers, notebooks

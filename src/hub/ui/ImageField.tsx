@@ -10,6 +10,8 @@ export const noImagePick: ImagePick = {file: null, dims: null, removed: false, e
  * Campo de imagem como o imageFieldHtml e o imageField de js/modal.js: escolher ou arrastar um arquivo, a prévia
  * com o nome e as medidas, remover (removable) e a imagem já salva (existing: a ref, o nome e as medidas para
  * mostrar). O formulário guarda o que foi escolhido (value/onChange) e pode dar foco à área de soltar (dropRef).
+ * onPick: um arquivo foi aceito (o formulário de mapa tira dele o nome). Para voltar à imagem com que o campo
+ * abriu, como o reset() do imageField, o formulário põe noImagePick no value.
  */
 export function ImageField({
   id,
@@ -19,6 +21,7 @@ export function ImageField({
   existing = null,
   value,
   onChange,
+  onPick,
   dropRef,
 }: {
   id: string;
@@ -28,6 +31,7 @@ export function ImageField({
   existing?: {ref: string; name: string; dims: string} | null;
   value: ImagePick;
   onChange: Dispatch<SetStateAction<ImagePick>>;
+  onPick?: (f: File) => void;
   dropRef?: Ref<HTMLLabelElement>;
 }) {
   const existingUrl = useImageUrl(existing && existing.ref);
@@ -42,6 +46,16 @@ export function ImageField({
     },
     [],
   );
+
+  // O formulário tirou o arquivo escolhido (value sem file): a prévia volta à imagem atual, e o mesmo arquivo pode
+  // ser escolhido de novo.
+  useEffect(() => {
+    if (value.file || !picked) return;
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+    objectUrl.current = null;
+    setPicked(null);
+    if (input.current) input.current.value = '';
+  }, [value.file]);
 
   const setError = (error: string) => onChange(v => ({...v, error}));
 
@@ -61,6 +75,7 @@ export function ImageField({
       const dims = {w: img.naturalWidth, h: img.naturalHeight};
       setPicked({url, name: f.name, dims: dims.w + ' × ' + dims.h + ' px · ' + fmtBytes(f.size)});
       onChange(v => ({...v, file: f, dims, removed: false, error: ''}));
+      if (onPick) onPick(f);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);

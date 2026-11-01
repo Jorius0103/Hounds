@@ -14,7 +14,7 @@ type CharOption = CharPick & {tag: string; create?: boolean};
  * Criar (l null) ou editar um local: nome, o local onde fica, duas imagens, descrição, personagens, mapa e
  * visibilidade. Grava com o Ops.saveLocation de js/mundo.js, depois de criar os personagens que ainda não existem
  * (Ops.ensureCharacters). presetMap e presetParent: aberto por "Novo local dentro deste" (página do local) ou
- * "Novo local neste mapa" (página do mapa, pelo window.hubOpenLocationForm de src/hub/main.tsx).
+ * "Novo local neste mapa" (página do mapa).
  */
 export function LocationForm({l, presetMap = '', presetParent = ''}: {l: HLocation | null; presetMap?: string; presetParent?: string}) {
   const {W} = useHub();

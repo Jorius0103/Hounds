@@ -1,4 +1,4 @@
-import {useEffect, useState, type ReactNode} from 'react';
+import {useEffect, useState} from 'react';
 import type {HubPageProps} from '../pages';
 import {useHub} from '../data';
 import {Crumbs} from '../ui/Crumbs';
@@ -7,6 +7,8 @@ import {FoldBox} from '../ui/FoldBox';
 import {Icon} from '../ui/Icon';
 import {ImageSlot, useImageUrl} from '../ui/ImageSlot';
 import {PathTree} from '../ui/MapTree';
+import {PersonChip} from '../ui/PersonChip';
+import {RowLink} from '../ui/RowLink';
 import {VisibilityControls} from '../ui/Visibility';
 import {LocationForm} from './LocalForm';
 
@@ -193,12 +195,7 @@ export function LocalPage({route}: HubPageProps) {
             {chars.length ? (
               <div className="people">
                 {chars.map(c => (
-                  <a className="person" href={charHref(c.id)} key={c.id}>
-                    <ImageSlot as="i" imgRef={c.image && c.image.ref}>
-                      {initials(c.name)}
-                    </ImageSlot>
-                    {c.name}
-                  </a>
+                  <PersonChip c={c} key={c.id} />
                 ))}
               </div>
             ) : (
@@ -322,20 +319,6 @@ function useMarkerAction(l: HLocation | null, m: HMap | null, version: number) {
     };
   }, [key, version]);
   return found && found.key === key ? found.action : null;
-}
-
-// Uma linha das listas das caixas: a miniatura (o thumbSlot de js/pagina.js) e o que vem depois dela.
-function RowLink({href, imgRef, icon, children}: {href: string; imgRef?: string | null; icon: string; children: ReactNode}) {
-  return (
-    <li>
-      <a className="row-link" href={href}>
-        <ImageSlot className="mthumb" imgRef={imgRef}>
-          <Icon paths={icon} size={16} stroke={1.8} />
-        </ImageSlot>
-        {children}
-      </a>
-    </li>
-  );
 }
 
 // A árvore de um local: ele e tudo o que está dentro, em todos os níveis. Um clique num local fecha e vai até ele.

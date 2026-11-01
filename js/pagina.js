@@ -35,33 +35,6 @@ function noticeText() {
   return '';
 }
 function notice() { var t = noticeText(); return t ? '<p class="notice">' + esc(t) + '</p>' : ''; }
-function mapRow(m, here, extra) {
-  var k = childMaps(m.id).length, L = mapLocations(m.id).length;
-  var meta = [k ? plural(k, 'submapa', 'submapas') : '', L ? plural(L, 'local', 'locais') : ''].filter(Boolean).join(' · ');
-  return '<a class="mrow' + (here ? ' here' : '') + '" href="' + mapHref(m.id) + '"' + (here ? ' aria-current="page"' : '') + '>' + thumbSlot(m.image && m.image.ref, ICON.map) +
-    '<span class="mtext">' + (extra || '') + '<b>' + esc(m.name) + '</b>' + (meta ? '<span class="meta">' + meta + '</span>' : '') + '</span></a>';
-}
-function fullTree(pid) {
-  var list = childMaps(pid);
-  if (!list.length) return '';
-  return '<ul>' + list.map(function (m) { return '<li>' + mapRow(m) + fullTree(m.id) + '</li>'; }).join('') + '</ul>';
-}
-// A chain of maps from the top level down, optionally ending in a location leaf and/or listing the last map's children.
-function pathTree(chain, opts) {
-  opts = opts || {};
-  function level(i) {
-    if (i >= chain.length) {
-      if (opts.leaf) return '<ul><li><span class="mrow here">' + thumbSlot(opts.leaf.image && opts.leaf.image.ref, ICON.pin) + '<span class="mtext"><span class="lvl">Local</span><b>' + esc(opts.leaf.name) + '</b></span></span></li></ul>';
-      return '';
-    }
-    var m = chain[i], last = i === chain.length - 1;
-    var inner = level(i + 1);
-    if (last && opts.kids) inner += (function () { var k = childMaps(m.id); return k.length ? '<ul>' + k.map(function (c) { return '<li>' + mapRow(c) + '</li>'; }).join('') + '</ul>' : ''; })();
-    return '<ul><li>' + mapRow(m, last && opts.markLast) + inner + '</li></ul>';
-  }
-  var html = level(0);
-  return '<div class="mtree path-tree">' + html.replace(/^<ul>/, '').replace(/<\/ul>$/, '') + '</div>';
-}
 // Options for idPicker: maps and locations in hierarchy order, with the path above each one as the subtitle.
 function mapPickOptions(q) {
   var out = [];

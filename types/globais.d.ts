@@ -34,8 +34,6 @@ interface Window {
   THREE: any;
   /** A casca React (src/hub/main.tsx): se a página já foi migrada e é desenhada por ela, não pelo renderPage. */
   hubIsReactPage?(page: string): boolean;
-  /** A casca React (src/hub/main.tsx): abre o formulário de local novo, já no mapa presetMap. */
-  hubOpenLocationForm(presetMap?: string): void;
   /** Na janela da Mesa (iframe): reabre a escolha de jogo. */
   __mesaOpenPicker?(): void;
   /** firebase-config.js */

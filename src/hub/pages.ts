@@ -3,6 +3,8 @@ import {EventPage} from './paginas/Evento';
 import {EventsPage} from './paginas/Eventos';
 import {LocaisPage} from './paginas/Locais';
 import {LocalPage} from './paginas/Local';
+import {MapPage} from './paginas/Mapa';
+import {MapsPage} from './paginas/Mapas';
 import {OrgPage} from './paginas/Organizacao';
 import {OrgsPage} from './paginas/Organizacoes';
 import {UsersPage} from './paginas/Usuarios';
@@ -21,4 +23,6 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   org: OrgPage,
   locais: LocaisPage,
   local: LocalPage,
+  maps: MapsPage,
+  map: MapPage,
 };

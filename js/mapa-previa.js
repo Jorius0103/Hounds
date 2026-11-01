@@ -12,17 +12,18 @@
    keys + - 0 to zoom (no buttons over the map); a click on a marker shows
    what it is. Read only: the
    markers are added and edited in the explorer.
-   The view (zoom, center, open marker) is kept in S.ui.view, relative to
-   the image, so a redraw of the page (a marker arriving) or a resize
-   keeps it; another map starts fitted.
+   The view (zoom, center, open marker) is kept in keep.view, an object of
+   the caller's (the React map page, src/hub/paginas/Mapa.tsx), relative to
+   the image, so a redraw (a marker arriving) or a resize keeps it; another
+   map starts fitted.
    As in the explorer, the stage is resized instead of CSS-scaled, so the
    map and the markers stay sharp.
    On a touch screen, one finger scrolls the page until the map is zoomed
    in; two fingers always zoom.
    ===================================================================== */
-function mapPreview(box, m, markers) {
+function mapPreview(box, m, markers, keep) {
   var iw = (m.image && m.image.w) || 1000, ih = (m.image && m.image.h) || 750;
-  var ui = S.ui, view = ui.view && ui.view.id === m.id ? ui.view : (ui.view = { id: m.id, k: 1, cx: 0.5, cy: 0.5, pin: null });
+  var view = keep.view && keep.view.id === m.id ? keep.view : (keep.view = { id: m.id, k: 1, cx: 0.5, cy: 0.5, pin: null });
   box.style.aspectRatio = iw + ' / ' + ih;
   box.innerHTML = '<div class="mprev-vp" tabindex="0" aria-label="Mapa ' + esc(m.name) + '. Arraste para mover. Roda do mouse, dois dedos ou duplo clique dão zoom; a tecla 0 volta ao mapa inteiro.">' +
     '<div class="mprev-stage"><img alt="Mapa ' + esc(m.name) + '"><div class="mprev-pins"></div></div></div>' +

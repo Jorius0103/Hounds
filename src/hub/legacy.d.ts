@@ -87,10 +87,20 @@ declare global {
   function mapPathText(id: string): string;
   function mapById(id: string): HMap | null;
   function childMaps(id: string | null): HMap[];
+  /** Os ids de todos os mapas dentro de um, em todos os níveis. */
+  function mapDescendants(id: string): string[];
+  /** O próprio mapa e os de dentro: os que não podem ser o mapa pai dele. */
+  function validParents(id: string): Record<string, boolean>;
   /** Os locais cujo mapa é este. */
   function mapLocations(id: string): HLocation[];
   /** Do mapa de nível superior até o próprio mapa. */
   function mapChain(id: string): HMap[];
+  /** js/utils.js: a categoria de um marcador (rótulo, cor e ícone); a primeira quando não há. */
+  function cat(id: string | undefined): {id: string; label: string; color: string; icon: string};
+  /** js/pagina.js: o que um marcador indica, para listas (o local, o mapa a que leva ou a categoria). */
+  function markerSub(mk: Marker): string;
+  /** js/mapa-previa.js: desenha a prévia do mapa na caixa (imagem, marcadores, zoom); a vista fica em keep.view. */
+  function mapPreview(box: HTMLElement, m: HMap, markers: Marker[], keep: object): void;
   /** Os personagens da Mesa de Combate guardados neste navegador, como sugestões. */
   function mesaCharacters(): {name: string; source: string; mesaId: string | null; kind: string}[];
   /** js/explorer.js: o que o explorer de mapas faz ao abrir (mostrar o marcador de um local, ou marcar um local novo). */
@@ -107,6 +117,8 @@ declare global {
   function charHref(id: string): string;
   /** A raça e as organizações do personagem, numa linha. */
   function charSubtitle(c: Character): string;
+  /** Os personagens ligados a um mapa (personagem.mapIds). */
+  function mapCharacters(mapId: string): Character[];
 
   /** js/tabs/tab-eventos.js */
   function eventById(id: string | null | undefined): HEvent | null;
@@ -127,11 +139,18 @@ declare global {
   /** As sugestões de cargo e de reputação: as padrão primeiro, e então as outras já usadas. */
   function rankTypes(): string[];
   function reputations(): string[];
-  /** As organizações ligadas a um local. */
+  /** As organizações ligadas a um local e a um mapa. */
   function locOrgs(locId: string): Organization[];
+  function mapOrgs(mapId: string): Organization[];
 
   /** js/mundo.js e as abas de js/tabs/: as operações que gravam no banco. */
   var Ops: {
+    createMap(name: string, parentId: string | null, file: File, dims: {w: number; h: number}, visible: boolean, shared: string[]): Promise<string>;
+    updateMap(id: string, name: string, parentId: string | null, visible: boolean, shared: string[]): Promise<unknown>;
+    /** A imagem nova exclui todos os marcadores do mapa; com marcadores, só com confirmed. Resolve com quantos saíram. */
+    replaceMapImage(id: string, file: File, dims: {w: number; h: number}, confirmed: boolean): Promise<number>;
+    /** Os submapas, locais, personagens e organizações passam para o mapa pai; os marcadores são excluídos. */
+    deleteMap(m: HMap): Promise<unknown>;
     saveEvent(
       ev: HEvent | null,
       fields: {name: string; date: string; description: string; locationId: string | null; characterIds: string[]; visible: boolean; sharedWith: string[]},
