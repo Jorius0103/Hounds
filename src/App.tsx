@@ -478,7 +478,16 @@ export default function App() {
       const saved = localStorage.getItem('gurps_session_events_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const clearedBefore = parseInt(localStorage.getItem('gurps_log_cleared_before_timestamp') || '0', 10);
+          const deletedSet = new Set(getDeletedLogEntryIds());
+          return parsed.filter((e: ActionLogEntry) => {
+            if (deletedSet.has(e.id)) return false;
+            const t = e.timestampMs || (e.timestamp ? Date.parse(e.timestamp) : 0) || 0;
+            if (clearedBefore && t && t <= clearedBefore) return false;
+            return true;
+          });
+        }
       }
     } catch (e) {}
     return [];
@@ -1183,6 +1192,37 @@ export default function App() {
         return;
       }
 
+      if ((payload as any).type === 'SYNC_LOG_CLEAR') {
+        const clearTime = (payload as any).timestamp || Date.now();
+        try {
+          localStorage.setItem('gurps_log_cleared_before_timestamp', String(clearTime));
+          localStorage.removeItem('gurps_session_events_v1');
+        } catch (e) {}
+        setSessionEvents([]);
+        setPlayers((prev) =>
+          prev.map((p) => ({
+            ...p,
+            history: [],
+            updatedAt: clearTime,
+          }))
+        );
+        setCombats((prev) =>
+          prev.map((c) => ({
+            ...c,
+            events: [],
+            npcs: c.npcs.map((n) => ({ ...n, history: [], updatedAt: clearTime })),
+          }))
+        );
+        Object.keys(combatsPoolRef.current).forEach((cid) => {
+          const pool = combatsPoolRef.current[cid];
+          if (pool) {
+            pool.events = [];
+            pool.npcs = (pool.npcs || []).map((n) => ({ ...n, history: [] }));
+          }
+        });
+        return;
+      }
+
       if ((payload as any).type === 'SYNC_EDITORS' && Array.isArray((payload as any).editorUserIds)) {
         const ids = (payload as any).editorUserIds;
         setEditorUserIds(ids);
@@ -1624,12 +1664,16 @@ export default function App() {
             if (!Array.isArray(rows) || rows.length === 0) return;
             const isMestre = currentUser?.role === 'mestre' || !currentUser;
             const deletedSet = new Set(getDeletedLogEntryIds());
+            const clearedBefore = parseInt(localStorage.getItem('gurps_log_cleared_before_timestamp') || '0', 10);
             const fetchedLogEntries: any[] = [];
             rows.forEach((r) => {
               const log = r.dados_completos?.logEntry;
               if (!log) return;
               if (deletedSet.has(log.id) || deletedSet.has(r.id)) return;
               if (r.dados_completos?.rollData?.id && deletedSet.has(r.dados_completos.rollData.id)) return;
+              const rowTime = r.criado_em ? Date.parse(r.criado_em) : 0;
+              const logTime = log.timestampMs || (log.timestamp ? Date.parse(log.timestamp) : 0) || rowTime;
+              if (clearedBefore && (rowTime <= clearedBefore || logTime <= clearedBefore)) return;
               if (log.isSecret && !isMestre) return;
               fetchedLogEntries.push(log);
             });
@@ -1828,6 +1872,37 @@ export default function App() {
                 ...n,
                 history: (n.history || []).filter((h) => h.id !== delId),
               }));
+            }
+          });
+          return;
+        }
+
+        if (event.data?.type === 'SYNC_LOG_CLEAR') {
+          const clearTime = event.data.timestamp || Date.now();
+          try {
+            localStorage.setItem('gurps_log_cleared_before_timestamp', String(clearTime));
+            localStorage.removeItem('gurps_session_events_v1');
+          } catch (e) {}
+          setSessionEvents([]);
+          setPlayers((prev) =>
+            prev.map((p) => ({
+              ...p,
+              history: [],
+              updatedAt: clearTime,
+            }))
+          );
+          setCombats((prev) =>
+            prev.map((c) => ({
+              ...c,
+              events: [],
+              npcs: c.npcs.map((n) => ({ ...n, history: [], updatedAt: clearTime })),
+            }))
+          );
+          Object.keys(combatsPoolRef.current).forEach((cid) => {
+            const pool = combatsPoolRef.current[cid];
+            if (pool) {
+              pool.events = [];
+              pool.npcs = (pool.npcs || []).map((n) => ({ ...n, history: [] }));
             }
           });
           return;
@@ -4118,6 +4193,37 @@ export default function App() {
 
   const handleClearActiveCombatHistory = () => {
     const now = Date.now();
+
+    // 1. Marca todos os IDs de eventos conhecidos como excluídos
+    const toDelete = new Set<string>();
+    (sessionEvents || []).forEach((e) => { if (e.id) toDelete.add(e.id); });
+    combats.forEach((c) => {
+      (c.events || []).forEach((e) => { if (e.id) toDelete.add(e.id); });
+      (c.npcs || []).forEach((n) => {
+        (n.history || []).forEach((h) => { if (h.id) toDelete.add(h.id); });
+      });
+    });
+    players.forEach((p) => {
+      (p.history || []).forEach((h) => { if (h.id) toDelete.add(h.id); });
+    });
+    toDelete.forEach((id) => addDeletedLogEntryId(id));
+
+    // 2. Define marco temporal de limpeza para bloquear restauração de rolagens antigas
+    try {
+      localStorage.setItem('gurps_log_cleared_before_timestamp', String(now));
+      localStorage.removeItem('gurps_session_events_v1');
+    } catch (e) {}
+
+    // 3. Exclui do banco de dados (Supabase mesa_rolagens) se conectado
+    const bus = (typeof window !== 'undefined' && ((window as any).parent?.hubMesaBus || (window as any).hubMesaBus));
+    if (bus && typeof bus.clearAllRolls === 'function') {
+      try { bus.clearAllRolls(); } catch (e) {}
+    } else if (bus && typeof bus.deleteRoll === 'function') {
+      toDelete.forEach((id) => {
+        try { bus.deleteRoll(id); } catch (e) {}
+      });
+    }
+
     const updatedCombats = combats.map((c) => ({
       ...c,
       events: [],
@@ -4129,14 +4235,21 @@ export default function App() {
       updatedAt: now,
     }));
     setSessionEvents([]);
-    try {
-      localStorage.removeItem('gurps_session_events_v1');
-    } catch (e) {}
     stateRef.current.combats = updatedCombats;
     stateRef.current.players = updatedPlayers;
     setCombats(updatedCombats);
     setPlayers(updatedPlayers);
     broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
+
+    // 4. Notifica outras abas e conexões em tempo real
+    const clearPayload = { type: 'SYNC_LOG_CLEAR' as const, timestamp: now };
+    onlineSyncService.sendPayloadImmediate(clearPayload);
+    if (broadcastChannelRef.current) {
+      try { broadcastChannelRef.current.postMessage(clearPayload); } catch (e) {}
+    }
+    if (bus && typeof bus.publish === 'function') {
+      try { bus.publish(JSON.stringify(clearPayload)); } catch (e) {}
+    }
   };
 
   // Função de reversão completa do estado alterado por um registro do log

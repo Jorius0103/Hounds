@@ -826,6 +826,12 @@ window.hubMesaBus = {
       return W.store.deleteRoll(rollId);
     }
     return Promise.resolve();
+  },
+  clearAllRolls: function () {
+    if (W.store && typeof W.store.clearRolls === 'function') {
+      return W.store.clearRolls();
+    }
+    return Promise.resolve();
   }
 };
 window.hubMesaPrepare = function () { return MesaSync.prepare(); };

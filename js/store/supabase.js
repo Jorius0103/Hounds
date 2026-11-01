@@ -507,6 +507,13 @@ function SupabaseStore(client, bucket) {
       });
   }
 
+  function clearRolls() {
+    if (!client) return Promise.resolve();
+    return client.rpc('hounds_limpar_mesa_rolagens').then(function () {}).catch(function () {
+      return client.from('mesa_rolagens').delete().neq('id', '___none___').then(function () {}).catch(function () {});
+    });
+  }
+
   return {
     kind: 'supabase',
     relational: true,
@@ -522,6 +529,7 @@ function SupabaseStore(client, bucket) {
     saveRoll: saveRoll,
     getRecentRolls: getRecentRolls,
     deleteRoll: deleteRoll,
+    clearRolls: clearRolls,
     // For MesaSync: save 1 s after the last change (the others get each change by broadcast; the
     // database keeps it and covers a message lost), always in pieces (a small head row: its notice
     // goes to every browser on every save), usually in one piece, and reach the others directly.
