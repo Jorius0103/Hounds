@@ -256,6 +256,16 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
     (entry.id && String(entry.id).includes('passday')) ||
     (entry.description && entry.description.startsWith('Passar '));
 
+  const isMasterRoll = entry.author === 'mestre' || entry.npcName === 'Mestre';
+  const rawAuthorOrPlayer =
+    entry.playerName ||
+    entry.authorName ||
+    (entry.author === 'assistente' ? (currentUserName || 'Jogador') : (entry.author === 'mestre' ? (currentUserName || 'Mestre') : undefined));
+  const authorOrPlayer =
+    rawAuthorOrPlayer && rawAuthorOrPlayer.trim().toLowerCase() !== (entry.npcName || '').trim().toLowerCase()
+      ? rawAuthorOrPlayer
+      : undefined;
+
   return (
     <div
       className={`bg-slate-950/80 border rounded-xl transition-all shadow-sm ${
@@ -280,21 +290,36 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
               </span>
             ) : (
               <div className="flex items-center gap-1.5 min-w-0">
-                <NpcAvatar
-                  avatar={entry.npcAvatar}
-                  preset={entry.npcPreset}
-                  name={entry.npcName || 'NPC'}
-                  size="sm"
-                />
-                <span className="text-xs font-bold text-white truncate max-w-[120px] sm:max-w-[150px]">
-                  {entry.npcName || 'NPC'}
-                </span>
+                {!isMasterRoll && (
+                  <NpcAvatar
+                    avatar={entry.npcAvatar}
+                    preset={entry.npcPreset}
+                    name={entry.npcName || 'NPC'}
+                    size="sm"
+                  />
+                )}
+                <div className="flex flex-col min-w-0 leading-tight">
+                  <span
+                    className="text-xs font-bold text-white truncate max-w-[130px] sm:max-w-[170px]"
+                    title={entry.npcName || 'Mestre'}
+                  >
+                    {entry.npcName || 'Mestre'}
+                  </span>
+                  {authorOrPlayer && (
+                    <span
+                      className="text-[10px] text-slate-400 font-medium truncate max-w-[120px] sm:max-w-[160px]"
+                      title={authorOrPlayer}
+                    >
+                      {authorOrPlayer}
+                    </span>
+                  )}
+                </div>
               </div>
             )
           )}
 
           <span
-            className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${badge.bg}`}
+            className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border shrink-0 ${badge.bg}`}
           >
             {badge.icon}
             <span>{badge.label}</span>
@@ -308,18 +333,9 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           >
             R{entry.round !== undefined ? entry.round : 0}
           </span>
-          <span
-            className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
-              entry.author === 'mestre'
-                ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
-                : 'bg-blue-950/60 text-blue-300 border-blue-800/60'
-            }`}
-          >
-            {entry.authorName || (entry.author === 'assistente' ? (currentUserName || 'Jogador') : entry.author)}
-          </span>
           {entry.type === 'roll' && currentUserRole === 'mestre' && (entry.author === 'mestre' || entry.isSecret) && (
             <span
-              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-0.5 ${
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-0.5 shrink-0 ${
                 entry.isSecret
                   ? 'bg-rose-950/80 text-rose-300 border-rose-700/60'
                   : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
@@ -329,7 +345,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
               {entry.isSecret ? '👁️‍🗨️ Oculta' : '👁️ Visível'}
             </span>
           )}
-          <span className="text-[10px] text-slate-500 font-mono">
+          <span className="text-[10px] text-slate-500 font-mono shrink-0">
             {formattedTimestamp}
           </span>
           {entry.type === 'roll' && onUpdateEntryComment && (
@@ -352,7 +368,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
                 e.stopPropagation();
                 setDeleteConfirmOpen(true);
               }}
-              className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/60 rounded transition-colors"
+              className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/60 rounded transition-colors shrink-0"
               title="Excluir este registro"
             >
               <Trash2 size={12} />
@@ -494,9 +510,14 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
 
       {/* Roll result visual block */}
       {entry.type === 'roll' && (
-        <div className="flex items-center justify-between bg-slate-900/90 border border-amber-500/30 rounded-lg p-2 font-mono">
-          <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-bold text-amber-300 font-mono tracking-wide">
+        <div className="flex items-center gap-2.5 bg-slate-900/90 border border-amber-500/30 rounded-lg px-2.5 py-1.5 font-mono">
+          <div className="flex items-center justify-center bg-amber-950/70 border border-amber-500/40 px-2.5 py-0.5 rounded-lg shrink-0">
+            <span className="text-base sm:text-lg font-black text-amber-300">
+              {entry.amount ?? ((entry as any).rolls ? (entry as any).rolls.reduce((a: number, b: number) => a + b, 0) : 0)}
+            </span>
+          </div>
+          <div className="flex items-center min-w-0">
+            <span className="text-xs sm:text-sm font-bold text-amber-300/90 font-mono tracking-wide">
               {(() => {
                 const match = entry.description?.match(/(\d+D\d+)/i);
                 const notation = match ? match[1].toUpperCase() : ((entry as any).rolls?.length > 1 ? `${(entry as any).rolls.length}D6` : '1D6');
@@ -504,12 +525,6 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
                   ? `${notation}: [ ${(entry as any).rolls.join(' + ')} ]`
                   : `${notation}: [ ${(entry as any).rolls?.[0] ?? (entry.amount ?? 0)} ]`;
               })()}
-            </span>
-          </div>
-          <div className="flex items-baseline gap-1 bg-amber-950/60 border border-amber-500/40 px-2.5 py-0.5 rounded-lg">
-            <span className="text-[9px] text-amber-400 uppercase font-sans font-bold">Total</span>
-            <span className="text-base font-black text-amber-300">
-              {entry.amount ?? ((entry as any).rolls ? (entry as any).rolls.reduce((a: number, b: number) => a + b, 0) : 0)}
             </span>
           </div>
         </div>
