@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Combat, UserRole, MesaRole, NPC, ActionLogEntry } from '../types/rpg';
 import { CombatLogCard } from './CombatLogCard';
-import { ScrollText, Trash2, Search, X, SlidersHorizontal } from 'lucide-react';
-import { ConfirmModal } from './ConfirmModal';
+import { DetailedLogModal } from './DetailedLogModal';
+import { ScrollText, Search, X, SlidersHorizontal, Maximize2 } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
@@ -31,20 +31,23 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   onDeleteEntry,
   onUpdateEntryComment,
 }) => {
-  // Filtro 1: Rodada ('all' ou número da rodada)
+  // Filtro de Rodada ('all' ou número da rodada)
   const [selectedRoundFilter, setSelectedRoundFilter] = useState<number | 'all'>('all');
 
-  // Filtro 2: Tipo de Personagem / Rolagens (Todos | Jogadores | NPCs | Rolagens)
-  const [characterFilter, setCharacterFilter] = useState<'all' | 'players' | 'npcs' | 'rolls' | 'status'>('all');
+  // Filtro 1: Entidade (Todos | Personagens | NPCs)
+  const [entityFilter, setEntityFilter] = useState<'all' | 'players' | 'npcs'>('all');
+
+  // Filtro 2: Tipo de Evento (Todos | Status | Rolagens)
+  const [typeFilter, setTypeFilter] = useState<'all' | 'status' | 'rolls'>('all');
 
   // Filtro 3: Busca Livre
   const [searchTerm, setSearchTerm] = useState('');
-  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedRoundFilter, characterFilter, searchTerm, activeCombat?.id]);
+  }, [selectedRoundFilter, entityFilter, typeFilter, searchTerm, activeCombat?.id]);
 
   // Collect and sort all logs across all active combat NPCs and Personagens
   const allLogs = useMemo(() => {
@@ -173,7 +176,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
     return Array.from(roundsSet).sort((a, b) => a - b);
   }, [allLogs, activeCombat?.currentRound]);
 
-  // Apply filters: Rodada, Tipo de Personagem e Busca Livre funcionam em conjunto
+  // Apply filters: Rodada, Entidade (Personagens vs NPCs), Tipo (Status vs Rolagens) e Busca Livre
   const filteredLogs = useMemo(() => {
     return allLogs.filter((entry) => {
       // 1. Filtro de Rodada
@@ -184,21 +187,23 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         }
       }
 
-      // 2. Filtro de Tipo de Personagem / Rolagens / Status
-      if (characterFilter === 'status' && entry.type === 'roll') {
+      // 2. Filtro de Entidade (Personagens vs NPCs)
+      if (entityFilter === 'players' && entry.npcCharacterType !== 'player') {
         return false;
       }
-      if (characterFilter === 'rolls' && entry.type !== 'roll') {
-        return false;
-      }
-      if (characterFilter === 'players' && entry.npcCharacterType !== 'player') {
-        return false;
-      }
-      if (characterFilter === 'npcs' && entry.npcCharacterType === 'player') {
+      if (entityFilter === 'npcs' && entry.npcCharacterType === 'player') {
         return false;
       }
 
-      // 3. Campo de busca livre
+      // 3. Filtro de Tipo (Status vs Rolagens)
+      if (typeFilter === 'status' && entry.type === 'roll') {
+        return false;
+      }
+      if (typeFilter === 'rolls' && entry.type !== 'roll') {
+        return false;
+      }
+
+      // 4. Campo de busca livre
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
         const matchesNpc = entry.npcName?.toLowerCase().includes(query);
@@ -208,6 +213,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         const matchesItem = entry.itemName?.toLowerCase().includes(query);
         const matchesDmgType = entry.damageType?.toLowerCase().includes(query);
         const matchesAttacker = entry.attackerName?.toLowerCase().includes(query);
+        const matchesComment = entry.comment?.toLowerCase().includes(query);
         const matchesAuthor =
           entry.authorName?.toLowerCase().includes(query) ||
           entry.author?.toLowerCase().includes(query);
@@ -219,7 +225,8 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
           !matchesItem &&
           !matchesDmgType &&
           !matchesAuthor &&
-          !matchesAttacker
+          !matchesAttacker &&
+          !matchesComment
         ) {
           return false;
         }
@@ -227,7 +234,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
 
       return true;
     });
-  }, [allLogs, selectedRoundFilter, characterFilter, searchTerm]);
+  }, [allLogs, selectedRoundFilter, entityFilter, typeFilter, searchTerm]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -262,17 +269,9 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               <ScrollText size={17} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-black text-amber-300 uppercase tracking-widest">
-                  Log de Combate
-                </h3>
-                <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60">
-                  Histórico
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 leading-tight">
-                Rolagens, danos e eventos da mesa em tempo real
-              </p>
+              <h3 className="text-xs font-black text-amber-300 uppercase tracking-widest">
+                Log da Mesa
+              </h3>
             </div>
           </div>
 
@@ -281,27 +280,27 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               {filteredLogs.length} / {allLogs.length}
             </span>
 
-            {currentUserRole === 'mestre' && onClearHistory && allLogs.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setClearConfirmOpen(true)}
-                className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
-                title="Limpar histórico de combate de todos os NPCs"
-              >
-                <Trash2 size={13} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsDetailModalOpen(true)}
+              className="px-2 py-1 text-slate-300 hover:text-amber-300 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-amber-500/40 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-semibold"
+              title="Abrir janela com visualização detalhada do log e ferramentas da mesa"
+            >
+              <Maximize2 size={12} />
+              <span>Detalhado</span>
+            </button>
           </div>
         </div>
 
-        {/* Filtro por Tipo de Personagem (Todos | Jogadores | NPCs) */}
+        {/* Filtro 1: Origem / Entidade (Todos | Personagens | NPCs) */}
         <div className="flex items-center justify-between gap-1 text-[10px]">
-          <span className="text-slate-500 font-semibold px-1 shrink-0">Alvo:</span>
+          <span className="text-slate-500 font-semibold px-1 shrink-0 w-11">Origem:</span>
           <div className="flex-1 flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
             <button
-              onClick={() => setCharacterFilter('all')}
+              type="button"
+              onClick={() => setEntityFilter('all')}
               className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                characterFilter === 'all'
+                entityFilter === 'all'
                   ? 'bg-slate-800 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
               }`}
@@ -309,102 +308,113 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               Todos
             </button>
             <button
-              onClick={() => setCharacterFilter('status')}
+              type="button"
+              onClick={() => setEntityFilter('players')}
               className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                characterFilter === 'status'
-                  ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow-xs'
-                  : 'text-slate-400 hover:text-cyan-300'
-              }`}
-              title="Exibe apenas alterações de status (sem rolagens)"
-            >
-              Status
-            </button>
-            <button
-              onClick={() => setCharacterFilter('players')}
-              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                characterFilter === 'players'
+                entityFilter === 'players'
                   ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60 shadow-xs'
                   : 'text-slate-400 hover:text-emerald-300'
               }`}
             >
-              Jogadores
+              Personagens
             </button>
             <button
-              onClick={() => setCharacterFilter('npcs')}
+              type="button"
+              onClick={() => setEntityFilter('npcs')}
               className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                characterFilter === 'npcs'
+                entityFilter === 'npcs'
                   ? 'bg-purple-950 text-purple-300 border border-purple-700/60 shadow-xs'
                   : 'text-slate-400 hover:text-purple-300'
               }`}
             >
               NPCs
             </button>
+          </div>
+        </div>
+
+        {/* Filtro 2: Tipo de Evento (Todos | Status | Rolagens) */}
+        <div className="flex items-center justify-between gap-1 text-[10px]">
+          <span className="text-slate-500 font-semibold px-1 shrink-0 w-11">Tipo:</span>
+          <div className="flex-1 flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
             <button
-              onClick={() => setCharacterFilter('rolls')}
+              type="button"
+              onClick={() => setTypeFilter('all')}
               className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                characterFilter === 'rolls'
+                typeFilter === 'all'
+                  ? 'bg-slate-800 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('status')}
+              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
+                typeFilter === 'status'
+                  ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow-xs'
+                  : 'text-slate-400 hover:text-cyan-300'
+              }`}
+              title="Exibe alterações de status e condições"
+            >
+              Status
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('rolls')}
+              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
+                typeFilter === 'rolls'
                   ? 'bg-amber-950 text-amber-300 border border-amber-600/60 shadow-xs'
                   : 'text-slate-400 hover:text-amber-300'
               }`}
+              title="Exibe apenas rolagens de dados"
             >
               Rolagens
             </button>
           </div>
         </div>
 
-        {/* Filtro por Rodada */}
-        <div className="flex items-center justify-between gap-1 text-[10px]">
-          <span className="text-slate-500 font-semibold px-1 shrink-0">Rodada:</span>
-          <div className="flex-1 flex items-center gap-1.5">
+        {/* Filtro de Rodada Compacto + Busca Menor e Alinhada ao Lado */}
+        <div className="flex items-center gap-1.5 text-[10px]">
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-slate-500 font-semibold px-0.5 shrink-0">Rodada:</span>
             <select
               value={selectedRoundFilter}
               onChange={(e) =>
                 setSelectedRoundFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))
               }
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-20 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+              title="Filtrar por rodada"
             >
-              <option value="all">Todas as Rodadas</option>
-              {availableRounds.map((r) => {
-                const count = allLogs.filter((l) => (l.round ?? 0) === r).length;
-                return (
-                  <option key={r} value={r}>
-                    {r === 0 ? 'Rodada 0 (Preparação)' : `Rodada ${r}`} ({count} {count === 1 ? 'evento' : 'eventos'})
-                  </option>
-                );
-              })}
+              <option value="all">Todas</option>
+              {availableRounds.map((r) => (
+                <option key={r} value={r}>
+                  {r === 0 ? '0' : `${r}`}
+                </option>
+              ))}
             </select>
-            {selectedRoundFilter !== 'all' && (
+          </div>
+
+          <div className="relative flex-1 min-w-0">
+            <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar no log..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-7 pr-6 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans"
+            />
+            {searchTerm && (
               <button
                 type="button"
-                onClick={() => setSelectedRoundFilter('all')}
-                className="px-2 py-1 text-[10px] text-amber-400 hover:text-white bg-slate-800 border border-slate-700 rounded-lg font-medium whitespace-nowrap transition-colors"
-                title="Ver todas as rodadas"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                title="Limpar busca"
               >
-                Todas
+                <X size={11} />
               </button>
             )}
           </div>
-        </div>
-
-        {/* 3. Campo de Busca Livre */}
-        <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Buscar por nome, golpe, arma, local, item..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-7 pr-7 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-              title="Limpar busca"
-            >
-              <X size={12} />
-            </button>
-          )}
         </div>
       </div>
 
@@ -423,11 +433,13 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                 ? 'Os lançamentos de dano, fadiga, curas e condições aparecerão aqui em tempo real.'
                 : 'Tente ajustar os filtros acima ou limpar a busca de texto.'}
             </p>
-            {(searchTerm || characterFilter !== 'all' || selectedRoundFilter !== 'all') && (
+            {(searchTerm || entityFilter !== 'all' || typeFilter !== 'all' || selectedRoundFilter !== 'all') && (
               <button
+                type="button"
                 onClick={() => {
                   setSearchTerm('');
-                  setCharacterFilter('all');
+                  setEntityFilter('all');
+                  setTypeFilter('all');
                   setSelectedRoundFilter('all');
                 }}
                 className="mt-1 text-xs text-amber-400 hover:underline font-semibold"
@@ -516,18 +528,22 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
         <span className="font-mono text-amber-400/80 font-bold">{activeCombat?.name || 'Combate'}</span>
       </div>
 
-      <ConfirmModal
-        isOpen={clearConfirmOpen}
-        title="Limpar Histórico de Combate"
-        message="Deseja limpar todo o histórico de combate de todos os NPCs e Personagens? Esta ação não pode ser desfeita."
-        confirmText="Limpar Histórico"
-        cancelText="Cancelar"
-        isDanger={true}
-        onConfirm={() => {
-          onClearHistory?.();
-          setClearConfirmOpen(false);
-        }}
-        onCancel={() => setClearConfirmOpen(false)}
+      {/* Modal com Visualização Detalhada do Log e Ações da Mesa */}
+      <DetailedLogModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        logs={allLogs}
+        activeCombat={activeCombat}
+        currentUserRole={currentUserRole}
+        currentUserName={currentUserName}
+        onClearHistory={onClearHistory}
+        onDeleteEntry={onDeleteEntry}
+        onUpdateEntryComment={onUpdateEntryComment}
+        onSelectNpc={onSelectNpc}
+        initialEntityFilter={entityFilter}
+        initialTypeFilter={typeFilter}
+        initialRoundFilter={selectedRoundFilter}
+        initialSearch={searchTerm}
       />
     </div>
   );
