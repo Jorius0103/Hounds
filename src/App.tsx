@@ -5278,6 +5278,24 @@ export default function App() {
               }
             }
           }}
+          onAddSpell={(npcId, spell) => {
+            const target = allCharacters.find((n: NPC) => n.id === npcId);
+            if (target) {
+              const current = target.spells || [];
+              const exists = current.some((s: Spell) => s.id === spell.id);
+              const nextSpells = exists
+                ? current.map((s: Spell) => (s.id === spell.id ? spell : s))
+                : [...current, spell];
+              const updatedNpc = {
+                ...target,
+                spells: nextSpells,
+              };
+              handleUpdateNpc(updatedNpc);
+              if (damageModalNpc && damageModalNpc.id === npcId) {
+                setDamageModalNpc(updatedNpc);
+              }
+            }
+          }}
           isPlayerView={!isMaster}
           combatants={allCharacters}
           currentRound={effectiveRound}

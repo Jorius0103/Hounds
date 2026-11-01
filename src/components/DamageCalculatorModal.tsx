@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { NPC, ActionLogEntry, ExtraItem, BodyArmorLocation } from '../types/rpg';
-import { Shield, Zap, Heart, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info, Crosshair } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { NPC, ActionLogEntry, ExtraItem, BodyArmorLocation, Spell } from '../types/rpg';
+import { Shield, Zap, Heart, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info, Crosshair, X } from 'lucide-react';
 import { calculateLocationDamage, migrateArmorLocations, normalizeLocationKey, sanitizeHitLocationRule } from '../utils/gurps';
 import { ModalHeader } from './ModalHeader';
 import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
+import { SingleSpellModal } from './SingleSpellModal';
 
 interface DamageCalculatorModalProps {
   npc: NPC;
@@ -34,6 +35,7 @@ interface DamageCalculatorModalProps {
     logEntry: Omit<ActionLogEntry, 'id'>
   ) => void;
   onAddQuickItem?: (npcId: string, item: ExtraItem) => void;
+  onAddSpell?: (npcId: string, spell: Spell) => void;
   isPlayerView?: boolean;
   combatants?: NPC[];
   currentRound?: number;
@@ -48,6 +50,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   onApplyFatigue,
   onApplyItemChange,
   onAddQuickItem,
+  onAddSpell,
   isPlayerView = false,
   combatants = [],
   currentRound = 1,
@@ -101,10 +104,103 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [spellRound, setSpellRound] = useState<number>(currentRound ?? 0);
   const [spellDuration, setSpellDuration] = useState<number | ''>('');
 
+  // Magias cadastradas do personagem/NPC (com sincronização local para resposta imediata)
+  const [localSpells, setLocalSpells] = useState<Spell[]>(npc.spells || []);
+  useEffect(() => {
+    setLocalSpells(npc.spells || []);
+  }, [npc.spells]);
+
+  const [isSpellSearchOpen, setIsSpellSearchOpen] = useState<boolean>(false);
+  const [isSingleSpellModalOpen, setIsSingleSpellModalOpen] = useState<boolean>(false);
+  const [spellToCreate, setSpellToCreate] = useState<Spell | null>(null);
+  const spellSearchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fecha dropdown de busca ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (spellSearchContainerRef.current && !spellSearchContainerRef.current.contains(e.target as Node)) {
+        setIsSpellSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Magias correspondentes à busca digitada
+  const matchingSpells = useMemo(() => {
+    const q = fatigueSpellName.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!q) return [];
+    return localSpells.filter((sp) => {
+      const nameNorm = (sp.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return nameNorm.includes(q);
+    });
+  }, [localSpells, fatigueSpellName]);
+
+  // Verifica se há correspondência exata para permitir cadastro se não existir
+  const hasExactSpellMatch = useMemo(() => {
+    const q = fatigueSpellName.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!q) return false;
+    return localSpells.some((sp) => {
+      const nameNorm = (sp.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return nameNorm === q;
+    });
+  }, [localSpells, fatigueSpellName]);
+
+  const handleQuickAddSpell = (spellName: string) => {
+    const trimmed = spellName.trim();
+    if (!trimmed) return;
+    const newSpell: Spell = {
+      id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: trimmed,
+      nh: '',
+      isFavorite: false,
+      notes: '',
+    };
+    setLocalSpells((prev) => [...prev, newSpell]);
+    if (onAddSpell) {
+      onAddSpell(npc.id, newSpell);
+    }
+    setFatigueSpellName(newSpell.name);
+    setIsSpellSearchOpen(false);
+  };
+
+  const handleOpenFullModal = (spellName: string) => {
+    const trimmed = spellName.trim();
+    setSpellToCreate({
+      id: `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: trimmed,
+      nh: '',
+      isFavorite: false,
+      notes: '',
+    });
+    setIsSingleSpellModalOpen(true);
+    setIsSpellSearchOpen(false);
+  };
+
+  const handleSaveFromModal = (savedSpell: Spell) => {
+    setLocalSpells((prev) => {
+      const exists = prev.some((s) => s.id === savedSpell.id);
+      return exists ? prev.map((s) => (s.id === savedSpell.id ? savedSpell : s)) : [...prev, savedSpell];
+    });
+    if (onAddSpell) {
+      onAddSpell(npc.id, savedSpell);
+    }
+    setFatigueSpellName(savedSpell.name);
+    setIsSingleSpellModalOpen(false);
+    setSpellToCreate(null);
+  };
+
+  const handleSelectSpell = (sp: Spell) => {
+    setFatigueSpellName(sp.name);
+    setIsSpellSearchOpen(false);
+  };
+
   useEffect(() => {
     if (isOpen) {
       setSpellRound(currentRound ?? 0);
       setHealAmount(1);
+      setIsSpellSearchOpen(false);
+      setIsSingleSpellModalOpen(false);
     }
   }, [isOpen, currentRound]);
 
@@ -985,41 +1081,130 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
             {/* Magia informada (visível somente se 'É Magia' estiver marcado) */}
             {isSpellExpenditure && (
               <div className="bg-slate-950/70 border border-purple-900/40 rounded-xl p-2.5 space-y-2">
-                <div>
+                <div className="relative" ref={spellSearchContainerRef}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
                       <Sparkles size={12} className="text-purple-400" />
                       Nome da Magia:
                     </span>
-                    {!isRestrictedNpcView && npc.spells && npc.spells.length > 0 && (
-                      <span className="text-[9px] text-slate-500">Ou escolha da ficha:</span>
+                    {fatigueSpellName.trim().length > 0 && matchingSpells.length > 0 && (
+                      <span className="text-[10px] text-purple-400 font-medium">
+                        {matchingSpells.length} {matchingSpells.length === 1 ? 'cadastrada' : 'cadastradas'}
+                      </span>
                     )}
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Ex: Escudo, Criar Ar, Luz..."
-                    value={fatigueSpellName}
-                    onChange={(e) => setFatigueSpellName(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Digite para buscar na ficha ou nome da magia..."
+                      value={fatigueSpellName}
+                      onChange={(e) => {
+                        setFatigueSpellName(e.target.value);
+                        setIsSpellSearchOpen(true);
+                      }}
+                      onFocus={() => {
+                        if (fatigueSpellName.trim().length > 0) {
+                          setIsSpellSearchOpen(true);
+                        }
+                      }}
+                      className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 pr-7"
+                    />
+                    {fatigueSpellName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFatigueSpellName('');
+                          setIsSpellSearchOpen(false);
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-0.5 cursor-pointer"
+                        title="Limpar"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
 
-                  {/* Chips de magias da ficha do conjurador (apenas para Personagens ou Mestre; oculto para jogador vendo NPC) */}
-                  {!isRestrictedNpcView && npc.spells && npc.spells.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {npc.spells.map((sp) => (
-                        <button
-                          key={sp.id}
-                          type="button"
-                          onClick={() => setFatigueSpellName(sp.name)}
-                          className={`text-[9px] px-1.5 py-0.5 rounded border transition-all ${
-                            fatigueSpellName === sp.name
-                              ? 'bg-purple-900/60 border-purple-500 text-purple-200 font-bold'
-                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                          }`}
-                        >
-                          {sp.name} (NH {sp.nh})
-                        </button>
-                      ))}
+                  {/* Dropdown de Busca nas Magias Cadastradas */}
+                  {isSpellSearchOpen && fatigueSpellName.trim().length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-purple-800/80 rounded-xl shadow-2xl z-50 overflow-hidden max-h-56 flex flex-col">
+                      {matchingSpells.length > 0 ? (
+                        <>
+                          <div className="overflow-y-auto max-h-40 divide-y divide-slate-800/60">
+                            {matchingSpells.map((sp) => (
+                              <button
+                                key={sp.id}
+                                type="button"
+                                onClick={() => handleSelectSpell(sp)}
+                                className="w-full text-left px-3 py-2 hover:bg-purple-950/70 flex items-center justify-between text-xs transition-colors cursor-pointer group"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Sparkles size={12} className="text-purple-400 group-hover:text-purple-300 shrink-0" />
+                                  <span className="font-semibold text-purple-200 group-hover:text-white truncate">
+                                    {sp.name}
+                                  </span>
+                                </div>
+                                {sp.nh !== undefined && sp.nh !== '' && (
+                                  <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-800/60 shrink-0 ml-2">
+                                    NH {sp.nh}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+
+                          {!hasExactSpellMatch && (
+                            <div className="p-2 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between gap-2 shrink-0">
+                              <span className="text-[10px] text-slate-400 truncate">Não é o que procura?</span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickAddSpell(fatigueSpellName.trim())}
+                                  className="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 flex items-center gap-1 cursor-pointer"
+                                  title="Adicionar rapidamente à ficha sem NH"
+                                >
+                                  <Plus size={11} />
+                                  <span>Rápido</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenFullModal(fatigueSpellName.trim())}
+                                  className="px-2 py-0.5 text-[11px] font-bold rounded bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1 cursor-pointer shadow-sm"
+                                  title="Cadastrar manualmente com NH e anotações"
+                                >
+                                  <Plus size={11} />
+                                  <span>Cadastrar Manual</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="p-3 text-center space-y-2 bg-slate-950/90">
+                          <p className="text-xs text-slate-400">
+                            Nenhuma magia com &quot;<span className="text-purple-200 font-semibold">{fatigueSpellName.trim()}</span>&quot; na ficha de {npc.name}.
+                          </p>
+                          <div className="flex items-center justify-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleQuickAddSpell(fatigueSpellName.trim())}
+                              className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-800/50 flex items-center gap-1 transition-all cursor-pointer"
+                              title="Cadastrar rapidamente na ficha sem NH"
+                            >
+                              <Plus size={13} />
+                              <span>Cadastro Rápido</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenFullModal(fatigueSpellName.trim())}
+                              className="px-2.5 py-1 text-xs font-bold rounded-lg bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1 transition-all shadow-md cursor-pointer"
+                              title="Cadastrar manualmente com NH e anotações"
+                            >
+                              <Plus size={13} />
+                              <span>Cadastrar Manual</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1459,6 +1644,19 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         ))}
         </div>
       </div>
+
+      {/* Modal para cadastrar magia manualmente */}
+      {isSingleSpellModalOpen && (
+        <SingleSpellModal
+          isOpen={isSingleSpellModalOpen}
+          initialSpell={spellToCreate}
+          onClose={() => {
+            setIsSingleSpellModalOpen(false);
+            setSpellToCreate(null);
+          }}
+          onSave={handleSaveFromModal}
+        />
+      )}
     </div>
   );
 };

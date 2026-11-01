@@ -275,7 +275,7 @@ export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
     if (!name.trim()) return;
 
     onSave({
-      id: initialSpell ? initialSpell.id : `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: initialSpell && initialSpell.id ? initialSpell.id : `spl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: name.trim(),
       nh: typeof nh === 'string' ? (nh.trim() === '' ? '' : isNaN(Number(nh)) ? nh.trim() : Number(nh)) : nh,
       notes: notes.trim(),
@@ -289,7 +289,7 @@ export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 99999,
+        zIndex: 100001,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
