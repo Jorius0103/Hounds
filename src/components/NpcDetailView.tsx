@@ -2734,7 +2734,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
           {/* Card: Atributos GURPS (Primários e Secundários em Linha Única com Degradê do Sistema) */}
           <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-2 sm:p-2.5 overflow-x-auto scrollbar-none">
-            <div className="flex flex-row items-center justify-between gap-2 sm:gap-3 flex-nowrap w-full min-w-max">
+            <div className="flex flex-row items-center justify-between gap-1.5 sm:gap-2 flex-nowrap w-full">
               {/* LADO ESQUERDO: PRIMÁRIOS */}
               <div className="flex flex-col gap-1 shrink-0">
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-400 px-0.5">
@@ -2749,7 +2749,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   ].map(({ key, label, val }) => (
                     <div
                       key={key}
-                      style={{ width: '56px', minWidth: '56px', maxWidth: '56px', height: '40px' }}
+                      style={{ width: '53px', minWidth: '53px', maxWidth: '53px', height: '40px' }}
                       className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
                     >
                       <span className="text-xs sm:text-[13px] font-bold text-slate-400 uppercase leading-none mt-0.5">
@@ -2785,7 +2785,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 <div className="flex items-center gap-1 sm:gap-1.5">
                   {/* Per */}
                   <div
-                    style={{ width: '56px', minWidth: '56px', maxWidth: '56px', height: '40px' }}
+                    style={{ width: '53px', minWidth: '53px', maxWidth: '53px', height: '40px' }}
                     className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
                   >
                     <span className="text-xs sm:text-[13px] font-bold text-slate-400 uppercase leading-none mt-0.5">
@@ -2809,7 +2809,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                   {/* Will */}
                   <div
-                    style={{ width: '56px', minWidth: '56px', maxWidth: '56px', height: '40px' }}
+                    style={{ width: '53px', minWidth: '53px', maxWidth: '53px', height: '40px' }}
                     className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
                   >
                     <span className="text-xs sm:text-[13px] font-bold text-slate-400 uppercase leading-none mt-0.5">
@@ -2833,7 +2833,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                   {/* Speed */}
                   <div
-                    style={{ width: '60px', minWidth: '60px', maxWidth: '60px', height: '40px' }}
+                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '40px' }}
                     className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
                   >
                     <span className="text-xs sm:text-[13px] font-bold text-slate-400 uppercase leading-none mt-0.5">
@@ -2858,7 +2858,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                   {/* Move (Acomoda perfeitamente '6 (-1 Peso)') */}
                   <div
-                    style={{ width: '124px', minWidth: '124px', maxWidth: '124px', height: '40px' }}
+                    style={{ width: '112px', minWidth: '112px', maxWidth: '112px', height: '40px' }}
                     className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-1 py-0.5 text-center shrink-0 transition-colors"
                   >
                     <span className="text-xs sm:text-[13px] font-bold text-slate-400 uppercase leading-none mt-0.5">
@@ -2880,10 +2880,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                   {/* RD Nat. */}
                   <div
-                    style={{ width: '66px', minWidth: '66px', maxWidth: '66px', height: '40px' }}
+                    style={{ width: '60px', minWidth: '60px', maxWidth: '60px', height: '40px' }}
                     className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
                   >
-                    <span className="text-[10.5px] sm:text-[11px] font-bold text-slate-400 uppercase leading-none mt-0.5 whitespace-nowrap">
+                    <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase leading-none mt-0.5 whitespace-nowrap">
                       RD Nat.
                     </span>
                     <input
