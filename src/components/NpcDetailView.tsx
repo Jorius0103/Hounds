@@ -2527,18 +2527,18 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 </div>
 
                 {/* Grid de Defesas em 3 colunas com números no tamanho de Pontos de Vida e Fadiga */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {/* Card Esquiva */}
-                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
+                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2 sm:p-2.5 flex items-center justify-between gap-1.5 sm:gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs sm:text-sm font-bold text-cyan-300 leading-tight">Esquiva</div>
+                      <div className="text-[11px] sm:text-xs font-bold text-cyan-300 leading-tight">Esquiva</div>
                       <input
                         type="text"
                         disabled={!isMaster}
                         value={npc.dodgeNotes ?? ''}
                         placeholder="Comentário..."
                         onChange={(e) => updateField('dodgeNotes', e.target.value)}
-                        className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                        className="w-full bg-transparent text-[10px] text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
                         title="Comentário sobre Esquiva (ex: Speed + 3)"
                       />
                     </div>
@@ -2548,22 +2548,22 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       value={npc.dodge ?? ''}
                       placeholder="-"
                       onChange={(e) => updateField('dodge', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                      className={`w-12 sm:w-14 bg-slate-900 border border-cyan-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-cyan-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      className={`w-10 sm:w-11 bg-slate-900 border border-cyan-800/60 rounded-lg text-center font-mono font-black text-sm sm:text-base text-cyan-300 py-1 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                       title="Valor da Esquiva"
                     />
                   </div>
 
                   {/* Card Bloqueio */}
-                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2">
+                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2 sm:p-2.5 flex items-center justify-between gap-1.5 sm:gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs sm:text-sm font-bold text-emerald-300 leading-tight">Bloqueio</div>
+                      <div className="text-[11px] sm:text-xs font-bold text-emerald-300 leading-tight">Bloqueio</div>
                       <input
                         type="text"
                         disabled={!isMaster}
                         value={npc.blockNotes ?? ''}
                         placeholder="Comentário..."
                         onChange={(e) => updateField('blockNotes', e.target.value)}
-                        className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                        className="w-full bg-transparent text-[10px] text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
                         title="Comentário sobre Bloqueio (ex: Escudo / 2 + 3)"
                       />
                     </div>
@@ -2573,7 +2573,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       value={npc.block ?? ''}
                       placeholder="-"
                       onChange={(e) => updateField('block', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
-                      className={`w-12 sm:w-14 bg-slate-900 border border-emerald-800/60 rounded-lg text-center font-mono font-black text-base sm:text-lg text-emerald-300 py-1 sm:py-1.5 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                      className={`w-10 sm:w-11 bg-slate-900 border border-emerald-800/60 rounded-lg text-center font-mono font-black text-sm sm:text-base text-emerald-300 py-1 focus:outline-none shrink-0 ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                       title="Valor do Bloqueio"
                     />
                   </div>
@@ -2582,18 +2582,18 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   {parriesList.map((parry, idx) => (
                     <div
                       key={parry.id}
-                      className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2"
+                      className="bg-slate-950/90 border border-slate-800 rounded-xl p-2 sm:p-2.5 flex items-center justify-between gap-1.5 sm:gap-2"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1 min-w-0">
-                          <span className="text-xs sm:text-sm font-bold text-amber-400 shrink-0">Aparar:</span>
+                          <span className="text-[11px] sm:text-xs font-bold text-amber-400 shrink-0">Aparar:</span>
                           <input
                             type="text"
                             disabled={!isMaster}
                             value={parry.weaponName}
                             onChange={(e) => handleUpdateParry(idx, { ...parry, weaponName: e.target.value })}
                             placeholder="Arma..."
-                            className="w-full bg-transparent text-xs sm:text-sm font-bold text-amber-200 placeholder-slate-600 focus:outline-none truncate"
+                            className="w-full bg-transparent text-[11px] sm:text-xs font-bold text-amber-200 placeholder-slate-600 focus:outline-none truncate"
                             title="Nome da arma de Aparar"
                           />
                         </div>
@@ -2603,7 +2603,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                           value={parry.notes ?? ''}
                           placeholder="Comentário..."
                           onChange={(e) => handleUpdateParry(idx, { ...parry, notes: e.target.value })}
-                          className="w-full bg-transparent text-[10px] sm:text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
+                          className="w-full bg-transparent text-[10px] text-slate-400 placeholder-slate-600 focus:outline-none focus:text-slate-200 truncate mt-0.5"
                           title="Comentário sobre Aparar"
                         />
                       </div>
@@ -2620,7 +2620,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                               value: e.target.value === '' ? 0 : parseInt(e.target.value, 10),
                             })
                           }
-                          className={`w-12 sm:w-14 bg-slate-900 border border-amber-500/50 rounded-lg text-center font-mono font-black text-base sm:text-lg text-amber-300 py-1 sm:py-1.5 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
+                          className={`w-10 sm:w-11 bg-slate-900 border border-amber-500/50 rounded-lg text-center font-mono font-black text-sm sm:text-base text-amber-300 py-1 focus:outline-none ${!isMaster ? 'opacity-90 cursor-not-allowed' : ''}`}
                           title="Valor do Aparar"
                         />
                         {isMaster && parriesList.length > 1 && (
@@ -2733,14 +2733,14 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           </div>
 
           {/* Card: Atributos GURPS (Primários e Secundários em Linha Única com Degradê do Sistema) */}
-          <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-2 sm:p-2.5 overflow-hidden">
-            <div className="flex flex-row items-center justify-between gap-2 sm:gap-4 flex-nowrap">
+          <div style={cardGradientStyle} className="border border-slate-800 rounded-xl p-2 sm:p-2.5 overflow-x-auto scrollbar-none">
+            <div className="flex flex-row items-center gap-2 sm:gap-3 flex-nowrap min-w-max">
               {/* LADO ESQUERDO: PRIMÁRIOS */}
               <div className="flex flex-col gap-1 shrink-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400 px-0.5">
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-400 px-0.5">
                   PRIMÁRIOS
                 </span>
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1 sm:gap-1.5">
                   {[
                     { key: 'st', label: 'ST', val: npc.st },
                     { key: 'dx', label: 'DX', val: npc.dx },
@@ -2749,10 +2749,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   ].map(({ key, label, val }) => (
                     <div
                       key={key}
-                      style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                      className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                      style={{ width: '46px', minWidth: '46px', maxWidth: '46px', height: '36px' }}
+                      className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg px-0.5 py-0.5 text-center shrink-0 transition-colors"
                     >
-                      <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase leading-none mt-0.5">
                         {label}
                       </span>
                       <input
@@ -2764,7 +2764,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                         onChange={(e) =>
                           updateField(key as any, e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                         }
-                        className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                           !isMaster ? 'opacity-90 cursor-not-allowed' : ''
                         }`}
                         title={isMaster ? label : `${label} (apenas Mestre pode editar)`}
@@ -2775,20 +2775,20 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               </div>
 
               {/* DIVISÓRIA VERTICAL */}
-              <div className="w-[1px] h-8 bg-slate-800 shrink-0 self-center mx-1 sm:mx-2" />
+              <div className="w-[1px] h-7 bg-slate-800 shrink-0 self-center" />
 
               {/* LADO DIREITO: SECUNDÁRIOS */}
               <div className="flex flex-col gap-1 shrink-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 px-0.5">
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 px-0.5">
                   SECUNDÁRIOS
                 </span>
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1 sm:gap-1.5">
                   {/* Per */}
                   <div
-                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                    style={{ width: '46px', minWidth: '46px', maxWidth: '46px', height: '36px' }}
+                    className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg px-0.5 py-0.5 text-center shrink-0 transition-colors"
                   >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase leading-none mt-0.5">
                       Per
                     </span>
                     <input
@@ -2800,7 +2800,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       onChange={(e) =>
                         updateField('per', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                       }
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                         !isMaster ? 'opacity-90 cursor-not-allowed' : ''
                       }`}
                       title={isMaster ? "Percepção (Per)" : "Per (apenas Mestre pode editar)"}
@@ -2809,10 +2809,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                   {/* Will */}
                   <div
-                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                    style={{ width: '46px', minWidth: '46px', maxWidth: '46px', height: '36px' }}
+                    className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg px-0.5 py-0.5 text-center shrink-0 transition-colors"
                   >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase leading-none mt-0.5">
                       Will
                     </span>
                     <input
@@ -2824,7 +2824,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       onChange={(e) =>
                         updateField('will', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                       }
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                         !isMaster ? 'opacity-90 cursor-not-allowed' : ''
                       }`}
                       title={isMaster ? "Vontade (Will)" : "Will (apenas Mestre pode editar)"}
@@ -2833,10 +2833,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                   {/* Speed */}
                   <div
-                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                    style={{ width: '48px', minWidth: '48px', maxWidth: '48px', height: '36px' }}
+                    className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg px-0.5 py-0.5 text-center shrink-0 transition-colors"
                   >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase leading-none mt-0.5">
                       Speed
                     </span>
                     <input
@@ -2849,7 +2849,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       onChange={(e) =>
                         updateField('basicSpeed', e.target.value === '' ? 0 : parseFloat(e.target.value))
                       }
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                         !isMaster ? 'opacity-90 cursor-not-allowed' : ''
                       }`}
                       title={isMaster ? "Velocidade Básica (Speed)" : "Speed (apenas Mestre pode editar)"}
@@ -2858,10 +2858,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                   {/* Move (Acomoda perfeitamente '6 (-1 Peso)') */}
                   <div
-                    style={{ width: '124px', minWidth: '124px', maxWidth: '124px', height: '38px' }}
-                    className="h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-1.5 py-0.5 text-center shrink-0 transition-colors"
+                    style={{ width: '102px', minWidth: '102px', maxWidth: '102px', height: '36px' }}
+                    className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg px-1 py-0.5 text-center shrink-0 transition-colors"
                   >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase leading-none mt-0.5">
                       Move
                     </span>
                     <input
@@ -2871,7 +2871,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       value={npc.basicMove ?? ''}
                       placeholder="-"
                       onChange={(e) => updateField('basicMove', e.target.value)}
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none whitespace-nowrap truncate ${
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-xs sm:text-[13px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none whitespace-nowrap truncate ${
                         !isMaster ? 'opacity-90 cursor-not-allowed' : ''
                       }`}
                       title={isMaster ? "Deslocamento (Move, aceita texto como '6 (-1 Peso)')" : "Move (apenas Mestre pode editar)"}
@@ -2880,10 +2880,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
                   {/* RD Nat. */}
                   <div
-                    style={{ width: '54px', minWidth: '54px', maxWidth: '54px', height: '38px' }}
-                    className="w-14 h-9 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-0.5 py-0.5 text-center shrink-0 transition-colors"
+                    style={{ width: '48px', minWidth: '48px', maxWidth: '48px', height: '36px' }}
+                    className="flex flex-col items-center justify-center bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg px-0.5 py-0.5 text-center shrink-0 transition-colors"
                   >
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase leading-none mt-0.5">
+                    <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-400 uppercase leading-none mt-0.5">
                       RD Nat.
                     </span>
                     <input
@@ -2896,7 +2896,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                       onChange={(e) =>
                         updateField('naturalDr', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
                       }
-                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-[15px] text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                      className={`w-full min-w-0 bg-transparent text-center font-mono font-bold text-sm text-amber-300 focus:outline-none focus:text-amber-200 p-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                         !isMaster ? 'opacity-90 cursor-not-allowed' : ''
                       }`}
                       title={isMaster ? "Resistência a Dano Natural" : "RD Nat. (apenas Mestre pode editar)"}
