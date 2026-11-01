@@ -9,6 +9,7 @@ interface CombatLogCardProps {
   showNpcInfo?: boolean;
   onSelectNpc?: (npcId: string) => void;
   isCompact?: boolean;
+  showFullDateTime?: boolean;
   currentUserRole?: MesaRole;
   currentUserName?: string;
   isPlayer?: boolean;
@@ -21,6 +22,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   showNpcInfo = false,
   onSelectNpc,
   isCompact = false,
+  showFullDateTime = false,
   currentUserRole,
   currentUserName,
   isPlayer = false,
@@ -74,19 +76,44 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       .trim();
   }, [entry.description, isPlayerView, isNpcTarget]);
 
-  // Formatted timestamp (fallback gracefully for ISO strings)
+  // Formatted timestamp com suporte a Dia e Hora
   const formattedTimestamp = useMemo(() => {
-    if (!entry.timestamp) return '';
-    if (entry.timestamp.includes('T') && (entry.timestamp.endsWith('Z') || entry.timestamp.includes('+') || entry.timestamp.includes('-'))) {
-      try {
-        const d = new Date(entry.timestamp);
-        if (!isNaN(d.getTime())) {
-          return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    let dateObj: Date | null = null;
+    if (entry.timestampMs && typeof entry.timestampMs === 'number' && entry.timestampMs > 1000000000000) {
+      dateObj = new Date(entry.timestampMs);
+    } else if (entry.id) {
+      const parts = String(entry.id).split('-');
+      for (let i = 1; i < parts.length; i++) {
+        const num = parseInt(parts[i], 10);
+        if (!isNaN(num) && num > 1000000000000) {
+          dateObj = new Date(num);
+          break;
         }
-      } catch (e) {}
+      }
     }
-    return entry.timestamp;
-  }, [entry.timestamp]);
+    if (!dateObj && entry.timestamp && entry.timestamp.includes('T')) {
+      const parsed = Date.parse(entry.timestamp);
+      if (!isNaN(parsed)) dateObj = new Date(parsed);
+    }
+
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      if (showFullDateTime || !isCompact) {
+        const dateStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return `${dateStr} ${timeStr}`;
+      }
+      return timeStr;
+    }
+
+    if (entry.timestamp) {
+      if ((showFullDateTime || !isCompact) && !entry.timestamp.includes('/') && !entry.timestamp.includes('-')) {
+        const todayStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return `${todayStr} ${entry.timestamp}`;
+      }
+      return entry.timestamp;
+    }
+    return '';
+  }, [entry.timestamp, entry.timestampMs, entry.id, showFullDateTime, isCompact]);
 
   // Badge styles based on type and variableKey
   const getTypeBadge = () => {

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ActionLogEntry, MesaRole, Combat } from '../types/rpg';
 import { CombatLogCard } from './CombatLogCard';
 import { ConfirmModal } from './ConfirmModal';
@@ -35,6 +36,44 @@ interface DetailedLogModalProps {
   initialTypeFilter?: 'all' | 'status' | 'rolls';
   initialRoundFilter?: number | 'all';
   initialSearch?: string;
+}
+
+function getEntryDateTime(entry: any): { dateStr: string; timeStr: string; full: string } {
+  let dateObj: Date | null = null;
+  if (entry.timestampMs && typeof entry.timestampMs === 'number' && entry.timestampMs > 1000000000000) {
+    dateObj = new Date(entry.timestampMs);
+  } else if (entry.id) {
+    const parts = String(entry.id).split('-');
+    for (let i = 1; i < parts.length; i++) {
+      const num = parseInt(parts[i], 10);
+      if (!isNaN(num) && num > 1000000000000) {
+        dateObj = new Date(num);
+        break;
+      }
+    }
+  }
+
+  if (!dateObj && entry.timestamp && typeof entry.timestamp === 'string' && entry.timestamp.includes('T')) {
+    const parsed = Date.parse(entry.timestamp);
+    if (!isNaN(parsed)) dateObj = new Date(parsed);
+  }
+
+  if (dateObj && !isNaN(dateObj.getTime())) {
+    const dateStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return { dateStr, timeStr, full: `${dateStr} ${timeStr}` };
+  }
+
+  if (entry.timestamp && typeof entry.timestamp === 'string') {
+    if (entry.timestamp.includes('/') || entry.timestamp.includes('-')) {
+      return { dateStr: '', timeStr: entry.timestamp, full: entry.timestamp };
+    }
+    const todayStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return { dateStr: todayStr, timeStr: entry.timestamp, full: `${todayStr} ${entry.timestamp}` };
+  }
+
+  const todayStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return { dateStr: todayStr, timeStr: '—', full: todayStr };
 }
 
 export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
@@ -191,7 +230,8 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
       const text = filteredLogs
         .map((entry, idx) => {
           const roundText = entry.round !== undefined ? `[Rodada ${entry.round}]` : '[Sem rodada]';
-          const timeText = entry.timestamp ? `[${entry.timestamp}]` : '';
+          const dt = getEntryDateTime(entry);
+          const timeText = `[${dt.full}]`;
           const author = entry.authorName || entry.author || 'Mesa';
           const target = entry.npcName || 'Geral';
           const type = entry.type === 'roll' ? 'ROLAGEM' : 'STATUS/AÇÃO';
@@ -211,15 +251,22 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+  const modalContent = (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
+      }}
+      className="flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+    >
       <div
         style={{
           background: '#0b1120',
           border: '1px solid rgba(245, 158, 11, 0.4)',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9)',
         }}
-        className="w-full max-w-5xl h-[92vh] max-h-[920px] rounded-2xl flex flex-col overflow-hidden text-slate-200"
+        className="w-full max-w-5xl h-[92vh] max-h-[920px] rounded-2xl flex flex-col overflow-hidden text-slate-200 relative"
       >
         {/* Cabeçalho */}
         <div
@@ -269,7 +316,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
             <button
               type="button"
               onClick={handleCopyLog}
-              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Copiar eventos visíveis para a área de transferência"
             >
               {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
@@ -280,7 +327,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
               <button
                 type="button"
                 onClick={() => setClearConfirmOpen(true)}
-                className="px-2.5 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-rose-100 border border-rose-800/80 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-rose-100 border border-rose-800/80 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Limpar histórico de combate de todos os NPCs e Personagens"
               >
                 <Trash2 size={14} />
@@ -291,7 +338,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition-colors ml-1"
+              className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition-colors ml-1 cursor-pointer"
               title="Fechar (Esc)"
             >
               <X size={18} />
@@ -409,7 +456,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setViewMode('cards')}
-                  className={`p-1 rounded transition-colors ${
+                  className={`p-1 rounded transition-colors cursor-pointer ${
                     viewMode === 'cards'
                       ? 'bg-amber-500/20 text-amber-300'
                       : 'text-slate-400 hover:text-slate-200'
@@ -421,7 +468,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setViewMode('table')}
-                  className={`p-1 rounded transition-colors ${
+                  className={`p-1 rounded transition-colors cursor-pointer ${
                     viewMode === 'table'
                       ? 'bg-amber-500/20 text-amber-300'
                       : 'text-slate-400 hover:text-slate-200'
@@ -452,7 +499,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                   title="Limpar busca"
                 >
                   <X size={13} />
@@ -498,7 +545,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                     setTypeFilter('all');
                     setRoundFilter('all');
                   }}
-                  className="mt-2 text-xs text-amber-400 hover:underline font-semibold"
+                  className="mt-2 text-xs text-amber-400 hover:underline font-semibold cursor-pointer"
                 >
                   Limpar todos os filtros
                 </button>
@@ -532,6 +579,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                       showNpcInfo={true}
                       onSelectNpc={onSelectNpc}
                       isCompact={false}
+                      showFullDateTime={true}
                       currentUserRole={currentUserRole}
                       currentUserName={currentUserName}
                       isPlayer={currentUserRole === 'jogador'}
@@ -549,7 +597,8 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 text-[11px] font-bold uppercase">
-                      <th className="py-2.5 px-3">Hora / Rod.</th>
+                      <th className="py-2.5 px-3 text-center w-20">Rodada</th>
+                      <th className="py-2.5 px-3 whitespace-nowrap min-w-[130px]">Dia e Hora</th>
                       <th className="py-2.5 px-3">Combatente / Alvo</th>
                       <th className="py-2.5 px-3">Tipo</th>
                       <th className="py-2.5 px-3">Descrição / Efeito</th>
@@ -561,15 +610,28 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                     {paginatedLogs.map((entry) => {
                       const isRoll = entry.type === 'roll';
                       const isPlayerChar = entry.npcCharacterType === 'player';
+                      const dt = getEntryDateTime(entry);
+                      const rNum = entry.round !== undefined ? entry.round : 0;
                       return (
                         <tr key={entry.id} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="py-2 px-3 whitespace-nowrap font-mono text-[11px] text-slate-400">
-                            <div>{entry.timestamp || '—'}</div>
-                            <span className="text-[10px] text-amber-400 font-bold">
-                              R.{entry.round ?? 0}
+                          {/* Coluna 1: Rodada */}
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            <span
+                              className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-amber-300 inline-block"
+                              title={rNum === 0 ? 'Rodada 0 (Preparação)' : `Rodada ${rNum}`}
+                            >
+                              R.{rNum}
                             </span>
                           </td>
-                          <td className="py-2 px-3 whitespace-nowrap">
+
+                          {/* Coluna 2: Dia e Hora */}
+                          <td className="py-2.5 px-3 whitespace-nowrap font-mono text-[11px]">
+                            <div className="text-slate-200 font-semibold">{dt.dateStr}</div>
+                            <div className="text-slate-400 text-[10px]">{dt.timeStr}</div>
+                          </td>
+
+                          {/* Coluna 3: Combatente / Alvo */}
+                          <td className="py-2.5 px-3 whitespace-nowrap">
                             <div className="font-bold text-slate-200">
                               {entry.npcName || 'Mesa'}
                             </div>
@@ -582,7 +644,9 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                               {entry.playerName ? ` (${entry.playerName})` : ''}
                             </div>
                           </td>
-                          <td className="py-2 px-3 whitespace-nowrap">
+
+                          {/* Coluna 4: Tipo */}
+                          <td className="py-2.5 px-3 whitespace-nowrap">
                             {isRoll ? (
                               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/70">
                                 Rolagem
@@ -593,18 +657,24 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                               </span>
                             )}
                           </td>
-                          <td className="py-2 px-3 text-slate-300 max-w-xs break-words text-[11px]">
+
+                          {/* Coluna 5: Descrição / Efeito */}
+                          <td className="py-2.5 px-3 text-slate-300 max-w-xs break-words text-[11px]">
                             {entry.description || '—'}
                           </td>
-                          <td className="py-2 px-3 text-slate-400 italic text-[11px] max-w-xs break-words">
+
+                          {/* Coluna 6: Comentário */}
+                          <td className="py-2.5 px-3 text-slate-400 italic text-[11px] max-w-xs break-words">
                             {entry.comment || '—'}
                           </td>
-                          <td className="py-2 px-3 text-right whitespace-nowrap">
+
+                          {/* Coluna 7: Ações */}
+                          <td className="py-2.5 px-3 text-right whitespace-nowrap">
                             {currentUserRole === 'mestre' && onDeleteEntry && (
                               <button
                                 type="button"
                                 onClick={() => onDeleteEntry(entry.id, entry.npcId, false)}
-                                className="p-1 text-slate-500 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors"
+                                className="p-1 text-slate-500 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors cursor-pointer"
                                 title="Excluir este registro"
                               >
                                 <Trash2 size={13} />
@@ -643,7 +713,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 type="button"
                 disabled={safePage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold flex items-center gap-1 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <ChevronLeft size={14} />
                 <span className="hidden sm:inline">Anterior</span>
@@ -657,7 +727,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 type="button"
                 disabled={safePage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold flex items-center gap-1 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <span className="hidden sm:inline">Próxima</span>
                 <ChevronRight size={14} />
@@ -668,7 +738,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition-colors"
+            className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition-colors cursor-pointer"
           >
             Fechar
           </button>
@@ -691,5 +761,9 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
       />
     </div>
   );
-};
 
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
+};
