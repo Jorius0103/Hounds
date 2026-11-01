@@ -1,4 +1,6 @@
 import type {ComponentType} from 'react';
+import {DisadvantagePage} from './paginas/Desvantagem';
+import {DisadvantagesPage} from './paginas/Desvantagens';
 import {EventPage} from './paginas/Evento';
 import {EventsPage} from './paginas/Eventos';
 import {LocaisPage} from './paginas/Locais';
@@ -39,8 +41,10 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   adv: AdvantagePage,
   perks: AdvantagesPage,
   perk: AdvantagePage,
+  disadvs: DisadvantagesPage,
+  disadv: DisadvantagePage,
 };
 
 // As listas longas de cartões usam a largura da tela (a classe wide do .page-inner), como as antigas que o renderPage de
 // js/app.js marca.
-export const WIDE_PAGES = new Set(['spells', 'advs', 'perks']);
+export const WIDE_PAGES = new Set(['spells', 'advs', 'perks', 'disadvs']);

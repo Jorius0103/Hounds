@@ -207,6 +207,22 @@ declare global {
   function advTypeKey(t: string | undefined): string;
   function advTypeLabel(t: string | undefined): string;
   function advTypeClass(t: string | undefined): string;
+  /** js/tabs/tab-desvantagens.js: uma desvantagem pelo id (ou o de uma entrada que mudou de página no livro) e o endereço dela. */
+  function disadvById(id: string | null | undefined): Disadvantage | null;
+  function disadvHref(id: string): string;
+  /** Os valores já usados num campo (os tipos, os livros), em ordem alfabética. */
+  function disadvValues(field: 'type' | 'book'): string[];
+  /** O tipo em português (Desvantagem, Expansão, Remissão) e a classe do selo, com as cores das vantagens. */
+  function disadvTypeLabel(t: string | undefined): string;
+  function disadvTypeClass(t: string | undefined): string;
+  /** As classes dos livros, na ordem deles (a entrada as guarda em inglês, "Physical, Exotic"), e os nomes em português. */
+  var DISADV_CLASSES: string[];
+  var DISADV_CLASS_LABELS: Record<string, string>;
+  /** As classes de uma entrada, e os nomes delas em português numa linha. */
+  function disadvClassList(d: Disadvantage | null): string[];
+  function disadvClassText(d: Disadvantage): string;
+  /** js/tabs/ficha-efeitos.js: os efeitos que o livro dá a uma desvantagem para uma linha da ficha (o nome, os pontos e os níveis). */
+  function disadvBookFx(d: Disadvantage, row: {name: string; cost: number; levels: number}): AdvEffect[];
   /** js/tabs/ficha-efeitos.js: os efeitos cadastrados de uma vantagem, limpos; e, sem eles, os do livro para uma linha da ficha (o nome e os pontos). */
   function advEffects(a: Advantage): AdvEffect[];
   function advBookFx(a: Advantage, row: {name: string; pts: number}): AdvEffect[];
@@ -305,6 +321,13 @@ declare global {
     ): Promise<string>;
     /** Uma vantagem dos livros fica marcada como excluída; a do Mestre sai do banco. */
     deleteAdvantage(a: Advantage): Promise<unknown>;
+    /** Só o Mestre. O tipo vazio fica "Disadvantage"; classes: as marcadas, separadas por vírgula. */
+    saveDisadvantage(
+      d: Disadvantage | null,
+      fields: {name: string; cost: string; type: string; classes: string; selfControl: boolean; book: string; page: string; description: string; visible: boolean; sharedWith: string[]},
+    ): Promise<string>;
+    /** Uma desvantagem dos livros fica marcada como excluída; a do Mestre sai do banco. */
+    deleteDisadvantage(d: Disadvantage): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */
