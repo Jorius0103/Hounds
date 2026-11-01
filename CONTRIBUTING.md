@@ -4,7 +4,8 @@
 
 | Quero mexer em… | Arquivo |
 |---|---|
-| Uma aba (Personagens, Fichas, Magias, Anotações, Início) | `js/tabs/tab-<aba>.js` |
+| Uma aba (Fichas, Magias, Anotações, Início) | `js/tabs/tab-<aba>.js` |
+| A página Personagens | `src/hub/paginas/Personagens.tsx` (a lista, com a busca e o botão de apresentar) e `Personagem.tsx` (um personagem), em React. O formulário de personagem (`openCharForm`, ainda no modal antigo), a apresentação para todos (`CharPresentation`), os dados e a gravação (`Ops.saveCharacter`, `Ops.deleteCharacter`) continuam em `js/tabs/tab-personagens.js`; a escolha da ficha (`openSheetLinkForm`, `Ops.setCharSheet`) fica em `js/tabs/tab-fichas.js` |
 | A página Mapas | `src/hub/paginas/Mapas.tsx` (a lista, com os filtros e a árvore), `Mapa.tsx` (um mapa) e `MapaForm.tsx` (criar e editar, com a troca de imagem), em React. A prévia com os marcadores continua em `js/mapa-previa.js` (o componente a chama), o explorer em `js/explorer.js`, os marcadores ao vivo no `watchMarkersFor` de `js/app.js` e a gravação em `js/mundo.js` |
 | A página Locais | `src/hub/paginas/Locais.tsx` (a lista), `Local.tsx` (um local, com a árvore) e `LocalForm.tsx` (criar e editar), em React. A gravação (`Ops.saveLocation`, `Ops.deleteLocation`, `Ops.ensureCharacters`) e as funções de local (`childLocs`, `locChars`…) ficam em `js/mundo.js` |
 | A página Eventos | `src/hub/paginas/Eventos.tsx` (a lista), `Evento.tsx` (um evento) e `EventoForm.tsx` (criar e editar), em React. Os dados, a gravação (`Ops.saveEvent`, `Ops.deleteEvent`) e o que as páginas de local e de personagem usam continuam em `js/tabs/tab-eventos.js` |
@@ -60,7 +61,7 @@ O hub está sendo migrado para React aos poucos. A casca (`src/hub/main.tsx` e `
 - Uma peça antiga que desenha sozinha dentro de um elemento, como a prévia do mapa (`js/mapa-previa.js`), pode continuar: o componente dá a ela uma caixa vazia (`ref`) e a chama num `useLayoutEffect`, como o `MapPreview` de `Mapa.tsx`. Ela não guarda estado no `S.ui`: recebe um objeto da página (a vista da prévia fica num `useRef`).
 - Os tipos: o `src/` usa os mesmos de `types/dados.d.ts` e `types/globais.d.ts` (`World`, `PageState`, `Route`, `window.hubUser`…). O `src/hub/legacy.d.ts` declara as funções de `js/` que a casca chama; ao usar mais uma numa página React, declare-a ali.
 
-Páginas já migradas: **Usuários** (`src/hub/paginas/Usuarios.tsx`, com os formulários em `UsuarioForm.tsx`), **Eventos** (`Eventos.tsx`, `Evento.tsx` e `EventoForm.tsx`), **Organizações** (`Organizacoes.tsx`, `Organizacao.tsx` e `OrganizacaoForm.tsx`), **Locais** (`Locais.tsx`, `Local.tsx` e `LocalForm.tsx`) e **Mapas** (`Mapas.tsx`, `Mapa.tsx` e `MapaForm.tsx`).
+Páginas já migradas: **Usuários** (`src/hub/paginas/Usuarios.tsx`, com os formulários em `UsuarioForm.tsx`), **Eventos** (`Eventos.tsx`, `Evento.tsx` e `EventoForm.tsx`), **Organizações** (`Organizacoes.tsx`, `Organizacao.tsx` e `OrganizacaoForm.tsx`), **Locais** (`Locais.tsx`, `Local.tsx` e `LocalForm.tsx`), **Mapas** (`Mapas.tsx`, `Mapa.tsx` e `MapaForm.tsx`) e **Personagens** (`Personagens.tsx` e `Personagem.tsx`; o formulário ainda é o antigo).
 
 As peças compartilhadas ficam em `src/hub/ui/`, cada uma com o mesmo HTML e o mesmo comportamento da função antiga:
 
@@ -78,7 +79,7 @@ As peças compartilhadas ficam em `src/hub/ui/`, cada uma com o mesmo HTML e o m
 | `Datalist` | `datalistHtml()` de `js/tabs/tab-organizacoes.js` (as sugestões de um campo de texto) |
 | `locSelectOptions` e `mapSelectOptions` (`options.ts`) | `locParentOptions()` e `mapOptions()`, que saíram de `js/mundo.js` (as opções em árvore de um `<select>`) |
 | `MapRow`, `FullTree` e `PathTree` (`MapTree.tsx`) | `mapRow()`, `fullTree()` e `pathTree()`, que saíram de `js/pagina.js` (as árvores de mapas) |
-| `RowLink` | a linha `<li><a class="row-link">` com o `thumbSlot()` das caixas do lado das páginas |
+| `RowLink` | a linha `<li><a class="row-link">` com o `thumbSlot()` das caixas do lado das páginas (como o `eventLink` e o `sheetLink`, que saíram de `js/tabs/tab-eventos.js` e `js/tabs/tab-fichas.js`) |
 | `PersonChip` | `personChip()` de `js/tabs/tab-personagens.js` |
 | `Dialog` | `showModal()`, `requestCloseModal()` e `closeModal()` de `js/modal.js` |
 
@@ -88,8 +89,8 @@ Para migrar uma página:
 
 1. Crie o componente em `src/hub/paginas/` com o mesmo HTML da versão antiga: as mesmas tags, classes e textos, porque o CSS de `css/` continua o mesmo. Use as peças de `src/hub/ui/` no lugar das funções antigas (a tabela acima); o aviso do topo vem do `noticeText()` de `js/pagina.js`. A gravação continua no `Ops` de `js/`.
 2. Registre-o em `PAGES` (`src/hub/pages.ts`) e declare no `src/hub/legacy.d.ts` as funções de `js/` que ele chama.
-3. Apague a função `render…Page` antiga, a linha dela no `renderPage` de `js/app.js`, o invólucro dela que chama o `tagPage` (o botão de visibilidade, que a página React desenha com o `VisibilityControls`) e as chamadas que redesenhavam a página quando os dados mudavam: o React redesenha sozinho com os avisos de dados. O que outras telas antigas ainda usam fica no arquivo (o `textPicker` de Organizações, por exemplo, serve ao formulário de personagem); se não sobrar nada, apague o arquivo e a linha dele no `index.html`, como foi com o `tab-locais.js` e o `tab-mapas.js`. Funções que mais nada usa também saem (o `pathTree` e o `mapOptions` saíram com Mapas).
-4. Os formulários vão para componentes React com o `<Dialog>`, com a mesma marcação e as mesmas validações (veja `UsuarioForm.tsx`). Se precisar migrar a página antes, eles podem continuar no modal antigo (`showModal`), chamados do componente. Se uma página antiga ainda abre o formulário migrado, exponha-o em `src/hub/main.tsx` como `window.hubOpen…`, declarado em `types/globais.d.ts` (foi assim com o formulário de local, o `hubOpenLocationForm`, até a página de mapa migrar).
+3. Apague a função `render…Page` antiga, a linha dela no `renderPage` de `js/app.js`, o invólucro dela que chama o `tagPage` (o botão de visibilidade, que a página React desenha com o `VisibilityControls`) e as chamadas que redesenhavam a página quando os dados mudavam: o React redesenha sozinho com os avisos de dados. O que outras telas antigas ainda usam fica no arquivo (o `textPicker` de Organizações, por exemplo, serve ao formulário de personagem); se não sobrar nada, apague o arquivo e a linha dele no `index.html`, como foi com o `tab-locais.js` e o `tab-mapas.js`. Funções que mais nada usa também saem (o `pathTree` e o `mapOptions` saíram com Mapas; o `eventLink` e o `sheetLink`, com Personagens).
+4. Os formulários vão para componentes React com o `<Dialog>`, com a mesma marcação e as mesmas validações (veja `UsuarioForm.tsx`). Se precisar migrar a página antes, eles podem continuar no modal antigo (`showModal`), chamados do componente, como o `openCharForm` em `Personagem.tsx`. Se uma página antiga ainda abre o formulário migrado, exponha-o em `src/hub/main.tsx` como `window.hubOpen…`, declarado em `types/globais.d.ts` (foi assim com o formulário de local, o `hubOpenLocationForm`, até a página de mapa migrar).
 5. Teste com Mestre e Jogador, criando, editando e excluindo, e compare com o site publicado.
 
 Para testar: `npm run dev` (veja "Rodar no computador" no README). Antes do commit, `npx tsc --noEmit` e `npm run build` devem passar.

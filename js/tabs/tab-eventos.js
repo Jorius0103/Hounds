@@ -24,10 +24,6 @@ function eventLoc(ev) { return (ev && ev.locationId && W.locIdx[ev.locationId]) 
 // The events a character takes part in, and the ones that happened at a location.
 function charEvents(charId) { return W.events.filter(function (ev) { return (ev.characterIds || []).indexOf(charId) >= 0; }).sort(byName); }
 function locEvents(locId) { return W.events.filter(function (ev) { return ev.locationId === locId; }).sort(byName); }
-function eventLink(ev) {
-  return '<li><a class="row-link" href="' + eventHref(ev.id) + '">' + thumbSlot(ev.image && ev.image.ref, ICON.event) + '<span class="mtext"><b>' + esc(ev.name) + '</b>' +
-    '<span class="where">' + (ev.date ? esc(ev.date) : 'Sem data') + '</span></span></a></li>';
-}
 
 Ops.saveEvent = function (ev, fields, newFile, newDims, removeImage) {
   var name = (fields.name || '').trim();

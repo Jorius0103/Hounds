@@ -67,6 +67,8 @@ declare global {
   /** Quem vê um item oculto ("o Mestre", "você e o Mestre"…) e o verbo que combina ("vê", "veem"). */
   function seenBy(item: {createdBy?: string | null; sharedWith?: string[]} | null): string;
   function seenVerb(item: {createdBy?: string | null; sharedWith?: string[]} | null): string;
+  /** Se a coleção tem o documento, mesmo um que este usuário não vê (W.raw). */
+  function rawHas(col: string, id: string | null | undefined): boolean;
   /** Muda um item dos catálogos dos livros: o primeiro ajuste cria o documento no banco. */
   function patchCatalogItem(col: string, item: Doc, p: object): Promise<unknown>;
   /** Os olhos dos botões de visibilidade (js/mundo.js e js/app.js). */
@@ -113,19 +115,29 @@ declare global {
   function mapPickOptions(q: string): {id: string; label: string; sub?: string; depth?: number}[];
 
   /** js/tabs/tab-personagens.js */
-  function charById(id: string): Character | null;
+  function charById(id: string | null | undefined): Character | null;
   function charHref(id: string): string;
   /** A raça e as organizações do personagem, numa linha. */
   function charSubtitle(c: Character): string;
   /** Os personagens ligados a um mapa (personagem.mapIds). */
   function mapCharacters(mapId: string): Character[];
+  /** Os locais e os mapas ligados ao personagem, em ordem alfabética. */
+  function charLocations(id: string): HLocation[];
+  function charMaps(c: Character): HMap[];
+  /** As relações que o personagem declarou e, depois, as que outros declararam com ele (back), cada outro uma vez. */
+  function charRelations(c: Character): {c: Character; type: string; back?: boolean}[];
+  /** O formulário de criar (c null) e editar um personagem, no modal antigo. */
+  function openCharForm(c: Character | null): void;
+  /** A apresentação de um personagem na tela de todos (o botão dos cartões da lista). */
+  var CharPresentation: {broadcast(id: string): void};
 
   /** js/tabs/tab-eventos.js */
   function eventById(id: string | null | undefined): HEvent | null;
   function eventHref(id: string): string;
   function eventChars(ev: HEvent): Character[];
   function eventLoc(ev: HEvent): HLocation | null;
-  /** Os eventos que aconteceram num local. */
+  /** Os eventos de que um personagem participa, e os que aconteceram num local. */
+  function charEvents(charId: string): HEvent[];
   function locEvents(locId: string): HEvent[];
 
   /** js/tabs/tab-organizacoes.js */
@@ -142,6 +154,18 @@ declare global {
   /** As organizações ligadas a um local e a um mapa. */
   function locOrgs(locId: string): Organization[];
   function mapOrgs(mapId: string): Organization[];
+  /** As organizações de um personagem, cada uma com o cargo dele, e os nomes delas numa linha (ou o campo antigo). */
+  function charOrgs(id: string): {o: Organization; rank: string}[];
+  function charOrgText(c: Character): string;
+
+  /** js/tabs/tab-fichas.js */
+  function sheetById(id: string | null | undefined): Sheet | null;
+  function sheetHref(id: string): string;
+  /** Os personagens da ficha, e o retrato dela: o do primeiro deles com imagem. */
+  function sheetChars(id: string): Character[];
+  function sheetPortrait(s: Sheet): {ref: string; name: string} | null;
+  /** O formulário de escolher a ficha de um personagem, no modal antigo. */
+  function openSheetLinkForm(c: Character): void;
 
   /** js/mundo.js e as abas de js/tabs/: as operações que gravam no banco. */
   var Ops: {
@@ -180,6 +204,10 @@ declare global {
     deleteLocation(l: HLocation): Promise<unknown>;
     /** Os ids dos personagens escolhidos, criando os que ainda não existem (da Mesa ou nomes novos). */
     ensureCharacters(sel: {id?: string; name: string; source?: string; mesaId?: string | null}[], visible: boolean, shared: string[]): Promise<string[]>;
+    /** O personagem sai dos locais, das relações dos outros, das organizações e dos eventos. */
+    deleteCharacter(c: Character): Promise<unknown>;
+    /** A ficha do personagem (null: nenhuma); quem mais tinha essa ficha fica sem. */
+    setCharSheet(charId: string, sheetId: string | null, justCreated?: boolean): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */

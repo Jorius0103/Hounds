@@ -68,11 +68,6 @@ function sheetPortrait(s) {
   var c = sheetChars(s.id).filter(function (x) { return x.image && x.image.ref; })[0];
   return c ? { ref: c.image.ref, name: c.name } : null;
 }
-function sheetLink(s) {
-  var n = sheetChars(s.id).length, p = sheetPortrait(s);
-  return '<li><a class="row-link" href="' + sheetHref(s.id) + '">' + thumbSlot(p && p.ref, ICON.sheet) + '<span class="mtext"><b>' + esc(s.name) + '</b>' +
-    '<span class="where">' + (n ? plural(n, 'personagem', 'personagens') : 'Nenhum personagem') + '</span></span></a></li>';
-}
 
 // The buttons of a sheet section, the same in all of them (same text, same size: .sec-btn): Editar
 // while closed; Cancelar and Salvar while it is edited. what: the section ("perícias"), for the

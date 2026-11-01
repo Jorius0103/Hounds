@@ -1,5 +1,9 @@
 /* =====================================================================
    Hounds — Aba Personagens
+   A lista e a página do personagem são React (src/hub/paginas/
+   Personagens.tsx e Personagem.tsx); aqui ficam os dados, a gravação
+   (Ops), o formulário de personagem (openCharForm, que elas abrem) e a
+   apresentação para todos (CharPresentation).
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
@@ -94,111 +98,6 @@ Ops.deleteCharacter = function (c) {
   }).then(function () { return W.store.remove('characters', c.id); })
     .then(function () { return W.store.dropImage(c.image && c.image.ref); });
 };
-
-function renderCharsPage() {
-  var can = canWrite();
-  pageRoot.innerHTML =
-    '<div class="head-row"><div>' + crumbsHtml('chars') + '<h1>Personagens</h1><p class="lede">Jogadores, aliados e NPCs do mundo. Cada personagem pode ter raça, organização e locais onde vive ou costuma estar.</p></div>' +
-    (can ? '<button class="btn primary" type="button" id="newCharBtn">' + svg(ICON.plus, 16, 2.4) + 'Novo personagem</button>' : '') + '</div>' + notice() +
-    (W.characters.length ? '<div class="toolbar"><label for="charSearch" style="position:absolute;left:-9999px">Buscar personagens</label><input class="search" id="charSearch" type="search" placeholder="Buscar por nome, raça, organização, mapa ou local" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="charCount"></span></div>' : '') +
-    '<div id="charList"></div>';
-  var b = $('newCharBtn'); if (b) b.onclick = function () { openCharForm(null); };
-  var s = $('charSearch'); if (s) s.addEventListener('input', function () { S.ui.q = s.value; renderCharList(); });
-  renderCharList();
-}
-function renderCharList() {
-  var el = $('charList'); if (!el) return;
-  if (!W.loaded.characters) { el.innerHTML = '<p class="lede">Carregando personagens…</p>'; return; }
-  if (!W.characters.length) {
-    el.innerHTML = '<div class="empty-state">' + svg(ICON.users, 34, 1.6) + '<strong>Nenhum personagem cadastrado</strong><span>' + (canWrite() ? 'Crie o primeiro com <b>Novo personagem</b>.' : 'Os personagens criados vão aparecer aqui.') + '</span></div>';
-    return;
-  }
-  var q = norm(S.ui.q);
-  var list = W.characters.slice().sort(byName).filter(function (c) {
-    if (!q) return true;
-    return norm(c.name + ' ' + (c.race || '') + ' ' + charOrgText(c) + ' ' + (c.description || '') + ' ' + charLocations(c.id).map(function (l) { return l.name; }).join(' ') + ' ' + charMaps(c).map(function (m) { return m.name; }).join(' ') + ' ' + charRelations(c).map(function (r) { return r.c.name; }).join(' ')).indexOf(q) >= 0;
-  });
-  var cnt = $('charCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.characters.length : plural(W.characters.length, 'personagem', 'personagens');
-  el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (c) {
-    var L = charLocations(c.id).length, M = charMaps(c).length, R = charRelations(c).length, sub = charSubtitle(c);
-    return '<a class="loc-card" href="' + charHref(c.id) + '">' +
-      '<button class="char-card-present-btn" type="button" data-present-id="' + esc(c.id) + '" title="Apresentar personagem para todos" aria-label="Apresentar ' + esc(c.name) + '">' +
-        svg(ICON.present, 14, 2) +
-      '</button>' +
-      '<div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '>' +
-      '<span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
-      '<span class="where">' + (sub ? esc(sub) : 'Sem raça ou organização') + '</span>' + (L || M || R ? '<span class="meta">' + [M ? plural(M, 'mapa', 'mapas') : '', L ? plural(L, 'local', 'locais') : '', R ? plural(R, 'relação', 'relações') : ''].filter(Boolean).join(' · ') + '</span>' : '') + '</div></a>';
-  }).join('') + '</div>' : '<p class="lede">Nenhum personagem encontrado para essa busca.</p>';
-  fillImages(el);
-  el.querySelectorAll('.char-card-present-btn').forEach(function (btn) {
-    btn.onclick = function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      var cid = btn.getAttribute('data-present-id');
-      if (cid && window.CharPresentation) CharPresentation.broadcast(cid);
-    };
-  });
-}
-
-function renderCharPage() {
-  var c = charById(S.route.charId), ui = S.ui;
-  if (!c) {
-    pageRoot.innerHTML = crumbsHtml('chars') + (W.loaded.characters ? '<h1>Personagem não encontrado</h1><p class="lede">Esse personagem foi excluído ou o link está incompleto.</p><div><a class="btn" href="#personagens">Voltar para Personagens</a></div>' : '<p class="lede">Carregando personagem…</p>');
-    return;
-  }
-  var can = canWrite(), locs = charLocations(c.id), rels = charRelations(c), evs = charEvents(c.id);
-  var sh = sheetById(c.sheetId), shHidden = !sh && rawHas('sheets', c.sheetId);
-  var head = crumbsHtml('char:' + c.id) + '<div class="head-row"><div><span class="badge">' + svg(ICON.user, 12, 2.4) + 'Personagem</span><h1>' + esc(c.name) + '</h1>' +
-    (charSubtitle(c) ? '<p class="lede">' + esc(charSubtitle(c)) + '</p>' : '') + '</div>' +
-    (can ? '<div class="btn-row"><button class="btn" type="button" id="editCharBtn">' + svg(ICON.edit, 15) + 'Editar personagem</button><button class="btn danger" type="button" id="delCharBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
-    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(c.name) + '</b>?' + (locs.length || evs.length ? ' Ele sai de ' + [locs.length ? plural(locs.length, 'local', 'locais') : '', evs.length ? plural(evs.length, 'evento', 'eventos') : ''].filter(Boolean).join(' e ') + '; eles continuam cadastrados.' : '') + ' Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delCharYes">Excluir personagem</button><button class="btn ghost" type="button" id="delCharNo">Cancelar</button></div></div>' : '');
-  var main = (c.image ? '<div class="loc-hero" id="charHero">' + svg(ICON.user, 32, 1.6) + '</div>' : '') +
-    '<section><h2 class="sec-title">Descrição</h2>' + (c.description ? '<p class="long">' + esc(c.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>';
-  // The boxes beside the character start closed; a click on the title opens one (see foldBox).
-  var side = foldBox('info', 'Informações', null, '<dl class="facts"><dt>Raça</dt><dd>' + (c.race ? esc(c.race) : '<span class="none">Não informada</span>') + '</dd>' +
-    '<dt>Organizações</dt><dd>' + (charOrgs(c.id).length ? charOrgs(c.id).map(function (x) { return '<a href="' + orgHref(x.o.id) + '">' + esc(x.o.name) + '</a>' + (x.rank ? ' · ' + esc(x.rank) : ''); }).join('<br>')
-      : c.organization ? esc(c.organization) : '<span class="none">Nenhuma</span>') + '</dd></dl>') +
-    // Open while removing the link is being confirmed, so the question can't end up hidden.
-    foldBox('sheet', 'Ficha', null,
-    (sh ? '<ul class="links">' + sheetLink(sh) + '</ul>' : '<p class="lede" style="font-size:13px">' + (shHidden ? 'Vinculado a uma ficha que você não pode ver.' : 'Nenhuma ficha vinculada.' + (can ? ' Cada personagem pode ter uma ficha.' : '')) + '</p>') +
-    (can ? '<div class="btn-row"><button class="btn" type="button" id="charSheetBtn">' + svg(ICON.sheet, 15) + (c.sheetId ? 'Trocar ficha' : 'Vincular ficha') + '</button>' +
-      (c.sheetId ? '<button class="btn ghost" type="button" id="charSheetRm">' + svg(ICON.x, 14, 2.4) + 'Remover vínculo</button>' : '') + '</div>' : '') +
-    (can && ui.confirmUnlink && c.sheetId ? '<div class="confirm" role="alert"><span>Remover o vínculo de <b>' + esc(c.name) + '</b> com ' + (sh ? 'a ficha <b>' + esc(sh.name) + '</b>' : 'a ficha') + '? A ficha continua cadastrada.</span><div class="btn-row"><button class="btn danger solid" type="button" id="charSheetRmYes">Remover vínculo</button><button class="btn ghost" type="button" id="charSheetRmNo">Cancelar</button></div></div>' : ''),
-    !!(can && ui.confirmUnlink && c.sheetId)) +
-    foldBox('rels', 'Relacionamentos', rels.length,
-    rels.length ? '<ul class="links">' + rels.map(function (r) {
-      var how = r.back ? (r.type ? 'Vê ' + c.name + ' como ' + r.type : 'Cita ' + c.name) : (r.type || 'Relação sem tipo');
-      return '<li><a class="row-link" href="' + charHref(r.c.id) + '">' + thumbSlot(r.c.image && r.c.image.ref, ICON.user) + '<span class="mtext"><b>' + esc(r.c.name) + '</b><span class="where">' + esc(how) + '</span></span></a></li>';
-    }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum relacionamento.' + (can ? ' Use <b>Editar personagem</b> para ligar outros personagens.' : '') + '</p>') +
-    foldBox('events', 'Eventos', evs.length,
-    evs.length ? '<ul class="links">' + evs.map(eventLink).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Não participa de nenhum evento.' + (can ? ' Ligue pelo campo <b>Personagens</b> do evento.' : '') + '</p>') +
-    foldBox('maps', 'Mapas relacionados', charMaps(c).length,
-    charMaps(c).length ? '<ul class="links">' + charMaps(c).map(function (m) { var pth = mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › '); return '<li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<span class="mtext"><b>' + esc(m.name) + '</b><span class="where">' + (pth ? esc(pth) : 'Nível superior') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum mapa relacionado.' + (can ? ' Use <b>Editar personagem</b> para ligar mapas.' : '') + '</p>') +
-    foldBox('locs', 'Locais relacionados', locs.length,
-    locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local relacionado.' + (can ? ' Use <b>Editar personagem</b> para ligar locais.' : '') + '</p>');
-  pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
-  if (c.image) W.store.imageUrl(c.image.ref).then(function (u) {
-    var h = $('charHero'); if (!h || !u) return;
-    h.innerHTML = '<button class="hero-zoom" type="button" aria-label="Ampliar a imagem de ' + esc(c.name) + '" title="Clique para ampliar"><img src="' + esc(u) + '" alt="' + esc(c.name) + '"></button>';
-    h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, c.name); };
-  });
-  fillImages(pageRoot);
-  wireFolds(pageRoot);
-  var e = $('editCharBtn'); if (e) e.onclick = function () { openCharForm(c); };
-  var sb = $('charSheetBtn'); if (sb) sb.onclick = function () { openSheetLinkForm(c); };
-  var sr = $('charSheetRm'); if (sr) sr.onclick = function () { ui.confirmUnlink = true; renderCharPage(); };
-  var srn = $('charSheetRmNo'); if (srn) srn.onclick = function () { ui.confirmUnlink = false; renderCharPage(); };
-  var sry = $('charSheetRmYes'); if (sry) sry.onclick = function () {
-    sry.disabled = true;
-    Ops.setCharSheet(c.id, null).then(function () { ui.confirmUnlink = false; toast('Vínculo com a ficha removido.'); }, function (er) { sry.disabled = false; toast(errorText(er), true); });
-  };
-  var d = $('delCharBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderCharPage(); };
-  var dn = $('delCharNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderCharPage(); };
-  var dy = $('delCharYes'); if (dy) dy.onclick = function () {
-    dy.disabled = true;
-    Ops.deleteCharacter(c).then(function () { toast('Personagem excluído.'); go('#personagens', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
-  };
-}
 
 function openCharForm(c) {
   var editing = !!c, canImg = W.store.canUpload;

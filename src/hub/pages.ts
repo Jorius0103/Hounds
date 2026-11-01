@@ -7,6 +7,8 @@ import {MapPage} from './paginas/Mapa';
 import {MapsPage} from './paginas/Mapas';
 import {OrgPage} from './paginas/Organizacao';
 import {OrgsPage} from './paginas/Organizacoes';
+import {CharPage} from './paginas/Personagem';
+import {CharsPage} from './paginas/Personagens';
 import {UsersPage} from './paginas/Usuarios';
 
 // Os dados vêm de useHub() (src/hub/data.ts); a rota, daqui. O estado de interface de uma página (busca,
@@ -25,4 +27,6 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   local: LocalPage,
   maps: MapsPage,
   map: MapPage,
+  chars: CharsPage,
+  char: CharPage,
 };

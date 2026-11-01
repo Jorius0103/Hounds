@@ -106,11 +106,8 @@ function revealMenu(put, icon, item, col) {
 document.addEventListener('mousedown', function (e) { if (revealDraft && !(e.target.closest && e.target.closest('.vis-menu'))) closeReveal(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && revealDraft) { closeReveal(); var b = $('visToggle'); if (b) b.focus(); } });
 window.addEventListener('hashchange', function () { revealDraft = null; });
-var _rChar = renderCharPage;
-// @ts-expect-error -- substitui a função de tab-personagens.js por uma que também desenha o botão de visibilidade
-renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'characters'); };
 var _rSheet = renderSheetPage;
-// @ts-expect-error -- idem, tab-fichas.js
+// @ts-expect-error -- substitui a função de tab-fichas.js por uma que também desenha o botão de visibilidade
 renderSheetPage = function () { _rSheet(); tagPage(sheetById(S.route.sheetId), 'sheets'); };
 var _rSpell = renderSpellPage;
 // @ts-expect-error -- idem, tab-magias.js
@@ -179,8 +176,6 @@ function renderPage() {
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
   else if (r.page === 'boards') renderBoardsPage();
-  else if (r.page === 'chars') renderCharsPage();
-  else if (r.page === 'char') renderCharPage();
   else if (r.page === 'sheets') renderSheetsPage();
   else if (r.page === 'sheet') renderSheetPage();
   else if (r.page === 'spells') renderSpellsPage();
@@ -289,7 +284,6 @@ function onData(kind) {
   if (S.route.page === 'note' && S.ui.editing) return;
   if (S.route.page === 'sheet' && (S.ui.attrDraft || sheetDraftOpen() || gearEditing() || S.ui.dragging)) return; // a section being edited; the page redraws on save or cancel
   if (S.route.page === 'sheet' && document.activeElement && document.activeElement.classList.contains('gpts-in')) { S.ui.ptsStale = true; return; } // points being typed in the table; redraws when the field is left
-  if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
   if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }
   if ((S.route.page === 'advs' || S.route.page === 'perks') && kind !== 'maps' && document.activeElement && document.activeElement.id === 'advSearch') { renderAdvList(); return; }
