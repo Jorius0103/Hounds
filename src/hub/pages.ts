@@ -1,6 +1,8 @@
 import type {ComponentType} from 'react';
 import {EventPage} from './paginas/Evento';
 import {EventsPage} from './paginas/Eventos';
+import {LocaisPage} from './paginas/Locais';
+import {LocalPage} from './paginas/Local';
 import {OrgPage} from './paginas/Organizacao';
 import {OrgsPage} from './paginas/Organizacoes';
 import {UsersPage} from './paginas/Usuarios';
@@ -17,4 +19,6 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   event: EventPage,
   orgs: OrgsPage,
   org: OrgPage,
+  locais: LocaisPage,
+  local: LocalPage,
 };

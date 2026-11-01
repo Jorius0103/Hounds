@@ -3,19 +3,8 @@ import {useHub} from '../data';
 import {closeDialog, Dialog} from '../ui/Dialog';
 import {IdPicker} from '../ui/IdPicker';
 import {ImageField, noImagePick, type ImagePick} from '../ui/ImageField';
+import {locSelectOptions} from '../ui/options';
 import {VisibilityFlag, visDraft, visFields, type VisDraft} from '../ui/Visibility';
-
-// Os locais em árvore para um <select>, como o locParentOptions de js/mundo.js: os de dentro recuados com "└".
-function locationOptions(noneLabel: string) {
-  const out = [{value: '', label: noneLabel}];
-  (function walk(parent: string | null, depth: number) {
-    childLocs(parent).forEach(l => {
-      out.push({value: l.id, label: (depth ? '   '.repeat(depth - 1) + '└ ' : '') + l.name});
-      walk(l.id, depth + 1);
-    });
-  })(null, 0);
-  return out;
-}
 
 /**
  * Criar (ev null) ou editar um evento: nome, data, local, imagem, descrição, personagens e visibilidade. Grava com
@@ -113,7 +102,7 @@ export function EventForm({ev, focusChars = false}: {ev: HEvent | null; focusCha
         <div className="field">
           <label htmlFor="eloc">Local</label>
           <select id="eloc" value={loc} onChange={e => setLoc(e.target.value)}>
-            {locationOptions('Nenhum local').map(o => (
+            {locSelectOptions('Nenhum local').map(o => (
               <option value={o.value} key={o.value}>
                 {o.label}
               </option>

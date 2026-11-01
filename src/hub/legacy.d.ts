@@ -74,14 +74,27 @@ declare global {
   var EYE_ON: string;
 
   /** js/mundo.js: locais (em árvore) e mapas. */
-  function locById(id: string): HLocation | null;
+  function locById(id: string | null | undefined): HLocation | null;
   function childLocs(id: string | null): HLocation[];
+  /** Os ids de tudo o que está dentro de um local, em todos os níveis. */
+  function locDescendants(id: string): string[];
+  /** O próprio local e os de dentro: os que não podem ser o local de cima dele. */
+  function badLocParents(id: string): Record<string, boolean>;
   function locPathText(id: string): string;
   function locMapId(l: HLocation): string | null;
+  /** Os personagens visíveis ligados ao local. */
+  function locChars(l: HLocation): Character[];
   function mapPathText(id: string): string;
   function mapById(id: string): HMap | null;
+  function childMaps(id: string | null): HMap[];
+  /** Os locais cujo mapa é este. */
+  function mapLocations(id: string): HLocation[];
   /** Do mapa de nível superior até o próprio mapa. */
   function mapChain(id: string): HMap[];
+  /** Os personagens da Mesa de Combate guardados neste navegador, como sugestões. */
+  function mesaCharacters(): {name: string; source: string; mesaId: string | null; kind: string}[];
+  /** js/explorer.js: o que o explorer de mapas faz ao abrir (mostrar o marcador de um local, ou marcar um local novo). */
+  var Explorer: {pending: {locationId?: string; linkLocationId?: string; markerId?: string} | null};
   /** js/rotas.js */
   function locHref(id: string): string;
   function mapHref(id: string): string;
@@ -100,6 +113,8 @@ declare global {
   function eventHref(id: string): string;
   function eventChars(ev: HEvent): Character[];
   function eventLoc(ev: HEvent): HLocation | null;
+  /** Os eventos que aconteceram num local. */
+  function locEvents(locId: string): HEvent[];
 
   /** js/tabs/tab-organizacoes.js */
   function orgById(id: string | null | undefined): Organization | null;
@@ -112,6 +127,8 @@ declare global {
   /** As sugestões de cargo e de reputação: as padrão primeiro, e então as outras já usadas. */
   function rankTypes(): string[];
   function reputations(): string[];
+  /** As organizações ligadas a um local. */
+  function locOrgs(locId: string): Organization[];
 
   /** js/mundo.js e as abas de js/tabs/: as operações que gravam no banco. */
   var Ops: {
@@ -131,6 +148,19 @@ declare global {
       removeImage?: boolean,
     ): Promise<string>;
     deleteOrganization(o: Organization): Promise<unknown>;
+    /** second: a segunda imagem do local, com os mesmos campos da primeira. */
+    saveLocation(
+      loc: HLocation | null,
+      fields: {name: string; description: string; characterIds: string[]; mapId: string | null; parentId: string | null; visible: boolean; sharedWith: string[]},
+      newFile?: File | null,
+      newDims?: {w: number; h: number} | null,
+      removeImage?: boolean,
+      second?: {file: File | null; dims: {w: number; h: number} | null; removed: boolean} | null,
+    ): Promise<string>;
+    /** Os sublocais sobem para o local de cima; marcadores, organizações e eventos perdem o vínculo. */
+    deleteLocation(l: HLocation): Promise<unknown>;
+    /** Os ids dos personagens escolhidos, criando os que ainda não existem (da Mesa ou nomes novos). */
+    ensureCharacters(sel: {id?: string; name: string; source?: string; mesaId?: string | null}[], visible: boolean, shared: string[]): Promise<string[]>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */

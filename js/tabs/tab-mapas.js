@@ -157,7 +157,7 @@ function renderMapPage() {
   wireFolds(pageRoot);
   var tb = $('mapTreeBtn'); if (tb) tb.onclick = function () { openMapTree(m); };
   var e1 = $('editMapBtn'); if (e1) e1.onclick = function () { openMapForm(m); };
-  var nl = $('newLocHere'); if (nl) nl.onclick = function () { openLocationForm(null, m.id); };
+  var nl = $('newLocHere'); if (nl) nl.onclick = function () { window.hubOpenLocationForm(m.id); }; // o formulário é React (src/hub/paginas/LocalForm.tsx)
   var db = $('deleteMapBtn'); if (db) db.onclick = function () { ui.confirmDelete = true; renderMapPage(); };
   var dn = $('deleteMapNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderMapPage(); };
   var dy = $('deleteMapYes'); if (dy) dy.onclick = function () {

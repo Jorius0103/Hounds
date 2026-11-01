@@ -104,11 +104,9 @@ function revealMenu(put, icon, item, col) {
 document.addEventListener('mousedown', function (e) { if (revealDraft && !(e.target.closest && e.target.closest('.vis-menu'))) closeReveal(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && revealDraft) { closeReveal(); var b = $('visToggle'); if (b) b.focus(); } });
 window.addEventListener('hashchange', function () { revealDraft = null; });
-var _rMap = renderMapPage, _rLoc = renderLocalPage, _rChar = renderCharPage;
+var _rMap = renderMapPage, _rChar = renderCharPage;
 // @ts-expect-error -- substitui a função de tab-mapas.js por uma que também desenha o botão de visibilidade
 renderMapPage = function () { _rMap(); tagPage(mapById(S.route.mapId), 'maps'); };
-// @ts-expect-error -- idem, tab-locais.js
-renderLocalPage = function () { _rLoc(); tagPage(locById(S.route.locId), 'locations'); };
 // @ts-expect-error -- idem, tab-personagens.js
 renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'characters'); };
 var _rSheet = renderSheetPage;
@@ -181,8 +179,6 @@ function renderPage() {
   else if (r.page === 'boards') renderBoardsPage();
   else if (r.page === 'maps') renderMapsPage();
   else if (r.page === 'map') { watchMarkersFor(r.mapId); renderMapPage(); var m = mapById(r.mapId); if (r.explore && m) Explorer.open(m); }
-  else if (r.page === 'locais') renderLocaisPage();
-  else if (r.page === 'local') renderLocalPage();
   else if (r.page === 'chars') renderCharsPage();
   else if (r.page === 'char') renderCharPage();
   else if (r.page === 'sheets') renderSheetsPage();
@@ -294,7 +290,6 @@ function onData(kind) {
   if (S.route.page === 'sheet' && (S.ui.attrDraft || sheetDraftOpen() || gearEditing() || S.ui.dragging)) return; // a section being edited; the page redraws on save or cancel
   if (S.route.page === 'sheet' && document.activeElement && document.activeElement.classList.contains('gpts-in')) { S.ui.ptsStale = true; return; } // points being typed in the table; redraws when the field is left
   if (S.route.page === 'maps' && document.activeElement && document.activeElement.id === 'mapSearch') { renderMapList(); return; }
-  if (S.route.page === 'locais' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'locSearch') { renderLocList(); return; }
   if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
   if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }
