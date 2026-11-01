@@ -4,8 +4,6 @@ import { CombatLogCard } from './CombatLogCard';
 import { DetailedLogModal } from './DetailedLogModal';
 import { ScrollText, Search, X, SlidersHorizontal, Maximize2 } from 'lucide-react';
 
-const PAGE_SIZE = 10;
-
 interface GeneralCombatLogProps {
   activeCombat: Combat | undefined;
   additionalCharacters?: NPC[];
@@ -43,11 +41,13 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   // Filtro 3: Busca Livre
   const [searchTerm, setSearchTerm] = useState('');
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState<boolean>(true);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedRoundFilter, entityFilter, typeFilter, searchTerm, activeCombat?.id]);
+  }, [selectedRoundFilter, entityFilter, typeFilter, searchTerm, pageSize, activeCombat?.id]);
 
   // Collect and sort all logs across all active combat NPCs and Personagens
   const allLogs = useMemo(() => {
@@ -236,12 +236,12 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
     });
   }, [allLogs, selectedRoundFilter, entityFilter, typeFilter, searchTerm]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
-  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const startIdx = (safePage - 1) * pageSize;
   const paginatedLogs = useMemo(
-    () => filteredLogs.slice(startIdx, startIdx + PAGE_SIZE),
-    [filteredLogs, startIdx]
+    () => filteredLogs.slice(startIdx, startIdx + pageSize),
+    [filteredLogs, startIdx, pageSize]
   );
 
   return (
@@ -280,10 +280,25 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               {filteredLogs.length} / {allLogs.length}
             </span>
 
+            {/* Botão de Exibir/Ocultar Filtros */}
+            <button
+              type="button"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className={`px-2 py-1 rounded-lg border transition-colors flex items-center gap-1 text-[10px] font-semibold cursor-pointer ${
+                showFilters
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : 'bg-slate-900/90 text-slate-400 hover:text-white border-slate-700/80 hover:border-slate-600'
+              }`}
+              title={showFilters ? 'Ocultar filtros do log' : 'Exibir filtros do log'}
+            >
+              <SlidersHorizontal size={12} />
+              <span className="hidden sm:inline">Filtros</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsDetailModalOpen(true)}
-              className="px-2 py-1 text-slate-300 hover:text-amber-300 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-amber-500/40 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-semibold"
+              className="px-2 py-1 text-slate-300 hover:text-amber-300 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-amber-500/40 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-semibold cursor-pointer"
               title="Abrir janela com visualização detalhada do log e ferramentas da mesa"
             >
               <Maximize2 size={12} />
@@ -292,130 +307,134 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
           </div>
         </div>
 
-        {/* Filtro 1: Origem / Entidade (Todos | Personagens | NPCs) */}
-        <div className="flex items-center justify-between gap-1 text-[10px]">
-          <span className="text-slate-500 font-semibold px-1 shrink-0 w-11">Origem:</span>
-          <div className="flex-1 flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
-            <button
-              type="button"
-              onClick={() => setEntityFilter('all')}
-              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                entityFilter === 'all'
-                  ? 'bg-slate-800 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Todos
-            </button>
-            <button
-              type="button"
-              onClick={() => setEntityFilter('players')}
-              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                entityFilter === 'players'
-                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60 shadow-xs'
-                  : 'text-slate-400 hover:text-emerald-300'
-              }`}
-            >
-              Personagens
-            </button>
-            <button
-              type="button"
-              onClick={() => setEntityFilter('npcs')}
-              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                entityFilter === 'npcs'
-                  ? 'bg-purple-950 text-purple-300 border border-purple-700/60 shadow-xs'
-                  : 'text-slate-400 hover:text-purple-300'
-              }`}
-            >
-              NPCs
-            </button>
-          </div>
-        </div>
+        {showFilters && (
+          <div className="space-y-2 pt-1 border-t border-slate-800/80">
+            {/* Filtro 1: Origem / Entidade (Todos | Personagens | NPCs) */}
+            <div className="flex items-center justify-between gap-1 text-[10px]">
+              <span className="text-slate-500 font-semibold px-1 shrink-0 w-11">Origem:</span>
+              <div className="flex-1 flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEntityFilter('all')}
+                  className={`flex-1 py-0.5 rounded text-center font-bold transition-all cursor-pointer ${
+                    entityFilter === 'all'
+                      ? 'bg-slate-800 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntityFilter('players')}
+                  className={`flex-1 py-0.5 rounded text-center font-bold transition-all cursor-pointer ${
+                    entityFilter === 'players'
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60 shadow-xs'
+                      : 'text-slate-400 hover:text-emerald-300'
+                  }`}
+                >
+                  Personagens
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntityFilter('npcs')}
+                  className={`flex-1 py-0.5 rounded text-center font-bold transition-all cursor-pointer ${
+                    entityFilter === 'npcs'
+                      ? 'bg-purple-950 text-purple-300 border border-purple-700/60 shadow-xs'
+                      : 'text-slate-400 hover:text-purple-300'
+                  }`}
+                >
+                  NPCs
+                </button>
+              </div>
+            </div>
 
-        {/* Filtro 2: Tipo de Evento (Todos | Status | Rolagens) */}
-        <div className="flex items-center justify-between gap-1 text-[10px]">
-          <span className="text-slate-500 font-semibold px-1 shrink-0 w-11">Tipo:</span>
-          <div className="flex-1 flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
-            <button
-              type="button"
-              onClick={() => setTypeFilter('all')}
-              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                typeFilter === 'all'
-                  ? 'bg-slate-800 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Todos
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter('status')}
-              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                typeFilter === 'status'
-                  ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow-xs'
-                  : 'text-slate-400 hover:text-cyan-300'
-              }`}
-              title="Exibe alterações de status e condições"
-            >
-              Status
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter('rolls')}
-              className={`flex-1 py-0.5 rounded text-center font-bold transition-all ${
-                typeFilter === 'rolls'
-                  ? 'bg-amber-950 text-amber-300 border border-amber-600/60 shadow-xs'
-                  : 'text-slate-400 hover:text-amber-300'
-              }`}
-              title="Exibe apenas rolagens de dados"
-            >
-              Rolagens
-            </button>
-          </div>
-        </div>
+            {/* Filtro 2: Tipo de Evento (Todos | Status | Rolagens) */}
+            <div className="flex items-center justify-between gap-1 text-[10px]">
+              <span className="text-slate-500 font-semibold px-1 shrink-0 w-11">Tipo:</span>
+              <div className="flex-1 flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter('all')}
+                  className={`flex-1 py-0.5 rounded text-center font-bold transition-all cursor-pointer ${
+                    typeFilter === 'all'
+                      ? 'bg-slate-800 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter('status')}
+                  className={`flex-1 py-0.5 rounded text-center font-bold transition-all cursor-pointer ${
+                    typeFilter === 'status'
+                      ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow-xs'
+                      : 'text-slate-400 hover:text-cyan-300'
+                  }`}
+                  title="Exibe alterações de status e condições"
+                >
+                  Status
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter('rolls')}
+                  className={`flex-1 py-0.5 rounded text-center font-bold transition-all cursor-pointer ${
+                    typeFilter === 'rolls'
+                      ? 'bg-amber-950 text-amber-300 border border-amber-600/60 shadow-xs'
+                      : 'text-slate-400 hover:text-amber-300'
+                  }`}
+                  title="Exibe apenas rolagens de dados"
+                >
+                  Rolagens
+                </button>
+              </div>
+            </div>
 
-        {/* Filtro de Rodada Compacto + Busca Menor e Alinhada ao Lado */}
-        <div className="flex items-center gap-1.5 text-[10px]">
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-slate-500 font-semibold px-0.5 shrink-0">Rodada:</span>
-            <select
-              value={selectedRoundFilter}
-              onChange={(e) =>
-                setSelectedRoundFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))
-              }
-              className="w-20 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
-              title="Filtrar por rodada"
-            >
-              <option value="all">Todas</option>
-              {availableRounds.map((r) => (
-                <option key={r} value={r}>
-                  {r === 0 ? '0' : `${r}`}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* Filtro de Rodada Compacto + Busca Menor e Alinhada ao Lado */}
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-slate-500 font-semibold px-0.5 shrink-0">Rodada:</span>
+                <select
+                  value={selectedRoundFilter}
+                  onChange={(e) =>
+                    setSelectedRoundFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))
+                  }
+                  className="w-20 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                  title="Filtrar por rodada"
+                >
+                  <option value="all">Todas</option>
+                  {availableRounds.map((r) => (
+                    <option key={r} value={r}>
+                      {r === 0 ? '0' : `${r}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="relative flex-1 min-w-0">
-            <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Buscar no log..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-7 pr-6 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                title="Limpar busca"
-              >
-                <X size={11} />
-              </button>
-            )}
+              <div className="relative flex-1 min-w-0">
+                <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar no log..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-7 pr-6 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                    title="Limpar busca"
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Log Feed List */}
@@ -442,66 +461,63 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                   setTypeFilter('all');
                   setSelectedRoundFilter('all');
                 }}
-                className="mt-1 text-xs text-amber-400 hover:underline font-semibold"
+                className="mt-1 text-xs text-amber-400 hover:underline font-semibold cursor-pointer"
               >
                 Limpar filtros
               </button>
             )}
           </div>
         ) : (
-          paginatedLogs.map((entry, ix) => {
-            const prevRound = ix > 0 ? (paginatedLogs[ix - 1].round ?? 0) : null;
-            const currentEntryRound = entry.round ?? 0;
-            const isNewRound = ix === 0 || prevRound !== currentEntryRound;
-            const isNoCombat = !activeCombat || activeCombat.id === 'combat-vazio' || activeCombat.name?.toLowerCase().includes('vazio') || activeCombat.name?.toLowerCase().trim() === 'sem combate';
-            const curRound = isNoCombat ? 0 : (activeCombat?.currentRound ?? (activeCombat as any)?.round ?? 0);
-            const isCurrent = currentEntryRound === curRound;
-            const roundTitle = currentEntryRound === 0
-              ? (isCurrent ? 'Rodada 0 (Preparação) · em andamento' : 'Rodada 0 (Preparação)')
-              : (isCurrent ? `Rodada ${currentEntryRound} · em andamento` : `Rodada ${currentEntryRound}`);
-
-            return (
-              <React.Fragment key={entry.id}>
-                {isNewRound && (
-                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-400 pt-1">
-                    <span className="flex-1 h-px bg-slate-800" />
-                    <span>{roundTitle}</span>
-                    <span className="flex-1 h-px bg-slate-800" />
-                  </div>
-                )}
-                <div
-                  className={entry.npcId === selectedNpcId ? 'ring-1 ring-amber-400/60 rounded-xl' : ''}
-                >
-                  <CombatLogCard
-                    entry={entry}
-                    showNpcInfo={true}
-                    onSelectNpc={onSelectNpc}
-                    isCompact={true}
-                    currentUserRole={currentUserRole}
-                    currentUserName={currentUserName}
-                    isPlayer={currentUserRole === 'jogador'}
-                    onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
-                    onUpdateEntryComment={onUpdateEntryComment}
-                  />
-                </div>
-              </React.Fragment>
-            );
-          })
+          paginatedLogs.map((entry) => (
+            <div
+              key={entry.id}
+              className={entry.npcId === selectedNpcId ? 'ring-1 ring-amber-400/60 rounded-xl' : ''}
+            >
+              <CombatLogCard
+                entry={entry}
+                showNpcInfo={true}
+                onSelectNpc={onSelectNpc}
+                isCompact={true}
+                currentUserRole={currentUserRole}
+                currentUserName={currentUserName}
+                isPlayer={currentUserRole === 'jogador'}
+                onDeleteEntry={currentUserRole === 'mestre' ? onDeleteEntry : undefined}
+                onUpdateEntryComment={onUpdateEntryComment}
+              />
+            </div>
+          ))
         )}
       </div>
 
-      {/* Pagination Bar (10 em 10) */}
+      {/* Pagination Bar */}
       {filteredLogs.length > 0 && (
         <div className="px-3 py-2 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between gap-2 text-[11px]">
-          <span className="text-slate-400 font-mono text-[10px]">
-            {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filteredLogs.length)} de {filteredLogs.length}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 font-mono text-[10px]">
+              {startIdx + 1}–{Math.min(startIdx + pageSize, filteredLogs.length)} de {filteredLogs.length}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 pl-1 border-l border-slate-800">
+              <span>Exibir:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] text-amber-300 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={30}>30</option>
+              </select>
+            </div>
+          </div>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               disabled={safePage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, Math.min(p, totalPages) - 1))}
-              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold transition-colors cursor-pointer"
               title="Página anterior"
             >
               « Ant.
@@ -513,7 +529,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               type="button"
               disabled={safePage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, Math.min(p, totalPages) + 1))}
-              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-800 font-semibold transition-colors cursor-pointer"
               title="Próxima página"
             >
               Próx. »

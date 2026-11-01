@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { ActionLogEntry, UserRole, MesaRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
-import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2, AlertTriangle, RotateCcw, Dices, MessageSquare, Pencil, Check, X } from 'lucide-react';
+import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2, AlertTriangle, RotateCcw, Dices, MessageSquare, Pencil, Check, X, Plus } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 
 interface CombatLogCardProps {
@@ -43,7 +43,8 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   }, [entry.comment]);
 
   const isPlayerView = isPlayer || currentUserRole !== 'mestre';
-  const canEditComment = currentUserRole === 'mestre' || currentUserRole === 'jogador';
+  // Qualquer usuário pode colocar comentário em um rolamento
+  const canEditComment = true;
   const isNpcTarget = (entry as any).npcCharacterType !== 'player';
 
   // Sanitize description for players on NPCs (never leak RD, armor, penetration or formulas)
@@ -320,6 +321,19 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           <span className="text-[10px] text-slate-500 font-mono">
             {formattedTimestamp}
           </span>
+          {entry.type === 'roll' && onUpdateEntryComment && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditingComment(true);
+              }}
+              className="p-1 text-slate-400 hover:text-amber-300 hover:bg-slate-800 rounded transition-colors cursor-pointer flex items-center justify-center shrink-0"
+              title={entry.comment ? 'Editar comentário da rolagem' : 'Adicionar comentário à rolagem'}
+            >
+              {entry.comment ? <Pencil size={11} /> : <Plus size={12} className="text-amber-400 font-bold" />}
+            </button>
+          )}
           {onDeleteEntry && (
             <button
               type="button"
@@ -471,7 +485,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       {entry.type === 'roll' && (
         <div className="flex items-center justify-between bg-slate-900/90 border border-amber-500/30 rounded-lg p-2 font-mono">
           <div className="flex flex-col">
-            <span className="text-[10px] text-amber-400 font-semibold font-sans">
+            <span className="text-xs sm:text-sm font-bold text-amber-300 font-mono tracking-wide">
               {(() => {
                 const match = entry.description?.match(/(\d+D\d+)/i);
                 const notation = match ? match[1].toUpperCase() : ((entry as any).rolls?.length > 1 ? `${(entry as any).rolls.length}D6` : '1D6');
@@ -480,11 +494,6 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
                   : `${notation}: [ ${(entry as any).rolls?.[0] ?? (entry.amount ?? 0)} ]`;
               })()}
             </span>
-            {entry.playerName && (
-              <span className="text-[9px] text-slate-400 font-sans italic">
-                Jogador: {entry.playerName}
-              </span>
-            )}
           </div>
           <div className="flex items-baseline gap-1 bg-amber-950/60 border border-amber-500/40 px-2.5 py-0.5 rounded-lg">
             <span className="text-[9px] text-amber-400 uppercase font-sans font-bold">Total</span>
@@ -495,8 +504,8 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
         </div>
       )}
 
-      {/* Roll Comment Section (editable by GM and authorized players) */}
-      {entry.type === 'roll' && (
+      {/* Roll Comment Section (somente aparece se estiver editando ou se já houver comentário) */}
+      {entry.type === 'roll' && (isEditingComment || entry.comment) && (
         <>
           {isEditingComment ? (
             <form
@@ -536,7 +545,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
                 <X size={13} />
               </button>
             </form>
-          ) : entry.comment ? (
+          ) : (
             <div className="flex items-start justify-between gap-2 p-1.5 bg-slate-900/60 border border-amber-500/20 rounded-lg text-xs font-sans">
               <div className="flex items-start gap-1.5 min-w-0">
                 <MessageSquare size={12} className="text-amber-400 shrink-0 mt-0.5" />
@@ -544,7 +553,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
                   {entry.comment}
                 </span>
               </div>
-              {canEditComment && onUpdateEntryComment && (
+              {onUpdateEntryComment && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -558,29 +567,12 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
                 </button>
               )}
             </div>
-          ) : (
-            canEditComment && onUpdateEntryComment && (
-              <div className="flex justify-end pt-0.5">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditingComment(true);
-                  }}
-                  className="inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-amber-300 transition-colors py-0.5 px-2 rounded hover:bg-slate-900 border border-transparent hover:border-slate-800 cursor-pointer"
-                  title="Adicionar anotação / motivo para esta rolagem"
-                >
-                  <MessageSquare size={11} className="text-slate-500" />
-                  <span>+ Comentário</span>
-                </button>
-              </div>
-            )
           )}
         </>
       )}
 
-      {/* Description / Custom Note */}
-      {displayDescription && entry.type !== 'roll' && (
+      {/* Description / Custom Note (para dano, exibe apenas na visão detalhada) */}
+      {displayDescription && entry.type !== 'roll' && (!isDamage || (!isCompact && showFullDateTime)) && (
         <div className="text-[11px] text-slate-300 font-sans leading-relaxed">
           {displayDescription}
         </div>

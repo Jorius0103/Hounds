@@ -1064,6 +1064,11 @@ export default function App() {
       if ((payload as any).type === 'SYNC_ENTRY_COMMENT' && (payload as any).entryId) {
         const { entryId, npcId, comment, timestamp } = payload as any;
         const now = timestamp || Date.now();
+
+        setSessionEvents((prev) =>
+          (prev || []).map((e) => (e.id === entryId ? { ...e, comment } : e))
+        );
+
         setPlayers((prev) =>
           prev.map((p) => {
             const has = (p.history || []).some((h) => h.id === entryId) || (npcId && p.id === npcId);
@@ -1103,6 +1108,18 @@ export default function App() {
             };
           })
         );
+
+        Object.keys(combatsPoolRef.current).forEach((cid) => {
+          const pool = combatsPoolRef.current[cid];
+          if (pool) {
+            pool.events = (pool.events || []).map((e) => (e.id === entryId ? { ...e, comment } : e));
+            pool.npcs = (pool.npcs || []).map((n) => ({
+              ...n,
+              history: (n.history || []).map((h) => (h.id === entryId ? { ...h, comment } : h)),
+            }));
+          }
+        });
+
         return;
       }
 
@@ -4442,6 +4459,17 @@ export default function App() {
     setSessionEvents((prev) =>
       (prev || []).map((e) => (e.id === entryId ? { ...e, comment } : e))
     );
+
+    Object.keys(combatsPoolRef.current).forEach((cid) => {
+      const pool = combatsPoolRef.current[cid];
+      if (pool) {
+        pool.events = (pool.events || []).map((e) => (e.id === entryId ? { ...e, comment } : e));
+        pool.npcs = (pool.npcs || []).map((n) => ({
+          ...n,
+          history: (n.history || []).map((h) => (h.id === entryId ? { ...h, comment } : h)),
+        }));
+      }
+    });
 
     if (plChanged) {
       stateRef.current.players = nextPlayers;
