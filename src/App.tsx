@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, Weapon, ExtraItem } from './types/rpg';
+import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, MesaRole, Weapon, ExtraItem } from './types/rpg';
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
 import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, COMBAT_MANEUVERS } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';

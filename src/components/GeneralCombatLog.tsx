@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Combat, UserRole, NPC, ActionLogEntry } from '../types/rpg';
+import { Combat, UserRole, MesaRole, NPC, ActionLogEntry } from '../types/rpg';
 import { CombatLogCard } from './CombatLogCard';
 import { ScrollText, Trash2, Search, X, SlidersHorizontal } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
@@ -12,7 +12,7 @@ interface GeneralCombatLogProps {
   sessionEvents?: any[];
   onSelectNpc: (npcId: string) => void;
   selectedNpcId: string;
-  currentUserRole: UserRole;
+  currentUserRole: MesaRole;
   currentUserName?: string;
   onClearHistory?: () => void;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
