@@ -3639,18 +3639,31 @@ export default function App() {
       : (logEntry.round !== undefined 
         ? logEntry.round 
         : effectiveRound);
+    // Busca o conjurador
+    const caster = allCharacters.find((c: NPC) => c.id === npcId);
+    const casterName = caster?.name || 'Conjurador';
+
+    const stone = manaStoneUsage?.itemId
+      ? (caster?.extraItems || []).find((it: any) => it.id === manaStoneUsage.itemId)
+      : undefined;
+    const stoneCurrent = stone ? (stone.current ?? stone.max ?? 0) : undefined;
+    const stoneAfter = stone && manaStoneUsage ? Math.max(0, (stone.current ?? stone.max ?? 0) - manaStoneUsage.amount) : undefined;
+    const isManaStoneSpent = Boolean(manaStoneUsage || logEntry.itemId || logEntry.itemBefore !== undefined);
+
     const entryWithId: ActionLogEntry = {
       ...logEntry,
       round: roundNumber,
       authorName: logEntry.authorName || currentUser?.name,
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       ...(manaStoneUsage?.itemId ? { itemId: manaStoneUsage.itemId } : {}),
+      ...(stone ? {
+        itemName: logEntry.itemName || stone.name,
+        itemBefore: logEntry.itemBefore !== undefined ? logEntry.itemBefore : stoneCurrent,
+        itemAfter: logEntry.itemAfter !== undefined ? logEntry.itemAfter : stoneAfter,
+      } : {}),
+      ...(isManaStoneSpent && fpDelta === 0 ? { fpBefore: undefined, fpAfter: undefined } : {}),
       ...(spellData && spellData.isActiveSpell ? { spellId: spellInstanceId } : {}),
     };
-
-    // Busca o conjurador
-    const caster = allCharacters.find((c: NPC) => c.id === npcId);
-    const casterName = caster?.name || 'Conjurador';
 
     let nextPlayers = [...players];
     let nextCombats = [...combats];

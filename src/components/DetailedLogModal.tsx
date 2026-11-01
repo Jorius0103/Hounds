@@ -721,9 +721,34 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                                 )}
                               </div>
                             ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/70 inline-block">
-                                Status ({entry.type})
-                              </span>
+                              (() => {
+                                const isManaStone = Boolean(
+                                  entry.itemId ||
+                                  entry.itemBefore !== undefined ||
+                                  (entry.itemName && entry.itemName !== 'Passar o Dia') ||
+                                  (entry.type === 'fatigue' && entry.description && (entry.description.includes('Mana') || entry.description.includes('Pedra')))
+                                );
+                                if (isManaStone) {
+                                  return (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800/70 inline-block">
+                                      Mana
+                                    </span>
+                                  );
+                                }
+                                const labelMap: Record<string, { label: string; color: string }> = {
+                                  damage: { label: 'Dano', color: 'bg-rose-950 text-rose-300 border-rose-800/70' },
+                                  fatigue: { label: 'Fadiga', color: 'bg-cyan-950 text-cyan-300 border-cyan-800/70' },
+                                  heal: { label: 'Cura', color: 'bg-emerald-950 text-emerald-300 border-emerald-800/70' },
+                                  rest: { label: 'Descanso', color: 'bg-blue-950 text-blue-300 border-blue-800/70' },
+                                  item: { label: 'Item', color: 'bg-amber-950 text-amber-300 border-amber-800/70' },
+                                };
+                                const mapped = labelMap[entry.type] || { label: `Status (${entry.type})`, color: 'bg-cyan-950 text-cyan-300 border-cyan-800/70' };
+                                return (
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-block ${mapped.color}`}>
+                                    {mapped.label}
+                                  </span>
+                                );
+                              })()
                             )}
                           </td>
 

@@ -33,6 +33,24 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
   const isFatigue = entry.type === 'fatigue';
   const isHeal = entry.type === 'heal';
   const isRest = entry.type === 'rest';
+  const isItem = entry.type === 'item';
+
+  const isManaStoneUsage = Boolean(
+    entry.itemId ||
+    entry.itemBefore !== undefined ||
+    (entry.itemName && entry.itemName !== 'Passar o Dia') ||
+    (isFatigue && entry.description && (entry.description.includes('Mana') || entry.description.includes('Pedra')))
+  );
+
+  const extraItemName = useMemo(() => {
+    if (entry.itemName && entry.itemName !== 'Passar o Dia') return entry.itemName;
+    if (entry.description) {
+      const match = entry.description.match(/\[([^\]]+)\]\s*\.?$/);
+      if (match) return match[1];
+      if (entry.description.includes('Mana')) return 'Pedras de Mana';
+    }
+    return 'Item Extra';
+  }, [entry.itemName, entry.description]);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isEditingComment, setIsEditingComment] = useState(false);
@@ -128,12 +146,21 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           bg: 'bg-rose-950/70 border-rose-800/80 text-rose-300',
         };
       }
-      case 'fatigue':
+      case 'fatigue': {
+        if (isManaStoneUsage) {
+          const itemLabel = entry.description?.includes('Mana') ? 'Mana' : extraItemName;
+          return {
+            icon: <Sparkles size={12} className="text-purple-400" />,
+            label: `-${entry.amount ?? 0} ${itemLabel}`,
+            bg: 'bg-purple-950/70 border-purple-800/80 text-purple-300',
+          };
+        }
         return {
           icon: <Zap size={12} className="text-cyan-400" />,
           label: `-${entry.amount ?? 0} FP`,
           bg: 'bg-cyan-950/70 border-cyan-800/80 text-cyan-300',
         };
+      }
       case 'heal':
         return {
           icon: <Sparkles size={12} className="text-emerald-400" />,
@@ -484,8 +511,32 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
         </div>
       )}
 
-      {/* Fatigue / Heal Vitals indicator */}
-      {!isDamage && (entry.fpBefore !== undefined || entry.hpBefore !== undefined) && (
+      {/* Item Extra / Mana Stone indicator */}
+      {!isDamage && (isManaStoneUsage || isItem || (entry.itemBefore !== undefined && entry.itemAfter !== undefined)) && (
+        <div className="flex items-center justify-between text-[11px] font-mono bg-slate-900/60 px-2 py-1 rounded border border-slate-800/60">
+          <span className="text-slate-400">
+            {extraItemName}:
+          </span>
+          <span className="text-white font-bold">
+            {isNpcTarget && isPlayerView ? (
+              'Item alterado'
+            ) : entry.itemBefore !== undefined && entry.itemAfter !== undefined ? (
+              `${entry.itemBefore} → ${entry.itemAfter}`
+            ) : isManaStoneUsage ? (
+              `-${entry.amount || 0} Mana`
+            ) : (
+              `${(entry.amount ?? 0) > 0 ? `+${entry.amount}` : entry.amount ?? 0} ${extraItemName}`
+            )}
+          </span>
+        </div>
+      )}
+
+      {/* Fatigue / Heal Vitals indicator (somente se não for pedra de mana ou se houve mudança real em FP/PV) */}
+      {!isDamage && (
+        (entry.fpBefore !== undefined && entry.fpAfter !== undefined && entry.fpBefore !== entry.fpAfter) ||
+        (entry.hpBefore !== undefined && entry.hpAfter !== undefined && entry.hpBefore !== entry.hpAfter) ||
+        (!isManaStoneUsage && !isItem && (entry.fpBefore !== undefined || entry.hpBefore !== undefined))
+      ) && (
         <div className="flex items-center justify-between text-[11px] font-mono bg-slate-900/60 px-2 py-1 rounded border border-slate-800/60">
           <span className="text-slate-400">
             {isFatigue ? 'Fadiga:' : isHeal ? 'PV:' : 'Recurso:'}

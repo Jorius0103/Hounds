@@ -434,6 +434,9 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         }
       : undefined;
 
+    const stoneCurrent = targetStone ? (targetStone.current ?? targetStone.max ?? 0) : undefined;
+    const stoneAfter = targetStone ? Math.max(0, (targetStone.current ?? targetStone.max ?? 0) - numFatigue) : undefined;
+
     onApplyFatigue(
       npc.id,
       -personalFpSpend,
@@ -450,10 +453,12 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcAvatar: npc.avatar,
         npcPreset: npc.avatarPreset,
         npcCharacterType: npc.characterType,
-        fpBefore: npc.fpCurrent,
-        fpAfter: npc.fpCurrent - personalFpSpend,
+        fpBefore: targetStone ? undefined : npc.fpCurrent,
+        fpAfter: targetStone ? undefined : npc.fpCurrent - personalFpSpend,
         itemId: targetStone?.id,
         itemName: targetStone?.name,
+        itemBefore: stoneCurrent,
+        itemAfter: stoneAfter,
       },
       spellData,
       manaStoneUsage
