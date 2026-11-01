@@ -1,4 +1,4 @@
-import {useRef, useState, type ReactNode} from 'react';
+import {useEffect, useRef, useState, type ReactNode} from 'react';
 import {Icon} from './Icon';
 import {ImageSlot} from './ImageSlot';
 
@@ -40,6 +40,15 @@ export function IdPicker({
   const [active, setActive] = useState(0);
   // Como na versão antiga, a opção ativa anunciada fica no campo depois que a lista fecha.
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Ao tirar um escolhido, o foco volta para a busca depois que a seleção nova é desenhada: a lista que o foco
+  // abre já oferece de novo o que saiu.
+  const focusInput = useRef(false);
+
+  useEffect(() => {
+    if (!focusInput.current) return;
+    focusInput.current = false;
+    input.current?.focus();
+  });
 
   function paint(q: string, want: number) {
     const found = find(norm(q.trim()))
@@ -101,8 +110,8 @@ export function IdPicker({
                   data-rm={i}
                   aria-label={'Remover ' + c.name}
                   onClick={() => {
+                    focusInput.current = true;
                     onChange(sel.filter((_, j) => j !== i));
-                    input.current?.focus();
                   }}
                 >
                   <Icon paths={ICON.x} size={12} stroke={2.6} />

@@ -1,6 +1,8 @@
 import type {ComponentType} from 'react';
 import {EventPage} from './paginas/Evento';
 import {EventsPage} from './paginas/Eventos';
+import {OrgPage} from './paginas/Organizacao';
+import {OrgsPage} from './paginas/Organizacoes';
 import {UsersPage} from './paginas/Usuarios';
 
 // Os dados vêm de useHub() (src/hub/data.ts); a rota, daqui. O estado de interface de uma página (busca,
@@ -13,4 +15,6 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   users: UsersPage,
   events: EventsPage,
   event: EventPage,
+  orgs: OrgsPage,
+  org: OrgPage,
 };

@@ -22,7 +22,7 @@ declare global {
   var byId: Record<string, {id: string; label: string; route?: boolean}>;
   function ancestors(id: string): string[];
 
-  /** js/utils.js: os desenhos dos ícones (o miolo de um <svg>; veja src/hub/Icon.tsx). */
+  /** js/utils.js: os desenhos dos ícones (o miolo de um <svg>; veja src/hub/ui/Icon.tsx). */
   var ICON: Record<string, string>;
   /** js/utils.js: as iniciais de um nome, para o avatar. */
   function initials(name: string): string;
@@ -48,7 +48,7 @@ declare global {
   /** js/app.js: redesenha a página antiga aberta (as React redesenham sozinhas). */
   function renderPage(): void;
 
-  /** js/modal.js: o modal aberto, antigo ou React (src/hub/Dialog.tsx); null quando não há. */
+  /** js/modal.js: o modal aberto, antigo ou React (src/hub/ui/Dialog.tsx); null quando não há. */
   interface LegacyModal {
     last: HTMLElement | null;
     onClose?: () => void;
@@ -79,8 +79,15 @@ declare global {
   function locPathText(id: string): string;
   function locMapId(l: HLocation): string | null;
   function mapPathText(id: string): string;
+  function mapById(id: string): HMap | null;
+  /** Do mapa de nível superior até o próprio mapa. */
+  function mapChain(id: string): HMap[];
   /** js/rotas.js */
   function locHref(id: string): string;
+  function mapHref(id: string): string;
+  /** js/pagina.js: as opções dos seletores de locais e de mapas (IdPicker), na ordem da árvore e com o caminho de cada um. */
+  function locPickOptions(q: string): {id: string; label: string; sub?: string; depth?: number}[];
+  function mapPickOptions(q: string): {id: string; label: string; sub?: string; depth?: number}[];
 
   /** js/tabs/tab-personagens.js */
   function charById(id: string): Character | null;
@@ -94,6 +101,18 @@ declare global {
   function eventChars(ev: HEvent): Character[];
   function eventLoc(ev: HEvent): HLocation | null;
 
+  /** js/tabs/tab-organizacoes.js */
+  function orgById(id: string | null | undefined): Organization | null;
+  function orgHref(id: string): string;
+  /** Os membros visíveis, do cargo mais alto (Líder) aos sem cargo, e então pelo nome. */
+  function orgMembers(o: Organization): {c: Character; rank: string}[];
+  /** Os locais e os mapas ligados à organização, em ordem alfabética. */
+  function orgLocs(o: Organization): HLocation[];
+  function orgMaps(o: Organization): HMap[];
+  /** As sugestões de cargo e de reputação: as padrão primeiro, e então as outras já usadas. */
+  function rankTypes(): string[];
+  function reputations(): string[];
+
   /** js/mundo.js e as abas de js/tabs/: as operações que gravam no banco. */
   var Ops: {
     saveEvent(
@@ -104,6 +123,14 @@ declare global {
       removeImage?: boolean,
     ): Promise<string>;
     deleteEvent(ev: HEvent): Promise<unknown>;
+    saveOrganization(
+      o: Organization | null,
+      fields: {name: string; description: string; reputation: string; members: Member[]; locationIds: string[]; mapIds: string[]; visible: boolean; sharedWith: string[]},
+      newFile?: File | null,
+      newDims?: {w: number; h: number} | null,
+      removeImage?: boolean,
+    ): Promise<string>;
+    deleteOrganization(o: Organization): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */

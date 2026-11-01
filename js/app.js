@@ -111,9 +111,6 @@ renderMapPage = function () { _rMap(); tagPage(mapById(S.route.mapId), 'maps'); 
 renderLocalPage = function () { _rLoc(); tagPage(locById(S.route.locId), 'locations'); };
 // @ts-expect-error -- idem, tab-personagens.js
 renderCharPage = function () { _rChar(); tagPage(charById(S.route.charId), 'characters'); };
-var _rOrg = renderOrgPage;
-// @ts-expect-error -- idem, tab-organizacoes.js
-renderOrgPage = function () { _rOrg(); tagPage(orgById(S.route.orgId), 'organizations'); };
 var _rSheet = renderSheetPage;
 // @ts-expect-error -- idem, tab-fichas.js
 renderSheetPage = function () { _rSheet(); tagPage(sheetById(S.route.sheetId), 'sheets'); };
@@ -190,8 +187,6 @@ function renderPage() {
   else if (r.page === 'char') renderCharPage();
   else if (r.page === 'sheets') renderSheetsPage();
   else if (r.page === 'sheet') renderSheetPage();
-  else if (r.page === 'orgs') renderOrgsPage();
-  else if (r.page === 'org') renderOrgPage();
   else if (r.page === 'spells') renderSpellsPage();
   else if (r.page === 'spell') renderSpellPage();
   else if (r.page === 'advs') renderAdvantagesPage();
@@ -301,7 +296,6 @@ function onData(kind) {
   if (S.route.page === 'maps' && document.activeElement && document.activeElement.id === 'mapSearch') { renderMapList(); return; }
   if (S.route.page === 'locais' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'locSearch') { renderLocList(); return; }
   if (S.route.page === 'chars' && document.activeElement && document.activeElement.id === 'charSearch') { renderCharList(); return; }
-  if (S.route.page === 'orgs' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'orgSearch') { renderOrgList(); return; }
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
   if (S.route.page === 'spells' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'spellSearch') { renderSpellList(); return; }
   if ((S.route.page === 'advs' || S.route.page === 'perks') && kind !== 'maps' && document.activeElement && document.activeElement.id === 'advSearch') { renderAdvList(); return; }

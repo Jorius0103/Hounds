@@ -1,5 +1,9 @@
 /* =====================================================================
-   Hounds — Aba Organizações
+   Hounds — Aba Organizações (Mundo › Organizações)
+   A lista, a página da organização e o formulário são React (src/hub/
+   paginas/Organizacoes.tsx, Organizacao.tsx e OrganizacaoForm.tsx); aqui
+   ficam os dados, a gravação (Ops), a migração do campo antigo e o que o
+   formulário de personagem usa (textPicker, rankTypes).
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
@@ -126,7 +130,8 @@ function migrateOrganizations() {
   });
 }
 
-// A picker whose picks each carry a short free-text field (a member's rank).
+// A picker whose picks each carry a short free-text field (a member's rank). Used by the character form;
+// the React version is src/hub/ui/TextPicker.tsx.
 //   sel: [{ id, text, … }] (edited in place) · find(q, raw): [{ label, sub, pick }] · chip(s), name(s): how a pick shows.
 function textPicker(o) {
   var input = $(o.input), list = $(o.list), box = $(o.box), sel = o.sel, active = 0, options = [];
@@ -165,150 +170,4 @@ function textPicker(o) {
   box.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('[data-ti]')) { e.preventDefault(); input.focus(); } });
   box.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; sel.splice(+b.getAttribute('data-rm'), 1); paintSel(); input.focus(); });
   paintSel();
-}
-
-function renderOrgsPage() {
-  var can = canWrite();
-  pageRoot.innerHTML =
-    '<div class="head-row"><div>' + crumbsHtml('orgs') + '<h1>Organizações</h1><p class="lede">Guildas, ordens, casas e bandos do mundo. Cada organização tem reputação e membros, e cada membro pode ter um cargo, como Líder ou General. Também pode ser ligada aos locais e mapas onde atua.</p></div>' +
-    (can ? '<button class="btn primary" type="button" id="newOrgBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova organização</button>' : '') + '</div>' + notice() +
-    (W.organizations.length ? '<div class="toolbar"><label for="orgSearch" style="position:absolute;left:-9999px">Buscar organizações</label><input class="search" id="orgSearch" type="search" placeholder="Buscar por nome, reputação, membro, local ou mapa" autocomplete="off" value="' + esc(S.ui.q || '') + '"><span class="meta" id="orgCount"></span></div>' : '') +
-    '<div id="orgList"></div>';
-  var b = $('newOrgBtn'); if (b) b.onclick = function () { openOrgForm(null); };
-  var s = $('orgSearch'); if (s) s.addEventListener('input', function () { S.ui.q = s.value; renderOrgList(); });
-  renderOrgList();
-}
-function renderOrgList() {
-  var el = $('orgList'); if (!el) return;
-  if (!W.loaded.organizations) { el.innerHTML = '<p class="lede">Carregando organizações…</p>'; return; }
-  if (!W.organizations.length) {
-    el.innerHTML = '<div class="empty-state">' + svg(ICON.org, 34, 1.6) + '<strong>Nenhuma organização cadastrada</strong><span>' + (canWrite() ? 'Crie a primeira com <b>Nova organização</b>.' : 'As organizações criadas vão aparecer aqui.') + '</span></div>';
-    return;
-  }
-  var q = norm(S.ui.q);
-  var list = W.organizations.slice().sort(byName).filter(function (o) {
-    return !q || norm(o.name + ' ' + (o.reputation || '') + ' ' + (o.description || '') + ' ' + orgMembers(o).map(function (m) { return m.c.name + ' ' + m.rank; }).join(' ') + ' ' +
-      orgLocs(o).map(function (l) { return l.name; }).join(' ') + ' ' + orgMaps(o).map(function (m) { return m.name; }).join(' ')).indexOf(q) >= 0;
-  });
-  var cnt = $('orgCount'); if (cnt) cnt.textContent = q ? list.length + ' de ' + W.organizations.length : plural(W.organizations.length, 'organização', 'organizações');
-  el.innerHTML = list.length ? '<div class="loc-grid">' + list.map(function (o) {
-    var n = orgMembers(o).length, L = orgLocs(o).length, M = orgMaps(o).length;
-    return '<a class="loc-card" href="' + orgHref(o.id) + '"><div class="thumb"' + (o.image ? ' data-img="' + esc(o.image.ref) + '"' : '') + '>' + svg(ICON.org, 28, 1.6) + '</div><div class="map-card-body"><strong>' + esc(o.name) + '</strong>' +
-      '<span class="where">' + (o.reputation ? 'Reputação: ' + esc(o.reputation) : 'Reputação não informada') + '</span><span class="meta">' + [n ? plural(n, 'membro', 'membros') : 'Sem membros', L ? plural(L, 'local', 'locais') : '', M ? plural(M, 'mapa', 'mapas') : ''].filter(Boolean).join(' · ') + '</span></div></a>';
-  }).join('') + '</div>' : '<p class="lede">Nenhuma organização encontrada para essa busca.</p>';
-  fillImages(el);
-}
-
-function renderOrgPage() {
-  var o = orgById(S.route.orgId), ui = S.ui;
-  if (!o) {
-    pageRoot.innerHTML = crumbsHtml('orgs') + (W.loaded.organizations ? '<h1>Organização não encontrada</h1><p class="lede">Essa organização foi excluída ou o link está incompleto.</p><div><a class="btn" href="#organizacoes">Voltar para Organizações</a></div>' : '<p class="lede">Carregando organização…</p>');
-    return;
-  }
-  var can = canWrite(), members = orgMembers(o), locs = orgLocs(o), maps = orgMaps(o);
-  var head = crumbsHtml('org:' + o.id) + '<div class="head-row"><div><span class="badge">' + svg(ICON.org, 12, 2.4) + 'Organização</span><h1>' + esc(o.name) + '</h1>' +
-    '<p class="lede">' + (members.length ? plural(members.length, 'membro', 'membros') : 'Sem membros') + (o.reputation ? ' · Reputação: ' + esc(o.reputation) : '') + '</p></div>' +
-    (can ? '<div class="btn-row"><button class="btn" type="button" id="editOrgBtn">' + svg(ICON.edit, 15) + 'Editar organização</button><button class="btn danger" type="button" id="delOrgBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') + '</div>' +
-    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir <b>' + esc(o.name) + '</b>? Os personagens, locais e mapas continuam cadastrados, só deixam de estar ligados a ela. Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delOrgYes">Excluir organização</button><button class="btn ghost" type="button" id="delOrgNo">Cancelar</button></div></div>' : '');
-  var main = (o.image ? '<div class="loc-hero" id="orgHero">' + svg(ICON.org, 32, 1.6) + '</div>' : '') +
-    '<section><h2 class="sec-title">Descrição</h2>' + (o.description ? '<p class="long">' + esc(o.description) + '</p>' : '<p class="long none">Sem descrição.</p>') + '</section>' +
-    '<section><div class="head-row" style="align-items:center"><h2 class="sec-title" style="margin:0">Membros</h2>' + (can ? '<button class="btn" type="button" id="addMemberBtn">' + svg(ICON.plus, 15, 2.4) + 'Adicionar membro</button>' : '') + '</div>' +
-    (members.length ? '<div class="loc-grid" style="margin-top:12px">' + members.map(function (m) {
-      var c = m.c;
-      return '<a class="loc-card" href="' + charHref(c.id) + '"><div class="thumb char-thumb"' + (c.image ? ' data-img="' + esc(c.image.ref) + '"' : '') + '><span class="initials">' + esc(initials(c.name)) + '</span></div><div class="map-card-body"><strong>' + esc(c.name) + '</strong>' +
-        '<span class="where">' + (m.rank ? esc(m.rank) : 'Sem cargo') + '</span>' + (c.race ? '<span class="meta">' + esc(c.race) + '</span>' : '') + '</div></a>';
-    }).join('') + '</div>' : '<p class="lede" style="font-size:13px">Nenhum membro ainda.' + (can ? ' Use <b>Adicionar membro</b> ou escolha a organização no cadastro do personagem.' : '') + '</p>') + '</section>';
-  // The boxes beside the organization start closed; a click on the title opens one (see foldBox).
-  var side = foldBox('info', 'Informações', null, '<dl class="facts"><dt>Reputação</dt><dd>' + (o.reputation ? esc(o.reputation) : '<span class="none">Não informada</span>') + '</dd>' +
-    '<dt>Membros</dt><dd>' + (members.length || '<span class="none">Nenhum</span>') + '</dd></dl>') +
-    foldBox('locs', 'Locais', locs.length,
-    locs.length ? '<ul class="links">' + locs.map(function (l) { var mid = locMapId(l); return '<li><a class="row-link" href="' + locHref(l.id) + '">' + thumbSlot(l.image && l.image.ref, ICON.pin) + '<span class="mtext"><b>' + esc(l.name) + '</b><span class="where">' + (mid ? esc(mapPathText(mid)) : 'Sem mapa') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum local ligado.' + (can ? ' Use <b>Editar organização</b> para ligar locais.' : '') + '</p>') +
-    foldBox('maps', 'Mapas', maps.length,
-    maps.length ? '<ul class="links">' + maps.map(function (m) { var pth = mapChain(m.id).slice(0, -1).map(function (x) { return x.name; }).join(' › '); return '<li><a class="row-link" href="' + mapHref(m.id) + '">' + thumbSlot(m.image && m.image.ref, ICON.map) + '<span class="mtext"><b>' + esc(m.name) + '</b><span class="where">' + (pth ? esc(pth) : 'Nível superior') + '</span></span></a></li>'; }).join('') + '</ul>' : '<p class="lede" style="font-size:13px">Nenhum mapa ligado.' + (can ? ' Use <b>Editar organização</b> para ligar mapas.' : '') + '</p>');
-  pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
-  if (o.image) W.store.imageUrl(o.image.ref).then(function (u) {
-    var h = $('orgHero'); if (!h || !u) return;
-    h.innerHTML = '<button class="hero-zoom" type="button" aria-label="Ampliar a imagem de ' + esc(o.name) + '" title="Clique para ampliar"><img src="' + esc(u) + '" alt="' + esc(o.name) + '"></button>';
-    h.querySelector('.hero-zoom').onclick = function () { zoomImage(u, o.name); };
-  });
-  fillImages(pageRoot);
-  wireFolds(pageRoot);
-  var e = $('editOrgBtn'); if (e) e.onclick = function () { openOrgForm(o); };
-  var a = $('addMemberBtn'); if (a) a.onclick = function () { openOrgForm(o, true); };
-  var d = $('delOrgBtn'); if (d) d.onclick = function () { ui.confirmDelete = true; renderOrgPage(); };
-  var dn = $('delOrgNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderOrgPage(); };
-  var dy = $('delOrgYes'); if (dy) dy.onclick = function () {
-    dy.disabled = true;
-    Ops.deleteOrganization(o).then(function () { toast('Organização excluída.'); go('#organizacoes', true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
-  };
-}
-
-function openOrgForm(o, focusMembers) {
-  var editing = !!o, canImg = W.store.canUpload;
-  var html = '<form id="orgForm" novalidate><h2 id="ofTitle">' + (editing ? 'Editar organização' : 'Nova organização') + '</h2>' +
-    '<div class="field" id="f_oname"><label for="oname">Nome</label><input type="text" id="oname" maxlength="100" autocomplete="off" placeholder="Ex.: The Hounds" value="' + esc(editing ? o.name : '') + '"><div class="err" id="err_oname"></div></div>' +
-    (canImg ? imageFieldHtml('oimg', 'Imagem', 'Brasão, símbolo ou ilustração. Opcional, até 20 MB.') : '') +
-    '<div class="field"><label for="odesc">Descrição</label><textarea id="odesc" rows="6" maxlength="20000" placeholder="O que é, objetivos, história, onde atua…">' + esc(editing ? o.description || '' : '') + '</textarea></div>' +
-    '<div class="field"><label for="orep">Reputação</label><input type="text" id="orep" list="repList" maxlength="120" autocomplete="off" placeholder="Ex.: Temida no porto, +2 entre os nobres" value="' + esc(editing ? o.reputation || '' : '') + '">' + datalistHtml('repList', reputations()) + '</div>' +
-    '<div class="field"><label for="omem">Membros</label><div class="picker"><div class="rels" id="oMemSel"></div>' +
-    '<input type="text" id="omem" autocomplete="off" placeholder="' + (W.characters.length ? 'Buscar personagem' : 'Nenhum personagem cadastrado ainda') + '"' + (W.characters.length ? '' : ' disabled') + ' role="combobox" aria-expanded="false" aria-controls="oMemList" aria-autocomplete="list">' +
-    '<div class="suggest" id="oMemList" role="listbox" hidden></div></div>' + datalistHtml('rankList', rankTypes()) +
-    '<span class="hint-text">Opcional. Ao lado de cada membro, o cargo dele. Ex.: Líder, General, Recruta. Dá para mudar o cargo quando quiser.</span></div>' +
-    idPickerHtml('oloc', 'Locais', 'Buscar local', W.locations.length ? '' : 'Nenhum local cadastrado ainda', 'Opcional. Onde a organização fica ou atua. Ex.: a sede, um porto, uma fortaleza.') +
-    idPickerHtml('omap', 'Mapas', 'Buscar mapa', W.maps.length ? '' : 'Nenhum mapa cadastrado ainda', 'Opcional. As regiões onde a organização atua.') +
-    flagHtml('ovis', o, true) +
-    '<div class="form-err" id="ofErr" role="alert"></div>' +
-    '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="ofCancel">Cancelar</button><button class="btn primary" type="submit" id="ofSave">' + (editing ? 'Salvar organização' : 'Criar organização') + '</button></div></form>';
-  var img;
-  showModal(html, function () { if (img) img.dispose(); });
-  modal.setAttribute('aria-labelledby', 'ofTitle');
-  if (canImg) img = imageField('oimg', { removable: true, existing: editing && o.image ? W.store.imageUrl(o.image.ref).then(function (u) { return { url: u, name: 'Imagem atual', dims: o.image.w ? o.image.w + ' × ' + o.image.h + ' px' : '' }; }) : null });
-  var name = $('oname');
-  name.addEventListener('input', function () { if (name.value.trim()) { $('err_oname').textContent = ''; $('f_oname').classList.remove('invalid'); } });
-
-  var sel = editing ? orgMembers(o).map(function (m) { return { id: m.c.id, text: m.rank }; }) : [];
-  textPicker({ input: 'omem', list: 'oMemList', box: 'oMemSel', sel: sel, datalist: 'rankList', textLabel: 'Cargo',
-    name: function (s) { return charById(s.id).name; },
-    chip: function (s) { var c = charById(s.id); return '<span class="person">' + avatarI(c) + esc(c.name) + '</span>'; },
-    find: function (q) {
-      return W.characters.slice().sort(byName).filter(function (c) { return !sel.some(function (s) { return s.id === c.id; }) && (!q || norm(c.name + ' ' + charSubtitle(c)).indexOf(q) >= 0); })
-        .map(function (c) { return { label: c.name, sub: charSubtitle(c), pick: { id: c.id, text: '' } }; });
-    } });
-  if (focusMembers && W.characters.length) setTimeout(function () { $('omem').focus(); }, 30);
-
-  var locSel = editing ? orgLocs(o).map(function (l) { return l.id; }) : [];
-  idPicker({ input: 'oloc', list: 'olocList', box: 'olocSel', sel: locSel,
-    chip: function (id) { var l = locById(id); return l && { name: l.name, icon: ICON.pin }; },
-    find: function (q) { return locPickOptions(q); } });
-  var mapSel = editing ? orgMaps(o).map(function (m) { return m.id; }) : [];
-  idPicker({ input: 'omap', list: 'omapList', box: 'omapSel', sel: mapSel,
-    chip: function (id) { var m = mapById(id); return m && { name: m.name, icon: ICON.map }; },
-    find: function (q) { return mapPickOptions(q); } });
-
-  $('ofCancel').onclick = function () { closeModal(); };
-  $('orgForm').onsubmit = function (e) {
-    e.preventDefault();
-    if (modalOpen.busy) return;
-    var n = name.value.trim();
-    if (!n) { $('err_oname').textContent = 'Informe o nome da organização.'; $('f_oname').classList.add('invalid'); name.focus(); return; }
-    if (W.organizations.some(function (x) { return (!editing || x.id !== o.id) && norm(x.name) === norm(n); }) && !$('ofErr').dataset.warned) {
-      $('ofErr').textContent = 'Já existe uma organização com esse nome. Clique em ' + (editing ? 'Salvar' : 'Criar') + ' organização de novo para continuar mesmo assim.'; $('ofErr').dataset.warned = '1'; return;
-    }
-    if (img && $('err_oimg').textContent && !img.file) { img.drop.focus(); return; }
-    modalOpen.busy = true;
-    var btn = $('ofSave'); btn.disabled = true; btn.textContent = img && img.file ? 'Enviando imagem…' : 'Salvando…'; $('ofCancel').disabled = true; $('ofErr').textContent = '';
-    Ops.saveOrganization(o, { name: n, description: $('odesc').value.trim(), reputation: $('orep').value.trim(),
-      members: sel.filter(function (s) { return charById(s.id); }).map(function (s) { return { charId: s.id, rank: s.text.trim() }; }),
-      locationIds: locSel.filter(function (id) { return locById(id); }), mapIds: mapSel.filter(function (id) { return mapById(id); }), visible: flagVal('ovis', o), sharedWith: shareVal('ovis', o) },
-      img && img.file, img && img.dims, img && img.removed)
-      .then(function (id) {
-        closeModal(true);
-        toast(editing ? 'Organização salva.' : 'Organização criada.');
-        if (!editing) go(orgHref(id));
-      }, function (er) {
-        if (!modalOpen) return;
-        modalOpen.busy = false; btn.disabled = false; btn.textContent = editing ? 'Salvar organização' : 'Criar organização'; $('ofCancel').disabled = false;
-        $('ofErr').textContent = errorText(er);
-      });
-  };
 }

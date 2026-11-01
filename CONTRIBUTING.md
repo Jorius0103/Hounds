@@ -4,11 +4,12 @@
 
 | Quero mexer em… | Arquivo |
 |---|---|
-| Uma aba (Mapas, Locais, Personagens, Fichas, Organizações, Magias, Anotações, Início) | `js/tabs/tab-<aba>.js` |
+| Uma aba (Mapas, Locais, Personagens, Fichas, Magias, Anotações, Início) | `js/tabs/tab-<aba>.js` |
 | A página Eventos | `src/hub/paginas/Eventos.tsx` (a lista), `Evento.tsx` (um evento) e `EventoForm.tsx` (criar e editar), em React. Os dados, a gravação (`Ops.saveEvent`, `Ops.deleteEvent`) e o que as páginas de local e de personagem usam continuam em `js/tabs/tab-eventos.js` |
+| A página Organizações | `src/hub/paginas/Organizacoes.tsx` (a lista), `Organizacao.tsx` (uma organização) e `OrganizacaoForm.tsx` (criar e editar), em React. Os dados, a gravação (`Ops.saveOrganization`, `Ops.deleteOrganization`, `Ops.setCharOrgs`), a migração do campo antigo e o que o formulário de personagem usa (`textPicker`, `rankTypes`) continuam em `js/tabs/tab-organizacoes.js` |
 | A página Usuários | `src/hub/paginas/Usuarios.tsx` e os formulários de criar, editar e definir senha em `src/hub/paginas/UsuarioForm.tsx` (React). Os perfis, as permissões e a lista no banco continuam em `js/tabs/tab-usuarios.js` |
 | Um modal em React | `src/hub/ui/Dialog.tsx`: `openDialog(<Formulario />)`, e o formulário desenha o `<Dialog>` em volta do próprio `<form>`. Veja "Hub em React (src/hub/)" abaixo |
-| As peças das páginas React (trilha, miniaturas, caixas recolhíveis, visibilidade, campo de imagem, seletor) | `src/hub/ui/`. Cada uma faz o mesmo HTML da função antiga que substitui; veja a lista em "Hub em React (src/hub/)" abaixo |
+| As peças das páginas React (trilha, miniaturas, caixas recolhíveis, visibilidade, campo de imagem, seletores) | `src/hub/ui/`. Cada uma faz o mesmo HTML da função antiga que substitui; veja a lista em "Hub em React (src/hub/)" abaixo |
 | Como os dados são salvos, ou regras de visibilidade | `js/mundo.js` (operações `Ops.*` e visibilidade) e `js/store/` (bancos) |
 | Tabelas, campos ou regras do banco no Supabase | Uma migration nova em `supabase/migrations/` (nunca edite uma que já rodou). Um campo novo num documento precisa de coluna, de leitura na view `<tabela>_doc` e de gravação em `hounds_interno.salvar_<entidade>`. Veja [SUPABASE.md](SUPABASE.md). |
 | Uma rota nova (`#algo`) | `js/rotas.js` (`parseRoute`, `hrefFor`) e `js/app.js` (`renderPage`). Quem acompanha o endereço é a casca React (`src/hub/HubApp.tsx`): a cada mudança ela chama o `onRoute` do `app.js` |
@@ -56,7 +57,7 @@ O hub está sendo migrado para React aos poucos. A casca (`src/hub/main.tsx` e `
 - Os dados: uma página React lê `W`, `S` e o usuário com o hook `useHub()` (`src/hub/data.ts`) e redesenha sozinha quando eles mudam. Os avisos são os eventos `hub:data` (uma coleção chegou do banco, disparado pelo `onData` de `js/app.js`), `hub:users` (a lista de usuários) e `hub:user` (troca de usuário). `W` e `S` continuam sendo os mesmos objetos, alimentados pelo `js/app.js`.
 - Os tipos: o `src/` usa os mesmos de `types/dados.d.ts` e `types/globais.d.ts` (`World`, `PageState`, `Route`, `window.hubUser`…). O `src/hub/legacy.d.ts` declara as funções de `js/` que a casca chama; ao usar mais uma numa página React, declare-a ali.
 
-Páginas já migradas: **Usuários** (`src/hub/paginas/Usuarios.tsx`, com os formulários em `UsuarioForm.tsx`) e **Eventos** (`Eventos.tsx`, `Evento.tsx` e `EventoForm.tsx`).
+Páginas já migradas: **Usuários** (`src/hub/paginas/Usuarios.tsx`, com os formulários em `UsuarioForm.tsx`), **Eventos** (`Eventos.tsx`, `Evento.tsx` e `EventoForm.tsx`) e **Organizações** (`Organizacoes.tsx`, `Organizacao.tsx` e `OrganizacaoForm.tsx`).
 
 As peças compartilhadas ficam em `src/hub/ui/`, cada uma com o mesmo HTML e o mesmo comportamento da função antiga:
 
@@ -70,6 +71,8 @@ As peças compartilhadas ficam em `src/hub/ui/`, cada uma com o mesmo HTML e o m
 | `VisibilityFlag`, `visDraft` e `visFields` | `flagHtml()`, `flagVal()` e `shareVal()` de `js/mundo.js` |
 | `ImageField` | `imageFieldHtml()` e `imageField()` de `js/modal.js` |
 | `IdPicker` | `idPickerHtml()` e `idPicker()` de `js/modal.js` |
+| `TextPicker` | `textPicker()` de `js/tabs/tab-organizacoes.js` (cada escolhido com um campo de texto ao lado, como o cargo de um membro) |
+| `Datalist` | `datalistHtml()` de `js/tabs/tab-organizacoes.js` (as sugestões de um campo de texto) |
 | `Dialog` | `showModal()`, `requestCloseModal()` e `closeModal()` de `js/modal.js` |
 
 O modal em React (`src/hub/ui/Dialog.tsx`) tem o visual e o comportamento do antigo (`js/modal.js`): um por vez, por cima de qualquer página, fechado pelo X, pelo clique fora ou pelo Esc, que perguntam antes de descartar alterações; o Cancelar e o salvar chamam `closeDialog()` e fecham direto. O formulário passa `busy` ao `<Dialog>` enquanto salva, e aí nada fecha o modal. Enquanto ele está aberto, o `modalOpen` de `js/` aponta para ele, então as páginas antigas não redesenham com o formulário aberto, o Esc tratado em `js/explorer.js` chega a ele e o aviso de alterações não salvas ao sair da página vale também.
@@ -78,7 +81,7 @@ Para migrar uma página:
 
 1. Crie o componente em `src/hub/paginas/` com o mesmo HTML da versão antiga: as mesmas tags, classes e textos, porque o CSS de `css/` continua o mesmo. Use as peças de `src/hub/ui/` no lugar das funções antigas (a tabela acima); o aviso do topo vem do `noticeText()` de `js/pagina.js`. A gravação continua no `Ops` de `js/`.
 2. Registre-o em `PAGES` (`src/hub/pages.ts`) e declare no `src/hub/legacy.d.ts` as funções de `js/` que ele chama.
-3. Apague a função `render…Page` antiga, a linha dela no `renderPage` de `js/app.js` e as chamadas a ela que redesenhavam a página quando os dados mudavam: o React redesenha sozinho com os avisos de dados.
+3. Apague a função `render…Page` antiga, a linha dela no `renderPage` de `js/app.js`, o invólucro dela que chama o `tagPage` (o botão de visibilidade, que a página React desenha com o `VisibilityControls`) e as chamadas que redesenhavam a página quando os dados mudavam: o React redesenha sozinho com os avisos de dados. O que outras telas antigas ainda usam fica no arquivo (o `textPicker` de Organizações, por exemplo, serve ao formulário de personagem).
 4. Os formulários vão para componentes React com o `<Dialog>`, com a mesma marcação e as mesmas validações (veja `UsuarioForm.tsx`). Se precisar migrar a página antes, eles podem continuar no modal antigo (`showModal`), chamados do componente.
 5. Teste com Mestre e Jogador, criando, editando e excluindo, e compare com o site publicado.
 
