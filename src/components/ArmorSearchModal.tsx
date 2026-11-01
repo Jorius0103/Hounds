@@ -5,8 +5,20 @@ import {
   loadArmorCatalog,
   parseArmorDr,
   ParsedArmorDR,
+  matchArmorCategory,
+  ArmorCategoryFilter,
 } from '../utils/armorCatalog';
 import { BodyArmorLocation } from '../types/rpg';
+
+const ARMOR_CATEGORIES: { id: ArmorCategoryFilter; label: string }[] = [
+  { id: 'all', label: 'Todos' },
+  { id: 'tecido', label: 'Tecido' },
+  { id: 'couro', label: 'Couro' },
+  { id: 'malha', label: 'Malha' },
+  { id: 'plate', label: 'Placas / Plate' },
+  { id: 'escamas', label: 'Escamas' },
+  { id: 'outros', label: 'Outros' },
+];
 
 interface ArmorSearchModalProps {
   isOpen: boolean;
@@ -38,6 +50,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
   const [catalog, setCatalog] = useState<ArmorCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<ArmorCategoryFilter>('all');
   const [selectedLocationIndex, setSelectedLocationIndex] = useState<number>(0);
   const [equippedFeedback, setEquippedFeedback] = useState<string>('');
 
@@ -54,6 +67,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
         });
 
       setSearchQuery('');
+      setSelectedCategory('all');
       setSelectedLocationIndex(targetLocationIndex ?? 0);
       setEquippedFeedback('');
     }
@@ -62,20 +76,28 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
   // Selected Location
   const currentLocation = allLocations[selectedLocationIndex] || targetLocation || allLocations[0];
 
-  // Filtered armors with tokenized search
+  // Filtered armors with category and tokenized search
   const filteredArmors = useMemo(() => {
     const rawQuery = searchQuery.toLowerCase().trim();
     const tokens = rawQuery.split(/\s+/).filter(Boolean);
 
     return catalog.filter((item) => {
+      // 1. Filtro de Categoria de Material (Tecido, Couro, Malha, Plate...)
+      if (selectedCategory !== 'all') {
+        if (!matchArmorCategory(item, selectedCategory)) {
+          return false;
+        }
+      }
+
+      // 2. Busca por texto
       if (tokens.length > 0) {
-        const fullText = `${item.name || ''} ${item.category || ''} ${item.location || ''} ${item.book || ''} ${item.notes || ''} ${item.dr || ''}`.toLowerCase();
+        const fullText = `${item.name || ''} ${item.category || ''} ${item.location || ''} ${item.book || ''} ${item.notes || ''} ${item.footnotes || ''} ${item.dr || ''}`.toLowerCase();
         const matchesAll = tokens.every((tok) => fullText.includes(tok));
         if (!matchesAll) return false;
       }
       return true;
     });
-  }, [catalog, searchQuery]);
+  }, [catalog, selectedCategory, searchQuery]);
 
   // Handler for catalog equip
   const handleCatalogEquip = (armor: ArmorCatalogItem, parsed: ParsedArmorDR) => {
@@ -247,8 +269,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
         {/* Barra de Busca logo acima da lista de peças de armaduras */}
         <div
           style={{
-            padding: '12px 18px',
-            borderBottom: '1px solid #1e293b',
+            padding: '10px 18px 8px 18px',
             background: 'rgba(15, 23, 42, 0.4)',
             flexShrink: 0,
           }}
@@ -268,7 +289,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar armadura por nome, tipo, livro ou RD (ex: Heavy Plate, Mail, Leather, RD 9...)"
+              placeholder="Buscar armadura por nome, tipo, livro ou RD (ex: Placas, Malha, Couro, RD 4...)"
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -306,6 +327,50 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
           </div>
         </div>
 
+        {/* Filtros de Categoria (Tecido, Couro, Malha, Plate...) */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 18px',
+            borderBottom: '1px solid #1e293b',
+            background: '#070b13',
+            overflowX: 'auto',
+            flexShrink: 0,
+          }}
+          className="scrollbar-none"
+        >
+          <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginRight: '4px', whiteSpace: 'nowrap' }}>
+            Material:
+          </span>
+          {ARMOR_CATEGORIES.map((cat) => {
+            const isActive = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '7px',
+                  fontSize: '11px',
+                  fontWeight: isActive ? 'bold' : '600',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  background: isActive ? '#f59e0b' : '#0f172a',
+                  color: isActive ? '#020617' : '#cbd5e1',
+                  border: isActive ? '1px solid #fbbf24' : '1px solid #1e293b',
+                  boxShadow: isActive ? '0 1px 3px rgba(245, 158, 11, 0.3)' : 'none',
+                }}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Lista de Armaduras do Catálogo */}
         <div
           style={{
@@ -329,10 +394,13 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
               <p style={{ fontSize: '12px', fontWeight: 500 }}>Nenhuma armadura encontrada.</p>
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedCategory('all');
+                }}
                 style={{ fontSize: '12px', color: '#fbbf24', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
               >
-                Limpar busca
+                Limpar busca e filtros
               </button>
             </div>
           ) : (
@@ -350,8 +418,8 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                     gap: '12px',
                     padding: '10px 14px',
                     borderRadius: '10px',
-                    background: '#020617',
-                    border: '1px solid #1e293b',
+                    background: armor.isPriority ? 'rgba(15, 23, 42, 0.95)' : '#020617',
+                    border: armor.isPriority ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid #1e293b',
                     transition: 'all 0.15s ease',
                   }}
                   className="hover:border-amber-500/50 group"
@@ -362,6 +430,12 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                       <span style={{ fontWeight: 'bold', color: '#ffffff', fontSize: '13px' }}>
                         {armor.name}
                       </span>
+
+                      {armor.isPriority && (
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', padding: '1px 6px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+                          Low-Tech Tronco
+                        </span>
+                      )}
 
                       {armor.category && (
                         <span style={{ fontSize: '10px', fontWeight: 500, padding: '1px 6px', borderRadius: '4px', background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155' }}>
@@ -452,7 +526,12 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                       )}
                       {armor.weight && (
                         <span style={{ fontSize: '11px', color: '#94a3b8', padding: '0 4px' }}>
-                          {armor.weight} lb
+                          {armor.weight.includes('kg') || armor.weight.includes('lb') ? armor.weight : `${armor.weight} lb`}
+                        </span>
+                      )}
+                      {armor.don && (
+                        <span style={{ fontSize: '11px', color: '#94a3b8', padding: '0 4px' }}>
+                          Vestir: {armor.don}
                         </span>
                       )}
                     </div>

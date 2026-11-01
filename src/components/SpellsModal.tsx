@@ -31,11 +31,7 @@ export const SpellsModal: React.FC<SpellsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       const list = spells && Array.isArray(spells) ? spells : [];
-      setSpellList(
-        list.length > 0
-          ? JSON.parse(JSON.stringify(list))
-          : [{ id: `spl-${Date.now()}-1`, name: '', nh: '', isFavorite: false }]
-      );
+      setSpellList(JSON.parse(JSON.stringify(list)));
       loadSpellsDatabase().then((data) => {
         setCatalogSpells(data);
       });

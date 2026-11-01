@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { ActionLogEntry, UserRole } from '../types/rpg';
+import { ActionLogEntry, UserRole, MesaRole } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { Heart, Zap, Sparkles, Coffee, Shield, Target, FileText, Package, Trash2, AlertTriangle, RotateCcw, Dices, MessageSquare, Pencil, Check, X } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
@@ -9,7 +9,7 @@ interface CombatLogCardProps {
   showNpcInfo?: boolean;
   onSelectNpc?: (npcId: string) => void;
   isCompact?: boolean;
-  currentUserRole?: UserRole;
+  currentUserRole?: MesaRole;
   currentUserName?: string;
   isPlayer?: boolean;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;

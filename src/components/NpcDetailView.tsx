@@ -2182,9 +2182,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         >
           <Users size={14} className={activeTab === 'overview' ? 'text-slate-950' : 'text-amber-400'} />
           <span>Dados &amp; Status</span>
-          {activeTab === 'overview' && (
-            <span className="absolute -bottom-1 left-2.5 right-2.5 h-0.5 bg-amber-400 rounded-full shadow-sm" />
-          )}
         </button>
 
         <button
@@ -2207,9 +2204,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           >
             {npc.weapons.length}
           </span>
-          {activeTab === 'weapons' && (
-            <span className="absolute -bottom-1 left-2.5 right-2.5 h-0.5 bg-amber-400 rounded-full shadow-sm" />
-          )}
         </button>
 
         <button
@@ -2232,9 +2226,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
           >
             {(npc.spells || []).length}
           </span>
-          {activeTab === 'spells' && (
-            <span className="absolute -bottom-1 left-2.5 right-2.5 h-0.5 bg-amber-400 rounded-full shadow-sm" />
-          )}
         </button>
 
         <button
@@ -2248,9 +2239,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         >
           <Shield size={14} className={activeTab === 'armor' ? 'text-slate-950' : 'text-amber-400'} />
           <span>Armadura por Localização</span>
-          {activeTab === 'armor' && (
-            <span className="absolute -bottom-1 left-2.5 right-2.5 h-0.5 bg-amber-400 rounded-full shadow-sm" />
-          )}
         </button>
 
         <button
@@ -2264,9 +2252,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         >
           <Heart size={14} className={activeTab === 'bodyParts' ? 'text-slate-950' : 'text-amber-400'} />
           <span>Partes do Corpo</span>
-          {activeTab === 'bodyParts' && (
-            <span className="absolute -bottom-1 left-2.5 right-2.5 h-0.5 bg-amber-400 rounded-full shadow-sm" />
-          )}
         </button>
 
         <button
@@ -2280,9 +2265,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
         >
           <Info size={14} className={activeTab === 'traits' ? 'text-slate-950' : 'text-amber-400'} />
           <span>Traços &amp; Equipamentos</span>
-          {activeTab === 'traits' && (
-            <span className="absolute -bottom-1 left-2.5 right-2.5 h-0.5 bg-amber-400 rounded-full shadow-sm" />
-          )}
         </button>
       </div>
       </div>
