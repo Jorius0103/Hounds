@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
+  Calendar,
 } from 'lucide-react';
 
 interface DetailedLogModalProps {
@@ -38,7 +39,7 @@ interface DetailedLogModalProps {
   initialSearch?: string;
 }
 
-function getEntryDateTime(entry: any): { dateStr: string; timeStr: string; full: string } {
+function getEntryDateTime(entry: any): { dateStr: string; timeStr: string; full: string; dateISO: string } {
   let dateObj: Date | null = null;
   if (entry.timestampMs && typeof entry.timestampMs === 'number' && entry.timestampMs > 1000000000000) {
     dateObj = new Date(entry.timestampMs);
@@ -61,19 +62,28 @@ function getEntryDateTime(entry: any): { dateStr: string; timeStr: string; full:
   if (dateObj && !isNaN(dateObj.getTime())) {
     const dateStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    return { dateStr, timeStr, full: `${dateStr} ${timeStr}` };
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    const dateISO = `${y}-${m}-${d}`;
+    return { dateStr, timeStr, full: `${dateStr} ${timeStr}`, dateISO };
   }
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const todayISO = `${y}-${m}-${d}`;
+  const todayStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   if (entry.timestamp && typeof entry.timestamp === 'string') {
     if (entry.timestamp.includes('/') || entry.timestamp.includes('-')) {
-      return { dateStr: '', timeStr: entry.timestamp, full: entry.timestamp };
+      return { dateStr: '', timeStr: entry.timestamp, full: entry.timestamp, dateISO: todayISO };
     }
-    const todayStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    return { dateStr: todayStr, timeStr: entry.timestamp, full: `${todayStr} ${entry.timestamp}` };
+    return { dateStr: todayStr, timeStr: entry.timestamp, full: `${todayStr} ${entry.timestamp}`, dateISO: todayISO };
   }
 
-  const todayStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  return { dateStr: todayStr, timeStr: '—', full: todayStr };
+  return { dateStr: todayStr, timeStr: '—', full: todayStr, dateISO: todayISO };
 }
 
 export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
@@ -95,19 +105,22 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
   const [entityFilter, setEntityFilter] = useState<'all' | 'players' | 'npcs'>(initialEntityFilter);
   const [typeFilter, setTypeFilter] = useState<'all' | 'status' | 'rolls'>(initialTypeFilter);
   const [roundFilter, setRoundFilter] = useState<number | 'all'>(initialRoundFilter);
+  const [dateFilter, setDateFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [pageSize, setPageSize] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [copied, setCopied] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   // Sincroniza filtros caso receba valores iniciais ao abrir
   useEffect(() => {
     if (isOpen) {
+      setViewMode('table');
       setEntityFilter(initialEntityFilter);
       setTypeFilter(initialTypeFilter);
       setRoundFilter(initialRoundFilter);
+      setDateFilter('all');
       setSearchTerm(initialSearch);
       setCurrentPage(1);
     }
@@ -127,7 +140,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
   // Reset de página ao alterar filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [entityFilter, typeFilter, roundFilter, searchTerm, pageSize]);
+  }, [entityFilter, typeFilter, roundFilter, dateFilter, searchTerm, pageSize]);
 
   // Rodadas disponíveis
   const availableRounds = useMemo(() => {
@@ -149,6 +162,12 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
   // Filtragem
   const filteredLogs = useMemo(() => {
     return logs.filter((entry) => {
+      // 0. Filtro de Data
+      if (dateFilter !== 'all') {
+        const dt = getEntryDateTime(entry);
+        if (dt.dateISO !== dateFilter) return false;
+      }
+
       // 1. Filtro de Rodada
       if (roundFilter !== 'all') {
         const entryRound = entry.round !== undefined ? entry.round : 0;
@@ -203,7 +222,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
 
       return true;
     });
-  }, [logs, roundFilter, entityFilter, typeFilter, searchTerm]);
+  }, [logs, dateFilter, roundFilter, entityFilter, typeFilter, searchTerm]);
 
   // Estatísticas rápidas
   const stats = useMemo(() => {
@@ -348,15 +367,15 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
 
         {/* Barra de Filtros e Controles */}
         <div className="p-3 sm:px-6 sm:py-3 border-b border-slate-800 bg-slate-950/60 space-y-2.5 shrink-0">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5 items-center">
             {/* Filtro 1: Entidade */}
-            <div className="md:col-span-4 flex items-center gap-1.5 text-xs">
+            <div className="md:col-span-3 flex items-center gap-1.5 text-xs">
               <span className="text-slate-500 font-semibold shrink-0 text-[11px]">Origem:</span>
               <div className="flex-1 flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEntityFilter('all')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all ${
+                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
                     entityFilter === 'all'
                       ? 'bg-slate-800 text-white shadow-xs'
                       : 'text-slate-400 hover:text-white'
@@ -367,7 +386,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setEntityFilter('players')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all ${
+                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
                     entityFilter === 'players'
                       ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60 shadow-xs'
                       : 'text-slate-400 hover:text-emerald-300'
@@ -378,7 +397,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setEntityFilter('npcs')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all ${
+                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
                     entityFilter === 'npcs'
                       ? 'bg-purple-950 text-purple-300 border border-purple-700/60 shadow-xs'
                       : 'text-slate-400 hover:text-purple-300'
@@ -390,13 +409,13 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
             </div>
 
             {/* Filtro 2: Tipo de Evento */}
-            <div className="md:col-span-4 flex items-center gap-1.5 text-xs">
+            <div className="md:col-span-3 flex items-center gap-1.5 text-xs">
               <span className="text-slate-500 font-semibold shrink-0 text-[11px]">Tipo:</span>
               <div className="flex-1 flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
                 <button
                   type="button"
                   onClick={() => setTypeFilter('all')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all ${
+                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
                     typeFilter === 'all'
                       ? 'bg-slate-800 text-white shadow-xs'
                       : 'text-slate-400 hover:text-white'
@@ -407,7 +426,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setTypeFilter('status')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all ${
+                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
                     typeFilter === 'status'
                       ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/60 shadow-xs'
                       : 'text-slate-400 hover:text-cyan-300'
@@ -419,7 +438,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setTypeFilter('rolls')}
-                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all ${
+                  className={`flex-1 py-1 rounded text-center text-xs font-bold transition-all cursor-pointer ${
                     typeFilter === 'rolls'
                       ? 'bg-amber-950 text-amber-300 border border-amber-600/60 shadow-xs'
                       : 'text-slate-400 hover:text-amber-300'
@@ -431,8 +450,35 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
               </div>
             </div>
 
+            {/* Filtro 3: Data */}
+            <div className="md:col-span-3 flex items-center gap-1.5 text-xs">
+              <span className="text-slate-500 font-semibold shrink-0 text-[11px] flex items-center gap-1">
+                <Calendar size={12} className="text-amber-400" />
+                Data:
+              </span>
+              <div className="flex-1 flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800">
+                <input
+                  type="date"
+                  value={dateFilter === 'all' ? '' : dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value || 'all')}
+                  className="bg-transparent text-xs text-white font-mono focus:outline-none cursor-pointer w-full [color-scheme:dark]"
+                  title="Filtrar eventos por data"
+                />
+                {dateFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setDateFilter('all')}
+                    className="p-0.5 text-slate-400 hover:text-white cursor-pointer shrink-0"
+                    title="Limpar filtro de data"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Rodada + Alternância de Visualização */}
-            <div className="md:col-span-4 flex items-center gap-2 justify-end">
+            <div className="md:col-span-3 flex items-center gap-2 justify-end">
               <div className="flex items-center gap-1">
                 <span className="text-slate-500 font-semibold text-[11px]">Rodada:</span>
                 <select
@@ -536,7 +582,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                   ? 'Os lançamentos de dano, fadiga, curas, condições e rolagens aparecerão aqui.'
                   : 'Tente ajustar os filtros de origem, tipo, rodada ou limpar o termo de busca.'}
               </p>
-              {(searchTerm || entityFilter !== 'all' || typeFilter !== 'all' || roundFilter !== 'all') && (
+              {(searchTerm || entityFilter !== 'all' || typeFilter !== 'all' || roundFilter !== 'all' || dateFilter !== 'all') && (
                 <button
                   type="button"
                   onClick={() => {
@@ -544,6 +590,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                     setEntityFilter('all');
                     setTypeFilter('all');
                     setRoundFilter('all');
+                    setDateFilter('all');
                   }}
                   className="mt-2 text-xs text-amber-400 hover:underline font-semibold cursor-pointer"
                 >
@@ -652,16 +699,18 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/70 inline-block">
                                   Rolagem
                                 </span>
-                                <span
-                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-1 ${
-                                    entry.isSecret
-                                      ? 'bg-rose-950/80 text-rose-300 border-rose-700/60'
-                                      : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
-                                  }`}
-                                  title={entry.isSecret ? 'Rolagem Oculta do Mestre' : 'Rolagem Visível para todos'}
-                                >
-                                  {entry.isSecret ? '👁️‍🗨️ Oculta' : '👁️ Visível'}
-                                </span>
+                                {currentUserRole === 'mestre' && (entry.author === 'mestre' || entry.isSecret) && (
+                                  <span
+                                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-1 ${
+                                      entry.isSecret
+                                        ? 'bg-rose-950/80 text-rose-300 border-rose-700/60'
+                                        : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+                                    }`}
+                                    title={entry.isSecret ? 'Rolagem Oculta do Mestre' : 'Rolagem Visível para todos'}
+                                  >
+                                    {entry.isSecret ? '👁️‍🗨️ Oculta' : '👁️ Visível'}
+                                  </span>
+                                )}
                               </div>
                             ) : (
                               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/70 inline-block">

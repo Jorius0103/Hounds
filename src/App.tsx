@@ -169,6 +169,33 @@ function addDeletedCombatIds(ids: unknown): string[] {
   return current;
 }
 
+const DELETED_LOGS_KEY = 'gurps_deleted_log_entries_v1';
+let deletedLogEntryIdsMemory: string[] = [];
+
+function getDeletedLogEntryIds(): string[] {
+  let saved: unknown = null;
+  try {
+    const raw = localStorage.getItem(DELETED_LOGS_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch {}
+  const list = Array.isArray(saved) ? (saved as string[]) : [];
+  const merged = Array.from(new Set([...list, ...deletedLogEntryIdsMemory]));
+  deletedLogEntryIdsMemory = merged;
+  return merged;
+}
+
+function addDeletedLogEntryId(id: string) {
+  if (!id) return;
+  const list = getDeletedLogEntryIds();
+  if (!list.includes(id)) {
+    list.push(id);
+    deletedLogEntryIdsMemory = list;
+    try {
+      localStorage.setItem(DELETED_LOGS_KEY, JSON.stringify(list));
+    } catch {}
+  }
+}
+
 // Junta os combates locais com os recebidos: nenhum combate some por não ter vindo na lista,
 // só os que estão na lista de excluídos (a local mais a que veio junto).
 function mergeCombats(
@@ -1125,6 +1152,7 @@ export default function App() {
 
       if ((payload as any).type === 'SYNC_ENTRY_DELETE' && (payload as any).entryId) {
         const delId = (payload as any).entryId;
+        addDeletedLogEntryId(delId);
         setSessionEvents((prev) => (prev || []).filter((e) => e.id !== delId));
         setPlayers((prev) =>
           prev.map((p) => ({
@@ -1595,10 +1623,13 @@ export default function App() {
           bus.getRecentRolls(null, 100).then((rows: any[]) => {
             if (!Array.isArray(rows) || rows.length === 0) return;
             const isMestre = currentUser?.role === 'mestre' || !currentUser;
+            const deletedSet = new Set(getDeletedLogEntryIds());
             const fetchedLogEntries: any[] = [];
             rows.forEach((r) => {
               const log = r.dados_completos?.logEntry;
               if (!log) return;
+              if (deletedSet.has(log.id) || deletedSet.has(r.id)) return;
+              if (r.dados_completos?.rollData?.id && deletedSet.has(r.dados_completos.rollData.id)) return;
               if (log.isSecret && !isMestre) return;
               fetchedLogEntries.push(log);
             });
@@ -1771,6 +1802,7 @@ export default function App() {
 
         if (event.data?.type === 'SYNC_ENTRY_DELETE' && event.data.entryId) {
           const delId = event.data.entryId;
+          addDeletedLogEntryId(delId);
           setSessionEvents((prev) => (prev || []).filter((e) => e.id !== delId));
           setPlayers((prev) =>
             prev.map((p) => ({
@@ -3958,6 +3990,7 @@ export default function App() {
 
     const now = Date.now();
     const roundNumber = effectiveRound;
+    const rollSharedId = `roll-${now}-${Math.random().toString(36).slice(2, 6)}`;
     const logDescription =
       diceCount === 3 && diceSides === 6
         ? `Rolou 3D6: [${rolls.join(', ')}] = ${total}`
@@ -3966,7 +3999,7 @@ export default function App() {
         : `Rolou ${diceCount}D${diceSides}: [${rolls.join(', ')}] = ${total}`;
 
     const newEntry: ActionLogEntry = {
-      id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      id: rollSharedId,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       timestampMs: now,
       author: isMestreUser ? 'mestre' : 'assistente',
@@ -4009,7 +4042,7 @@ export default function App() {
     }
 
     const rollData: DiceRollResult = {
-      id: `roll-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      id: rollSharedId,
       rolls,
       total,
       diceCount,
@@ -4594,6 +4627,7 @@ export default function App() {
 
   const handleDeleteLogEntry = (entryId: string, npcId?: string, revertValues: boolean = true) => {
     const now = Date.now();
+    addDeletedLogEntryId(entryId);
 
     // 0. Exclusão permanente do banco de dados (Supabase mesa_rolagens) se for rolagem
     const bus = (typeof window !== 'undefined' && ((window as any).parent?.hubMesaBus || (window as any).hubMesaBus));

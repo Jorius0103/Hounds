@@ -252,7 +252,6 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
 
   return (
     <div
-      onClick={() => entry.npcId && onSelectNpc?.(entry.npcId)}
       className={`bg-slate-950/80 border rounded-xl transition-all shadow-sm ${
         isHp
           ? 'border-rose-950/60 hover:border-rose-800/80'
@@ -261,7 +260,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           : isDef
           ? 'border-amber-950/60 hover:border-amber-800/80'
           : 'border-slate-800/80 hover:border-slate-750'
-      } ${entry.npcId && onSelectNpc ? 'cursor-pointer hover:bg-slate-900/90' : ''} ${
+      } ${
         isCompact ? 'p-2 space-y-1.5' : 'p-3 space-y-2'
       }`}
     >
@@ -306,7 +305,7 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
           >
             {entry.authorName || (entry.author === 'assistente' ? (currentUserName || 'Jogador') : entry.author)}
           </span>
-          {entry.type === 'roll' && (
+          {entry.type === 'roll' && currentUserRole === 'mestre' && (entry.author === 'mestre' || entry.isSecret) && (
             <span
               className={`text-[9px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-0.5 ${
                 entry.isSecret

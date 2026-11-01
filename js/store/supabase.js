@@ -435,7 +435,7 @@ function SupabaseStore(client, bucket) {
     if (!client) return Promise.resolve();
     var rObj = rollObj || (logEntry && logEntry.rollData) || {};
     var lEnt = logEntry || {};
-    var rId = rObj.id || lEnt.id || ('roll-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6));
+    var rId = (lEnt && lEnt.id) ? lEnt.id : (rObj && rObj.id ? rObj.id : ('roll-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)));
     var pName = rObj.characterName || lEnt.npcName || 'Mestre';
     var uName = rObj.playerName || lEnt.playerName || 'Mestre';
     var role = lEnt.author || 'jogador';
@@ -496,7 +496,15 @@ function SupabaseStore(client, bucket) {
 
   function deleteRoll(rollId) {
     if (!client || !rollId) return Promise.resolve();
-    return client.from('mesa_rolagens').delete().eq('id', rollId).then(function () {}).catch(function () {});
+    var cond = 'id.eq.' + rollId;
+    return client
+      .from('mesa_rolagens')
+      .delete()
+      .or(cond + ',dados_completos->logEntry->>id.eq.' + rollId + ',dados_completos->rollData->>id.eq.' + rollId)
+      .then(function () {})
+      .catch(function () {
+        return client.from('mesa_rolagens').delete().eq('id', rollId).then(function () {}).catch(function () {});
+      });
   }
 
   return {
