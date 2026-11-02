@@ -7252,8 +7252,181 @@ export const HOUNDS_PLAYERS: NPC[] = [
                         }
                     ],
         "spells":  [
-
-                   ],
+          {
+                    "id": "spl-enviado-001",
+                    "name": "Resist Cold",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Fire",
+                    "class": "Regular",
+                    "duration": "1 minute.",
+                    "description": "The subject (person, creature, or object) and anything he carries become immune to the effects of cold and frostbite (but not falling ice, magical ice spears, etc.)."
+          },
+          {
+                    "id": "spl-enviado-002",
+                    "name": "Resist Lightning",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Weather, Air, Protection and Warning",
+                    "class": "Regular",
+                    "duration": "1 minute.",
+                    "description": "The subject and anything he carries become immune to the effects of lightning and electricity. In low-tech settings, this is most often used to guard against hostile magic; in higher-tech worlds, it becomes a valuable professional tool. This is also a Protection and Warning spell and an Air spell."
+          },
+          {
+                    "id": "spl-enviado-003",
+                    "name": "Lend Energy",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Healing",
+                    "class": "Regular",
+                    "description": "Restores the subject’s lost Fatigue Points, at an energy cost to the caster. Cannot increase the subject’s FP score above its normal maximum."
+          },
+          {
+                    "id": "spl-enviado-004",
+                    "name": "Bravery",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Mind Control",
+                    "class": "Area; Resisted by Will-1",
+                    "duration": "1 hour unless countered by Fear.",
+                    "description": "Makes the subject(s) fearless. Anyone under this spell must make an IQ roll to avoid being brave, should caution be called for."
+          },
+          {
+                    "id": "spl-enviado-005",
+                    "name": "Sense Foes",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Communication and Empathy",
+                    "class": "Information; Area",
+                    "description": "Tells the caster if the subject has hostile intent, and what the degree of hostility is. Can be cast on one person or a whole area. If cast over an area, this spell only detects that someone is hostile, without telling who."
+          },
+          {
+                    "id": "spl-enviado-006",
+                    "name": "Sense Spirit",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Necromantic",
+                    "class": "Information; Area",
+                    "description": "Tells the caster if there are any ghosts, spirits, undead, or similar supernatural entities within the area of effect. On a good roll, it gives a general impression of what kind of being is present. Caster may, at the time of casting, limit the spell to a specific type of entity, or exclude a given type."
+          },
+          {
+                    "id": "spl-enviado-007",
+                    "name": "Night Vision",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Light and Darkness",
+                    "class": "Regular",
+                    "duration": "One minute.",
+                    "description": "Cancels all penalties to Sense and skill rolls for low light, but not for total darkness."
+          },
+          {
+                    "id": "spl-enviado-008",
+                    "name": "Resist Fire",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Fire",
+                    "class": "Regular",
+                    "duration": "1 minute.",
+                    "description": "The subject (person, creature, or object) and anything he carries become immune to the effects of heat and fire (but not electricity)."
+          },
+          {
+                    "id": "spl-enviado-009",
+                    "name": "Stop Bleeding",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Healing",
+                    "class": "Regular",
+                    "duration": "Permanent, although later injuries will bleed normally.",
+                    "timeToCast": "10 seconds.",
+                    "description": "The subject stops bleeding immediately, as if bandaged by someone with the First Aid skill (see p. B195). This restores 1 HP, and prevents further HP loss from bleeding if the optional bleeding rules (p. B420) are in effect. It can also stabilize a mortal wound, at much greater cost. The subject of this spell will not subsequently benefit from bandaging of the same wounds."
+          },
+          {
+                    "id": "spl-enviado-010",
+                    "name": "Strengthen Will",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Mind Control",
+                    "class": "Regular",
+                    "duration": "1 minute.",
+                    "description": "Temporarily increases the subject’s Will."
+          },
+          {
+                    "id": "spl-enviado-011",
+                    "name": "Haste",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Movement",
+                    "class": "Regular",
+                    "duration": "1 minute.",
+                    "timeToCast": "2 seconds.",
+                    "description": "Increases the subject’s Move and Dodge scores by up to 3."
+          },
+          {
+                    "id": "spl-enviado-012",
+                    "name": "Sense Life",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Communication and Empathy",
+                    "class": "Information; Area",
+                    "description": "Tells the caster if there is any life in the subject area, and gives a general impression (on a good roll) of what kind. The caster can also specify he is looking for a specific sort of life: plants, elves, redheaded girls, or a named person who the caster knows."
+          },
+          {
+                    "id": "spl-enviado-013",
+                    "name": "Borrow Language",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Communication and Empathy",
+                    "class": "Regular",
+                    "duration": "1 minute.",
+                    "timeToCast": "3 seconds.",
+                    "description": "Caster gains a language at the subject’s comprehension level or Accented – whichever is less. The subject must know the language in question."
+          },
+          {
+                    "id": "spl-enviado-014",
+                    "name": "Block",
+                    "nh": "IQ",
+                    "isFavorite": false,
+                    "notes": "2 pts",
+                    "college": "Protection and Warning",
+                    "class": "Blocking",
+                    "description": "An instantaneous version of the Shield spell – adds to the subject’s DB for a single defense roll. This spell is not cumulative with the effects of Shield – use the highest value."
+          },
+          {
+                    "id": "spl-enviado-015",
+                    "name": "Vigor",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Body Control",
+                    "class": "Regular",
+                    "duration": "1 minute.",
+                    "description": "Raises the subject’s HT temporarily. This affects his Basic Speed, FP, and ability to resist trauma and disease. A caster can raise his HT. If the subject’s FP when the spell wears off is below zero, he will immediately take 1 point of damage for every point of fatigue below zero, risking unconsciousness. High skill does not reduce cost to cast this spell."
+          },
+          {
+                    "id": "spl-enviado-016",
+                    "name": "Light",
+                    "nh": "IQ-1",
+                    "isFavorite": false,
+                    "notes": "1 pt",
+                    "college": "Light and Darkness",
+                    "class": "Regular",
+                    "duration": "1 minute.",
+                    "description": "Produces a small light, like a candle flame. It stays still unless the caster concentrates on moving it; then it can travel at Move 5."
+          }
+],
         "armorLocations":  [
                                {
                                    "location":  "Eye",
