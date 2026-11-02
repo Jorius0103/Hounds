@@ -58,8 +58,6 @@ import {
   X,
   Search,
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { ArmorSearchModal } from './ArmorSearchModal';
 import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
@@ -907,97 +905,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       return nm.includes(q) || nt.includes(q) || en.includes(q) || disp.includes(q);
     });
   }, [sortedSpells, spellFilterQuery, catalogSpells, activeTab]);
-
-  // Paginação de magias (20 por página)
-  const SPELLS_PER_PAGE = 20;
-  const [spellPage, setSpellPage] = useState<number>(1);
-
-  useEffect(() => {
-    setSpellPage(1);
-  }, [spellFilterQuery, npc.id]);
-
-  const totalSpellPages = Math.max(1, Math.ceil(displayedSpells.length / SPELLS_PER_PAGE));
-  const currentSpellPage = Math.min(Math.max(1, spellPage), totalSpellPages);
-
-  const paginatedSpells = useMemo(() => {
-    const start = (currentSpellPage - 1) * SPELLS_PER_PAGE;
-    return displayedSpells.slice(start, start + SPELLS_PER_PAGE);
-  }, [displayedSpells, currentSpellPage]);
-
-  const renderSpellPagination = () => {
-    if (totalSpellPages <= 1) return null;
-    const startIdx = (currentSpellPage - 1) * SPELLS_PER_PAGE + 1;
-    const endIdx = Math.min(currentSpellPage * SPELLS_PER_PAGE, displayedSpells.length);
-
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-2.5 px-3 py-2 bg-slate-950/80 border border-slate-800/80 rounded-xl text-xs shadow-inner">
-        <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-          <span>Mostrando</span>
-          <span className="font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500/30 px-1.5 py-0.2 rounded">
-            {startIdx}–{endIdx}
-          </span>
-          <span>de</span>
-          <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.2 rounded">
-            {displayedSpells.length}
-          </span>
-          <span>magias</span>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            disabled={currentSpellPage <= 1}
-            onClick={() => setSpellPage((p) => Math.max(1, p - 1))}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
-              currentSpellPage <= 1
-                ? 'opacity-40 cursor-not-allowed bg-slate-900/40 border-slate-800/80 text-slate-500'
-                : 'bg-slate-900 hover:bg-slate-850 hover:border-amber-500/50 border-slate-750 text-slate-200 hover:text-white cursor-pointer active:scale-95'
-            }`}
-            title="Página anterior"
-          >
-            <ChevronLeft size={13} />
-            <span className="hidden sm:inline">Anterior</span>
-          </button>
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalSpellPages }, (_, i) => i + 1).map((pg) => {
-              const isCur = pg === currentSpellPage;
-              return (
-                <button
-                  key={pg}
-                  type="button"
-                  onClick={() => setSpellPage(pg)}
-                  className={`w-7 h-7 rounded-lg text-xs font-mono font-bold flex items-center justify-center transition-all cursor-pointer ${
-                    isCur
-                      ? 'bg-amber-500 text-slate-950 font-black shadow-md ring-1 ring-amber-400 scale-105'
-                      : 'bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
-                  }`}
-                  title={`Página ${pg}`}
-                >
-                  {pg}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            disabled={currentSpellPage >= totalSpellPages}
-            onClick={() => setSpellPage((p) => Math.min(totalSpellPages, p + 1))}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
-              currentSpellPage >= totalSpellPages
-                ? 'opacity-40 cursor-not-allowed bg-slate-900/40 border-slate-800/80 text-slate-500'
-                : 'bg-slate-900 hover:bg-slate-850 hover:border-amber-500/50 border-slate-750 text-slate-200 hover:text-white cursor-pointer active:scale-95'
-            }`}
-            title="Próxima página"
-          >
-            <span className="hidden sm:inline">Próxima</span>
-            <ChevronRight size={13} />
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   const handleToggleSpellFavorite = (spellId: string) => {
     const updated = (npc.spells || []).map((s) =>
@@ -3484,9 +3391,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
               </div>
             ) : (
               <div className="space-y-3">
-                {renderSpellPagination()}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 items-stretch">
-                  {paginatedSpells.map((s) => {
+                  {displayedSpells.map((s) => {
                   const spellDisplayName = formatSpellNameEnPt(s.name, catalogSpells);
                   const cat = matchSpellInCatalog(s.name, catalogSpells);
 
@@ -3645,7 +3551,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                   );
                 })}
               </div>
-              {renderSpellPagination()}
             </div>
           )}
           </div>
