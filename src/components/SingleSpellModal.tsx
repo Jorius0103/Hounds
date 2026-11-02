@@ -49,9 +49,47 @@ export function getCollegePt(college?: string): string {
     .join(', ');
 }
 
-// In-memory catalog cache
+// In-memory catalog cache & high-performance index
 let cachedSpellsCatalog: any[] | null = null;
 let spellsCatalogPromise: Promise<any[]> | null = null;
+const catalogIndexMap = new Map<string, any>();
+const spellMatchCache = new Map<string, any | null>();
+const spellEnglishNameCache = new Map<string, string>();
+const spellFormatNameCache = new Map<string, string>();
+
+function normKey(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function buildCatalogIndex(catalog: any[]) {
+  if (!catalog || !catalog.length) return;
+  for (let i = 0; i < catalog.length; i++) {
+    const s = catalog[i];
+    if (s.id) {
+      catalogIndexMap.set(normKey(String(s.id)), s);
+    }
+    if (s.name) {
+      catalogIndexMap.set(normKey(s.name), s);
+    }
+    if (s.namePt) {
+      catalogIndexMap.set(normKey(s.namePt), s);
+      if (s.namePt.includes('|')) {
+        const parts = s.namePt.split('|');
+        for (const p of parts) {
+          const pk = normKey(p);
+          if (pk && !catalogIndexMap.has(pk)) catalogIndexMap.set(pk, s);
+        }
+      }
+    }
+    if (s.displayName) {
+      catalogIndexMap.set(normKey(s.displayName), s);
+    }
+  }
+}
 
 export function normalizeSpellText(text: string): string {
   return (text || '')
@@ -63,6 +101,7 @@ export function normalizeSpellText(text: string): string {
 
 export async function loadSpellsDatabase(): Promise<any[]> {
   if (cachedSpellsCatalog && cachedSpellsCatalog.length > 0) {
+    if (catalogIndexMap.size === 0) buildCatalogIndex(cachedSpellsCatalog);
     return cachedSpellsCatalog;
   }
 
@@ -71,6 +110,7 @@ export async function loadSpellsDatabase(): Promise<any[]> {
     const parentW = (window as any).parent?.W?.spells;
     if (Array.isArray(parentW) && parentW.length > 0) {
       cachedSpellsCatalog = parentW;
+      buildCatalogIndex(cachedSpellsCatalog);
       return cachedSpellsCatalog;
     }
   } catch (e) {}
@@ -79,6 +119,7 @@ export async function loadSpellsDatabase(): Promise<any[]> {
     const localW = (window as any).W?.spells;
     if (Array.isArray(localW) && localW.length > 0) {
       cachedSpellsCatalog = localW;
+      buildCatalogIndex(cachedSpellsCatalog);
       return cachedSpellsCatalog;
     }
   } catch (e) {}
@@ -101,6 +142,7 @@ export async function loadSpellsDatabase(): Promise<any[]> {
           };
         });
         cachedSpellsCatalog = list;
+        buildCatalogIndex(list);
         return list;
       })
       .catch(() => {
@@ -115,80 +157,131 @@ export async function loadSpellsDatabase(): Promise<any[]> {
 
 export function matchSpellInCatalog(name: string, catalog?: any[]): any | null {
   if (!name) return null;
+  const raw = String(name || '').trim();
+  if (!raw) return null;
+
+  if (spellMatchCache.has(raw)) {
+    return spellMatchCache.get(raw)!;
+  }
+
   const cat = catalog || cachedSpellsCatalog;
   if (!cat || !cat.length) return null;
-  const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-  const raw = String(name || '');
-  const target = norm(raw);
-  const pm = raw.match(/^([^(]+)\s*(?:\(([^)]+)\))?/);
-  const beforeParen = pm && pm[1] ? norm(pm[1]) : '';
-  const insideParen = pm && pm[2] ? norm(pm[2]) : '';
 
-  for (let i = 0; i < cat.length; i++) {
-    const s = cat[i];
-    const sNorm = norm(s.name || '');
-    const ptNorm = norm(s.namePt || '');
-    if (beforeParen && sNorm && sNorm === beforeParen) return s;
-    if (beforeParen && ptNorm && ptNorm === beforeParen) return s;
-    if (insideParen && sNorm && sNorm === insideParen) return s;
-    if (insideParen && ptNorm && ptNorm === insideParen) return s;
-    if (s.displayName && norm(s.displayName) === target) return s;
-    if (s.name && norm(s.name) === target) return s;
-    if (s.namePt && norm(s.namePt) === target) return s;
-    if (sNorm && (target.includes(sNorm) || sNorm.includes(target))) return s;
-    if (ptNorm && (target.includes(ptNorm) || ptNorm.includes(target))) return s;
-    if (s.namePt && s.namePt.includes('|')) {
-      const parts = s.namePt.split('|');
-      for (const p of parts) {
-        const pNorm = norm(p);
-        if (pNorm && (target.includes(pNorm) || pNorm.includes(target))) return s;
-      }
+  if (catalogIndexMap.size === 0) {
+    buildCatalogIndex(cat);
+  }
+
+  const target = normKey(raw);
+
+  // 1. Direct O(1) lookup
+  let match = catalogIndexMap.get(target);
+  if (match) {
+    spellMatchCache.set(raw, match);
+    return match;
+  }
+
+  // 2. Parentheses extraction: "Apportation (Aportação)" or "Aportação (Apportation)"
+  const pm = raw.match(/^([^(]+)\s*(?:\(([^)]+)\))?/);
+  if (pm) {
+    const beforeParen = pm[1] ? normKey(pm[1]) : '';
+    const insideParen = pm[2] ? normKey(pm[2]) : '';
+    if (beforeParen && (match = catalogIndexMap.get(beforeParen))) {
+      spellMatchCache.set(raw, match);
+      return match;
     }
-    if (raw.includes('|') || raw.includes('/')) {
-      const rawParts = raw.split(/[|\/]/);
-      for (const rp of rawParts) {
-        const rpNorm = norm(rp);
-        if (rpNorm && (sNorm === rpNorm || ptNorm === rpNorm || (sNorm && rpNorm.includes(sNorm)) || (ptNorm && rpNorm.includes(ptNorm)))) return s;
+    if (insideParen && (match = catalogIndexMap.get(insideParen))) {
+      spellMatchCache.set(raw, match);
+      return match;
+    }
+  }
+
+  // 3. Slash / Pipe split
+  if (raw.includes('|') || raw.includes('/')) {
+    const rawParts = raw.split(/[|\/]/);
+    for (const rp of rawParts) {
+      const rpNorm = normKey(rp);
+      if (rpNorm && (match = catalogIndexMap.get(rpNorm))) {
+        spellMatchCache.set(raw, match);
+        return match;
       }
     }
   }
-  return null;
+
+  // 4. Substring fallback loop only if fast lookups didn't match
+  for (let i = 0; i < cat.length; i++) {
+    const s = cat[i];
+    const sNorm = normKey(s.name || '');
+    const ptNorm = normKey(s.namePt || '');
+    if (sNorm && (target.includes(sNorm) || sNorm.includes(target))) {
+      match = s;
+      break;
+    }
+    if (ptNorm && (target.includes(ptNorm) || ptNorm.includes(target))) {
+      match = s;
+      break;
+    }
+  }
+
+  spellMatchCache.set(raw, match || null);
+  return match || null;
 }
 
 export function getSpellEnglishName(name: string, catalog?: any[]): string {
   if (!name) return '';
   const raw = String(name).trim();
-  const cat = matchSpellInCatalog(raw, catalog);
-  if (cat && cat.name) return cat.name;
-  const m = raw.match(/^([^(]+)\s*(?:\(([^)]+)\))?/);
-  if (m && m[2]) {
-    const p1 = m[1].trim();
-    const p2 = m[2].trim();
-    if (/[áàâãéêíóôõúç]/i.test(p1) && !/[áàâãéêíóôõúç]/i.test(p2)) {
-      return p2;
-    }
-    return p1;
+  if (!raw) return '';
+
+  if (spellEnglishNameCache.has(raw)) {
+    return spellEnglishNameCache.get(raw)!;
   }
-  return raw;
+
+  const cat = matchSpellInCatalog(raw, catalog);
+  let result = raw;
+  if (cat && cat.name) {
+    result = cat.name;
+  } else {
+    const m = raw.match(/^([^(]+)\s*(?:\(([^)]+)\))?/);
+    if (m && m[2]) {
+      const p1 = m[1].trim();
+      const p2 = m[2].trim();
+      if (/[áàâãéêíóôõúç]/i.test(p1) && !/[áàâãéêíóôõúç]/i.test(p2)) {
+        result = p2;
+      } else {
+        result = p1;
+      }
+    }
+  }
+
+  spellEnglishNameCache.set(raw, result);
+  return result;
 }
 
 export function formatSpellNameEnPt(name: string, catalog?: any[]): string {
   if (!name) return '';
   const raw = String(name).trim();
+  if (!raw) return '';
+
+  if (spellFormatNameCache.has(raw)) {
+    return spellFormatNameCache.get(raw)!;
+  }
+
+  let result = raw;
   const cat = matchSpellInCatalog(raw, catalog);
   if (cat && cat.name && cat.namePt && cat.namePt !== cat.name) {
-    return `${cat.name} (${cat.namePt})`;
-  }
-  const m = raw.match(/^([^(]+)\s*\(([^)]+)\)$/);
-  if (m) {
-    const p1 = m[1].trim();
-    const p2 = m[2].trim();
-    if (/[áàâãéêíóôõúç]/i.test(p1) && !/[áàâãéêíóôõúç]/i.test(p2)) {
-      return `${p2} (${p1})`;
+    result = `${cat.name} (${cat.namePt})`;
+  } else {
+    const m = raw.match(/^([^(]+)\s*\(([^)]+)\)$/);
+    if (m) {
+      const p1 = m[1].trim();
+      const p2 = m[2].trim();
+      if (/[áàâãéêíóôõúç]/i.test(p1) && !/[áàâãéêíóôõúç]/i.test(p2)) {
+        result = `${p2} (${p1})`;
+      }
     }
-    return raw;
   }
-  return raw;
+
+  spellFormatNameCache.set(raw, result);
+  return result;
 }
 
 export const SingleSpellModal: React.FC<SingleSpellModalProps> = ({

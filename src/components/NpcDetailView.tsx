@@ -22,7 +22,7 @@ import {
 import { TurnActionsTracker } from './TurnActionsTracker';
 import { loadWeaponsDatabase } from './WeaponModal';
 import { SpellsModal } from './SpellsModal';
-import { SingleSpellModal, loadSpellsDatabase, normalizeSpellText, getCollegePt, getSpellEnglishName, formatSpellNameEnPt } from './SingleSpellModal';
+import { SingleSpellModal, loadSpellsDatabase, normalizeSpellText, getCollegePt, getSpellEnglishName, formatSpellNameEnPt, matchSpellInCatalog } from './SingleSpellModal';
 import { CombatLogCard } from './CombatLogCard';
 import { ConfirmModal } from './ConfirmModal';
 import { systemLogger } from '../utils/systemLogger';
@@ -296,39 +296,8 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
   }, [spellSearchQuery, catalogSpells]);
 
   const dbSpell = useMemo(() => {
-    if (!infoSpell || catalogSpells.length === 0) return null;
-    const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
-    const rawTarget = infoSpell.name || '';
-    const target = norm(rawTarget);
-    const parenMatch = rawTarget.match(/\(([^)]+)\)/);
-    const insideParen = parenMatch ? norm(parenMatch[1]) : '';
-
-    return catalogSpells.find((s: any) => {
-      if (s.id && (infoSpell as any).catalogId && s.id === (infoSpell as any).catalogId) return true;
-      if (insideParen && s.name && norm(s.name) === insideParen) return true;
-      if (s.displayName && norm(s.displayName) === target) return true;
-      if (s.name && norm(s.name) === target) return true;
-      if (s.namePt && norm(s.namePt) === target) return true;
-      const sNorm = norm(s.name || '');
-      const ptNorm = norm(s.namePt || '');
-      if (sNorm && (target.includes(sNorm) || sNorm.includes(target))) return true;
-      if (ptNorm && (target.includes(ptNorm) || ptNorm.includes(target))) return true;
-      if (s.namePt && s.namePt.includes('|')) {
-        const parts = s.namePt.split('|');
-        for (const p of parts) {
-          const pNorm = norm(p);
-          if (pNorm && (target.includes(pNorm) || pNorm.includes(target))) return true;
-        }
-      }
-      if (rawTarget.includes('|') || rawTarget.includes('/')) {
-        const rParts = rawTarget.split(/[|\/]/);
-        for (const rp of rParts) {
-          const rpNorm = norm(rp);
-          if (rpNorm && (sNorm === rpNorm || ptNorm === rpNorm || (sNorm && rpNorm.includes(sNorm)) || (ptNorm && rpNorm.includes(ptNorm)))) return true;
-        }
-      }
-      return false;
-    });
+    if (!infoSpell) return null;
+    return matchSpellInCatalog(infoSpell.name, catalogSpells);
   }, [infoSpell, catalogSpells]);
 
   const dbWeapon = useMemo(() => {
@@ -910,16 +879,24 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     }
   }, [npc.spells, effectiveNpcSpells]);
 
-  // Sorted spells: Favorites always at the top, then alphabetical by English name
-  const sortedSpells = [...(effectiveNpcSpells || [])].sort((a, b) => {
-    if (a.isFavorite && !b.isFavorite) return -1;
-    if (!a.isFavorite && b.isFavorite) return 1;
-    const nameA = getSpellEnglishName(a.name, catalogSpells);
-    const nameB = getSpellEnglishName(b.name, catalogSpells);
-    return nameA.localeCompare(nameB);
-  });
+  // Sorted spells: Favorites always at the top, then alphabetical by English name (Lazy + Schwartzian Transform)
+  const sortedSpells = useMemo(() => {
+    if (activeTab !== 'spells' || !effectiveNpcSpells?.length) return [];
+    const decorated = effectiveNpcSpells.map((s) => ({
+      spell: s,
+      isFav: Boolean(s.isFavorite),
+      enName: getSpellEnglishName(s.name, catalogSpells),
+    }));
+    decorated.sort((a, b) => {
+      if (a.isFav && !b.isFav) return -1;
+      if (!a.isFav && b.isFav) return 1;
+      return a.enName.localeCompare(b.enName);
+    });
+    return decorated.map((d) => d.spell);
+  }, [effectiveNpcSpells, catalogSpells, activeTab]);
 
   const displayedSpells = useMemo(() => {
+    if (activeTab !== 'spells') return [];
     if (!spellFilterQuery.trim()) return sortedSpells;
     const q = spellFilterQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     return sortedSpells.filter((s) => {
@@ -929,7 +906,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       const disp = (formatSpellNameEnPt(s.name, catalogSpells) || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       return nm.includes(q) || nt.includes(q) || en.includes(q) || disp.includes(q);
     });
-  }, [sortedSpells, spellFilterQuery, catalogSpells]);
+  }, [sortedSpells, spellFilterQuery, catalogSpells, activeTab]);
 
   // Paginação de magias (20 por página)
   const SPELLS_PER_PAGE = 20;
@@ -3511,38 +3488,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 items-stretch">
                   {paginatedSpells.map((s) => {
                   const spellDisplayName = formatSpellNameEnPt(s.name, catalogSpells);
-                  const norm = (str: string) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-                  const rawTarget = s.name || '';
-                  const target = norm(rawTarget);
-                  const parenMatch = rawTarget.match(/\(([^)]+)\)/);
-                  const insideParen = parenMatch ? norm(parenMatch[1]) : '';
-
-                  const cat = catalogSpells.find((c: any) => {
-                    if (c.id && (s as any).catalogId && c.id === (s as any).catalogId) return true;
-                    if (insideParen && c.name && norm(c.name) === insideParen) return true;
-                    if (c.displayName && norm(c.displayName) === target) return true;
-                    if (c.name && norm(c.name) === target) return true;
-                    if (c.namePt && norm(c.namePt) === target) return true;
-                    const cNorm = norm(c.name || '');
-                    const ptNorm = norm(c.namePt || '');
-                    if (cNorm && (target.includes(cNorm) || cNorm.includes(target))) return true;
-                    if (ptNorm && (target.includes(ptNorm) || ptNorm.includes(target))) return true;
-                    if (c.namePt && c.namePt.includes('|')) {
-                      const parts = c.namePt.split('|');
-                      for (const p of parts) {
-                        const pNorm = norm(p);
-                        if (pNorm && (target.includes(pNorm) || pNorm.includes(target))) return true;
-                      }
-                    }
-                    if (rawTarget.includes('|') || rawTarget.includes('/')) {
-                      const rParts = rawTarget.split(/[|\/]/);
-                      for (const rp of rParts) {
-                        const rpNorm = norm(rp);
-                        if (rpNorm && (cNorm === rpNorm || ptNorm === rpNorm || (cNorm && rpNorm.includes(cNorm)) || (ptNorm && rpNorm.includes(ptNorm)))) return true;
-                      }
-                    }
-                    return false;
-                  });
+                  const cat = matchSpellInCatalog(s.name, catalogSpells);
 
                   return (
                     <div
