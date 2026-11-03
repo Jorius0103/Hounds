@@ -527,15 +527,19 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
 
 export function calculateLogDamageForBodyPart(history: any[] = [], logKeys: string[]): number {
   if (!history || !Array.isArray(history)) return 0;
-  return history
-    .filter((h) => h && h.type === 'damage' && h.hitLocation)
+  const total = history
+    .filter((h) => h && (h.type === 'damage' || h.type === 'heal') && h.hitLocation)
     .reduce((sum, h) => {
       const locKey = normalizeLocationKey(h.hitLocation || '');
       if (logKeys.includes(locKey)) {
+        if (h.type === 'heal') {
+          return sum - Math.abs(h.bodyPartDamage ?? h.amount ?? 0);
+        }
         return sum + (h.bodyPartDamage ?? h.finalDamage ?? h.amount ?? 0);
       }
       return sum;
     }, 0);
+  return Math.max(0, total);
 }
 
 export function createDefaultArmorKit(name: string = 'Kit Padrão', ownerId: string = '', isActive: boolean = true): ArmorKit {

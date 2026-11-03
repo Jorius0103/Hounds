@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { NPC, ActionLogEntry, ExtraItem, BodyArmorLocation, Spell } from '../types/rpg';
 import { Shield, Zap, Heart, Sparkles, Package, Plus, Minus, Star, AlertTriangle, Info, Crosshair, X } from 'lucide-react';
-import { calculateLocationDamage, migrateArmorLocations, normalizeLocationKey, sanitizeHitLocationRule } from '../utils/gurps';
+import {
+  calculateLocationDamage,
+  migrateArmorLocations,
+  normalizeLocationKey,
+  sanitizeHitLocationRule,
+  BODY_PARTS_CONFIG,
+  calculateLocationHp,
+  calculateLogDamageForBodyPart,
+  getBodyPartStatus,
+  isSameLocation,
+} from '../utils/gurps';
 import { ModalHeader } from './ModalHeader';
 import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
 import { SingleSpellModal } from './SingleSpellModal';
+import { ConfirmModal } from './ConfirmModal';
 
 interface DamageCalculatorModalProps {
   npc: NPC;
@@ -199,10 +210,20 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     if (isOpen) {
       setSpellRound(currentRound ?? 0);
       setHealAmount(1);
+      setSelectedHealLocation('direct');
+      setZeroConfirmState(null);
       setIsSpellSearchOpen(false);
       setIsSingleSpellModalOpen(false);
     }
   }, [isOpen, currentRound]);
+
+  // Alerta / Confirmação antes de lançar com valor zero
+  const [zeroConfirmState, setZeroConfirmState] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message?: React.ReactNode;
+    onConfirm?: () => void;
+  } | null>(null);
 
   // Seleção de recurso a gastar na aba de Fadiga: 'fp' para Fadiga Própria ou o ID de uma Pedra de Mana
   const [selectedFatigueSource, setSelectedFatigueSource] = useState<string>('fp');
@@ -214,6 +235,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   // Heal state (Agora pode curar PV ou curar Fadiga!)
   const [healTarget, setHealTarget] = useState<'hp' | 'fp'>('hp');
   const [healAmount, setHealAmount] = useState<number>(1);
+  // Opção de cura de PV: 'direct' (Direto na vida - primeira e selecionada por padrão) ou chave da parte do corpo com dano
+  const [selectedHealLocation, setSelectedHealLocation] = useState<string>('direct');
 
   // Extra Item state (Flechas, Escudos, etc. - Sem pedras de mana)
   const [selectedItemId, setSelectedItemId] = useState<string>(
@@ -234,6 +257,63 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     const rawLocs = activeKit?.locations || npc.armorLocations;
     return migrateArmorLocations(rawLocs, npc.id);
   }, [activeKit, npc.armorLocations, npc.id]);
+
+  // Partes do corpo do personagem / NPC que possuem dano acumulado
+  const damagedBodyParts = React.useMemo(() => {
+    const list: Array<{
+      key: string;
+      name: string;
+      rollTarget?: string;
+      sublabel?: string;
+      currentDamage: number;
+      partHp: number | null;
+      statusLabel: string | null;
+      statusBadgeClass?: string;
+    }> = [];
+
+    BODY_PARTS_CONFIG.forEach((part) => {
+      const hpInfo = calculateLocationHp(part.name, npc.hpMax);
+      const logDmg = calculateLogDamageForBodyPart(npc.history || [], part.logKeys);
+      const isOverridden = npc.bodyPartDamageOverrides?.[part.key] !== undefined;
+      const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[part.key] ?? 0) : logDmg;
+      const loc = effectiveLocations.find((l) => isSameLocation(l.location, part.name));
+      const armorDmg = loc?.damageTaken || 0;
+      const currentDamage = Math.max(effectiveDmg, armorDmg);
+
+      if (currentDamage > 0) {
+        const partStatus = getBodyPartStatus(part.name, currentDamage, hpInfo.value);
+        list.push({
+          key: part.key,
+          name: part.name,
+          rollTarget: part.rollTarget,
+          sublabel: part.sublabel,
+          currentDamage,
+          partHp: hpInfo.value,
+          statusLabel: partStatus.label,
+          statusBadgeClass: partStatus.badgeClass,
+        });
+      }
+    });
+
+    // Também verifica se alguma localização em effectiveLocations tem dano maior que zero e não estava mapeada
+    effectiveLocations.forEach((loc) => {
+      if ((loc.damageTaken || 0) > 0) {
+        const alreadyInList = list.some((item) => isSameLocation(item.name, loc.location));
+        if (!alreadyInList) {
+          list.push({
+            key: normalizeLocationKey(loc.location),
+            name: loc.location,
+            rollTarget: loc.rollTarget,
+            currentDamage: loc.damageTaken || 0,
+            partHp: null,
+            statusLabel: null,
+          });
+        }
+      }
+    });
+
+    return list;
+  }, [npc.hpMax, npc.history, npc.bodyPartDamageOverrides, effectiveLocations]);
 
   // Ordenação por número de acerto (rollTarget) na ordem de rolagem 3d6 exclusiva para a seleção de local nesta janela
   const sortedDropdownLocations = React.useMemo(() => {
@@ -328,7 +408,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     (!requiresEyeConfirmation || eyeConfirmed)
   );
 
-  const handleConfirmDamage = () => {
+  const executeDamage = () => {
     if (!isDamageFormReady) return;
     const locName = isNoLocation
       ? 'Sem parte do Corpo'
@@ -385,7 +465,31 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     onClose();
   };
 
-  const handleConfirmFatigue = () => {
+  const handleConfirmDamage = () => {
+    if (!isDamageFormReady) return;
+    if (finalDamage === 0 || numericRawDamage === 0) {
+      setZeroConfirmState({
+        isOpen: true,
+        title: 'Confirmar Lançamento de Dano 0',
+        message: (
+          <div className="space-y-2 text-xs text-slate-300">
+            <p>
+              O dano final a ser aplicado é <strong className="text-amber-400 font-mono text-sm">0 PV</strong>
+              {finalDamage === 0 && numericRawDamage > 0 ? ` (Dano bruto ${numericRawDamage} absorvido pela RD)` : ''}.
+            </p>
+            <p className="text-slate-400">
+              Deseja realmente confirmar e registrar esse lançamento com valor zero?
+            </p>
+          </div>
+        ),
+        onConfirm: () => executeDamage(),
+      });
+      return;
+    }
+    executeDamage();
+  };
+
+  const executeFatigue = () => {
     const numFatigue = typeof fatigueDelta === 'number' ? fatigueDelta : 0;
     const targetChar = combatants.find((c) => c.id === spellTargetId) || npc;
     const spellNameTrimmed = isSpellExpenditure ? fatigueSpellName.trim() : '';
@@ -466,16 +570,49 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     onClose();
   };
 
-  const handleConfirmHeal = () => {
+  const handleConfirmFatigue = () => {
+    const numFatigue = typeof fatigueDelta === 'number' ? fatigueDelta : 0;
+    if (numFatigue === 0) {
+      setZeroConfirmState({
+        isOpen: true,
+        title: 'Confirmar Gasto de Fadiga Zero',
+        message: (
+          <div className="space-y-2 text-xs text-slate-300">
+            <p>
+              O valor de fadiga/mana a ser gasto é <strong className="text-cyan-400 font-mono text-sm">0 {selectedStone ? 'Mana' : 'FP'}</strong>.
+            </p>
+            <p className="text-slate-400">
+              Deseja realmente confirmar e registrar esse lançamento com valor zero?
+            </p>
+          </div>
+        ),
+        onConfirm: () => executeFatigue(),
+      });
+      return;
+    }
+    executeFatigue();
+  };
+
+  const executeHeal = () => {
+    const numHeal = typeof healAmount === 'number' ? healAmount : 0;
     if (healTarget === 'hp') {
-      const desc = customDescription.trim() || `Recuperação de PV: +${healAmount} PV.`;
-      onApplyDamage(npc.id, -healAmount, {
+      const selectedPart = selectedHealLocation !== 'direct'
+        ? damagedBodyParts.find((p) => p.key === selectedHealLocation)
+        : null;
+
+      let defaultDesc = `Recuperação de PV: +${numHeal} PV.`;
+      if (selectedPart) {
+        defaultDesc = `Cura de +${numHeal} PV na Vida e na parte do corpo [${selectedPart.name}] (Dano na parte: ${selectedPart.currentDamage} -> ${Math.max(0, selectedPart.currentDamage - numHeal)} PV).`;
+      }
+      const desc = customDescription.trim() || defaultDesc;
+
+      onApplyDamage(npc.id, -numHeal, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         round: currentRound ?? 0,
         author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
         authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'heal',
-        amount: healAmount,
+        amount: numHeal,
         description: desc,
         npcId: npc.id,
         npcName: npc.name,
@@ -483,17 +620,19 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcPreset: npc.avatarPreset,
         npcCharacterType: npc.characterType,
         hpBefore: npc.hpCurrent,
-        hpAfter: Math.min(npc.hpMax, npc.hpCurrent + healAmount),
+        hpAfter: Math.min(npc.hpMax, npc.hpCurrent + numHeal),
+        hitLocation: selectedPart ? selectedPart.name : undefined,
+        bodyPartDamage: selectedPart ? numHeal : undefined,
       });
     } else {
-      const desc = customDescription.trim() || `Descanso / Recuperação de Fadiga: +${healAmount} FP.`;
-      onApplyFatigue(npc.id, healAmount, {
+      const desc = customDescription.trim() || `Descanso / Recuperação de Fadiga: +${numHeal} FP.`;
+      onApplyFatigue(npc.id, numHeal, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         round: currentRound ?? 0,
         author: isPlayerView ? (currentUserName || 'assistente') : 'mestre',
         authorName: currentUserName || (isPlayerView ? 'Jogador' : 'Mestre'),
         type: 'rest',
-        amount: healAmount,
+        amount: numHeal,
         description: desc,
         npcId: npc.id,
         npcName: npc.name,
@@ -501,15 +640,40 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcPreset: npc.avatarPreset,
         npcCharacterType: npc.characterType,
         fpBefore: npc.fpCurrent,
-        fpAfter: Math.min(npc.fpMax, npc.fpCurrent + healAmount),
+        fpAfter: Math.min(npc.fpMax, npc.fpCurrent + numHeal),
       });
     }
     onClose();
   };
 
+  const handleConfirmHeal = () => {
+    const numHeal = typeof healAmount === 'number' ? healAmount : 0;
+    if (numHeal === 0) {
+      const isHp = healTarget === 'hp';
+      setZeroConfirmState({
+        isOpen: true,
+        title: 'Confirmar Lançamento de Cura Zero',
+        message: (
+          <div className="space-y-2 text-xs text-slate-300">
+            <p>
+              O valor de {isHp ? 'cura de Pontos de Vida' : 'recuperação de Fadiga'} é{' '}
+              <strong className="text-emerald-400 font-mono text-sm">0 {isHp ? 'PV' : 'FP'}</strong>.
+            </p>
+            <p className="text-slate-400">
+              Deseja realmente confirmar e registrar esse lançamento com valor zero?
+            </p>
+          </div>
+        ),
+        onConfirm: () => executeHeal(),
+      });
+      return;
+    }
+    executeHeal();
+  };
+
   const targetItem = availableItems.find((it) => it.id === selectedItemId) || availableItems[0];
 
-  const handleConfirmItem = () => {
+  const executeItem = () => {
     if (!targetItem) return;
 
     // Se o item ainda não estiver cadastrado no npc, cadastra
@@ -548,6 +712,32 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       });
     }
     onClose();
+  };
+
+  const handleConfirmItem = () => {
+    if (!targetItem) return;
+    const numericItemDelta = typeof itemDelta === 'number' ? itemDelta : 0;
+    if (numericItemDelta === 0) {
+      setZeroConfirmState({
+        isOpen: true,
+        title: 'Confirmar Lançamento de Item Zero',
+        message: (
+          <div className="space-y-2 text-xs text-slate-300">
+            <p>
+              A quantidade a {itemAction === 'lose' ? 'gastar' : 'ganhar'} de{' '}
+              <strong className="text-amber-300">{targetItem.name}</strong> é{' '}
+              <strong className="text-amber-400 font-mono text-sm">0</strong>.
+            </p>
+            <p className="text-slate-400">
+              Deseja realmente confirmar e registrar esse lançamento com valor zero?
+            </p>
+          </div>
+        ),
+        onConfirm: () => executeItem(),
+      });
+      return;
+    }
+    executeItem();
   };
 
   const effectiveMode = isRestrictedNpcView && (mode === 'item' || mode === 'heal') ? 'damage' : mode;
@@ -1443,14 +1633,128 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               </label>
               <input
                 type="number"
-                min="1"
+                min="0"
                 value={healAmount}
-                onChange={(e) => setHealAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) => setHealAmount(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0))}
                 className={`w-32 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-lg font-mono font-bold focus:outline-none focus:ring-1 ${
                   healTarget === 'hp' ? 'text-rose-400 focus:ring-rose-500' : 'text-cyan-300 focus:ring-cyan-500'
                 }`}
               />
             </div>
+
+            {/* Quando for cura de PV, listar as partes do corpo com dano, com opção direta na vida em 1º e selecionada */}
+            {healTarget === 'hp' && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Onde aplicar a Cura de PV:
+                  </label>
+                  {damagedBodyParts.length > 0 && (
+                    <span className="text-[10px] text-amber-400 font-mono">
+                      {damagedBodyParts.length} {damagedBodyParts.length === 1 ? 'parte com dano' : 'partes com dano'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="max-h-52 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
+                  {/* Opção 1: Sempre primeiro e selecionado por padrão */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHealLocation('direct')}
+                    className={`w-full p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                      selectedHealLocation === 'direct'
+                        ? 'bg-emerald-950/70 border-emerald-500 ring-1 ring-emerald-500/60 text-white shadow-sm'
+                        : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                        selectedHealLocation === 'direct'
+                          ? 'border-emerald-400 bg-emerald-500 text-slate-950'
+                          : 'border-slate-600 bg-slate-900'
+                      }`}>
+                        {selectedHealLocation === 'direct' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          <Heart size={13} className={selectedHealLocation === 'direct' ? 'text-emerald-400' : 'text-rose-400'} />
+                          <span>Direto na Vida (PV Geral)</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-normal">
+                            Padrão
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                          Cura aplicada diretamente aos Pontos de Vida totais do alvo
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 font-mono text-xs font-bold text-emerald-400 pl-2">
+                      +{healAmount} PV
+                    </div>
+                  </button>
+
+                  {/* Partes do corpo com dano acumulado */}
+                  {damagedBodyParts.map((part) => {
+                    const isSelected = selectedHealLocation === part.key;
+                    const newDmg = Math.max(0, part.currentDamage - healAmount);
+                    return (
+                      <button
+                        key={part.key}
+                        type="button"
+                        onClick={() => setSelectedHealLocation(part.key)}
+                        className={`w-full p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-emerald-950/70 border-emerald-500 ring-1 ring-emerald-500/60 text-white shadow-sm'
+                            : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                            isSelected
+                              ? 'border-emerald-400 bg-emerald-500 text-slate-950'
+                              : 'border-slate-600 bg-slate-900'
+                          }`}>
+                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold flex items-center gap-1.5 flex-wrap">
+                              {part.rollTarget && (
+                                <span className="text-amber-400 font-mono text-[10px]">[{part.rollTarget}]</span>
+                              )}
+                              <span>{part.name}</span>
+                              {part.sublabel && (
+                                <span className="text-[10px] text-amber-300/80 font-normal">({part.sublabel})</span>
+                              )}
+                              {part.statusLabel && (
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${part.statusBadgeClass}`}>
+                                  {part.statusLabel}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                              <span>Dano acumulado: <strong className="text-rose-400 font-mono">{part.currentDamage} PV</strong>{part.partHp ? ` (Vida da parte: ${part.partHp} PV)` : ''}</span>
+                              <span>→</span>
+                              <span>Após cura: <strong className={newDmg === 0 ? 'text-emerald-400 font-mono' : 'text-amber-300 font-mono'}>{newDmg} PV</strong></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0 pl-2">
+                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-950/90 border border-emerald-700/60 text-emerald-300 whitespace-nowrap">
+                            Vida + Parte
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {damagedBodyParts.length === 0 && (
+                    <div className="p-2 text-center text-[11px] text-slate-500 italic bg-slate-950/40 rounded-lg border border-slate-800/60">
+                      Nenhuma parte do corpo com dano acumulado no momento.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-semibold text-slate-400 block mb-1">
@@ -1465,19 +1769,29 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               />
             </div>
 
-            <button
-              onClick={handleConfirmHeal}
-              className={`w-full py-2.5 text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
-                healTarget === 'hp' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-cyan-600 hover:bg-cyan-500'
-              }`}
-            >
-              <Sparkles size={16} />
-              <span>
-                {healTarget === 'hp'
-                  ? `Curar +${healAmount} Pontos de Vida (PV)`
-                  : `Recuperar +${healAmount} Pontos de Fadiga (FP)`}
-              </span>
-            </button>
+            {(() => {
+              const selectedPart = healTarget === 'hp' && selectedHealLocation !== 'direct'
+                ? damagedBodyParts.find((p) => p.key === selectedHealLocation)
+                : null;
+
+              return (
+                <button
+                  onClick={handleConfirmHeal}
+                  className={`w-full py-2.5 text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                    healTarget === 'hp' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-cyan-600 hover:bg-cyan-500'
+                  }`}
+                >
+                  <Sparkles size={16} />
+                  <span>
+                    {healTarget === 'hp'
+                      ? selectedPart
+                        ? `Curar +${healAmount} PV na Vida e em ${selectedPart.name}`
+                        : `Curar +${healAmount} Pontos de Vida (PV)`
+                      : `Recuperar +${healAmount} Pontos de Fadiga (FP)`}
+                  </span>
+                </button>
+              );
+            })()}
           </div>
         )}
 
@@ -1660,6 +1974,24 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
             setSpellToCreate(null);
           }}
           onSave={handleSaveFromModal}
+        />
+      )}
+
+      {/* Alerta de confirmação para lançamentos com valor zero */}
+      {zeroConfirmState?.isOpen && (
+        <ConfirmModal
+          isOpen={zeroConfirmState.isOpen}
+          title={zeroConfirmState.title || 'Lançamento com Valor Zero'}
+          message={zeroConfirmState.message}
+          confirmText="Sim, Lançar"
+          cancelText="Cancelar"
+          isDanger={false}
+          onConfirm={() => {
+            const onConf = zeroConfirmState.onConfirm;
+            setZeroConfirmState(null);
+            if (onConf) onConf();
+          }}
+          onCancel={() => setZeroConfirmState(null)}
         />
       )}
     </div>

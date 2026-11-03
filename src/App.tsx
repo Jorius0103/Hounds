@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, MesaRole, Weapon, ExtraItem } from './types/rpg';
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
-import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, COMBAT_MANEUVERS } from './utils/gurps';
+import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, COMBAT_MANEUVERS, BODY_PARTS_CONFIG } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';
 import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
@@ -3721,16 +3721,33 @@ export default function App() {
       if (!entryWithId.hitLocation || entryWithId.hitLocation.toLowerCase().includes('sem parte')) {
         return locs;
       }
-      const partDamage = entryWithId.bodyPartDamage ?? finalDamage;
+      const isHeal = entryWithId.type === 'heal' || finalDamage < 0;
+      const partDamage = entryWithId.bodyPartDamage ?? Math.abs(finalDamage);
+      const delta = isHeal ? -Math.abs(partDamage) : Math.abs(partDamage);
       return locs.map((loc) => {
         if (isSameLocation(loc.location, entryWithId.hitLocation || '')) {
           return {
             ...loc,
-            damageTaken: (loc.damageTaken || 0) + partDamage,
+            damageTaken: Math.max(0, (loc.damageTaken || 0) + delta),
           };
         }
         return loc;
       });
+    };
+
+    const updateOverridesForHeal = (overrides?: Record<string, number>) => {
+      if (!overrides || !entryWithId.hitLocation) return overrides;
+      const isHeal = entryWithId.type === 'heal' || finalDamage < 0;
+      if (!isHeal) return overrides;
+      const targetPart = BODY_PARTS_CONFIG.find((b) => isSameLocation(b.name, entryWithId.hitLocation || ''));
+      if (targetPart && overrides[targetPart.key] !== undefined) {
+        const healVal = Math.abs(entryWithId.bodyPartDamage ?? finalDamage);
+        return {
+          ...overrides,
+          [targetPart.key]: Math.max(0, overrides[targetPart.key] - healVal),
+        };
+      }
+      return overrides;
     };
 
     const isPlayer = players.some((p) => p.id === npcId);
@@ -3753,6 +3770,7 @@ export default function App() {
           isDead: p.isDead,
           armorLocations: updatedLocations,
           armorKits: updatedKits,
+          bodyPartDamageOverrides: updateOverridesForHeal(p.bodyPartDamageOverrides),
           history: [entryWithId, ...p.history],
           updatedAt: now,
         };
@@ -3783,6 +3801,7 @@ export default function App() {
               isDead: n.isDead,
               armorLocations: updatedLocations,
               armorKits: updatedKits,
+              bodyPartDamageOverrides: updateOverridesForHeal(n.bodyPartDamageOverrides),
               history: [entryWithId, ...n.history],
               updatedAt: now,
             };
@@ -4444,6 +4463,36 @@ export default function App() {
       heal = typeof heal === 'number' && !isNaN(heal) ? Math.max(0, heal) : 0;
       if (heal > 0) {
         updated.hpCurrent = updated.hpCurrent - heal;
+        if (entry.hitLocation) {
+          const partDmg = entry.bodyPartDamage ?? heal;
+          const addBackToLocs = (locs: NPC['armorLocations'] = []) => {
+            return locs.map((loc) => {
+              if (isSameLocation(loc.location, entry.hitLocation || '')) {
+                return {
+                  ...loc,
+                  damageTaken: (loc.damageTaken || 0) + partDmg,
+                };
+              }
+              return loc;
+            });
+          };
+          updated.armorLocations = addBackToLocs(updated.armorLocations);
+          if (updated.armorKits) {
+            updated.armorKits = updated.armorKits.map((kit) => ({
+              ...kit,
+              locations: addBackToLocs(kit.locations),
+            }));
+          }
+          if (updated.bodyPartDamageOverrides) {
+            const targetPart = BODY_PARTS_CONFIG.find((b) => isSameLocation(b.name, entry.hitLocation || ''));
+            if (targetPart && updated.bodyPartDamageOverrides[targetPart.key] !== undefined) {
+              updated.bodyPartDamageOverrides = {
+                ...updated.bodyPartDamageOverrides,
+                [targetPart.key]: updated.bodyPartDamageOverrides[targetPart.key] + partDmg,
+              };
+            }
+          }
+        }
       }
     }
 
