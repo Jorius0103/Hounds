@@ -3807,7 +3807,24 @@ export default function App() {
     if (isPlayer) {
       const updatedPlayers = players.map((p) => {
         if (p.id !== npcId) return p;
-        const newHp = p.hpCurrent - finalDamage;
+        const isHeal = finalDamage < 0 || entryWithId.type === 'heal';
+        let newHp: number;
+        if (isHeal) {
+          const healVal = Math.abs(finalDamage);
+          if (p.hpCurrent >= p.hpMax) {
+            newHp = p.hpCurrent;
+          } else {
+            newHp = Math.min(p.hpMax, p.hpCurrent + healVal);
+          }
+        } else {
+          newHp = p.hpCurrent - finalDamage;
+        }
+
+        const effectiveLogEntry: ActionLogEntry = {
+          ...entryWithId,
+          hpAfter: newHp,
+        };
+
         // A morte é 100% manual e definida apenas pelo Mestre e Jogador Editor
         const updatedLocations = applyDamageToLocations(p.armorLocations);
         const updatedKits = p.armorKits?.map((kit) => {
@@ -3824,7 +3841,7 @@ export default function App() {
           armorLocations: updatedLocations,
           armorKits: updatedKits,
           bodyPartDamageOverrides: updateOverridesForHeal(p.bodyPartDamageOverrides),
-          history: [entryWithId, ...p.history],
+          history: [effectiveLogEntry, ...p.history],
           updatedAt: now,
         };
         return updatedNpc;
@@ -3838,7 +3855,24 @@ export default function App() {
           ...c,
           npcs: c.npcs.map((n) => {
             if (n.id !== npcId) return n;
-            const newHp = n.hpCurrent - finalDamage;
+            const isHeal = finalDamage < 0 || entryWithId.type === 'heal';
+            let newHp: number;
+            if (isHeal) {
+              const healVal = Math.abs(finalDamage);
+              if (n.hpCurrent >= n.hpMax) {
+                newHp = n.hpCurrent;
+              } else {
+                newHp = Math.min(n.hpMax, n.hpCurrent + healVal);
+              }
+            } else {
+              newHp = n.hpCurrent - finalDamage;
+            }
+
+            const effectiveLogEntry: ActionLogEntry = {
+              ...entryWithId,
+              hpAfter: newHp,
+            };
+
             // A morte é 100% manual e definida apenas pelo Mestre e Jogador Editor
             const updatedLocations = applyDamageToLocations(n.armorLocations);
             const updatedKits = n.armorKits?.map((kit) => {
@@ -3855,7 +3889,7 @@ export default function App() {
               armorLocations: updatedLocations,
               armorKits: updatedKits,
               bodyPartDamageOverrides: updateOverridesForHeal(n.bodyPartDamageOverrides),
-              history: [entryWithId, ...n.history],
+              history: [effectiveLogEntry, ...n.history],
               updatedAt: now,
             };
             return updatedNpc;
@@ -3927,7 +3961,21 @@ export default function App() {
       let updated: NPC | undefined;
       const newList = list.map((n) => {
         if (n.id !== npcId) return n;
-        const newFp = Math.max(-n.fpMax, Math.min(n.fpMax, n.fpCurrent + fpDelta));
+        let newFp: number;
+        if (fpDelta > 0) {
+          if (n.fpCurrent >= n.fpMax) {
+            newFp = n.fpCurrent;
+          } else {
+            newFp = Math.min(n.fpMax, n.fpCurrent + fpDelta);
+          }
+        } else {
+          newFp = Math.max(-n.fpMax, n.fpCurrent + fpDelta);
+        }
+
+        const effectiveLogEntry: ActionLogEntry = {
+          ...entryWithId,
+          ...(entryWithId.fpAfter !== undefined ? { fpAfter: newFp } : {}),
+        };
 
         let nextExtraItems = n.extraItems || [];
         if (manaStoneUsage && manaStoneUsage.amount > 0) {
@@ -3965,7 +4013,7 @@ export default function App() {
           fpCurrent: newFp,
           extraItems: nextExtraItems,
           activeSpells: nextActiveSpells,
-          history: [entryWithId, ...n.history],
+          history: [effectiveLogEntry, ...n.history],
           updatedAt: now,
         };
         return updated;
@@ -4503,9 +4551,11 @@ export default function App() {
 
     // 2. CURA (type === 'heal' ou indícios claros de recuperação de PV)
     else if (type === 'heal' || desc.includes('Recuperação de PV:') || (desc.startsWith('PV:') && desc.includes('+'))) {
-      let heal = entry.amount;
-      if (heal === undefined && entry.hpAfter !== undefined && entry.hpBefore !== undefined) {
+      let heal: number | undefined = undefined;
+      if (entry.hpAfter !== undefined && entry.hpBefore !== undefined) {
         heal = entry.hpAfter - entry.hpBefore;
+      } else {
+        heal = entry.amount;
       }
       if (heal === undefined || isNaN(heal) || heal <= 0) {
         const match = desc.match(/\+\s*(\d+)\s*PV/i);
@@ -4630,9 +4680,11 @@ export default function App() {
 
     // 4. DESCANSO / RESTAURAÇÃO DE FADIGA (type === 'rest' ou indícios)
     else if (type === 'rest' || desc.includes('Descanso / Recuperação de Fadiga:') || (desc.startsWith('FP:') && desc.includes('+'))) {
-      let fpGained = entry.amount;
-      if (fpGained === undefined && entry.fpAfter !== undefined && entry.fpBefore !== undefined) {
+      let fpGained: number | undefined = undefined;
+      if (entry.fpAfter !== undefined && entry.fpBefore !== undefined) {
         fpGained = entry.fpAfter - entry.fpBefore;
+      } else {
+        fpGained = entry.amount;
       }
       if (fpGained === undefined || isNaN(fpGained) || fpGained <= 0) {
         const match = desc.match(/\+\s*(\d+)\s*FP/i);

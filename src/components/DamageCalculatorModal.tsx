@@ -609,9 +609,13 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         ? damagedBodyParts.find((p) => p.key === selectedHealLocation)
         : null;
 
-      let defaultDesc = `Recuperação de PV: +${numHeal} PV.`;
+      const currentHp = npc.hpCurrent;
+      const maxHp = npc.hpMax;
+      const effectiveNewHp = currentHp >= maxHp ? currentHp : Math.min(maxHp, currentHp + numHeal);
+
+      let defaultDesc = `Recuperação de PV: +${numHeal} PV (Vida: ${currentHp} -> ${effectiveNewHp} / ${maxHp}).`;
       if (selectedPart) {
-        defaultDesc = `Cura de +${numHeal} PV na Vida e na parte do corpo [${selectedPart.name}] (Dano na parte: ${selectedPart.currentDamage} -> ${Math.max(0, selectedPart.currentDamage - numHeal)} PV).`;
+        defaultDesc = `Cura de +${numHeal} PV na Vida e na parte do corpo [${selectedPart.name}] (Dano na parte: ${selectedPart.currentDamage} -> ${Math.max(0, selectedPart.currentDamage - numHeal)} PV | Vida: ${currentHp} -> ${effectiveNewHp} / ${maxHp}).`;
       }
       const desc = customDescription.trim() || defaultDesc;
 
@@ -628,13 +632,16 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcAvatar: npc.avatar,
         npcPreset: npc.avatarPreset,
         npcCharacterType: npc.characterType,
-        hpBefore: npc.hpCurrent,
-        hpAfter: Math.min(npc.hpMax, npc.hpCurrent + numHeal),
+        hpBefore: currentHp,
+        hpAfter: effectiveNewHp,
         hitLocation: selectedPart ? selectedPart.name : undefined,
         bodyPartDamage: selectedPart ? numHeal : undefined,
       });
     } else {
-      const desc = customDescription.trim() || `Descanso / Recuperação de Fadiga: +${numHeal} FP.`;
+      const currentFp = npc.fpCurrent;
+      const maxFp = npc.fpMax;
+      const effectiveNewFp = currentFp >= maxFp ? currentFp : Math.min(maxFp, currentFp + numHeal);
+      const desc = customDescription.trim() || `Descanso / Recuperação de Fadiga: +${numHeal} FP (${currentFp} -> ${effectiveNewFp} / ${maxFp}).`;
       onApplyFatigue(npc.id, numHeal, {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         round: currentRound ?? 0,
@@ -648,8 +655,8 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
         npcAvatar: npc.avatar,
         npcPreset: npc.avatarPreset,
         npcCharacterType: npc.characterType,
-        fpBefore: npc.fpCurrent,
-        fpAfter: Math.min(npc.fpMax, npc.fpCurrent + numHeal),
+        fpBefore: currentFp,
+        fpAfter: effectiveNewFp,
       });
     }
     onClose();
@@ -1643,18 +1650,66 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
-                Quantidade a Recuperar (+{healTarget === 'hp' ? 'PV' : 'FP'})
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={healAmount}
-                onChange={(e) => setHealAmount(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0))}
-                className={`w-32 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-lg font-mono font-bold focus:outline-none focus:ring-1 ${
-                  healTarget === 'hp' ? 'text-rose-400 focus:ring-rose-500' : 'text-cyan-300 focus:ring-cyan-500'
-                }`}
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-300">
+                  Quantidade a Recuperar (+{healTarget === 'hp' ? 'PV' : 'FP'})
+                </label>
+                <div className="text-xs font-mono">
+                  {healTarget === 'hp' ? (
+                    <span className="text-slate-400">
+                      PV Atual: <strong className="text-rose-400 font-bold">{npc.hpCurrent}</strong> / <span className="text-slate-300 font-bold">{npc.hpMax}</span>
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">
+                      FP Atual: <strong className="text-cyan-400 font-bold">{npc.fpCurrent}</strong> / <span className="text-slate-300 font-bold">{npc.fpMax}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="0"
+                  value={healAmount}
+                  onChange={(e) => setHealAmount(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  className={`w-28 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-lg font-mono font-bold focus:outline-none focus:ring-1 shrink-0 ${
+                    healTarget === 'hp' ? 'text-rose-400 focus:ring-rose-500' : 'text-cyan-300 focus:ring-cyan-500'
+                  }`}
+                />
+
+                {(() => {
+                  const isHp = healTarget === 'hp';
+                  const currentVal = isHp ? npc.hpCurrent : npc.fpCurrent;
+                  const maxVal = isHp ? npc.hpMax : npc.fpMax;
+                  const numHeal = typeof healAmount === 'number' ? healAmount : 0;
+                  const cappedVal = currentVal >= maxVal ? currentVal : Math.min(maxVal, currentVal + numHeal);
+                  const isFull = currentVal >= maxVal;
+                  const wouldOverflow = !isFull && (currentVal + numHeal > maxVal);
+
+                  return (
+                    <div className="text-xs space-y-0.5">
+                      <div className="text-slate-300 flex items-center gap-1.5 font-mono text-[11px] sm:text-xs">
+                        <span className="text-slate-400">Previsão:</span>
+                        <span className={isHp ? 'text-rose-400 font-bold' : 'text-cyan-400 font-bold'}>{currentVal}</span>
+                        <span>→</span>
+                        <span className={isFull || cappedVal === maxVal ? 'text-emerald-400 font-bold' : (isHp ? 'text-rose-300 font-bold' : 'text-cyan-300 font-bold')}>
+                          {cappedVal}
+                        </span>
+                        <span className="text-slate-500">/ {maxVal} {isHp ? 'PV' : 'FP'}</span>
+                      </div>
+                      {isFull ? (
+                        <div className="text-[10px] text-amber-400 font-medium">
+                          ⚠️ Já está no máximo ({maxVal}). Não ultrapassará o total.
+                        </div>
+                      ) : wouldOverflow ? (
+                        <div className="text-[10px] text-amber-400 font-medium">
+                          ℹ️ Limitado ao máximo ({maxVal}). Ganho real: +{maxVal - currentVal} {isHp ? 'PV' : 'FP'}.
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Quando for cura de PV, listar as partes do corpo com dano, com opção direta na vida em 1º e selecionada */}
@@ -1705,6 +1760,11 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                     </div>
                     <div className="text-right shrink-0 font-mono text-xs font-bold text-emerald-400 pl-2">
                       +{healAmount} PV
+                      {npc.hpCurrent >= npc.hpMax ? (
+                        <div className="text-[9px] text-amber-400/90 font-normal">Máx. atingido</div>
+                      ) : npc.hpCurrent + healAmount > npc.hpMax ? (
+                        <div className="text-[9px] text-amber-400/90 font-normal">Máx: {npc.hpMax} PV</div>
+                      ) : null}
                     </div>
                   </button>
 
