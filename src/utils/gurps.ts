@@ -474,7 +474,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['left_hand', 'hand'],
+    logKeys: ['left_hand'],
   },
   {
     key: 'right_hand',
@@ -483,7 +483,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['right_hand', 'hand'],
+    logKeys: ['right_hand'],
   },
   {
     key: 'left_leg',
@@ -512,7 +512,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['left_foot', 'left_feet', 'foot', 'feet'],
+    logKeys: ['left_foot', 'left_feet'],
   },
   {
     key: 'right_foot',
@@ -521,7 +521,7 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
     hpFormulaLabel: '=Pontos de Vida / 3',
     hpDivisor: 3,
     defaultRule: 'Perfurante, perfurante grande e empalamento vira x1',
-    logKeys: ['right_foot', 'right_feet', 'foot', 'feet'],
+    logKeys: ['right_foot', 'right_feet'],
   },
 ];
 
@@ -534,10 +534,6 @@ export const LIMB_RELATED_KEYS: Record<string, string[]> = {
   right_forearm: ['right_forearm', 'right_arm'],
   left_arm: ['left_arm', 'left_forearm'],
   left_forearm: ['left_forearm', 'left_arm'],
-  right_hand: ['right_hand', 'hand'],
-  left_hand: ['left_hand', 'hand'],
-  right_foot: ['right_foot', 'foot', 'feet'],
-  left_foot: ['left_foot', 'foot', 'feet'],
 };
 
 export function calculateAllLocationsDamage(history: any[] = []): Record<string, number> {
