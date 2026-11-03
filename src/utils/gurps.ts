@@ -542,6 +542,24 @@ export function calculateLogDamageForBodyPart(history: any[] = [], logKeys: stri
   return Math.max(0, total);
 }
 
+export function calculateLogDamageForLocation(history: any[] = [], locationName: string): number {
+  if (!history || !Array.isArray(history) || !locationName) return 0;
+  const targetNorm = normalizeLocationKey(locationName);
+  const total = history
+    .filter((h) => h && (h.type === 'damage' || h.type === 'heal') && h.hitLocation)
+    .reduce((sum, h) => {
+      const locKey = normalizeLocationKey(h.hitLocation || '');
+      if (locKey === targetNorm) {
+        if (h.type === 'heal') {
+          return sum - Math.abs(h.bodyPartDamage ?? h.amount ?? 0);
+        }
+        return sum + (h.bodyPartDamage ?? h.finalDamage ?? h.amount ?? 0);
+      }
+      return sum;
+    }, 0);
+  return Math.max(0, total);
+}
+
 export function createDefaultArmorKit(name: string = 'Kit Padrão', ownerId: string = '', isActive: boolean = true): ArmorKit {
   return {
     id: `kit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

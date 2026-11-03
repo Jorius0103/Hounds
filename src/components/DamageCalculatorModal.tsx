@@ -9,6 +9,7 @@ import {
   BODY_PARTS_CONFIG,
   calculateLocationHp,
   calculateLogDamageForBodyPart,
+  calculateLogDamageForLocation,
   getBodyPartStatus,
   isSameLocation,
 } from '../utils/gurps';
@@ -258,7 +259,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
     return migrateArmorLocations(rawLocs, npc.id);
   }, [activeKit, npc.armorLocations, npc.id]);
 
-  // Partes do corpo do personagem / NPC que possuem dano acumulado
+  // Partes do corpo específicas do personagem / NPC que possuem dano acumulado
   const damagedBodyParts = React.useMemo(() => {
     const list: Array<{
       key: string;
@@ -271,22 +272,21 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       statusBadgeClass?: string;
     }> = [];
 
-    BODY_PARTS_CONFIG.forEach((part) => {
-      const hpInfo = calculateLocationHp(part.name, npc.hpMax);
-      const logDmg = calculateLogDamageForBodyPart(npc.history || [], part.logKeys);
-      const isOverridden = npc.bodyPartDamageOverrides?.[part.key] !== undefined;
-      const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[part.key] ?? 0) : logDmg;
-      const loc = effectiveLocations.find((l) => isSameLocation(l.location, part.name));
-      const armorDmg = loc?.damageTaken || 0;
-      const currentDamage = Math.max(effectiveDmg, armorDmg);
+    // 1. Itera diretamente por cada localização específica de armadura / corpo (ex: Right Shins separado de Right Leg)
+    effectiveLocations.forEach((loc) => {
+      const hpInfo = calculateLocationHp(loc.location, npc.hpMax);
+      const logDmg = calculateLogDamageForLocation(npc.history || [], loc.location);
+      const normKey = normalizeLocationKey(loc.location);
+      const isOverridden = npc.bodyPartDamageOverrides?.[normKey] !== undefined;
+      const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[normKey] ?? 0) : logDmg;
+      const currentDamage = Math.max(effectiveDmg, loc.damageTaken || 0);
 
       if (currentDamage > 0) {
-        const partStatus = getBodyPartStatus(part.name, currentDamage, hpInfo.value);
+        const partStatus = getBodyPartStatus(loc.location, currentDamage, hpInfo.value);
         list.push({
-          key: part.key,
-          name: part.name,
-          rollTarget: part.rollTarget,
-          sublabel: part.sublabel,
+          key: normKey,
+          name: loc.location,
+          rollTarget: loc.rollTarget,
           currentDamage,
           partHp: hpInfo.value,
           statusLabel: partStatus.label,
@@ -295,19 +295,28 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       }
     });
 
-    // Também verifica se alguma localização em effectiveLocations tem dano maior que zero e não estava mapeada
-    effectiveLocations.forEach((loc) => {
-      if ((loc.damageTaken || 0) > 0) {
-        const alreadyInList = list.some((item) => isSameLocation(item.name, loc.location));
-        if (!alreadyInList) {
-          list.push({
-            key: normalizeLocationKey(loc.location),
-            name: loc.location,
-            rollTarget: loc.rollTarget,
-            currentDamage: loc.damageTaken || 0,
-            partHp: null,
-            statusLabel: null,
-          });
+    // 2. Se houver danos no histórico de locais não mapeados em effectiveLocations
+    const seen = new Set(list.map((it) => it.key));
+    (npc.history || []).forEach((h) => {
+      if (h && h.hitLocation && !h.hitLocation.toLowerCase().includes('sem parte')) {
+        const normKey = normalizeLocationKey(h.hitLocation);
+        if (!seen.has(normKey)) {
+          seen.add(normKey);
+          const logDmg = calculateLogDamageForLocation(npc.history || [], h.hitLocation);
+          const isOverridden = npc.bodyPartDamageOverrides?.[normKey] !== undefined;
+          const currentDamage = isOverridden ? (npc.bodyPartDamageOverrides?.[normKey] ?? 0) : logDmg;
+          if (currentDamage > 0) {
+            const hpInfo = calculateLocationHp(h.hitLocation, npc.hpMax);
+            const partStatus = getBodyPartStatus(h.hitLocation, currentDamage, hpInfo.value);
+            list.push({
+              key: normKey,
+              name: h.hitLocation,
+              currentDamage,
+              partHp: hpInfo.value,
+              statusLabel: partStatus.label,
+              statusBadgeClass: partStatus.badgeClass,
+            });
+          }
         }
       }
     });

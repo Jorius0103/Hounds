@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, MesaRole, Weapon, ExtraItem } from './types/rpg';
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
-import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, COMBAT_MANEUVERS, BODY_PARTS_CONFIG } from './utils/gurps';
+import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, normalizeLocationKey, COMBAT_MANEUVERS, BODY_PARTS_CONFIG } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';
 import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
@@ -3739,15 +3739,29 @@ export default function App() {
       if (!overrides || !entryWithId.hitLocation) return overrides;
       const isHeal = entryWithId.type === 'heal' || finalDamage < 0;
       if (!isHeal) return overrides;
-      const targetPart = BODY_PARTS_CONFIG.find((b) => isSameLocation(b.name, entryWithId.hitLocation || ''));
-      if (targetPart && overrides[targetPart.key] !== undefined) {
-        const healVal = Math.abs(entryWithId.bodyPartDamage ?? finalDamage);
-        return {
-          ...overrides,
-          [targetPart.key]: Math.max(0, overrides[targetPart.key] - healVal),
-        };
+      const healVal = Math.abs(entryWithId.bodyPartDamage ?? finalDamage);
+      const normLoc = normalizeLocationKey(entryWithId.hitLocation);
+      const next = { ...overrides };
+      let changed = false;
+
+      if (next[normLoc] !== undefined) {
+        next[normLoc] = Math.max(0, next[normLoc] - healVal);
+        changed = true;
       }
-      return overrides;
+      if (normLoc === 'right_shins' && next['right_leg'] !== undefined) {
+        next['right_leg'] = Math.max(0, next['right_leg'] - healVal);
+        changed = true;
+      } else if (normLoc === 'left_shins' && next['left_leg'] !== undefined) {
+        next['left_leg'] = Math.max(0, next['left_leg'] - healVal);
+        changed = true;
+      } else if (normLoc === 'right_forearm' && next['right_arm'] !== undefined) {
+        next['right_arm'] = Math.max(0, next['right_arm'] - healVal);
+        changed = true;
+      } else if (normLoc === 'left_forearm' && next['left_arm'] !== undefined) {
+        next['left_arm'] = Math.max(0, next['left_arm'] - healVal);
+        changed = true;
+      }
+      return changed ? next : overrides;
     };
 
     const isPlayer = players.some((p) => p.id === npcId);
@@ -4484,12 +4498,28 @@ export default function App() {
             }));
           }
           if (updated.bodyPartDamageOverrides) {
-            const targetPart = BODY_PARTS_CONFIG.find((b) => isSameLocation(b.name, entry.hitLocation || ''));
-            if (targetPart && updated.bodyPartDamageOverrides[targetPart.key] !== undefined) {
-              updated.bodyPartDamageOverrides = {
-                ...updated.bodyPartDamageOverrides,
-                [targetPart.key]: updated.bodyPartDamageOverrides[targetPart.key] + partDmg,
-              };
+            const normLoc = normalizeLocationKey(entry.hitLocation);
+            const next = { ...updated.bodyPartDamageOverrides };
+            let changed = false;
+            if (next[normLoc] !== undefined) {
+              next[normLoc] = next[normLoc] + partDmg;
+              changed = true;
+            }
+            if (normLoc === 'right_shins' && next['right_leg'] !== undefined) {
+              next['right_leg'] = next['right_leg'] + partDmg;
+              changed = true;
+            } else if (normLoc === 'left_shins' && next['left_leg'] !== undefined) {
+              next['left_leg'] = next['left_leg'] + partDmg;
+              changed = true;
+            } else if (normLoc === 'right_forearm' && next['right_arm'] !== undefined) {
+              next['right_arm'] = next['right_arm'] + partDmg;
+              changed = true;
+            } else if (normLoc === 'left_forearm' && next['left_arm'] !== undefined) {
+              next['left_arm'] = next['left_arm'] + partDmg;
+              changed = true;
+            }
+            if (changed) {
+              updated.bodyPartDamageOverrides = next;
             }
           }
         }
