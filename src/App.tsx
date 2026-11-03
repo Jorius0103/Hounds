@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, MesaRole, Weapon, ExtraItem } from './types/rpg';
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
-import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, normalizeLocationKey, COMBAT_MANEUVERS, BODY_PARTS_CONFIG } from './utils/gurps';
+import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, normalizeLocationKey, COMBAT_MANEUVERS, BODY_PARTS_CONFIG, LIMB_RELATED_KEYS } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';
 import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
@@ -3723,16 +3723,55 @@ export default function App() {
       }
       const isHeal = entryWithId.type === 'heal' || finalDamage < 0;
       const partDamage = entryWithId.bodyPartDamage ?? Math.abs(finalDamage);
-      const delta = isHeal ? -Math.abs(partDamage) : Math.abs(partDamage);
-      return locs.map((loc) => {
+      const normTarget = normalizeLocationKey(entryWithId.hitLocation);
+
+      if (!isHeal) {
+        return locs.map((loc) => {
+          if (isSameLocation(loc.location, entryWithId.hitLocation || '')) {
+            return {
+              ...loc,
+              damageTaken: (loc.damageTaken || 0) + partDamage,
+            };
+          }
+          return loc;
+        });
+      }
+
+      // Se for cura:
+      let remainingHeal = partDamage;
+      const updated = locs.map((loc) => {
         if (isSameLocation(loc.location, entryWithId.hitLocation || '')) {
+          const currentDmg = loc.damageTaken || 0;
+          const deduct = Math.min(currentDmg, remainingHeal);
+          remainingHeal -= deduct;
           return {
             ...loc,
-            damageTaken: Math.max(0, (loc.damageTaken || 0) + delta),
+            damageTaken: currentDmg - deduct,
           };
         }
         return loc;
       });
+
+      // Se sobrou cura e tem partes irmãs/membro pai (ex: curou Right Leg mas dano estava em Right Shins)
+      if (remainingHeal > 0 && LIMB_RELATED_KEYS[normTarget]) {
+        return updated.map((loc) => {
+          const locNorm = normalizeLocationKey(loc.location);
+          if (remainingHeal > 0 && LIMB_RELATED_KEYS[normTarget].includes(locNorm)) {
+            const currentDmg = loc.damageTaken || 0;
+            if (currentDmg > 0) {
+              const deduct = Math.min(currentDmg, remainingHeal);
+              remainingHeal -= deduct;
+              return {
+                ...loc,
+                damageTaken: currentDmg - deduct,
+              };
+            }
+          }
+          return loc;
+        });
+      }
+
+      return updated;
     };
 
     const updateOverridesForHeal = (overrides?: Record<string, number>) => {

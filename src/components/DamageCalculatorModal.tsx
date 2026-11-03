@@ -210,7 +210,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setSpellRound(currentRound ?? 0);
-      setHealAmount(1);
+      setHealAmount(0);
       setSelectedHealLocation('direct');
       setZeroConfirmState(null);
       setIsSpellSearchOpen(false);
@@ -235,7 +235,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
   // Heal state (Agora pode curar PV ou curar Fadiga!)
   const [healTarget, setHealTarget] = useState<'hp' | 'fp'>('hp');
-  const [healAmount, setHealAmount] = useState<number>(1);
+  const [healAmount, setHealAmount] = useState<number>(0);
   // Opção de cura de PV: 'direct' (Direto na vida - primeira e selecionada por padrão) ou chave da parte do corpo com dano
   const [selectedHealLocation, setSelectedHealLocation] = useState<string>('direct');
 
@@ -279,7 +279,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
       const normKey = normalizeLocationKey(loc.location);
       const isOverridden = npc.bodyPartDamageOverrides?.[normKey] !== undefined;
       const effectiveDmg = isOverridden ? (npc.bodyPartDamageOverrides?.[normKey] ?? 0) : logDmg;
-      const currentDamage = Math.max(effectiveDmg, loc.damageTaken || 0);
+      const currentDamage = effectiveDmg;
 
       if (currentDamage > 0) {
         const partStatus = getBodyPartStatus(loc.location, currentDamage, hpInfo.value);
@@ -1610,7 +1610,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setHealTarget('hp')}
+                  onClick={() => {
+                    setHealTarget('hp');
+                    setHealAmount(0);
+                  }}
                   className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
                     healTarget === 'hp'
                       ? 'bg-rose-950 border-rose-500 text-rose-200 shadow-sm'
@@ -1623,7 +1626,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setHealTarget('fp')}
+                  onClick={() => {
+                    setHealTarget('fp');
+                    setHealAmount(0);
+                  }}
                   className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
                     healTarget === 'fp'
                       ? 'bg-cyan-950 border-cyan-500 text-cyan-200 shadow-sm'

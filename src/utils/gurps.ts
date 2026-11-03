@@ -525,39 +525,76 @@ export const BODY_PARTS_CONFIG: BodyPartConfig[] = [
   },
 ];
 
+export const LIMB_RELATED_KEYS: Record<string, string[]> = {
+  right_leg: ['right_leg', 'right_shins'],
+  right_shins: ['right_shins', 'right_leg'],
+  left_leg: ['left_leg', 'left_shins'],
+  left_shins: ['left_shins', 'left_leg'],
+  right_arm: ['right_arm', 'right_forearm'],
+  right_forearm: ['right_forearm', 'right_arm'],
+  left_arm: ['left_arm', 'left_forearm'],
+  left_forearm: ['left_forearm', 'left_arm'],
+  right_hand: ['right_hand', 'hand'],
+  left_hand: ['left_hand', 'hand'],
+  right_foot: ['right_foot', 'foot', 'feet'],
+  left_foot: ['left_foot', 'foot', 'feet'],
+};
+
+export function calculateAllLocationsDamage(history: any[] = []): Record<string, number> {
+  const damages: Record<string, number> = {};
+  if (!history || !Array.isArray(history) || history.length === 0) return damages;
+
+  // Processa do evento mais antigo para o mais novo
+  const chronHistory = [...history].reverse();
+  for (const h of chronHistory) {
+    if (!h || !h.hitLocation || typeof h.hitLocation !== 'string' || h.hitLocation.toLowerCase().includes('sem parte')) {
+      continue;
+    }
+    const normKey = normalizeLocationKey(h.hitLocation);
+    if (!normKey) continue;
+
+    if (h.type === 'damage') {
+      const dmg = h.bodyPartDamage ?? h.finalDamage ?? h.amount ?? 0;
+      if (dmg > 0) {
+        damages[normKey] = (damages[normKey] || 0) + dmg;
+      }
+    } else if (h.type === 'heal') {
+      let heal = Math.abs(h.bodyPartDamage ?? h.amount ?? 0);
+      if (heal > 0) {
+        // 1. Abate primeiro da própria localização exata
+        const directDeduct = Math.min(damages[normKey] || 0, heal);
+        damages[normKey] = (damages[normKey] || 0) - directDeduct;
+        heal -= directDeduct;
+
+        // 2. Se sobrou cura e pertencer a um grupo de membros (ex: curou Right Leg mas dano estava em Right Shins)
+        if (heal > 0 && LIMB_RELATED_KEYS[normKey]) {
+          for (const relKey of LIMB_RELATED_KEYS[normKey]) {
+            if (relKey !== normKey && (damages[relKey] || 0) > 0) {
+              const relDeduct = Math.min(damages[relKey], heal);
+              damages[relKey] -= relDeduct;
+              heal -= relDeduct;
+              if (heal <= 0) break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return damages;
+}
+
 export function calculateLogDamageForBodyPart(history: any[] = [], logKeys: string[]): number {
   if (!history || !Array.isArray(history)) return 0;
-  const total = history
-    .filter((h) => h && (h.type === 'damage' || h.type === 'heal') && h.hitLocation)
-    .reduce((sum, h) => {
-      const locKey = normalizeLocationKey(h.hitLocation || '');
-      if (logKeys.includes(locKey)) {
-        if (h.type === 'heal') {
-          return sum - Math.abs(h.bodyPartDamage ?? h.amount ?? 0);
-        }
-        return sum + (h.bodyPartDamage ?? h.finalDamage ?? h.amount ?? 0);
-      }
-      return sum;
-    }, 0);
-  return Math.max(0, total);
+  const allDamages = calculateAllLocationsDamage(history);
+  return logKeys.reduce((sum, key) => sum + (allDamages[key] || 0), 0);
 }
 
 export function calculateLogDamageForLocation(history: any[] = [], locationName: string): number {
   if (!history || !Array.isArray(history) || !locationName) return 0;
+  const allDamages = calculateAllLocationsDamage(history);
   const targetNorm = normalizeLocationKey(locationName);
-  const total = history
-    .filter((h) => h && (h.type === 'damage' || h.type === 'heal') && h.hitLocation)
-    .reduce((sum, h) => {
-      const locKey = normalizeLocationKey(h.hitLocation || '');
-      if (locKey === targetNorm) {
-        if (h.type === 'heal') {
-          return sum - Math.abs(h.bodyPartDamage ?? h.amount ?? 0);
-        }
-        return sum + (h.bodyPartDamage ?? h.finalDamage ?? h.amount ?? 0);
-      }
-      return sum;
-    }, 0);
-  return Math.max(0, total);
+  return allDamages[targetNorm] || 0;
 }
 
 export function createDefaultArmorKit(name: string = 'Kit Padrão', ownerId: string = '', isActive: boolean = true): ArmorKit {
