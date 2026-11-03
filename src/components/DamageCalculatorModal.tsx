@@ -246,6 +246,16 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const [itemAction, setItemAction] = useState<'lose' | 'gain'>('lose');
   const [itemDelta, setItemDelta] = useState<number | ''>(0);
 
+  useEffect(() => {
+    if (availableItems.length > 0) {
+      if (!selectedItemId || !availableItems.some((it) => it.id === selectedItemId)) {
+        setSelectedItemId(availableItems[0].id);
+      }
+    } else if (selectedItemId) {
+      setSelectedItemId('');
+    }
+  }, [availableItems, selectedItemId]);
+
   const [eyeConfirmed, setEyeConfirmed] = useState<boolean>(false);
   const [customMultiplier, setCustomMultiplier] = useState<number | ''>(1.0);
 

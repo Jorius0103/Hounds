@@ -3305,6 +3305,10 @@ export default function App() {
       } catch (e) {}
     }
 
+    if (damageModalNpc && damageModalNpc.id === npcWithTimestamp.id) {
+      setDamageModalNpc(npcWithTimestamp);
+    }
+
     systemLogger.addLog(
       'LOCAL_EDIT',
       `Ficha de "${npcWithTimestamp.name}" atualizada localmente`,

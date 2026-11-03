@@ -58,6 +58,7 @@ import {
   X,
   Search,
   BookOpen,
+  GripVertical,
 } from 'lucide-react';
 import { ArmorSearchModal } from './ArmorSearchModal';
 import { MODAL_BACKDROP_STYLE, modalCardStyle } from './modalStyles';
@@ -1219,6 +1220,71 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       { itemId, item: targetItem, remainingItemsCount: items.length }
     );
     updateField('extraItems', items);
+  };
+
+  // Drag and Drop para reorganização de Itens Extras & Recursos
+  const [draggedExtraItemId, setDraggedExtraItemId] = useState<string | null>(null);
+  const [dragOverExtraItemId, setDragOverExtraItemId] = useState<string | null>(null);
+
+  const handleExtraItemDragStart = (e: React.DragEvent, id: string) => {
+    if (isViewer) return;
+    setDraggedExtraItemId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    const rowElement = (e.currentTarget as HTMLElement).closest('[data-extra-item-id]') as HTMLElement;
+    if (rowElement && e.dataTransfer.setDragImage) {
+      e.dataTransfer.setDragImage(rowElement, 20, 20);
+    }
+  };
+
+  const handleExtraItemDragOver = (e: React.DragEvent, overId: string) => {
+    if (isViewer || !draggedExtraItemId || draggedExtraItemId === overId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverExtraItemId !== overId) {
+      setDragOverExtraItemId(overId);
+    }
+  };
+
+  const handleExtraItemDragLeave = (e: React.DragEvent, overId: string) => {
+    if (dragOverExtraItemId === overId && !e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverExtraItemId(null);
+    }
+  };
+
+  const handleExtraItemDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (isViewer || !draggedExtraItemId || draggedExtraItemId === targetId) {
+      setDraggedExtraItemId(null);
+      setDragOverExtraItemId(null);
+      return;
+    }
+
+    const currentList = currentNpcRef.current.extraItems || [];
+    const fromIndex = currentList.findIndex((it) => it.id === draggedExtraItemId);
+    const toIndex = currentList.findIndex((it) => it.id === targetId);
+
+    if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+      const nextList = [...currentList];
+      const [movedItem] = nextList.splice(fromIndex, 1);
+      nextList.splice(toIndex, 0, movedItem);
+
+      systemLogger.addLog(
+        'LOCAL_EDIT',
+        `Itens extras reordenados em "${currentNpcRef.current.name}": ${movedItem.name} (${fromIndex + 1} -> ${toIndex + 1})`,
+        { fromId: draggedExtraItemId, toId: targetId, fromIndex, toIndex }
+      );
+
+      updateField('extraItems', nextList);
+    }
+
+    setDraggedExtraItemId(null);
+    setDragOverExtraItemId(null);
+  };
+
+  const handleExtraItemDragEnd = () => {
+    setDraggedExtraItemId(null);
+    setDragOverExtraItemId(null);
   };
 
   // Renderizador unificado da div Magias (Magias Ativas & Sob Efeito)
@@ -2961,23 +3027,47 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
                 {npc.extraItems.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-slate-950/90 border border-slate-800 rounded-xl p-2 flex items-center justify-between gap-2 hover:border-slate-750 transition-colors"
+                    data-extra-item-id={item.id}
+                    onDragOver={(e) => handleExtraItemDragOver(e, item.id)}
+                    onDragLeave={(e) => handleExtraItemDragLeave(e, item.id)}
+                    onDrop={(e) => handleExtraItemDrop(e, item.id)}
+                    onDragEnd={handleExtraItemDragEnd}
+                    className={`bg-slate-950/90 border rounded-xl p-2 flex items-center justify-between gap-2 transition-all ${
+                      draggedExtraItemId === item.id
+                        ? 'opacity-35 scale-[0.98] border-dashed border-amber-500/70 bg-amber-950/20'
+                        : dragOverExtraItemId === item.id
+                        ? 'border-amber-400 bg-amber-950/40 ring-2 ring-amber-400/50 shadow-lg'
+                        : 'border-slate-800 hover:border-slate-750'
+                    }`}
                   >
                     {/* Nome do Item com Ícone */}
                     <div className="flex-1 min-w-0 flex items-center gap-1.5">
                       {!isViewer && (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleFavoriteExtraItem(item.id)}
-                          className={`w-6 h-6 rounded flex items-center justify-center transition-colors shrink-0 ${
-                            item.isFavorite
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-                          }`}
-                          title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
-                        >
-                          <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            draggable={!isViewer}
+                            onDragStart={(e) => handleExtraItemDragStart(e, item.id)}
+                            onDragEnd={handleExtraItemDragEnd}
+                            className="w-6 h-6 rounded flex items-center justify-center transition-colors shrink-0 bg-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-750 cursor-grab active:cursor-grabbing border border-transparent hover:border-slate-700 select-none"
+                            title="Segure e arraste para reorganizar o item"
+                            aria-label="Reorganizar item"
+                          >
+                            <GripVertical size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFavoriteExtraItem(item.id)}
+                            className={`w-6 h-6 rounded flex items-center justify-center transition-colors shrink-0 ${
+                              item.isFavorite
+                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                                : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                            }`}
+                            title={item.isFavorite ? 'Remover dos favoritos (Lançar Dano)' : 'Favoritar item (exibir em Lançar Dano)'}
+                          >
+                            <Star size={13} className={item.isFavorite ? 'fill-amber-400' : ''} />
+                          </button>
+                        </>
                       )}
                       {getItemIcon(item.name, item.category)}
                       <input
