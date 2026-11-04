@@ -3385,6 +3385,35 @@ export default function App() {
       combatsChanged = true;
     }
 
+    // Sincronização unificada: se o NPC mudou isVisibleToPlayer na ficha/lista, sincroniza o token no tabuleiro tático
+    if (typeof npcWithTimestamp.isVisibleToPlayer === 'boolean') {
+      const isVisible = npcWithTimestamp.isVisibleToPlayer;
+      let tokenUpdated = false;
+      nextCombats = nextCombats.map((c: Combat) => {
+        if (!c.tacticalState?.tokens?.some((t) => t.npcId === npcWithTimestamp.id)) return c;
+        const updatedTokens = c.tacticalState.tokens.map((t) =>
+          t.npcId === npcWithTimestamp.id
+            ? {
+                ...t,
+                hiddenFromPlayers: !isVisible,
+                layer: (isVisible ? 'tokens' : 'gm') as any,
+              }
+            : t
+        );
+        tokenUpdated = true;
+        return {
+          ...c,
+          tacticalState: {
+            ...c.tacticalState,
+            tokens: updatedTokens,
+          },
+        };
+      });
+      if (tokenUpdated) {
+        combatsChanged = true;
+      }
+    }
+
     // Atualiza combatsPoolRef
     Object.keys(combatsPoolRef.current).forEach((cbId) => {
       const poolEntry = combatsPoolRef.current[cbId];

@@ -142,21 +142,41 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     return Array.isArray(tacticalState?.tokens) ? tacticalState.tokens : [];
   }, [tacticalState?.tokens]);
 
-  // Alternar visibilidade de um token entre Mestre e Jogadores (Roll20 GM Layer)
+  // Alternar visibilidade de um token entre Mestre e Jogadores (unificado com a ficha do NPC)
   const handleToggleTokenVisibility = useCallback((tokenId: string) => {
+    const token = tokens.find((t) => t.id === tokenId);
+    if (!token) return;
+    const targetNpc = characterMap.get(token.npcId);
+    const isPlayer = targetNpc?.characterType === 'player';
+
+    // Determina se o combatente está atualmente oculto para os jogadores
+    const currentlyHidden = isPlayer
+      ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+      : (!targetNpc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
+
+    const willBeVisible = currentlyHidden; // Se estava oculto, vai ficar visível aos jogadores
+
+    // 1. Atualiza o token no tabuleiro tático
     const updatedTokens = tokens.map((t) => {
       if (t.id === tokenId) {
-        const nextHidden = !t.hiddenFromPlayers;
         return {
           ...t,
-          hiddenFromPlayers: nextHidden,
-          layer: (nextHidden ? 'gm' : 'tokens') as any,
+          hiddenFromPlayers: !willBeVisible,
+          layer: (willBeVisible ? 'tokens' : 'gm') as any,
         };
       }
       return t;
     });
     onUpdateTacticalState({ tokens: updatedTokens });
-  }, [tokens, onUpdateTacticalState]);
+
+    // 2. Unifica diretamente com a ficha do NPC (isVisibleToPlayer)
+    if (targetNpc) {
+      onUpdateNpc({
+        ...targetNpc,
+        isVisibleToPlayer: willBeVisible,
+      });
+    }
+  }, [tokens, characterMap, onUpdateTacticalState, onUpdateNpc]);
 
   // Selected token object
   const selectedToken = useMemo(() => {
@@ -1324,13 +1344,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 const npc = characterMap.get(token.npcId);
                 if (!npc) return null;
 
-                const isTokenHidden = !!token.hiddenFromPlayers || token.layer === 'gm';
+                const isPlayer = npc.characterType === 'player';
+                // Visibilidade unificada: NPCs respeitam isVisibleToPlayer da ficha e a flag do tabuleiro
+                const isTokenHidden = isPlayer
+                  ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                  : (!npc.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
                 // A Camada Tokens já é a visão dos jogadores (tokens ocultos/GM não aparecem)
                 if (activeLayer === 'tokens' && isTokenHidden) return null;
                 // Jogadores comuns nunca enxergam tokens da camada do mestre
                 if (!isMaster && isTokenHidden) return null;
-
-              const isPlayer = npc.characterType === 'player';
               const isSelected = token.id === selectedTokenId;
               const isDragging = token.id === draggedTokenId;
               const isRotating = token.id === rotatingTokenId;
@@ -1711,42 +1733,48 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 </div>
               </div>
 
-              {/* NÍVEL DO MESTRE: FLAG DE VISIBILIDADE PARA JOGADORES (ROLL20 GM LAYER) */}
-              {isMaster && (
-                <div className="pt-1 border-t border-slate-800">
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleTokenVisibility(token.id);
-                      setContextMenu(null);
-                    }}
-                    className={`w-full py-1.5 px-2 rounded-lg font-bold text-[10.5px] flex items-center justify-center gap-1.5 border transition-all ${
-                      token.hiddenFromPlayers
-                        ? 'bg-purple-950/70 hover:bg-purple-900 text-purple-200 border-purple-500/50 shadow-sm'
-                        : 'bg-slate-850 hover:bg-slate-800 text-slate-300 border-slate-750'
-                    }`}
-                    title={
-                      token.hiddenFromPlayers
-                        ? 'Tornar este combatente visível para os jogadores conectados'
-                        : 'Ocultar este combatente dos jogadores (Camada do Mestre)'
-                    }
-                  >
-                    {token.hiddenFromPlayers ? (
-                      <>
-                        <Eye size={12} className="text-emerald-400" />
-                        <span>Mover para Camada de Tokens (Jogadores)</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff size={12} className="text-purple-400" />
-                        <span>Mover para Camada do Mestre (GM)</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
+              {/* NÍVEL 3: UNIFICADO COM A FICHA DO NPC (MOVER ENTRE CAMADA DE TOKENS E GM) */}
+              {isMaster && (() => {
+                const isContextTokenHidden = npc.characterType === 'player'
+                  ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                  : (!npc.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
+
+                return (
+                  <div className="pt-1 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleTokenVisibility(token.id);
+                        setContextMenu(null);
+                      }}
+                      className={`w-full py-1.5 px-2 rounded-lg font-bold text-[10.5px] flex items-center justify-center gap-1.5 border transition-all ${
+                        isContextTokenHidden
+                          ? 'bg-purple-950/70 hover:bg-purple-900 text-purple-200 border-purple-500/50 shadow-sm'
+                          : 'bg-slate-850 hover:bg-slate-800 text-slate-300 border-slate-750'
+                      }`}
+                      title={
+                        isContextTokenHidden
+                          ? 'Tornar este combatente visível para os jogadores conectados'
+                          : 'Ocultar este combatente dos jogadores (Camada do Mestre)'
+                      }
+                    >
+                      {isContextTokenHidden ? (
+                        <>
+                          <Eye size={12} className="text-emerald-400" />
+                          <span>Mover para Camada de Tokens (Jogadores)</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff size={12} className="text-purple-400" />
+                          <span>Mover para Camada do Mestre (GM)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Botão de Ação: Lançar Dano / Fadiga / Itens */}
               <div className="pt-1 border-t border-slate-800">
