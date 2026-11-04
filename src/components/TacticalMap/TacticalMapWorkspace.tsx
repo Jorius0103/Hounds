@@ -116,9 +116,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Fog of War / Ocultação do Mapa state (Estilo Roll20)
   const [fogBrushMode, setFogBrushMode] = useState<'reveal' | 'hide'>('reveal');
   const [fogBrushRadius, setFogBrushRadius] = useState<number>(1);
+  const [fogShape, setFogShape] = useState<'brush' | 'box'>('brush');
+  const [fogBoxStart, setFogBoxStart] = useState<Point | null>(null);
+  const [fogBoxCurrent, setFogBoxCurrent] = useState<Point | null>(null);
   const [isDrawingFog, setIsDrawingFog] = useState(false);
 
   // Focos de Luz state (Iluminação Dinâmica)
+  const [customLightRadius, setCustomLightRadius] = useState<number>(5);
+  const [customLightColor, setCustomLightColor] = useState<string>('#f59e0b');
   const [selectedLightPreset, setSelectedLightPreset] = useState<{
     label: string;
     radius: number;
@@ -132,9 +137,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Ruler state
   const [rulerStart, setRulerStart] = useState<HexCoord | null>(null);
   const [rulerCurrent, setRulerCurrent] = useState<HexCoord | null>(null);
+  const [rulerMode, setRulerMode] = useState<'free' | 'fixed'>('free');
+  const [rulerFixedYards, setRulerFixedYards] = useState<number>(5);
 
   // Area template state
-  const [areaRadius, setAreaRadius] = useState<number>(2); // em jardas
+  const [areaRadius, setAreaRadius] = useState<number>(3); // em jardas
+  const [areaColor, setAreaColor] = useState<string>('#ef4444');
   const [areaCenter, setAreaCenter] = useState<HexCoord | null>(null);
 
   // Dragging state for Tokens and Canvas Pan
@@ -417,9 +425,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     // 1. Ferramenta de Ocultação do Mapa (Névoa de Guerra estilo Roll20)
     if (activeTool === 'fog' && e.button === 0 && isMaster) {
       const p = clientToMapCoords(e.clientX, e.clientY);
-      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
-      setIsDrawingFog(true);
-      applyFogBrush(hex);
+      if (fogShape === 'box') {
+        setFogBoxStart({ x: p.x - mapX, y: p.y - mapY });
+        setFogBoxCurrent({ x: p.x - mapX, y: p.y - mapY });
+      } else {
+        const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
+        setIsDrawingFog(true);
+        applyFogBrush(hex);
+      }
       setPopoverToken(null);
       return;
     }
@@ -436,15 +449,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const updated = (tacticalState.lights || []).filter((l) => l.id !== existing.id);
         onUpdateTacticalState({ lights: updated });
       } else {
-        // Cria novo foco de luz
+        // Cria novo foco de luz com o raio e cor customizados
         const newLight: TacticalLightSource = {
           id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
           gridX: hex.col,
           gridY: hex.row,
-          radius: selectedLightPreset.radius,
-          color: selectedLightPreset.color,
-          intensity: 0.75,
-          label: selectedLightPreset.label,
+          radius: customLightRadius,
+          color: customLightColor,
+          intensity: 0.85,
+          label: `Luz (${customLightRadius}yd)`,
           active: true,
         };
         onUpdateTacticalState({
@@ -455,7 +468,29 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       return;
     }
 
-    // 3. Ruler tool start
+    // 3. Ferramenta de Área de Efeito (Explosões, Magias, Granadas)
+    if (activeTool === 'area' && e.button === 0) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
+      const newMarker: TacticalMarker = {
+        id: `area-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        type: 'blast',
+        startX: hex.col,
+        startY: hex.row,
+        radius: areaRadius,
+        color: areaColor,
+        label: `Área (${areaRadius}yd)`,
+        layer: activeLayer,
+        authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
+      };
+      onUpdateTacticalState({
+        markers: [...(tacticalState.markers || []), newMarker],
+      });
+      setPopoverToken(null);
+      return;
+    }
+
+    // 4. Ruler tool start
     if (activeTool === 'ruler' && e.button === 0) {
       const p = clientToMapCoords(e.clientX, e.clientY);
       const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
@@ -494,8 +529,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
     setHoveredHex(hex);
 
-    if (activeTool === 'fog' && isDrawingFog && isMaster) {
-      applyFogBrush(hex);
+    if (activeTool === 'fog' && isMaster) {
+      if (fogShape === 'box' && fogBoxStart) {
+        setFogBoxCurrent({ x: p.x - mapX, y: p.y - mapY });
+      } else if (fogShape === 'brush' && isDrawingFog) {
+        applyFogBrush(hex);
+      }
     }
 
     if (activeTool === 'ruler' && rulerStart) {
@@ -547,6 +586,33 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
     if (isDrawingFog) {
       setIsDrawingFog(false);
+    }
+
+    if (fogBoxStart && fogBoxCurrent && isMaster) {
+      const minX = Math.min(fogBoxStart.x, fogBoxCurrent.x);
+      const maxX = Math.max(fogBoxStart.x, fogBoxCurrent.x);
+      const minY = Math.min(fogBoxStart.y, fogBoxCurrent.y);
+      const maxY = Math.max(fogBoxStart.y, fogBoxCurrent.y);
+
+      if (maxX - minX > 5 || maxY - minY > 5) {
+        const nextSet = new Set(revealedSet);
+        for (let r = 0; r < gridRows; r++) {
+          for (let c = 0; c < gridCols; c++) {
+            const pt = getHexCenter(c, r, hexSize);
+            if (pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY) {
+              const key = `${c},${r}`;
+              if (fogBrushMode === 'reveal') {
+                nextSet.add(key);
+              } else {
+                nextSet.delete(key);
+              }
+            }
+          }
+        }
+        onUpdateTacticalState({ fogRevealedCells: Array.from(nextSet) });
+      }
+      setFogBoxStart(null);
+      setFogBoxCurrent(null);
     }
 
     if (isPanning) {
@@ -924,6 +990,44 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     onUpdateTacticalState({ markers: [] });
   };
 
+  // Fixar medição tática na mesa (compartilhado na camada Tokens para todos os jogadores)
+  const handleFixRulerMarker = () => {
+    if (!rulerStart || !rulerCurrent) return;
+    const distanceYards = getHexDistance(rulerStart, rulerCurrent);
+    const rangePenalty = getGurpsRangePenalty(distanceYards);
+    const newMarker: TacticalMarker = {
+      id: `ruler-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      type: 'ruler',
+      startX: rulerStart.col,
+      startY: rulerStart.row,
+      endX: rulerCurrent.col,
+      endY: rulerCurrent.row,
+      radius: distanceYards,
+      color: '#f59e0b',
+      label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
+      layer: activeLayer,
+      authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
+    };
+    onUpdateTacticalState({
+      markers: [...(tacticalState.markers || []), newMarker],
+    });
+    setRulerStart(null);
+    setRulerCurrent(null);
+  };
+
+  const handleClearRulerMarkers = () => {
+    setRulerStart(null);
+    setRulerCurrent(null);
+    const remaining = (tacticalState.markers || []).filter((m) => m.type !== 'ruler');
+    onUpdateTacticalState({ markers: remaining });
+  };
+
+  const handleClearAreaMarkers = () => {
+    setAreaCenter(null);
+    const remaining = (tacticalState.markers || []).filter((m) => m.type !== 'blast');
+    onUpdateTacticalState({ markers: remaining });
+  };
+
   // Background asset URL
   const currentPreset =
     TACTICAL_MAP_PRESETS.find((p) => p.key === tacticalState.backgroundKey) ||
@@ -1030,10 +1134,28 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onSetFogBrushMode={setFogBrushMode}
           fogBrushRadius={fogBrushRadius}
           onSetFogBrushRadius={setFogBrushRadius}
+          fogShape={fogShape}
+          onSetFogShape={setFogShape}
           onRevealAllFog={handleRevealAllFog}
           onHideAllFog={handleHideAllFog}
           selectedLightPreset={selectedLightPreset}
           onSelectLightPreset={setSelectedLightPreset}
+          customLightRadius={customLightRadius}
+          onSetCustomLightRadius={setCustomLightRadius}
+          customLightColor={customLightColor}
+          onSetCustomLightColor={setCustomLightColor}
+          rulerMode={rulerMode}
+          onSetRulerMode={setRulerMode}
+          rulerFixedYards={rulerFixedYards}
+          onSetRulerFixedYards={setRulerFixedYards}
+          onFixRulerMarker={handleFixRulerMarker}
+          onClearRulerMarkers={handleClearRulerMarkers}
+          hasActiveRuler={!!(rulerStart && rulerCurrent)}
+          areaRadius={areaRadius}
+          onSetAreaRadius={setAreaRadius}
+          areaColor={areaColor}
+          onSetAreaColor={setAreaColor}
+          onClearAreaMarkers={handleClearAreaMarkers}
         />
       </div>
 
@@ -1649,9 +1771,143 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </g>
           )}
 
-          {/* CAMADA 5: MODELO DE ÁREA / EXPLOSÃO */}
+          {/* CAMADA 5: MARCADORES E ÁREAS PERSISTENTES NO TABULEIRO */}
+          <g id="tactical-persistent-markers">
+            {(tacticalState.markers || []).map((marker) => {
+              // Marcadores na camada tokens são públicos e visíveis para TODOS (jogadores e mestre).
+              // Marcadores na camada GM só são visíveis se isMaster for true.
+              const isVisible = isMaster || marker.layer === 'tokens' || !marker.layer;
+              if (!isVisible) return null;
+
+              if (marker.type === 'blast') {
+                const relCenter = getHexCenter(marker.startX, marker.startY, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                const radiusPixels = (marker.radius || 3) * hexSize * 1.7;
+                const canDelete = isMaster || marker.authorName === (currentUserRole === 'mestre' ? 'Mestre' : 'Jogador');
+
+                return (
+                  <g key={marker.id} id={`marker-${marker.id}`}>
+                    <circle
+                      cx={center.x}
+                      cy={center.y}
+                      r={radiusPixels}
+                      fill={marker.color ? `${marker.color}33` : 'rgba(239, 68, 68, 0.2)'}
+                      stroke={marker.color || '#ef4444'}
+                      strokeWidth="2.5"
+                      strokeDasharray="6 4"
+                    />
+                    {/* Tag de Identificação */}
+                    <g transform={`translate(${center.x}, ${center.y - radiusPixels - 12})`}>
+                      <rect
+                        x="-65"
+                        y="-16"
+                        width="130"
+                        height="22"
+                        rx="6"
+                        fill="#090d16"
+                        stroke={marker.color || '#ef4444'}
+                        strokeWidth="1.5"
+                        opacity="0.95"
+                      />
+                      <text
+                        x={canDelete ? "-8" : "0"}
+                        y="-1"
+                        fill={marker.color || '#ef4444'}
+                        fontSize="10"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {marker.label || `Área (${marker.radius} yd)`}
+                      </text>
+                      {canDelete && (
+                        <g
+                          className="cursor-pointer hover:opacity-80"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdateTacticalState({
+                              markers: (tacticalState.markers || []).filter((m) => m.id !== marker.id),
+                            });
+                          }}
+                        >
+                          <circle cx="50" cy="-5" r="6" fill="#ef4444" />
+                          <text x="50" y="-2" fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="middle">×</text>
+                        </g>
+                      )}
+                    </g>
+                  </g>
+                );
+              }
+
+              if (marker.type === 'ruler' || marker.type === 'line') {
+                const relA = getHexCenter(marker.startX, marker.startY, hexSize);
+                const pA = { x: mapX + relA.x, y: mapY + relA.y };
+                const relB = getHexCenter(marker.endX ?? marker.startX, marker.endY ?? marker.startY, hexSize);
+                const pB = { x: mapX + relB.x, y: mapY + relB.y };
+                const midX = (pA.x + pB.x) / 2;
+                const midY = (pA.y + pB.y) / 2;
+                const canDelete = isMaster || marker.authorName === (currentUserRole === 'mestre' ? 'Mestre' : 'Jogador');
+
+                return (
+                  <g key={marker.id} id={`marker-ruler-${marker.id}`}>
+                    <line
+                      x1={pA.x}
+                      y1={pA.y}
+                      x2={pB.x}
+                      y2={pB.y}
+                      stroke={marker.color || '#f59e0b'}
+                      strokeWidth="3"
+                      strokeDasharray="6 4"
+                    />
+                    <circle cx={pA.x} cy={pA.y} r="5" fill={marker.color || '#f59e0b'} />
+                    <circle cx={pB.x} cy={pB.y} r="5" fill={marker.color || '#f59e0b'} />
+                    <g transform={`translate(${midX}, ${midY - 18})`}>
+                      <rect
+                        x="-65"
+                        y="-16"
+                        width="130"
+                        height="22"
+                        rx="6"
+                        fill="#090d16"
+                        stroke={marker.color || '#f59e0b'}
+                        strokeWidth="1.5"
+                        opacity="0.95"
+                      />
+                      <text
+                        x={canDelete ? "-8" : "0"}
+                        y="-1"
+                        fill="#fbbf24"
+                        fontSize="10"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {marker.label || `${marker.radius} yd`}
+                      </text>
+                      {canDelete && (
+                        <g
+                          className="cursor-pointer hover:opacity-80"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdateTacticalState({
+                              markers: (tacticalState.markers || []).filter((m) => m.id !== marker.id),
+                            });
+                          }}
+                        >
+                          <circle cx="50" cy="-5" r="6" fill="#ef4444" />
+                          <text x="50" y="-2" fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="middle">×</text>
+                        </g>
+                      )}
+                    </g>
+                  </g>
+                );
+              }
+
+              return null;
+            })}
+          </g>
+
+          {/* PREVIEW DO MODELO DE ÁREA / EXPLOSÃO (AO PASSAR O MOUSE) */}
           {activeTool === 'area' && areaCenter && (
-            <g id="area-template">
+            <g id="area-template" pointerEvents="none">
               {(() => {
                 const relCenter = getHexCenter(areaCenter.col, areaCenter.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
@@ -1662,20 +1918,57 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       cx={center.x}
                       cy={center.y}
                       r={radiusPixels}
-                      fill="rgba(239, 68, 68, 0.2)"
-                      stroke="#ef4444"
+                      fill={areaColor ? `${areaColor}33` : 'rgba(239, 68, 68, 0.2)'}
+                      stroke={areaColor || '#ef4444'}
                       strokeWidth="2"
                       strokeDasharray="4 4"
                     />
                     <text
                       x={center.x}
                       y={center.y - radiusPixels - 8}
-                      fill="#ef4444"
+                      fill={areaColor || '#ef4444'}
                       fontSize="12"
                       fontWeight="bold"
                       textAnchor="middle"
                     >
                       Raio: {areaRadius} jardas ({areaRadius} hexes)
+                    </text>
+                  </g>
+                );
+              })()}
+            </g>
+          )}
+
+          {/* GUIA DE ALCANCE FIXO (RÉGUA TÁTICA GURPS) */}
+          {activeTool === 'ruler' && rulerMode === 'fixed' && (rulerStart || hoveredHex) && (
+            <g id="ruler-fixed-guide" pointerEvents="none">
+              {(() => {
+                const centerHex = rulerStart || hoveredHex;
+                if (!centerHex) return null;
+                const relCenter = getHexCenter(centerHex.col, centerHex.row, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                const radiusPixels = rulerFixedYards * hexSize * 1.7;
+                const rangePenalty = getGurpsRangePenalty(rulerFixedYards);
+                return (
+                  <g>
+                    <circle
+                      cx={center.x}
+                      cy={center.y}
+                      r={radiusPixels}
+                      fill="rgba(245, 158, 11, 0.08)"
+                      stroke="#f59e0b"
+                      strokeWidth="2"
+                      strokeDasharray="5 3"
+                    />
+                    <text
+                      x={center.x}
+                      y={center.y - radiusPixels - 8}
+                      fill="#fbbf24"
+                      fontSize="11"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                    >
+                      Alcance Fixo: {rulerFixedYards} yd ({rangePenalty >= 0 ? '0' : rangePenalty} Penalidade GURPS)
                     </text>
                   </g>
                 );
@@ -2067,8 +2360,25 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </g>
           )}
 
+          {/* PREVIEW DO RETÂNGULO DE SELEÇÃO DA NÉVOA DE GUERRA */}
+          {activeTool === 'fog' && fogShape === 'box' && fogBoxStart && fogBoxCurrent && (
+            <g id="fog-box-preview" pointerEvents="none">
+              <rect
+                x={mapX + Math.min(fogBoxStart.x, fogBoxCurrent.x)}
+                y={mapY + Math.min(fogBoxStart.y, fogBoxCurrent.y)}
+                width={Math.abs(fogBoxCurrent.x - fogBoxStart.x)}
+                height={Math.abs(fogBoxCurrent.y - fogBoxStart.y)}
+                fill={fogBrushMode === 'reveal' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}
+                stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                rx={4}
+              />
+            </g>
+          )}
+
           {/* PREVIEW DO PINCEL DE NÉVOA DE GUERRA */}
-          {activeTool === 'fog' && hoveredHex && (
+          {activeTool === 'fog' && fogShape === 'brush' && hoveredHex && (
             <g id="fog-brush-preview" pointerEvents="none">
               {getHexesInRange(hoveredHex, fogBrushRadius).map((h) => {
                 const relCenter = getHexCenter(h.col, h.row, hexSize);
@@ -2094,7 +2404,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {(() => {
                 const relCenter = getHexCenter(hoveredHex.col, hoveredHex.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const radiusPixels = selectedLightPreset.radius * hexWidth * 0.95;
+                const radiusPixels = (customLightRadius || 5) * hexWidth * 0.95;
 
                 return (
                   <g>
@@ -2102,9 +2412,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       cx={center.x}
                       cy={center.y}
                       r={radiusPixels}
-                      fill={selectedLightPreset.color}
+                      fill={customLightColor || '#f59e0b'}
                       fillOpacity="0.18"
-                      stroke={selectedLightPreset.color}
+                      stroke={customLightColor || '#f59e0b'}
                       strokeWidth="2"
                       strokeDasharray="6 3"
                     />
@@ -2114,7 +2424,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       fontSize="14"
                       textAnchor="middle"
                     >
-                      {selectedLightPreset.label === 'Fogueira' ? '🏕️' : selectedLightPreset.label === 'Lanterna' ? '🏮' : selectedLightPreset.label === 'Magia' ? '✨' : '🔥'}
+                      🔥
                     </text>
                   </g>
                 );
@@ -2312,11 +2622,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
               {/* FONTE DE LUZ DO TOKEN */}
               <div className="pt-1.5 border-t border-slate-800">
-                <div className="text-[10px] font-semibold text-slate-400 mb-1 flex items-center gap-1">
-                  <Flame size={11} className="text-amber-400" />
-                  <span>Emissão de Luz:</span>
+                <div className="text-[10px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Flame size={11} className="text-amber-400" />
+                    <span>Emissão de Luz:</span>
+                  </span>
+                  {token.emitsLight && (
+                    <span className="text-[9.5px] font-mono text-amber-300 font-bold">
+                      {token.lightRadius || 4} yd
+                    </span>
+                  )}
                 </div>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-4 gap-1">
                   <button
                     type="button"
                     onMouseDown={(e) => e.stopPropagation()}
@@ -2328,13 +2645,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       onUpdateTacticalState({ tokens: updatedTokens });
                       setContextMenu(null);
                     }}
-                    className={`py-1 px-1.5 rounded text-[9.5px] font-medium border text-center transition-all ${
+                    className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
                       !token.emitsLight
                         ? 'bg-slate-700 text-slate-200 border-slate-500 font-bold'
                         : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
                     }`}
                   >
-                    Nenhuma
+                    Off
                   </button>
                   <button
                     type="button"
@@ -2349,13 +2666,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       onUpdateTacticalState({ tokens: updatedTokens });
                       setContextMenu(null);
                     }}
-                    className={`py-1 px-1.5 rounded text-[9.5px] font-medium border text-center transition-all ${
-                      token.emitsLight && (token.lightRadius || 4) <= 4
+                    className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
+                      token.emitsLight && token.lightRadius === 4
                         ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
                         : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
                     }`}
                   >
-                    🔥 Tocha (4y)
+                    🔥 4y
                   </button>
                   <button
                     type="button"
@@ -2370,13 +2687,38 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       onUpdateTacticalState({ tokens: updatedTokens });
                       setContextMenu(null);
                     }}
-                    className={`py-1 px-1.5 rounded text-[9.5px] font-medium border text-center transition-all ${
-                      token.emitsLight && (token.lightRadius || 4) > 4
+                    className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
+                      token.emitsLight && token.lightRadius === 7
                         ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
                         : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
                     }`}
                   >
-                    🏮 Lanterna (7y)
+                    🏮 7y
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const val = window.prompt('Raio de luz emitido pelo combatente (em jardas):', String(token.lightRadius || 5));
+                      const parsed = parseInt(val || '0');
+                      if (parsed > 0) {
+                        const updatedTokens = tokens.map((t) =>
+                          t.id === token.id
+                            ? { ...t, emitsLight: true, lightRadius: parsed, lightColor: '#f59e0b' }
+                            : t
+                        );
+                        onUpdateTacticalState({ tokens: updatedTokens });
+                      }
+                      setContextMenu(null);
+                    }}
+                    className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
+                      token.emitsLight && token.lightRadius !== 4 && token.lightRadius !== 7
+                        ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
+                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                    }`}
+                  >
+                    ⚙️ Outro
                   </button>
                 </div>
               </div>

@@ -64,7 +64,7 @@ export interface TacticalTerrainCell {
 
 export interface TacticalMarker {
   id: string;
-  type: 'point' | 'blast' | 'cone' | 'line' | 'text';
+  type: 'point' | 'blast' | 'cone' | 'line' | 'text' | 'ruler';
   startX: number;
   startY: number;
   endX?: number;
@@ -72,6 +72,8 @@ export interface TacticalMarker {
   radius?: number; // em jardas/hexes
   color: string;
   label?: string;
+  layer?: TacticalLayer;
+  authorName?: string;
 }
 
 export interface TacticalState {
