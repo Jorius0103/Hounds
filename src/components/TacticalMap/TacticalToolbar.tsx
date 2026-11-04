@@ -36,10 +36,14 @@ import {
   Move,
   Sun,
   Moon,
+  Flame,
+  Lightbulb,
+  SunMedium,
+  Trash2,
 } from 'lucide-react';
 import { UserAccount } from '../../types/rpg';
 
-export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog';
+export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog' | 'light';
 
 interface TacticalToolbarProps {
   tacticalState: TacticalState;
@@ -61,6 +65,14 @@ interface TacticalToolbarProps {
   editorUserIds?: string[];
   onTogglePlayerPermission?: (userId: string) => void;
   onSetAllPlayerPermissions?: (allow: boolean) => void;
+  fogBrushMode?: 'reveal' | 'hide';
+  onSetFogBrushMode?: (mode: 'reveal' | 'hide') => void;
+  fogBrushRadius?: number;
+  onSetFogBrushRadius?: (radius: number) => void;
+  onRevealAllFog?: () => void;
+  onHideAllFog?: () => void;
+  selectedLightPreset?: { label: string; radius: number; color: string };
+  onSelectLightPreset?: (preset: { label: string; radius: number; color: string }) => void;
 }
 
 export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
@@ -83,6 +95,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   editorUserIds = [],
   onTogglePlayerPermission,
   onSetAllPlayerPermissions,
+  fogBrushMode = 'reveal',
+  onSetFogBrushMode,
+  fogBrushRadius = 1,
+  onSetFogBrushRadius,
+  onRevealAllFog,
+  onHideAllFog,
+  selectedLightPreset = { label: 'Tocha', radius: 4, color: '#f59e0b' },
+  onSelectLightPreset,
 }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
@@ -97,7 +117,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
     TACTICAL_MAP_PRESETS[0];
 
   return (
-    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-1.5 shadow-xl flex flex-wrap items-center justify-between gap-2 z-20">
+    <div className="flex flex-col gap-1.5 pointer-events-auto">
+      <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-1.5 shadow-xl flex flex-wrap items-center justify-between gap-2 z-20">
       {/* 1. SELETOR DE 3 NÍVEIS / CAMADAS (ESTILO ROLL20) & FERRAMENTAS DE INTERAÇÃO */}
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Seletor de Camadas (Mapa, Tokens, Mestre) */}
@@ -210,10 +231,23 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
-                title="Revelar ou Ocultar Névoa de Guerra"
+                title="Ocultação de Áreas / Névoa de Guerra (Estilo Roll20)"
               >
                 {tacticalState.fogEnabled ? <EyeOff size={14} /> : <Eye size={14} />}
-                <span>Névoa</span>
+                <span>Ocultar</span>
+              </button>
+
+              <button
+                onClick={() => onSelectTool('light')}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  activeTool === 'light'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Focos de Luz (Tochas, Lanternas, Fogueiras no mapa)"
+              >
+                <Flame size={14} />
+                <span>Luz</span>
               </button>
             </>
           )}
@@ -868,6 +902,191 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
           )}
         </div>
       </div>
+    </div>
+
+      {/* BARRA DE CONTROLE: OCULTAÇÃO / FOG OF WAR (ESTILO ROLL20) */}
+      {isMaster && activeTool === 'fog' && (
+        <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 font-bold text-slate-200">
+              <EyeOff size={14} className="text-amber-400" />
+              <span>Ocultação do Mapa:</span>
+            </span>
+
+            {/* Alternar Ativação da Névoa */}
+            <button
+              type="button"
+              onClick={() => onUpdateTacticalState({ fogEnabled: !tacticalState.fogEnabled })}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                tacticalState.fogEnabled
+                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {tacticalState.fogEnabled ? 'Ativada' : 'Desativada'}
+            </button>
+          </div>
+
+          {/* Modo do Pincel: Revelar vs Ocultar */}
+          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
+              Pincel:
+            </span>
+            <button
+              type="button"
+              onClick={() => onSetFogBrushMode?.('reveal')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                fogBrushMode === 'reveal'
+                  ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Revelar áreas para os jogadores (arraste o mouse pelo mapa)"
+            >
+              <Eye size={13} />
+              <span>Revelar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetFogBrushMode?.('hide')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                fogBrushMode === 'hide'
+                  ? 'bg-rose-600 text-white font-bold shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Ocultar áreas dos jogadores (arraste o mouse pelo mapa)"
+            >
+              <EyeOff size={13} />
+              <span>Ocultar</span>
+            </button>
+          </div>
+
+          {/* Raio do Pincel */}
+          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
+              Raio:
+            </span>
+            <button
+              type="button"
+              onClick={() => onSetFogBrushRadius?.(0)}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                fogBrushRadius === 0
+                  ? 'bg-amber-500 text-slate-950'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="1 Hexágono"
+            >
+              1 Hex
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetFogBrushRadius?.(1)}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                fogBrushRadius === 1
+                  ? 'bg-amber-500 text-slate-950'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="3 Hexes (raio de 1 jarda)"
+            >
+              3 Hexes
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetFogBrushRadius?.(2)}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                fogBrushRadius === 2
+                  ? 'bg-amber-500 text-slate-950'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="7 Hexes (raio de 2 jardas)"
+            >
+              7 Hexes
+            </button>
+          </div>
+
+          {/* Ações em Lote */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onRevealAllFog}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
+              title="Revelar todo o mapa instantaneamente"
+            >
+              Revelar Tudo
+            </button>
+            <button
+              type="button"
+              onClick={onHideAllFog}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
+              title="Cobrir todo o mapa com escuridão"
+            >
+              Ocultar Tudo
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* BARRA DE CONTROLE: FOCOS DE LUZ (ILUMINAÇÃO DINÂMICA) */}
+      {isMaster && activeTool === 'light' && (
+        <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 font-bold text-slate-200">
+              <Flame size={14} className="text-amber-400" />
+              <span>Focos de Luz:</span>
+            </span>
+            <span className="text-[11px] text-slate-400">
+              Clique no mapa para posicionar uma fonte de luz.
+            </span>
+          </div>
+
+          {/* Presets de Luz */}
+          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
+              Tipo:
+            </span>
+            {[
+              { label: 'Tocha', radius: 4, color: '#f59e0b', emoji: '🔥' },
+              { label: 'Lanterna', radius: 7, color: '#fbbf24', emoji: '🏮' },
+              { label: 'Fogueira', radius: 10, color: '#f97316', emoji: '🏕️' },
+              { label: 'Magia', radius: 5, color: '#38bdf8', emoji: '✨' },
+            ].map((preset) => {
+              const isSelected = selectedLightPreset?.label === preset.label;
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => onSelectLightPreset?.(preset)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                    isSelected
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>{preset.emoji}</span>
+                  <span>{preset.label} ({preset.radius}yd)</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Gerenciar Luzes Existentes */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-amber-300 font-mono font-bold bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg">
+              {(tacticalState.lights || []).length} focos no mapa
+            </span>
+            {(tacticalState.lights || []).length > 0 && (
+              <button
+                type="button"
+                onClick={() => onUpdateTacticalState({ lights: [] })}
+                className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded-lg text-xs font-medium transition-all flex items-center gap-1"
+                title="Remover todos os focos de luz fixos do mapa"
+              >
+                <Trash2 size={12} />
+                <span>Limpar Luzes</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

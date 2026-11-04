@@ -21,6 +21,20 @@ export interface TacticalToken {
   layer?: TacticalLayer; // 'tokens' ou 'gm'
   notes?: string;
   movedThisTurn?: number; // Hexes percorridos nesta rodada
+  emitsLight?: boolean; // Se o token emite luz própria (tocha, lanterna)
+  lightRadius?: number; // Raio de iluminação em hexes/jardas (padrão 4 para tocha)
+  lightColor?: string; // Cor do brilho (ex: '#f59e0b' âmbar, '#38bdf8' mágico)
+}
+
+export interface TacticalLightSource {
+  id: string;
+  gridX: number; // Coluna no grid
+  gridY: number; // Linha no grid
+  radius: number; // Raio em hexes/jardas (ex: 4 = tocha, 7 = lanterna, 10 = fogueira)
+  color?: string; // Cor hex (padrão '#f59e0b')
+  intensity?: number; // 0.2 a 1.0 (brilho)
+  label?: string; // Nome ex: 'Tocha', 'Fogueira', 'Poste de Luz'
+  active: boolean; // Se está acesa
 }
 
 export type TacticalBackgroundKey =
@@ -82,7 +96,8 @@ export interface TacticalState {
   scalePerCell: number; // 1 hex = 1 jarda
   scaleUnit: 'yd' | 'm';
   fogEnabled: boolean;
-  fogRevealedCells: string[]; // "q,r"
+  fogRevealedCells: string[]; // "col,row"
+  lights?: TacticalLightSource[]; // Focos de luz fixos no mapa
   tokens: TacticalToken[];
   terrainCells: TacticalTerrainCell[];
   markers: TacticalMarker[];
@@ -111,6 +126,7 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   scaleUnit: 'yd',
   fogEnabled: false,
   fogRevealedCells: [],
+  lights: [],
   tokens: [],
   terrainCells: [],
   markers: [],

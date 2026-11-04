@@ -42,6 +42,7 @@ import {
   Check,
   CheckCheck,
   Plus,
+  Flame,
 } from 'lucide-react';
 
 interface TacticalMapWorkspaceProps {
@@ -111,6 +112,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [activeTool, setActiveTool] = useState<TacticalToolMode>('select');
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoveredHex, setHoveredHex] = useState<HexCoord | null>(null);
+
+  // Fog of War / Ocultação do Mapa state (Estilo Roll20)
+  const [fogBrushMode, setFogBrushMode] = useState<'reveal' | 'hide'>('reveal');
+  const [fogBrushRadius, setFogBrushRadius] = useState<number>(1);
+  const [isDrawingFog, setIsDrawingFog] = useState(false);
+
+  // Focos de Luz state (Iluminação Dinâmica)
+  const [selectedLightPreset, setSelectedLightPreset] = useState<{
+    label: string;
+    radius: number;
+    color: string;
+  }>({
+    label: 'Tocha',
+    radius: 4,
+    color: '#f59e0b',
+  });
 
   // Ruler state
   const [rulerStart, setRulerStart] = useState<HexCoord | null>(null);
@@ -265,6 +282,86 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const dynamicCols = Math.ceil(mapW / hexWidth) + 2;
   const dynamicRows = Math.ceil(mapH / rowSpacing) + 2;
 
+  // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
+  const litCellsSet = useMemo(() => {
+    const set = new Set<string>();
+
+    // 1. Focos de luz fixos
+    (tacticalState.lights || []).forEach((light) => {
+      if (light.active !== false && light.radius > 0) {
+        const inRange = getHexesInRange({ col: light.gridX, row: light.gridY }, light.radius);
+        inRange.forEach((h) => set.add(`${h.col},${h.row}`));
+      }
+    });
+
+    // 2. Tokens carregando luz (tocha, lanterna, etc.)
+    tokens.forEach((token) => {
+      if (token.emitsLight && (token.lightRadius || 4) > 0) {
+        const radius = token.lightRadius || 4;
+        const inRange = getHexesInRange({ col: token.gridX, row: token.gridY }, radius);
+        inRange.forEach((h) => set.add(`${h.col},${h.row}`));
+      }
+    });
+
+    return set;
+  }, [tacticalState.lights, tokens]);
+
+  const revealedSet = useMemo(() => {
+    return new Set(tacticalState.fogRevealedCells || []);
+  }, [tacticalState.fogRevealedCells]);
+
+  // Aplicar pincel de névoa de guerra (revelar ou ocultar)
+  const applyFogBrush = useCallback(
+    (centerHex: HexCoord) => {
+      const affectedHexes = getHexesInRange(centerHex, fogBrushRadius);
+      const currentRevealed = new Set(tacticalState.fogRevealedCells || []);
+      let changed = false;
+
+      affectedHexes.forEach((h) => {
+        const key = `${h.col},${h.row}`;
+        if (fogBrushMode === 'reveal') {
+          if (!currentRevealed.has(key)) {
+            currentRevealed.add(key);
+            changed = true;
+          }
+        } else {
+          if (currentRevealed.has(key)) {
+            currentRevealed.delete(key);
+            changed = true;
+          }
+        }
+      });
+
+      if (changed) {
+        onUpdateTacticalState({
+          fogEnabled: true,
+          fogRevealedCells: Array.from(currentRevealed),
+        });
+      }
+    },
+    [fogBrushRadius, fogBrushMode, tacticalState.fogRevealedCells, onUpdateTacticalState]
+  );
+
+  const handleRevealAllFog = useCallback(() => {
+    const allCells: string[] = [];
+    for (let r = -1; r <= dynamicRows + 2; r++) {
+      for (let c = -1; c <= dynamicCols + 2; c++) {
+        allCells.push(`${c},${r}`);
+      }
+    }
+    onUpdateTacticalState({
+      fogEnabled: true,
+      fogRevealedCells: allCells,
+    });
+  }, [dynamicCols, dynamicRows, onUpdateTacticalState]);
+
+  const handleHideAllFog = useCallback(() => {
+    onUpdateTacticalState({
+      fogEnabled: true,
+      fogRevealedCells: [],
+    });
+  }, [onUpdateTacticalState]);
+
   // Convert client mouse event to map coordinate (respecting pan and zoom)
   const clientToMapCoords = useCallback(
     (clientX: number, clientY: number): Point => {
@@ -317,21 +414,61 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       }
     }
 
-    // Middle click or space key or clicking empty area starts pan
-    if (e.button === 1 || e.button === 0) {
-      if ((e.target as HTMLElement).tagName === 'svg' || (e.target as HTMLElement).id === 'map-background') {
-        setIsPanning(true);
-        setPanStart({ x: e.clientX - panX, y: e.clientY - panY });
-        setPopoverToken(null);
-      }
+    // 1. Ferramenta de Ocultação do Mapa (Névoa de Guerra estilo Roll20)
+    if (activeTool === 'fog' && e.button === 0 && isMaster) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
+      setIsDrawingFog(true);
+      applyFogBrush(hex);
+      setPopoverToken(null);
+      return;
     }
 
-    // Ruler tool start
+    // 2. Ferramenta de Focos de Luz (Tochas, Fogueiras, Lanternas)
+    if (activeTool === 'light' && e.button === 0 && isMaster) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
+      const existing = (tacticalState.lights || []).find(
+        (l) => l.gridX === hex.col && l.gridY === hex.row
+      );
+      if (existing) {
+        // Remove foco de luz ao clicar nele com a ferramenta
+        const updated = (tacticalState.lights || []).filter((l) => l.id !== existing.id);
+        onUpdateTacticalState({ lights: updated });
+      } else {
+        // Cria novo foco de luz
+        const newLight: TacticalLightSource = {
+          id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          gridX: hex.col,
+          gridY: hex.row,
+          radius: selectedLightPreset.radius,
+          color: selectedLightPreset.color,
+          intensity: 0.75,
+          label: selectedLightPreset.label,
+          active: true,
+        };
+        onUpdateTacticalState({
+          lights: [...(tacticalState.lights || []), newLight],
+        });
+      }
+      setPopoverToken(null);
+      return;
+    }
+
+    // 3. Ruler tool start
     if (activeTool === 'ruler' && e.button === 0) {
       const p = clientToMapCoords(e.clientX, e.clientY);
       const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
       setRulerStart(hex);
       setRulerCurrent(hex);
+      return;
+    }
+
+    // 4. Mover o mapa: Se clicar e segurar em uma parte do mapa (botão esquerdo no modo Mover/Select ou botão do meio)
+    if (e.button === 1 || (e.button === 0 && activeTool === 'select')) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - panX, y: e.clientY - panY });
+      setPopoverToken(null);
     }
   };
 
@@ -356,6 +493,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     const p = clientToMapCoords(e.clientX, e.clientY);
     const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
     setHoveredHex(hex);
+
+    if (activeTool === 'fog' && isDrawingFog && isMaster) {
+      applyFogBrush(hex);
+    }
 
     if (activeTool === 'ruler' && rulerStart) {
       setRulerCurrent(hex);
@@ -402,6 +543,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         });
         setLocalMapPos(null);
       }
+    }
+
+    if (isDrawingFog) {
+      setIsDrawingFog(false);
     }
 
     if (isPanning) {
@@ -838,13 +983,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           setDragTokenOrigin(null);
           setDragHoverHex(null);
         }
+        if (isDrawingFog) setIsDrawingFog(false);
         if (rotatingTokenId) {
           setRotatingTokenId(null);
           setPreviewRotation(null);
         }
       }}
       onWheel={handleWheel}
-      className="relative w-full h-[calc(100vh-130px)] min-h-[550px] bg-slate-950 overflow-hidden select-none cursor-crosshair rounded-2xl border border-slate-800 shadow-2xl flex flex-col"
+      className={`relative w-full h-[calc(100vh-130px)] min-h-[550px] bg-slate-950 overflow-hidden select-none rounded-2xl border border-slate-800 shadow-2xl flex flex-col ${
+        isPanning
+          ? 'cursor-grabbing'
+          : activeTool === 'select'
+          ? 'cursor-grab'
+          : 'cursor-crosshair'
+      }`}
     >
       {/* 1. TOP TOOLBAR */}
       <div className="absolute top-3 left-3 right-3 z-30 pointer-events-auto">
@@ -874,6 +1026,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           editorUserIds={editorUserIds}
           onTogglePlayerPermission={onTogglePlayerPermission}
           onSetAllPlayerPermissions={onSetAllPlayerPermissions}
+          fogBrushMode={fogBrushMode}
+          onSetFogBrushMode={setFogBrushMode}
+          fogBrushRadius={fogBrushRadius}
+          onSetFogBrushRadius={setFogBrushRadius}
+          onRevealAllFog={handleRevealAllFog}
+          onHideAllFog={handleHideAllFog}
+          selectedLightPreset={selectedLightPreset}
+          onSelectLightPreset={setSelectedLightPreset}
         />
       </div>
 
@@ -1167,6 +1327,41 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           <clipPath id="map-image-bounds">
             <rect x={mapX} y={mapY} width={mapW} height={mapH} />
           </clipPath>
+
+          {/* Gradientes radiais para focos de luz fixos */}
+          {(tacticalState.lights || []).map((light) => (
+            <radialGradient
+              key={`grad-light-${light.id}`}
+              id={`light-glow-${light.id}`}
+              cx="50%"
+              cy="50%"
+              r="50%"
+            >
+              <stop offset="0%" stopColor={light.color || '#f59e0b'} stopOpacity={0.65} />
+              <stop offset="45%" stopColor={light.color || '#f59e0b'} stopOpacity={0.3} />
+              <stop offset="85%" stopColor={light.color || '#f59e0b'} stopOpacity={0.08} />
+              <stop offset="100%" stopColor={light.color || '#f59e0b'} stopOpacity={0} />
+            </radialGradient>
+          ))}
+
+          {/* Gradientes radiais para tokens com luz própria */}
+          {tokens.map((token) => {
+            if (!token.emitsLight) return null;
+            return (
+              <radialGradient
+                key={`grad-token-light-${token.id}`}
+                id={`token-light-glow-${token.id}`}
+                cx="50%"
+                cy="50%"
+                r="50%"
+              >
+                <stop offset="0%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.6} />
+                <stop offset="50%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.25} />
+                <stop offset="85%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.06} />
+                <stop offset="100%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0} />
+              </radialGradient>
+            );
+          })}
         </defs>
 
         {/* Grupo com Pan & Zoom transform */}
@@ -1281,7 +1476,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
           {/* CAMADA 2: GRADE TÁTICA (HEX OU QUADRADA) - COBRE TODA A IMAGEM, SEM SOBRAR E SEM FALTAR */}
           {tacticalState.gridType === 'hex' ? (
-            <g id="tactical-hex-grid" clipPath="url(#map-image-bounds)">
+            <g id="tactical-hex-grid" clipPath="url(#map-image-bounds)" pointerEvents="none">
               {Array.from({ length: dynamicRows + 2 }).map((_, rIdx) => {
                 const r = rIdx - 1;
                 return Array.from({ length: dynamicCols + 2 }).map((_, cIdx) => {
@@ -1306,7 +1501,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               })}
             </g>
           ) : (
-            <g id="tactical-square-grid" clipPath="url(#map-image-bounds)">
+            <g id="tactical-square-grid" clipPath="url(#map-image-bounds)" pointerEvents="none">
               {(() => {
                 const cellSize = hexSize * 1.5;
                 const sqCols = Math.ceil(mapW / cellSize) + 2;
@@ -1335,6 +1530,90 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               })()}
             </g>
           )}
+
+          {/* CAMADA 3: FOCOS DE LUZ (RADIAÇÃO & BRILHO AMBIENTE NO TABULEIRO) */}
+          <g id="tactical-lights-glow" pointerEvents="none">
+            {/* Brilho dos focos de luz fixos */}
+            {(tacticalState.lights || []).map((light) => {
+              if (light.active === false || light.radius <= 0) return null;
+              const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+              const radiusPixels = light.radius * hexWidth * 0.95;
+
+              return (
+                <circle
+                  key={`glow-${light.id}`}
+                  cx={center.x}
+                  cy={center.y}
+                  r={radiusPixels}
+                  fill={`url(#light-glow-${light.id})`}
+                />
+              );
+            })}
+
+            {/* Brilho dos tokens que emitem luz própria */}
+            {tokens.map((token) => {
+              if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
+              const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
+              const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
+              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+              const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+
+              return (
+                <circle
+                  key={`token-glow-${token.id}`}
+                  cx={center.x}
+                  cy={center.y}
+                  r={radiusPixels}
+                  fill={`url(#token-light-glow-${token.id})`}
+                />
+              );
+            })}
+          </g>
+
+          {/* ÍCONES DOS FOCOS DE LUZ FIXOS NO TABULEIRO */}
+          <g id="tactical-light-sources">
+            {(tacticalState.lights || []).map((light) => {
+              const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+
+              return (
+                <g
+                  key={light.id}
+                  transform={`translate(${center.x}, ${center.y})`}
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const updated = (tacticalState.lights || []).map((l) =>
+                      l.id === light.id ? { ...l, active: !l.active } : l
+                    );
+                    onUpdateTacticalState({ lights: updated });
+                  }}
+                  title={`${light.label || 'Foco de Luz'} (${light.radius} jardas) - Clique para ${light.active ? 'apagar' : 'acender'}`}
+                >
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r={hexSize * 0.45}
+                    fill="#020617"
+                    stroke={light.active ? (light.color || '#f59e0b') : '#64748b'}
+                    strokeWidth="2"
+                    opacity="0.9"
+                  />
+                  <text
+                    x="0"
+                    y="4.5"
+                    fontSize="13"
+                    textAnchor="middle"
+                    className="select-none pointer-events-none"
+                  >
+                    {light.label === 'Fogueira' ? '🏕️' : light.label === 'Lanterna' ? '🏮' : light.label === 'Magia' ? '✨' : '🔥'}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
 
           {/* CAMADA 4: ARCOS DE COMBATE GURPS (FRENTE, FLANCOS E RETAGUARDA) */}
           {activeLayer !== 'map' && selectedToken && (
@@ -1755,6 +2034,93 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             })}
           </g>
           )}
+
+          {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20) */}
+          {tacticalState.fogEnabled && (
+            <g id="tactical-fog-layer" clipPath="url(#map-image-bounds)" pointerEvents="none">
+              {Array.from({ length: dynamicRows + 2 }).map((_, rIdx) => {
+                const r = rIdx - 1;
+                return Array.from({ length: dynamicCols + 2 }).map((_, cIdx) => {
+                  const c = cIdx - 1;
+                  const key = `${c},${r}`;
+                  const isRevealed = revealedSet.has(key);
+                  const isLit = litCellsSet.has(key);
+
+                  // Se o hex está revelado pelo mestre OU iluminado por luz, NÃO está oculto!
+                  if (isRevealed || isLit) return null;
+
+                  const relCenter = getHexCenter(c, r, hexSize);
+                  const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                  const pointsStr = getHexPointsString(center, hexSize);
+
+                  return (
+                    <polygon
+                      key={`fog-${c}-${r}`}
+                      points={pointsStr}
+                      fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.78)'}
+                      stroke={isPlayerView ? '#000000' : 'rgba(15, 23, 42, 0.45)'}
+                      strokeWidth={0.5}
+                    />
+                  );
+                });
+              })}
+            </g>
+          )}
+
+          {/* PREVIEW DO PINCEL DE NÉVOA DE GUERRA */}
+          {activeTool === 'fog' && hoveredHex && (
+            <g id="fog-brush-preview" pointerEvents="none">
+              {getHexesInRange(hoveredHex, fogBrushRadius).map((h) => {
+                const relCenter = getHexCenter(h.col, h.row, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                const pointsStr = getHexPointsString(center, hexSize);
+                return (
+                  <polygon
+                    key={`brush-${h.col}-${h.row}`}
+                    points={pointsStr}
+                    fill={fogBrushMode === 'reveal' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}
+                    stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 2"
+                  />
+                );
+              })}
+            </g>
+          )}
+
+          {/* PREVIEW DO FOCO DE LUZ AO PASSAR O MOUSE */}
+          {activeTool === 'light' && hoveredHex && (
+            <g id="light-brush-preview" pointerEvents="none">
+              {(() => {
+                const relCenter = getHexCenter(hoveredHex.col, hoveredHex.row, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                const radiusPixels = selectedLightPreset.radius * hexWidth * 0.95;
+
+                return (
+                  <g>
+                    <circle
+                      cx={center.x}
+                      cy={center.y}
+                      r={radiusPixels}
+                      fill={selectedLightPreset.color}
+                      fillOpacity="0.18"
+                      stroke={selectedLightPreset.color}
+                      strokeWidth="2"
+                      strokeDasharray="6 3"
+                    />
+                    <text
+                      x={center.x}
+                      y={center.y + 4}
+                      fontSize="14"
+                      textAnchor="middle"
+                    >
+                      {selectedLightPreset.label === 'Fogueira' ? '🏕️' : selectedLightPreset.label === 'Lanterna' ? '🏮' : selectedLightPreset.label === 'Magia' ? '✨' : '🔥'}
+                    </text>
+                  </g>
+                );
+              })()}
+            </g>
+          )}
         </g>
       </svg>
 
@@ -1943,6 +2309,77 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   </div>
                 );
               })()}
+
+              {/* FONTE DE LUZ DO TOKEN */}
+              <div className="pt-1.5 border-t border-slate-800">
+                <div className="text-[10px] font-semibold text-slate-400 mb-1 flex items-center gap-1">
+                  <Flame size={11} className="text-amber-400" />
+                  <span>Emissão de Luz:</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const updatedTokens = tokens.map((t) =>
+                        t.id === token.id ? { ...t, emitsLight: false } : t
+                      );
+                      onUpdateTacticalState({ tokens: updatedTokens });
+                      setContextMenu(null);
+                    }}
+                    className={`py-1 px-1.5 rounded text-[9.5px] font-medium border text-center transition-all ${
+                      !token.emitsLight
+                        ? 'bg-slate-700 text-slate-200 border-slate-500 font-bold'
+                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                    }`}
+                  >
+                    Nenhuma
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const updatedTokens = tokens.map((t) =>
+                        t.id === token.id
+                          ? { ...t, emitsLight: true, lightRadius: 4, lightColor: '#f59e0b' }
+                          : t
+                      );
+                      onUpdateTacticalState({ tokens: updatedTokens });
+                      setContextMenu(null);
+                    }}
+                    className={`py-1 px-1.5 rounded text-[9.5px] font-medium border text-center transition-all ${
+                      token.emitsLight && (token.lightRadius || 4) <= 4
+                        ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
+                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                    }`}
+                  >
+                    🔥 Tocha (4y)
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const updatedTokens = tokens.map((t) =>
+                        t.id === token.id
+                          ? { ...t, emitsLight: true, lightRadius: 7, lightColor: '#fbbf24' }
+                          : t
+                      );
+                      onUpdateTacticalState({ tokens: updatedTokens });
+                      setContextMenu(null);
+                    }}
+                    className={`py-1 px-1.5 rounded text-[9.5px] font-medium border text-center transition-all ${
+                      token.emitsLight && (token.lightRadius || 4) > 4
+                        ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
+                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                    }`}
+                  >
+                    🏮 Lanterna (7y)
+                  </button>
+                </div>
+              </div>
 
               {/* Botão de Ação: Lançar Dano / Fadiga / Itens */}
               <div className="pt-1 border-t border-slate-800">
