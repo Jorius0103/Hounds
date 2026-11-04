@@ -122,8 +122,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   const isMaster = currentUserRole === 'mestre';
   const activeLayer = tacticalState?.activeLayer || 'tokens';
-  const viewMode = isMaster ? (tacticalState?.viewMode || 'gm') : 'player';
-  const isPlayerView = viewMode === 'player';
+  // A camada 'tokens' já é a visão dos jogadores (tokens públicos)!
+  const isPlayerView = !isMaster || activeLayer === 'tokens';
 
   // Estado para arrasto e reposicionamento da imagem base do mapa (Camada do Mapa)
   const [isDraggingMap, setIsDraggingMap] = useState(false);
@@ -669,22 +669,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       onWheel={handleWheel}
       className="relative w-full h-[calc(100vh-130px)] min-h-[550px] bg-slate-950 overflow-hidden select-none cursor-crosshair rounded-2xl border border-slate-800 shadow-2xl flex flex-col"
     >
-      {/* BANNER AVISO: MODO PRÉ-VISUALIZAÇÃO DA VISÃO DOS JOGADORES (NÍVEL 3) */}
-      {isMaster && isPlayerView && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 bg-emerald-950/95 border border-emerald-500/60 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-2xl flex items-center gap-2.5 text-xs text-emerald-200 pointer-events-auto animate-in slide-in-from-top-2 duration-150">
-          <Eye size={14} className="text-emerald-400 shrink-0" />
-          <span>
-            <strong>Visão dos Jogadores Ativa:</strong> Todos os elementos e combatentes secretos do mestre estão ocultos
-          </span>
-          <button
-            onClick={() => onUpdateTacticalState({ viewMode: 'gm' })}
-            className="px-2.5 py-0.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-full text-[11px] transition-all shrink-0 ml-1 shadow-sm"
-          >
-            Voltar à Visão do Mestre
-          </button>
-        </div>
-      )}
-
       {/* 1. TOP TOOLBAR */}
       <div className="absolute top-3 left-3 right-3 z-30 pointer-events-auto">
         <TacticalToolbar
@@ -1012,8 +996,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             const mapX = localMapPos ? localMapPos.x : (tacticalState.mapImageX || 0);
             const mapY = localMapPos ? localMapPos.y : (tacticalState.mapImageY || 0);
             const scale = tacticalState.mapImageScale || 1;
-            const w = (tacticalState.mapImageWidth || mapPixelWidth) * scale;
-            const h = (tacticalState.mapImageHeight || mapPixelHeight) * scale;
+            // Dimensões base da imagem desvinculadas do hexSize (para permitir calibrar grid sem mexer na imagem)
+            const baseW = tacticalState.mapImageWidth || 2400;
+            const baseH = tacticalState.mapImageHeight || 1600;
+            const w = baseW * scale;
+            const h = baseH * scale;
             const isMapActive = activeLayer === 'map';
 
             return (
@@ -1029,6 +1016,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     preserveAspectRatio="none"
                     opacity={isMapActive ? "1" : "0.9"}
                     className={isMapActive && !tacticalState.mapImageLocked ? "cursor-move" : ""}
+                    onLoad={(e) => {
+                      const img = e.currentTarget;
+                      if (!tacticalState.mapImageWidth && img.naturalWidth && img.naturalHeight) {
+                        onUpdateTacticalState({
+                          mapImageWidth: img.naturalWidth,
+                          mapImageHeight: img.naturalHeight,
+                        });
+                      }
+                    }}
                   />
                 ) : tacticalState.backgroundKey === 'dungeon' ? (
                   <rect
@@ -1158,7 +1154,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           )}
 
           {/* CAMADA 4: ARCOS DE COMBATE GURPS (FRENTE, FLANCOS E RETAGUARDA) */}
-          {selectedToken && (
+          {activeLayer !== 'map' && selectedToken && (
             <g id="gurps-combat-arcs">
               {(() => {
                 const center = getHexCenter(selectedToken.gridX, selectedToken.gridY, hexSize);
@@ -1321,15 +1317,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </g>
           )}
 
-          {/* CAMADA 7: TOKENS DE COMBATE (ROLL20 TOKEN & GM LAYERS) */}
-          <g id="tactical-tokens">
-            {tokens.map((token) => {
-              const npc = characterMap.get(token.npcId);
-              if (!npc) return null;
+          {/* CAMADA 7: TOKENS DE COMBATE (ocultos na Camada do Mapa; na Camada Tokens mostra apenas visão pública de jogadores) */}
+          {activeLayer !== 'map' && (
+            <g id="tactical-tokens">
+              {tokens.map((token) => {
+                const npc = characterMap.get(token.npcId);
+                if (!npc) return null;
 
-              const isTokenHidden = !!token.hiddenFromPlayers || token.layer === 'gm';
-              // NÍVEL 3: Visão de Jogadores - elementos ocultos do mestre não aparecem
-              if (isPlayerView && isTokenHidden) return null;
+                const isTokenHidden = !!token.hiddenFromPlayers || token.layer === 'gm';
+                // A Camada Tokens já é a visão dos jogadores (tokens ocultos/GM não aparecem)
+                if (activeLayer === 'tokens' && isTokenHidden) return null;
+                // Jogadores comuns nunca enxergam tokens da camada do mestre
+                if (!isMaster && isTokenHidden) return null;
 
               const isPlayer = npc.characterType === 'player';
               const isSelected = token.id === selectedTokenId;
@@ -1457,8 +1456,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       })()
                     )}
 
-                    {/* NÍVEL 2: FLAG DO MESTRE (INDICAÇÃO SE ESTÁ VISÍVEL PARA JOGADORES OU SÓ MESTRE) */}
-                    {isMaster && (
+                    {/* NÍVEL 3: FLAG DO MESTRE NA CAMADA GM (com clique rápido para mover entre camadas) */}
+                    {isMaster && activeLayer === 'gm' && (
                       <g
                         transform={`translate(0, ${-tokenRadius - 32})`}
                         onClick={(e) => {
@@ -1466,6 +1465,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           handleToggleTokenVisibility(token.id);
                         }}
                         className="cursor-pointer hover:scale-105 transition-transform"
+                        title={isTokenHidden ? "Clique para mover para a Camada de Tokens (Visível aos Jogadores)" : "Clique para mover para a Camada do Mestre (Oculto)"}
                       >
                         <rect
                           x="-38"
@@ -1564,6 +1564,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               );
             })}
           </g>
+          )}
         </g>
       </svg>
 
@@ -1735,12 +1736,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     {token.hiddenFromPlayers ? (
                       <>
                         <Eye size={12} className="text-emerald-400" />
-                        <span>Tornar Visível aos Jogadores</span>
+                        <span>Mover para Camada de Tokens (Jogadores)</span>
                       </>
                     ) : (
                       <>
                         <EyeOff size={12} className="text-purple-400" />
-                        <span>Ocultar dos Jogadores (GM)</span>
+                        <span>Mover para Camada do Mestre (GM)</span>
                       </>
                     )}
                   </button>

@@ -89,7 +89,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
   const isMaster = currentUserRole === 'mestre';
   const activeLayer: TacticalLayer = tacticalState.activeLayer || 'tokens';
-  const viewMode: TacticalViewMode = isMaster ? (tacticalState.viewMode || 'gm') : 'player';
 
   const currentPreset =
     TACTICAL_MAP_PRESETS.find((p) => p.key === tacticalState.backgroundKey) ||
@@ -107,12 +106,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </span>
             <button
               onClick={() => onUpdateTacticalState({ activeLayer: 'map' })}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'map'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
               }`}
-              title="Nível 1: Camada do Mapa (Imagem base redimensionável e alinhamento do grid hexagonal)"
+              title="Nível 1: Camada do Mapa (Imagem base e alinhamento do grid hexagonal - tokens ficam ocultos para calibrar)"
             >
               <MapIcon size={13} />
               <span>1. Mapa</span>
@@ -120,12 +119,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
             <button
               onClick={() => onUpdateTacticalState({ activeLayer: 'tokens' })}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'tokens'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                  ? 'bg-emerald-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
               }`}
-              title="Nível 2: Camada de Tokens & Objetos (Movimentação e combate normal)"
+              title="Nível 2: Camada de Tokens (Visão real dos Jogadores: combatentes e tokens públicos)"
             >
               <Users size={13} />
               <span>2. Tokens</span>
@@ -133,12 +132,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
             <button
               onClick={() => onUpdateTacticalState({ activeLayer: 'gm' })}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'gm'
                   ? 'bg-purple-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
               }`}
-              title="Nível 3: Camada do Mestre (Tokens e elementos com flag de visibilidade para jogadores)"
+              title="Nível 3: Camada do Mestre (Tokens secretos, monstros e anotações com flag do mestre)"
             >
               <ShieldAlert size={13} />
               <span>3. Mestre (GM)</span>
@@ -219,45 +218,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
         </div>
       </div>
 
-      {/* 2. MODOS DE VISÃO (MESTRE VS JOGADORES) & CONFIGURAÇÕES */}
+      {/* 2. CALIBRAÇÃO DO MAPA & CONFIGURAÇÕES */}
       <div className="flex flex-wrap items-center gap-1.5">
-        {/* Alternância de Modo de Visão */}
-        {isMaster ? (
-          <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
-            <button
-              onClick={() => onUpdateTacticalState({ viewMode: 'gm' })}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                viewMode === 'gm'
-                  ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-850'
-              }`}
-              title="Visão do Mestre: Enxerga tudo, com marcações nítidas do que está visível para jogadores e para o mestre"
-            >
-              <ShieldCheck size={13} />
-              <span>Visão Mestre</span>
-            </button>
-
-            <button
-              onClick={() => onUpdateTacticalState({ viewMode: 'player' })}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                viewMode === 'player'
-                  ? 'bg-emerald-600 text-white font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-850'
-              }`}
-              title="Visão dos Jogadores: Oculta tudo que não for visível aos jogadores (tokens ocultos e áreas não exploradas)"
-            >
-              <Eye size={13} />
-              <span>Visão Jogadores</span>
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 px-2.5 py-1 bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold">
-            <Eye size={13} />
-            <span>Visão de Jogador</span>
-          </div>
-        )}
-
-        {/* Botão de Calibração do Mapa (quando na camada de mapa) */}
+        {/* Botão de Calibração do Mapa (visível na camada de mapa) */}
         {isMaster && activeLayer === 'map' && (
           <div className="relative">
             <button
