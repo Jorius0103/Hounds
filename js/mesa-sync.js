@@ -40,7 +40,7 @@ var MesaSync = (function () {
   var CH = 60000, head = null, loadedRev = null, state = null, listeners = [], timer = null, pending = null, writing = false;
   var readyRes, ready = new Promise(function (r) { readyRes = r; }), gotHead = false, lastJson = null, lastRaw = null, askTimer = null, hiddenTimer = 0;
   var cid = 'hub-' + uid(), seq = 0, known = {}, knownList = [], npcSeen = {}, npcSeenList = [];
-  var combatsArchive = {};
+  var combatsArchive = {}, archivePending = false;
   // Revisions this browser wrote or already applied: their echoes are skipped.
   function remember(rev) { if (!rev || known[rev]) return; known[rev] = 1; knownList.push(rev); if (knownList.length > 400) delete known[knownList.shift()]; }
   function newRev() { var r = cid + '-' + Date.now() + '-' + (++seq); remember(r); return r; }
@@ -394,10 +394,19 @@ var MesaSync = (function () {
   }
   function save(p) {
     if (!canSave()) return Promise.resolve();
+    var pSeq = Promise.resolve();
+    if (archivePending && W.store && W.store.put) {
+      archivePending = false;
+      pSeq = pSeq.then(function () {
+        return W.store.put('mesa', 'combats_archive', { id: 'combats_archive', archive: combatsArchive, updatedAt: Date.now() }).catch(function () {});
+      });
+    }
     // The embedded images go to the image storage first; the state saved carries their addresses.
     // p.imgs false: publish() saw no embedded image, and p.json is the state's JSON already.
-    if (p.imgs === false) return write(p.st, p.rev, p.json, p.covers);
-    return hostImgs(p.st).then(function () { return write(swapImgs(p.st), p.rev, null, p.covers); });
+    if (p.imgs === false) return pSeq.then(function () { return write(p.st, p.rev, p.json, p.covers); });
+    return pSeq.then(function () {
+      return hostImgs(p.st).then(function () { return write(swapImgs(p.st), p.rev, null, p.covers); });
+    });
   }
   function write(st, rev, json, covers) {
     json = json || JSON.stringify(st);
@@ -742,12 +751,12 @@ var MesaSync = (function () {
       }
 
       // Arquivamento online de combates: preserva NPCs e eventos de todos os combates salvos
-      var archiveChanged = false;
+      var prevArchJson = '';
+      try { prevArchJson = JSON.stringify(combatsArchive); } catch (e) {}
       if (Array.isArray(m.combats)) {
         m.combats.forEach(function (c) {
           if (c && c.id && c.id !== 'combat-vazio' && Array.isArray(c.npcs) && c.npcs.length > 0) {
             combatsArchive[c.id] = { npcs: c.npcs, events: c.events || [] };
-            archiveChanged = true;
           }
         });
       }
@@ -755,12 +764,13 @@ var MesaSync = (function () {
         del.forEach(function (delId) {
           if (combatsArchive[delId]) {
             delete combatsArchive[delId];
-            archiveChanged = true;
           }
         });
       }
-      if (archiveChanged && canSave() && W.store && W.store.put) {
-        W.store.put('mesa', 'combats_archive', { id: 'combats_archive', archive: combatsArchive, updatedAt: Date.now() }).catch(function () {});
+      var newArchJson = '';
+      try { newArchJson = JSON.stringify(combatsArchive); } catch (e) {}
+      if (newArchJson && newArchJson !== prevArchJson) {
+        archivePending = true;
       }
 
       var activeId = m.activeCombatId || null;

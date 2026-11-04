@@ -36,6 +36,7 @@ export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog';
 
 interface TacticalToolbarProps {
   tacticalState: TacticalState;
+  zoom?: number;
   onUpdateTacticalState: (updated: Partial<TacticalState>) => void;
   activeTool: TacticalToolMode;
   onSelectTool: (tool: TacticalToolMode) => void;
@@ -57,6 +58,7 @@ interface TacticalToolbarProps {
 
 export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   tacticalState,
+  zoom,
   onUpdateTacticalState,
   activeTool,
   onSelectTool,
@@ -390,7 +392,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <ZoomOut size={13} />
           </button>
           <span className="font-mono text-[11px] text-amber-300 font-bold px-1.5">
-            {Math.round(tacticalState.zoom * 100)}%
+            {Math.round((typeof zoom === 'number' ? zoom : tacticalState.zoom || 1) * 100)}%
           </span>
           <button
             onClick={onZoomIn}

@@ -244,7 +244,12 @@ function mergeCombats(
       const existingRound = existing.currentRound ?? (existing as any).round ?? 0;
       const incomingRound = incoming.currentRound ?? (incoming as any).round ?? 0;
       const roundChanged = existingRound !== incomingRound;
-      const tacticalChanged = JSON.stringify(existing.tacticalState) !== JSON.stringify(incoming.tacticalState);
+      const sanitizeTactical = (st: any) => {
+        if (!st) return null;
+        const { panX, panY, zoom, ...rest } = st;
+        return rest;
+      };
+      const tacticalChanged = JSON.stringify(sanitizeTactical(existing.tacticalState)) !== JSON.stringify(sanitizeTactical(incoming.tacticalState));
       const customOrderChanged = JSON.stringify(existing.customOrder || []) !== JSON.stringify(incoming.customOrder || []);
 
       // Mescla eventos e rolagens gerais do combate
@@ -1800,7 +1805,7 @@ export default function App() {
       try {
         const bus = (typeof window !== 'undefined' && ((window as any).parent?.hubMesaBus || (window as any).hubMesaBus));
         if (bus && typeof bus.getRecentRolls === 'function') {
-          bus.getRecentRolls(null, 100).then((rows: any[]) => {
+          bus.getRecentRolls(null, 30).then((rows: any[]) => {
             if (!Array.isArray(rows) || rows.length === 0) return;
             const isMestre = currentUserRef.current?.role === 'mestre' || !currentUserRef.current;
             const deletedSet = new Set(getDeletedLogEntryIds());
@@ -1874,7 +1879,8 @@ export default function App() {
     fetchSupabaseRollsRef.current = fetchSupabaseRolls;
     fetchSupabaseRolls();
     window.addEventListener('focus', fetchSupabaseRolls);
-    const rollsPollInterval = setInterval(fetchSupabaseRolls, 6000);
+    // Polling espaçado de segurança (rolagens novas já chegam instantaneamente pelo Realtime e MQTT)
+    const rollsPollInterval = setInterval(fetchSupabaseRolls, 30000);
 
     let unsubHub: (() => void) | null = null;
     if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus?.subscribe) {

@@ -72,9 +72,9 @@ export interface TacticalState {
   tokens: TacticalToken[];
   terrainCells: TacticalTerrainCell[];
   markers: TacticalMarker[];
-  zoom: number;
-  panX: number;
-  panY: number;
+  zoom?: number;
+  panX?: number;
+  panY?: number;
 }
 
 export const DEFAULT_TACTICAL_STATE: TacticalState = {

@@ -99,7 +99,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [panStart, setPanStart] = useState<Point>({ x: 0, y: 0 });
   const [draggedTokenId, setDraggedTokenId] = useState<string | null>(null);
   const [dragTokenOrigin, setDragTokenOrigin] = useState<HexCoord | null>(null);
+  const [dragHoverHex, setDragHoverHex] = useState<HexCoord | null>(null);
   const [rotatingTokenId, setRotatingTokenId] = useState<string | null>(null);
+  const [previewRotation, setPreviewRotation] = useState<{ id: string; rotation: number; facing: FacingDirection } | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     tokenId: string;
     npcId: string;
@@ -141,13 +143,46 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     return characterMap.get(selectedToken.npcId) || null;
   }, [selectedToken, characterMap]);
 
+  // Viewport local (pan e zoom gerenciados apenas no cliente para não sobrecarregar rede e banco)
+  const [viewport, setViewport] = useState<{ panX: number; panY: number; zoom: number }>(() => {
+    try {
+      const saved = localStorage.getItem('hounds_tactical_viewport_v1');
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (typeof p.panX === 'number' && typeof p.panY === 'number' && typeof p.zoom === 'number') {
+          return p;
+        }
+      }
+    } catch {}
+    return {
+      panX: typeof tacticalState?.panX === 'number' ? tacticalState.panX : 40,
+      panY: typeof tacticalState?.panY === 'number' ? tacticalState.panY : 40,
+      zoom: typeof tacticalState?.zoom === 'number' ? tacticalState.zoom : 1,
+    };
+  });
+
+  const panX = viewport.panX;
+  const panY = viewport.panY;
+  const zoom = viewport.zoom;
+
+  const updateViewport = useCallback((next: { panX?: number; panY?: number; zoom?: number }) => {
+    setViewport((prev) => {
+      const updated = {
+        panX: next.panX !== undefined ? next.panX : prev.panX,
+        panY: next.panY !== undefined ? next.panY : prev.panY,
+        zoom: next.zoom !== undefined ? next.zoom : prev.zoom,
+      };
+      try {
+        localStorage.setItem('hounds_tactical_viewport_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  }, []);
+
   // Compute hex grid dimensions
   const hexSize = tacticalState?.hexSize || 38;
   const gridCols = tacticalState?.gridCols || 32;
   const gridRows = tacticalState?.gridRows || 24;
-  const panX = typeof tacticalState?.panX === 'number' ? tacticalState.panX : 40;
-  const panY = typeof tacticalState?.panY === 'number' ? tacticalState.panY : 40;
-  const zoom = typeof tacticalState?.zoom === 'number' ? tacticalState.zoom : 1;
   const hexWidth = Math.sqrt(3) * hexSize;
   const hexHeight = 2 * hexSize;
   const mapPixelWidth = (gridCols + 1) * hexWidth;
@@ -165,12 +200,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     [panX, panY, zoom]
   );
 
-  // Pan controls
+  // Pan controls locais (sem flood de rede ou banco)
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
     const newZoom = Math.max(0.4, Math.min(2.5, zoom * zoomFactor));
-    onUpdateTacticalState({ zoom: newZoom });
+    updateViewport({ zoom: newZoom });
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -182,7 +217,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     if (e.button === 1 || e.button === 0) {
       if ((e.target as HTMLElement).tagName === 'svg' || (e.target as HTMLElement).id === 'map-background') {
         setIsPanning(true);
-        setPanStart({ x: e.clientX - tacticalState.panX, y: e.clientY - tacticalState.panY });
+        setPanStart({ x: e.clientX - panX, y: e.clientY - panY });
         setPopoverToken(null);
       }
     }
@@ -198,10 +233,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isPanning) {
-      onUpdateTacticalState({
+      setViewport((prev) => ({
+        ...prev,
         panX: e.clientX - panStart.x,
         panY: e.clientY - panStart.y,
-      });
+      }));
       return;
     }
 
@@ -217,7 +253,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       setAreaCenter(hex);
     }
 
-    // Rotação ativa do token pelo "pauzinho" (Roll20 rotation handle)
+    // Rotação ativa do token pelo "pauzinho" (Roll20 rotation handle) - apenas preview local no mousemove
     if (rotatingTokenId) {
       const token = tokens.find((t) => t.id === rotatingTokenId);
       if (token) {
@@ -232,66 +268,64 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const snappedRot = (Math.round(rot / 30) * 30) % 360;
         const facingIndex = (Math.round(((snappedRot + 180) % 360) / 60) % 6) as FacingDirection;
 
-        const updatedTokens = tokens.map((t) =>
-          t.id === rotatingTokenId
-            ? { ...t, rotation: snappedRot, facing: facingIndex }
-            : t
-        );
-        onUpdateTacticalState({ tokens: updatedTokens });
+        setPreviewRotation({ id: rotatingTokenId, rotation: snappedRot, facing: facingIndex });
       }
       return;
     }
 
-    // Live dragging of a token
+    // Live dragging of a token - apenas atualiza preview local de hover sem disparar sync a cada pixel
     if (draggedTokenId) {
-      const updatedTokens = tokens.map((t) => {
-        if (t.id === draggedTokenId) {
-          return {
-            ...t,
-            gridX: hex.col,
-            gridY: hex.row,
-          };
-        }
-        return t;
-      });
-      onUpdateTacticalState({ tokens: updatedTokens });
+      setDragHoverHex(hex);
     }
   };
 
   const handleMouseUp = () => {
     if (isPanning) {
       setIsPanning(false);
+      try {
+        localStorage.setItem('hounds_tactical_viewport_v1', JSON.stringify({ panX, panY, zoom }));
+      } catch {}
     }
 
     if (rotatingTokenId) {
+      if (previewRotation) {
+        const updatedTokens = tokens.map((t) =>
+          t.id === rotatingTokenId
+            ? { ...t, rotation: previewRotation.rotation, facing: previewRotation.facing }
+            : t
+        );
+        onUpdateTacticalState({ tokens: updatedTokens });
+      }
       setRotatingTokenId(null);
+      setPreviewRotation(null);
     }
 
     if (draggedTokenId && dragTokenOrigin) {
       const token = tokens.find((t) => t.id === draggedTokenId);
-      if (token) {
-        const movedYards = getHexDistance(dragTokenOrigin, { col: token.gridX, row: token.gridY });
-        const updatedTokens = tokens.map((t) =>
-          t.id === draggedTokenId ? { ...t, movedThisTurn: (t.movedThisTurn || 0) + movedYards } : t
-        );
-        onUpdateTacticalState({ tokens: updatedTokens });
-      }
+      const targetCol = dragHoverHex ? dragHoverHex.col : (token?.gridX ?? dragTokenOrigin.col);
+      const targetRow = dragHoverHex ? dragHoverHex.row : (token?.gridY ?? dragTokenOrigin.row);
+      const movedYards = getHexDistance(dragTokenOrigin, { col: targetCol, row: targetRow });
+      const updatedTokens = tokens.map((t) =>
+        t.id === draggedTokenId ? { ...t, gridX: targetCol, gridY: targetRow, movedThisTurn: (t.movedThisTurn || 0) + movedYards } : t
+      );
+      onUpdateTacticalState({ tokens: updatedTokens });
       setDraggedTokenId(null);
       setDragTokenOrigin(null);
+      setDragHoverHex(null);
     }
   };
 
-  // Zoom helpers
+  // Zoom helpers locais
   const handleZoomIn = () => {
-    onUpdateTacticalState({ zoom: Math.min(2.5, tacticalState.zoom * 1.2) });
+    updateViewport({ zoom: Math.min(2.5, zoom * 1.2) });
   };
 
   const handleZoomOut = () => {
-    onUpdateTacticalState({ zoom: Math.max(0.4, tacticalState.zoom / 1.2) });
+    updateViewport({ zoom: Math.max(0.4, zoom / 1.2) });
   };
 
   const handleResetView = () => {
-    onUpdateTacticalState({ zoom: 1, panX: 40, panY: 40 });
+    updateViewport({ zoom: 1, panX: 40, panY: 40 });
   };
 
   // Auto-place all characters onto map
@@ -448,14 +482,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     }
   };
 
-  // Focus view on a token
+  // Focus view on a token (local viewport)
   const handleFocusToken = (token: TacticalToken) => {
     if (!containerRef.current) return;
     const center = getHexCenter(token.gridX, token.gridY, hexSize);
     const rect = containerRef.current.getBoundingClientRect();
-    const newPanX = rect.width / 2 - center.x * tacticalState.zoom;
-    const newPanY = rect.height / 2 - center.y * tacticalState.zoom;
-    onUpdateTacticalState({ panX: newPanX, panY: newPanY });
+    const newPanX = rect.width / 2 - center.x * zoom;
+    const newPanY = rect.height / 2 - center.y * zoom;
+    updateViewport({ panX: newPanX, panY: newPanY });
     setSelectedTokenId(token.id);
   };
 
@@ -478,6 +512,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     if (contextMenu) setContextMenu(null);
     setDraggedTokenId(token.id);
     setDragTokenOrigin({ col: token.gridX, row: token.gridY });
+    setDragHoverHex({ col: token.gridX, row: token.gridY });
     setSelectedTokenId(token.id);
     onSelectNpc(token.npcId);
     setPopoverToken(null);
@@ -548,6 +583,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onMouseLeave={() => {
+        if (isPanning) setIsPanning(false);
+        if (draggedTokenId) {
+          setDraggedTokenId(null);
+          setDragTokenOrigin(null);
+          setDragHoverHex(null);
+        }
+        if (rotatingTokenId) {
+          setRotatingTokenId(null);
+          setPreviewRotation(null);
+        }
+      }}
       onWheel={handleWheel}
       className="relative w-full h-[calc(100vh-130px)] min-h-[550px] bg-slate-950 overflow-hidden select-none cursor-crosshair rounded-2xl border border-slate-800 shadow-2xl flex flex-col"
     >
@@ -555,6 +602,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       <div className="absolute top-3 left-3 right-3 z-30 pointer-events-auto">
         <TacticalToolbar
           tacticalState={tacticalState}
+          zoom={zoom}
           onUpdateTacticalState={onUpdateTacticalState}
           activeTool={activeTool}
           onSelectTool={(tool) => {
@@ -1154,11 +1202,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
               const isPlayer = npc.characterType === 'player';
               const isSelected = token.id === selectedTokenId;
-              const center = getHexCenter(token.gridX, token.gridY, hexSize);
-              const tokenRotation =
-                typeof token.rotation === 'number'
-                  ? token.rotation
-                  : ((token.facing * 60 + 180) % 360);
+              const isDragging = token.id === draggedTokenId;
+              const isRotating = token.id === rotatingTokenId;
+              const displayGridX = isDragging && dragHoverHex ? dragHoverHex.col : token.gridX;
+              const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
+              const center = getHexCenter(displayGridX, displayGridY, hexSize);
+              const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
+                ? previewRotation.rotation
+                : (typeof token.rotation === 'number'
+                    ? token.rotation
+                    : ((token.facing * 60 + 180) % 360));
               const tokenRadius = hexSize * 0.75;
 
               const hpPercent =
