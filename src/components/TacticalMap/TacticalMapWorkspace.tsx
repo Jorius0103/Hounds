@@ -22,7 +22,7 @@ import {
   HexCoord,
   Point,
 } from '../../utils/tacticalMath';
-import { getCombatManeuver } from '../../utils/gurps';
+import { getCombatManeuver, COMBAT_MANEUVERS } from '../../utils/gurps';
 import { NpcAvatar } from '../NpcAvatar';
 import {
   Ruler,
@@ -32,6 +32,9 @@ import {
   Skull,
   Zap,
   Footprints,
+  Heart,
+  X,
+  Swords,
 } from 'lucide-react';
 
 interface TacticalMapWorkspaceProps {
@@ -43,6 +46,7 @@ interface TacticalMapWorkspaceProps {
   onUpdateNpc: (updated: NPC) => void;
   currentUserRole: string;
   onOpenFullNpcSheet: (npcId: string) => void;
+  onOpenDamageCalculator?: (npc: NPC) => void;
   hasEditPermission?: boolean;
   onOpenPlayerPermissions?: () => void;
   editorCount?: number;
@@ -61,6 +65,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   onUpdateNpc,
   currentUserRole,
   onOpenFullNpcSheet,
+  onOpenDamageCalculator,
   hasEditPermission = false,
   onOpenPlayerPermissions,
   editorCount = 0,
@@ -90,7 +95,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [draggedTokenId, setDraggedTokenId] = useState<string | null>(null);
   const [dragTokenOrigin, setDragTokenOrigin] = useState<HexCoord | null>(null);
   const [rotatingTokenId, setRotatingTokenId] = useState<string | null>(null);
-  const [hoveredTokenId, setHoveredTokenId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    tokenId: string;
+    npcId: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Popover state
   const [popoverToken, setPopoverToken] = useState<TacticalToken | null>(null);
@@ -169,6 +179,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (contextMenu) {
+      setContextMenu(null);
+    }
+
     // Middle click or space key or clicking empty area starts pan
     if (e.button === 1 || e.button === 0) {
       if ((e.target as HTMLElement).tagName === 'svg' || (e.target as HTMLElement).id === 'map-background') {
@@ -219,8 +233,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         // Frente está embaixo no SVG (+Y = 90°). deg - 90 aponta a frente para o mouse:
         let rot = deg - 90;
         rot = ((rot % 360) + 360) % 360;
-        // Snap (agarrar) a cada 60° para manter sempre perfeitamente centralizado com o hexágono de destino:
-        const snappedRot = (Math.round(rot / 60) * 60) % 360;
+        // Snap (agarrar) a cada 30° para permitir agarrar tanto na linha dos hexágonos quanto no meio deles (12 posições):
+        const snappedRot = (Math.round(rot / 30) * 30) % 360;
         const facingIndex = (Math.round(((snappedRot + 180) % 360) / 60) % 6) as FacingDirection;
 
         const updatedTokens = tacticalState.tokens.map((t) =>
@@ -375,6 +389,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     setSelectedTokenId(token.id);
     onSelectNpc(token.npcId);
     setPopoverToken(null);
+    if (contextMenu) setContextMenu(null);
   };
 
   // Handle token drag start
@@ -384,6 +399,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     const canEditToken = isMaster || hasEditPermission;
     if (!canEditToken) return;
     e.stopPropagation();
+    if (contextMenu) setContextMenu(null);
     setDraggedTokenId(token.id);
     setDragTokenOrigin({ col: token.gridX, row: token.gridY });
     setSelectedTokenId(token.id);
@@ -398,6 +414,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     if (!canEditToken) return;
     e.stopPropagation();
     e.preventDefault();
+    if (contextMenu) setContextMenu(null);
     setRotatingTokenId(token.id);
     setSelectedTokenId(token.id);
     setDraggedTokenId(null);
@@ -850,8 +867,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   transform={`translate(${center.x}, ${center.y})`}
                   onClick={(e) => handleTokenClick(e, token)}
                   onMouseDown={(e) => handleTokenMouseDown(e, token)}
-                  onMouseEnter={() => setHoveredTokenId(token.id)}
-                  onMouseLeave={() => setHoveredTokenId(null)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedTokenId(token.id);
+                    onSelectNpc(token.npcId);
+                    setContextMenu({
+                      tokenId: token.id,
+                      npcId: token.npcId,
+                      x: e.clientX,
+                      y: e.clientY,
+                    });
+                  }}
                   className="cursor-pointer transition-transform"
                   style={{
                     filter: isSelected
@@ -954,31 +981,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     />
                     <circle cx="0" cy={tokenRadius + 5} r="1.5" fill="#ffffff" />
 
-                    {/* 5. Barra de PV no interior inferior do token */}
-                    <rect
-                      x={-tokenRadius + 4}
-                      y={tokenRadius - 6}
-                      width={(tokenRadius - 4) * 2}
-                      height="4"
-                      rx="2"
-                      fill="#020617"
-                    />
-                    <rect
-                      x={-tokenRadius + 4}
-                      y={tokenRadius - 6}
-                      width={(((tokenRadius - 4) * 2) * hpPercent) / 100}
-                      height="4"
-                      rx="2"
-                      fill={
-                        hpPercent > 50
-                          ? '#10b981'
-                          : hpPercent > 20
-                          ? '#f59e0b'
-                          : '#ef4444'
-                      }
-                    />
-
-                    {/* 6. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
+                    {/* 5. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
                     {isSelected && (
                       <g className="cursor-grab">
                         {/* Haste estendida conectando a marcação de frente até a alça */}
@@ -1021,82 +1024,163 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         </g>
       </svg>
 
-      {/* TOOLTIP FLUTUANTE DE HOVER NO TOKEN (PV, FADIGA E MANOBRA) */}
-      {(() => {
-        if (!hoveredTokenId || draggedTokenId || rotatingTokenId) return null;
-        const hoveredToken = tacticalState.tokens.find((t) => t.id === hoveredTokenId);
-        if (!hoveredToken) return null;
-        const hoveredNpc = characterMap.get(hoveredToken.npcId);
-        if (!hoveredNpc) return null;
-        if (!isMaster && hoveredToken.hiddenFromPlayers) return null;
+      {/* MENU DE CONTEXTO DO TOKEN (BOTÃO DIREITO: DADOS, MANOBRA E LANÇAR DANO) */}
+      {contextMenu && (() => {
+        const token = tacticalState.tokens.find((t) => t.id === contextMenu.tokenId);
+        const npc = token ? characterMap.get(token.npcId) : null;
+        if (!token || !npc) return null;
 
-        const center = getHexCenter(hoveredToken.gridX, hoveredToken.gridY, hexSize);
-        const screenX = center.x * tacticalState.zoom + tacticalState.panX;
-        const screenY = center.y * tacticalState.zoom + tacticalState.panY;
-        const maneuver = hoveredNpc.combatManeuver
-          ? getCombatManeuver(hoveredNpc.combatManeuver)
-          : undefined;
+        const isPlayer = npc.characterType === 'player';
+        const hp = typeof npc.hpCurrent === 'number' ? npc.hpCurrent : (npc.hpMax || 0);
+        const hpMax = npc.hpMax || 0;
+        const fp = typeof npc.fpCurrent === 'number' ? npc.fpCurrent : (npc.fpMax || 0);
+        const fpMax = npc.fpMax || 0;
+        const currentManeuver = getCombatManeuver(npc.combatManeuver);
 
-        const hp = typeof hoveredNpc.hpCurrent === 'number' ? hoveredNpc.hpCurrent : (hoveredNpc.hpMax || 0);
-        const hpMax = hoveredNpc.hpMax || 0;
-        const fp = typeof hoveredNpc.fpCurrent === 'number' ? hoveredNpc.fpCurrent : (hoveredNpc.fpMax || 0);
-        const fpMax = hoveredNpc.fpMax || 0;
+        // Clamping para manter o menu sempre visível na tela
+        const menuWidth = 270;
+        const menuHeight = 360;
+        const posX = Math.min(Math.max(12, contextMenu.x), window.innerWidth - menuWidth - 12);
+        const posY = Math.min(Math.max(12, contextMenu.y), window.innerHeight - menuHeight - 12);
 
         return (
           <div
-            className="absolute z-40 pointer-events-none transition-all duration-100 ease-out"
-            style={{
-              left: `${screenX}px`,
-              top: `${screenY - (hexSize * tacticalState.zoom * 0.75) - 22}px`,
-              transform: 'translate(-50%, -100%)',
+            className="fixed inset-0 z-50 pointer-events-auto"
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setContextMenu(null);
             }}
           >
-            <div className="bg-slate-950/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 shadow-2xl min-w-[160px] space-y-1.5 text-xs">
-              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1">
-                <span className="font-bold text-white truncate max-w-[120px]">
-                  {hoveredNpc.name}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {hoveredNpc.characterType === 'player' ? 'Jogador' : 'NPC'}
-                </span>
+            <div
+              className="absolute bg-slate-950/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl w-[270px] space-y-3 text-slate-100 select-none animate-in fade-in zoom-in-95 duration-100"
+              style={{
+                left: `${posX}px`,
+                top: `${posY}px`,
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.stopPropagation()}
+            >
+              {/* Cabeçalho */}
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-800 flex items-center justify-center">
+                    {npc.avatar ? (
+                      <img src={npc.avatar} alt={npc.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[11px] font-bold text-amber-400">
+                        {npc.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-white text-xs truncate leading-tight">
+                      {npc.name}
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {isPlayer ? 'Jogador' : 'NPC'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setContextMenu(null)}
+                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X size={15} />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px] pt-0.5">
-                <div className="flex items-center gap-1 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800">
-                  <span className="text-slate-400 font-semibold text-[10px]">PV:</span>
-                  <span className={`font-mono font-bold ${hp <= 0 ? 'text-rose-400' : hp < hpMax / 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {hp}/{hpMax}
-                  </span>
+              {/* Atributos PV e FP */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2 flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between text-slate-400 text-[10px] font-semibold">
+                    <span className="flex items-center gap-1">
+                      <Heart size={11} className="text-rose-400" /> PV
+                    </span>
+                    <span className="text-slate-500 font-mono">Max: {hpMax}</span>
+                  </div>
+                  <div className={`text-sm font-bold font-mono ${hp <= 0 ? 'text-rose-400' : hp < hpMax / 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {hp} <span className="text-[10px] text-slate-500 font-normal">/ {hpMax}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800">
-                  <span className="text-slate-400 font-semibold text-[10px]">FP:</span>
-                  <span className={`font-mono font-bold ${fp <= 0 ? 'text-rose-400' : fp < fpMax / 3 ? 'text-amber-400' : 'text-cyan-400'}`}>
-                    {fp}/{fpMax}
-                  </span>
+
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2 flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between text-slate-400 text-[10px] font-semibold">
+                    <span className="flex items-center gap-1">
+                      <Zap size={11} className="text-cyan-400" /> FP (Fadiga)
+                    </span>
+                    <span className="text-slate-500 font-mono">Max: {fpMax}</span>
+                  </div>
+                  <div className={`text-sm font-bold font-mono ${fp <= 0 ? 'text-rose-400' : fp < fpMax / 3 ? 'text-amber-400' : 'text-cyan-400'}`}>
+                    {fp} <span className="text-[10px] text-slate-500 font-normal">/ {fpMax}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-0.5">
-                {maneuver ? (
-                  <div
-                    className="px-2 py-0.5 rounded-md text-[10px] font-bold text-center tracking-wide uppercase shadow-sm truncate"
-                    style={{
-                      backgroundColor: maneuver.bgHex,
-                      color: maneuver.textHex,
-                      border: `1px solid ${maneuver.borderHex}`,
-                    }}
-                  >
-                    {maneuver.name}
-                  </div>
-                ) : (
-                  <div className="text-[10px] text-slate-500 italic text-center py-0.5">
-                    Sem manobra
-                  </div>
-                )}
+              {/* Seletor de Manobra de Combate */}
+              <div className="space-y-1.5 pt-1 border-t border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Shield size={12} className="text-amber-400" /> Manobra de Combate
+                  </span>
+                  {currentManeuver && (
+                    <button
+                      type="button"
+                      onClick={() => onUpdateNpc({ ...npc, combatManeuver: undefined })}
+                      className="text-[9.5px] text-slate-500 hover:text-rose-400 transition-colors"
+                      title="Limpar manobra"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto pr-0.5 scrollbar-thin">
+                  {COMBAT_MANEUVERS.map((m) => {
+                    const isSelected = npc.combatManeuver === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          const newManeuver = isSelected ? undefined : m.id;
+                          onUpdateNpc({ ...npc, combatManeuver: newManeuver });
+                        }}
+                        className={`px-2 py-1.5 rounded-lg text-[10.5px] font-semibold flex items-center justify-between transition-all border ${
+                          isSelected
+                            ? 'ring-2 ring-white/60 shadow-md font-bold'
+                            : 'opacity-85 hover:opacity-100 hover:scale-[1.02]'
+                        }`}
+                        style={{
+                          backgroundColor: m.bgHex,
+                          color: m.textHex,
+                          borderColor: m.borderHex,
+                        }}
+                      >
+                        <span className="truncate">{m.name}</span>
+                        {isSelected && <span className="text-xs">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Botão de Ação: Lançar Dano / Fadiga / Itens */}
+              <div className="pt-2 border-t border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContextMenu(null);
+                    onOpenDamageCalculator?.(npc);
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 transition-all active:scale-[0.98]"
+                >
+                  <Swords size={14} />
+                  <span>Lançar Dano / Fadiga / Itens</span>
+                </button>
               </div>
             </div>
-            {/* Triângulo indicador do tooltip apontando para o token */}
-            <div className="w-2.5 h-2.5 bg-slate-950 border-r border-b border-slate-700/80 rotate-45 mx-auto -mt-1.5" />
           </div>
         );
       })()}

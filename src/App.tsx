@@ -5469,6 +5469,7 @@ export default function App() {
                   setSelectedNpcId(npcId);
                   setActiveViewMode('split');
                 }}
+                onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
                 hasEditPermission={canEditCurrent}
                 onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
                 editorCount={effectiveEditorIds.length}
@@ -5510,6 +5511,7 @@ export default function App() {
                 onUpdateNpc={handleUpdateNpc}
                 currentUserRole={effectiveRole}
                 onOpenFullNpcSheet={(npcId) => setSelectedNpcId(npcId)}
+                onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
                 hasEditPermission={canEditCurrent}
                 onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
                 editorCount={effectiveEditorIds.length}
