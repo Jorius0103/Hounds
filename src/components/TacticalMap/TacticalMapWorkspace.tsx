@@ -1030,126 +1030,127 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const npc = token ? characterMap.get(token.npcId) : null;
         if (!token || !npc) return null;
 
-        const isPlayer = npc.characterType === 'player';
         const hp = typeof npc.hpCurrent === 'number' ? npc.hpCurrent : (npc.hpMax || 0);
         const hpMax = npc.hpMax || 0;
         const fp = typeof npc.fpCurrent === 'number' ? npc.fpCurrent : (npc.fpMax || 0);
         const fpMax = npc.fpMax || 0;
-        const currentManeuver = getCombatManeuver(npc.combatManeuver);
 
-        // Clamping para manter o menu sempre visível na tela
-        const menuWidth = 270;
-        const menuHeight = 360;
-        const posX = Math.min(Math.max(12, contextMenu.x), window.innerWidth - menuWidth - 12);
-        const posY = Math.min(Math.max(12, contextMenu.y), window.innerHeight - menuHeight - 12);
+        // Lista de 8 manobras (7 oficiais + Nenhuma)
+        const maneuversList = [
+          ...COMBAT_MANEUVERS,
+          {
+            id: 'none',
+            name: 'Nenhuma',
+            colorName: 'Cinza',
+            bgHex: '#334155',
+            textHex: '#cbd5e1',
+            borderHex: '#475569',
+            badgeClass: 'bg-slate-700 text-slate-200 border-slate-600',
+          },
+        ];
+
+        // Clamping para manter o menu sempre visível e compacto na tela
+        const menuWidth = 220;
+        const menuHeight = 230;
+        const posX = Math.min(Math.max(8, contextMenu.x), window.innerWidth - menuWidth - 8);
+        const posY = Math.min(Math.max(8, contextMenu.y), window.innerHeight - menuHeight - 8);
 
         return (
           <div
             className="fixed inset-0 z-50 pointer-events-auto"
-            onClick={() => setContextMenu(null)}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              setContextMenu(null);
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               setContextMenu(null);
             }}
           >
             <div
-              className="absolute bg-slate-950/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl w-[270px] space-y-3 text-slate-100 select-none animate-in fade-in zoom-in-95 duration-100"
+              className="absolute bg-slate-950/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 shadow-2xl w-[220px] space-y-2 text-slate-100 select-none animate-in fade-in zoom-in-95 duration-100"
               style={{
                 left: `${posX}px`,
                 top: `${posY}px`,
               }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              onContextMenu={(e) => e.stopPropagation()}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
             >
-              {/* Cabeçalho */}
-              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2">
+              {/* Cabeçalho Compacto: Avatar, Nome e PV/FP lado a lado */}
+              <div className="flex items-center justify-between gap-1.5 border-b border-slate-800 pb-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-800 flex items-center justify-center">
                     {npc.avatar ? (
                       <img src={npc.avatar} alt={npc.name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-[11px] font-bold text-amber-400">
+                      <span className="text-[10px] font-bold text-amber-400">
                         {npc.name.slice(0, 2).toUpperCase()}
                       </span>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-white text-xs truncate leading-tight">
+                  <div className="min-w-0 flex flex-col">
+                    <span className="font-bold text-white text-xs truncate leading-tight">
                       {npc.name}
-                    </h4>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {isPlayer ? 'Jogador' : 'NPC'}
                     </span>
+                    <div className="flex items-center gap-1 text-[10px] font-mono leading-none pt-0.5">
+                      <span className={hp <= 0 ? 'text-rose-400 font-bold' : hp < hpMax / 3 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                        {hp}/{hpMax}
+                      </span>
+                      <span className="text-slate-500 text-[9px]">PV</span>
+                      <span className="text-slate-600">•</span>
+                      <span className={fp <= 0 ? 'text-rose-400 font-bold' : fp < fpMax / 3 ? 'text-amber-400 font-bold' : 'text-cyan-400 font-bold'}>
+                        {fp}/{fpMax}
+                      </span>
+                      <span className="text-slate-500 text-[9px]">FP</span>
+                    </div>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setContextMenu(null)}
-                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setContextMenu(null);
+                  }}
+                  className="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                 >
-                  <X size={15} />
+                  <X size={14} />
                 </button>
               </div>
 
-              {/* Atributos PV e FP */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2 flex flex-col gap-0.5">
-                  <div className="flex items-center justify-between text-slate-400 text-[10px] font-semibold">
-                    <span className="flex items-center gap-1">
-                      <Heart size={11} className="text-rose-400" /> PV
-                    </span>
-                    <span className="text-slate-500 font-mono">Max: {hpMax}</span>
-                  </div>
-                  <div className={`text-sm font-bold font-mono ${hp <= 0 ? 'text-rose-400' : hp < hpMax / 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {hp} <span className="text-[10px] text-slate-500 font-normal">/ {hpMax}</span>
-                  </div>
+              {/* Seletor com 8 Manobras de Combate (Grid 2x4) */}
+              <div className="space-y-1">
+                <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                  <Shield size={11} className="text-amber-400" /> Manobra de Combate
                 </div>
 
-                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2 flex flex-col gap-0.5">
-                  <div className="flex items-center justify-between text-slate-400 text-[10px] font-semibold">
-                    <span className="flex items-center gap-1">
-                      <Zap size={11} className="text-cyan-400" /> FP (Fadiga)
-                    </span>
-                    <span className="text-slate-500 font-mono">Max: {fpMax}</span>
-                  </div>
-                  <div className={`text-sm font-bold font-mono ${fp <= 0 ? 'text-rose-400' : fp < fpMax / 3 ? 'text-amber-400' : 'text-cyan-400'}`}>
-                    {fp} <span className="text-[10px] text-slate-500 font-normal">/ {fpMax}</span>
-                  </div>
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {maneuversList.map((m) => {
+                    const isSelected =
+                      m.id === 'none'
+                        ? !npc.combatManeuver
+                        : npc.combatManeuver === m.id;
 
-              {/* Seletor de Manobra de Combate */}
-              <div className="space-y-1.5 pt-1 border-t border-slate-800/80">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
-                    <Shield size={12} className="text-amber-400" /> Manobra de Combate
-                  </span>
-                  {currentManeuver && (
-                    <button
-                      type="button"
-                      onClick={() => onUpdateNpc({ ...npc, combatManeuver: undefined })}
-                      className="text-[9.5px] text-slate-500 hover:text-rose-400 transition-colors"
-                      title="Limpar manobra"
-                    >
-                      Limpar
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto pr-0.5 scrollbar-thin">
-                  {COMBAT_MANEUVERS.map((m) => {
-                    const isSelected = npc.combatManeuver === m.id;
                     return (
                       <button
                         key={m.id}
                         type="button"
-                        onClick={() => {
-                          const newManeuver = isSelected ? undefined : m.id;
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const newManeuver =
+                            m.id === 'none' || isSelected ? undefined : m.id;
                           onUpdateNpc({ ...npc, combatManeuver: newManeuver });
                         }}
-                        className={`px-2 py-1.5 rounded-lg text-[10.5px] font-semibold flex items-center justify-between transition-all border ${
+                        className={`px-1.5 py-1 rounded-md text-[10px] font-semibold flex items-center justify-between transition-all border ${
                           isSelected
-                            ? 'ring-2 ring-white/60 shadow-md font-bold'
+                            ? 'ring-2 ring-white/70 shadow-md font-bold'
                             : 'opacity-85 hover:opacity-100 hover:scale-[1.02]'
                         }`}
                         style={{
@@ -1159,7 +1160,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         }}
                       >
                         <span className="truncate">{m.name}</span>
-                        {isSelected && <span className="text-xs">✓</span>}
+                        {isSelected && <span className="text-[11px] leading-none ml-0.5">✓</span>}
                       </button>
                     );
                   })}
@@ -1167,16 +1168,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               </div>
 
               {/* Botão de Ação: Lançar Dano / Fadiga / Itens */}
-              <div className="pt-2 border-t border-slate-800/80">
+              <div className="pt-1 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => {
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
                     setContextMenu(null);
+                    onSelectNpc(npc.id);
                     onOpenDamageCalculator?.(npc);
                   }}
-                  className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 transition-all active:scale-[0.98]"
+                  className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10 transition-all active:scale-[0.98]"
                 >
-                  <Swords size={14} />
+                  <Swords size={13} />
                   <span>Lançar Dano / Fadiga / Itens</span>
                 </button>
               </div>
