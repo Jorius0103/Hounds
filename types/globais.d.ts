@@ -24,6 +24,9 @@ interface Window {
     getRecentRolls(combatId: string, limit?: number): Promise<any[]>;
     saveRoll(rollData: any, logEntry?: any): Promise<unknown>;
     deleteRoll(rollId: string): Promise<unknown>;
+    clearAllRolls?: () => Promise<unknown>;
+    wake?: () => void;
+    _onIncomingRollRow?: (row: any) => void;
   };
   /** Quem deu sinal de vida na Mesa: { nome em minúsculas: horário } (js/mesa-sync.js). */
   hubOnlineUsers?: Record<string, number>;

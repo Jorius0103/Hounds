@@ -914,12 +914,20 @@ export default function App() {
 
   // Tactical State do combate ativo
   const activeTacticalState: TacticalState = useMemo(() => {
-    return activeCombat?.tacticalState || DEFAULT_TACTICAL_STATE;
+    const raw = activeCombat?.tacticalState;
+    return {
+      ...DEFAULT_TACTICAL_STATE,
+      ...(raw || {}),
+      tokens: Array.isArray(raw?.tokens) ? raw.tokens : [],
+      terrainCells: Array.isArray(raw?.terrainCells) ? raw.terrainCells : [],
+      markers: Array.isArray(raw?.markers) ? raw.markers : [],
+      fogRevealedCells: Array.isArray(raw?.fogRevealedCells) ? raw.fogRevealedCells : [],
+    };
   }, [activeCombat?.tacticalState]);
 
   const handleUpdateTacticalState = (updated: Partial<TacticalState>) => {
     if (!activeCombat) return;
-    const current = activeCombat.tacticalState || DEFAULT_TACTICAL_STATE;
+    const current = activeTacticalState;
     const merged: TacticalState = {
       ...current,
       ...updated,

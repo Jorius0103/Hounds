@@ -115,10 +115,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     return map;
   }, [characters]);
 
+  // Array seguro de tokens
+  const tokens = useMemo(() => {
+    return Array.isArray(tacticalState?.tokens) ? tacticalState.tokens : [];
+  }, [tacticalState?.tokens]);
+
   // Selected token object
   const selectedToken = useMemo(() => {
-    return tacticalState.tokens.find((t) => t.id === selectedTokenId) || null;
-  }, [tacticalState.tokens, selectedTokenId]);
+    return tokens.find((t) => t.id === selectedTokenId) || null;
+  }, [tokens, selectedTokenId]);
 
   // Selected NPC
   const selectedTokenNpc = useMemo(() => {
@@ -127,9 +132,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   }, [selectedToken, characterMap]);
 
   // Compute hex grid dimensions
-  const hexSize = tacticalState.hexSize;
-  const gridCols = tacticalState.gridCols;
-  const gridRows = tacticalState.gridRows;
+  const hexSize = tacticalState?.hexSize || 38;
+  const gridCols = tacticalState?.gridCols || 32;
+  const gridRows = tacticalState?.gridRows || 24;
+  const panX = typeof tacticalState?.panX === 'number' ? tacticalState.panX : 40;
+  const panY = typeof tacticalState?.panY === 'number' ? tacticalState.panY : 40;
+  const zoom = typeof tacticalState?.zoom === 'number' ? tacticalState.zoom : 1;
   const hexWidth = Math.sqrt(3) * hexSize;
   const hexHeight = 2 * hexSize;
   const mapPixelWidth = (gridCols + 1) * hexWidth;
@@ -163,18 +171,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     (clientX: number, clientY: number): Point => {
       if (!containerRef.current) return { x: 0, y: 0 };
       const rect = containerRef.current.getBoundingClientRect();
-      const x = (clientX - rect.left - tacticalState.panX) / tacticalState.zoom;
-      const y = (clientY - rect.top - tacticalState.panY) / tacticalState.zoom;
+      const x = (clientX - rect.left - panX) / zoom;
+      const y = (clientY - rect.top - panY) / zoom;
       return { x, y };
     },
-    [tacticalState.panX, tacticalState.panY, tacticalState.zoom]
+    [panX, panY, zoom]
   );
 
   // Pan controls
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    const newZoom = Math.max(0.4, Math.min(2.5, tacticalState.zoom * zoomFactor));
+    const newZoom = Math.max(0.4, Math.min(2.5, zoom * zoomFactor));
     onUpdateTacticalState({ zoom: newZoom });
   };
 
@@ -224,7 +232,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
     // Rotação ativa do token pelo "pauzinho" (Roll20 rotation handle)
     if (rotatingTokenId) {
-      const token = tacticalState.tokens.find((t) => t.id === rotatingTokenId);
+      const token = tokens.find((t) => t.id === rotatingTokenId);
       if (token) {
         const center = getHexCenter(token.gridX, token.gridY, hexSize);
         const dx = p.x - center.x;
@@ -237,7 +245,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const snappedRot = (Math.round(rot / 30) * 30) % 360;
         const facingIndex = (Math.round(((snappedRot + 180) % 360) / 60) % 6) as FacingDirection;
 
-        const updatedTokens = tacticalState.tokens.map((t) =>
+        const updatedTokens = tokens.map((t) =>
           t.id === rotatingTokenId
             ? { ...t, rotation: snappedRot, facing: facingIndex }
             : t
@@ -249,7 +257,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
     // Live dragging of a token
     if (draggedTokenId) {
-      const updatedTokens = tacticalState.tokens.map((t) => {
+      const updatedTokens = tokens.map((t) => {
         if (t.id === draggedTokenId) {
           return {
             ...t,
@@ -273,10 +281,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     }
 
     if (draggedTokenId && dragTokenOrigin) {
-      const token = tacticalState.tokens.find((t) => t.id === draggedTokenId);
+      const token = tokens.find((t) => t.id === draggedTokenId);
       if (token) {
         const movedYards = getHexDistance(dragTokenOrigin, { col: token.gridX, row: token.gridY });
-        const updatedTokens = tacticalState.tokens.map((t) =>
+        const updatedTokens = tokens.map((t) =>
           t.id === draggedTokenId ? { ...t, movedThisTurn: (t.movedThisTurn || 0) + movedYards } : t
         );
         onUpdateTacticalState({ tokens: updatedTokens });
@@ -301,8 +309,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   // Auto-place all characters onto map
   const handleAutoPlaceTokens = () => {
-    const existingNpcIds = new Set(tacticalState.tokens.map((t) => t.npcId));
-    const newTokens: TacticalToken[] = [...tacticalState.tokens];
+    const existingNpcIds = new Set(tokens.map((t) => t.npcId));
+    const newTokens: TacticalToken[] = [...tokens];
 
     let playerCol = 3;
     let playerRow = 4;
@@ -348,7 +356,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   // Place a specific token on map
   const handlePlaceToken = (npcId: string) => {
-    const existing = tacticalState.tokens.find((t) => t.npcId === npcId);
+    const existing = tokens.find((t) => t.npcId === npcId);
     if (existing) {
       setSelectedTokenId(existing.id);
       return;
@@ -360,7 +368,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       id: `token-${npcId}`,
       npcId,
       gridX: isPlayer ? 4 : 12,
-      gridY: 6 + (tacticalState.tokens.length % 6) * 2,
+      gridY: 6 + (tokens.length % 6) * 2,
       facing: (isPlayer ? 1 : 4) as FacingDirection,
       elevation: 0,
       reach: 1,
@@ -368,7 +376,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       hiddenFromPlayers: !isPlayer && !targetNpc?.isVisibleToPlayer,
     };
 
-    onUpdateTacticalState({ tokens: [...tacticalState.tokens, newToken] });
+    onUpdateTacticalState({ tokens: [...tokens, newToken] });
     setSelectedTokenId(newToken.id);
   };
 
@@ -481,11 +489,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       <div className="absolute top-18 right-3 bottom-3 z-20 pointer-events-auto flex">
         <TacticalTokenSidebar
           characters={characters}
-          tokens={tacticalState.tokens}
+          tokens={tokens}
           selectedTokenId={selectedTokenId}
           onSelectToken={(id) => {
             setSelectedTokenId(id);
-            const token = tacticalState.tokens.find((t) => t.id === id);
+            const token = tokens.find((t) => t.id === id);
             if (token) onSelectNpc(token.npcId);
           }}
           onPlaceToken={handlePlaceToken}
@@ -539,7 +547,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
         {/* Grupo com Pan & Zoom transform */}
         <g
-          transform={`translate(${tacticalState.panX}, ${tacticalState.panY}) scale(${tacticalState.zoom})`}
+          transform={`translate(${panX}, ${panY}) scale(${zoom})`}
         >
           {/* CAMADA 1: FUNDO DO MAPA */}
           {mapBackgroundSrc ? (
@@ -744,7 +752,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 const rangePenalty = getGurpsRangePenalty(distanceYards);
 
                 // Detecta arco de defesa se o alvo for um token
-                const targetToken = tacticalState.tokens.find(
+                const targetToken = tokens.find(
                   (t) => t.gridX === rulerCurrent.col && t.gridY === rulerCurrent.row
                 );
 
@@ -834,7 +842,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
           {/* CAMADA 7: TOKENS DE COMBATE */}
           <g id="tactical-tokens">
-            {tacticalState.tokens.map((token) => {
+            {tokens.map((token) => {
               const npc = characterMap.get(token.npcId);
               if (!npc) return null;
 
@@ -1026,7 +1034,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
       {/* MENU DE CONTEXTO DO TOKEN (BOTÃO DIREITO: DADOS, MANOBRA E LANÇAR DANO) */}
       {contextMenu && (() => {
-        const token = tacticalState.tokens.find((t) => t.id === contextMenu.tokenId);
+        const token = tokens.find((t) => t.id === contextMenu.tokenId);
         const npc = token ? characterMap.get(token.npcId) : null;
         if (!token || !npc) return null;
 
