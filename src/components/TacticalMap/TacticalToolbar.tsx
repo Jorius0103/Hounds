@@ -11,6 +11,7 @@ import {
   MousePointer,
   Ruler,
   CircleDot,
+  Crosshair,
   Eye,
   EyeOff,
   Maximize2,

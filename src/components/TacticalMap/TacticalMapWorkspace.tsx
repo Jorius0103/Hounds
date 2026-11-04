@@ -6,6 +6,8 @@ import {
   TACTICAL_MAP_PRESETS,
   TacticalLayer,
   TacticalViewMode,
+  TacticalMarker,
+  TacticalLightSource,
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
@@ -657,8 +659,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
       if (maxX - minX > 5 || maxY - minY > 5) {
         const nextSet = new Set(revealedSet);
-        for (let r = 0; r < gridRows; r++) {
-          for (let c = 0; c < gridCols; c++) {
+        for (let r = 0; r < dynamicRows; r++) {
+          for (let c = 0; c < dynamicCols; c++) {
             const pt = getHexCenter(c, r, hexSize);
             if (pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY) {
               const key = `${c},${r}`;
@@ -1612,7 +1614,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     opacity={isMapActive ? "1" : "0.9"}
                     className={isMapActive && !tacticalState.mapImageLocked ? "cursor-move" : ""}
                     onLoad={(e) => {
-                      const img = e.currentTarget;
+                      const img = e.currentTarget as unknown as HTMLImageElement;
                       if (!tacticalState.mapImageWidth && img.naturalWidth && img.naturalHeight) {
                         onUpdateTacticalState({
                           mapImageWidth: img.naturalWidth,
@@ -1816,8 +1818,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     );
                     onUpdateTacticalState({ lights: updated });
                   }}
-                  title={`${light.label || 'Foco de Luz'} (${light.radius} jardas) - Clique para ${light.active ? 'apagar' : 'acender'}`}
                 >
+                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} jardas) - Clique para ${light.active ? 'apagar' : 'acender'}`}</title>
                   <circle
                     cx="0"
                     cy="0"
@@ -1933,12 +1935,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                             e.preventDefault();
                             handleToggleMarkerLayer(marker.id);
                           }}
-                          title={
-                            marker.layer === 'gm'
-                              ? "Camada GM (Mestre). Clique para mover para Camada Jogadores (J)"
-                              : "Camada Jogadores (Visível a todos). Clique para mover para Camada GM (M)"
-                          }
                         >
+                          <title>
+                            {marker.layer === 'gm'
+                              ? "Camada GM (Mestre). Clique para mover para Camada Jogadores (J)"
+                              : "Camada Jogadores (Visível a todos). Clique para mover para Camada GM (M)"}
+                          </title>
                           <circle
                             cx="-58"
                             cy="-3"
@@ -1982,8 +1984,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           e.preventDefault();
                           handleDeleteMarker(marker.id);
                         }}
-                        title="Apagar esta área do mapa"
                       >
+                        <title>Apagar esta área do mapa</title>
                         <circle cx="56" cy="-3" r="12" fill="transparent" />
                         <circle cx="56" cy="-3" r="8" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
                         <text
@@ -2059,12 +2061,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                             e.preventDefault();
                             handleToggleMarkerLayer(marker.id);
                           }}
-                          title={
-                            marker.layer === 'gm'
-                              ? "Camada GM (Mestre). Clique para mover para Camada Jogadores (J)"
-                              : "Camada Jogadores (Visível a todos). Clique para mover para Camada GM (M)"
-                          }
                         >
+                          <title>
+                            {marker.layer === 'gm'
+                              ? "Camada GM (Mestre). Clique para mover para Camada Jogadores (J)"
+                              : "Camada Jogadores (Visível a todos). Clique para mover para Camada GM (M)"}
+                          </title>
                           <circle
                             cx="-58"
                             cy="-3"
@@ -2108,8 +2110,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           e.preventDefault();
                           handleDeleteMarker(marker.id);
                         }}
-                        title="Apagar esta medição do mapa"
                       >
+                        <title>Apagar esta medição do mapa</title>
                         <circle cx="56" cy="-3" r="12" fill="transparent" />
                         <circle cx="56" cy="-3" r="8" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
                         <text
@@ -2359,7 +2361,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   key={token.id}
                   transform={`translate(${center.x}, ${center.y})`}
                   opacity={isTokenHidden ? 0.58 : 1}
-                  pointerEvents={activeLayer === 'map' ? 'none' : 'auto'}
+                  pointerEvents="auto"
                   onClick={(e) => handleTokenClick(e, token)}
                   onMouseDown={(e) => handleTokenMouseDown(e, token)}
                   onContextMenu={(e) => {
@@ -2458,8 +2460,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           handleToggleTokenVisibility(token.id);
                         }}
                         className="cursor-pointer hover:scale-105 transition-transform"
-                        title={isTokenHidden ? "Clique para mover para a Camada de Tokens (Visível aos Jogadores)" : "Clique para mover para a Camada do Mestre (Oculto)"}
                       >
+                        <title>
+                          {isTokenHidden
+                            ? "Clique para mover para a Camada de Tokens (Visível aos Jogadores)"
+                            : "Clique para mover para a Camada do Mestre (Oculto)"}
+                        </title>
                         <rect
                           x="-38"
                           y="-7.5"
