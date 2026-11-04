@@ -88,6 +88,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [panStart, setPanStart] = useState<Point>({ x: 0, y: 0 });
   const [draggedTokenId, setDraggedTokenId] = useState<string | null>(null);
   const [dragTokenOrigin, setDragTokenOrigin] = useState<HexCoord | null>(null);
+  const [rotatingTokenId, setRotatingTokenId] = useState<string | null>(null);
 
   // Popover state
   const [popoverToken, setPopoverToken] = useState<TacticalToken | null>(null);
@@ -205,6 +206,30 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       setAreaCenter(hex);
     }
 
+    // Rotação ativa do token pelo "pauzinho" (Roll20 rotation handle)
+    if (rotatingTokenId) {
+      const token = tacticalState.tokens.find((t) => t.id === rotatingTokenId);
+      if (token) {
+        const center = getHexCenter(token.gridX, token.gridY, hexSize);
+        const dx = p.x - center.x;
+        const dy = p.y - center.y;
+        const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+        // Frente está embaixo no SVG (+Y = 90°). deg - 90 aponta a frente para o mouse:
+        let rot = deg - 90;
+        rot = ((rot % 360) + 360) % 360;
+        const roundedRot = Math.round(rot);
+        const facingIndex = (Math.round(((roundedRot + 180) % 360) / 60) % 6) as FacingDirection;
+
+        const updatedTokens = tacticalState.tokens.map((t) =>
+          t.id === rotatingTokenId
+            ? { ...t, rotation: roundedRot, facing: facingIndex }
+            : t
+        );
+        onUpdateTacticalState({ tokens: updatedTokens });
+      }
+      return;
+    }
+
     // Live dragging of a token
     if (draggedTokenId) {
       const updatedTokens = tacticalState.tokens.map((t) => {
@@ -224,6 +249,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleMouseUp = () => {
     if (isPanning) {
       setIsPanning(false);
+    }
+
+    if (rotatingTokenId) {
+      setRotatingTokenId(null);
     }
 
     if (draggedTokenId && dragTokenOrigin) {
@@ -358,7 +387,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   // Handle token drag start
   const handleTokenMouseDown = (e: React.MouseEvent, token: TacticalToken) => {
-    if (e.button !== 0 || token.isPinned) return;
+    if (e.button !== 0 || token.isPinned || rotatingTokenId) return;
     const tokenNpc = characterMap.get(token.npcId);
     const canEditToken = isMaster || hasEditPermission;
     if (!canEditToken) return;
@@ -367,6 +396,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     setDragTokenOrigin({ col: token.gridX, row: token.gridY });
     setSelectedTokenId(token.id);
     onSelectNpc(token.npcId);
+    setPopoverToken(null);
+  };
+
+  // Handle token rotation start via pauzinho (Roll20 rotation handle)
+  const handleRotationMouseDown = (e: React.MouseEvent, token: TacticalToken) => {
+    if (e.button !== 0 || token.isPinned) return;
+    const canEditToken = isMaster || hasEditPermission;
+    if (!canEditToken) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setRotatingTokenId(token.id);
+    setSelectedTokenId(token.id);
+    setDraggedTokenId(null);
+    setDragTokenOrigin(null);
     setPopoverToken(null);
   };
 
@@ -659,7 +702,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             <g id="gurps-combat-arcs">
               {(() => {
                 const center = getHexCenter(selectedToken.gridX, selectedToken.gridY, hexSize);
-                const facingAngle = getFacingAngleDegrees(selectedToken.facing);
+                const tokenRotation =
+                  typeof selectedToken.rotation === 'number'
+                    ? selectedToken.rotation
+                    : ((selectedToken.facing * 60 + 180) % 360);
+                const aimAngle = (tokenRotation + 180) % 360;
 
                 return (
                   <g transform={`translate(${center.x}, ${center.y})`}>
@@ -675,7 +722,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       strokeDasharray={`${(Math.PI * hexSize * 1.6) / 3} ${
                         (Math.PI * hexSize * 1.6 * 2) / 3
                       }`}
-                      transform={`rotate(${facingAngle - 60})`}
+                      transform={`rotate(${aimAngle - 60})`}
                     />
                   </g>
                 );
@@ -826,13 +873,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               const isPlayer = npc.characterType === 'player';
               const isSelected = token.id === selectedTokenId;
               const center = getHexCenter(token.gridX, token.gridY, hexSize);
-              const facingAngle = getFacingAngleDegrees(token.facing);
+              const tokenRotation =
+                typeof token.rotation === 'number'
+                  ? token.rotation
+                  : ((token.facing * 60 + 180) % 360);
               const tokenRadius = hexSize * 0.75;
 
               const hpPercent =
                 npc.hpMax > 0
                   ? Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))
                   : 100;
+
+              const badgeWidth = Math.min(110, Math.max(40, npc.name.length * 7));
 
               return (
                 <g
@@ -847,108 +899,148 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
                   }}
                 >
-                  {/* Círculo de Base com Borda Faccionada */}
-                  <circle
-                    cx="0"
-                    cy="0"
-                    r={tokenRadius + 3}
-                    fill={isPlayer ? '#065f46' : '#7f1d1d'}
-                    stroke={isSelected ? '#f59e0b' : isPlayer ? '#10b981' : '#ef4444'}
-                    strokeWidth={isSelected ? 3.5 : 2}
-                  />
-
-                  {/* Retrato / Avatar recortado */}
-                  <clipPath id={`clip-${token.id}`}>
-                    <circle cx="0" cy="0" r={tokenRadius} />
-                  </clipPath>
-
-                  {npc.avatar ? (
-                    <image
-                      href={npc.avatar}
-                      x={-tokenRadius}
-                      y={-tokenRadius}
-                      width={tokenRadius * 2}
-                      height={tokenRadius * 2}
-                      clipPath={`url(#clip-${token.id})`}
-                      preserveAspectRatio="xMidYMid slice"
-                    />
-                  ) : (
+                  {/* GRUPO ROTATIVO INTEGRAL: Foto, Nome (em cima), Frente (embaixo) e Pauzinho giram juntos */}
+                  <g transform={`rotate(${tokenRotation})`}>
+                    {/* 1. Círculo de Base com Borda Faccionada */}
                     <circle
                       cx="0"
                       cy="0"
-                      r={tokenRadius}
-                      fill={isPlayer ? '#047857' : '#991b1b'}
+                      r={tokenRadius + 3}
+                      fill={isPlayer ? '#065f46' : '#7f1d1d'}
+                      stroke={isSelected ? '#f59e0b' : isPlayer ? '#10b981' : '#ef4444'}
+                      strokeWidth={isSelected ? 3.5 : 2}
                     />
-                  )}
 
-                  {/* Nome sobre o token se sem avatar */}
-                  {!npc.avatar && (
+                    {/* 2. Retrato / Avatar recortado */}
+                    <clipPath id={`clip-${token.id}`}>
+                      <circle cx="0" cy="0" r={tokenRadius} />
+                    </clipPath>
+
+                    {npc.avatar ? (
+                      <image
+                        href={npc.avatar}
+                        x={-tokenRadius}
+                        y={-tokenRadius}
+                        width={tokenRadius * 2}
+                        height={tokenRadius * 2}
+                        clipPath={`url(#clip-${token.id})`}
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                    ) : (
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r={tokenRadius}
+                        fill={isPlayer ? '#047857' : '#991b1b'}
+                      />
+                    )}
+
+                    {/* Iniciais sobre o token se sem avatar */}
+                    {!npc.avatar && (
+                      <text
+                        x="0"
+                        y="4"
+                        fill="#ffffff"
+                        fontSize="11"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {npc.name.slice(0, 2).toUpperCase()}
+                      </text>
+                    )}
+
+                    {/* 3. NOME DO PERSONAGEM EM CIMA DA FOTO (gira junto com o token) */}
+                    <rect
+                      x={-badgeWidth / 2}
+                      y={-tokenRadius - 18}
+                      width={badgeWidth}
+                      height="15"
+                      rx="4"
+                      fill="#020617"
+                      fillOpacity="0.9"
+                      stroke="#334155"
+                      strokeWidth="0.8"
+                    />
                     <text
                       x="0"
-                      y="4"
-                      fill="#ffffff"
-                      fontSize="11"
+                      y={-tokenRadius - 7}
+                      fill="#f1f5f9"
+                      fontSize="9.5"
                       fontWeight="bold"
                       textAnchor="middle"
                     >
-                      {npc.name.slice(0, 2).toUpperCase()}
+                      {npc.name}
                     </text>
-                  )}
 
-                  {/* SETA DE FACING / ORIENTAÇÃO (GURPS) */}
-                  <g transform={`rotate(${facingAngle})`}>
+                    {/* 4. MARCAÇÃO DE FRENTE EMBAIXO DA FOTO (onde ficava o nome) */}
                     <polygon
-                      points={`0,${-tokenRadius - 9} -5,${-tokenRadius - 2} 5,${-tokenRadius - 2}`}
+                      points={`0,${tokenRadius + 13} -8,${tokenRadius + 3} 8,${tokenRadius + 3}`}
                       fill="#f59e0b"
                       stroke="#020617"
-                      strokeWidth="1"
+                      strokeWidth="1.2"
                     />
+                    <circle cx="0" cy={tokenRadius + 5} r="1.5" fill="#ffffff" />
+
+                    {/* 5. Barra de PV no interior inferior do token */}
+                    <rect
+                      x={-tokenRadius + 4}
+                      y={tokenRadius - 6}
+                      width={(tokenRadius - 4) * 2}
+                      height="4"
+                      rx="2"
+                      fill="#020617"
+                    />
+                    <rect
+                      x={-tokenRadius + 4}
+                      y={tokenRadius - 6}
+                      width={(((tokenRadius - 4) * 2) * hpPercent) / 100}
+                      height="4"
+                      rx="2"
+                      fill={
+                        hpPercent > 50
+                          ? '#10b981'
+                          : hpPercent > 20
+                          ? '#f59e0b'
+                          : '#ef4444'
+                      }
+                    />
+
+                    {/* 6. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
+                    {isSelected && (
+                      <g className="cursor-grab">
+                        {/* Haste estendida conectando a marcação de frente até a alça */}
+                        <line
+                          x1="0"
+                          y1={tokenRadius + 13}
+                          x2="0"
+                          y2={tokenRadius + 30}
+                          stroke="#38bdf8"
+                          strokeWidth="2.5"
+                          strokeDasharray="3,2"
+                        />
+                        {/* Alça circular na ponta do pauzinho */}
+                        <circle
+                          cx="0"
+                          cy={tokenRadius + 30}
+                          r="6.5"
+                          fill="#0284c7"
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                          className="hover:scale-125 transition-transform"
+                        />
+                        <circle cx="0" cy={tokenRadius + 30} r="2" fill="#ffffff" />
+                        {/* Hitbox invisível ampla para facilitar o clique e arrasto no mouse/touch */}
+                        <circle
+                          cx="0"
+                          cy={tokenRadius + 30}
+                          r="15"
+                          fill="transparent"
+                          className="cursor-grab active:cursor-grabbing"
+                          onMouseDown={(e) => handleRotationMouseDown(e, token)}
+                        />
+                      </g>
+                    )}
                   </g>
-
-                  {/* Barra de PV na base do token */}
-                  <rect
-                    x={-tokenRadius}
-                    y={tokenRadius - 4}
-                    width={tokenRadius * 2}
-                    height="4"
-                    rx="2"
-                    fill="#020617"
-                  />
-                  <rect
-                    x={-tokenRadius}
-                    y={tokenRadius - 4}
-                    width={(tokenRadius * 2 * hpPercent) / 100}
-                    height="4"
-                    rx="2"
-                    fill={
-                      hpPercent > 50
-                        ? '#10b981'
-                        : hpPercent > 20
-                        ? '#f59e0b'
-                        : '#ef4444'
-                    }
-                  />
-
-                  {/* Badge de Nome do Token */}
-                  <rect
-                    x={-Math.min(50, npc.name.length * 3.5)}
-                    y={tokenRadius + 4}
-                    width={Math.min(100, npc.name.length * 7)}
-                    height="14"
-                    rx="4"
-                    fill="#020617"
-                    fillOpacity="0.85"
-                  />
-                  <text
-                    x="0"
-                    y={tokenRadius + 15}
-                    fill="#f1f5f9"
-                    fontSize="9.5"
-                    fontWeight="bold"
-                    textAnchor="middle"
-                  >
-                    {npc.name}
-                  </text>
                 </g>
               );
             })}

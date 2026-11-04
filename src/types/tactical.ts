@@ -8,6 +8,7 @@ export interface TacticalToken {
   gridX: number; // Coluna ou coordenada axial Q
   gridY: number; // Linha ou coordenada axial R
   facing: FacingDirection; // Direção de frente (0 a 5 no hexágono)
+  rotation?: number; // Rotação livre em graus (0 a 360) como no Roll20
   elevation: number; // Altura em jardas/metros (0 = solo)
   reach: number; // Alcance da arma atual em jardas (padrão 1)
   size: number; // Tamanho em hexes (1 = 1 hex, 2 = criatura grande)
