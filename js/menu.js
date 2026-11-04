@@ -40,7 +40,7 @@ function buildMenu() {
   ];
 
   // Nova aba Tabuleiro oficial (apenas Mestre para configurar/oficina)
-  if (isMestre()) {
+  if (typeof isMestre === 'function' && isMestre()) {
     items.push({ id: 'tabuleiro', label: 'Tabuleiro', icon: ICON.board, route: true });
   }
 
@@ -50,7 +50,7 @@ function buildMenu() {
     children: W.boards.slice().sort(byName).map(function (b) { return { id: 'board:' + b.id, label: b.name, icon: ICON.board, route: true, secret: isSecret(b) }; })
   });
 
-  return items.concat([
+  var worldAndRules = [
     { id: 'mundo', label: 'Mundo', icon: ICON.mundo, children: [
       { id: 'maps', label: 'Maps', icon: ICON.maps, route: true, hideKids: true, children: mapNodes(null) },
       { id: 'locais', label: 'Locais', icon: ICON.pin, route: true, hideKids: true, children: locNodes(null) },
@@ -90,7 +90,13 @@ function buildMenu() {
         return { id: 'nb:' + nb.id, label: nb.name, icon: ICON.notes, route: true, secret: isSecret(nb),
           children: nbNotes(nb.id).map(function (n) { return { id: 'note:' + n.id, label: n.title, icon: ICON.note, route: true, secret: isSecret(n) }; }) };
       }) }
-  ].concat(canManageUsers() ? [{ id: 'users', label: 'Usuários', icon: ICON.users, route: true }] : []);
+  ];
+
+  var userItems = (typeof canManageUsers === 'function' && canManageUsers())
+    ? [{ id: 'users', label: 'Usuários', icon: ICON.users, route: true }]
+    : [];
+
+  return items.concat(worldAndRules).concat(userItems);
 }
 var menuEl = $('menu'), app = $('app');
 var byId = {}, parentOf = {}, expanded = {}, menuHtml = '';

@@ -5,7 +5,7 @@ import { Swords, Map, Plus, Play, Sparkles, Shield, User, Info, CheckCircle2 } f
 
 export function TabuleiroPage() {
   const { W } = useHub();
-  const isMaster = isMestre();
+  const isMaster = typeof isMestre === 'function' ? isMestre() : false;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto py-2">
@@ -117,3 +117,4 @@ export function TabuleiroPage() {
     </div>
   );
 }
+
