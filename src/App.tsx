@@ -683,11 +683,20 @@ export default function App() {
   const allCharacters = useMemo(() => {
     const list: NPC[] = [];
     const seen = new Set<string>();
-    const activePlayerSet = new Set(sessionPlayerIds);
+    const activePlayerSet = new Set(
+      sessionPlayerIds && sessionPlayerIds.length > 0 ? sessionPlayerIds : players.map((p) => p.id)
+    );
 
     // Personagens da campanha sempre mantidos e sincronizados conforme visibilidade global da Mesa
     for (const p of players) {
-      if (p.characterType !== 'npc' && activePlayerSet.has(p.id) && !seen.has(p.id)) {
+      const isMyChar = Boolean(
+        currentUser &&
+        (p.userId === currentUser.id ||
+          p.ownerId === currentUser.id ||
+          p.name === currentUser.name ||
+          (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+      );
+      if (p.characterType !== 'npc' && (activePlayerSet.has(p.id) || isMyChar) && !seen.has(p.id)) {
         seen.add(p.id);
         const preset = HOUNDS_PLAYERS.find(
           (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
@@ -716,7 +725,7 @@ export default function App() {
       }
     }
     return list;
-  }, [players, activeCombat, sessionPlayerIds, isNoCombat]);
+  }, [players, activeCombat, sessionPlayerIds, isNoCombat, currentUser]);
 
   // Lista unificada de Personagens de Jogadores (para modais e recarga de recursos)
   const allPlayerCharacters = useMemo(() => {
@@ -1881,7 +1890,12 @@ export default function App() {
       } catch (e) {}
     }
 
+    const initialSyncTimer = setTimeout(() => {
+      wakeAndSyncSystem();
+    }, 1200);
+
     return () => {
+      clearTimeout(initialSyncTimer);
       fetchSupabaseRollsRef.current = null;
       unsubStatus();
       unsubMsg();

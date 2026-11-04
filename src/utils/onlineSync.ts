@@ -220,6 +220,17 @@ class OnlineSyncService {
             } else {
               // Otherwise, request latest room state from other devices
               this.requestSync();
+              // Retentativas rápidas caso o banco ou mestre ainda estejam baixando dados iniciais
+              setTimeout(() => {
+                if (Date.now() - this.lastMessageTime > 700) {
+                  this.requestSync();
+                }
+              }, 800);
+              setTimeout(() => {
+                if (Date.now() - this.lastMessageTime > 1800) {
+                  this.requestSync();
+                }
+              }, 2000);
             }
           }
         });

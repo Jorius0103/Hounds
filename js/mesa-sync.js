@@ -290,7 +290,9 @@ var MesaSync = (function () {
         remember(rev);
         loadedRev = rev;
         state = Object.assign({}, st, { combats: cleanedCombats, players: cleanedPlayers });
+        try { toLocal(state); } catch (e) {}
         readyRes();
+        if (shown()) pushState();
         if (hadEmptyNpcs && canSave()) queueSave();
         return;
       }
@@ -804,7 +806,18 @@ var MesaSync = (function () {
       }).then(function (r) { if (r !== 'skip') toast('Combate salvo.'); }, function (er) { toast('Não foi possível salvar a Mesa: ' + errorText(er), true); });
     },
     push: push,
-    subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (x) { return x !== fn; }); }; }
+    subscribe: function (fn) {
+      listeners.push(fn);
+      var cur = state || localState();
+      if (cur) {
+        setTimeout(function () {
+          try {
+            fn(JSON.stringify(Object.assign({ type: 'SYNC_FULL', clientId: 'hub', timestamp: Date.now() }, cur)));
+          } catch (e) {}
+        }, 0);
+      }
+      return function () { listeners = listeners.filter(function (x) { return x !== fn; }); };
+    }
   };
 })();
 window.hubMesaBus = {

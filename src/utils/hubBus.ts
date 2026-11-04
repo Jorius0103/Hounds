@@ -22,7 +22,11 @@ export function connectHubBus(): HubBusClient {
   const handlers: Record<string, Handler[]> = {};
   const emit = (event: string, ...args: unknown[]) => (handlers[event] || []).forEach((h) => h(...args));
   let ended = false;
-  let subscribedTopic = '';
+  let subscribedTopic = 'gurps_rpg_sync_v2/THE-HOUNDS';
+  try {
+    const savedRoom = localStorage.getItem('gurps_online_room_code') || 'THE-HOUNDS';
+    subscribedTopic = `gurps_rpg_sync_v2/${savedRoom.trim().toUpperCase()}`;
+  } catch {}
   let unsubscribe: (() => void) | null = null;
 
   let bus: HubMesaBus | null = null;
