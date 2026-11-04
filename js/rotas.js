@@ -53,7 +53,8 @@ function parseRoute() {
   if (p[0] === 'melhoramentos') return { page: 'improvements', node: 'improvements' };
   if (p[0] === 'melhoramento' && p[1]) return { page: 'improvement', improvementId: p[1], node: 'impr:' + p[1] };
   if (p[0] === 'mesa') return { page: 'mesa', node: 'mesa' };
-  if (p[0] === 'tabuleiros') return { page: 'boards', node: 'boards' };
+  if (p[0] === 'tabuleiro' && !p[1]) return { page: 'tabuleiro', node: 'tabuleiro' };
+  if (p[0] === 'tabuleiros' || p[0] === 'tabuleiro-roll20') return { page: 'boards', node: 'boards' };
   if (p[0] === 'tabuleiro' && p[1]) return { page: 'board', boardId: p[1], node: 'board:' + p[1] };
   if (p[0] === 'usuarios') return { page: 'users', node: 'users' };
   if (p[0] === 'anotacoes') return { page: 'notes', node: 'notes' };
@@ -100,6 +101,7 @@ function hrefFor(node) {
   if (node.indexOf('item:') === 0) return '#item~' + encodeURIComponent(node.slice(5));
   if (node === 'improvements') return '#melhoramentos';
   if (node.indexOf('impr:') === 0) return '#melhoramento~' + encodeURIComponent(node.slice(5));
+  if (node === 'tabuleiro') return '#tabuleiro';
   if (node === 'boards') return '#tabuleiros';
   if (node.indexOf('board:') === 0) return '#tabuleiro~' + encodeURIComponent(node.slice(6));
   return '#';

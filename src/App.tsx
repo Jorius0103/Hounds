@@ -38,9 +38,8 @@ const SESSION_VISIBLE_PLAYERS_KEY = 'gurps_mesa_visible_players_v1';
 const SYNC_CHANNEL_NAME = 'gurps_combat_realtime_sync_v2';
 const MESA_VIEW_STATE_KEY = 'hounds_mesa_view_state_v1';
 
-// Mapa tático e Visão Dividida: prontos no src/, mas fora do ar até decisão da equipe
-// (docs/diferencas-mesa.md, item S1). Com false, a Mesa fica sempre em Fichas & Log.
-const TACTICAL_MAP_ENABLED = false;
+// Mapa tático e Visão Dividida habilitados para o Tabuleiro de Combate integrado
+const TACTICAL_MAP_ENABLED = true;
 
 function getMesaSessionStorage(): Storage | null {
   try {
@@ -5424,7 +5423,8 @@ export default function App() {
         onToggleHideGmRolls={handleToggleHideGmRolls}
       />
 
-      {/* 2. BARRA DE PERSONAGENS & NPCS (Espalha até a direita, filtros na esquerda) */}
+      {/* 2. BARRA DE PERSONAGENS & NPCS (Oculta na visão tática para liberar o espaço total do tabuleiro) */}
+      {activeViewMode !== 'tactical' && (
       <NpcListBar
         npcs={allCharacters}
         selectedNpcId={isHomeScreen && activeViewMode === 'sheets' ? '' : selectedNpcId}
@@ -5448,33 +5448,54 @@ export default function App() {
         onlinePlayerNames={onlinePlayerNames}
         users={users}
       />
+      )}
 
       {/* 3. MAIN WORKSPACE (Conforme Modo Selecionado: Mesa Tática, Fichas ou Dividida) */}
       {!(isHomeScreen && activeViewMode === 'sheets') && (
       <main className="flex-1 w-full p-2.5 sm:p-3.5 lg:px-5">
         {activeViewMode === 'tactical' ? (
-          /* MODO MESA TÁTICA COMPLETA */
-          <div className="w-full">
-            <TacticalMapWorkspace
-              tacticalState={activeTacticalState}
-              onUpdateTacticalState={handleUpdateTacticalState}
-              characters={allCharacters}
-              selectedNpcId={selectedNpcId}
-              onSelectNpc={setSelectedNpcId}
-              onUpdateNpc={handleUpdateNpc}
-              currentUserRole={effectiveRole}
-              onOpenFullNpcSheet={(npcId) => {
-                setSelectedNpcId(npcId);
-                setActiveViewMode('split');
-              }}
-              hasEditPermission={canEditCurrent}
-              onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
-              editorCount={effectiveEditorIds.length}
-              users={users}
-              editorUserIds={effectiveEditorIds}
-              onTogglePlayerPermission={handleTogglePlayerPermission}
-              onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
-            />
+          /* MODO TABULEIRO TÁTICO COM LOG DE COMBATE INTEGRADO À DIREITA */
+          <div className="flex flex-col xl:flex-row gap-3.5 items-start w-full">
+            <div className="flex-1 min-w-0 w-full">
+              <TacticalMapWorkspace
+                tacticalState={activeTacticalState}
+                onUpdateTacticalState={handleUpdateTacticalState}
+                characters={allCharacters}
+                selectedNpcId={selectedNpcId}
+                onSelectNpc={setSelectedNpcId}
+                onUpdateNpc={handleUpdateNpc}
+                currentUserRole={effectiveRole}
+                onOpenFullNpcSheet={(npcId) => {
+                  setSelectedNpcId(npcId);
+                  setActiveViewMode('split');
+                }}
+                hasEditPermission={canEditCurrent}
+                onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
+                editorCount={effectiveEditorIds.length}
+                users={users}
+                editorUserIds={effectiveEditorIds}
+                onTogglePlayerPermission={handleTogglePlayerPermission}
+                onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
+              />
+            </div>
+            {/* Coluna da Direita: Log de Combate e Rolagens em Tempo Real */}
+            <div className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky" style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}>
+              <GeneralCombatLog
+                activeCombat={activeCombat}
+                additionalCharacters={allCharacters}
+                sessionEvents={sessionEvents}
+                onSelectNpc={(npcId) => {
+                  setSelectedNpcId(npcId);
+                }}
+                selectedNpcId={selectedNpcId}
+                currentUserRole={effectiveRole}
+                currentUserName={currentUser?.name}
+                canDelete={canEditCurrent}
+                onClearHistory={handleClearActiveCombatHistory}
+                onDeleteEntry={handleDeleteLogEntry}
+                onUpdateEntryComment={handleUpdateLogEntryComment}
+              />
+            </div>
           </div>
         ) : activeViewMode === 'split' ? (
           /* MODO VISÃO DIVIDIDA: MESA TÁTICA + FICHA DO PERSONAGEM */

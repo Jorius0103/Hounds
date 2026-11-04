@@ -35,10 +35,22 @@ function openLeaf(prefix, icon, find, label) {
   return [{ id: node, label: x ? x.name : label, icon: icon, route: true, secret: isSecret(x) }];
 }
 function buildMenu() {
-  return [
-    { id: 'mesa', label: 'Mesa de RPG', icon: ICON.mesa, route: true },
-    { id: 'boards', label: 'Tabuleiros', icon: ICON.board, route: true, hideKids: true,
-      children: W.boards.slice().sort(byName).map(function (b) { return { id: 'board:' + b.id, label: b.name, icon: ICON.board, route: true, secret: isSecret(b) }; }) },
+  var items = [
+    { id: 'mesa', label: 'Mesa de RPG', icon: ICON.mesa, route: true }
+  ];
+
+  // Nova aba Tabuleiro oficial (apenas Mestre para configurar/oficina)
+  if (isMestre()) {
+    items.push({ id: 'tabuleiro', label: 'Tabuleiro', icon: ICON.board, route: true });
+  }
+
+  // Aba legada do Roll20 mantida como consulta durante o desenvolvimento
+  items.push({
+    id: 'boards', label: 'Tabuleiro (Roll20)', icon: ICON.board, route: true, hideKids: true,
+    children: W.boards.slice().sort(byName).map(function (b) { return { id: 'board:' + b.id, label: b.name, icon: ICON.board, route: true, secret: isSecret(b) }; })
+  });
+
+  return items.concat([
     { id: 'mundo', label: 'Mundo', icon: ICON.mundo, children: [
       { id: 'maps', label: 'Maps', icon: ICON.maps, route: true, hideKids: true, children: mapNodes(null) },
       { id: 'locais', label: 'Locais', icon: ICON.pin, route: true, hideKids: true, children: locNodes(null) },
