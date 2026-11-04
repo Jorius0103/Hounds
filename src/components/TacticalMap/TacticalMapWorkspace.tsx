@@ -83,6 +83,30 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const hTrackRef = useRef<HTMLDivElement>(null);
+  const vTrackRef = useRef<HTMLDivElement>(null);
+
+  // Monitora as dimensões do container para calcular barras de rolagem e centralização
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({
+    width: 1200,
+    height: 800,
+  });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        });
+      }
+    };
+    updateSize();
+    const ro = new ResizeObserver(() => updateSize());
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const [activeTool, setActiveTool] = useState<TacticalToolMode>('select');
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
@@ -225,14 +249,21 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     });
   }, []);
 
-  // Compute hex grid dimensions
+  // Imagem base e dimensões em pixels do mapa
+  const mapX = localMapPos ? localMapPos.x : (tacticalState.mapImageX || 0);
+  const mapY = localMapPos ? localMapPos.y : (tacticalState.mapImageY || 0);
+  const scale = tacticalState.mapImageScale || 1;
+  const baseW = tacticalState.mapImageWidth || 2400;
+  const baseH = tacticalState.mapImageHeight || 1600;
+  const mapW = Math.round(baseW * scale);
+  const mapH = Math.round(baseH * scale);
+
+  // Dimensões do grid hexagonal calibradas exatamente para o tamanho da imagem (nem falta nem sobra)
   const hexSize = tacticalState?.hexSize || 38;
-  const gridCols = tacticalState?.gridCols || 32;
-  const gridRows = tacticalState?.gridRows || 24;
   const hexWidth = Math.sqrt(3) * hexSize;
-  const hexHeight = 2 * hexSize;
-  const mapPixelWidth = (gridCols + 1) * hexWidth;
-  const mapPixelHeight = (gridRows + 1) * (1.5 * hexSize);
+  const rowSpacing = 1.5 * hexSize;
+  const dynamicCols = Math.ceil(mapW / hexWidth) + 2;
+  const dynamicRows = Math.ceil(mapH / rowSpacing) + 2;
 
   // Convert client mouse event to map coordinate (respecting pan and zoom)
   const clientToMapCoords = useCallback(
@@ -246,12 +277,24 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     [panX, panY, zoom]
   );
 
-  // Pan controls locais (sem flood de rede ou banco)
+  // Zoom direcionado pelo ponteiro do mouse (scroll do mouse vai em direção ao cursor)
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    const newZoom = Math.max(0.4, Math.min(2.5, zoom * zoomFactor));
-    updateViewport({ zoom: newZoom });
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const mapCoordX = (mouseX - panX) / zoom;
+    const mapCoordY = (mouseY - panY) / zoom;
+
+    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
+    const newZoom = Math.max(0.3, Math.min(3.0, Number((zoom * zoomFactor).toFixed(3))));
+
+    const newPanX = Math.round(mouseX - mapCoordX * newZoom);
+    const newPanY = Math.round(mouseY - mapCoordY * newZoom);
+
+    updateViewport({ zoom: newZoom, panX: newPanX, panY: newPanY });
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -286,7 +329,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     // Ruler tool start
     if (activeTool === 'ruler' && e.button === 0) {
       const p = clientToMapCoords(e.clientX, e.clientY);
-      const hex = pixelToHex(p.x, p.y, hexSize);
+      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
       setRulerStart(hex);
       setRulerCurrent(hex);
     }
@@ -311,7 +354,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     }
 
     const p = clientToMapCoords(e.clientX, e.clientY);
-    const hex = pixelToHex(p.x, p.y, hexSize);
+    const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
     setHoveredHex(hex);
 
     if (activeTool === 'ruler' && rulerStart) {
@@ -326,7 +369,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     if (rotatingTokenId) {
       const token = tokens.find((t) => t.id === rotatingTokenId);
       if (token) {
-        const center = getHexCenter(token.gridX, token.gridY, hexSize);
+        const rel = getHexCenter(token.gridX, token.gridY, hexSize);
+        const center = { x: mapX + rel.x, y: mapY + rel.y };
         const dx = p.x - center.x;
         const dy = p.y - center.y;
         const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -397,15 +441,127 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   // Zoom helpers locais
   const handleZoomIn = () => {
-    updateViewport({ zoom: Math.min(2.5, zoom * 1.2) });
+    const mouseX = containerSize.width / 2;
+    const mouseY = containerSize.height / 2;
+    const mapCoordX = (mouseX - panX) / zoom;
+    const mapCoordY = (mouseY - panY) / zoom;
+    const newZoom = Math.min(3.0, Number((zoom * 1.2).toFixed(3)));
+    const newPanX = Math.round(mouseX - mapCoordX * newZoom);
+    const newPanY = Math.round(mouseY - mapCoordY * newZoom);
+    updateViewport({ zoom: newZoom, panX: newPanX, panY: newPanY });
   };
 
   const handleZoomOut = () => {
-    updateViewport({ zoom: Math.max(0.4, zoom / 1.2) });
+    const mouseX = containerSize.width / 2;
+    const mouseY = containerSize.height / 2;
+    const mapCoordX = (mouseX - panX) / zoom;
+    const mapCoordY = (mouseY - panY) / zoom;
+    const newZoom = Math.max(0.3, Number((zoom / 1.2).toFixed(3)));
+    const newPanX = Math.round(mouseX - mapCoordX * newZoom);
+    const newPanY = Math.round(mouseY - mapCoordY * newZoom);
+    updateViewport({ zoom: newZoom, panX: newPanX, panY: newPanY });
   };
 
   const handleResetView = () => {
     updateViewport({ zoom: 1, panX: 40, panY: 40 });
+  };
+
+  // Cálculos para Barras de Rolagem (quando o mapa for maior que a tela)
+  const contentW = mapW * zoom;
+  const contentH = mapH * zoom;
+  const containerW = containerSize.width;
+  const containerH = containerSize.height;
+
+  const showHScroll = contentW > containerW;
+  const showVScroll = contentH > containerH;
+
+  const panX_left = 20 - mapX * zoom;
+  const panX_right = containerW - 20 - (mapX + mapW) * zoom;
+  const panRangeX = panX_left - panX_right;
+
+  const panY_top = 20 - mapY * zoom;
+  const panY_bottom = containerH - 20 - (mapY + mapH) * zoom;
+  const panRangeY = panY_top - panY_bottom;
+
+  const thumbWidthPercent = Math.max(10, Math.min(100, (containerW / (contentW || 1)) * 100));
+  const thumbHeightPercent = Math.max(10, Math.min(100, (containerH / (contentH || 1)) * 100));
+
+  const progressX = panRangeX > 0 ? Math.max(0, Math.min(1, (panX_left - panX) / panRangeX)) : 0;
+  const thumbLeftPercent = progressX * (100 - thumbWidthPercent);
+
+  const progressY = panRangeY > 0 ? Math.max(0, Math.min(1, (panY_top - panY) / panRangeY)) : 0;
+  const thumbTopPercent = progressY * (100 - thumbHeightPercent);
+
+  const handleHTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!hTrackRef.current || panRangeX <= 0) return;
+    const rect = hTrackRef.current.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const newPanX = panX_left - frac * panRangeX;
+    updateViewport({ panX: Math.round(newPanX) });
+  };
+
+  const handleHThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const initialPanX = panX;
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+
+    const onPointerMove = (ev: PointerEvent) => {
+      if (!hTrackRef.current || panRangeX <= 0) return;
+      const trackW = hTrackRef.current.clientWidth;
+      const deltaX = ev.clientX - startX;
+      const deltaPan = -(deltaX / trackW) * panRangeX;
+      updateViewport({ panX: Math.round(initialPanX + deltaPan) });
+    };
+
+    const onPointerUp = (ev: PointerEvent) => {
+      target.releasePointerCapture(ev.pointerId);
+      target.removeEventListener('pointermove', onPointerMove);
+      target.removeEventListener('pointerup', onPointerUp);
+      target.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    target.addEventListener('pointermove', onPointerMove);
+    target.addEventListener('pointerup', onPointerUp);
+    target.addEventListener('pointercancel', onPointerUp);
+  };
+
+  const handleVTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!vTrackRef.current || panRangeY <= 0) return;
+    const rect = vTrackRef.current.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    const newPanY = panY_top - frac * panRangeY;
+    updateViewport({ panY: Math.round(newPanY) });
+  };
+
+  const handleVThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startY = e.clientY;
+    const initialPanY = panY;
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+
+    const onPointerMove = (ev: PointerEvent) => {
+      if (!vTrackRef.current || panRangeY <= 0) return;
+      const trackH = vTrackRef.current.clientHeight;
+      const deltaY = ev.clientY - startY;
+      const deltaPan = -(deltaY / trackH) * panRangeY;
+      updateViewport({ panY: Math.round(initialPanY + deltaPan) });
+    };
+
+    const onPointerUp = (ev: PointerEvent) => {
+      target.releasePointerCapture(ev.pointerId);
+      target.removeEventListener('pointermove', onPointerMove);
+      target.removeEventListener('pointerup', onPointerUp);
+      target.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    target.addEventListener('pointermove', onPointerMove);
+    target.addEventListener('pointerup', onPointerUp);
+    target.addEventListener('pointercancel', onPointerUp);
   };
 
   // Auto-place all characters onto map
@@ -565,11 +721,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Focus view on a token (local viewport)
   const handleFocusToken = (token: TacticalToken) => {
     if (!containerRef.current) return;
-    const center = getHexCenter(token.gridX, token.gridY, hexSize);
+    const rel = getHexCenter(token.gridX, token.gridY, hexSize);
+    const center = { x: mapX + rel.x, y: mapY + rel.y };
     const rect = containerRef.current.getBoundingClientRect();
     const newPanX = rect.width / 2 - center.x * zoom;
     const newPanY = rect.height / 2 - center.y * zoom;
-    updateViewport({ panX: newPanX, panY: newPanY });
+    updateViewport({ panX: Math.round(newPanX), panY: Math.round(newPanY) });
     setSelectedTokenId(token.id);
   };
 
@@ -1005,6 +1162,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             <rect width="70" height="70" fill="#78350f" />
             <circle cx="35" cy="35" r="28" fill="#92400e" opacity="0.2" />
           </pattern>
+
+          {/* Limite exato da imagem base para a grade não sobrar para fora */}
+          <clipPath id="map-image-bounds">
+            <rect x={mapX} y={mapY} width={mapW} height={mapH} />
+          </clipPath>
         </defs>
 
         {/* Grupo com Pan & Zoom transform */}
@@ -1013,14 +1175,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         >
           {/* CAMADA 1: FUNDO DO MAPA (ROLL20 MAP LAYER) */}
           {(() => {
-            const mapX = localMapPos ? localMapPos.x : (tacticalState.mapImageX || 0);
-            const mapY = localMapPos ? localMapPos.y : (tacticalState.mapImageY || 0);
-            const scale = tacticalState.mapImageScale || 1;
-            // Dimensões base da imagem desvinculadas do hexSize (para permitir calibrar grid sem mexer na imagem)
-            const baseW = tacticalState.mapImageWidth || 2400;
-            const baseH = tacticalState.mapImageHeight || 1600;
-            const w = baseW * scale;
-            const h = baseH * scale;
             const isMapActive = activeLayer === 'map';
 
             return (
@@ -1031,8 +1185,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     href={mapBackgroundSrc}
                     x={mapX}
                     y={mapY}
-                    width={w}
-                    height={h}
+                    width={mapW}
+                    height={mapH}
                     preserveAspectRatio="none"
                     opacity={isMapActive ? "1" : "0.9"}
                     className={isMapActive && !tacticalState.mapImageLocked ? "cursor-move" : ""}
@@ -1051,8 +1205,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     id="map-background"
                     x={mapX}
                     y={mapY}
-                    width={w}
-                    height={h}
+                    width={mapW}
+                    height={mapH}
                     fill="url(#grid-dungeon)"
                   />
                 ) : tacticalState.backgroundKey === 'forest' ? (
@@ -1060,8 +1214,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     id="map-background"
                     x={mapX}
                     y={mapY}
-                    width={w}
-                    height={h}
+                    width={mapW}
+                    height={mapH}
                     fill="url(#grid-forest)"
                   />
                 ) : tacticalState.backgroundKey === 'tavern' ? (
@@ -1069,8 +1223,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     id="map-background"
                     x={mapX}
                     y={mapY}
-                    width={w}
-                    height={h}
+                    width={mapW}
+                    height={mapH}
                     fill="url(#grid-tavern)"
                   />
                 ) : tacticalState.backgroundKey === 'arena' ? (
@@ -1078,8 +1232,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     id="map-background"
                     x={mapX}
                     y={mapY}
-                    width={w}
-                    height={h}
+                    width={mapW}
+                    height={mapH}
                     fill="url(#grid-arena)"
                   />
                 ) : (
@@ -1087,8 +1241,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     id="map-background"
                     x={mapX}
                     y={mapY}
-                    width={w}
-                    height={h}
+                    width={mapW}
+                    height={mapH}
                     fill="#0b1120"
                   />
                 )}
@@ -1099,8 +1253,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     <rect
                       x={mapX}
                       y={mapY}
-                      width={w}
-                      height={h}
+                      width={mapW}
+                      height={mapH}
                       fill="none"
                       stroke="#f59e0b"
                       strokeWidth={2.5}
@@ -1108,9 +1262,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     />
                     {/* Alças nos 4 cantos */}
                     <rect x={mapX - 5} y={mapY - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
-                    <rect x={mapX + w - 5} y={mapY - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
-                    <rect x={mapX - 5} y={mapY + h - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
-                    <rect x={mapX + w - 5} y={mapY + h - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
+                    <rect x={mapX + mapW - 5} y={mapY - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
+                    <rect x={mapX - 5} y={mapY + mapH - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
+                    <rect x={mapX + mapW - 5} y={mapY + mapH - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
 
                     {/* Tarja indicativa da Camada do Mapa */}
                     <g transform={`translate(${mapX + 12}, ${mapY + 22})`}>
@@ -1125,12 +1279,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             );
           })()}
 
-          {/* CAMADA 2: GRADE TÁTICA (HEX OU QUADRADA) */}
+          {/* CAMADA 2: GRADE TÁTICA (HEX OU QUADRADA) - COBRE TODA A IMAGEM, SEM SOBRAR E SEM FALTAR */}
           {tacticalState.gridType === 'hex' ? (
-            <g id="tactical-hex-grid">
-              {Array.from({ length: gridRows }).map((_, r) =>
-                Array.from({ length: gridCols }).map((_, c) => {
-                  const center = getHexCenter(c, r, hexSize);
+            <g id="tactical-hex-grid" clipPath="url(#map-image-bounds)">
+              {Array.from({ length: dynamicRows + 2 }).map((_, rIdx) => {
+                const r = rIdx - 1;
+                return Array.from({ length: dynamicCols + 2 }).map((_, cIdx) => {
+                  const c = cIdx - 1;
+                  const relCenter = getHexCenter(c, r, hexSize);
+                  const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
                   const pointsStr = getHexPointsString(center, hexSize);
                   const isHovered = hoveredHex?.col === c && hoveredHex?.row === r;
 
@@ -1139,37 +1296,43 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       key={`hex-${c}-${r}`}
                       points={pointsStr}
                       fill={isHovered ? 'rgba(245, 158, 11, 0.15)' : 'transparent'}
-                      stroke={tacticalState.gridColor}
+                      stroke={tacticalState.gridColor || '#cbd5e1'}
                       strokeWidth={isHovered ? 1.5 : 1}
-                      strokeOpacity={isHovered ? 0.7 : tacticalState.gridOpacity}
+                      strokeOpacity={isHovered ? 0.7 : (tacticalState.gridOpacity ?? 0.28)}
                       className="transition-colors duration-75"
                     />
                   );
-                })
-              )}
+                });
+              })}
             </g>
           ) : (
-            <g id="tactical-square-grid">
-              {Array.from({ length: gridRows }).map((_, r) =>
-                Array.from({ length: gridCols }).map((_, c) => {
-                  const cellSize = hexSize * 1.5;
-                  const x = c * cellSize;
-                  const y = r * cellSize;
-                  return (
-                    <rect
-                      key={`sq-${c}-${r}`}
-                      x={x}
-                      y={y}
-                      width={cellSize}
-                      height={cellSize}
-                      fill="transparent"
-                      stroke={tacticalState.gridColor}
-                      strokeWidth="1"
-                      strokeOpacity={tacticalState.gridOpacity}
-                    />
-                  );
-                })
-              )}
+            <g id="tactical-square-grid" clipPath="url(#map-image-bounds)">
+              {(() => {
+                const cellSize = hexSize * 1.5;
+                const sqCols = Math.ceil(mapW / cellSize) + 2;
+                const sqRows = Math.ceil(mapH / cellSize) + 2;
+                return Array.from({ length: sqRows }).map((_, rIdx) => {
+                  const r = rIdx;
+                  return Array.from({ length: sqCols }).map((_, cIdx) => {
+                    const c = cIdx;
+                    const x = mapX + c * cellSize;
+                    const y = mapY + r * cellSize;
+                    return (
+                      <rect
+                        key={`sq-${c}-${r}`}
+                        x={x}
+                        y={y}
+                        width={cellSize}
+                        height={cellSize}
+                        fill="transparent"
+                        stroke={tacticalState.gridColor || '#cbd5e1'}
+                        strokeWidth="1"
+                        strokeOpacity={tacticalState.gridOpacity ?? 0.28}
+                      />
+                    );
+                  });
+                });
+              })()}
             </g>
           )}
 
@@ -1177,7 +1340,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {activeLayer !== 'map' && selectedToken && (
             <g id="gurps-combat-arcs">
               {(() => {
-                const center = getHexCenter(selectedToken.gridX, selectedToken.gridY, hexSize);
+                const relCenter = getHexCenter(selectedToken.gridX, selectedToken.gridY, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
                 const tokenRotation =
                   typeof selectedToken.rotation === 'number'
                     ? selectedToken.rotation
@@ -1210,7 +1374,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {activeTool === 'area' && areaCenter && (
             <g id="area-template">
               {(() => {
-                const center = getHexCenter(areaCenter.col, areaCenter.row, hexSize);
+                const relCenter = getHexCenter(areaCenter.col, areaCenter.row, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
                 const radiusPixels = areaRadius * hexSize * 1.7;
                 return (
                   <g>
@@ -1243,8 +1408,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {rulerStart && rulerCurrent && (
             <g id="tactical-ruler">
               {(() => {
-                const pA = getHexCenter(rulerStart.col, rulerStart.row, hexSize);
-                const pB = getHexCenter(rulerCurrent.col, rulerCurrent.row, hexSize);
+                const relA = getHexCenter(rulerStart.col, rulerStart.row, hexSize);
+                const pA = { x: mapX + relA.x, y: mapY + relA.y };
+                const relB = getHexCenter(rulerCurrent.col, rulerCurrent.row, hexSize);
+                const pB = { x: mapX + relB.x, y: mapY + relB.y };
                 const distanceYards = getHexDistance(rulerStart, rulerCurrent);
                 const rangePenalty = getGurpsRangePenalty(distanceYards);
 
@@ -1358,7 +1525,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               const isRotating = token.id === rotatingTokenId;
               const displayGridX = isDragging && dragHoverHex ? dragHoverHex.col : token.gridX;
               const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
-              const center = getHexCenter(displayGridX, displayGridY, hexSize);
+              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
               const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
                 ? previewRotation.rotation
                 : (typeof token.rotation === 'number'
@@ -1800,7 +1968,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       })()}
 
       {/* 5. FOOTER DE DADOS TÁTICOS (INFORMAÇÕES DE CÉLULA E COORDENADAS) */}
-      <div className="absolute bottom-3 left-3 z-20 pointer-events-none flex items-center gap-2">
+      <div className="absolute bottom-5 left-3 z-20 pointer-events-none flex items-center gap-2">
         <div className="bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 flex items-center gap-2 shadow-lg">
           <span className="font-semibold text-amber-400">Escala GURPS:</span>
           <span>1 hex = 1 jarda (0,9m)</span>
@@ -1814,6 +1982,45 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           )}
         </div>
       </div>
+
+      {/* 6. BARRAS DE ROLAGEM (HORIZONTAL E VERTICAL QUANDO O MAPA FOR MAIOR QUE A TELA) */}
+      {showHScroll && (
+        <div
+          ref={hTrackRef}
+          onClick={handleHTrackClick}
+          className="absolute bottom-1.5 left-4 right-6 h-2 bg-slate-900/80 hover:bg-slate-900 backdrop-blur-sm rounded-full z-20 border border-slate-800/80 cursor-pointer transition-colors shadow-inner"
+          title="Barra de rolagem horizontal do mapa"
+        >
+          <div
+            onPointerDown={handleHThumbPointerDown}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              left: `${thumbLeftPercent}%`,
+              width: `${thumbWidthPercent}%`,
+            }}
+            className="absolute top-0.5 bottom-0.5 bg-slate-500 hover:bg-amber-500 active:bg-amber-400 rounded-full cursor-grab active:cursor-grabbing transition-colors shadow-sm"
+          />
+        </div>
+      )}
+
+      {showVScroll && (
+        <div
+          ref={vTrackRef}
+          onClick={handleVTrackClick}
+          className="absolute top-16 bottom-6 right-1.5 w-2 bg-slate-900/80 hover:bg-slate-900 backdrop-blur-sm rounded-full z-20 border border-slate-800/80 cursor-pointer transition-colors shadow-inner"
+          title="Barra de rolagem vertical do mapa"
+        >
+          <div
+            onPointerDown={handleVThumbPointerDown}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              top: `${thumbTopPercent}%`,
+              height: `${thumbHeightPercent}%`,
+            }}
+            className="absolute left-0.5 right-0.5 bg-slate-500 hover:bg-amber-500 active:bg-amber-400 rounded-full cursor-grab active:cursor-grabbing transition-colors shadow-sm"
+          />
+        </div>
+      )}
     </div>
   );
 };

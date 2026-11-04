@@ -34,6 +34,8 @@ import {
   Lock,
   Unlock,
   Move,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { UserAccount } from '../../types/rpg';
 
@@ -293,6 +295,53 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
                       >
                         +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Cor do Grid: Clara vs Escura para contraste com o mapa */}
+                  <div className="space-y-1">
+                    <span className="text-[11px] text-slate-300 font-semibold block">
+                      Contraste da Grade:
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onUpdateTacticalState({
+                            gridColor: '#cbd5e1',
+                            gridOpacity: 0.28,
+                          })
+                        }
+                        className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                          tacticalState.gridColor !== '#0f172a' &&
+                          tacticalState.gridColor !== '#000000' &&
+                          tacticalState.gridColor !== '#1e293b'
+                            ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                        }`}
+                      >
+                        <Moon size={12} />
+                        <span>Grade Clara</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onUpdateTacticalState({
+                            gridColor: '#0f172a',
+                            gridOpacity: 0.65,
+                          })
+                        }
+                        className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                          tacticalState.gridColor === '#0f172a' ||
+                          tacticalState.gridColor === '#000000' ||
+                          tacticalState.gridColor === '#1e293b'
+                            ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                        }`}
+                      >
+                        <Sun size={12} />
+                        <span>Grade Escura</span>
                       </button>
                     </div>
                   </div>
@@ -557,6 +606,50 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <Sliders size={14} />
           </button>
 
+          {/* Botão Rápido de Alternância de Cor do Grid: Clara / Escura */}
+          <button
+            type="button"
+            onClick={() => {
+              const isDark =
+                tacticalState.gridColor === '#0f172a' ||
+                tacticalState.gridColor === '#000000' ||
+                tacticalState.gridColor === '#1e293b';
+              if (isDark) {
+                onUpdateTacticalState({
+                  gridColor: '#cbd5e1',
+                  gridOpacity: 0.28,
+                });
+              } else {
+                onUpdateTacticalState({
+                  gridColor: '#0f172a',
+                  gridOpacity: 0.65,
+                });
+              }
+            }}
+            className={`p-1.5 rounded-lg border transition-all ml-1 ${
+              tacticalState.gridColor === '#0f172a' ||
+              tacticalState.gridColor === '#000000' ||
+              tacticalState.gridColor === '#1e293b'
+                ? 'bg-slate-900 border-amber-500/50 text-amber-400 shadow-xs'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+            title={
+              tacticalState.gridColor === '#0f172a' ||
+              tacticalState.gridColor === '#000000' ||
+              tacticalState.gridColor === '#1e293b'
+                ? 'Grade Escura ativa (ideal para mapas claros). Clique para alternar para Grade Clara.'
+                : 'Grade Clara ativa (ideal para mapas escuros). Clique para alternar para Grade Escura.'
+            }
+          >
+            {tacticalState.gridColor === '#0f172a' ||
+            tacticalState.gridColor === '#000000' ||
+            tacticalState.gridColor === '#1e293b' ? (
+              <Sun size={14} className="text-amber-400" />
+            ) : (
+              <Moon size={14} className="text-slate-400" />
+            )}
+          </button>
+
           {settingsOpen && (
             <>
               <div
@@ -637,6 +730,53 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     }
                     className="w-full accent-amber-500"
                   />
+                </div>
+
+                {/* Contraste da Grade: Clara vs Escura */}
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">
+                    Contraste da Linha do Grid:
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdateTacticalState({
+                          gridColor: '#cbd5e1',
+                          gridOpacity: 0.28,
+                        })
+                      }
+                      className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                        tacticalState.gridColor !== '#0f172a' &&
+                        tacticalState.gridColor !== '#000000' &&
+                        tacticalState.gridColor !== '#1e293b'
+                          ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
+                          : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                      }`}
+                    >
+                      <Moon size={12} />
+                      <span>Grade Clara</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdateTacticalState({
+                          gridColor: '#0f172a',
+                          gridOpacity: 0.65,
+                        })
+                      }
+                      className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                        tacticalState.gridColor === '#0f172a' ||
+                        tacticalState.gridColor === '#000000' ||
+                        tacticalState.gridColor === '#1e293b'
+                          ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
+                          : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                      }`}
+                    >
+                      <Sun size={12} />
+                      <span>Grade Escura</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Alternância de Névoa de Guerra */}
