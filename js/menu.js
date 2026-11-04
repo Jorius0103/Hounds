@@ -35,6 +35,7 @@ function openLeaf(prefix, icon, find, label) {
   return [{ id: node, label: x ? x.name : label, icon: icon, route: true, secret: isSecret(x) }];
 }
 function buildMenu() {
+  /** @type {any[]} */
   var items = [
     { id: 'mesa', label: 'Mesa de RPG', icon: ICON.mesa, route: true }
   ];
@@ -50,6 +51,7 @@ function buildMenu() {
     children: W.boards.slice().sort(byName).map(function (b) { return { id: 'board:' + b.id, label: b.name, icon: ICON.board, route: true, secret: isSecret(b) }; })
   });
 
+  /** @type {any[]} */
   var worldAndRules = [
     { id: 'mundo', label: 'Mundo', icon: ICON.mundo, children: [
       { id: 'maps', label: 'Maps', icon: ICON.maps, route: true, hideKids: true, children: mapNodes(null) },
