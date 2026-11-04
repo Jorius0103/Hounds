@@ -22,7 +22,7 @@ import {
   Point,
 } from '../../utils/tacticalMath';
 import { getCombatManeuver, COMBAT_MANEUVERS } from '../../utils/gurps';
-import { NpcAvatar } from '../NpcAvatar';
+import { NpcAvatar, PRESET_AVATARS, PRESET_BG_COLORS, resolveNpcPreset } from '../NpcAvatar';
 import {
   Ruler,
   Crosshair,
@@ -152,29 +152,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const hexHeight = 2 * hexSize;
   const mapPixelWidth = (gridCols + 1) * hexWidth;
   const mapPixelHeight = (gridRows + 1) * (1.5 * hexSize);
-
-  // Reachable movement hexes for selected token
-  const movementHexes = useMemo(() => {
-    if (!selectedToken || !selectedTokenNpc) return [];
-    let moveAllowance = 5;
-    if (typeof selectedTokenNpc.basicMove === 'number') {
-      moveAllowance = selectedTokenNpc.basicMove;
-    } else {
-      moveAllowance = parseInt(String(selectedTokenNpc.basicMove)) || 5;
-    }
-
-    // Se a manobra for Passo e Ataque, movimento é 1 jarda
-    const maneuver = selectedTokenNpc.combatManeuver || '';
-    if (maneuver.includes('Passo')) {
-      moveAllowance = 1;
-    } else if (maneuver.includes('Deslocamento Total') || maneuver.includes('Sprint')) {
-      moveAllowance = moveAllowance * 2;
-    } else if (maneuver.includes('Ataque Total')) {
-      moveAllowance = Math.max(1, Math.floor(moveAllowance / 2));
-    }
-
-    return getHexesInRange({ col: selectedToken.gridX, row: selectedToken.gridY }, moveAllowance);
-  }, [selectedToken, selectedTokenNpc]);
 
   // Convert client mouse event to map coordinate (respecting pan and zoom)
   const clientToMapCoords = useCallback(
@@ -782,16 +759,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     >
                       {/* Avatar e Informações */}
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 flex items-center justify-center ${
-                          isPlayer ? 'border-emerald-500/80 bg-emerald-950/40' : 'border-amber-500/60 bg-slate-800'
-                        }`}>
-                          {char.avatar ? (
-                            <img src={char.avatar} alt={char.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-[11px] font-bold text-amber-300">
-                              {char.name.slice(0, 2).toUpperCase()}
-                            </span>
-                          )}
+                        <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-900 flex items-center justify-center">
+                          <NpcAvatar
+                            avatar={char.avatar}
+                            preset={char.avatarPreset}
+                            name={char.name}
+                            size="sm"
+                            className="!w-9 !h-9 !rounded-full"
+                          />
                         </div>
 
                         <div className="min-w-0">
@@ -1004,26 +979,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </g>
           )}
 
-          {/* CAMADA 3: ALCANCE DE MOVIMENTO DO TOKEN SELECIONADO */}
-          {selectedToken && movementHexes.length > 0 && (
-            <g id="movement-range">
-              {movementHexes.map((hex, idx) => {
-                const center = getHexCenter(hex.col, hex.row, hexSize);
-                const pointsStr = getHexPointsString(center, hexSize);
-                return (
-                  <polygon
-                    key={`move-hex-${idx}`}
-                    points={pointsStr}
-                    fill="rgba(16, 185, 129, 0.12)"
-                    stroke="rgba(16, 185, 129, 0.45)"
-                    strokeWidth="1"
-                    strokeDasharray="3 3"
-                  />
-                );
-              })}
-            </g>
-          )}
-
           {/* CAMADA 4: ARCOS DE COMBATE GURPS (FRENTE, FLANCOS E RETAGUARDA) */}
           {selectedToken && (
             <g id="gurps-combat-arcs">
@@ -1215,7 +1170,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
               // Manobra ativa do personagem / NPC para colorir a borda do token
               const maneuver = npc.combatManeuver ? getCombatManeuver(npc.combatManeuver) : undefined;
-              const maneuverBorderColor = maneuver?.borderHex || maneuver?.bgHex || (isPlayer ? '#10b981' : '#ef4444');
+              const hasManeuver = !!maneuver && maneuver.id !== 'none';
+              // Contorno cinza neutro se não houver manobra para não confundir com as manobras
+              const maneuverBorderColor = hasManeuver
+                ? (maneuver.borderHex || maneuver.bgHex)
+                : '#64748b';
 
               return (
                 <g
@@ -1244,14 +1203,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 >
                   {/* GRUPO ROTATIVO INTEGRAL: Foto, Nome (em cima), Frente (embaixo) e Pauzinho giram juntos */}
                   <g transform={`rotate(${tokenRotation})`}>
-                    {/* 1. Círculo de Base com Borda na Cor da Manobra */}
+                    {/* 1. Círculo de Base com Borda Cinza Neutra ou Cor da Manobra */}
                     <circle
                       cx="0"
                       cy="0"
                       r={tokenRadius + 3}
-                      fill={isPlayer ? '#065f46' : '#7f1d1d'}
+                      fill="#0f172a"
                       stroke={maneuverBorderColor}
-                      strokeWidth={isSelected ? 4 : 2.5}
+                      strokeWidth={isSelected ? 3.5 : 2.5}
                     />
 
                     {/* Anel Externo Dourado Indicador de Seleção */}
@@ -1267,7 +1226,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       />
                     )}
 
-                    {/* 2. Retrato / Avatar recortado */}
+                    {/* 2. Retrato / Avatar recortado (com suporte total a fotos básicas/presets do sistema) */}
                     <clipPath id={`clip-${token.id}`}>
                       <circle cx="0" cy="0" r={tokenRadius} />
                     </clipPath>
@@ -1283,26 +1242,28 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         preserveAspectRatio="xMidYMid slice"
                       />
                     ) : (
-                      <circle
-                        cx="0"
-                        cy="0"
-                        r={tokenRadius}
-                        fill={isPlayer ? '#047857' : '#991b1b'}
-                      />
-                    )}
+                      (() => {
+                        const matchedPreset =
+                          PRESET_AVATARS.find((p) => p.id === npc.avatarPreset) ||
+                          resolveNpcPreset(npc);
+                        const colors =
+                          PRESET_BG_COLORS[matchedPreset.id] || PRESET_BG_COLORS['knight'];
+                        const PresetIcon = matchedPreset.icon || Shield;
+                        const iconSize = tokenRadius * 1.25;
 
-                    {/* Iniciais sobre o token se sem avatar */}
-                    {!npc.avatar && (
-                      <text
-                        x="0"
-                        y="4"
-                        fill="#ffffff"
-                        fontSize="11"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {npc.name.slice(0, 2).toUpperCase()}
-                      </text>
+                        return (
+                          <g clipPath={`url(#clip-${token.id})`}>
+                            <circle cx="0" cy="0" r={tokenRadius} fill={colors.bg1} />
+                            <circle cx="0" cy="0" r={tokenRadius} fill={colors.bg2} fillOpacity="0.5" />
+                            <g
+                              transform={`translate(${-iconSize / 2}, ${-iconSize / 2})`}
+                              style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8))' }}
+                            >
+                              <PresetIcon size={iconSize} color="#ffffff" strokeWidth={2} />
+                            </g>
+                          </g>
+                        );
+                      })()
                     )}
 
                     {/* 3. NOME DO PERSONAGEM EM CIMA DA FOTO (gira junto com o token) */}
@@ -1441,14 +1402,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {/* Cabeçalho Compacto: Avatar, Nome e PV/FP lado a lado */}
               <div className="flex items-center justify-between gap-1.5 border-b border-slate-800 pb-1.5">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-800 flex items-center justify-center">
-                    {npc.avatar ? (
-                      <img src={npc.avatar} alt={npc.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-[10px] font-bold text-amber-400">
-                        {npc.name.slice(0, 2).toUpperCase()}
-                      </span>
-                    )}
+                  <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-900 flex items-center justify-center">
+                    <NpcAvatar
+                      avatar={npc.avatar}
+                      preset={npc.avatarPreset}
+                      name={npc.name}
+                      size="sm"
+                      className="!w-7 !h-7 !rounded-full"
+                    />
                   </div>
                   <div className="min-w-0 flex flex-col">
                     <span className="font-bold text-white text-xs truncate leading-tight">

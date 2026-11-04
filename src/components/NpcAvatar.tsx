@@ -20,7 +20,7 @@ export interface PresetAvatarItem {
   id: string;
   label: string;
   category: 'creature' | 'humanoid';
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ComponentType<{ size?: number; className?: string; color?: string; strokeWidth?: number }>;
   bg: string;
   border: string;
 }
@@ -183,6 +183,77 @@ export const PRESET_AVATARS: PresetAvatarItem[] = [
   },
 ];
 
+export const PRESET_BG_COLORS: Record<string, { bg1: string; bg2: string; border: string }> = {
+  goblin: { bg1: '#365314', bg2: '#022c22', border: '#84cc16' },
+  orc: { bg1: '#78350f', bg2: '#1c1917', border: '#d97706' },
+  hobgoblin: { bg1: '#7f1d1d', bg2: '#1c1917', border: '#ef4444' },
+  wolf: { bg1: '#334155', bg2: '#09090b', border: '#94a3b8' },
+  bear: { bg1: '#451a03', bg2: '#0a0a0a', border: '#b45309' },
+  troll: { bg1: '#064e3b', bg2: '#1c1917', border: '#10b981' },
+  spider: { bg1: '#3b0764', bg2: '#020617', border: '#9333ea' },
+  serpent: { bg1: '#042f2e', bg2: '#064e3b', border: '#14b8a6' },
+  demon: { bg1: '#4c0519', bg2: '#0a0a0a', border: '#e11d48' },
+  undead: { bg1: '#083344', bg2: '#0f172a', border: '#06b6d4' },
+  ghost: { bg1: '#1e1b4b', bg2: '#0f172a', border: '#818cf8' },
+  knight: { bg1: '#334155', bg2: '#020617', border: '#94a3b8' },
+  footman: { bg1: '#b45309', bg2: '#0f172a', border: '#f59e0b' },
+  mercenary: { bg1: '#44403c', bg2: '#0c0a09', border: '#d97706' },
+  archer: { bg1: '#065f46', bg2: '#022c22', border: '#10b981' },
+  mage: { bg1: '#312e81', bg2: '#020617', border: '#818cf8' },
+  cleric: { bg1: '#d97706', bg2: '#422006', border: '#fbbf24' },
+  rogue: { bg1: '#4c0519', bg2: '#0f172a', border: '#f43f5e' },
+  noble: { bg1: '#4c1d95', bg2: '#020617', border: '#a855f7' },
+};
+
+export function resolveNpcPreset(npc?: { avatar?: string; avatarPreset?: string; name?: string } | null): PresetAvatarItem {
+  if (!npc) return PRESET_AVATARS[0];
+  if (npc.avatarPreset) {
+    const found = PRESET_AVATARS.find((p) => p.id === npc.avatarPreset);
+    if (found) return found;
+  }
+  if (npc.name) {
+    const lower = npc.name.toLowerCase();
+    if (
+      lower.includes('espectro') ||
+      lower.includes('fantasma') ||
+      lower.includes('ghost') ||
+      lower.includes('sombra') ||
+      lower.includes('aparição') ||
+      lower.includes('aparicao')
+    ) {
+      const g = PRESET_AVATARS.find((p) => p.id === 'ghost');
+      if (g) return g;
+    }
+    if (lower.includes('goblin')) return PRESET_AVATARS.find((p) => p.id === 'goblin') || PRESET_AVATARS[0];
+    if (lower.includes('orc')) return PRESET_AVATARS.find((p) => p.id === 'orc') || PRESET_AVATARS[0];
+    if (lower.includes('hobgoblin')) return PRESET_AVATARS.find((p) => p.id === 'hobgoblin') || PRESET_AVATARS[0];
+    if (lower.includes('lobo') || lower.includes('wolf')) return PRESET_AVATARS.find((p) => p.id === 'wolf') || PRESET_AVATARS[0];
+    if (lower.includes('urso') || lower.includes('bear')) return PRESET_AVATARS.find((p) => p.id === 'bear') || PRESET_AVATARS[0];
+    if (lower.includes('troll') || lower.includes('ogro')) return PRESET_AVATARS.find((p) => p.id === 'troll') || PRESET_AVATARS[0];
+    if (lower.includes('esqueleto') || lower.includes('morto-vivo') || lower.includes('undead') || lower.includes('zumbi'))
+      return PRESET_AVATARS.find((p) => p.id === 'undead') || PRESET_AVATARS[0];
+    if (lower.includes('aranha') || lower.includes('spider')) return PRESET_AVATARS.find((p) => p.id === 'spider') || PRESET_AVATARS[0];
+    if (lower.includes('serpente') || lower.includes('hidra') || lower.includes('snake'))
+      return PRESET_AVATARS.find((p) => p.id === 'serpent') || PRESET_AVATARS[0];
+    if (lower.includes('demônio') || lower.includes('demonio') || lower.includes('demon'))
+      return PRESET_AVATARS.find((p) => p.id === 'demon') || PRESET_AVATARS[0];
+    if (lower.includes('mago') || lower.includes('bruxo') || lower.includes('conjurador') || lower.includes('feiticeiro'))
+      return PRESET_AVATARS.find((p) => p.id === 'mage') || PRESET_AVATARS[0];
+    if (lower.includes('arqueiro') || lower.includes('caçador') || lower.includes('cacador'))
+      return PRESET_AVATARS.find((p) => p.id === 'archer') || PRESET_AVATARS[0];
+    if (lower.includes('ladino') || lower.includes('assassino')) return PRESET_AVATARS.find((p) => p.id === 'rogue') || PRESET_AVATARS[0];
+    if (lower.includes('clérigo') || lower.includes('clerigo') || lower.includes('padre') || lower.includes('sacerdote'))
+      return PRESET_AVATARS.find((p) => p.id === 'cleric') || PRESET_AVATARS[0];
+    if (lower.includes('nobre') || lower.includes('rei') || lower.includes('príncipe') || lower.includes('principe') || lower.includes('lord'))
+      return PRESET_AVATARS.find((p) => p.id === 'noble') || PRESET_AVATARS[0];
+    if (lower.includes('cavaleiro') || lower.includes('paladino')) return PRESET_AVATARS.find((p) => p.id === 'knight') || PRESET_AVATARS[0];
+    if (lower.includes('guarda') || lower.includes('soldado')) return PRESET_AVATARS.find((p) => p.id === 'footman') || PRESET_AVATARS[0];
+    if (lower.includes('mercenário') || lower.includes('mercenario') || lower.includes('salteador'))
+      return PRESET_AVATARS.find((p) => p.id === 'mercenary') || PRESET_AVATARS[0];
+  }
+  return PRESET_AVATARS[0];
+}
+
 interface NpcAvatarProps {
   avatar?: string;
   preset?: string;
@@ -214,7 +285,9 @@ export const NpcAvatar: React.FC<NpcAvatarProps> = ({
     xl: 42,
   }[size];
 
-  const matchedPreset = PRESET_AVATARS.find((p) => p.id === preset) || PRESET_AVATARS[0];
+  const matchedPreset =
+    PRESET_AVATARS.find((p) => p.id === preset) ||
+    resolveNpcPreset({ avatarPreset: preset, name });
   const IconComponent = matchedPreset.icon || User;
 
   return (
