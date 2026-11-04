@@ -7,7 +7,6 @@ import {
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
-import { TacticalTokenSidebar } from './TacticalTokenSidebar';
 import { TacticalQuickActionPopover } from './TacticalQuickActionPopover';
 import {
   getHexCenter,
@@ -28,6 +27,7 @@ import {
   Ruler,
   Crosshair,
   Shield,
+  Eye,
   EyeOff,
   Skull,
   Zap,
@@ -35,6 +35,11 @@ import {
   Heart,
   X,
   Swords,
+  Users,
+  Search,
+  Check,
+  CheckCheck,
+  Plus,
 } from 'lucide-react';
 
 interface TacticalMapWorkspaceProps {
@@ -105,6 +110,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Popover state
   const [popoverToken, setPopoverToken] = useState<TacticalToken | null>(null);
   const [popoverPos, setPopoverPos] = useState<Point>({ x: 0, y: 0 });
+
+  // Modal de gerenciamento de tokens no tabuleiro
+  const [isTokensModalOpen, setIsTokensModalOpen] = useState(false);
+  const [tokensModalFilter, setTokensModalFilter] = useState<'all' | 'players' | 'npcs'>('all');
+  const [tokensModalSearch, setTokensModalSearch] = useState('');
 
   const isMaster = currentUserRole === 'mestre';
 
@@ -380,6 +390,87 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     setSelectedTokenId(newToken.id);
   };
 
+  // Alternar presença do token de um combatente no tabuleiro
+  const handleToggleTokenPlacement = (npcId: string) => {
+    const existing = tokens.find((t) => t.npcId === npcId);
+    if (existing) {
+      const nextTokens = tokens.filter((t) => t.npcId !== npcId);
+      onUpdateTacticalState({ tokens: nextTokens });
+      if (selectedTokenId === existing.id) {
+        setSelectedTokenId(null);
+      }
+    } else {
+      const targetNpc = characterMap.get(npcId);
+      const isPlayer = targetNpc?.characterType === 'player';
+      const newToken: TacticalToken = {
+        id: `token-${npcId}`,
+        npcId,
+        gridX: isPlayer ? 4 : 14,
+        gridY: 4 + (tokens.length % 7) * 2,
+        facing: (isPlayer ? 1 : 4) as FacingDirection,
+        elevation: 0,
+        reach: 1,
+        size: 1,
+        hiddenFromPlayers: !isPlayer && !targetNpc?.isVisibleToPlayer,
+      };
+      onUpdateTacticalState({ tokens: [...tokens, newToken] });
+      setSelectedTokenId(newToken.id);
+    }
+  };
+
+  // Posicionar em lote todos os combatentes de uma lista
+  const handlePlaceAllInFilter = (filterChars: NPC[]) => {
+    const missing = filterChars.filter((c) => !tokens.some((t) => t.npcId === c.id));
+    if (missing.length === 0) return;
+
+    let playerRow = 4;
+    let playerCol = 4;
+    let npcRow = 4;
+    let npcCol = 14;
+    const newTokens = [...tokens];
+
+    missing.forEach((char) => {
+      const isPlayer = char.characterType === 'player';
+      newTokens.push({
+        id: `token-${char.id}`,
+        npcId: char.id,
+        gridX: isPlayer ? playerCol : npcCol,
+        gridY: isPlayer ? playerRow : npcRow,
+        facing: (isPlayer ? 1 : 4) as FacingDirection,
+        elevation: 0,
+        reach: 1,
+        size: 1,
+        hiddenFromPlayers: !isPlayer && !char.isVisibleToPlayer,
+      });
+
+      if (isPlayer) {
+        playerRow += 2;
+        if (playerRow > 18) {
+          playerRow = 4;
+          playerCol += 2;
+        }
+      } else {
+        npcRow += 2;
+        if (npcRow > 18) {
+          npcRow = 4;
+          npcCol += 2;
+        }
+      }
+    });
+
+    onUpdateTacticalState({ tokens: newTokens });
+  };
+
+  // Remover em lote todos os combatentes de uma lista do tabuleiro
+  const handleRemoveAllInFilter = (filterChars: NPC[]) => {
+    const filterIds = new Set(filterChars.map((c) => c.id));
+    const nextTokens = tokens.filter((t) => !filterIds.has(t.npcId));
+    onUpdateTacticalState({ tokens: nextTokens });
+    if (selectedTokenId && !nextTokens.some((t) => t.id === selectedTokenId)) {
+      setSelectedTokenId(null);
+    }
+  };
+
   // Focus view on a token
   const handleFocusToken = (token: TacticalToken) => {
     if (!containerRef.current) return;
@@ -448,6 +539,32 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       ? tacticalState.customImageUrl
       : currentPreset.url;
 
+  // Listas e contagens para o modal de tokens
+  const playersList = useMemo(() => characters.filter((c) => c.characterType === 'player'), [characters]);
+  const npcsList = useMemo(() => characters.filter((c) => c.characterType !== 'player'), [characters]);
+  const placedNpcIdSet = useMemo(() => new Set(tokens.map((t) => t.npcId)), [tokens]);
+
+  const activeCategoryList = useMemo(() => {
+    if (tokensModalFilter === 'players') return playersList;
+    if (tokensModalFilter === 'npcs') return npcsList;
+    return characters;
+  }, [tokensModalFilter, playersList, npcsList, characters]);
+
+  const filteredModalCharacters = useMemo(() => {
+    let list: NPC[] = characters;
+    if (tokensModalFilter === 'players') {
+      list = playersList;
+    } else if (tokensModalFilter === 'npcs') {
+      list = npcsList;
+    }
+
+    if (tokensModalSearch.trim()) {
+      const q = tokensModalSearch.toLowerCase().trim();
+      list = list.filter((c) => c.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [characters, playersList, npcsList, tokensModalFilter, tokensModalSearch]);
+
   return (
     <div
       ref={containerRef}
@@ -475,6 +592,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onZoomOut={handleZoomOut}
           onClearMarkers={handleClearMarkers}
           onAutoPlaceTokens={handleAutoPlaceTokens}
+          onOpenTokensModal={() => setIsTokensModalOpen(true)}
+          tokensCount={tokens.length}
           currentUserRole={currentUserRole}
           onOpenPlayerPermissions={onOpenPlayerPermissions}
           editorCount={editorCount}
@@ -485,25 +604,254 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         />
       </div>
 
-      {/* 2. SIDEBAR DE COMBATENTES (À DIREITA) */}
-      <div className="absolute top-18 right-3 bottom-3 z-20 pointer-events-auto flex">
-        <TacticalTokenSidebar
-          characters={characters}
-          tokens={tokens}
-          selectedTokenId={selectedTokenId}
-          onSelectToken={(id) => {
-            setSelectedTokenId(id);
-            const token = tokens.find((t) => t.id === id);
-            if (token) onSelectNpc(token.npcId);
-          }}
-          onPlaceToken={handlePlaceToken}
-          onFocusToken={handleFocusToken}
-          onUpdateNpc={(partial) => {
-            if (selectedTokenNpc) onUpdateNpc({ ...selectedTokenNpc, ...partial });
-          }}
-          currentUserRole={currentUserRole}
-        />
-      </div>
+      {/* 2. MODAL DE SELEÇÃO E GERENCIAMENTO DE TOKENS NO TABULEIRO */}
+      {isTokensModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setIsTokensModalOpen(false)}
+        >
+          <div
+            className="bg-slate-900 border border-slate-700/90 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden text-slate-100 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950/70">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Users size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    Tokens no Tabuleiro
+                    <span className="text-xs px-2 py-0.5 rounded-full font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold">
+                      {tokens.length} no grid
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Selecione quais personagens e NPCs exibir ou ocultar no tabuleiro de combate
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTokensModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Barra de Filtros e Busca */}
+            <div className="p-3.5 sm:px-5 border-b border-slate-800 space-y-3 bg-slate-900/60">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                {/* Abas de Filtro */}
+                <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setTokensModalFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                      tokensModalFilter === 'all'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>Todos</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                      tokensModalFilter === 'all' ? 'bg-slate-950/20 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
+                    }`}>
+                      {characters.filter((c) => placedNpcIdSet.has(c.id)).length}/{characters.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTokensModalFilter('players')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                      tokensModalFilter === 'players'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>Personagens</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                      tokensModalFilter === 'players' ? 'bg-slate-950/20 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
+                    }`}>
+                      {playersList.filter((c) => placedNpcIdSet.has(c.id)).length}/{playersList.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTokensModalFilter('npcs')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                      tokensModalFilter === 'npcs'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>NPCs</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                      tokensModalFilter === 'npcs' ? 'bg-slate-950/20 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
+                    }`}>
+                      {npcsList.filter((c) => placedNpcIdSet.has(c.id)).length}/{npcsList.length}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Campo de Busca */}
+                <div className="relative flex-1 sm:max-w-xs">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={tokensModalSearch}
+                    onChange={(e) => setTokensModalSearch(e.target.value)}
+                    placeholder="Buscar por nome..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+                  />
+                  {tokensModalSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setTokensModalSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Botões de Ação em Lote para o Filtro Ativo */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs">
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {tokensModalFilter === 'all'
+                    ? 'Ações para todos os combatentes:'
+                    : tokensModalFilter === 'players'
+                    ? 'Ações para os personagens dos jogadores:'
+                    : 'Ações para os NPCs / Criaturas:'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePlaceAllInFilter(activeCategoryList)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80 rounded-lg transition-all active:scale-95 shadow-xs"
+                    title="Exibir todos os combatentes deste filtro no tabuleiro"
+                  >
+                    <CheckCheck size={14} />
+                    <span>Exibir Todos deste filtro</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAllInFilter(activeCategoryList)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg transition-all active:scale-95 shadow-xs"
+                    title="Remover todos os combatentes deste filtro do tabuleiro"
+                  >
+                    <EyeOff size={14} />
+                    <span>Ocultar Todos deste filtro</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Lista com Rolagem */}
+            <div className="flex-1 overflow-y-auto p-3.5 sm:px-5 space-y-2 max-h-[50vh]">
+              {filteredModalCharacters.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800 p-6 space-y-1">
+                  <Users size={24} className="mx-auto text-slate-600 mb-2" />
+                  <p className="font-semibold text-slate-300">Nenhum combatente encontrado</p>
+                  <p className="text-[11px] text-slate-500">Tente ajustar o termo da busca ou trocar de filtro.</p>
+                </div>
+              ) : (
+                filteredModalCharacters.map((char) => {
+                  const isPlaced = placedNpcIdSet.has(char.id);
+                  const isPlayer = char.characterType === 'player';
+                  const hp = typeof char.hpCurrent === 'number' ? char.hpCurrent : (char.hpMax || 0);
+                  const hpMax = char.hpMax || 0;
+                  const fp = typeof char.fpCurrent === 'number' ? char.fpCurrent : (char.fpMax || 0);
+                  const fpMax = char.fpMax || 0;
+
+                  return (
+                    <div
+                      key={char.id}
+                      onClick={() => handleToggleTokenPlacement(char.id)}
+                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
+                        isPlaced
+                          ? 'bg-amber-950/20 border-amber-500/40 hover:bg-amber-950/30 shadow-sm'
+                          : 'bg-slate-950/50 border-slate-800 hover:border-slate-700 hover:bg-slate-950/80'
+                      }`}
+                      title={isPlaced ? `Clique para remover ${char.name} do tabuleiro` : `Clique para posicionar ${char.name} no tabuleiro`}
+                    >
+                      {/* Avatar e Informações */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 flex items-center justify-center ${
+                          isPlayer ? 'border-emerald-500/80 bg-emerald-950/40' : 'border-amber-500/60 bg-slate-800'
+                        }`}>
+                          {char.avatar ? (
+                            <img src={char.avatar} alt={char.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[11px] font-bold text-amber-300">
+                              {char.name.slice(0, 2).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white text-xs truncate">
+                              {char.name}
+                            </span>
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                              isPlayer
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : 'bg-slate-800 text-slate-300 border border-slate-700'
+                            }`}>
+                              {isPlayer ? 'Jogador' : 'NPC'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 mt-0.5">
+                            <span className="text-emerald-400 font-semibold">{hp}/{hpMax} PV</span>
+                            <span className="text-slate-600">•</span>
+                            <span className="text-cyan-400 font-semibold">{fp}/{fpMax} FP</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botão de Status / Toggle */}
+                      <div className="shrink-0">
+                        {isPlaced ? (
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 text-xs font-bold shadow-xs">
+                            <Check size={13} strokeWidth={2.5} />
+                            <span>No Tabuleiro</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700 text-xs font-medium hover:text-white hover:bg-slate-750">
+                            <Plus size={13} />
+                            <span>Oculto (Fora)</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Rodapé do Modal */}
+            <div className="px-5 py-3.5 border-t border-slate-800 bg-slate-950/70 flex items-center justify-between text-xs">
+              <span className="text-slate-400">
+                <strong className="text-amber-400 font-mono">{tokens.length}</strong> de {characters.length} combatentes no grid
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsTokensModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all shadow-md active:scale-95"
+              >
+                Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 4. CANVAS / SVG ENGINE PRINCIPAL */}
       <svg

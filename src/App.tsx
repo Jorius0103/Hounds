@@ -814,10 +814,10 @@ export default function App() {
     return [];
   });
 
-  // View Mode: 'sheets' | 'tactical' | 'split'
+  // View Mode: 'global' | 'sheets' | 'tactical'
   const [activeViewMode, setActiveViewMode] = useState<ViewMode>(() => {
     if (!TACTICAL_MAP_ENABLED) return 'sheets';
-    if (initialMesaViewState?.activeViewMode && ['sheets', 'tactical', 'split'].includes(initialMesaViewState.activeViewMode)) {
+    if (initialMesaViewState?.activeViewMode && ['global', 'sheets', 'tactical'].includes(initialMesaViewState.activeViewMode)) {
       return initialMesaViewState.activeViewMode;
     }
     return 'sheets';
@@ -5398,13 +5398,22 @@ export default function App() {
         onOpenOnlineRoomModal={() => setOnlineRoomModalOpen(true)}
         onOpenSystemLog={() => setSystemLogModalOpen(true)}
         systemLogsCount={systemLogsCount}
-        activeViewMode={activeViewMode}
+        activeViewMode={activeViewMode === 'tactical' ? 'tactical' : (isHomeScreen ? 'global' : 'sheets')}
         onSelectViewMode={
           TACTICAL_MAP_ENABLED
             ? (mode) => {
-                setActiveViewMode(mode);
-                if (mode !== 'sheets') {
+                if (mode === 'global') {
+                  setIsHomeScreen(true);
+                  setActiveViewMode('sheets');
+                } else if (mode === 'sheets') {
                   setIsHomeScreen(false);
+                  setActiveViewMode('sheets');
+                  if (!selectedNpcId && allCharacters.length > 0) {
+                    setSelectedNpcId(allCharacters[0].id);
+                  }
+                } else if (mode === 'tactical') {
+                  setIsHomeScreen(false);
+                  setActiveViewMode('tactical');
                 }
               }
             : undefined
@@ -5413,17 +5422,6 @@ export default function App() {
         editorCount={effectiveEditorIds.length}
         canEditCurrent={canEditCurrent}
         isHomeScreen={isHomeScreen && activeViewMode === 'sheets'}
-        onOpenHomeScreen={() => {
-          if (isHomeScreen && activeViewMode === 'sheets') {
-            setIsHomeScreen(false);
-            if (!selectedNpcId && allCharacters.length > 0) {
-              setSelectedNpcId(allCharacters[0].id);
-            }
-          } else {
-            setIsHomeScreen(true);
-            setActiveViewMode('sheets');
-          }
-        }}
         onRollDice={handleRollDice}
         onOpenPassDayModal={() => setPassDayModalOpen(true)}
         isMestre={isMaster}
@@ -5475,7 +5473,8 @@ export default function App() {
                 currentUserRole={effectiveRole}
                 onOpenFullNpcSheet={(npcId) => {
                   setSelectedNpcId(npcId);
-                  setActiveViewMode('split');
+                  setIsHomeScreen(false);
+                  setActiveViewMode('sheets');
                 }}
                 onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
                 hasEditPermission={canEditCurrent}
@@ -5504,61 +5503,6 @@ export default function App() {
                 onDeleteEntry={handleDeleteLogEntry}
                 onUpdateEntryComment={handleUpdateLogEntryComment}
               />
-            </div>
-          </div>
-        ) : activeViewMode === 'split' ? (
-          /* MODO VISÃO DIVIDIDA: MESA TÁTICA + FICHA DO PERSONAGEM */
-          <div className="flex flex-col xl:flex-row gap-3.5 items-start w-full">
-            <div className="flex-1 min-w-0 w-full xl:w-7/12">
-              <TacticalMapWorkspace
-                tacticalState={activeTacticalState}
-                onUpdateTacticalState={handleUpdateTacticalState}
-                characters={allCharacters}
-                selectedNpcId={selectedNpcId}
-                onSelectNpc={setSelectedNpcId}
-                onUpdateNpc={handleUpdateNpc}
-                currentUserRole={effectiveRole}
-                onOpenFullNpcSheet={(npcId) => setSelectedNpcId(npcId)}
-                onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
-                hasEditPermission={canEditCurrent}
-                onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
-                editorCount={effectiveEditorIds.length}
-                users={users}
-                editorUserIds={effectiveEditorIds}
-                onTogglePlayerPermission={handleTogglePlayerPermission}
-                onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
-              />
-            </div>
-            <div className="w-full xl:w-5/12 shrink-0 xl:sticky" style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}>
-              {selectedNpc ? (
-                <NpcDetailView
-                  npc={selectedNpc}
-                  onUpdateNpc={handleUpdateNpc}
-                  onDeleteNpc={handleDeleteNpc}
-                  onDuplicateNpc={handleDuplicateNpc}
-                  onOpenAvatarPicker={(npc) => setAvatarModalNpc(npc)}
-                  onOpenConditionsCrud={() => setConditionsCrudOpen(true)}
-                  onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
-                  onOpenWeaponModal={(weapon) =>
-                    setWeaponModalState({ isOpen: true, weapon: weapon || null })
-                  }
-                  onRemoveActiveSpell={handleRemoveActiveSpell}
-                  onRemoveAffectedSpell={handleRemoveAffectedSpell}
-                  isPlayerUser={isPlayerUser}
-                  currentUserRole={effectiveRole}
-                  hasEditPermission={canEditCurrent}
-                  currentRound={effectiveRound}
-                  conditions={conditions}
-                  users={users}
-                  onlinePlayerNames={onlinePlayerNames}
-                  allCharacters={allCharacters}
-                  onOpenPlayerPermissions={handleOpenPlayerPermissions}
-                />
-              ) : (
-                <div className="py-16 text-center text-xs text-slate-400 bg-slate-900/60 rounded-2xl border border-slate-800 p-8">
-                  Selecione um token na mesa tática para exibir e gerenciar a ficha completa aqui.
-                </div>
-              )}
             </div>
           </div>
         ) : (
