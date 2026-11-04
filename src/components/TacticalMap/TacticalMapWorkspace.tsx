@@ -4,6 +4,8 @@ import {
   TacticalToken,
   FacingDirection,
   TACTICAL_MAP_PRESETS,
+  TacticalLayer,
+  TacticalViewMode,
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
@@ -119,6 +121,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [tokensModalSearch, setTokensModalSearch] = useState('');
 
   const isMaster = currentUserRole === 'mestre';
+  const activeLayer = tacticalState?.activeLayer || 'tokens';
+  const viewMode = isMaster ? (tacticalState?.viewMode || 'gm') : 'player';
+  const isPlayerView = viewMode === 'player';
+
+  // Estado para arrasto e reposicionamento da imagem base do mapa (Camada do Mapa)
+  const [isDraggingMap, setIsDraggingMap] = useState(false);
+  const [mapDragStart, setMapDragStart] = useState<Point>({ x: 0, y: 0 });
+  const [localMapPos, setLocalMapPos] = useState<{ x: number; y: number } | null>(null);
 
   // Map of characters by id
   const characterMap = useMemo(() => {
@@ -131,6 +141,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const tokens = useMemo(() => {
     return Array.isArray(tacticalState?.tokens) ? tacticalState.tokens : [];
   }, [tacticalState?.tokens]);
+
+  // Alternar visibilidade de um token entre Mestre e Jogadores (Roll20 GM Layer)
+  const handleToggleTokenVisibility = useCallback((tokenId: string) => {
+    const updatedTokens = tokens.map((t) => {
+      if (t.id === tokenId) {
+        const nextHidden = !t.hiddenFromPlayers;
+        return {
+          ...t,
+          hiddenFromPlayers: nextHidden,
+          layer: (nextHidden ? 'gm' : 'tokens') as any,
+        };
+      }
+      return t;
+    });
+    onUpdateTacticalState({ tokens: updatedTokens });
+  }, [tokens, onUpdateTacticalState]);
 
   // Selected token object
   const selectedToken = useMemo(() => {
@@ -213,6 +239,21 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       setContextMenu(null);
     }
 
+    // Camada do Mapa ativa (Roll20 Map Layer): Arraste da imagem de base pelo mestre
+    if (activeLayer === 'map' && isMaster && !tacticalState.mapImageLocked && e.button === 0) {
+      const targetId = (e.target as HTMLElement).id;
+      if (targetId === 'map-background' || (e.target as HTMLElement).tagName === 'svg') {
+        const p = clientToMapCoords(e.clientX, e.clientY);
+        setIsDraggingMap(true);
+        setMapDragStart({
+          x: p.x - (tacticalState.mapImageX || 0),
+          y: p.y - (tacticalState.mapImageY || 0),
+        });
+        setPopoverToken(null);
+        return;
+      }
+    }
+
     // Middle click or space key or clicking empty area starts pan
     if (e.button === 1 || e.button === 0) {
       if ((e.target as HTMLElement).tagName === 'svg' || (e.target as HTMLElement).id === 'map-background') {
@@ -232,6 +273,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDraggingMap) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const nextX = Math.round(p.x - mapDragStart.x);
+      const nextY = Math.round(p.y - mapDragStart.y);
+      setLocalMapPos({ x: nextX, y: nextY });
+      return;
+    }
+
     if (isPanning) {
       setViewport((prev) => ({
         ...prev,
@@ -280,6 +329,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleMouseUp = () => {
+    if (isDraggingMap) {
+      setIsDraggingMap(false);
+      if (localMapPos) {
+        onUpdateTacticalState({
+          mapImageX: localMapPos.x,
+          mapImageY: localMapPos.y,
+        });
+        setLocalMapPos(null);
+      }
+    }
+
     if (isPanning) {
       setIsPanning(false);
       try {
@@ -504,6 +564,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   // Handle token drag start
   const handleTokenMouseDown = (e: React.MouseEvent, token: TacticalToken) => {
+    if (activeLayer === 'map') return; // Na camada do mapa, os tokens ficam congelados para calibrar o fundo
     if (e.button !== 0 || token.isPinned || rotatingTokenId) return;
     const tokenNpc = characterMap.get(token.npcId);
     const canEditToken = isMaster || hasEditPermission;
@@ -584,6 +645,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={() => {
+        if (isDraggingMap) {
+          setIsDraggingMap(false);
+          if (localMapPos) {
+            onUpdateTacticalState({
+              mapImageX: localMapPos.x,
+              mapImageY: localMapPos.y,
+            });
+            setLocalMapPos(null);
+          }
+        }
         if (isPanning) setIsPanning(false);
         if (draggedTokenId) {
           setDraggedTokenId(null);
@@ -598,6 +669,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       onWheel={handleWheel}
       className="relative w-full h-[calc(100vh-130px)] min-h-[550px] bg-slate-950 overflow-hidden select-none cursor-crosshair rounded-2xl border border-slate-800 shadow-2xl flex flex-col"
     >
+      {/* BANNER AVISO: MODO PRÉ-VISUALIZAÇÃO DA VISÃO DOS JOGADORES (NÍVEL 3) */}
+      {isMaster && isPlayerView && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 bg-emerald-950/95 border border-emerald-500/60 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-2xl flex items-center gap-2.5 text-xs text-emerald-200 pointer-events-auto animate-in slide-in-from-top-2 duration-150">
+          <Eye size={14} className="text-emerald-400 shrink-0" />
+          <span>
+            <strong>Visão dos Jogadores Ativa:</strong> Todos os elementos e combatentes secretos do mestre estão ocultos
+          </span>
+          <button
+            onClick={() => onUpdateTacticalState({ viewMode: 'gm' })}
+            className="px-2.5 py-0.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-full text-[11px] transition-all shrink-0 ml-1 shadow-sm"
+          >
+            Voltar à Visão do Mestre
+          </button>
+        </div>
+      )}
+
       {/* 1. TOP TOOLBAR */}
       <div className="absolute top-3 left-3 right-3 z-30 pointer-events-auto">
         <TacticalToolbar
@@ -920,64 +1007,107 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         <g
           transform={`translate(${panX}, ${panY}) scale(${zoom})`}
         >
-          {/* CAMADA 1: FUNDO DO MAPA */}
-          {mapBackgroundSrc ? (
-            <image
-              id="map-background"
-              href={mapBackgroundSrc}
-              x="0"
-              y="0"
-              width={mapPixelWidth}
-              height={mapPixelHeight}
-              preserveAspectRatio="xMidYMid slice"
-              opacity="0.85"
-            />
-          ) : tacticalState.backgroundKey === 'dungeon' ? (
-            <rect
-              id="map-background"
-              x="0"
-              y="0"
-              width={mapPixelWidth}
-              height={mapPixelHeight}
-              fill="url(#grid-dungeon)"
-            />
-          ) : tacticalState.backgroundKey === 'forest' ? (
-            <rect
-              id="map-background"
-              x="0"
-              y="0"
-              width={mapPixelWidth}
-              height={mapPixelHeight}
-              fill="url(#grid-forest)"
-            />
-          ) : tacticalState.backgroundKey === 'tavern' ? (
-            <rect
-              id="map-background"
-              x="0"
-              y="0"
-              width={mapPixelWidth}
-              height={mapPixelHeight}
-              fill="url(#grid-tavern)"
-            />
-          ) : tacticalState.backgroundKey === 'arena' ? (
-            <rect
-              id="map-background"
-              x="0"
-              y="0"
-              width={mapPixelWidth}
-              height={mapPixelHeight}
-              fill="url(#grid-arena)"
-            />
-          ) : (
-            <rect
-              id="map-background"
-              x="0"
-              y="0"
-              width={mapPixelWidth}
-              height={mapPixelHeight}
-              fill="#0b1120"
-            />
-          )}
+          {/* CAMADA 1: FUNDO DO MAPA (ROLL20 MAP LAYER) */}
+          {(() => {
+            const mapX = localMapPos ? localMapPos.x : (tacticalState.mapImageX || 0);
+            const mapY = localMapPos ? localMapPos.y : (tacticalState.mapImageY || 0);
+            const scale = tacticalState.mapImageScale || 1;
+            const w = (tacticalState.mapImageWidth || mapPixelWidth) * scale;
+            const h = (tacticalState.mapImageHeight || mapPixelHeight) * scale;
+            const isMapActive = activeLayer === 'map';
+
+            return (
+              <g id="tactical-map-layer">
+                {mapBackgroundSrc ? (
+                  <image
+                    id="map-background"
+                    href={mapBackgroundSrc}
+                    x={mapX}
+                    y={mapY}
+                    width={w}
+                    height={h}
+                    preserveAspectRatio="none"
+                    opacity={isMapActive ? "1" : "0.9"}
+                    className={isMapActive && !tacticalState.mapImageLocked ? "cursor-move" : ""}
+                  />
+                ) : tacticalState.backgroundKey === 'dungeon' ? (
+                  <rect
+                    id="map-background"
+                    x={mapX}
+                    y={mapY}
+                    width={w}
+                    height={h}
+                    fill="url(#grid-dungeon)"
+                  />
+                ) : tacticalState.backgroundKey === 'forest' ? (
+                  <rect
+                    id="map-background"
+                    x={mapX}
+                    y={mapY}
+                    width={w}
+                    height={h}
+                    fill="url(#grid-forest)"
+                  />
+                ) : tacticalState.backgroundKey === 'tavern' ? (
+                  <rect
+                    id="map-background"
+                    x={mapX}
+                    y={mapY}
+                    width={w}
+                    height={h}
+                    fill="url(#grid-tavern)"
+                  />
+                ) : tacticalState.backgroundKey === 'arena' ? (
+                  <rect
+                    id="map-background"
+                    x={mapX}
+                    y={mapY}
+                    width={w}
+                    height={h}
+                    fill="url(#grid-arena)"
+                  />
+                ) : (
+                  <rect
+                    id="map-background"
+                    x={mapX}
+                    y={mapY}
+                    width={w}
+                    height={h}
+                    fill="#0b1120"
+                  />
+                )}
+
+                {/* Contorno de Calibração da Camada do Mapa (Roll20 Map Layer Outline) */}
+                {isMapActive && isMaster && (
+                  <g pointerEvents="none">
+                    <rect
+                      x={mapX}
+                      y={mapY}
+                      width={w}
+                      height={h}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth={2.5}
+                      strokeDasharray="8 5"
+                    />
+                    {/* Alças nos 4 cantos */}
+                    <rect x={mapX - 5} y={mapY - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
+                    <rect x={mapX + w - 5} y={mapY - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
+                    <rect x={mapX - 5} y={mapY + h - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
+                    <rect x={mapX + w - 5} y={mapY + h - 5} width="10" height="10" fill="#f59e0b" stroke="#000" strokeWidth="1" />
+
+                    {/* Tarja indicativa da Camada do Mapa */}
+                    <g transform={`translate(${mapX + 12}, ${mapY + 22})`}>
+                      <rect x="0" y="-14" width="370" height="22" rx="4" fill="#020617" fillOpacity="0.88" stroke="#f59e0b" strokeWidth="1" />
+                      <text x="10" y="0" fill="#fef3c7" fontSize="11" fontWeight="bold">
+                        🗺️ Camada 1: Mapa Base (Arraste para alinhar | Grid Hexagonal sobreposto)
+                      </text>
+                    </g>
+                  </g>
+                )}
+              </g>
+            );
+          })()}
 
           {/* CAMADA 2: GRADE TÁTICA (HEX OU QUADRADA) */}
           {tacticalState.gridType === 'hex' ? (
@@ -1191,14 +1321,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </g>
           )}
 
-          {/* CAMADA 7: TOKENS DE COMBATE */}
+          {/* CAMADA 7: TOKENS DE COMBATE (ROLL20 TOKEN & GM LAYERS) */}
           <g id="tactical-tokens">
             {tokens.map((token) => {
               const npc = characterMap.get(token.npcId);
               if (!npc) return null;
 
-              // Visibilidade de espectador / jogador
-              if (!isMaster && token.hiddenFromPlayers) return null;
+              const isTokenHidden = !!token.hiddenFromPlayers || token.layer === 'gm';
+              // NÍVEL 3: Visão de Jogadores - elementos ocultos do mestre não aparecem
+              if (isPlayerView && isTokenHidden) return null;
 
               const isPlayer = npc.characterType === 'player';
               const isSelected = token.id === selectedTokenId;
@@ -1227,12 +1358,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               // Contorno cinza neutro se não houver manobra para não confundir com as manobras
               const maneuverBorderColor = hasManeuver
                 ? (maneuver.borderHex || maneuver.bgHex)
-                : '#64748b';
+                : isTokenHidden
+                  ? '#c084fc'
+                  : '#64748b';
 
               return (
                 <g
                   key={token.id}
                   transform={`translate(${center.x}, ${center.y})`}
+                  opacity={isTokenHidden ? 0.58 : 1}
+                  pointerEvents={activeLayer === 'map' ? 'none' : 'auto'}
                   onClick={(e) => handleTokenClick(e, token)}
                   onMouseDown={(e) => handleTokenMouseDown(e, token)}
                   onContextMenu={(e) => {
@@ -1251,19 +1386,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   style={{
                     filter: isSelected
                       ? 'drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.8))'
-                      : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
+                      : isTokenHidden
+                        ? 'drop-shadow(0px 0px 7px rgba(168, 85, 247, 0.8))'
+                        : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
                   }}
                 >
                   {/* GRUPO ROTATIVO INTEGRAL: Foto, Nome (em cima), Frente (embaixo) e Pauzinho giram juntos */}
                   <g transform={`rotate(${tokenRotation})`}>
-                    {/* 1. Círculo de Base com Borda Cinza Neutra ou Cor da Manobra */}
+                    {/* 1. Círculo de Base com Borda Cinza Neutra, Cor da Manobra ou Roxo GM */}
                     <circle
                       cx="0"
                       cy="0"
                       r={tokenRadius + 3}
                       fill="#0f172a"
                       stroke={maneuverBorderColor}
-                      strokeWidth={isSelected ? 3.5 : 2.5}
+                      strokeWidth={isSelected ? 3.5 : isTokenHidden ? 3 : 2.5}
+                      strokeDasharray={isTokenHidden ? "4,2" : undefined}
                     />
 
                     {/* Anel Externo Dourado Indicador de Seleção */}
@@ -1317,6 +1455,41 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           </g>
                         );
                       })()
+                    )}
+
+                    {/* NÍVEL 2: FLAG DO MESTRE (INDICAÇÃO SE ESTÁ VISÍVEL PARA JOGADORES OU SÓ MESTRE) */}
+                    {isMaster && (
+                      <g
+                        transform={`translate(0, ${-tokenRadius - 32})`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleTokenVisibility(token.id);
+                        }}
+                        className="cursor-pointer hover:scale-105 transition-transform"
+                      >
+                        <rect
+                          x="-38"
+                          y="-7.5"
+                          width="76"
+                          height="15"
+                          rx="7.5"
+                          fill={isTokenHidden ? "#4c1d95" : "#064e3b"}
+                          fillOpacity="0.95"
+                          stroke={isTokenHidden ? "#c084fc" : "#34d399"}
+                          strokeWidth="1"
+                        />
+                        <text
+                          x="0"
+                          y="3"
+                          fill={isTokenHidden ? "#f5d0fe" : "#a7f3d0"}
+                          fontSize="8.5"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                          letterSpacing="0.3"
+                        >
+                          {isTokenHidden ? "👁️‍🗨️ SÓ MESTRE" : "👁️ JOGADORES"}
+                        </text>
+                      </g>
                     )}
 
                     {/* 3. NOME DO PERSONAGEM EM CIMA DA FOTO (gira junto com o token) */}
@@ -1536,6 +1709,43 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   })}
                 </div>
               </div>
+
+              {/* NÍVEL DO MESTRE: FLAG DE VISIBILIDADE PARA JOGADORES (ROLL20 GM LAYER) */}
+              {isMaster && (
+                <div className="pt-1 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleTokenVisibility(token.id);
+                      setContextMenu(null);
+                    }}
+                    className={`w-full py-1.5 px-2 rounded-lg font-bold text-[10.5px] flex items-center justify-center gap-1.5 border transition-all ${
+                      token.hiddenFromPlayers
+                        ? 'bg-purple-950/70 hover:bg-purple-900 text-purple-200 border-purple-500/50 shadow-sm'
+                        : 'bg-slate-850 hover:bg-slate-800 text-slate-300 border-slate-750'
+                    }`}
+                    title={
+                      token.hiddenFromPlayers
+                        ? 'Tornar este combatente visível para os jogadores conectados'
+                        : 'Ocultar este combatente dos jogadores (Camada do Mestre)'
+                    }
+                  >
+                    {token.hiddenFromPlayers ? (
+                      <>
+                        <Eye size={12} className="text-emerald-400" />
+                        <span>Tornar Visível aos Jogadores</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff size={12} className="text-purple-400" />
+                        <span>Ocultar dos Jogadores (GM)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               {/* Botão de Ação: Lançar Dano / Fadiga / Itens */}
               <div className="pt-1 border-t border-slate-800">

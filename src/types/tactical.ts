@@ -2,6 +2,9 @@ export type GridType = 'hex' | 'square';
 
 export type FacingDirection = 0 | 1 | 2 | 3 | 4 | 5; // 6 hex directions (0 = Top/N, 1 = NE, 2 = SE, 3 = S, 4 = SW, 5 = NW)
 
+export type TacticalLayer = 'map' | 'tokens' | 'gm'; // 3 Níveis: Mapa (base), Tokens (jogo), GM (mestre)
+export type TacticalViewMode = 'gm' | 'player'; // Visão do Mestre ou Visão dos Jogadores
+
 export interface TacticalToken {
   id: string;
   npcId: string;
@@ -15,6 +18,7 @@ export interface TacticalToken {
   color?: string; // Cor do anel
   isPinned?: boolean; // Travar movimento
   hiddenFromPlayers?: boolean; // Visível apenas para o mestre
+  layer?: TacticalLayer; // 'tokens' ou 'gm'
   notes?: string;
   movedThisTurn?: number; // Hexes percorridos nesta rodada
 }
@@ -59,6 +63,16 @@ export interface TacticalMarker {
 export interface TacticalState {
   backgroundKey: TacticalBackgroundKey;
   customImageUrl?: string;
+  // Escalonamento e posicionamento da imagem base do mapa (Camada do Mapa)
+  mapImageX?: number; // Deslocamento X da imagem de fundo
+  mapImageY?: number; // Deslocamento Y da imagem de fundo
+  mapImageWidth?: number; // Largura customizada da imagem de fundo (px)
+  mapImageHeight?: number; // Altura customizada da imagem de fundo (px)
+  mapImageScale?: number; // Escala proporcional (1.0 = 100%)
+  mapImageLocked?: boolean; // Travar imagem de fundo para não ser movida por acidente
+  // Níveis e Visão (Roll20 Style)
+  activeLayer?: TacticalLayer; // 'map' | 'tokens' | 'gm'
+  viewMode?: TacticalViewMode; // 'gm' (Visão do Mestre) | 'player' (Visão dos Jogadores)
   gridType: GridType;
   hexSize: number; // raio do hex em pixels (padrão 38)
   gridCols: number;
@@ -80,6 +94,12 @@ export interface TacticalState {
 export const DEFAULT_TACTICAL_STATE: TacticalState = {
   backgroundKey: 'ludgrim',
   customImageUrl: '',
+  mapImageX: 0,
+  mapImageY: 0,
+  mapImageScale: 1,
+  mapImageLocked: false,
+  activeLayer: 'tokens',
+  viewMode: 'gm',
   gridType: 'hex',
   hexSize: 38,
   gridCols: 32,
