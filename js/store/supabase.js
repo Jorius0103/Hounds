@@ -59,7 +59,7 @@ function SupabaseStore(client, bucket) {
   // players are (the campaign). Not the Mesa's pieces (each save would bring the whole state to
   // every browser) nor the rest of the site, loaded when it opens.
   var LIVE = { mesa_estado: true, tabuleiros: true, tabuleiro_tokens: true, tabuleiro_desenhos: true,
-    tabuleiro_turnos: true, tabuleiro_campanha: true, chat_mensagens: true };
+    tabuleiro_turnos: true, tabuleiro_campanha: true, chat_mensagens: true, mesa_rolagens: true };
   var MARKERS = /^maps\/([^/]+)\/markers$/;
   var cols = {}, channel = null, live = false, mesaChannel = null, mesaLive = false, bcast = {};
   // mesaOk: the Mesa's channel connected once (so a drop of it is worth reconnecting). chGen
@@ -204,6 +204,16 @@ function SupabaseStore(client, bucket) {
     return Object.keys(cols).filter(function (k) { return MARKERS.test(k) && row.id in cols[k].rows; })[0] || null;
   }
   function onChange(p) {
+    if (p.table === 'mesa_rolagens') {
+      if (p.eventType === 'INSERT' && p.new) {
+        try {
+          if (window.hubMesaBus && typeof window.hubMesaBus._onIncomingRollRow === 'function') {
+            window.hubMesaBus._onIncomingRollRow(p.new);
+          }
+        } catch (e) {}
+      }
+      return;
+    }
     var del = p.eventType === 'DELETE', row = del ? p.old : p.new;
     if (!row || row.id == null) return;
     var col = colOf(p.table, row, del), c = col && cols[col], id = row.id;
@@ -221,6 +231,25 @@ function SupabaseStore(client, bucket) {
   }
   function openChannels() {
     var gen = ++chGen;
+    if (client.realtime && !client.realtime._hounds_bound) {
+      client.realtime._hounds_bound = true;
+      try {
+        if (typeof client.realtime.onClose === 'function') {
+          client.realtime.onClose(function () {
+            live = false;
+            mesaLive = false;
+            reviveSoon();
+          });
+        }
+        if (typeof client.realtime.onError === 'function') {
+          client.realtime.onError(function () {
+            live = false;
+            mesaLive = false;
+            reviveSoon();
+          });
+        }
+      } catch (e) {}
+    }
     // The tables' notices follow each table's RLS (only accounts linked to a user get them).
     channel = client.channel('hounds');
     Object.keys(LIVE).forEach(function (t) {
@@ -244,7 +273,35 @@ function SupabaseStore(client, bucket) {
       else if (status === 'CHANNEL_ERROR') console.warn('Hounds: canal da Mesa indisponível; a Mesa sincroniza pelo banco.', err);
     });
   }
-  function healthy() { return live && (mesaLive || !mesaOk); }
+  function isSocketOpen() {
+    try {
+      if (client && client.realtime && typeof client.realtime.isConnected === 'function') {
+        return client.realtime.isConnected();
+      }
+    } catch (e) {}
+    return true;
+  }
+  function healthy() {
+    var joined = (!channel || channel.state === 'joined') && (!mesaChannel || !mesaOk || mesaChannel.state === 'joined');
+    return live && (mesaLive || !mesaOk) && isSocketOpen() && joined;
+  }
+  function wake() {
+    clearTimeout(reviveTimer);
+    reviveTimer = 0;
+    if (client && client.auth) {
+      client.auth.getSession().then(function (res) {
+        var s = res && res.data && res.data.session;
+        if (s && client.realtime && client.realtime.setAuth) {
+          try { client.realtime.setAuth(s.access_token); } catch (e) {}
+        }
+      }).catch(function () {});
+    }
+    if (!healthy()) {
+      revive();
+    } else {
+      resync();
+    }
+  }
   /* A channel the server closed doesn't come back by itself: the token expired while the tab
      slept (the server drops the channels when it does), or the connection died with the timers
      of a hidden tab held back. The channels are made again with the session's current token.
@@ -270,12 +327,26 @@ function SupabaseStore(client, bucket) {
       return Promise.race([gone, new Promise(function (r) { setTimeout(r, 3000); })]);
     }).then(function () { reviving = false; openChannels(); });
   }
+  var lastUserAct = Date.now();
+  function onUserActive() {
+    var now = Date.now();
+    if (now - lastUserAct > 15000) {
+      lastUserAct = now;
+      wake();
+    } else {
+      lastUserAct = now;
+    }
+  }
+  window.addEventListener('pointerdown', onUserActive, { passive: true });
+  window.addEventListener('keydown', onUserActive, { passive: true });
+  window.addEventListener('focus', onUserActive);
+
   function ensureChannel() {
     if (started) return;
     started = true;
     openChannels();
-    document.addEventListener('visibilitychange', function () { if (document.hidden) return; if (!healthy()) revive(); resync(); });
-    window.addEventListener('online', function () { if (!healthy()) revive(); resync(); });
+    document.addEventListener('visibilitychange', function () { if (document.hidden) return; wake(); });
+    window.addEventListener('online', function () { wake(); });
     // Every 60 s; every 15 s while the realtime is down, so the screen doesn't stop.
     var ticks = 0;
     setInterval(function () {
@@ -530,6 +601,7 @@ function SupabaseStore(client, bucket) {
     getRecentRolls: getRecentRolls,
     deleteRoll: deleteRoll,
     clearRolls: clearRolls,
+    wake: wake,
     // For MesaSync: save 1 s after the last change (the others get each change by broadcast; the
     // database keeps it and covers a message lost), always in pieces (a small head row: its notice
     // goes to every browser on every save), usually in one piece, and reach the others directly.
@@ -538,8 +610,14 @@ function SupabaseStore(client, bucket) {
     chunkSize: 1000000,
     realtime: {
       send: function (kind, data) {
+        if (!mesaChannel || !mesaLive || !healthy()) {
+          reviveSoon();
+        }
         if (!mesaChannel || !mesaLive) return Promise.resolve('closed');
-        return Promise.resolve(mesaChannel.send({ type: 'broadcast', event: 'hub', payload: { kind: kind, data: data } })).catch(function () { return 'error'; });
+        return Promise.resolve(mesaChannel.send({ type: 'broadcast', event: 'hub', payload: { kind: kind, data: data } })).catch(function () {
+          reviveSoon();
+          return 'error';
+        });
       },
       on: function (kind, fn) { ensureChannel(); bcast[kind] = fn; }
     }

@@ -86,7 +86,7 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const isManaStoneItem = (it: ExtraItem) => {
     if (it.category === 'mana') return true;
     const lower = (it.name || '').toLowerCase();
-    return lower.includes('mana') || lower.includes('pedra');
+    return lower.includes('mana') || lower.includes('pedra') || lower.includes('fp') || lower.includes('energia');
   };
 
   // Pedras de mana para a aba Fadiga (ligadas à energia de magias - apenas FAVORITADAS)
@@ -232,6 +232,12 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
   const selectedStone = effectiveFatigueSource !== 'fp'
     ? manaStones.find((s) => s.id === effectiveFatigueSource)
     : undefined;
+
+  useEffect(() => {
+    if (selectedFatigueSource !== 'fp') {
+      setIsSpellExpenditure(true);
+    }
+  }, [selectedFatigueSource]);
 
   // Heal state (Agora pode curar PV ou curar Fadiga!)
   const [healTarget, setHealTarget] = useState<'hp' | 'fp'>('hp');
@@ -532,18 +538,28 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
 
     let autoDesc = `Gasto de fadiga: ${costLabel}.`;
     if (spellNameTrimmed) {
+      const targetStr = isAreaSpell
+        ? ' em Área'
+        : (targetChar && targetChar.name ? ` lançada em ${targetChar.name}` : ' lançada');
+
       if (isSpellActive) {
         const durText = typeof spellDuration === 'number' && spellDuration > 0 ? ` [Duração: ${spellDuration}R]` : '';
-        if (isAreaSpell) {
-          autoDesc = `Magia Ativa [${spellNameTrimmed}] em Área (R${spellRound}${durText}): ${costLabel}.`;
-        } else {
-          autoDesc = `Magia Ativa [${spellNameTrimmed}] lançada em ${targetChar.name} (R${spellRound}${durText}): ${costLabel}.`;
-        }
+        autoDesc = `Magia Ativa [${spellNameTrimmed}]${targetStr} (R${spellRound}${durText}): ${costLabel}.`;
       } else {
-        autoDesc = `Magia [${spellNameTrimmed}] lançada: ${costLabel}.`;
+        autoDesc = `Magia [${spellNameTrimmed}]${targetStr}: ${costLabel}.`;
       }
     }
-    const desc = customDescription.trim() || autoDesc;
+
+    let desc = autoDesc;
+    if (spellNameTrimmed) {
+      desc = customDescription.trim() ? `${autoDesc} (${customDescription.trim()})` : autoDesc;
+    } else if (customDescription.trim()) {
+      if (targetStone) {
+        desc = `Gasto de mana [${customDescription.trim()}]: ${costLabel}.`;
+      } else {
+        desc = `Gasto de fadiga [${customDescription.trim()}]: ${costLabel}.`;
+      }
+    }
 
     const spellData = spellNameTrimmed
       ? {
@@ -1232,7 +1248,10 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                       <button
                         key={stone.id}
                         type="button"
-                        onClick={() => setSelectedFatigueSource(stone.id)}
+                        onClick={() => {
+                          setSelectedFatigueSource(stone.id);
+                          setIsSpellExpenditure(true);
+                        }}
                         className={`py-1.5 px-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
                           isSelected
                             ? 'bg-cyan-950/70 border-cyan-500 ring-1 ring-cyan-500/50 text-white shadow-sm'
@@ -1430,156 +1449,124 @@ export const DamageCalculatorModal: React.FC<DamageCalculatorModalProps> = ({
                   )}
                 </div>
 
-                {/* Checkbox: Magia Ativa */}
-                <div className="pt-1 border-t border-slate-800/60">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={isSpellActive}
-                      onChange={(e) => setIsSpellActive(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-purple-500"
-                    />
-                    <div className="text-xs">
-                      <span className="font-bold text-purple-300">Magia Ativa / Sustentada</span>
-                      <span className="text-slate-500 text-[10px] ml-1.5">
-                        (registra em "Magias Ativas" e "Sob Efeito")
+                {/* Configuração de Alvo (disponível para qualquer magia) */}
+                <div className="space-y-2 pt-1.5 border-t border-purple-900/40 bg-purple-950/20 p-2 rounded-lg">
+                  {/* Campo Magia em área */}
+                  <div className="flex items-center justify-between bg-slate-900/60 p-2 rounded-lg border border-purple-900/30">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isAreaSpell}
+                        onChange={(e) => setIsAreaSpell(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-purple-500"
+                      />
+                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
+                        <span>🌐</span> Magia em área
                       </span>
-                    </div>
-                  </label>
-                </div>
+                    </label>
+                    <span className="text-[10px] text-slate-500">
+                      {isAreaSpell ? 'Registra em Área / Ambiente (sem alvo individual)' : 'Vincula a um alvo específico'}
+                    </span>
+                  </div>
 
-                {/* Configuração de Alvo e Rodada se Magia Ativa marcada */}
-                {isSpellActive && (
-                  <div className="space-y-2 pt-1.5 border-t border-purple-900/40 bg-purple-950/20 p-2 rounded-lg">
-                    {/* Campo Magia em área */}
-                    <div className="flex items-center justify-between bg-slate-900/60 p-2 rounded-lg border border-purple-900/30">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={isAreaSpell}
-                          onChange={(e) => setIsAreaSpell(e.target.checked)}
-                          className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
-                          <span>🌐</span> Magia em área
-                        </span>
-                      </label>
-                      <span className="text-[10px] text-slate-500">
-                        {isAreaSpell ? 'Registra apenas no conjurador (sem alvo individual)' : 'Vincula a um alvo específico'}
-                      </span>
-                    </div>
-
-                    {isAreaSpell ? (
-                      <div className="flex flex-wrap items-center justify-between gap-1.5 bg-slate-900/90 border border-purple-900/40 rounded-lg px-2.5 py-1.5">
-                        <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
-                          <span>🌐</span> Alvo: Área / Ambiente
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-slate-400 shrink-0">Rodada:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={spellRound}
-                              onChange={(e) => setSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                              className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            />
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-slate-400 shrink-0">Duração:</span>
-                            <input
-                              type="number"
-                              min="1"
-                              placeholder="Opc."
-                              value={spellDuration}
-                              onChange={(e) => setSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
-                              className="w-14 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono text-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                              title="Quantidade de rodadas que a magia dura (opcional)"
-                            />
-                          </div>
+                  {!isAreaSpell && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-1 text-[10px]">
+                        <span className="font-bold text-purple-300">Alvo da Magia:</span>
+                        <div className="flex items-center gap-0.5 bg-slate-900 p-0.5 rounded border border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => setSpellTargetFilter('all')}
+                            className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            Todos
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSpellTargetFilter('player')}
+                            className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'player' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            Jogadores
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSpellTargetFilter('npc')}
+                            className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'npc' ? 'bg-purple-700 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            NPCs
+                          </button>
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between gap-1 text-[10px]">
-                          <span className="font-bold text-purple-300">Alvo da Magia:</span>
-                          <div className="flex items-center gap-0.5 bg-slate-900 p-0.5 rounded border border-slate-800">
-                            <button
-                              type="button"
-                              onClick={() => setSpellTargetFilter('all')}
-                              className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'all' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
-                            >
-                              Todos
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setSpellTargetFilter('player')}
-                              className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'player' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
-                            >
-                              Jogadores
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setSpellTargetFilter('npc')}
-                              className={`px-1.5 py-0.5 rounded ${spellTargetFilter === 'npc' ? 'bg-purple-700 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
-                            >
-                              NPCs
-                            </button>
-                          </div>
+
+                      <select
+                        value={spellTargetId}
+                        onChange={(e) => setSpellTargetId(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      >
+                        <option value={npc.id}>★ {npc.name} (Próprio Conjurador)</option>
+                        {combatants
+                          .filter((c) => c.id !== npc.id)
+                          .filter((c) => {
+                            if (spellTargetFilter === 'player') return c.characterType === 'player';
+                            if (spellTargetFilter === 'npc') return c.characterType !== 'player';
+                            return true;
+                          })
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.characterType === 'player' ? '👤 ' : '👾 '}
+                              {c.name} {c.isDead ? '(Morto)' : ''}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Checkbox: Magia Ativa */}
+                  <div className="pt-1.5 border-t border-purple-900/40">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isSpellActive}
+                        onChange={(e) => setIsSpellActive(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-purple-500"
+                      />
+                      <div className="text-xs">
+                        <span className="font-bold text-purple-300">Magia Ativa / Sustentada</span>
+                        <span className="text-slate-500 text-[10px] ml-1.5">
+                          (registra em "Magias Ativas" e "Sob Efeito")
+                        </span>
+                      </div>
+                    </label>
+
+                    {isSpellActive && (
+                      <div className="flex items-center gap-2 pt-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-400 shrink-0">Rodada:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={spellRound}
+                            onChange={(e) => setSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            className="w-16 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-1.5 items-center">
-                          <div className="sm:col-span-2">
-                            <select
-                              value={spellTargetId}
-                              onChange={(e) => setSpellTargetId(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-750 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            >
-                              <option value={npc.id}>★ {npc.name} (Próprio Conjurador)</option>
-                              {combatants
-                                .filter((c) => c.id !== npc.id)
-                                .filter((c) => {
-                                  if (spellTargetFilter === 'player') return c.characterType === 'player';
-                                  if (spellTargetFilter === 'npc') return c.characterType !== 'player';
-                                  return true;
-                                })
-                                .map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    {c.characterType === 'player' ? '👤 ' : '👾 '}
-                                    {c.name} {c.isDead ? '(Morto)' : ''}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-slate-400 shrink-0">Rodada:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={spellRound}
-                              onChange={(e) => setSpellRound(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                              className="w-full bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            />
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-slate-400 shrink-0">Duração:</span>
-                            <input
-                              type="number"
-                              min="1"
-                              placeholder="Opc."
-                              value={spellDuration}
-                              onChange={(e) => setSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
-                              className="w-full bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono text-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                              title="Quantidade de rodadas que a magia dura (opcional)"
-                            />
-                          </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-400 shrink-0">Duração:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Opc."
+                            value={spellDuration}
+                            onChange={(e) => setSpellDuration(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            className="w-16 bg-slate-900 border border-slate-750 rounded-lg px-1.5 py-0.5 text-xs text-center font-mono text-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            title="Quantidade de rodadas que a magia dura (opcional)"
+                          />
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             )}
 

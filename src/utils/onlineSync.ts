@@ -140,6 +140,12 @@ class OnlineSyncService {
 
   public checkAndResync() {
     this.requestWakeLock();
+    try {
+      const bus = (typeof window !== 'undefined' && ((window as any).parent?.hubMesaBus || (window as any).hubMesaBus));
+      if (bus && typeof bus.wake === 'function') {
+        bus.wake();
+      }
+    } catch (e) {}
     const now = Date.now();
     if (this.status !== 'connected' || !this.client || !(this.client as any).connected || now - this.lastMessageTime > 30000) {
       this.connect();

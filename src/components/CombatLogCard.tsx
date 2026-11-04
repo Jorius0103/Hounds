@@ -148,10 +148,9 @@ export const CombatLogCard: React.FC<CombatLogCardProps> = ({
       }
       case 'fatigue': {
         if (isManaStoneUsage) {
-          const itemLabel = entry.description?.includes('Mana') ? 'Mana' : extraItemName;
           return {
             icon: <Sparkles size={12} className="text-purple-400" />,
-            label: `-${entry.amount ?? 0} ${itemLabel}`,
+            label: `-${entry.amount ?? 0} Mana`,
             bg: 'bg-purple-950/70 border-purple-800/80 text-purple-300',
           };
         }

@@ -161,7 +161,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
       if (timeA && timeB && timeA !== timeB) return timeB - timeA;
       return String(b.timestamp || '').localeCompare(String(a.timestamp || ''));
     });
-  }, [activeCombat, additionalCharacters, currentUserRole]);
+  }, [activeCombat, additionalCharacters, currentUserRole, sessionEvents]);
 
   // Lista de rodadas disponíveis no combate e no histórico
   const availableRounds = useMemo(() => {

@@ -62,6 +62,9 @@ export const TopNav: React.FC<TopNavProps> = ({
 
   const handleToggleDicePicker = () => {
     if (!dicePickerOpen && diceButtonRef.current) {
+      try {
+        ((window as any).parent?.hubMesaBus || (window as any).hubMesaBus)?.wake?.();
+      } catch (e) {}
       const rect = diceButtonRef.current.getBoundingClientRect();
       setDicePickerCoords({
         top: Math.round(rect.bottom + 8),

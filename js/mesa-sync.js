@@ -803,12 +803,34 @@ var MesaSync = (function () {
         return save(p).then(function () { writing = false; return 'saved'; }, function (er) { writing = false; throw er; });
       }).then(function (r) { if (r !== 'skip') toast('Combate salvo.'); }, function (er) { toast('Não foi possível salvar a Mesa: ' + errorText(er), true); });
     },
+    push: push,
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (x) { return x !== fn; }); }; }
   };
 })();
 window.hubMesaBus = {
   publish: MesaSync.publish,
   subscribe: MesaSync.subscribe,
+  wake: function () {
+    if (W.store && typeof W.store.wake === 'function') {
+      return W.store.wake();
+    }
+    return Promise.resolve();
+  },
+  _onIncomingRollRow: function (row) {
+    if (!row || !row.dados_completos) return;
+    var rd = row.dados_completos.rollData;
+    var le = row.dados_completos.logEntry;
+    if (!rd && !le) return;
+    if (MesaSync && typeof MesaSync.push === 'function') {
+      MesaSync.push({
+        type: 'SYNC_DICE_ROLL',
+        rollData: rd,
+        logEntry: le,
+        timestamp: row.criado_em ? Date.parse(row.criado_em) : Date.now(),
+        source: 'database'
+      });
+    }
+  },
   getRecentRolls: function (combatId, limit) {
     if (W.store && typeof W.store.getRecentRolls === 'function') {
       return W.store.getRecentRolls(combatId, limit);

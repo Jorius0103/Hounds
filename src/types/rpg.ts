@@ -132,6 +132,8 @@ export interface ActionLogEntry {
   npcCharacterType?: 'player' | 'npc'; // Separa Personagens de NPCs no filtro do log geral
   combatId?: string; // Combate em que a ação aconteceu
   spellId?: string; // Instância de magia lançada (se houver)
+  spellName?: string;
+  spellTargetName?: string;
 
   // Detalhes de itens extras
   itemId?: string;

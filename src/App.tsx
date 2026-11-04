@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, MesaRole, Weapon, ExtraItem } from './types/rpg';
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
 import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, normalizeLocationKey, COMBAT_MANEUVERS, BODY_PARTS_CONFIG, LIMB_RELATED_KEYS } from './utils/gurps';
@@ -935,6 +935,25 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
+  const currentUserRef = useRef<UserAccount | null>(currentUser);
+  currentUserRef.current = currentUser;
+  const fetchSupabaseRollsRef = useRef<(() => void) | null>(null);
+
+  const wakeAndSyncSystem = useCallback(() => {
+    try {
+      const bus = (typeof window !== 'undefined' && ((window as any).parent?.hubMesaBus || (window as any).hubMesaBus));
+      if (bus && typeof bus.wake === 'function') {
+        bus.wake();
+      }
+    } catch (e) {}
+    onlineSyncService.checkAndResync();
+    if (fetchSupabaseRollsRef.current) {
+      try {
+        fetchSupabaseRollsRef.current();
+      } catch (e) {}
+    }
+  }, []);
+
   const lastLocalEditTimestampRef = useRef<number>(0);
   const lastAppliedRemoteTimestampRef = useRef<number>(0);
 
@@ -1767,7 +1786,7 @@ export default function App() {
         if (bus && typeof bus.getRecentRolls === 'function') {
           bus.getRecentRolls(null, 100).then((rows: any[]) => {
             if (!Array.isArray(rows) || rows.length === 0) return;
-            const isMestre = currentUser?.role === 'mestre' || !currentUser;
+            const isMestre = currentUserRef.current?.role === 'mestre' || !currentUserRef.current;
             const deletedSet = new Set(getDeletedLogEntryIds());
             const clearedBefore = parseInt(localStorage.getItem('gurps_log_cleared_before_timestamp') || '0', 10);
             const fetchedLogEntries: any[] = [];
@@ -1799,12 +1818,44 @@ export default function App() {
                   return tb - ta;
                 });
               });
+
+              fetchedLogEntries.forEach((entry) => {
+                const charId = entry.npcId;
+                const cId = entry.combatId;
+                if (charId) {
+                  setPlayers((prev) =>
+                    prev.map((p) =>
+                      p.id === charId && !(p.history || []).some((h) => h.id === entry.id)
+                        ? { ...p, history: [entry, ...(p.history || [])] }
+                        : p
+                    )
+                  );
+                }
+                if (cId) {
+                  setCombats((prev) =>
+                    prev.map((c) =>
+                      c.id === cId && !(c.events || []).some((e) => e.id === entry.id)
+                        ? {
+                            ...c,
+                            events: [entry, ...(c.events || [])],
+                            npcs: (c.npcs || []).map((n) =>
+                              n.id === charId && !(n.history || []).some((h) => h.id === entry.id)
+                                ? { ...n, history: [entry, ...(n.history || [])] }
+                                : n
+                            ),
+                          }
+                        : c
+                    )
+                  );
+                }
+              });
             }
           }).catch(() => {});
         }
       } catch (e) {}
     };
 
+    fetchSupabaseRollsRef.current = fetchSupabaseRolls;
     fetchSupabaseRolls();
     window.addEventListener('focus', fetchSupabaseRolls);
     const rollsPollInterval = setInterval(fetchSupabaseRolls, 6000);
@@ -1824,6 +1875,7 @@ export default function App() {
     }
 
     return () => {
+      fetchSupabaseRollsRef.current = null;
       unsubStatus();
       unsubMsg();
       if (unsubHub) {
@@ -1835,6 +1887,35 @@ export default function App() {
       window.removeEventListener('focus', fetchSupabaseRolls);
     };
   }, []);
+
+  // Monitora inatividade do usuário e visibilidade da aba para reativar sincronização e rolagens
+  useEffect(() => {
+    let lastActive = Date.now();
+    const handleUserActivity = () => {
+      const now = Date.now();
+      if (now - lastActive > 15000) {
+        lastActive = now;
+        wakeAndSyncSystem();
+      } else {
+        lastActive = now;
+      }
+    };
+    window.addEventListener('pointerdown', handleUserActivity, { passive: true });
+    window.addEventListener('keydown', handleUserActivity, { passive: true });
+    window.addEventListener('focus', handleUserActivity);
+    const handleVis = () => {
+      if (document.visibilityState === 'visible') {
+        wakeAndSyncSystem();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVis);
+    return () => {
+      window.removeEventListener('pointerdown', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+      window.removeEventListener('focus', handleUserActivity);
+      document.removeEventListener('visibilitychange', handleVis);
+    };
+  }, [wakeAndSyncSystem]);
 
   // Listen to same-browser tab BroadcastChannel (mantém canal persistente para não cancelar envios)
   useEffect(() => {
@@ -3952,7 +4033,11 @@ export default function App() {
         itemAfter: logEntry.itemAfter !== undefined ? logEntry.itemAfter : stoneAfter,
       } : {}),
       ...(isManaStoneSpent && fpDelta === 0 ? { fpBefore: undefined, fpAfter: undefined } : {}),
-      ...(spellData && spellData.isActiveSpell ? { spellId: spellInstanceId } : {}),
+      ...(spellData ? {
+        spellName: spellData.spellName,
+        spellTargetName: spellData.targetName,
+        ...(spellData.isActiveSpell ? { spellId: spellInstanceId } : {}),
+      } : {}),
     };
 
     let nextPlayers = [...players];
@@ -4269,6 +4354,7 @@ export default function App() {
   };
 
   const handleRollDice = (diceCount: number, diceSides: number = 6) => {
+    wakeAndSyncSystem();
     const rolls: number[] = [];
     for (let i = 0; i < diceCount; i++) {
       rolls.push(Math.floor(Math.random() * diceSides) + 1);
