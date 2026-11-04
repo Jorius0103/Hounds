@@ -244,15 +244,17 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
 
   const handleSelectFilter = (type: 'all' | 'players' | 'npcs' | 'alive' | 'dead') => {
     setFilterType(type);
-    const matches = rawDisplayedNpcs.filter((n) => {
-      if (type === 'players') return n.characterType === 'player';
-      if (type === 'npcs') return n.characterType !== 'player';
-      if (type === 'alive') return !n.isDead;
-      if (type === 'dead') return Boolean(n.isDead);
-      return true;
-    });
-    if (matches.length > 0 && !matches.some((m) => m.id === selectedNpcId)) {
-      onSelectNpc(matches[0].id);
+    if (!isHomeScreen) {
+      const matches = rawDisplayedNpcs.filter((n) => {
+        if (type === 'players') return n.characterType === 'player';
+        if (type === 'npcs') return n.characterType !== 'player';
+        if (type === 'alive') return !n.isDead;
+        if (type === 'dead') return Boolean(n.isDead);
+        return true;
+      });
+      if (matches.length > 0 && !matches.some((m) => m.id === selectedNpcId)) {
+        onSelectNpc(matches[0].id);
+      }
     }
   };
 
@@ -550,7 +552,13 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
               currentUserRole !== 'mestre'
                 ? 'Nenhum personagem ou NPC visível no momento.'
                 : filterType === 'players'
-                ? 'Nenhum Personagem cadastrado. Clique em "+ Personagem" acima.'
+                ? 'Nenhum Personagem cadastrado. Clique em "+ Personagens" acima.'
+                : filterType === 'npcs'
+                ? 'Nenhum NPC cadastrado. Clique em "+ NPC" acima.'
+                : filterType === 'alive'
+                ? 'Nenhum combatente vivo no momento.'
+                : filterType === 'dead'
+                ? 'Nenhum combatente morto no momento.'
                 : 'Nenhum registro encontrado neste filtro.'
             }
             users={users}
