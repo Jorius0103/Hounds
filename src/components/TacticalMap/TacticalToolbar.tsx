@@ -86,6 +86,8 @@ interface TacticalToolbarProps {
   onSetCustomLightColor?: (color: string) => void;
   rulerMode?: 'free' | 'fixed';
   onSetRulerMode?: (mode: 'free' | 'fixed') => void;
+  rulerType?: 'line' | 'blast' | 'fixed';
+  onSetRulerType?: (type: 'line' | 'blast' | 'fixed') => void;
   rulerFixedYards?: number;
   onSetRulerFixedYards?: (yards: number) => void;
   onFixRulerMarker?: () => void;
@@ -137,6 +139,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onSetCustomLightColor,
   rulerMode = 'free',
   onSetRulerMode,
+  rulerType = 'line',
+  onSetRulerType,
   rulerFixedYards = 5,
   onSetRulerFixedYards,
   onFixRulerMarker,
@@ -243,23 +247,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
-            title="Régua Tática de Distância e Tabela de Alcance GURPS"
+            title="Régua Tática de Distância, Áreas de Efeito e Alcance GURPS"
           >
             <Ruler size={14} />
             <span>Medir</span>
-          </button>
-
-          <button
-            onClick={() => onSelectTool('area')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              activeTool === 'area'
-                ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-            title="Modelo de Área de Efeito (Explosões, Magias de Área, Granadas)"
-          >
-            <CircleDot size={14} />
-            <span>Área</span>
           </button>
 
           {isMaster && (
@@ -1211,52 +1202,144 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
         </div>
       )}
 
-      {/* BARRA DE CONTROLE: RÉGUA TÁTICA (MEDIR) */}
+      {/* BARRA DE CONTROLE UNIFICADA: MEDIÇÕES (DISTÂNCIA, ÁREA DE EFEITO E ALCANCE) */}
       {activeTool === 'ruler' && (
         <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 font-bold text-slate-200">
               <Ruler size={14} className="text-amber-400" />
-              <span>Medição Tática GURPS:</span>
+              <span>Medir:</span>
             </span>
             <span className="text-[11px] text-slate-400">
-              {rulerMode === 'fixed'
+              {rulerType === 'blast'
+                ? 'Clique no mapa para posicionar a área de efeito.'
+                : rulerType === 'fixed'
                 ? 'Passe o mouse ou clique no mapa para ver o círculo de alcance exato.'
-                : 'Clique e arraste pelo mapa para medir distância em jardas e penalidade.'}
+                : '1º clique marca origem, 2º clique fixa medição.'}
             </span>
           </div>
 
-          {/* Modo de Medição */}
+          {/* Seletor de Tipo: Distância vs Área de Efeito vs Alcance Fixo */}
           <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
             <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-              Modo:
+              Tipo:
             </span>
             <button
               type="button"
-              onClick={() => onSetRulerMode?.('free')}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                rulerMode === 'free'
+              onClick={() => onSetRulerType?.('line')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                rulerType === 'line'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                   : 'text-slate-400 hover:text-white'
               }`}
+              title="Medição de Distância (1º clique inicia, 2º clique fixa)"
             >
-              Livre (A → B)
+              <Ruler size={12} />
+              <span>Distância (Seta)</span>
             </button>
             <button
               type="button"
-              onClick={() => onSetRulerMode?.('fixed')}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                rulerMode === 'fixed'
+              onClick={() => onSetRulerType?.('blast')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                rulerType === 'blast'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                   : 'text-slate-400 hover:text-white'
               }`}
+              title="Modelo de Área de Efeito (Explosões, Magias, Granadas)"
             >
-              Alcance Fixo (Raio)
+              <CircleDot size={12} />
+              <span>Área de Efeito</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetRulerType?.('fixed')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                rulerType === 'fixed'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Alcance Fixo (Raio GURPS a partir de um ponto/token)"
+            >
+              <Crosshair size={12} />
+              <span>Alcance Fixo</span>
             </button>
           </div>
 
-          {/* Input de Jardas no Modo Fixo */}
-          {rulerMode === 'fixed' && (
+          {/* Controles para Área de Efeito */}
+          {rulerType === 'blast' && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
+                  Raio:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onSetAreaRadius?.(Math.max(1, (areaRadius || 3) - 1))}
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                >
+                  <Minus size={11} />
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={areaRadius || 3}
+                  onChange={(e) => onSetAreaRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
+                />
+                <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
+                <button
+                  type="button"
+                  onClick={() => onSetAreaRadius?.((areaRadius || 3) + 1)}
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                >
+                  <Plus size={11} />
+                </button>
+                {[1, 2, 3, 5, 8].map((yd) => (
+                  <button
+                    key={yd}
+                    type="button"
+                    onClick={() => onSetAreaRadius?.(yd)}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                      areaRadius === yd
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'text-slate-400 hover:text-white bg-slate-850'
+                    }`}
+                  >
+                    {yd}y
+                  </button>
+                ))}
+              </div>
+
+              {/* Cores da Área */}
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
+                  Cor:
+                </span>
+                {[
+                  { color: '#ef4444', label: 'Fogo / Explosão' },
+                  { color: '#10b981', label: 'Ácido / Gás' },
+                  { color: '#0ea5e9', label: 'Gelo / Água' },
+                  { color: '#8b5cf6', label: 'Mágica' },
+                  { color: '#f59e0b', label: 'Luz / Sagrado' },
+                ].map((c) => (
+                  <button
+                    key={c.color}
+                    type="button"
+                    onClick={() => onSetAreaColor?.(c.color)}
+                    className={`w-4 h-4 rounded-full border transition-transform ${
+                      areaColor === c.color ? 'scale-125 border-white ring-2 ring-white/50' : 'border-transparent hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: c.color }}
+                    title={c.label}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Controles para Alcance Fixo */}
+          {rulerType === 'fixed' && (
             <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
               <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
                 Alcance:
@@ -1301,145 +1384,22 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </div>
           )}
 
-          {/* Botões de Ação */}
+          {/* Ações e Contadores */}
           <div className="flex items-center gap-1.5">
-            {/* Toggle: Manter Medições no Mapa */}
-            <button
-              type="button"
-              onClick={() => onSetKeepMeasurementsOnMap?.(!keepMeasurementsOnMap)}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                keepMeasurementsOnMap
-                  ? 'bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold shadow-xs'
-                  : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
-              }`}
-              title="Quando ativado, cada medição feita ao soltar o mouse fica fixada no mapa para todos"
-            >
-              <Pin size={12} className={keepMeasurementsOnMap ? 'text-white' : 'text-slate-400'} />
-              <span>{keepMeasurementsOnMap ? 'Manter no Mapa: Sim' : 'Manter no Mapa: Não'}</span>
-            </button>
-
-            {/* Contador de medições ativas no mapa */}
             {activeRulerMarkersCount > 0 && (
               <span className="text-[11px] text-amber-300 font-mono font-bold bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg">
-                {activeRulerMarkersCount} {activeRulerMarkersCount === 1 ? 'medição' : 'medições'}
+                {activeRulerMarkersCount} {activeRulerMarkersCount === 1 ? 'marcação no mapa' : 'marcações no mapa'}
               </span>
             )}
-
-            {hasActiveRuler && (
-              <button
-                type="button"
-                onClick={onFixRulerMarker}
-                className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-all shadow-md flex items-center gap-1"
-                title="Fixar medição na mesa para que todos os jogadores vejam"
-              >
-                <Pin size={12} />
-                <span>Fixar Medição</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={onClearRulerMarkers}
               className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
-              title="Limpar medição ativa e todas as réguas fixadas no mapa"
+              title="Limpar todas as medições e áreas fixadas no mapa"
             >
               Limpar Medições
             </button>
           </div>
-        </div>
-      )}
-
-      {/* BARRA DE CONTROLE: MODELO DE ÁREA (ÁREA DE EFEITO) */}
-      {activeTool === 'area' && (
-        <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 font-bold text-slate-200">
-              <CircleDot size={14} className="text-amber-400" />
-              <span>Área de Efeito:</span>
-            </span>
-            <span className="text-[11px] text-slate-400">
-              Clique no mapa para fixar a área de efeito (visível para todos os jogadores na camada Tokens).
-            </span>
-          </div>
-
-          {/* Raio em Jardas */}
-          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-              Raio:
-            </span>
-            <button
-              type="button"
-              onClick={() => onSetAreaRadius?.(Math.max(1, (areaRadius || 3) - 1))}
-              className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-            >
-              <Minus size={11} />
-            </button>
-            <input
-              type="number"
-              min={1}
-              max={50}
-              value={areaRadius || 3}
-              onChange={(e) => onSetAreaRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
-            />
-            <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
-            <button
-              type="button"
-              onClick={() => onSetAreaRadius?.((areaRadius || 3) + 1)}
-              className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-            >
-              <Plus size={11} />
-            </button>
-            {[1, 2, 3, 5, 8].map((yd) => (
-              <button
-                key={yd}
-                type="button"
-                onClick={() => onSetAreaRadius?.(yd)}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
-                  areaRadius === yd
-                    ? 'bg-amber-500 text-slate-950'
-                    : 'text-slate-400 hover:text-white bg-slate-850'
-                }`}
-              >
-                {yd}y
-              </button>
-            ))}
-          </div>
-
-          {/* Cores */}
-          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-              Cor:
-            </span>
-            {[
-              { color: '#ef4444', label: 'Fogo / Explosão' },
-              { color: '#10b981', label: 'Ácido / Gás' },
-              { color: '#0ea5e9', label: 'Gelo / Água' },
-              { color: '#8b5cf6', label: 'Mágica' },
-              { color: '#f59e0b', label: 'Luz / Sagrado' },
-            ].map((c) => (
-              <button
-                key={c.color}
-                type="button"
-                onClick={() => onSetAreaColor?.(c.color)}
-                className={`w-4 h-4 rounded-full border transition-transform ${
-                  areaColor === c.color ? 'scale-125 border-white ring-2 ring-white/50' : 'border-transparent hover:scale-110'
-                }`}
-                style={{ backgroundColor: c.color }}
-                title={c.label}
-              />
-            ))}
-          </div>
-
-          {/* Limpar Áreas */}
-          <button
-            type="button"
-            onClick={onClearAreaMarkers}
-            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
-            title="Remover áreas de efeito fixadas no mapa"
-          >
-            Limpar Áreas
-          </button>
         </div>
       )}
     </div>

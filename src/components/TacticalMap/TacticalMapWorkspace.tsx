@@ -137,6 +137,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Ruler state
   const [rulerStart, setRulerStart] = useState<HexCoord | null>(null);
   const [rulerCurrent, setRulerCurrent] = useState<HexCoord | null>(null);
+  const [rulerType, setRulerType] = useState<'line' | 'blast' | 'fixed'>('line');
   const [rulerMode, setRulerMode] = useState<'free' | 'fixed'>('free');
   const [rulerFixedYards, setRulerFixedYards] = useState<number>(5);
   const [keepMeasurementsOnMap, setKeepMeasurementsOnMap] = useState<boolean>(true);
@@ -482,35 +483,81 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       return;
     }
 
-    // 3. Ferramenta de Área de Efeito (Explosões, Magias, Granadas)
-    if (activeTool === 'area' && e.button === 0) {
-      const p = clientToMapCoords(e.clientX, e.clientY);
-      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
-      const newMarker: TacticalMarker = {
-        id: `area-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        type: 'blast',
-        startX: hex.col,
-        startY: hex.row,
-        radius: areaRadius,
-        color: areaColor,
-        label: `Área (${areaRadius}yd)`,
-        layer: activeLayer,
-        authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
-      };
-      onUpdateTacticalState({
-        markers: [...(tacticalState.markers || []), newMarker],
-      });
-      setPopoverToken(null);
+    // Cancelar medição em andamento ao clicar com botão direito
+    if (activeTool === 'ruler' && e.button === 2 && rulerStart) {
+      e.preventDefault();
+      setRulerStart(null);
+      setRulerCurrent(null);
       return;
     }
 
-    // 4. Ruler tool start
-    if (activeTool === 'ruler' && e.button === 0) {
+    // 3. Ferramenta de Medir (Distância por Dois Cliques, Área de Efeito e Alcance Fixo)
+    if ((activeTool === 'ruler' || activeTool === 'area') && e.button === 0) {
       const p = clientToMapCoords(e.clientX, e.clientY);
       const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
-      setRulerStart(hex);
-      setRulerCurrent(hex);
-      return;
+
+      if (rulerType === 'blast' || activeTool === 'area') {
+        const newMarker: TacticalMarker = {
+          id: `area-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          type: 'blast',
+          startX: hex.col,
+          startY: hex.row,
+          radius: areaRadius,
+          color: areaColor,
+          label: `Área (${areaRadius}yd)`,
+          layer: activeLayer === 'gm' ? 'gm' : 'tokens',
+          authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
+        };
+        onUpdateTacticalState({
+          markers: [...(tacticalState.markers || []), newMarker],
+        });
+        setPopoverToken(null);
+        return;
+      }
+
+      if (rulerType === 'fixed') {
+        if (!rulerStart) {
+          setRulerStart(hex);
+          setRulerCurrent(hex);
+        } else {
+          setRulerStart(null);
+          setRulerCurrent(null);
+        }
+        return;
+      }
+
+      // Modo Distância (Seta) com DOIS CLIQUES: 1º clique marca origem, 2º clique fixa
+      if (!rulerStart) {
+        // 1º Clique: marca origem da medição
+        setRulerStart(hex);
+        setRulerCurrent(hex);
+        return;
+      } else {
+        // 2º Clique: destino da medição e fixação no mapa
+        const distanceYards = getHexDistance(rulerStart, hex);
+        if (distanceYards > 0) {
+          const rangePenalty = getGurpsRangePenalty(distanceYards);
+          const newMarker: TacticalMarker = {
+            id: `ruler-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            type: 'ruler',
+            startX: rulerStart.col,
+            startY: rulerStart.row,
+            endX: hex.col,
+            endY: hex.row,
+            radius: distanceYards,
+            color: '#f59e0b',
+            label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
+            layer: activeLayer === 'gm' ? 'gm' : 'tokens',
+            authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
+          };
+          onUpdateTacticalState({
+            markers: [...(tacticalState.markers || []), newMarker],
+          });
+        }
+        setRulerStart(null);
+        setRulerCurrent(null);
+        return;
+      }
     }
 
     // 4. Mover o mapa: Se clicar e segurar em uma parte do mapa (botão esquerdo no modo Mover/Select ou botão do meio)
@@ -555,7 +602,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       setRulerCurrent(hex);
     }
 
-    if (activeTool === 'area') {
+    if (activeTool === 'area' || (activeTool === 'ruler' && rulerType === 'blast')) {
       setAreaCenter(hex);
     }
 
@@ -600,31 +647,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
     if (isDrawingFog) {
       setIsDrawingFog(false);
-    }
-
-    if (activeTool === 'ruler' && rulerStart && rulerCurrent) {
-      const distanceYards = getHexDistance(rulerStart, rulerCurrent);
-      if (distanceYards > 0 && keepMeasurementsOnMap) {
-        const rangePenalty = getGurpsRangePenalty(distanceYards);
-        const newMarker: TacticalMarker = {
-          id: `ruler-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          type: 'ruler',
-          startX: rulerStart.col,
-          startY: rulerStart.row,
-          endX: rulerCurrent.col,
-          endY: rulerCurrent.row,
-          radius: distanceYards,
-          color: '#f59e0b',
-          label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
-          layer: activeLayer,
-          authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
-        };
-        onUpdateTacticalState({
-          markers: [...(tacticalState.markers || []), newMarker],
-        });
-        setRulerStart(null);
-        setRulerCurrent(null);
-      }
     }
 
     if (fogBoxStart && fogBoxCurrent && isMaster) {
@@ -1028,6 +1050,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     });
   };
 
+  // Alternar camada do marcador entre Tokens (J) e GM (M)
+  const handleToggleMarkerLayer = (id: string) => {
+    const updatedMarkers = (tacticalState.markers || []).map((m) => {
+      if (m.id !== id) return m;
+      const currentLayer = m.layer || 'tokens';
+      const nextLayer: 'tokens' | 'gm' = currentLayer === 'gm' ? 'tokens' : 'gm';
+      return { ...m, layer: nextLayer };
+    });
+    onUpdateTacticalState({ markers: updatedMarkers });
+  };
+
   // Clear ruler & markers
   const handleClearMarkers = () => {
     setRulerStart(null);
@@ -1051,7 +1084,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       radius: distanceYards,
       color: '#f59e0b',
       label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
-      layer: activeLayer,
+      layer: activeLayer === 'gm' ? 'gm' : 'tokens',
       authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
     };
     onUpdateTacticalState({
@@ -1197,6 +1230,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onSetCustomLightRadius={setCustomLightRadius}
           customLightColor={customLightColor}
           onSetCustomLightColor={setCustomLightColor}
+          rulerType={rulerType}
+          onSetRulerType={setRulerType}
           rulerMode={rulerMode}
           onSetRulerMode={setRulerMode}
           rulerFixedYards={rulerFixedYards}
@@ -1505,6 +1540,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           <clipPath id="map-image-bounds">
             <rect x={mapX} y={mapY} width={mapW} height={mapH} />
           </clipPath>
+
+          {/* Ponta de seta tática para medições */}
+          <marker
+            id="ruler-arrow"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b" />
+          </marker>
 
           {/* Gradientes radiais para focos de luz fixos */}
           {(tacticalState.lights || []).map((light) => (
@@ -1859,7 +1907,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       strokeWidth="2.5"
                       strokeDasharray="6 4"
                     />
-                    {/* Tag de Identificação com Botão de Excluir */}
+                    {/* Tag de Identificação com Botão de Excluir e Indicador de Camada M/J */}
                     <g transform={`translate(${center.x}, ${center.y - radiusPixels - 14})`} pointerEvents="auto">
                       <rect
                         x="-75"
@@ -1872,8 +1920,48 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
+                      {/* Indicador de Camada M (Roxo - Mestre) / J (Verde - Jogadores) para o GM */}
+                      {isMaster && (
+                        <g
+                          className="cursor-pointer"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleToggleMarkerLayer(marker.id);
+                          }}
+                          title={
+                            marker.layer === 'gm'
+                              ? "Camada GM (Mestre). Clique para mover para Camada Jogadores (J)"
+                              : "Camada Jogadores (Visível a todos). Clique para mover para Camada GM (M)"
+                          }
+                        >
+                          <circle
+                            cx="-58"
+                            cy="-3"
+                            r="8"
+                            fill={marker.layer === 'gm' ? '#581c87' : '#064e3b'}
+                            stroke={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                            strokeWidth="1.5"
+                          />
+                          <text
+                            x="-58"
+                            y="0.5"
+                            fill={marker.layer === 'gm' ? '#f3e8ff' : '#ecfdf5'}
+                            fontSize="9"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            pointerEvents="none"
+                          >
+                            {marker.layer === 'gm' ? 'M' : 'J'}
+                          </text>
+                        </g>
+                      )}
                       <text
-                        x="-10"
+                        x={isMaster ? "0" : "-10"}
                         y="1"
                         fill={marker.color || '#ef4444'}
                         fontSize="10"
@@ -1941,10 +2029,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       stroke={marker.color || '#f59e0b'}
                       strokeWidth="3.5"
                       strokeDasharray="6 4"
+                      markerEnd="url(#ruler-arrow)"
                     />
                     <circle cx={pA.x} cy={pA.y} r="5" fill={marker.color || '#f59e0b'} />
                     <circle cx={pB.x} cy={pB.y} r="5" fill={marker.color || '#f59e0b'} />
-                    {/* Badge da Medição com Botão Individual de Excluir */}
+                    {/* Badge da Medição com Botão Individual de Excluir e Indicador M/J */}
                     <g transform={`translate(${midX}, ${midY - 20})`} pointerEvents="auto">
                       <rect
                         x="-75"
@@ -1957,8 +2046,48 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
+                      {/* Indicador de Camada M (Roxo - Mestre) / J (Verde - Jogadores) para o GM */}
+                      {isMaster && (
+                        <g
+                          className="cursor-pointer"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleToggleMarkerLayer(marker.id);
+                          }}
+                          title={
+                            marker.layer === 'gm'
+                              ? "Camada GM (Mestre). Clique para mover para Camada Jogadores (J)"
+                              : "Camada Jogadores (Visível a todos). Clique para mover para Camada GM (M)"
+                          }
+                        >
+                          <circle
+                            cx="-58"
+                            cy="-3"
+                            r="8"
+                            fill={marker.layer === 'gm' ? '#581c87' : '#064e3b'}
+                            stroke={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                            strokeWidth="1.5"
+                          />
+                          <text
+                            x="-58"
+                            y="0.5"
+                            fill={marker.layer === 'gm' ? '#f3e8ff' : '#ecfdf5'}
+                            fontSize="9"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            pointerEvents="none"
+                          >
+                            {marker.layer === 'gm' ? 'M' : 'J'}
+                          </text>
+                        </g>
+                      )}
                       <text
-                        x="-10"
+                        x={isMaster ? "0" : "-10"}
                         y="1"
                         fill="#fbbf24"
                         fontSize="10"
@@ -2005,10 +2134,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           </g>
 
           {/* PREVIEW DO MODELO DE ÁREA / EXPLOSÃO (AO PASSAR O MOUSE) */}
-          {activeTool === 'area' && areaCenter && (
+          {(activeTool === 'area' || (activeTool === 'ruler' && rulerType === 'blast')) && (areaCenter || hoveredHex) && (
             <g id="area-template" pointerEvents="none">
               {(() => {
-                const relCenter = getHexCenter(areaCenter.col, areaCenter.row, hexSize);
+                const targetCenter = areaCenter || hoveredHex;
+                if (!targetCenter) return null;
+                const relCenter = getHexCenter(targetCenter.col, targetCenter.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
                 const radiusPixels = areaRadius * hexSize * 1.7;
                 return (
@@ -2039,7 +2170,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           )}
 
           {/* GUIA DE ALCANCE FIXO (RÉGUA TÁTICA GURPS) */}
-          {activeTool === 'ruler' && rulerMode === 'fixed' && (rulerStart || hoveredHex) && (
+          {activeTool === 'ruler' && (rulerMode === 'fixed' || rulerType === 'fixed') && (rulerStart || hoveredHex) && (
             <g id="ruler-fixed-guide" pointerEvents="none">
               {(() => {
                 const centerHex = rulerStart || hoveredHex;
@@ -2118,6 +2249,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       stroke="#f59e0b"
                       strokeWidth="2.5"
                       strokeDasharray="6 4"
+                      markerEnd="url(#ruler-arrow)"
                     />
                     {/* Círculos nos pontos A e B */}
                     <circle cx={pA.x} cy={pA.y} r="5" fill="#f59e0b" />
