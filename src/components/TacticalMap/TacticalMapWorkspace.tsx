@@ -22,6 +22,7 @@ import {
   HexCoord,
   Point,
 } from '../../utils/tacticalMath';
+import { getCombatManeuver } from '../../utils/gurps';
 import { NpcAvatar } from '../NpcAvatar';
 import {
   Ruler,
@@ -89,6 +90,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [draggedTokenId, setDraggedTokenId] = useState<string | null>(null);
   const [dragTokenOrigin, setDragTokenOrigin] = useState<HexCoord | null>(null);
   const [rotatingTokenId, setRotatingTokenId] = useState<string | null>(null);
+  const [hoveredTokenId, setHoveredTokenId] = useState<string | null>(null);
 
   // Popover state
   const [popoverToken, setPopoverToken] = useState<TacticalToken | null>(null);
@@ -217,12 +219,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         // Frente está embaixo no SVG (+Y = 90°). deg - 90 aponta a frente para o mouse:
         let rot = deg - 90;
         rot = ((rot % 360) + 360) % 360;
-        const roundedRot = Math.round(rot);
-        const facingIndex = (Math.round(((roundedRot + 180) % 360) / 60) % 6) as FacingDirection;
+        // Snap (agarrar) a cada 60° para manter sempre perfeitamente centralizado com o hexágono de destino:
+        const snappedRot = (Math.round(rot / 60) * 60) % 360;
+        const facingIndex = (Math.round(((snappedRot + 180) % 360) / 60) % 6) as FacingDirection;
 
         const updatedTokens = tacticalState.tokens.map((t) =>
           t.id === rotatingTokenId
-            ? { ...t, rotation: roundedRot, facing: facingIndex }
+            ? { ...t, rotation: snappedRot, facing: facingIndex }
             : t
         );
         onUpdateTacticalState({ tokens: updatedTokens });
@@ -366,23 +369,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     setSelectedTokenId(token.id);
   };
 
-  // Handle token click
+  // Handle token click: apenas seleciona o token e seu NPC (sem abrir popover intrusivo)
   const handleTokenClick = (e: React.MouseEvent, token: TacticalToken) => {
     e.stopPropagation();
     setSelectedTokenId(token.id);
     onSelectNpc(token.npcId);
-
-    // Abre popover rápido próximo à posição do token
-    if (containerRef.current) {
-      const center = getHexCenter(token.gridX, token.gridY, hexSize);
-      const screenX = center.x * tacticalState.zoom + tacticalState.panX + 30;
-      const screenY = center.y * tacticalState.zoom + tacticalState.panY - 60;
-      setPopoverPos({
-        x: Math.min(window.innerWidth - 340, Math.max(20, screenX)),
-        y: Math.min(window.innerHeight - 380, Math.max(80, screenY)),
-      });
-      setPopoverToken(token);
-    }
+    setPopoverToken(null);
   };
 
   // Handle token drag start
@@ -487,44 +479,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           currentUserRole={currentUserRole}
         />
       </div>
-
-      {/* 3. QUICK ACTION POPOVER FLUTUANTE */}
-      {popoverToken && selectedTokenNpc && (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${popoverPos.x}px`,
-            top: `${popoverPos.y}px`,
-          }}
-          className="pointer-events-auto"
-        >
-          <TacticalQuickActionPopover
-            token={popoverToken}
-            npc={selectedTokenNpc}
-            onClose={() => setPopoverToken(null)}
-            onUpdateToken={(updated) => {
-              const updatedTokens = tacticalState.tokens.map((t) =>
-                t.id === popoverToken.id ? { ...t, ...updated } : t
-              );
-              onUpdateTacticalState({ tokens: updatedTokens });
-              setPopoverToken({ ...popoverToken, ...updated });
-            }}
-            onUpdateNpc={(partial) => onUpdateNpc({ ...selectedTokenNpc, ...partial })}
-            onRemoveToken={() => {
-              const updatedTokens = tacticalState.tokens.filter(
-                (t) => t.id !== popoverToken.id
-              );
-              onUpdateTacticalState({ tokens: updatedTokens });
-              setPopoverToken(null);
-            }}
-            onOpenFullSheet={() => {
-              onOpenFullNpcSheet(popoverToken.npcId);
-              setPopoverToken(null);
-            }}
-            currentUserRole={currentUserRole}
-          />
-        </div>
-      )}
 
       {/* 4. CANVAS / SVG ENGINE PRINCIPAL */}
       <svg
@@ -886,12 +840,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
               const badgeWidth = Math.min(110, Math.max(40, npc.name.length * 7));
 
+              // Manobra ativa do personagem / NPC para colorir a borda do token
+              const maneuver = npc.combatManeuver ? getCombatManeuver(npc.combatManeuver) : undefined;
+              const maneuverBorderColor = maneuver?.borderHex || maneuver?.bgHex || (isPlayer ? '#10b981' : '#ef4444');
+
               return (
                 <g
                   key={token.id}
                   transform={`translate(${center.x}, ${center.y})`}
                   onClick={(e) => handleTokenClick(e, token)}
                   onMouseDown={(e) => handleTokenMouseDown(e, token)}
+                  onMouseEnter={() => setHoveredTokenId(token.id)}
+                  onMouseLeave={() => setHoveredTokenId(null)}
                   className="cursor-pointer transition-transform"
                   style={{
                     filter: isSelected
@@ -901,15 +861,28 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 >
                   {/* GRUPO ROTATIVO INTEGRAL: Foto, Nome (em cima), Frente (embaixo) e Pauzinho giram juntos */}
                   <g transform={`rotate(${tokenRotation})`}>
-                    {/* 1. Círculo de Base com Borda Faccionada */}
+                    {/* 1. Círculo de Base com Borda na Cor da Manobra */}
                     <circle
                       cx="0"
                       cy="0"
                       r={tokenRadius + 3}
                       fill={isPlayer ? '#065f46' : '#7f1d1d'}
-                      stroke={isSelected ? '#f59e0b' : isPlayer ? '#10b981' : '#ef4444'}
-                      strokeWidth={isSelected ? 3.5 : 2}
+                      stroke={maneuverBorderColor}
+                      strokeWidth={isSelected ? 4 : 2.5}
                     />
+
+                    {/* Anel Externo Dourado Indicador de Seleção */}
+                    {isSelected && (
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r={tokenRadius + 6.5}
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth="2"
+                        strokeDasharray="4,3"
+                      />
+                    )}
 
                     {/* 2. Retrato / Avatar recortado */}
                     <clipPath id={`clip-${token.id}`}>
@@ -1047,6 +1020,86 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           </g>
         </g>
       </svg>
+
+      {/* TOOLTIP FLUTUANTE DE HOVER NO TOKEN (PV, FADIGA E MANOBRA) */}
+      {(() => {
+        if (!hoveredTokenId || draggedTokenId || rotatingTokenId) return null;
+        const hoveredToken = tacticalState.tokens.find((t) => t.id === hoveredTokenId);
+        if (!hoveredToken) return null;
+        const hoveredNpc = characterMap.get(hoveredToken.npcId);
+        if (!hoveredNpc) return null;
+        if (!isMaster && hoveredToken.hiddenFromPlayers) return null;
+
+        const center = getHexCenter(hoveredToken.gridX, hoveredToken.gridY, hexSize);
+        const screenX = center.x * tacticalState.zoom + tacticalState.panX;
+        const screenY = center.y * tacticalState.zoom + tacticalState.panY;
+        const maneuver = hoveredNpc.combatManeuver
+          ? getCombatManeuver(hoveredNpc.combatManeuver)
+          : undefined;
+
+        const hp = typeof hoveredNpc.hpCurrent === 'number' ? hoveredNpc.hpCurrent : (hoveredNpc.hpMax || 0);
+        const hpMax = hoveredNpc.hpMax || 0;
+        const fp = typeof hoveredNpc.fpCurrent === 'number' ? hoveredNpc.fpCurrent : (hoveredNpc.fpMax || 0);
+        const fpMax = hoveredNpc.fpMax || 0;
+
+        return (
+          <div
+            className="absolute z-40 pointer-events-none transition-all duration-100 ease-out"
+            style={{
+              left: `${screenX}px`,
+              top: `${screenY - (hexSize * tacticalState.zoom * 0.75) - 22}px`,
+              transform: 'translate(-50%, -100%)',
+            }}
+          >
+            <div className="bg-slate-950/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 shadow-2xl min-w-[160px] space-y-1.5 text-xs">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1">
+                <span className="font-bold text-white truncate max-w-[120px]">
+                  {hoveredNpc.name}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {hoveredNpc.characterType === 'player' ? 'Jogador' : 'NPC'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px] pt-0.5">
+                <div className="flex items-center gap-1 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800">
+                  <span className="text-slate-400 font-semibold text-[10px]">PV:</span>
+                  <span className={`font-mono font-bold ${hp <= 0 ? 'text-rose-400' : hp < hpMax / 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {hp}/{hpMax}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800">
+                  <span className="text-slate-400 font-semibold text-[10px]">FP:</span>
+                  <span className={`font-mono font-bold ${fp <= 0 ? 'text-rose-400' : fp < fpMax / 3 ? 'text-amber-400' : 'text-cyan-400'}`}>
+                    {fp}/{fpMax}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-0.5">
+                {maneuver ? (
+                  <div
+                    className="px-2 py-0.5 rounded-md text-[10px] font-bold text-center tracking-wide uppercase shadow-sm truncate"
+                    style={{
+                      backgroundColor: maneuver.bgHex,
+                      color: maneuver.textHex,
+                      border: `1px solid ${maneuver.borderHex}`,
+                    }}
+                  >
+                    {maneuver.name}
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-slate-500 italic text-center py-0.5">
+                    Sem manobra
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Triângulo indicador do tooltip apontando para o token */}
+            <div className="w-2.5 h-2.5 bg-slate-950 border-r border-b border-slate-700/80 rotate-45 mx-auto -mt-1.5" />
+          </div>
+        );
+      })()}
 
       {/* 5. FOOTER DE DADOS TÁTICOS (INFORMAÇÕES DE CÉLULA E COORDENADAS) */}
       <div className="absolute bottom-3 left-3 z-20 pointer-events-none flex items-center gap-2">
