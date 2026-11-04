@@ -96,6 +96,9 @@ interface TacticalToolbarProps {
   areaColor?: string;
   onSetAreaColor?: (color: string) => void;
   onClearAreaMarkers?: () => void;
+  keepMeasurementsOnMap?: boolean;
+  onSetKeepMeasurementsOnMap?: (keep: boolean) => void;
+  activeRulerMarkersCount?: number;
 }
 
 export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
@@ -144,6 +147,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   areaColor = '#ef4444',
   onSetAreaColor,
   onClearAreaMarkers,
+  keepMeasurementsOnMap = true,
+  onSetKeepMeasurementsOnMap,
+  activeRulerMarkersCount = 0,
 }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
@@ -158,7 +164,13 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
     TACTICAL_MAP_PRESETS[0];
 
   return (
-    <div className="flex flex-col gap-1.5 pointer-events-auto">
+    <div
+      className="flex flex-col gap-1.5 pointer-events-auto"
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
       <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-1.5 shadow-xl flex flex-wrap items-center justify-between gap-2 z-20">
       {/* 1. SELETOR DE 3 NÍVEIS / CAMADAS (ESTILO ROLL20) & FERRAMENTAS DE INTERAÇÃO */}
       <div className="flex flex-wrap items-center gap-1.5">
@@ -1291,6 +1303,28 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
           {/* Botões de Ação */}
           <div className="flex items-center gap-1.5">
+            {/* Toggle: Manter Medições no Mapa */}
+            <button
+              type="button"
+              onClick={() => onSetKeepMeasurementsOnMap?.(!keepMeasurementsOnMap)}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                keepMeasurementsOnMap
+                  ? 'bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold shadow-xs'
+                  : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
+              }`}
+              title="Quando ativado, cada medição feita ao soltar o mouse fica fixada no mapa para todos"
+            >
+              <Pin size={12} className={keepMeasurementsOnMap ? 'text-white' : 'text-slate-400'} />
+              <span>{keepMeasurementsOnMap ? 'Manter no Mapa: Sim' : 'Manter no Mapa: Não'}</span>
+            </button>
+
+            {/* Contador de medições ativas no mapa */}
+            {activeRulerMarkersCount > 0 && (
+              <span className="text-[11px] text-amber-300 font-mono font-bold bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg">
+                {activeRulerMarkersCount} {activeRulerMarkersCount === 1 ? 'medição' : 'medições'}
+              </span>
+            )}
+
             {hasActiveRuler && (
               <button
                 type="button"
@@ -1302,11 +1336,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 <span>Fixar Medição</span>
               </button>
             )}
+
             <button
               type="button"
               onClick={onClearRulerMarkers}
               className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
-              title="Limpar medição ativa e réguas fixadas no mapa"
+              title="Limpar medição ativa e todas as réguas fixadas no mapa"
             >
               Limpar Medições
             </button>

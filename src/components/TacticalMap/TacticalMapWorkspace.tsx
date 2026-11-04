@@ -139,6 +139,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [rulerCurrent, setRulerCurrent] = useState<HexCoord | null>(null);
   const [rulerMode, setRulerMode] = useState<'free' | 'fixed'>('free');
   const [rulerFixedYards, setRulerFixedYards] = useState<number>(5);
+  const [keepMeasurementsOnMap, setKeepMeasurementsOnMap] = useState<boolean>(true);
 
   // Area template state
   const [areaRadius, setAreaRadius] = useState<number>(3); // em jardas
@@ -403,6 +404,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Evita disparar ações no mapa quando o clique foi em botões, menus, inputs ou na barra superior
+    const target = e.target as HTMLElement | SVGElement | null;
+    if (
+      target &&
+      (target.closest('button') ||
+        target.closest('input') ||
+        target.closest('select') ||
+        target.closest('.pointer-events-auto') ||
+        target.closest('#tactical-top-toolbar-container'))
+    ) {
+      return;
+    }
+
     if (contextMenu) {
       setContextMenu(null);
     }
@@ -586,6 +600,31 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
     if (isDrawingFog) {
       setIsDrawingFog(false);
+    }
+
+    if (activeTool === 'ruler' && rulerStart && rulerCurrent) {
+      const distanceYards = getHexDistance(rulerStart, rulerCurrent);
+      if (distanceYards > 0 && keepMeasurementsOnMap) {
+        const rangePenalty = getGurpsRangePenalty(distanceYards);
+        const newMarker: TacticalMarker = {
+          id: `ruler-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          type: 'ruler',
+          startX: rulerStart.col,
+          startY: rulerStart.row,
+          endX: rulerCurrent.col,
+          endY: rulerCurrent.row,
+          radius: distanceYards,
+          color: '#f59e0b',
+          label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
+          layer: activeLayer,
+          authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
+        };
+        onUpdateTacticalState({
+          markers: [...(tacticalState.markers || []), newMarker],
+        });
+        setRulerStart(null);
+        setRulerCurrent(null);
+      }
     }
 
     if (fogBoxStart && fogBoxCurrent && isMaster) {
@@ -982,6 +1021,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     setPopoverToken(null);
   };
 
+  // Excluir marcador individual do mapa
+  const handleDeleteMarker = (id: string) => {
+    onUpdateTacticalState({
+      markers: (tacticalState.markers || []).filter((m) => m.id !== id),
+    });
+  };
+
   // Clear ruler & markers
   const handleClearMarkers = () => {
     setRulerStart(null);
@@ -1103,7 +1149,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       }`}
     >
       {/* 1. TOP TOOLBAR */}
-      <div className="absolute top-3 left-3 right-3 z-30 pointer-events-auto">
+      <div
+        id="tactical-top-toolbar-container"
+        className="absolute top-3 left-3 right-3 z-30 pointer-events-auto"
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <TacticalToolbar
           tacticalState={tacticalState}
           zoom={zoom}
@@ -1151,6 +1204,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onFixRulerMarker={handleFixRulerMarker}
           onClearRulerMarkers={handleClearRulerMarkers}
           hasActiveRuler={!!(rulerStart && rulerCurrent)}
+          keepMeasurementsOnMap={keepMeasurementsOnMap}
+          onSetKeepMeasurementsOnMap={setKeepMeasurementsOnMap}
+          activeRulerMarkersCount={(tacticalState.markers || []).filter((m) => m.type === 'ruler').length}
           areaRadius={areaRadius}
           onSetAreaRadius={setAreaRadius}
           areaColor={areaColor}
@@ -1783,10 +1839,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 const relCenter = getHexCenter(marker.startX, marker.startY, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
                 const radiusPixels = (marker.radius || 3) * hexSize * 1.7;
-                const canDelete = isMaster || marker.authorName === (currentUserRole === 'mestre' ? 'Mestre' : 'Jogador');
 
                 return (
-                  <g key={marker.id} id={`marker-${marker.id}`}>
+                  <g
+                    key={marker.id}
+                    id={`marker-${marker.id}`}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDeleteMarker(marker.id);
+                    }}
+                  >
                     <circle
                       cx={center.x}
                       cy={center.y}
@@ -1796,22 +1859,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       strokeWidth="2.5"
                       strokeDasharray="6 4"
                     />
-                    {/* Tag de Identificação */}
-                    <g transform={`translate(${center.x}, ${center.y - radiusPixels - 12})`}>
+                    {/* Tag de Identificação com Botão de Excluir */}
+                    <g transform={`translate(${center.x}, ${center.y - radiusPixels - 14})`} pointerEvents="auto">
                       <rect
-                        x="-65"
+                        x="-75"
                         y="-16"
-                        width="130"
-                        height="22"
-                        rx="6"
-                        fill="#090d16"
+                        width="150"
+                        height="26"
+                        rx="7"
+                        fill="#020617"
                         stroke={marker.color || '#ef4444'}
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
                       <text
-                        x={canDelete ? "-8" : "0"}
-                        y="-1"
+                        x="-10"
+                        y="1"
                         fill={marker.color || '#ef4444'}
                         fontSize="10"
                         fontWeight="bold"
@@ -1819,20 +1882,34 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       >
                         {marker.label || `Área (${marker.radius} yd)`}
                       </text>
-                      {canDelete && (
-                        <g
-                          className="cursor-pointer hover:opacity-80"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUpdateTacticalState({
-                              markers: (tacticalState.markers || []).filter((m) => m.id !== marker.id),
-                            });
-                          }}
+                      {/* Botão Individual de Excluir Área */}
+                      <g
+                        className="cursor-pointer"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleDeleteMarker(marker.id);
+                        }}
+                        title="Apagar esta área do mapa"
+                      >
+                        <circle cx="56" cy="-3" r="12" fill="transparent" />
+                        <circle cx="56" cy="-3" r="8" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
+                        <text
+                          x="56"
+                          y="0.5"
+                          fill="#ffffff"
+                          fontSize="11"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                          pointerEvents="none"
                         >
-                          <circle cx="50" cy="-5" r="6" fill="#ef4444" />
-                          <text x="50" y="-2" fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="middle">×</text>
-                        </g>
-                      )}
+                          ✕
+                        </text>
+                      </g>
                     </g>
                   </g>
                 );
@@ -1845,36 +1922,44 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 const pB = { x: mapX + relB.x, y: mapY + relB.y };
                 const midX = (pA.x + pB.x) / 2;
                 const midY = (pA.y + pB.y) / 2;
-                const canDelete = isMaster || marker.authorName === (currentUserRole === 'mestre' ? 'Mestre' : 'Jogador');
 
                 return (
-                  <g key={marker.id} id={`marker-ruler-${marker.id}`}>
+                  <g
+                    key={marker.id}
+                    id={`marker-ruler-${marker.id}`}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDeleteMarker(marker.id);
+                    }}
+                  >
                     <line
                       x1={pA.x}
                       y1={pA.y}
                       x2={pB.x}
                       y2={pB.y}
                       stroke={marker.color || '#f59e0b'}
-                      strokeWidth="3"
+                      strokeWidth="3.5"
                       strokeDasharray="6 4"
                     />
                     <circle cx={pA.x} cy={pA.y} r="5" fill={marker.color || '#f59e0b'} />
                     <circle cx={pB.x} cy={pB.y} r="5" fill={marker.color || '#f59e0b'} />
-                    <g transform={`translate(${midX}, ${midY - 18})`}>
+                    {/* Badge da Medição com Botão Individual de Excluir */}
+                    <g transform={`translate(${midX}, ${midY - 20})`} pointerEvents="auto">
                       <rect
-                        x="-65"
+                        x="-75"
                         y="-16"
-                        width="130"
-                        height="22"
-                        rx="6"
-                        fill="#090d16"
+                        width="150"
+                        height="26"
+                        rx="7"
+                        fill="#020617"
                         stroke={marker.color || '#f59e0b'}
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
                       <text
-                        x={canDelete ? "-8" : "0"}
-                        y="-1"
+                        x="-10"
+                        y="1"
                         fill="#fbbf24"
                         fontSize="10"
                         fontWeight="bold"
@@ -1882,20 +1967,34 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       >
                         {marker.label || `${marker.radius} yd`}
                       </text>
-                      {canDelete && (
-                        <g
-                          className="cursor-pointer hover:opacity-80"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUpdateTacticalState({
-                              markers: (tacticalState.markers || []).filter((m) => m.id !== marker.id),
-                            });
-                          }}
+                      {/* Botão Individual de Excluir Medição */}
+                      <g
+                        className="cursor-pointer"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleDeleteMarker(marker.id);
+                        }}
+                        title="Apagar esta medição do mapa"
+                      >
+                        <circle cx="56" cy="-3" r="12" fill="transparent" />
+                        <circle cx="56" cy="-3" r="8" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
+                        <text
+                          x="56"
+                          y="0.5"
+                          fill="#ffffff"
+                          fontSize="11"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                          pointerEvents="none"
                         >
-                          <circle cx="50" cy="-5" r="6" fill="#ef4444" />
-                          <text x="50" y="-2" fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="middle">×</text>
-                        </g>
-                      )}
+                          ✕
+                        </text>
+                      </g>
                     </g>
                   </g>
                 );
