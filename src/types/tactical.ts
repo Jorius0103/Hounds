@@ -38,11 +38,9 @@ export interface TacticalLightSource {
 }
 
 export type TacticalBackgroundKey =
-  | 'ludgrim'
-  | 'tagmar'
+  | 'tavern'
   | 'dungeon'
   | 'forest'
-  | 'tavern'
   | 'arena'
   | 'dark'
   | 'custom';
@@ -144,12 +142,12 @@ export interface TacticalState {
 }
 
 export const DEFAULT_TACTICAL_STATE: TacticalState = {
-  backgroundKey: 'ludgrim',
+  backgroundKey: 'tavern',
   customImageUrl: '',
   mapImageX: 0,
   mapImageY: 0,
-  mapImageWidth: 317,
-  mapImageHeight: 512,
+  mapImageWidth: 2000,
+  mapImageHeight: 1400,
   mapImageScale: 1,
   mapImageLocked: false,
   activeLayer: 'tokens',
@@ -169,24 +167,16 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   terrainCells: [],
   markers: [],
   zoom: 1,
-  panX: 40,
-  panY: 40,
+  panX: 36,
+  panY: 36,
 };
 
 export const TACTICAL_MAP_PRESETS: TacticalMapPreset[] = [
   {
-    key: 'ludgrim',
-    name: 'Ludgrim (Mapa da Campanha)',
-    description: 'Mapa oficial de Ludgrim exportado da campanha The Hounds',
-    url: 'imagens/2e039124ddb530e855a5c2d99f4a0b95.jpg',
-    themeColor: '#78350f',
-  },
-  {
-    key: 'tagmar',
-    name: 'Tagmar (Região Hounds)',
-    description: 'Mapa regional detalhado de Tagmar da campanha',
-    url: 'imagens/715c023dfe533c931af407da5161c40f.jpg',
-    themeColor: '#1e3a8a',
+    key: 'tavern',
+    name: 'Taberna / Salão de Madeira',
+    description: 'Taberna rústica ilustrada com assoalho nobre, lareira de pedra e balcão',
+    themeColor: '#713f12',
   },
   {
     key: 'dungeon',
@@ -199,12 +189,6 @@ export const TACTICAL_MAP_PRESETS: TacticalMapPreset[] = [
     name: 'Floresta / Clareira Sombria',
     description: 'Clareira ilustrada com grama, trilha de terra batida, rochedos e árvores',
     themeColor: '#14532d',
-  },
-  {
-    key: 'tavern',
-    name: 'Taberna / Salão de Madeira',
-    description: 'Taberna rústica ilustrada com assoalho nobre, lareira de pedra e balcão',
-    themeColor: '#713f12',
   },
   {
     key: 'arena',

@@ -163,7 +163,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   activeRulerMarkersCount = 0,
 }) => {
   const [mapConfigOpen, setMapConfigOpen] = useState(false);
-  const [systemMapsOpen, setSystemMapsOpen] = useState(false);
   const [customUrlInput, setCustomUrlInput] = useState(tacticalState.customImageUrl || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -325,168 +324,17 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
           </button>
         )}
 
-        {/* Botão de Mapas do Sistema (Campanha The Hounds e Cenários Ilustrados) */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setSystemMapsOpen(!systemMapsOpen);
-              setMapConfigOpen(false);
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-medium text-slate-200 hover:text-white transition-colors"
-            title="Mapas do Sistema: Ludgrim, Tagmar e Cenários Ilustrados"
-          >
-            <Compass size={14} className="text-amber-400" />
-            <span className="font-semibold">Mapas do Sistema</span>
-            <span className="max-w-[110px] truncate text-[11px] text-slate-400">
-              ({currentPreset.name})
-            </span>
-          </button>
-
-          {systemMapsOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setSystemMapsOpen(false)}
-              />
-              <div className="absolute top-full left-0 mt-2 w-84 bg-slate-950 border border-amber-500/40 rounded-xl shadow-2xl p-3 z-50 text-xs space-y-2.5">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-slate-200 font-bold">
-                  <span className="flex items-center gap-1.5 text-amber-400">
-                    <Compass size={14} /> Mapas do Sistema & Campanha
-                  </span>
-                  <span className="text-[10px] text-slate-400 uppercase font-mono">The Hounds</span>
-                </div>
-
-                {/* Seção 1: Mapas Oficiais da Campanha */}
-                <div className="space-y-1">
-                  <div className="text-[10px] font-bold text-amber-400/90 uppercase tracking-wider px-1">
-                    Campanha The Hounds
-                  </div>
-                  <div className="space-y-1">
-                    {TACTICAL_MAP_PRESETS.filter((p) => p.url).map((preset) => {
-                      const isSelected =
-                        tacticalState.backgroundKey === preset.key && !tacticalState.customImageUrl;
-                      return (
-                        <button
-                          key={preset.key}
-                          onClick={() => {
-                            if (preset.url) {
-                              const img = new Image();
-                              img.onload = () => {
-                                onUpdateTacticalState({
-                                  backgroundKey: preset.key,
-                                  customImageUrl: undefined,
-                                  mapImageWidth: img.naturalWidth,
-                                  mapImageHeight: img.naturalHeight,
-                                  mapImageX: 0,
-                                  mapImageY: 0,
-                                });
-                              };
-                              img.onerror = () => {
-                                onUpdateTacticalState({
-                                  backgroundKey: preset.key,
-                                  customImageUrl: undefined,
-                                  mapImageWidth: preset.key === 'ludgrim' ? 317 : 3200,
-                                  mapImageHeight: preset.key === 'ludgrim' ? 512 : 2644,
-                                  mapImageX: 0,
-                                  mapImageY: 0,
-                                });
-                              };
-                              img.src = preset.url;
-                            }
-                            setSystemMapsOpen(false);
-                          }}
-                          className={`w-full text-left p-2 rounded-lg border transition-all flex items-start gap-2.5 ${
-                            isSelected
-                              ? 'bg-amber-500/20 border-amber-500 text-white shadow-sm'
-                              : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-750'
-                          }`}
-                        >
-                          <div
-                            className="w-3.5 h-3.5 rounded-full mt-0.5 shrink-0 border border-white/20"
-                            style={{ backgroundColor: preset.themeColor }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-xs flex items-center justify-between">
-                              <span>{preset.name}</span>
-                              <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded font-mono font-semibold">
-                                Oficial
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-400 line-clamp-1">
-                              {preset.description}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Seção 2: Cenários Ilustrados Táticos */}
-                <div className="space-y-1 pt-1.5 border-t border-slate-800">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
-                    Cenários Ilustrados Padrão
-                  </div>
-                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                    {TACTICAL_MAP_PRESETS.filter((p) => !p.url && p.key !== 'custom').map((preset) => {
-                      const isSelected =
-                        tacticalState.backgroundKey === preset.key && !tacticalState.customImageUrl;
-                      return (
-                        <button
-                          key={preset.key}
-                          onClick={() => {
-                            onUpdateTacticalState({
-                              backgroundKey: preset.key,
-                              customImageUrl: undefined,
-                              mapImageWidth: 2000,
-                              mapImageHeight: 1400,
-                              mapImageX: 0,
-                              mapImageY: 0,
-                            });
-                            setSystemMapsOpen(false);
-                          }}
-                          className={`w-full text-left p-2 rounded-lg border transition-all flex items-start gap-2.5 ${
-                            isSelected
-                              ? 'bg-amber-500/20 border-amber-500 text-white'
-                              : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-750'
-                          }`}
-                        >
-                          <div
-                            className="w-3.5 h-3.5 rounded-full mt-0.5 shrink-0 border border-white/20"
-                            style={{ backgroundColor: preset.themeColor }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-xs text-slate-200">
-                              {preset.name}
-                            </div>
-                            <div className="text-[11px] text-slate-400 line-clamp-1">
-                              {preset.description}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Botão Unificado: Configuração do Mapa (Upload, Imagem e Calibração do Grid) */}
+        {/* Botão Unificado: Configuração do Mapa (Upload, Imagem, Cenários e Grid) */}
         {isMaster && (
           <div className="relative">
             <button
-              onClick={() => {
-                setMapConfigOpen(!mapConfigOpen);
-                setSystemMapsOpen(false);
-              }}
+              onClick={() => setMapConfigOpen(!mapConfigOpen)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
                 mapConfigOpen
                   ? 'bg-amber-500 text-slate-950 font-bold border border-amber-500'
                   : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
               }`}
-              title="Configuração do Mapa (Upload de Imagem, Tamanho e Contraste do Grid)"
+              title="Configuração do Mapa (Upload de Imagem, Cenários Padrão e Grid)"
             >
               <Sliders size={13} />
               <span>Configuração do Mapa</span>
@@ -576,10 +424,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                           type="button"
                           onClick={() => {
                             onUpdateTacticalState({
-                              backgroundKey: 'ludgrim',
+                              backgroundKey: 'tavern',
                               customImageUrl: undefined,
-                              mapImageWidth: 317,
-                              mapImageHeight: 512,
+                              mapImageWidth: 2000,
+                              mapImageHeight: 1400,
                               mapImageX: 0,
                               mapImageY: 0,
                             });
@@ -649,6 +497,45 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                             : '(Paisagem / Deitado)'}
                         </span>
                       </span>
+                    </div>
+
+                    {/* Cenários Ilustrados Padrão */}
+                    <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                      <span className="text-[10px] text-slate-400 block font-semibold">
+                        Ou escolha um cenário ilustrado padrão:
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        {TACTICAL_MAP_PRESETS.filter((p) => p.key !== 'custom').map((p) => {
+                          const isSel = tacticalState.backgroundKey === p.key && !tacticalState.customImageUrl;
+                          return (
+                            <button
+                              key={p.key}
+                              type="button"
+                              onClick={() => {
+                                onUpdateTacticalState({
+                                  backgroundKey: p.key,
+                                  customImageUrl: undefined,
+                                  mapImageWidth: 2000,
+                                  mapImageHeight: 1400,
+                                  mapImageX: 0,
+                                  mapImageY: 0,
+                                });
+                              }}
+                              className={`p-1.5 rounded-lg border text-left flex items-center gap-1.5 transition-all ${
+                                isSel
+                                  ? 'bg-amber-500/20 border-amber-500 text-white font-bold'
+                                  : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-850'
+                              }`}
+                            >
+                              <div
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: p.themeColor }}
+                              />
+                              <span className="truncate text-[11px]">{p.name.split('/')[0].trim()}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 

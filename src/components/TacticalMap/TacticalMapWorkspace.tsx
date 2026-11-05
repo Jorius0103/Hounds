@@ -182,11 +182,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // A camada 'tokens' já é a visão dos jogadores (tokens públicos)!
   const isPlayerView = !isMaster || activeLayer === 'tokens';
 
-  // Estado para arrasto e reposicionamento da imagem base do mapa (Camada do Mapa)
-  const [isDraggingMap, setIsDraggingMap] = useState(false);
-  const [mapDragStart, setMapDragStart] = useState<Point>({ x: 0, y: 0 });
-  const [localMapPos, setLocalMapPos] = useState<{ x: number; y: number } | null>(null);
-
   // Elementos do Cenário / Mobília (Props - Estilo Roll20)
   const [isPropsModalOpen, setIsPropsModalOpen] = useState(false);
   const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
@@ -252,6 +247,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     return characterMap.get(selectedToken.npcId) || null;
   }, [selectedToken, characterMap]);
 
+  // Posição inicial dos mapas: colados no canto superior esquerdo dando um suspiro mediano (36px)
+  const DEFAULT_PAN_X = 36;
+  const DEFAULT_PAN_Y = 36;
+
   // Viewport local (pan e zoom gerenciados apenas no cliente para não sobrecarregar rede e banco)
   const [viewport, setViewport] = useState<{ panX: number; panY: number; zoom: number }>(() => {
     try {
@@ -264,8 +263,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       }
     } catch {}
     return {
-      panX: typeof tacticalState?.panX === 'number' ? tacticalState.panX : 40,
-      panY: typeof tacticalState?.panY === 'number' ? tacticalState.panY : 40,
+      panX: typeof tacticalState?.panX === 'number' ? tacticalState.panX : DEFAULT_PAN_X,
+      panY: typeof tacticalState?.panY === 'number' ? tacticalState.panY : DEFAULT_PAN_Y,
       zoom: typeof tacticalState?.zoom === 'number' ? tacticalState.zoom : 1,
     };
   });
@@ -288,11 +287,21 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     });
   }, []);
 
+  // Quando troca de mapa ou carrega imagem, inicia colado no canto superior esquerdo com suspiro mediano
+  const currentMapKey = `${tacticalState.backgroundKey}_${tacticalState.customImageUrl || ''}`;
+  const prevMapRef = useRef(currentMapKey);
+  useEffect(() => {
+    if (prevMapRef.current !== currentMapKey) {
+      prevMapRef.current = currentMapKey;
+      updateViewport({ zoom: 1, panX: DEFAULT_PAN_X, panY: DEFAULT_PAN_Y });
+    }
+  }, [currentMapKey, updateViewport]);
+
   // Imagem base entra com o tamanho e proporção 100% originais (sem distorção de escala)
   const mapX = 0;
   const mapY = 0;
-  const baseW = tacticalState.mapImageWidth || (tacticalState.backgroundKey === 'ludgrim' ? 317 : 2000);
-  const baseH = tacticalState.mapImageHeight || (tacticalState.backgroundKey === 'ludgrim' ? 512 : 1400);
+  const baseW = tacticalState.mapImageWidth || 2000;
+  const baseH = tacticalState.mapImageHeight || 1400;
   const mapW = baseW;
   const mapH = baseH;
 
@@ -505,19 +514,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       setSelectedPropId(null);
     }
 
-    // Camada do Mapa ativa (Roll20 Map Layer): Arraste da imagem de base pelo mestre
-    if (activeLayer === 'map' && isMaster && !tacticalState.mapImageLocked && e.button === 0) {
-      const targetId = (e.target as HTMLElement).id;
-      if (targetId === 'map-background' || (e.target as HTMLElement).tagName === 'svg') {
-        const p = clientToMapCoords(e.clientX, e.clientY);
-        setIsDraggingMap(true);
-        setMapDragStart({
-          x: p.x - (tacticalState.mapImageX || 0),
-          y: p.y - (tacticalState.mapImageY || 0),
-        });
-        setPopoverToken(null);
-        return;
-      }
+    // Camada do Mapa ativa: Mover o mapa segurando o botão do mouse
+    if (activeLayer === 'map' && e.button === 0) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - panX, y: e.clientY - panY });
+      setPopoverToken(null);
+      return;
     }
 
     // 1. Ferramenta de Ocultação do Mapa (Névoa de Guerra estilo Roll20)
@@ -663,14 +665,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       return;
     }
 
-    if (isDraggingMap) {
-      const p = clientToMapCoords(e.clientX, e.clientY);
-      const nextX = Math.round(p.x - mapDragStart.x);
-      const nextY = Math.round(p.y - mapDragStart.y);
-      setLocalMapPos({ x: nextX, y: nextY });
-      return;
-    }
-
     if (isPanning) {
       setViewport((prev) => ({
         ...prev,
@@ -730,17 +724,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleMouseUp = () => {
     if (draggedPropId) {
       setDraggedPropId(null);
-    }
-
-    if (isDraggingMap) {
-      setIsDraggingMap(false);
-      if (localMapPos) {
-        onUpdateTacticalState({
-          mapImageX: localMapPos.x,
-          mapImageY: localMapPos.y,
-        });
-        setLocalMapPos(null);
-      }
     }
 
     if (isDrawingFog) {
@@ -833,7 +816,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleResetView = () => {
-    updateViewport({ zoom: 1, panX: 40, panY: 40 });
+    updateViewport({ zoom: 1, panX: DEFAULT_PAN_X, panY: DEFAULT_PAN_Y });
   };
 
   // Cálculos para Barras de Rolagem (quando o mapa for maior que a tela)
@@ -1248,16 +1231,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={() => {
-        if (isDraggingMap) {
-          setIsDraggingMap(false);
-          if (localMapPos) {
-            onUpdateTacticalState({
-              mapImageX: localMapPos.x,
-              mapImageY: localMapPos.y,
-            });
-            setLocalMapPos(null);
-          }
-        }
         if (isPanning) setIsPanning(false);
         if (draggedPropId) setDraggedPropId(null);
         if (draggedTokenId) {
@@ -1275,7 +1248,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       className={`relative w-full h-[calc(100vh-130px)] min-h-[550px] bg-slate-950 overflow-hidden select-none rounded-2xl border border-slate-800 shadow-2xl flex flex-col ${
         isPanning
           ? 'cursor-grabbing'
-          : activeTool === 'select'
+          : (activeLayer === 'map' || activeTool === 'select')
           ? 'cursor-grab'
           : 'cursor-crosshair'
       }`}
