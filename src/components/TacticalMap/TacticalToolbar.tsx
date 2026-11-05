@@ -639,12 +639,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       <Grid size={13} className="text-amber-400" /> Calibração da Grade & Escala Tática
                     </span>
 
-                    {/* Escala da Grade: Tamanho do Quadrado (hexSize) */}
+                    {/* Escala da Grade: Tamanho do Hexágono (hexSize) */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] text-slate-300 font-semibold">
-                        <span>Tamanho do Quadrado (Célula do Grid):</span>
+                        <span>Tamanho do Hexágono (Célula do Grid):</span>
                         <span className="font-mono text-amber-400 font-bold">
-                          {tacticalState.hexSize || 50}px
+                          {tacticalState.hexSize || 38}px
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -652,19 +652,19 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                           type="button"
                           onClick={() =>
                             onUpdateTacticalState({
-                              hexSize: Math.max(16, (tacticalState.hexSize || 50) - 2),
+                              hexSize: Math.max(16, (tacticalState.hexSize || 38) - 1),
                             })
                           }
                           className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
-                          title="Diminuir célula"
+                          title="Diminuir hexágono"
                         >
                           -
                         </button>
                         <input
                           type="range"
                           min="16"
-                          max="130"
-                          value={tacticalState.hexSize || 50}
+                          max="110"
+                          value={tacticalState.hexSize || 38}
                           onChange={(e) =>
                             onUpdateTacticalState({ hexSize: Number(e.target.value) })
                           }
@@ -674,17 +674,17 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                           type="button"
                           onClick={() =>
                             onUpdateTacticalState({
-                              hexSize: Math.min(150, (tacticalState.hexSize || 50) + 2),
+                              hexSize: Math.min(130, (tacticalState.hexSize || 38) + 1),
                             })
                           }
                           className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
-                          title="Aumentar célula"
+                          title="Aumentar hexágono"
                         >
                           +
                         </button>
                       </div>
                       <div className="text-[10px] text-slate-400 italic">
-                        Aumente ou diminua o tamanho de cada quadrado para alinhar a grade perfeitamente com as salas do mapa.
+                        Aumente ou diminua o tamanho de cada hexágono para alinhar a grade perfeitamente com a imagem do mapa.
                       </div>
                     </div>
 
@@ -969,9 +969,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     ? 'bg-amber-500 text-slate-950'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="1 Quadrado"
+                title="1 Hexágono"
               >
-                1 Qdr
+                1 Hex
               </button>
               <button
                 type="button"
@@ -981,9 +981,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     ? 'bg-amber-500 text-slate-950'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Pequeno (raio de 1 quadrado)"
+                title="3 Hexes (raio de 1 jarda)"
               >
-                Pequeno
+                3 Hexes
               </button>
               <button
                 type="button"
@@ -993,9 +993,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     ? 'bg-amber-500 text-slate-950'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Médio (raio de 2 quadrados)"
+                title="7 Hexes (raio de 2 jardas)"
               >
-                Médio
+                7 Hexes
               </button>
             </div>
           )}

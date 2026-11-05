@@ -17,11 +17,13 @@ import { TacticalIllustrativePresets } from './TacticalIllustrativePresets';
 import { TacticalPropsRenderer } from './TacticalPropsRenderer';
 import { TacticalPropsModal } from './TacticalPropsModal';
 import {
-  getCellCenter,
-  pixelToCell,
-  getCellDistance,
-  getCellsInRange,
-  getCellLine,
+  getHexCenter,
+  getHexCornerPoints,
+  getHexPointsString,
+  pixelToHex,
+  getHexDistance,
+  getHexesInRange,
+  getHexLine,
   getGurpsRangePenalty,
   getTargetArcRelationship,
   getFacingAngleDegrees,
@@ -305,28 +307,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const mapW = baseW;
   const mapH = baseH;
 
-  // Dimensões do grid quadrado calibradas exatamente para o tamanho da imagem (nem falta nem sobra)
-  const cellSize = tacticalState?.hexSize || 50;
-  const dynamicCols = Math.ceil(mapW / cellSize) + 1;
-  const dynamicRows = Math.ceil(mapH / cellSize) + 1;
-
-  // Funções matemáticas para grade quadrada (unificadas)
-  const toCellCenter = useCallback(
-    (col: number, row: number): Point => getCellCenter(col, row, cellSize),
-    [cellSize]
-  );
-  const toCellCoord = useCallback(
-    (pixelX: number, pixelY: number): HexCoord => pixelToCell(pixelX, pixelY, cellSize),
-    [cellSize]
-  );
-  const toDistance = useCallback(
-    (a: HexCoord, b: HexCoord): number => getCellDistance(a, b),
-    []
-  );
-  const toCellsRange = useCallback(
-    (center: HexCoord, radius: number): HexCoord[] => getCellsInRange(center, radius),
-    []
-  );
+  // Dimensões do grid hexagonal calibradas exatamente para o tamanho da imagem (nem falta nem sobra)
+  const hexSize = tacticalState?.hexSize || 38;
+  const hexWidth = Math.sqrt(3) * hexSize;
+  const rowSpacing = 1.5 * hexSize;
+  const dynamicCols = Math.ceil(mapW / hexWidth) + 2;
+  const dynamicRows = Math.ceil(mapH / rowSpacing) + 2;
 
   // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
   const litCellsSet = useMemo(() => {
@@ -335,7 +321,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     // 1. Focos de luz fixos
     (tacticalState.lights || []).forEach((light) => {
       if (light.active !== false && light.radius > 0) {
-        const inRange = getCellsInRange({ col: light.gridX, row: light.gridY }, light.radius);
+        const inRange = getHexesInRange({ col: light.gridX, row: light.gridY }, light.radius);
         inRange.forEach((h) => set.add(`${h.col},${h.row}`));
       }
     });
@@ -344,7 +330,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     tokens.forEach((token) => {
       if (token.emitsLight && (token.lightRadius || 4) > 0) {
         const radius = token.lightRadius || 4;
-        const inRange = getCellsInRange({ col: token.gridX, row: token.gridY }, radius);
+        const inRange = getHexesInRange({ col: token.gridX, row: token.gridY }, radius);
         inRange.forEach((h) => set.add(`${h.col},${h.row}`));
       }
     });
@@ -359,7 +345,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Aplicar pincel de névoa de guerra (revelar ou ocultar)
   const applyFogBrush = useCallback(
     (centerHex: HexCoord) => {
-      const affectedHexes = getCellsInRange(centerHex, fogBrushRadius);
+      const affectedHexes = getHexesInRange(centerHex, fogBrushRadius);
       const currentRevealed = new Set(tacticalState.fogRevealedCells || []);
       let changed = false;
 
@@ -390,8 +376,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   const handleRevealAllFog = useCallback(() => {
     const allCells: string[] = [];
-    for (let r = 0; r <= dynamicRows; r++) {
-      for (let c = 0; c <= dynamicCols; c++) {
+    for (let r = -1; r <= dynamicRows + 2; r++) {
+      for (let c = -1; c <= dynamicCols + 2; c++) {
         allCells.push(`${c},${r}`);
       }
     }
@@ -545,7 +531,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         setFogBoxStart({ x: p.x - mapX, y: p.y - mapY });
         setFogBoxCurrent({ x: p.x - mapX, y: p.y - mapY });
       } else {
-        const hex = toCellCoord(p.x - mapX, p.y - mapY);
+        const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
         setIsDrawingFog(true);
         applyFogBrush(hex);
       }
@@ -556,7 +542,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     // 2. Ferramenta de Focos de Luz (Tochas, Fogueiras, Lanternas)
     if (activeTool === 'light' && e.button === 0 && isMaster) {
       const p = clientToMapCoords(e.clientX, e.clientY);
-      const hex = toCellCoord(p.x - mapX, p.y - mapY);
+      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
       const existing = (tacticalState.lights || []).find(
         (l) => l.gridX === hex.col && l.gridY === hex.row
       );
@@ -595,7 +581,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     // 3. Ferramenta de Medir (Distância por Dois Cliques, Área de Efeito e Alcance Fixo)
     if ((activeTool === 'ruler' || activeTool === 'area') && e.button === 0) {
       const p = clientToMapCoords(e.clientX, e.clientY);
-      const hex = toCellCoord(p.x - mapX, p.y - mapY);
+      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
 
       if (rulerType === 'blast' || activeTool === 'area') {
         const newMarker: TacticalMarker = {
@@ -635,7 +621,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         return;
       } else {
         // 2º Clique: destino da medição e fixação no mapa
-        const distanceYards = toDistance(rulerStart, hex);
+        const distanceYards = getHexDistance(rulerStart, hex);
         if (distanceYards > 0) {
           const rangePenalty = getGurpsRangePenalty(distanceYards);
           const newMarker: TacticalMarker = {
@@ -691,7 +677,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     }
 
     const p = clientToMapCoords(e.clientX, e.clientY);
-    const hex = toCellCoord(p.x - mapX, p.y - mapY);
+    const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
     setHoveredHex(hex);
 
     if (activeTool === 'fog' && isMaster) {
@@ -714,7 +700,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     if (rotatingTokenId) {
       const token = tokens.find((t) => t.id === rotatingTokenId);
       if (token) {
-        const rel = toCellCenter(token.gridX, token.gridY);
+        const rel = getHexCenter(token.gridX, token.gridY, hexSize);
         const center = { x: mapX + rel.x, y: mapY + rel.y };
         const dx = p.x - center.x;
         const dy = p.y - center.y;
@@ -722,8 +708,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         // Frente está embaixo no SVG (+Y = 90°). deg - 90 aponta a frente para o mouse:
         let rot = deg - 90;
         rot = ((rot % 360) + 360) % 360;
-        // Snap a cada 45° para 8 direções limpas na grade quadrada:
-        const snappedRot = (Math.round(rot / 45) * 45) % 360;
+        // Snap (agarrar) a cada 30° para permitir agarrar tanto na linha dos hexágonos quanto no meio deles (12 posições):
+        const snappedRot = (Math.round(rot / 30) * 30) % 360;
         const facingIndex = (Math.round(((snappedRot + 180) % 360) / 60) % 6) as FacingDirection;
 
         setPreviewRotation({ id: rotatingTokenId, rotation: snappedRot, facing: facingIndex });
@@ -756,7 +742,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const nextSet = new Set(revealedSet);
         for (let r = 0; r < dynamicRows; r++) {
           for (let c = 0; c < dynamicCols; c++) {
-            const pt = toCellCenter(c, r);
+            const pt = getHexCenter(c, r, hexSize);
             if (pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY) {
               const key = `${c},${r}`;
               if (fogBrushMode === 'reveal') {
@@ -797,7 +783,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       const token = tokens.find((t) => t.id === draggedTokenId);
       const targetCol = dragHoverHex ? dragHoverHex.col : (token?.gridX ?? dragTokenOrigin.col);
       const targetRow = dragHoverHex ? dragHoverHex.row : (token?.gridY ?? dragTokenOrigin.row);
-      const movedYards = toDistance(dragTokenOrigin, { col: targetCol, row: targetRow });
+      const movedYards = getHexDistance(dragTokenOrigin, { col: targetCol, row: targetRow });
       const updatedTokens = tokens.map((t) =>
         t.id === draggedTokenId ? { ...t, gridX: targetCol, gridY: targetRow, movedThisTurn: (t.movedThisTurn || 0) + movedYards } : t
       );
@@ -1090,7 +1076,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Focus view on a token (local viewport)
   const handleFocusToken = (token: TacticalToken) => {
     if (!containerRef.current) return;
-    const rel = toCellCenter(token.gridX, token.gridY);
+    const rel = getHexCenter(token.gridX, token.gridY, hexSize);
     const center = { x: mapX + rel.x, y: mapY + rel.y };
     const rect = containerRef.current.getBoundingClientRect();
     const newPanX = rect.width / 2 - center.x * zoom;
@@ -1169,7 +1155,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Fixar medição tática na mesa (compartilhado na camada Tokens para todos os jogadores)
   const handleFixRulerMarker = () => {
     if (!rulerStart || !rulerCurrent) return;
-    const distanceYards = toDistance(rulerStart, rulerCurrent);
+    const distanceYards = getHexDistance(rulerStart, rulerCurrent);
     const rangePenalty = getGurpsRangePenalty(distanceYards);
     const newMarker: TacticalMarker = {
       id: `ruler-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -1772,46 +1758,30 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             isMaster={isMaster}
           />
 
-          {/* CAMADA 2: GRADE TÁTICA QUADRADA - COBRE TODA A IMAGEM */}
-          <g id="tactical-square-grid" clipPath="url(#map-image-bounds)" pointerEvents="none">
-            <defs>
-              <pattern
-                id="tactical-square-grid-pattern"
-                width={cellSize}
-                height={cellSize}
-                patternUnits="userSpaceOnUse"
-              >
-                <rect
-                  x={0}
-                  y={0}
-                  width={cellSize}
-                  height={cellSize}
-                  fill="none"
-                  stroke={tacticalState.gridColor || '#cbd5e1'}
-                  strokeWidth="1"
-                  strokeOpacity={tacticalState.gridOpacity ?? 0.28}
-                />
-              </pattern>
-            </defs>
-            <rect
-              x={mapX}
-              y={mapY}
-              width={mapW}
-              height={mapH}
-              fill="url(#tactical-square-grid-pattern)"
-            />
-            {hoveredHex && (
-              <rect
-                x={mapX + hoveredHex.col * cellSize}
-                y={mapY + hoveredHex.row * cellSize}
-                width={cellSize}
-                height={cellSize}
-                fill="rgba(245, 158, 11, 0.16)"
-                stroke="rgba(245, 158, 11, 0.85)"
-                strokeWidth={1.5}
-                className="transition-colors duration-75"
-              />
-            )}
+          {/* CAMADA 2: GRADE TÁTICA HEXAGONAL - COBRE TODA A IMAGEM */}
+          <g id="tactical-hex-grid" clipPath="url(#map-image-bounds)" pointerEvents="none">
+            {Array.from({ length: dynamicRows + 2 }).map((_, rIdx) => {
+              const r = rIdx - 1;
+              return Array.from({ length: dynamicCols + 2 }).map((_, cIdx) => {
+                const c = cIdx - 1;
+                const relCenter = getHexCenter(c, r, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                const pointsStr = getHexPointsString(center, hexSize);
+                const isHovered = hoveredHex?.col === c && hoveredHex?.row === r;
+
+                return (
+                  <polygon
+                    key={`hex-${c}-${r}`}
+                    points={pointsStr}
+                    fill={isHovered ? 'rgba(245, 158, 11, 0.16)' : 'transparent'}
+                    stroke={tacticalState.gridColor || '#cbd5e1'}
+                    strokeWidth={isHovered ? 1.5 : 1}
+                    strokeOpacity={isHovered ? 0.75 : (tacticalState.gridOpacity ?? 0.28)}
+                    className="transition-colors duration-75"
+                  />
+                );
+              });
+            })}
           </g>
 
           {/* CAMADA 3: FOCOS DE LUZ (RADIAÇÃO & BRILHO AMBIENTE NO TABULEIRO) */}
@@ -1819,9 +1789,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             {/* Brilho dos focos de luz fixos */}
             {(tacticalState.lights || []).map((light) => {
               if (light.active === false || light.radius <= 0) return null;
-              const relCenter = toCellCenter(light.gridX, light.gridY);
+              const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-              const radiusPixels = light.radius * cellSize;
+              const radiusPixels = light.radius * hexWidth * 0.95;
 
               return (
                 <circle
@@ -1839,9 +1809,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
               const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
               const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
-              const relCenter = toCellCenter(displayGridX, displayGridY);
+              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-              const radiusPixels = (token.lightRadius || 4) * cellSize;
+              const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
 
               return (
                 <circle
@@ -1858,7 +1828,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* ÍCONES DOS FOCOS DE LUZ FIXOS NO TABULEIRO */}
           <g id="tactical-light-sources">
             {(tacticalState.lights || []).map((light) => {
-              const relCenter = toCellCenter(light.gridX, light.gridY);
+              const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
 
               return (
@@ -1878,7 +1848,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   <circle
                     cx="0"
                     cy="0"
-                    r={cellSize * 0.38}
+                    r={hexSize * 0.45}
                     fill="#020617"
                     stroke={light.active ? (light.color || '#f59e0b') : '#64748b'}
                     strokeWidth="2"
@@ -1902,7 +1872,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {activeLayer !== 'map' && selectedToken && (
             <g id="gurps-combat-arcs">
               {(() => {
-                const relCenter = toCellCenter(selectedToken.gridX, selectedToken.gridY);
+                const relCenter = getHexCenter(selectedToken.gridX, selectedToken.gridY, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
                 const tokenRotation =
                   typeof selectedToken.rotation === 'number'
@@ -1916,13 +1886,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     <circle
                       cx="0"
                       cy="0"
-                      r={cellSize * 1.2}
+                      r={hexSize * 1.6}
                       fill="none"
                       stroke="#10b981"
                       strokeWidth="3"
                       strokeOpacity="0.4"
-                      strokeDasharray={`${(Math.PI * cellSize * 1.2) / 3} ${
-                        (Math.PI * cellSize * 1.2 * 2) / 3
+                      strokeDasharray={`${(Math.PI * hexSize * 1.6) / 3} ${
+                        (Math.PI * hexSize * 1.6 * 2) / 3
                       }`}
                       transform={`rotate(${aimAngle - 60})`}
                     />
@@ -1941,9 +1911,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               if (!isVisible) return null;
 
               if (marker.type === 'blast') {
-                const relCenter = toCellCenter(marker.startX, marker.startY);
+                const relCenter = getHexCenter(marker.startX, marker.startY, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const radiusPixels = (marker.radius || 3) * cellSize;
+                const radiusPixels = (marker.radius || 3) * hexSize * 1.7;
 
                 return (
                   <g
@@ -2061,9 +2031,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               }
 
               if (marker.type === 'ruler' || marker.type === 'line') {
-                const relA = toCellCenter(marker.startX, marker.startY);
+                const relA = getHexCenter(marker.startX, marker.startY, hexSize);
                 const pA = { x: mapX + relA.x, y: mapY + relA.y };
-                const relB = toCellCenter(marker.endX ?? marker.startX, marker.endY ?? marker.startY);
+                const relB = getHexCenter(marker.endX ?? marker.startX, marker.endY ?? marker.startY, hexSize);
                 const pB = { x: mapX + relB.x, y: mapY + relB.y };
                 const midX = (pA.x + pB.x) / 2;
                 const midY = (pA.y + pB.y) / 2;
@@ -2196,9 +2166,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {(() => {
                 const targetCenter = areaCenter || hoveredHex;
                 if (!targetCenter) return null;
-                const relCenter = toCellCenter(targetCenter.col, targetCenter.row);
+                const relCenter = getHexCenter(targetCenter.col, targetCenter.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const radiusPixels = areaRadius * cellSize;
+                const radiusPixels = areaRadius * hexSize * 1.7;
                 return (
                   <g>
                     <circle
@@ -2218,7 +2188,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       fontWeight="bold"
                       textAnchor="middle"
                     >
-                      Raio: {areaRadius} jardas ({areaRadius} {areaRadius === 1 ? 'quadrado' : 'quadrados'})
+                      Raio: {areaRadius} jardas ({areaRadius} hexes)
                     </text>
                   </g>
                 );
@@ -2232,9 +2202,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {(() => {
                 const centerHex = rulerStart || hoveredHex;
                 if (!centerHex) return null;
-                const relCenter = toCellCenter(centerHex.col, centerHex.row);
+                const relCenter = getHexCenter(centerHex.col, centerHex.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const radiusPixels = rulerFixedYards * cellSize;
+                const radiusPixels = rulerFixedYards * hexSize * 1.7;
                 const rangePenalty = getGurpsRangePenalty(rulerFixedYards);
                 return (
                   <g>
@@ -2267,11 +2237,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {rulerStart && rulerCurrent && (
             <g id="tactical-ruler">
               {(() => {
-                const relA = toCellCenter(rulerStart.col, rulerStart.row);
+                const relA = getHexCenter(rulerStart.col, rulerStart.row, hexSize);
                 const pA = { x: mapX + relA.x, y: mapY + relA.y };
-                const relB = toCellCenter(rulerCurrent.col, rulerCurrent.row);
+                const relB = getHexCenter(rulerCurrent.col, rulerCurrent.row, hexSize);
                 const pB = { x: mapX + relB.x, y: mapY + relB.y };
-                const distanceYards = toDistance(rulerStart, rulerCurrent);
+                const distanceYards = getHexDistance(rulerStart, rulerCurrent);
                 const rangePenalty = getGurpsRangePenalty(distanceYards);
 
                 // Detecta arco de defesa se o alvo for um token
@@ -2333,7 +2303,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         fontWeight="bold"
                         textAnchor="middle"
                       >
-                        Distância: {distanceYards} yd ({distanceYards} {distanceYards === 1 ? 'quadrado' : 'quadrados'})
+                        Distância: {distanceYards} yd ({distanceYards} hex)
                       </text>
                       <text
                         x="0"
@@ -2385,14 +2355,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               const isRotating = token.id === rotatingTokenId;
               const displayGridX = isDragging && dragHoverHex ? dragHoverHex.col : token.gridX;
               const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
-              const relCenter = toCellCenter(displayGridX, displayGridY);
+              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
               const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
                 ? previewRotation.rotation
                 : (typeof token.rotation === 'number'
                     ? token.rotation
                     : ((token.facing * 60 + 180) % 360));
-              const tokenRadius = (cellSize * 0.88) / 2;
+              const tokenRadius = hexSize * 0.75;
 
               const hpPercent =
                 npc.hpMax > 0
@@ -2623,28 +2593,31 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20) */}
           {tacticalState.fogEnabled && (
             <g id="tactical-fog-layer" clipPath="url(#map-image-bounds)" pointerEvents="none">
-              {Array.from({ length: dynamicRows }).map((_, r) =>
-                Array.from({ length: dynamicCols }).map((_, c) => {
+              {Array.from({ length: dynamicRows + 2 }).map((_, rIdx) => {
+                const r = rIdx - 1;
+                return Array.from({ length: dynamicCols + 2 }).map((_, cIdx) => {
+                  const c = cIdx - 1;
                   const key = `${c},${r}`;
                   const isRevealed = revealedSet.has(key);
                   const isLit = litCellsSet.has(key);
 
                   if (isRevealed || isLit) return null;
 
+                  const relCenter = getHexCenter(c, r, hexSize);
+                  const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                  const pointsStr = getHexPointsString(center, hexSize);
+
                   return (
-                    <rect
+                    <polygon
                       key={`fog-${c}-${r}`}
-                      x={mapX + c * cellSize}
-                      y={mapY + r * cellSize}
-                      width={cellSize}
-                      height={cellSize}
+                      points={pointsStr}
                       fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.78)'}
                       stroke={isPlayerView ? '#000000' : 'rgba(15, 23, 42, 0.45)'}
                       strokeWidth={0.5}
                     />
                   );
-                })
-              )}
+                });
+              })}
             </g>
           )}
 
@@ -2668,19 +2641,21 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* PREVIEW DO PINCEL DE NÉVOA DE GUERRA */}
           {activeTool === 'fog' && fogShape === 'brush' && hoveredHex && (
             <g id="fog-brush-preview" pointerEvents="none">
-              {toCellsRange(hoveredHex, fogBrushRadius).map((h) => (
-                <rect
-                  key={`brush-${h.col}-${h.row}`}
-                  x={mapX + h.col * cellSize}
-                  y={mapY + h.row * cellSize}
-                  width={cellSize}
-                  height={cellSize}
-                  fill={fogBrushMode === 'reveal' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}
-                  stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
-                  strokeWidth={1.5}
-                  strokeDasharray="4 2"
-                />
-              ))}
+              {getHexesInRange(hoveredHex, fogBrushRadius).map((h) => {
+                const relCenter = getHexCenter(h.col, h.row, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                const pointsStr = getHexPointsString(center, hexSize);
+                return (
+                  <polygon
+                    key={`brush-${h.col}-${h.row}`}
+                    points={pointsStr}
+                    fill={fogBrushMode === 'reveal' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}
+                    stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 2"
+                  />
+                );
+              })}
             </g>
           )}
 
@@ -2688,9 +2663,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {activeTool === 'light' && hoveredHex && (
             <g id="light-brush-preview" pointerEvents="none">
               {(() => {
-                const relCenter = toCellCenter(hoveredHex.col, hoveredHex.row);
+                const relCenter = getHexCenter(hoveredHex.col, hoveredHex.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const radiusPixels = (customLightRadius || 5) * cellSize;
+                const radiusPixels = (customLightRadius || 5) * hexWidth * 0.95;
 
                 return (
                   <g>
