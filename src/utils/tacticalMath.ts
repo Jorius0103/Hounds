@@ -331,3 +331,33 @@ export function getHexesInRange(center: HexCoord, radius: number): HexCoord[] {
 
   return results;
 }
+
+/**
+ * Retorna o path SVG para um setor circular (cone de luz ou semicírculo).
+ * angleDegrees: 360 = círculo completo, 180 = semicírculo, 90 = cone.
+ * rotationDegrees: 0 = Direita/Leste (+X), 90 = Baixo/Sul (+Y), 180 = Esquerda/Oeste (-X), 270 = Cima/Norte (-Y).
+ */
+export function getCircleSectorPath(
+  cx: number,
+  cy: number,
+  r: number,
+  angleDegrees: number,
+  rotationDegrees: number = 0
+): string {
+  if (angleDegrees >= 360) {
+    return `M ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy} Z`;
+  }
+
+  const halfAngle = angleDegrees / 2;
+  const startAngle = ((rotationDegrees - halfAngle) * Math.PI) / 180;
+  const endAngle = ((rotationDegrees + halfAngle) * Math.PI) / 180;
+
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+  const x2 = cx + r * Math.cos(endAngle);
+  const y2 = cy + r * Math.sin(endAngle);
+
+  const largeArcFlag = angleDegrees > 180 ? 1 : 0;
+
+  return `M ${cx.toFixed(1)} ${cy.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 ${largeArcFlag} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z`;
+}

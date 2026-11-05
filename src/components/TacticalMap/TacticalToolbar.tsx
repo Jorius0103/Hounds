@@ -86,6 +86,10 @@ interface TacticalToolbarProps {
   onSetCustomLightRadius?: (radius: number) => void;
   customLightColor?: string;
   onSetCustomLightColor?: (color: string) => void;
+  customLightAngle?: number;
+  onSetCustomLightAngle?: (angle: number) => void;
+  customLightRotation?: number;
+  onSetCustomLightRotation?: (rot: number) => void;
   rulerMode?: 'free' | 'fixed';
   onSetRulerMode?: (mode: 'free' | 'fixed') => void;
   rulerType?: 'line' | 'blast' | 'fixed';
@@ -142,6 +146,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onSetCustomLightRadius,
   customLightColor = '#f59e0b',
   onSetCustomLightColor,
+  customLightAngle = 360,
+  onSetCustomLightAngle,
+  customLightRotation = 0,
+  onSetCustomLightRotation,
   rulerMode = 'free',
   onSetRulerMode,
   rulerType = 'line',
@@ -966,36 +974,104 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
               </div>
 
               {lightAction === 'add' && (
-                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
-                    Raio:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
-                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-                    title="Diminuir 1 jarda"
-                  >
-                    <Minus size={11} />
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={customLightRadius || 5}
-                    onChange={(e) => onSetCustomLightRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
-                  />
-                  <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
-                  <button
-                    type="button"
-                    onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
-                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-                    title="Aumentar 1 jarda"
-                  >
-                    <Plus size={11} />
-                  </button>
-                </div>
+                <>
+                  <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                    <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
+                      Raio:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                      title="Diminuir 1 jarda"
+                    >
+                      <Minus size={11} />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={customLightRadius || 5}
+                      onChange={(e) => onSetCustomLightRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
+                    <button
+                      type="button"
+                      onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                      title="Aumentar 1 jarda"
+                    >
+                      <Plus size={11} />
+                    </button>
+                  </div>
+
+                  {/* 3 Botões de Ângulo: 360°, 180°, 90° */}
+                  <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => onSetCustomLightAngle?.(360)}
+                      className={`px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                        (customLightAngle || 360) === 360
+                          ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Foco de Luz Circular Total (360°)"
+                    >
+                      360°
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSetCustomLightAngle?.(180)}
+                      className={`px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                        customLightAngle === 180
+                          ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Foco de Luz Semicircular (180° - Arandela/Porta)"
+                    >
+                      180°
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSetCustomLightAngle?.(90)}
+                      className={`px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                        customLightAngle === 90
+                          ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Foco de Luz em Cone (90° - Lanterna/Holofote)"
+                    >
+                      90°
+                    </button>
+                  </div>
+
+                  {/* Seletor de Direção rápida para 180° ou 90° */}
+                  {customLightAngle && customLightAngle < 360 && (
+                    <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                      {[
+                        { rot: 270, label: '⬆️', title: 'Apontar para Cima/Norte' },
+                        { rot: 0, label: '➡️', title: 'Apontar para Direita/Leste' },
+                        { rot: 90, label: '⬇️', title: 'Apontar para Baixo/Sul' },
+                        { rot: 180, label: '⬅️', title: 'Apontar para Esquerda/Oeste' },
+                      ].map((d) => (
+                        <button
+                          key={d.rot}
+                          type="button"
+                          onClick={() => onSetCustomLightRotation?.(d.rot)}
+                          className={`px-1.5 py-0.5 rounded text-xs cursor-pointer transition-colors ${
+                            (customLightRotation ?? 0) === d.rot
+                              ? 'bg-amber-500/30 text-amber-200 border border-amber-400'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                          title={d.title}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Gerenciar Luzes Existentes */}
@@ -1058,11 +1134,27 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                                   {l.label || `Luz #${idx + 1}`}
                                 </div>
                                 <div className="text-[10px] text-amber-400/90 font-mono">
-                                  Raio: {l.radius} yd
+                                  Raio: {l.radius} yd • {l.angle ? `${l.angle}°` : '360°'}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
+                              {l.angle && l.angle < 360 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextRot = (((l.rotation ?? 0) + 45) % 360);
+                                    const updated = (tacticalState.lights || []).map((item) =>
+                                      item.id === l.id ? { ...item, rotation: nextRot } : item
+                                    );
+                                    onUpdateTacticalState({ lights: updated });
+                                  }}
+                                  className="p-1 rounded text-amber-400 hover:bg-amber-500/20 cursor-pointer"
+                                  title={`Girar foco (+45° atual: ${l.rotation ?? 0}°)`}
+                                >
+                                  <RotateCcw size={12} />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {

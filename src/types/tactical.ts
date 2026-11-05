@@ -35,6 +35,8 @@ export interface TacticalLightSource {
   intensity?: number; // 0.2 a 1.0 (brilho)
   label?: string; // Nome ex: 'Tocha', 'Fogueira', 'Poste de Luz'
   active: boolean; // Se está acesa
+  angle?: number; // Ângulo de abertura do foco (360, 180, 90 graus)
+  rotation?: number; // Ângulo de rotação em graus (0 = Direita/Leste, 90 = Baixo/Sul, 180 = Esquerda/Oeste, 270 = Cima/Norte)
 }
 
 export type TacticalBackgroundKey =

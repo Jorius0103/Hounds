@@ -21,6 +21,7 @@ import {
   getHexCenter,
   getHexCornerPoints,
   getHexPointsString,
+  getCircleSectorPath,
   pixelToHex,
   getHexDistance,
   getHexesInRange,
@@ -131,6 +132,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Focos de Luz state (Iluminação Dinâmica)
   const [customLightRadius, setCustomLightRadius] = useState<number>(5);
   const [customLightColor, setCustomLightColor] = useState<string>('#f59e0b');
+  const [customLightAngle, setCustomLightAngle] = useState<number>(360);
+  const [customLightRotation, setCustomLightRotation] = useState<number>(0);
   const [lightAction, setLightAction] = useState<'add' | 'remove'>('add');
 
   // Ruler state
@@ -331,7 +334,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     (tacticalState.lights || []).forEach((light) => {
       if (light.active !== false && light.radius > 0) {
         const inRange = getHexesInRange({ col: light.gridX, row: light.gridY }, light.radius);
-        inRange.forEach((h) => set.add(`${h.col},${h.row}`));
+        inRange.forEach((h) => {
+          if (light.angle && light.angle < 360) {
+            const hCenter = getHexCenter(h.col, h.row, hexSize);
+            const lCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+            const dx = hCenter.x - lCenter.x;
+            const dy = hCenter.y - lCenter.y;
+            if (dx !== 0 || dy !== 0) {
+              const deg = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
+              const rot = ((light.rotation ?? 0) % 360 + 360) % 360;
+              let diff = Math.abs(deg - rot);
+              if (diff > 180) diff = 360 - diff;
+              if (diff > light.angle / 2 + 15) return;
+            }
+          }
+          set.add(`${h.col},${h.row}`);
+        });
       }
     });
 
@@ -550,7 +568,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             onUpdateTacticalState({ lights: updated });
           }
         } else {
-          // Cria novo foco de luz com o raio digitado
+          // Cria novo foco de luz com o raio e abertura de ângulo digitados
           const newLight: TacticalLightSource = {
             id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
             gridX: hex.col,
@@ -558,8 +576,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             radius: customLightRadius || 5,
             color: customLightColor || '#f59e0b',
             intensity: 0.85,
-            label: `Luz (${customLightRadius || 5}yd)`,
+            label:
+              customLightAngle === 180
+                ? `Arandela 180° (${customLightRadius || 5}yd)`
+                : customLightAngle === 90
+                ? `Cone 90° (${customLightRadius || 5}yd)`
+                : `Luz (${customLightRadius || 5}yd)`,
             active: true,
+            angle: customLightAngle || 360,
+            rotation: customLightRotation || 0,
           };
           onUpdateTacticalState({
             lights: [...(tacticalState.lights || []), newLight],
@@ -1334,6 +1359,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onSetCustomLightRadius={setCustomLightRadius}
           customLightColor={customLightColor}
           onSetCustomLightColor={setCustomLightColor}
+          customLightAngle={customLightAngle}
+          onSetCustomLightAngle={setCustomLightAngle}
+          customLightRotation={customLightRotation}
+          onSetCustomLightRotation={setCustomLightRotation}
           rulerType={rulerType}
           onSetRulerType={setRulerType}
           rulerMode={rulerMode}
@@ -1659,36 +1688,50 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           </marker>
 
           {/* Gradientes radiais para focos de luz fixos (glow visual atenuando) */}
-          {(tacticalState.lights || []).map((light) => (
-            <radialGradient
-              key={`grad-light-${light.id}`}
-              id={`light-glow-${light.id}`}
-              cx="50%"
-              cy="50%"
-              r="50%"
-            >
-              <stop offset="0%" stopColor={light.color || '#f59e0b'} stopOpacity={0.65} />
-              <stop offset="40%" stopColor={light.color || '#f59e0b'} stopOpacity={0.35} />
-              <stop offset="75%" stopColor={light.color || '#f59e0b'} stopOpacity={0.12} />
-              <stop offset="100%" stopColor={light.color || '#f59e0b'} stopOpacity={0} />
-            </radialGradient>
-          ))}
+          {(tacticalState.lights || []).map((light) => {
+            const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+            const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+            const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+
+            return (
+              <radialGradient
+                key={`grad-light-${light.id}`}
+                id={`light-glow-${light.id}`}
+                gradientUnits="userSpaceOnUse"
+                cx={center.x}
+                cy={center.y}
+                r={radiusPixels}
+              >
+                <stop offset="0%" stopColor={light.color || '#f59e0b'} stopOpacity={0.65} />
+                <stop offset="40%" stopColor={light.color || '#f59e0b'} stopOpacity={0.35} />
+                <stop offset="75%" stopColor={light.color || '#f59e0b'} stopOpacity={0.12} />
+                <stop offset="100%" stopColor={light.color || '#f59e0b'} stopOpacity={0} />
+              </radialGradient>
+            );
+          })}
 
           {/* Gradientes radiais para a máscara da névoa (luz dissipa suavemente até a escuridão na borda sem linhas duras ou sobreposições escuras) */}
-          {(tacticalState.lights || []).map((light) => (
-            <radialGradient
-              key={`mask-grad-light-${light.id}`}
-              id={`fog-light-attenuation-${light.id}`}
-              cx="50%"
-              cy="50%"
-              r="50%"
-            >
-              <stop offset="0%" stopColor="#000000" stopOpacity="1" />
-              <stop offset="45%" stopColor="#000000" stopOpacity="0.85" />
-              <stop offset="75%" stopColor="#000000" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
-            </radialGradient>
-          ))}
+          {(tacticalState.lights || []).map((light) => {
+            const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+            const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+            const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+
+            return (
+              <radialGradient
+                key={`mask-grad-light-${light.id}`}
+                id={`fog-light-attenuation-${light.id}`}
+                gradientUnits="userSpaceOnUse"
+                cx={center.x}
+                cy={center.y}
+                r={radiusPixels}
+              >
+                <stop offset="0%" stopColor="#000000" stopOpacity="1" />
+                <stop offset="45%" stopColor="#000000" stopOpacity="0.85" />
+                <stop offset="75%" stopColor="#000000" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+              </radialGradient>
+            );
+          })}
 
           {/* Gradientes radiais para tokens com luz própria */}
           {tokens.map((token) => {
@@ -1764,16 +1807,28 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 );
               })}
 
-              {/* 3. Focos de luz fixos: degradê suave perdendo iluminação até as bordas */}
+              {/* 3. Focos de luz fixos: degradê suave perdendo iluminação até as bordas (360°, 180° ou 90°) */}
               {(tacticalState.lights || []).map((light) => {
                 if (light.active === false || (light.radius || 0) <= 0) return null;
                 const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
                 const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+
+                if (light.angle && light.angle < 360) {
+                  return (
+                    <path
+                      key={`light-mask-${light.id}`}
+                      d={getCircleSectorPath(center.x, center.y, radiusPixels, light.angle, light.rotation ?? 0)}
+                      fill={`url(#fog-light-attenuation-${light.id})`}
+                    />
+                  );
+                }
+
                 return (
                   <circle
                     key={`light-mask-${light.id}`}
-                    cx={mapX + relCenter.x}
-                    cy={mapY + relCenter.y}
+                    cx={center.x}
+                    cy={center.y}
                     r={radiusPixels}
                     fill={`url(#fog-light-attenuation-${light.id})`}
                   />
@@ -1928,7 +1983,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             )}
           </g>
 
-          {/* CAMADA 3: FOCOS DE LUZ (RADIAÇÃO & BRILHO AMBIENTE NO TABULEIRO) */}
+          {/* CAMADA 3: FOCOS DE LUZ (RADIAÇÃO & BRILHO AMBIENTE NO TABULEIRO - 360°, 180° OU 90°) */}
           <g id="tactical-lights-glow" pointerEvents="none">
             {/* Brilho dos focos de luz fixos */}
             {(tacticalState.lights || []).map((light) => {
@@ -1936,6 +1991,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
               const radiusPixels = light.radius * hexWidth * 0.95;
+
+              if (light.angle && light.angle < 360) {
+                return (
+                  <path
+                    key={`glow-${light.id}`}
+                    d={getCircleSectorPath(center.x, center.y, radiusPixels, light.angle, light.rotation ?? 0)}
+                    fill={`url(#light-glow-${light.id})`}
+                  />
+                );
+              }
 
               return (
                 <circle
@@ -1975,6 +2040,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
               const isRemoveMode = activeTool === 'fog' && fogSubTool === 'light' && lightAction === 'remove';
+              const isDirectional = light.angle && light.angle < 360;
 
               return (
                 <g
@@ -1987,8 +2053,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       // Modo de remoção de luz ativo: exclui este foco imediatamente
                       const updated = (tacticalState.lights || []).filter((l) => l.id !== light.id);
                       onUpdateTacticalState({ lights: updated });
+                    } else if (isDirectional) {
+                      // Foco direcional (180° ou 90°): clique esquerdo gira a direção em +45°
+                      const nextRot = (((light.rotation ?? 0) + 45) % 360);
+                      const updated = (tacticalState.lights || []).map((l) =>
+                        l.id === light.id ? { ...l, rotation: nextRot } : l
+                      );
+                      onUpdateTacticalState({ lights: updated });
                     } else {
-                      // Modo normal: alterna foco ativo/inativo
+                      // Foco 360° normal: alterna foco ativo/inativo
                       const updated = (tacticalState.lights || []).map((l) =>
                         l.id === light.id ? { ...l, active: !l.active } : l
                       );
@@ -2003,7 +2076,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     onUpdateTacticalState({ lights: updated });
                   }}
                 >
-                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} jardas) — Botão esquerdo: ${isRemoveMode ? 'Excluir' : light.active ? 'Apagar' : 'Acender'} | Botão direito: Excluir`}</title>
+                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} yd • ${light.angle || 360}°) — Botão esquerdo: ${isRemoveMode ? 'Excluir' : isDirectional ? 'Girar direção (+45°)' : light.active ? 'Apagar' : 'Acender'} | Botão direito: Excluir`}</title>
                   <circle
                     cx="0"
                     cy="0"
@@ -2013,6 +2086,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     strokeWidth="2"
                     opacity="0.9"
                   />
+                  {/* Ponteiro direcional indicando a direção para onde o cone/semicírculo aponta */}
+                  {isDirectional && (
+                    <polygon
+                      points="0,-16 -4,-9 4,-9"
+                      fill={light.color || '#f59e0b'}
+                      transform={`rotate(${((light.rotation ?? 0) + 90)})`}
+                    />
+                  )}
                   <text
                     x="0"
                     y="4.5"
@@ -2020,7 +2101,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     textAnchor="middle"
                     className="select-none pointer-events-none"
                   >
-                    {isRemoveMode ? '❌' : light.label === 'Fogueira' ? '🏕️' : light.label === 'Lanterna' ? '🏮' : light.label === 'Magia' ? '✨' : '🔥'}
+                    {isRemoveMode ? '❌' : light.angle === 180 ? '🌓' : light.angle === 90 ? '🔦' : light.label === 'Fogueira' ? '🏕️' : light.label === 'Lanterna' ? '🏮' : light.label === 'Magia' ? '✨' : '🔥'}
                   </text>
                 </g>
               );
@@ -2852,6 +2933,36 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 }
 
                 const radiusPixels = (customLightRadius || 5) * hexWidth * 0.95;
+
+                if (customLightAngle && customLightAngle < 360) {
+                  const sectorPath = getCircleSectorPath(
+                    center.x,
+                    center.y,
+                    radiusPixels,
+                    customLightAngle,
+                    customLightRotation || 0
+                  );
+                  return (
+                    <g>
+                      <path
+                        d={sectorPath}
+                        fill={customLightColor || '#f59e0b'}
+                        fillOpacity="0.22"
+                        stroke={customLightColor || '#f59e0b'}
+                        strokeWidth="2"
+                        strokeDasharray="6 3"
+                      />
+                      <text
+                        x={center.x}
+                        y={center.y + 4.5}
+                        fontSize="14"
+                        textAnchor="middle"
+                      >
+                        {customLightAngle === 180 ? '🌓' : '🔦'}
+                      </text>
+                    </g>
+                  );
+                }
 
                 return (
                   <g>
