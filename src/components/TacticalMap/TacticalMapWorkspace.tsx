@@ -8,10 +8,14 @@ import {
   TacticalViewMode,
   TacticalMarker,
   TacticalLightSource,
+  TacticalProp,
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
 import { TacticalQuickActionPopover } from './TacticalQuickActionPopover';
+import { TacticalIllustrativePresets } from './TacticalIllustrativePresets';
+import { TacticalPropsRenderer } from './TacticalPropsRenderer';
+import { TacticalPropsModal } from './TacticalPropsModal';
 import {
   getHexCenter,
   getHexPointsString,
@@ -183,6 +187,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [mapDragStart, setMapDragStart] = useState<Point>({ x: 0, y: 0 });
   const [localMapPos, setLocalMapPos] = useState<{ x: number; y: number } | null>(null);
 
+  // Elementos do Cenário / Mobília (Props - Estilo Roll20)
+  const [isPropsModalOpen, setIsPropsModalOpen] = useState(false);
+  const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
+  const [draggedPropId, setDraggedPropId] = useState<string | null>(null);
+  const [dragPropOffset, setDragPropOffset] = useState<Point>({ x: 0, y: 0 });
+
   // Map of characters by id
   const characterMap = useMemo(() => {
     const map = new Map<string, NPC>();
@@ -278,14 +288,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     });
   }, []);
 
-  // Imagem base e dimensões em pixels do mapa
-  const mapX = localMapPos ? localMapPos.x : (tacticalState.mapImageX || 0);
-  const mapY = localMapPos ? localMapPos.y : (tacticalState.mapImageY || 0);
-  const scale = tacticalState.mapImageScale || 1;
-  const baseW = tacticalState.mapImageWidth || 2400;
-  const baseH = tacticalState.mapImageHeight || 1600;
-  const mapW = Math.round(baseW * scale);
-  const mapH = Math.round(baseH * scale);
+  // Imagem base entra com o tamanho e proporção 100% originais (sem distorção de escala)
+  const mapX = 0;
+  const mapY = 0;
+  const baseW = tacticalState.mapImageWidth || (tacticalState.backgroundKey === 'ludgrim' ? 317 : 2000);
+  const baseH = tacticalState.mapImageHeight || (tacticalState.backgroundKey === 'ludgrim' ? 512 : 1400);
+  const mapW = baseW;
+  const mapH = baseH;
 
   // Dimensões do grid hexagonal calibradas exatamente para o tamanho da imagem (nem falta nem sobra)
   const hexSize = tacticalState?.hexSize || 38;
@@ -386,6 +395,74 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     [panX, panY, zoom]
   );
 
+  // Manipulação de Elementos de Cenário (Props)
+  const handleAddProp = useCallback((newProp: Omit<TacticalProp, 'id'>) => {
+    const propWithId: TacticalProp = {
+      ...newProp,
+      id: `prop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    };
+    const currentProps = tacticalState.props || [];
+    onUpdateTacticalState({ props: [...currentProps, propWithId] });
+    setSelectedPropId(propWithId.id);
+  }, [tacticalState.props, onUpdateTacticalState]);
+
+  const handleStartDragProp = useCallback((id: string, e: React.MouseEvent) => {
+    const p = clientToMapCoords(e.clientX, e.clientY);
+    const prop = (tacticalState.props || []).find((p) => p.id === id);
+    if (prop) {
+      setDraggedPropId(id);
+      setDragPropOffset({ x: p.x - prop.x, y: p.y - prop.y });
+    }
+  }, [tacticalState.props, clientToMapCoords]);
+
+  const handleRotateProp = useCallback((id: string, degreesDelta: number) => {
+    const updated = (tacticalState.props || []).map((p) =>
+      p.id === id ? { ...p, rotation: ((p.rotation || 0) + degreesDelta) % 360 } : p
+    );
+    onUpdateTacticalState({ props: updated });
+  }, [tacticalState.props, onUpdateTacticalState]);
+
+  const handleResizeProp = useCallback((id: string, factor: number) => {
+    const updated = (tacticalState.props || []).map((p) => {
+      if (p.id !== id) return p;
+      const newW = Math.max(15, Math.round(p.width * factor));
+      const newH = Math.max(15, Math.round(p.height * factor));
+      return { ...p, width: newW, height: newH };
+    });
+    onUpdateTacticalState({ props: updated });
+  }, [tacticalState.props, onUpdateTacticalState]);
+
+  const handleToggleLockProp = useCallback((id: string) => {
+    const updated = (tacticalState.props || []).map((p) =>
+      p.id === id ? { ...p, locked: !p.locked } : p
+    );
+    onUpdateTacticalState({ props: updated });
+  }, [tacticalState.props, onUpdateTacticalState]);
+
+  const handleDuplicateProp = useCallback((id: string) => {
+    const prop = (tacticalState.props || []).find((p) => p.id === id);
+    if (!prop) return;
+    const cloned: TacticalProp = {
+      ...prop,
+      id: `prop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      x: prop.x + 30,
+      y: prop.y + 30,
+    };
+    onUpdateTacticalState({ props: [...(tacticalState.props || []), cloned] });
+    setSelectedPropId(cloned.id);
+  }, [tacticalState.props, onUpdateTacticalState]);
+
+  const handleDeleteProp = useCallback((id: string) => {
+    const updated = (tacticalState.props || []).filter((p) => p.id !== id);
+    onUpdateTacticalState({ props: updated });
+    if (selectedPropId === id) setSelectedPropId(null);
+  }, [tacticalState.props, selectedPropId, onUpdateTacticalState]);
+
+  const handleClearAllProps = useCallback(() => {
+    onUpdateTacticalState({ props: [] });
+    setSelectedPropId(null);
+  }, [onUpdateTacticalState]);
+
   // Zoom direcionado pelo ponteiro do mouse (scroll do mouse vai em direção ao cursor)
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -422,6 +499,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
     if (contextMenu) {
       setContextMenu(null);
+    }
+
+    if (selectedPropId && !target?.closest('#tactical-props-layer')) {
+      setSelectedPropId(null);
     }
 
     // Camada do Mapa ativa (Roll20 Map Layer): Arraste da imagem de base pelo mestre
@@ -571,6 +652,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (draggedPropId) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const nextX = Math.round(p.x - dragPropOffset.x);
+      const nextY = Math.round(p.y - dragPropOffset.y);
+      const updatedProps = (tacticalState.props || []).map((prop) =>
+        prop.id === draggedPropId ? { ...prop, x: nextX, y: nextY } : prop
+      );
+      onUpdateTacticalState({ props: updatedProps });
+      return;
+    }
+
     if (isDraggingMap) {
       const p = clientToMapCoords(e.clientX, e.clientY);
       const nextX = Math.round(p.x - mapDragStart.x);
@@ -636,6 +728,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleMouseUp = () => {
+    if (draggedPropId) {
+      setDraggedPropId(null);
+    }
+
     if (isDraggingMap) {
       setIsDraggingMap(false);
       if (localMapPos) {
@@ -1163,6 +1259,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           }
         }
         if (isPanning) setIsPanning(false);
+        if (draggedPropId) setDraggedPropId(null);
         if (draggedTokenId) {
           setDraggedTokenId(null);
           setDragTokenOrigin(null);
@@ -1211,6 +1308,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onAutoPlaceTokens={handleAutoPlaceTokens}
           onOpenTokensModal={() => setIsTokensModalOpen(true)}
           tokensCount={tokens.length}
+          onOpenPropsModal={() => setIsPropsModalOpen(true)}
+          propsCount={(tacticalState.props || []).length}
           currentUserRole={currentUserRole}
           onOpenPlayerPermissions={onOpenPlayerPermissions}
           editorCount={editorCount}
@@ -1610,63 +1709,30 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     y={mapY}
                     width={mapW}
                     height={mapH}
-                    preserveAspectRatio="none"
-                    opacity={isMapActive ? "1" : "0.9"}
-                    className={isMapActive && !tacticalState.mapImageLocked ? "cursor-move" : ""}
+                    preserveAspectRatio="xMidYMid meet"
+                    opacity={isMapActive ? "1" : "0.95"}
                     onLoad={(e) => {
                       const img = e.currentTarget as unknown as HTMLImageElement;
-                      if (!tacticalState.mapImageWidth && img.naturalWidth && img.naturalHeight) {
-                        onUpdateTacticalState({
-                          mapImageWidth: img.naturalWidth,
-                          mapImageHeight: img.naturalHeight,
-                        });
+                      if (img.naturalWidth && img.naturalHeight) {
+                        if (
+                          tacticalState.mapImageWidth !== img.naturalWidth ||
+                          tacticalState.mapImageHeight !== img.naturalHeight
+                        ) {
+                          onUpdateTacticalState({
+                            mapImageWidth: img.naturalWidth,
+                            mapImageHeight: img.naturalHeight,
+                          });
+                        }
                       }
                     }}
                   />
-                ) : tacticalState.backgroundKey === 'dungeon' ? (
-                  <rect
-                    id="map-background"
-                    x={mapX}
-                    y={mapY}
-                    width={mapW}
-                    height={mapH}
-                    fill="url(#grid-dungeon)"
-                  />
-                ) : tacticalState.backgroundKey === 'forest' ? (
-                  <rect
-                    id="map-background"
-                    x={mapX}
-                    y={mapY}
-                    width={mapW}
-                    height={mapH}
-                    fill="url(#grid-forest)"
-                  />
-                ) : tacticalState.backgroundKey === 'tavern' ? (
-                  <rect
-                    id="map-background"
-                    x={mapX}
-                    y={mapY}
-                    width={mapW}
-                    height={mapH}
-                    fill="url(#grid-tavern)"
-                  />
-                ) : tacticalState.backgroundKey === 'arena' ? (
-                  <rect
-                    id="map-background"
-                    x={mapX}
-                    y={mapY}
-                    width={mapW}
-                    height={mapH}
-                    fill="url(#grid-arena)"
-                  />
                 ) : (
-                  <rect
-                    id="map-background"
+                  <TacticalIllustrativePresets
+                    backgroundKey={tacticalState.backgroundKey}
                     x={mapX}
                     y={mapY}
                     width={mapW}
                     height={mapH}
-                    fill="#0b1120"
                   />
                 )}
 
@@ -1701,6 +1767,21 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               </g>
             );
           })()}
+
+          {/* CAMADA DE ELEMENTOS DE CENÁRIO (PROPS / MOBÍLIA - ESTILO ROLL20) */}
+          <TacticalPropsRenderer
+            props={tacticalState.props || []}
+            selectedPropId={selectedPropId}
+            onSelectProp={setSelectedPropId}
+            onStartDragProp={handleStartDragProp}
+            onRotateProp={handleRotateProp}
+            onResizeProp={handleResizeProp}
+            onToggleLockProp={handleToggleLockProp}
+            onDuplicateProp={handleDuplicateProp}
+            onDeleteProp={handleDeleteProp}
+            activeLayer={activeLayer}
+            isMaster={isMaster}
+          />
 
           {/* CAMADA 2: GRADE TÁTICA (HEX OU QUADRADA) - COBRE TODA A IMAGEM, SEM SOBRAR E SEM FALTAR */}
           {tacticalState.gridType === 'hex' ? (
@@ -3037,6 +3118,25 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           />
         </div>
       )}
+
+      {/* Modal de Elementos & Cenário (Props / Mobília Roll20) */}
+      <TacticalPropsModal
+        isOpen={isPropsModalOpen}
+        onClose={() => setIsPropsModalOpen(false)}
+        props={tacticalState.props || []}
+        onAddProp={handleAddProp}
+        selectedPropId={selectedPropId}
+        onSelectProp={setSelectedPropId}
+        onRotateProp={handleRotateProp}
+        onResizeProp={handleResizeProp}
+        onToggleLockProp={handleToggleLockProp}
+        onDuplicateProp={handleDuplicateProp}
+        onDeleteProp={handleDeleteProp}
+        onClearAllProps={handleClearAllProps}
+        mapWidth={mapW}
+        mapHeight={mapH}
+        activeLayer={activeLayer}
+      />
     </div>
   );
 };

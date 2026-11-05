@@ -76,6 +76,40 @@ export interface TacticalMarker {
   authorName?: string;
 }
 
+export type TacticalPropType =
+  | 'table-round'
+  | 'table-rect'
+  | 'table-long'
+  | 'chair'
+  | 'barrel'
+  | 'crate'
+  | 'chest'
+  | 'pillar'
+  | 'campfire'
+  | 'tree'
+  | 'rock'
+  | 'door-wood'
+  | 'door-iron'
+  | 'bed'
+  | 'rug'
+  | 'bar-counter'
+  | 'custom';
+
+export interface TacticalProp {
+  id: string;
+  name: string;
+  type: TacticalPropType;
+  imageUrl?: string; // Para PNGs e uploads personalizados
+  x: number; // Coordenada X no mapa (px)
+  y: number; // Coordenada Y no mapa (px)
+  width: number; // Largura em px
+  height: number; // Altura em px
+  rotation: number; // Rotação em graus (0-360)
+  locked?: boolean; // Travar para não mover acidentalmente
+  layer?: TacticalLayer; // 'map' | 'tokens' | 'gm'
+  opacity?: number;
+}
+
 export interface TacticalState {
   backgroundKey: TacticalBackgroundKey;
   customImageUrl?: string;
@@ -84,7 +118,7 @@ export interface TacticalState {
   mapImageY?: number; // Deslocamento Y da imagem de fundo
   mapImageWidth?: number; // Largura customizada da imagem de fundo (px)
   mapImageHeight?: number; // Altura customizada da imagem de fundo (px)
-  mapImageScale?: number; // Escala proporcional (1.0 = 100%)
+  mapImageScale?: number; // Escala proporcional (mantido para compatibilidade)
   mapImageLocked?: boolean; // Travar imagem de fundo para não ser movida por acidente
   // Níveis e Visão (Roll20 Style)
   activeLayer?: TacticalLayer; // 'map' | 'tokens' | 'gm'
@@ -101,6 +135,7 @@ export interface TacticalState {
   fogRevealedCells: string[]; // "col,row"
   lights?: TacticalLightSource[]; // Focos de luz fixos no mapa
   tokens: TacticalToken[];
+  props?: TacticalProp[]; // Elementos do cenário / mobília (mesas de taverna, baús, etc.)
   terrainCells: TacticalTerrainCell[];
   markers: TacticalMarker[];
   zoom?: number;
@@ -113,8 +148,8 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   customImageUrl: '',
   mapImageX: 0,
   mapImageY: 0,
-  mapImageWidth: 2400,
-  mapImageHeight: 1600,
+  mapImageWidth: 317,
+  mapImageHeight: 512,
   mapImageScale: 1,
   mapImageLocked: false,
   activeLayer: 'tokens',
@@ -130,6 +165,7 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   fogRevealedCells: [],
   lights: [],
   tokens: [],
+  props: [],
   terrainCells: [],
   markers: [],
   zoom: 1,
@@ -142,38 +178,38 @@ export const TACTICAL_MAP_PRESETS: TacticalMapPreset[] = [
     key: 'ludgrim',
     name: 'Ludgrim (Mapa da Campanha)',
     description: 'Mapa oficial de Ludgrim exportado da campanha The Hounds',
-    url: '/campaign_assets/ludgrim.jpg',
+    url: 'imagens/2e039124ddb530e855a5c2d99f4a0b95.jpg',
     themeColor: '#78350f',
   },
   {
     key: 'tagmar',
     name: 'Tagmar (Região Hounds)',
     description: 'Mapa regional detalhado de Tagmar da campanha',
-    url: '/campaign_assets/tagmar.jpg',
+    url: 'imagens/715c023dfe533c931af407da5161c40f.jpg',
     themeColor: '#1e3a8a',
   },
   {
     key: 'dungeon',
     name: 'Masmorra de Pedra',
-    description: 'Pisos de pedra cinzenta esculpida para masmorras e ruínas',
+    description: 'Masmorra ilustrada com lajes esculpidas, colunas, tocheiros e grades',
     themeColor: '#334155',
   },
   {
     key: 'forest',
     name: 'Floresta / Clareira Sombria',
-    description: 'Vegetação densa, musgo e terra batida para emboscadas florestais',
+    description: 'Clareira ilustrada com grama, trilha de terra batida, rochedos e árvores',
     themeColor: '#14532d',
   },
   {
     key: 'tavern',
     name: 'Taberna / Salão de Madeira',
-    description: 'Assoalho de tábuas de madeira nobre para brigas de taverna',
+    description: 'Taberna rústica ilustrada com assoalho nobre, lareira de pedra e balcão',
     themeColor: '#713f12',
   },
   {
     key: 'arena',
     name: 'Arena de Areia / Coliseu',
-    description: 'Chão de areia e sangue seco com demarcações de combate tático',
+    description: 'Arena ilustrada com círculo de combate, areia batida e muros de pedra',
     themeColor: '#854d0e',
   },
   {
@@ -185,7 +221,7 @@ export const TACTICAL_MAP_PRESETS: TacticalMapPreset[] = [
   {
     key: 'custom',
     name: 'Imagem Personalizada (Upload/URL)',
-    description: 'Insira qualquer imagem ou URL de mapa de batalha',
+    description: 'Faça upload de imagem do computador ou cole URL de mapa',
     themeColor: '#6366f1',
   },
 ];

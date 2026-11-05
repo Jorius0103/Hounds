@@ -933,6 +933,7 @@ export default function App() {
       ...DEFAULT_TACTICAL_STATE,
       ...(raw || {}),
       tokens: Array.isArray(raw?.tokens) ? raw.tokens : [],
+      props: Array.isArray(raw?.props) ? raw.props : [],
       terrainCells: Array.isArray(raw?.terrainCells) ? raw.terrainCells : [],
       markers: Array.isArray(raw?.markers) ? raw.markers : [],
       fogRevealedCells: Array.isArray(raw?.fogRevealedCells) ? raw.fogRevealedCells : [],
