@@ -176,11 +176,13 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
   return (
     <div
+      id="tactical-top-toolbar-container"
       className="flex flex-col gap-1.5 pointer-events-auto"
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
+      onMouseMove={(e) => e.stopPropagation()}
     >
       <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-1.5 shadow-xl flex flex-wrap items-center justify-between gap-2 z-20">
       {/* 1. SELETOR DE 3 NÍVEIS / CAMADAS (ESTILO ROLL20) & FERRAMENTAS DE INTERAÇÃO */}
@@ -963,64 +965,36 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 </button>
               </div>
 
-              {lightAction === 'add' ? (
-                <>
-                  {/* Raio Customizado em Jardas (o usuário digita um número) */}
-                  <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
-                      Raio:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
-                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-                      title="Diminuir 1 jarda"
-                    >
-                      <Minus size={11} />
-                    </button>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={customLightRadius || 5}
-                      onChange={(e) => onSetCustomLightRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
-                    />
-                    <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
-                    <button
-                      type="button"
-                      onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
-                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-                      title="Aumentar 1 jarda"
-                    >
-                      <Plus size={11} />
-                    </button>
-                  </div>
-
-                  {/* Orientação para Posicionar Luz */}
-                  <div className="flex items-center gap-2">
-                    <div className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                      <MousePointer size={13} className="text-amber-400" />
-                      <span>Clique no mapa para posicionar</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={onAddLightAtCenter}
-                      className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
-                      title="Inserir um foco de luz no centro do mapa"
-                    >
-                      <Flame size={12} />
-                      <span>No Centro</span>
-                    </button>
-                  </div>
-                </>
-              ) : (
-                /* Orientação para Remover Luz */
-                <div className="flex items-center gap-2">
-                  <div className="px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                    <Trash2 size={13} className="text-rose-400" />
-                    <span>Clique sobre uma luz no mapa para excluí-la</span>
-                  </div>
+              {lightAction === 'add' && (
+                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                  <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
+                    Raio:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
+                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                    title="Diminuir 1 jarda"
+                  >
+                    <Minus size={11} />
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={customLightRadius || 5}
+                    onChange={(e) => onSetCustomLightRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
+                  />
+                  <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
+                  <button
+                    type="button"
+                    onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
+                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                    title="Aumentar 1 jarda"
+                  >
+                    <Plus size={11} />
+                  </button>
                 </div>
               )}
 

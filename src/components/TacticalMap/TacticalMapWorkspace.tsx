@@ -180,6 +180,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
   const [draggedPropId, setDraggedPropId] = useState<string | null>(null);
   const [dragPropOffset, setDragPropOffset] = useState<Point>({ x: 0, y: 0 });
+  const [dragPropPos, setDragPropPos] = useState<{ id: string; x: number; y: number } | null>(null);
 
   // Map of characters by id
   const characterMap = useMemo(() => {
@@ -304,6 +305,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const rowSpacing = 1.5 * hexSize;
   const dynamicCols = Math.ceil(mapW / hexWidth) + 2;
   const dynamicRows = Math.ceil(mapH / rowSpacing) + 2;
+
+  // Path SVG pré-calculado e unificado para a grade hexagonal inteira (renderiza milhares de hexágonos em 1 só elemento ultrarrápido)
+  const hexGridPath = useMemo(() => {
+    let path = '';
+    const rows = dynamicRows + 2;
+    const cols = dynamicCols + 2;
+    for (let rIdx = 0; rIdx < rows; rIdx++) {
+      const r = rIdx - 1;
+      for (let cIdx = 0; cIdx < cols; cIdx++) {
+        const c = cIdx - 1;
+        const center = getHexCenter(c, r, hexSize);
+        const pts = getHexCornerPoints({ x: mapX + center.x, y: mapY + center.y }, hexSize);
+        path += `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}L${pts[1].x.toFixed(1)},${pts[1].y.toFixed(1)}L${pts[2].x.toFixed(1)},${pts[2].y.toFixed(1)}L${pts[3].x.toFixed(1)},${pts[3].y.toFixed(1)}L${pts[4].x.toFixed(1)},${pts[4].y.toFixed(1)}L${pts[5].x.toFixed(1)},${pts[5].y.toFixed(1)}Z `;
+      }
+    }
+    return path;
+  }, [dynamicRows, dynamicCols, hexSize, mapX, mapY]);
 
   // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
   const litCellsSet = useMemo(() => {
@@ -654,25 +672,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       const p = clientToMapCoords(e.clientX, e.clientY);
       const nextX = Math.round(p.x - dragPropOffset.x);
       const nextY = Math.round(p.y - dragPropOffset.y);
-      const updatedProps = (tacticalState.props || []).map((prop) =>
-        prop.id === draggedPropId ? { ...prop, x: nextX, y: nextY } : prop
-      );
-      onUpdateTacticalState({ props: updatedProps });
+      setDragPropPos({ id: draggedPropId, x: nextX, y: nextY });
       return;
     }
 
     const target = e.target as HTMLElement | SVGElement | null;
     const isOverOverlay = !!(
       target &&
-      (target.closest('#tactical-top-toolbar-container') ||
-        target.closest('[role="dialog"]') ||
-        target.closest('.fixed') ||
-        target.closest('#tactical-token-sidebar'))
+      target.closest('#tactical-top-toolbar-container, [role="dialog"], #tactical-token-sidebar')
     );
 
     if (isOverOverlay) {
-      setHoveredHex(null);
-      // Se não estiver no meio de um arrasto ativo, encerra o mousemove aqui
+      setHoveredHex((prev) => (prev ? null : prev));
       if (!fogBoxStart && !isPanning && !draggedTokenId && !draggedPropId && !rotatingTokenId) {
         return;
       }
@@ -691,7 +702,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
 
     if (!isOverOverlay) {
-      setHoveredHex(hex);
+      setHoveredHex((prev) => {
+        if (prev && prev.col === hex.col && prev.row === hex.row) return prev;
+        return hex;
+      });
     }
 
     if (activeTool === 'fog' && isMaster && fogSubTool === 'box' && fogBoxStart) {
@@ -715,10 +729,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const dx = p.x - center.x;
         const dy = p.y - center.y;
         const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
-        // Frente está embaixo no SVG (+Y = 90°). deg - 90 aponta a frente para o mouse:
         let rot = deg - 90;
         rot = ((rot % 360) + 360) % 360;
-        // Snap (agarrar) a cada 30° para permitir agarrar tanto na linha dos hexágonos quanto no meio deles (12 posições):
         const snappedRot = (Math.round(rot / 30) * 30) % 360;
         const facingIndex = (Math.round(((snappedRot + 180) % 360) / 60) % 6) as FacingDirection;
 
@@ -735,6 +747,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   const handleMouseUp = () => {
     if (draggedPropId) {
+      if (dragPropPos) {
+        const updatedProps = (tacticalState.props || []).map((prop) =>
+          prop.id === dragPropPos.id ? { ...prop, x: dragPropPos.x, y: dragPropPos.y } : prop
+        );
+        onUpdateTacticalState({ props: updatedProps });
+        setDragPropPos(null);
+      }
       setDraggedPropId(null);
     }
 
@@ -1704,80 +1723,82 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           })}
 
           {/* MÁSCARA DA NÉVOA DE GUERRA (LINHAS RETANGULARES PURAS E FOCOS DE LUZ COM DEGRADÊ SUAVE) */}
-          <mask
-            id="tactical-fog-mask"
-            maskUnits="userSpaceOnUse"
-            maskContentUnits="userSpaceOnUse"
-            x={mapX}
-            y={mapY}
-            width={mapW}
-            height={mapH}
-          >
-            {/* 1. Base branca cobre todo o mapa de névoa (branco = névoa 100% opaca) */}
-            <rect x={mapX} y={mapY} width={mapW} height={mapH} fill="#ffffff" />
+          {tacticalState.fogEnabled && (
+            <mask
+              id="tactical-fog-mask"
+              maskUnits="userSpaceOnUse"
+              maskContentUnits="userSpaceOnUse"
+              x={mapX}
+              y={mapY}
+              width={mapW}
+              height={mapH}
+            >
+              {/* 1. Base branca cobre todo o mapa de névoa (branco = névoa 100% opaca) */}
+              <rect x={mapX} y={mapY} width={mapW} height={mapH} fill="#ffffff" />
 
-            {/* 2. Retângulos recortados em linhas retas (preto = revela o mapa; branco = volta a ocultar) */}
-            {(tacticalState.fogRects || []).map((r, idx) => (
-              <rect
-                key={r.id || `fog-rect-${idx}`}
-                x={mapX + r.x}
-                y={mapY + r.y}
-                width={r.width}
-                height={r.height}
-                fill={r.mode === 'hide' ? '#ffffff' : '#000000'}
-              />
-            ))}
-
-            {/* 2.1 Retrocompatibilidade com células reveladas antes */}
-            {(tacticalState.fogRevealedCells || []).map((cellKey) => {
-              const [cStr, rStr] = cellKey.split(',');
-              const c = parseInt(cStr, 10);
-              const r = parseInt(rStr, 10);
-              if (isNaN(c) || isNaN(r)) return null;
-              const relCenter = getHexCenter(c, r, hexSize);
-              return (
-                <polygon
-                  key={`old-cell-${cellKey}`}
-                  points={getHexPointsString({ x: mapX + relCenter.x, y: mapY + relCenter.y }, hexSize)}
-                  fill="#000000"
+              {/* 2. Retângulos recortados em linhas retas (preto = revela o mapa; branco = volta a ocultar) */}
+              {(tacticalState.fogRects || []).map((r, idx) => (
+                <rect
+                  key={r.id || `fog-rect-${idx}`}
+                  x={mapX + r.x}
+                  y={mapY + r.y}
+                  width={r.width}
+                  height={r.height}
+                  fill={r.mode === 'hide' ? '#ffffff' : '#000000'}
                 />
-              );
-            })}
+              ))}
 
-            {/* 3. Focos de luz fixos: degradê suave perdendo iluminação até as bordas */}
-            {(tacticalState.lights || []).map((light) => {
-              if (light.active === false || (light.radius || 0) <= 0) return null;
-              const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
-              const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
-              return (
-                <circle
-                  key={`light-mask-${light.id}`}
-                  cx={mapX + relCenter.x}
-                  cy={mapY + relCenter.y}
-                  r={radiusPixels}
-                  fill={`url(#fog-light-attenuation-${light.id})`}
-                />
-              );
-            })}
+              {/* 2.1 Retrocompatibilidade com células reveladas antes */}
+              {(tacticalState.fogRevealedCells || []).map((cellKey) => {
+                const [cStr, rStr] = cellKey.split(',');
+                const c = parseInt(cStr, 10);
+                const r = parseInt(rStr, 10);
+                if (isNaN(c) || isNaN(r)) return null;
+                const relCenter = getHexCenter(c, r, hexSize);
+                return (
+                  <polygon
+                    key={`old-cell-${cellKey}`}
+                    points={getHexPointsString({ x: mapX + relCenter.x, y: mapY + relCenter.y }, hexSize)}
+                    fill="#000000"
+                  />
+                );
+              })}
 
-            {/* 4. Tokens com luz própria: degradê suave perdendo iluminação até as bordas */}
-            {tokens.map((token) => {
-              if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
-              const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
-              const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
-              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-              const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
-              return (
-                <circle
-                  key={`token-light-mask-${token.id}`}
-                  cx={mapX + relCenter.x}
-                  cy={mapY + relCenter.y}
-                  r={radiusPixels}
-                  fill={`url(#fog-token-attenuation-${token.id})`}
-                />
-              );
-            })}
-          </mask>
+              {/* 3. Focos de luz fixos: degradê suave perdendo iluminação até as bordas */}
+              {(tacticalState.lights || []).map((light) => {
+                if (light.active === false || (light.radius || 0) <= 0) return null;
+                const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+                const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+                return (
+                  <circle
+                    key={`light-mask-${light.id}`}
+                    cx={mapX + relCenter.x}
+                    cy={mapY + relCenter.y}
+                    r={radiusPixels}
+                    fill={`url(#fog-light-attenuation-${light.id})`}
+                  />
+                );
+              })}
+
+              {/* 4. Tokens com luz própria: degradê suave perdendo iluminação até as bordas */}
+              {tokens.map((token) => {
+                if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
+                const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
+                const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
+                const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+                const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+                return (
+                  <circle
+                    key={`token-light-mask-${token.id}`}
+                    cx={mapX + relCenter.x}
+                    cy={mapY + relCenter.y}
+                    r={radiusPixels}
+                    fill={`url(#fog-token-attenuation-${token.id})`}
+                  />
+                );
+              })}
+            </mask>
+          )}
         </defs>
 
         {/* Grupo com Pan & Zoom transform */}
@@ -1861,7 +1882,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
           {/* CAMADA DE ELEMENTOS DE CENÁRIO (PROPS / MOBÍLIA - ESTILO ROLL20) */}
           <TacticalPropsRenderer
-            props={tacticalState.props || []}
+            props={
+              dragPropPos
+                ? (tacticalState.props || []).map((p) =>
+                    p.id === dragPropPos.id ? { ...p, x: dragPropPos.x, y: dragPropPos.y } : p
+                  )
+                : tacticalState.props || []
+            }
             selectedPropId={selectedPropId}
             onSelectProp={setSelectedPropId}
             onStartDragProp={handleStartDragProp}
@@ -1874,30 +1901,31 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             isMaster={isMaster}
           />
 
-          {/* CAMADA 2: GRADE TÁTICA HEXAGONAL - COBRE TODA A IMAGEM */}
+          {/* CAMADA 2: GRADE TÁTICA HEXAGONAL - COBRE TODA A IMAGEM (1 ÚNICO ELEMENTO PATH ULTRARRÁPIDO) */}
           <g id="tactical-hex-grid" clipPath="url(#map-image-bounds)" pointerEvents="none">
-            {Array.from({ length: dynamicRows + 2 }).map((_, rIdx) => {
-              const r = rIdx - 1;
-              return Array.from({ length: dynamicCols + 2 }).map((_, cIdx) => {
-                const c = cIdx - 1;
-                const relCenter = getHexCenter(c, r, hexSize);
-                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const pointsStr = getHexPointsString(center, hexSize);
-                const isHovered = hoveredHex?.col === c && hoveredHex?.row === r;
-
-                return (
-                  <polygon
-                    key={`hex-${c}-${r}`}
-                    points={pointsStr}
-                    fill={isHovered ? 'rgba(245, 158, 11, 0.16)' : 'transparent'}
-                    stroke={tacticalState.gridColor || '#cbd5e1'}
-                    strokeWidth={isHovered ? 1.5 : 1}
-                    strokeOpacity={isHovered ? 0.75 : (tacticalState.gridOpacity ?? 0.28)}
-                    className="transition-colors duration-75"
-                  />
-                );
-              });
-            })}
+            <path
+              d={hexGridPath}
+              fill="none"
+              stroke={tacticalState.gridColor || '#cbd5e1'}
+              strokeWidth={1}
+              strokeOpacity={tacticalState.gridOpacity ?? 0.28}
+            />
+            {/* Hexágono em destaque onde o mouse está posicionado (renderizado sob demanda) */}
+            {hoveredHex && (
+              <polygon
+                points={getHexPointsString(
+                  {
+                    x: mapX + getHexCenter(hoveredHex.col, hoveredHex.row, hexSize).x,
+                    y: mapY + getHexCenter(hoveredHex.col, hoveredHex.row, hexSize).y,
+                  },
+                  hexSize
+                )}
+                fill="rgba(245, 158, 11, 0.16)"
+                stroke="#f59e0b"
+                strokeWidth={1.5}
+                strokeOpacity={0.75}
+              />
+            )}
           </g>
 
           {/* CAMADA 3: FOCOS DE LUZ (RADIAÇÃO & BRILHO AMBIENTE NO TABULEIRO) */}
