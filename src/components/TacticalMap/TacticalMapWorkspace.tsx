@@ -9,6 +9,7 @@ import {
   TacticalMarker,
   TacticalLightSource,
   TacticalProp,
+  TacticalFogRect,
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
@@ -121,26 +122,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoveredHex, setHoveredHex] = useState<HexCoord | null>(null);
 
-  // Fog of War / Ocultação do Mapa state (Estilo Roll20)
+  // Fog of War / Ocultação do Mapa state (Estilo Roll20 em Linhas Retas)
   const [fogBrushMode, setFogBrushMode] = useState<'reveal' | 'hide'>('reveal');
-  const [fogBrushRadius, setFogBrushRadius] = useState<number>(1);
-  const [fogShape, setFogShape] = useState<'brush' | 'box'>('brush');
+  const [fogSubTool, setFogSubTool] = useState<'box' | 'light'>('box');
   const [fogBoxStart, setFogBoxStart] = useState<Point | null>(null);
   const [fogBoxCurrent, setFogBoxCurrent] = useState<Point | null>(null);
-  const [isDrawingFog, setIsDrawingFog] = useState(false);
 
   // Focos de Luz state (Iluminação Dinâmica)
   const [customLightRadius, setCustomLightRadius] = useState<number>(5);
   const [customLightColor, setCustomLightColor] = useState<string>('#f59e0b');
-  const [selectedLightPreset, setSelectedLightPreset] = useState<{
-    label: string;
-    radius: number;
-    color: string;
-  }>({
-    label: 'Tocha',
-    radius: 4,
-    color: '#f59e0b',
-  });
 
   // Ruler state
   const [rulerStart, setRulerStart] = useState<HexCoord | null>(null);
@@ -338,61 +328,37 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     return set;
   }, [tacticalState.lights, tokens]);
 
-  const revealedSet = useMemo(() => {
-    return new Set(tacticalState.fogRevealedCells || []);
-  }, [tacticalState.fogRevealedCells]);
-
-  // Aplicar pincel de névoa de guerra (revelar ou ocultar)
-  const applyFogBrush = useCallback(
-    (centerHex: HexCoord) => {
-      const affectedHexes = getHexesInRange(centerHex, fogBrushRadius);
-      const currentRevealed = new Set(tacticalState.fogRevealedCells || []);
-      let changed = false;
-
-      affectedHexes.forEach((h) => {
-        const key = `${h.col},${h.row}`;
-        if (fogBrushMode === 'reveal') {
-          if (!currentRevealed.has(key)) {
-            currentRevealed.add(key);
-            changed = true;
-          }
-        } else {
-          if (currentRevealed.has(key)) {
-            currentRevealed.delete(key);
-            changed = true;
-          }
-        }
-      });
-
-      if (changed) {
-        onUpdateTacticalState({
-          fogEnabled: true,
-          fogRevealedCells: Array.from(currentRevealed),
-        });
-      }
-    },
-    [fogBrushRadius, fogBrushMode, tacticalState.fogRevealedCells, onUpdateTacticalState]
-  );
-
   const handleRevealAllFog = useCallback(() => {
-    const allCells: string[] = [];
-    for (let r = -1; r <= dynamicRows + 2; r++) {
-      for (let c = -1; c <= dynamicCols + 2; c++) {
-        allCells.push(`${c},${r}`);
-      }
-    }
     onUpdateTacticalState({
       fogEnabled: true,
-      fogRevealedCells: allCells,
+      fogRects: [{ id: 'reveal-all', x: 0, y: 0, width: mapW, height: mapH, mode: 'reveal' }],
+      fogRevealedCells: [],
     });
-  }, [dynamicCols, dynamicRows, onUpdateTacticalState]);
+  }, [mapW, mapH, onUpdateTacticalState]);
 
   const handleHideAllFog = useCallback(() => {
     onUpdateTacticalState({
       fogEnabled: true,
+      fogRects: [],
       fogRevealedCells: [],
     });
   }, [onUpdateTacticalState]);
+
+  const handleAddLightAtCenter = useCallback(() => {
+    const centerHex = pixelToHex(mapW / 2, mapH / 2, hexSize);
+    const newLight: TacticalLightSource = {
+      id: `light-${Date.now()}`,
+      label: 'Luz',
+      gridX: centerHex.col,
+      gridY: centerHex.row,
+      radius: customLightRadius || 5,
+      color: customLightColor || '#f59e0b',
+      active: true,
+    };
+    onUpdateTacticalState({
+      lights: [...(tacticalState.lights || []), newLight],
+    });
+  }, [mapW, mapH, hexSize, customLightRadius, customLightColor, tacticalState.lights, onUpdateTacticalState]);
 
   // Convert client mouse event to map coordinate (respecting pan and zoom)
   const clientToMapCoords = useCallback(
@@ -544,47 +510,39 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       return;
     }
 
-    // 1. Ferramenta de Ocultação do Mapa (Névoa de Guerra estilo Roll20)
+    // 1. Ferramenta de Ocultação do Mapa (Névoa de Guerra & Focos de Luz em Linhas Retas)
     if (activeTool === 'fog' && e.button === 0 && isMaster) {
       const p = clientToMapCoords(e.clientX, e.clientY);
-      if (fogShape === 'box') {
+
+      if (fogSubTool === 'light') {
+        const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
+        const existing = (tacticalState.lights || []).find(
+          (l) => l.gridX === hex.col && l.gridY === hex.row
+        );
+        if (existing) {
+          // Remove foco de luz ao clicar nele com a ferramenta
+          const updated = (tacticalState.lights || []).filter((l) => l.id !== existing.id);
+          onUpdateTacticalState({ lights: updated });
+        } else {
+          // Cria novo foco de luz com o raio digitado
+          const newLight: TacticalLightSource = {
+            id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            gridX: hex.col,
+            gridY: hex.row,
+            radius: customLightRadius || 5,
+            color: customLightColor || '#f59e0b',
+            intensity: 0.85,
+            label: `Luz (${customLightRadius || 5}yd)`,
+            active: true,
+          };
+          onUpdateTacticalState({
+            lights: [...(tacticalState.lights || []), newLight],
+          });
+        }
+      } else {
+        // Seleção Retangular da Névoa (em linhas retas puras)
         setFogBoxStart({ x: p.x - mapX, y: p.y - mapY });
         setFogBoxCurrent({ x: p.x - mapX, y: p.y - mapY });
-      } else {
-        const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
-        setIsDrawingFog(true);
-        applyFogBrush(hex);
-      }
-      setPopoverToken(null);
-      return;
-    }
-
-    // 2. Ferramenta de Focos de Luz (Tochas, Fogueiras, Lanternas)
-    if (activeTool === 'light' && e.button === 0 && isMaster) {
-      const p = clientToMapCoords(e.clientX, e.clientY);
-      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
-      const existing = (tacticalState.lights || []).find(
-        (l) => l.gridX === hex.col && l.gridY === hex.row
-      );
-      if (existing) {
-        // Remove foco de luz ao clicar nele com a ferramenta
-        const updated = (tacticalState.lights || []).filter((l) => l.id !== existing.id);
-        onUpdateTacticalState({ lights: updated });
-      } else {
-        // Cria novo foco de luz com o raio e cor customizados
-        const newLight: TacticalLightSource = {
-          id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          gridX: hex.col,
-          gridY: hex.row,
-          radius: customLightRadius,
-          color: customLightColor,
-          intensity: 0.85,
-          label: `Luz (${customLightRadius}yd)`,
-          active: true,
-        };
-        onUpdateTacticalState({
-          lights: [...(tacticalState.lights || []), newLight],
-        });
       }
       setPopoverToken(null);
       return;
@@ -700,12 +658,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
     setHoveredHex(hex);
 
-    if (activeTool === 'fog' && isMaster) {
-      if (fogShape === 'box' && fogBoxStart) {
-        setFogBoxCurrent({ x: p.x - mapX, y: p.y - mapY });
-      } else if (fogShape === 'brush' && isDrawingFog) {
-        applyFogBrush(hex);
-      }
+    if (activeTool === 'fog' && isMaster && fogSubTool === 'box' && fogBoxStart) {
+      setFogBoxCurrent({ x: p.x - mapX, y: p.y - mapY });
     }
 
     if (activeTool === 'ruler' && rulerStart) {
@@ -748,32 +702,27 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       setDraggedPropId(null);
     }
 
-    if (isDrawingFog) {
-      setIsDrawingFog(false);
-    }
-
     if (fogBoxStart && fogBoxCurrent && isMaster) {
       const minX = Math.min(fogBoxStart.x, fogBoxCurrent.x);
       const maxX = Math.max(fogBoxStart.x, fogBoxCurrent.x);
       const minY = Math.min(fogBoxStart.y, fogBoxCurrent.y);
       const maxY = Math.max(fogBoxStart.y, fogBoxCurrent.y);
+      const width = maxX - minX;
+      const height = maxY - minY;
 
-      if (maxX - minX > 5 || maxY - minY > 5) {
-        const nextSet = new Set(revealedSet);
-        for (let r = 0; r < dynamicRows; r++) {
-          for (let c = 0; c < dynamicCols; c++) {
-            const pt = getHexCenter(c, r, hexSize);
-            if (pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY) {
-              const key = `${c},${r}`;
-              if (fogBrushMode === 'reveal') {
-                nextSet.add(key);
-              } else {
-                nextSet.delete(key);
-              }
-            }
-          }
-        }
-        onUpdateTacticalState({ fogRevealedCells: Array.from(nextSet) });
+      if (width > 6 && height > 6) {
+        const newRect: TacticalFogRect = {
+          id: `fog-rect-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          x: Math.round(minX),
+          y: Math.round(minY),
+          width: Math.round(width),
+          height: Math.round(height),
+          mode: fogBrushMode,
+        };
+        onUpdateTacticalState({
+          fogEnabled: true,
+          fogRects: [...(tacticalState.fogRects || []), newRect],
+        });
       }
       setFogBoxStart(null);
       setFogBoxCurrent(null);
@@ -1260,7 +1209,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           setDragTokenOrigin(null);
           setDragHoverHex(null);
         }
-        if (isDrawingFog) setIsDrawingFog(false);
+        if (fogBoxStart) {
+          setFogBoxStart(null);
+          setFogBoxCurrent(null);
+        }
         if (rotatingTokenId) {
           setRotatingTokenId(null);
           setPreviewRotation(null);
@@ -1314,14 +1266,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onSetAllPlayerPermissions={onSetAllPlayerPermissions}
           fogBrushMode={fogBrushMode}
           onSetFogBrushMode={setFogBrushMode}
-          fogBrushRadius={fogBrushRadius}
-          onSetFogBrushRadius={setFogBrushRadius}
-          fogShape={fogShape}
-          onSetFogShape={setFogShape}
+          fogSubTool={fogSubTool}
+          onSetFogSubTool={setFogSubTool}
           onRevealAllFog={handleRevealAllFog}
           onHideAllFog={handleHideAllFog}
-          selectedLightPreset={selectedLightPreset}
-          onSelectLightPreset={setSelectedLightPreset}
+          onAddLightAtCenter={handleAddLightAtCenter}
           customLightRadius={customLightRadius}
           onSetCustomLightRadius={setCustomLightRadius}
           customLightColor={customLightColor}
@@ -2650,39 +2599,86 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           </g>
           )}
 
-          {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20) */}
+          {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20 - LINHAS RETANGULARES PURAS) */}
           {tacticalState.fogEnabled && (
             <g id="tactical-fog-layer" clipPath="url(#map-image-bounds)" pointerEvents="none">
-              {Array.from({ length: dynamicRows + 2 }).map((_, rIdx) => {
-                const r = rIdx - 1;
-                return Array.from({ length: dynamicCols + 2 }).map((_, cIdx) => {
-                  const c = cIdx - 1;
-                  const key = `${c},${r}`;
-                  const isRevealed = revealedSet.has(key);
-                  const isLit = litCellsSet.has(key);
+              <mask id="tactical-fog-mask">
+                {/* 1. Base branca cobre todo o mapa de névoa (branco = névoa opaca) */}
+                <rect x={mapX} y={mapY} width={mapW} height={mapH} fill="#ffffff" />
 
-                  if (isRevealed || isLit) return null;
+                {/* 2. Retângulos recortados em linhas retas (preto = revela o mapa; branco = volta a ocultar) */}
+                {(tacticalState.fogRects || []).map((r, idx) => (
+                  <rect
+                    key={r.id || `fog-rect-${idx}`}
+                    x={mapX + r.x}
+                    y={mapY + r.y}
+                    width={r.width}
+                    height={r.height}
+                    fill={r.mode === 'hide' ? '#ffffff' : '#000000'}
+                  />
+                ))}
 
+                {/* 2.1 Retrocompatibilidade com células reveladas antes */}
+                {(tacticalState.fogRevealedCells || []).map((cellKey) => {
+                  const [cStr, rStr] = cellKey.split(',');
+                  const c = parseInt(cStr, 10);
+                  const r = parseInt(rStr, 10);
+                  if (isNaN(c) || isNaN(r)) return null;
                   const relCenter = getHexCenter(c, r, hexSize);
-                  const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                  const pointsStr = getHexPointsString(center, hexSize);
-
                   return (
                     <polygon
-                      key={`fog-${c}-${r}`}
-                      points={pointsStr}
-                      fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.78)'}
-                      stroke={isPlayerView ? '#000000' : 'rgba(15, 23, 42, 0.45)'}
-                      strokeWidth={0.5}
+                      key={`old-cell-${cellKey}`}
+                      points={getHexPointsString({ x: mapX + relCenter.x, y: mapY + relCenter.y }, hexSize)}
+                      fill="#000000"
                     />
                   );
-                });
-              })}
+                })}
+
+                {/* 3. Focos de luz fixos abrem círculos de visibilidade na névoa */}
+                {(tacticalState.lights || []).map((light) => {
+                  if (light.active === false || (light.radius || 0) <= 0) return null;
+                  const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+                  return (
+                    <circle
+                      key={`light-mask-${light.id}`}
+                      cx={mapX + relCenter.x}
+                      cy={mapY + relCenter.y}
+                      r={(light.radius || 4) * hexWidth * 0.95}
+                      fill="#000000"
+                    />
+                  );
+                })}
+
+                {/* 4. Tokens com luz própria abrem círculos de visibilidade na névoa */}
+                {tokens.map((token) => {
+                  if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
+                  const relCenter = getHexCenter(token.gridX, token.gridY, hexSize);
+                  return (
+                    <circle
+                      key={`token-light-mask-${token.id}`}
+                      cx={mapX + relCenter.x}
+                      cy={mapY + relCenter.y}
+                      r={(token.lightRadius || 4) * hexWidth * 0.95}
+                      fill="#000000"
+                    />
+                  );
+                })}
+              </mask>
+
+              {/* Camada visual de Névoa: semitransparente para o Mestre, 100% preta para os Jogadores */}
+              <rect
+                x={mapX}
+                y={mapY}
+                width={mapW}
+                height={mapH}
+                fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.78)'}
+                mask="url(#tactical-fog-mask)"
+              />
             </g>
           )}
 
-          {/* PREVIEW DO RETÂNGULO DE SELEÇÃO DA NÉVOA DE GUERRA */}
-          {activeTool === 'fog' && fogShape === 'box' && fogBoxStart && fogBoxCurrent && (
+          {/* PREVIEW DO RETÂNGULO DE SELEÇÃO DA NÉVOA DE GUERRA (LINHAS RETAS PURAS) */}
+          {activeTool === 'fog' && fogSubTool === 'box' && fogBoxStart && fogBoxCurrent && (
             <g id="fog-box-preview" pointerEvents="none">
               <rect
                 x={mapX + Math.min(fogBoxStart.x, fogBoxCurrent.x)}
@@ -2693,34 +2689,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
                 strokeWidth={2}
                 strokeDasharray="6 4"
-                rx={4}
               />
             </g>
           )}
 
-          {/* PREVIEW DO PINCEL DE NÉVOA DE GUERRA */}
-          {activeTool === 'fog' && fogShape === 'brush' && hoveredHex && (
-            <g id="fog-brush-preview" pointerEvents="none">
-              {getHexesInRange(hoveredHex, fogBrushRadius).map((h) => {
-                const relCenter = getHexCenter(h.col, h.row, hexSize);
-                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const pointsStr = getHexPointsString(center, hexSize);
-                return (
-                  <polygon
-                    key={`brush-${h.col}-${h.row}`}
-                    points={pointsStr}
-                    fill={fogBrushMode === 'reveal' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}
-                    stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
-                    strokeWidth={1.5}
-                    strokeDasharray="4 2"
-                  />
-                );
-              })}
-            </g>
-          )}
-
-          {/* PREVIEW DO FOCO DE LUZ AO PASSAR O MOUSE */}
-          {activeTool === 'light' && hoveredHex && (
+          {/* PREVIEW DO FOCO DE LUZ AO PASSAR O MOUSE (QUANDO SUB-FERRAMENTA LUZ ESTÁ SELECIONADA EM OCULTAR) */}
+          {activeTool === 'fog' && fogSubTool === 'light' && hoveredHex && (
             <g id="light-brush-preview" pointerEvents="none">
               {(() => {
                 const relCenter = getHexCenter(hoveredHex.col, hoveredHex.row, hexSize);

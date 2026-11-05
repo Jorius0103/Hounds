@@ -75,14 +75,11 @@ interface TacticalToolbarProps {
   onSetAllPlayerPermissions?: (allow: boolean) => void;
   fogBrushMode?: 'reveal' | 'hide';
   onSetFogBrushMode?: (mode: 'reveal' | 'hide') => void;
-  fogBrushRadius?: number;
-  onSetFogBrushRadius?: (radius: number) => void;
-  fogShape?: 'brush' | 'box';
-  onSetFogShape?: (shape: 'brush' | 'box') => void;
+  fogSubTool?: 'box' | 'light';
+  onSetFogSubTool?: (subTool: 'box' | 'light') => void;
   onRevealAllFog?: () => void;
   onHideAllFog?: () => void;
-  selectedLightPreset?: { label: string; radius: number; color: string };
-  onSelectLightPreset?: (preset: { label: string; radius: number; color: string }) => void;
+  onAddLightAtCenter?: () => void;
   customLightRadius?: number;
   onSetCustomLightRadius?: (radius: number) => void;
   customLightColor?: string;
@@ -132,14 +129,11 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onSetAllPlayerPermissions,
   fogBrushMode = 'reveal',
   onSetFogBrushMode,
-  fogBrushRadius = 1,
-  onSetFogBrushRadius,
-  fogShape = 'brush',
-  onSetFogShape,
+  fogSubTool = 'box',
+  onSetFogSubTool,
   onRevealAllFog,
   onHideAllFog,
-  selectedLightPreset = { label: 'Tocha', radius: 4, color: '#f59e0b' },
-  onSelectLightPreset,
+  onAddLightAtCenter,
   customLightRadius = 5,
   onSetCustomLightRadius,
   customLightColor = '#f59e0b',
@@ -278,28 +272,15 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
               <button
                 onClick={() => onSelectTool('fog')}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   activeTool === 'fog'
                     ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
-                title="Ocultação de Áreas / Névoa de Guerra (Estilo Roll20)"
+                title="Ocultação de Áreas / Névoa de Guerra & Focos de Luz"
               >
                 {tacticalState.fogEnabled ? <EyeOff size={14} /> : <Eye size={14} />}
                 <span>Ocultar</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('light')}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  activeTool === 'light'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-                title="Focos de Luz (Tochas, Lanternas, Fogueiras no mapa)"
-              >
-                <Flame size={14} />
-                <span>Luz</span>
               </button>
             </>
           )}
@@ -832,13 +813,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
         </div>
       </div>
 
-      {/* BARRA DE CONTROLE: OCULTAÇÃO / FOG OF WAR (ESTILO ROLL20) */}
+      {/* BARRA DE CONTROLE: OCULTAÇÃO DO MAPA & FOCOS DE LUZ (UNIFICADOS) */}
       {isMaster && activeTool === 'fog' && (
         <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
+          {/* 1. Ativação da Névoa & Seleção de Sub-ferramenta */}
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 font-bold text-slate-200">
               <EyeOff size={14} className="text-amber-400" />
-              <span>Ocultação do Mapa:</span>
+              <span>Ocultação:</span>
             </span>
 
             {/* Alternar Ativação da Névoa */}
@@ -851,238 +833,168 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
-              {tacticalState.fogEnabled ? 'Ativada' : 'Desativada'}
+              {tacticalState.fogEnabled ? 'Névoa Ativada' : 'Névoa Desativada'}
             </button>
           </div>
 
-          {/* Formato: Pincel vs Retângulo de Seleção */}
+          {/* Seletor: Retângulo de Névoa vs Foco de Luz */}
           <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-              Formato:
-            </span>
             <button
               type="button"
-              onClick={() => onSetFogShape?.('brush')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                fogShape === 'brush'
+              onClick={() => onSetFogSubTool?.('box')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                fogSubTool === 'box'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="Pincel Livre"
+              title="Seleção Retangular em linhas retas para revelar ou cobrir áreas com névoa"
             >
-              <Paintbrush size={12} />
-              <span>Pincel</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetFogShape?.('box')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                fogShape === 'box'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="Seleção Retangular (arraste formando um retângulo para revelar cômodos)"
-            >
-              <Square size={12} />
+              <Square size={13} />
               <span>Retângulo</span>
             </button>
-          </div>
-
-          {/* Modo: Revelar vs Ocultar */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-              Ação:
-            </span>
             <button
               type="button"
-              onClick={() => onSetFogBrushMode?.('reveal')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                fogBrushMode === 'reveal'
-                  ? 'bg-emerald-600 text-white font-bold shadow-xs'
+              onClick={() => onSetFogSubTool?.('light')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                fogSubTool === 'light'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="Revelar áreas para os jogadores"
+              title="Colocar focos de luz (tochas, lanternas, fogueiras) no mapa"
             >
-              <Eye size={13} />
-              <span>Revelar</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetFogBrushMode?.('hide')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                fogBrushMode === 'hide'
-                  ? 'bg-rose-600 text-white font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="Ocultar áreas dos jogadores"
-            >
-              <EyeOff size={13} />
-              <span>Ocultar</span>
+              <Flame size={13} />
+              <span>Foco de Luz</span>
             </button>
           </div>
 
-          {/* Raio do Pincel (visível apenas no modo Pincel) */}
-          {fogShape === 'brush' && (
-            <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-              <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-                Raio:
-              </span>
-              <button
-                type="button"
-                onClick={() => onSetFogBrushRadius?.(0)}
-                className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                  fogBrushRadius === 0
-                    ? 'bg-amber-500 text-slate-950'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="1 Hexágono"
-              >
-                1 Hex
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetFogBrushRadius?.(1)}
-                className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                  fogBrushRadius === 1
-                    ? 'bg-amber-500 text-slate-950'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="3 Hexes (raio de 1 jarda)"
-              >
-                3 Hexes
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetFogBrushRadius?.(2)}
-                className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                  fogBrushRadius === 2
-                    ? 'bg-amber-500 text-slate-950'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="7 Hexes (raio de 2 jardas)"
-              >
-                7 Hexes
-              </button>
-            </div>
-          )}
-
-          {/* Ações em Lote */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onRevealAllFog}
-              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
-              title="Revelar todo o mapa instantaneamente"
-            >
-              Revelar Tudo
-            </button>
-            <button
-              type="button"
-              onClick={onHideAllFog}
-              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
-              title="Cobrir todo o mapa com escuridão"
-            >
-              Ocultar Tudo
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* BARRA DE CONTROLE: FOCOS DE LUZ (ILUMINAÇÃO DINÂMICA) */}
-      {isMaster && activeTool === 'light' && (
-        <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 font-bold text-slate-200">
-              <Flame size={14} className="text-amber-400" />
-              <span>Focos de Luz:</span>
-            </span>
-            <span className="text-[11px] text-slate-400">
-              Clique no mapa para posicionar luz com o alcance especificado.
-            </span>
-          </div>
-
-          {/* Raio Customizado em Jardas */}
-          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-              Raio:
-            </span>
-            <button
-              type="button"
-              onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
-              className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-              title="Diminuir 1 jarda"
-            >
-              <Minus size={11} />
-            </button>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={customLightRadius || 5}
-              onChange={(e) => onSetCustomLightRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
-            />
-            <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
-            <button
-              type="button"
-              onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
-              className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-              title="Aumentar 1 jarda"
-            >
-              <Plus size={11} />
-            </button>
-          </div>
-
-          {/* Presets Rápidos */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-              Presets:
-            </span>
-            {[
-              { label: 'Tocha', radius: 4, color: '#f59e0b', emoji: '🔥' },
-              { label: 'Lanterna', radius: 7, color: '#fbbf24', emoji: '🏮' },
-              { label: 'Fogueira', radius: 10, color: '#f97316', emoji: '🏕️' },
-              { label: 'Magia', radius: 15, color: '#38bdf8', emoji: '✨' },
-            ].map((preset) => {
-              const isSelected = (customLightRadius || 5) === preset.radius;
-              return (
+          {/* CONTROLES QUANDO RETÂNGULO ESTÁ ATIVO */}
+          {fogSubTool === 'box' && (
+            <>
+              {/* Modo: Revelar vs Ocultar */}
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
+                  Ação:
+                </span>
                 <button
-                  key={preset.label}
                   type="button"
-                  onClick={() => {
-                    onSetCustomLightRadius?.(preset.radius);
-                    onSetCustomLightColor?.(preset.color);
-                  }}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all ${
-                    isSelected
-                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  onClick={() => onSetFogBrushMode?.('reveal')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                    fogBrushMode === 'reveal'
+                      ? 'bg-emerald-600 text-white font-bold shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
+                  title="Revelar áreas para os jogadores (corta a névoa em linhas retas)"
                 >
-                  <span>{preset.emoji}</span>
-                  <span>{preset.label} ({preset.radius}y)</span>
+                  <Eye size={13} />
+                  <span>Revelar</span>
                 </button>
-              );
-            })}
-          </div>
+                <button
+                  type="button"
+                  onClick={() => onSetFogBrushMode?.('hide')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                    fogBrushMode === 'hide'
+                      ? 'bg-rose-600 text-white font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Recobrir áreas dos jogadores com escuridão"
+                >
+                  <EyeOff size={13} />
+                  <span>Ocultar</span>
+                </button>
+              </div>
 
-          {/* Gerenciar Luzes Existentes */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-amber-300 font-mono font-bold bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg">
-              {(tacticalState.lights || []).length} focos no mapa
-            </span>
-            {(tacticalState.lights || []).length > 0 && (
-              <button
-                type="button"
-                onClick={() => onUpdateTacticalState({ lights: [] })}
-                className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded-lg text-xs font-medium transition-all flex items-center gap-1"
-                title="Remover todos os focos de luz fixos do mapa"
-              >
-                <Trash2 size={12} />
-                <span>Limpar Luzes</span>
-              </button>
-            )}
-          </div>
+              {/* Ações em Lote */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={onRevealAllFog}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
+                  title="Revelar todo o mapa instantaneamente"
+                >
+                  Revelar Tudo
+                </button>
+                <button
+                  type="button"
+                  onClick={onHideAllFog}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
+                  title="Cobrir todo o mapa com escuridão"
+                >
+                  Ocultar Tudo
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* CONTROLES QUANDO FOCO DE LUZ ESTÁ ATIVO */}
+          {fogSubTool === 'light' && (
+            <>
+              {/* Raio Customizado em Jardas (o usuário digita um número) */}
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
+                  Raio da Luz:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                  title="Diminuir 1 jarda"
+                >
+                  <Minus size={11} />
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={customLightRadius || 5}
+                  onChange={(e) => onSetCustomLightRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
+                />
+                <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
+                <button
+                  type="button"
+                  onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                  title="Aumentar 1 jarda"
+                >
+                  <Plus size={11} />
+                </button>
+              </div>
+
+              {/* Botão de Posicionar Luz */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onAddLightAtCenter}
+                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                  title="Inserir um foco de luz no mapa"
+                >
+                  <Flame size={12} />
+                  <span>Inserir Luz</span>
+                </button>
+                <span className="text-[10px] text-slate-400 hidden sm:inline">
+                  (ou clique no mapa para posicionar)
+                </span>
+              </div>
+
+              {/* Gerenciar Luzes Existentes */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-amber-300 font-mono font-bold bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg">
+                  {(tacticalState.lights || []).length} luzes
+                </span>
+                {(tacticalState.lights || []).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onUpdateTacticalState({ lights: [] })}
+                    className="px-2 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded-lg text-xs font-medium transition-all flex items-center gap-1"
+                    title="Remover todos os focos de luz fixos do mapa"
+                  >
+                    <Trash2 size={12} />
+                    <span>Limpar</span>
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

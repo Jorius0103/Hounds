@@ -53,6 +53,15 @@ export interface TacticalMapPreset {
   themeColor: string;
 }
 
+export interface TacticalFogRect {
+  id?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  mode?: 'reveal' | 'hide';
+}
+
 export interface TacticalTerrainCell {
   x: number;
   y: number;
@@ -130,7 +139,8 @@ export interface TacticalState {
   scalePerCell: number; // 1 hex = 1 jarda
   scaleUnit: 'yd' | 'm';
   fogEnabled: boolean;
-  fogRevealedCells: string[]; // "col,row"
+  fogRevealedCells: string[]; // "col,row" (retrocompatibilidade)
+  fogRects?: TacticalFogRect[]; // Áreas retangulares reveladas ou ocultas em linhas retas
   lights?: TacticalLightSource[]; // Focos de luz fixos no mapa
   tokens: TacticalToken[];
   props?: TacticalProp[]; // Elementos do cenário / mobília (mesas de taverna, baús, etc.)
@@ -161,6 +171,7 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   scaleUnit: 'yd',
   fogEnabled: false,
   fogRevealedCells: [],
+  fogRects: [],
   lights: [],
   tokens: [],
   props: [],
