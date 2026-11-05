@@ -77,6 +77,8 @@ interface TacticalToolbarProps {
   onSetFogBrushMode?: (mode: 'reveal' | 'hide') => void;
   fogSubTool?: 'box' | 'light';
   onSetFogSubTool?: (subTool: 'box' | 'light') => void;
+  lightAction?: 'add' | 'remove';
+  onSetLightAction?: (action: 'add' | 'remove') => void;
   onRevealAllFog?: () => void;
   onHideAllFog?: () => void;
   onAddLightAtCenter?: () => void;
@@ -131,6 +133,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onSetFogBrushMode,
   fogSubTool = 'box',
   onSetFogSubTool,
+  lightAction = 'add',
+  onSetLightAction,
   onRevealAllFog,
   onHideAllFog,
   onAddLightAtCenter,
@@ -160,6 +164,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   const [sliderBaseWidth, setSliderBaseWidth] = useState<number | null>(null);
   const [sliderBaseHexSize, setSliderBaseHexSize] = useState<number | null>(null);
   const [customUrlInput, setCustomUrlInput] = useState(tacticalState.customImageUrl || '');
+  const [isLightListOpen, setIsLightListOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isMaster = currentUserRole === 'mestre';
@@ -928,70 +933,194 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
           {/* CONTROLES QUANDO FOCO DE LUZ ESTÁ ATIVO */}
           {fogSubTool === 'light' && (
             <>
-              {/* Raio Customizado em Jardas (o usuário digita um número) */}
-              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
-                  Raio da Luz:
-                </span>
+              {/* Seletor de Ação: Inserir Luz vs Remover Luz */}
+              <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800">
                 <button
                   type="button"
-                  onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-                  title="Diminuir 1 jarda"
+                  onClick={() => onSetLightAction?.('add')}
+                  className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    lightAction === 'add'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Modo Inserir: clique no mapa para posicionar novos focos de luz"
                 >
-                  <Minus size={11} />
+                  <Plus size={12} className={lightAction === 'add' ? 'text-amber-400' : ''} />
+                  <span>Inserir Luz</span>
                 </button>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={customLightRadius || 5}
-                  onChange={(e) => onSetCustomLightRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
-                />
-                <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
                 <button
                   type="button"
-                  onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-                  title="Aumentar 1 jarda"
+                  onClick={() => onSetLightAction?.('remove')}
+                  className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    lightAction === 'remove'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-xs'
+                      : 'text-slate-400 hover:text-rose-300'
+                  }`}
+                  title="Modo Remover: clique em qualquer foco de luz no mapa para excluí-lo"
                 >
-                  <Plus size={11} />
+                  <Trash2 size={12} className={lightAction === 'remove' ? 'text-rose-400' : ''} />
+                  <span>Remover Luz</span>
                 </button>
               </div>
 
-              {/* Orientação para Posicionar Luz */}
-              <div className="flex items-center gap-2">
-                <div className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                  <MousePointer size={13} className="text-amber-400" />
-                  <span>Clique no mapa com o mouse para posicionar</span>
+              {lightAction === 'add' ? (
+                <>
+                  {/* Raio Customizado em Jardas (o usuário digita um número) */}
+                  <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                    <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
+                      Raio:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                      title="Diminuir 1 jarda"
+                    >
+                      <Minus size={11} />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={customLightRadius || 5}
+                      onChange={(e) => onSetCustomLightRadius?.(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
+                    <button
+                      type="button"
+                      onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                      title="Aumentar 1 jarda"
+                    >
+                      <Plus size={11} />
+                    </button>
+                  </div>
+
+                  {/* Orientação para Posicionar Luz */}
+                  <div className="flex items-center gap-2">
+                    <div className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                      <MousePointer size={13} className="text-amber-400" />
+                      <span>Clique no mapa para posicionar</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onAddLightAtCenter}
+                      className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                      title="Inserir um foco de luz no centro do mapa"
+                    >
+                      <Flame size={12} />
+                      <span>No Centro</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* Orientação para Remover Luz */
+                <div className="flex items-center gap-2">
+                  <div className="px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                    <Trash2 size={13} className="text-rose-400" />
+                    <span>Clique sobre uma luz no mapa para excluí-la</span>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={onAddLightAtCenter}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all flex items-center gap-1 active:scale-95"
-                  title="Inserir um foco de luz no centro do mapa"
-                >
-                  <Flame size={12} />
-                  <span>No Centro</span>
-                </button>
-              </div>
+              )}
 
               {/* Gerenciar Luzes Existentes */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-amber-300 font-mono font-bold bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg">
-                  {(tacticalState.lights || []).length} luzes
-                </span>
+              <div className="relative flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsLightListOpen((prev) => !prev)}
+                  className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isLightListOpen
+                      ? 'bg-amber-500/30 text-amber-200 border-amber-400'
+                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25'
+                  }`}
+                  title="Clique para ver a lista de focos de luz"
+                >
+                  <Flame size={12} className="text-amber-400" />
+                  <span>{(tacticalState.lights || []).length} luzes</span>
+                </button>
                 {(tacticalState.lights || []).length > 0 && (
                   <button
                     type="button"
                     onClick={() => onUpdateTacticalState({ lights: [] })}
-                    className="px-2 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded-lg text-xs font-medium transition-all flex items-center gap-1"
+                    className="px-2 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
                     title="Remover todos os focos de luz fixos do mapa"
                   >
                     <Trash2 size={12} />
-                    <span>Limpar</span>
+                    <span>Limpar Todas</span>
                   </button>
+                )}
+
+                {/* Dropdown com a lista individual de luzes para apagar ou excluir uma a uma */}
+                {isLightListOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/98 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 text-xs text-slate-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+                      <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                        <Flame size={14} className="text-amber-400" />
+                        Luzes no Mapa ({(tacticalState.lights || []).length})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsLightListOpen(false)}
+                        className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-slate-800 cursor-pointer"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+
+                    {(tacticalState.lights || []).length === 0 ? (
+                      <p className="text-slate-400 italic text-center py-3">Nenhum foco de luz ativo no momento.</p>
+                    ) : (
+                      <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+                        {(tacticalState.lights || []).map((l, idx) => (
+                          <div
+                            key={l.id}
+                            className="flex items-center justify-between bg-slate-950/70 border border-slate-800/80 rounded-lg px-2 py-1.5 hover:border-slate-700"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">🔥</span>
+                              <div>
+                                <div className="font-semibold text-slate-200">
+                                  {l.label || `Luz #${idx + 1}`}
+                                </div>
+                                <div className="text-[10px] text-amber-400/90 font-mono">
+                                  Raio: {l.radius} yd
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = (tacticalState.lights || []).map((item) =>
+                                    item.id === l.id ? { ...item, active: !item.active } : item
+                                  );
+                                  onUpdateTacticalState({ lights: updated });
+                                }}
+                                className={`p-1 rounded cursor-pointer ${
+                                  l.active !== false ? 'text-amber-400 hover:bg-amber-500/20' : 'text-slate-500 hover:bg-slate-800'
+                                }`}
+                                title={l.active !== false ? 'Apagar foco' : 'Acender foco'}
+                              >
+                                {l.active !== false ? <Eye size={13} /> : <EyeOff size={13} />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = (tacticalState.lights || []).filter((item) => item.id !== l.id);
+                                  onUpdateTacticalState({ lights: updated });
+                                }}
+                                className="p-1 rounded text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 cursor-pointer"
+                                title="Excluir este foco de luz"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </>

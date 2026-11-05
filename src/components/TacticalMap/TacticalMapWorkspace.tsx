@@ -131,6 +131,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Focos de Luz state (Iluminação Dinâmica)
   const [customLightRadius, setCustomLightRadius] = useState<number>(5);
   const [customLightColor, setCustomLightColor] = useState<string>('#f59e0b');
+  const [lightAction, setLightAction] = useState<'add' | 'remove'>('add');
 
   // Ruler state
   const [rulerStart, setRulerStart] = useState<HexCoord | null>(null);
@@ -513,20 +514,39 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
       if (fogSubTool === 'light') {
         const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
-        // Cria novo foco de luz com o raio digitado
-        const newLight: TacticalLightSource = {
-          id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          gridX: hex.col,
-          gridY: hex.row,
-          radius: customLightRadius || 5,
-          color: customLightColor || '#f59e0b',
-          intensity: 0.85,
-          label: `Luz (${customLightRadius || 5}yd)`,
-          active: true,
-        };
-        onUpdateTacticalState({
-          lights: [...(tacticalState.lights || []), newLight],
-        });
+
+        if (lightAction === 'remove') {
+          // Remove o foco de luz mais próximo do hex clicado (em um raio de tolerância de 2.5 hexágonos)
+          const lights = tacticalState.lights || [];
+          let targetIndex = -1;
+          let minDist = 2.5;
+          lights.forEach((l, idx) => {
+            const dist = getHexDistance({ col: hex.col, row: hex.row }, { col: l.gridX, row: l.gridY });
+            if (dist < minDist) {
+              minDist = dist;
+              targetIndex = idx;
+            }
+          });
+          if (targetIndex >= 0) {
+            const updated = lights.filter((_, idx) => idx !== targetIndex);
+            onUpdateTacticalState({ lights: updated });
+          }
+        } else {
+          // Cria novo foco de luz com o raio digitado
+          const newLight: TacticalLightSource = {
+            id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            gridX: hex.col,
+            gridY: hex.row,
+            radius: customLightRadius || 5,
+            color: customLightColor || '#f59e0b',
+            intensity: 0.85,
+            label: `Luz (${customLightRadius || 5}yd)`,
+            active: true,
+          };
+          onUpdateTacticalState({
+            lights: [...(tacticalState.lights || []), newLight],
+          });
+        }
       } else {
         // Seleção Retangular da Névoa (em linhas retas puras)
         setFogBoxStart({ x: p.x - mapX, y: p.y - mapY });
@@ -1286,6 +1306,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onSetFogBrushMode={setFogBrushMode}
           fogSubTool={fogSubTool}
           onSetFogSubTool={setFogSubTool}
+          lightAction={lightAction}
+          onSetLightAction={setLightAction}
           onRevealAllFog={handleRevealAllFog}
           onHideAllFog={handleHideAllFog}
           onAddLightAtCenter={handleAddLightAtCenter}
@@ -1633,7 +1655,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </radialGradient>
           ))}
 
-          {/* Gradientes radiais para a máscara da névoa (luz dissipa suavemente até a escuridão na borda) */}
+          {/* Gradientes radiais para a máscara da névoa (luz dissipa suavemente até a escuridão na borda sem linhas duras ou sobreposições escuras) */}
           {(tacticalState.lights || []).map((light) => (
             <radialGradient
               key={`mask-grad-light-${light.id}`}
@@ -1643,9 +1665,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               r="50%"
             >
               <stop offset="0%" stopColor="#000000" stopOpacity="1" />
-              <stop offset="50%" stopColor="#000000" stopOpacity="0.95" />
-              <stop offset="78%" stopColor="#888888" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
+              <stop offset="45%" stopColor="#000000" stopOpacity="0.85" />
+              <stop offset="75%" stopColor="#000000" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
             </radialGradient>
           ))}
 
@@ -1673,9 +1695,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   r="50%"
                 >
                   <stop offset="0%" stopColor="#000000" stopOpacity="1" />
-                  <stop offset="50%" stopColor="#000000" stopOpacity="0.95" />
-                  <stop offset="78%" stopColor="#888888" stopOpacity="0.65" />
-                  <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
+                  <stop offset="45%" stopColor="#000000" stopOpacity="0.85" />
+                  <stop offset="75%" stopColor="#000000" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#000000" stopOpacity="0" />
                 </radialGradient>
               </React.Fragment>
             );
@@ -1924,6 +1946,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             {(tacticalState.lights || []).map((light) => {
               const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+              const isRemoveMode = activeTool === 'fog' && fogSubTool === 'light' && lightAction === 'remove';
 
               return (
                 <g
@@ -1932,19 +1955,33 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   className="cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
-                    const updated = (tacticalState.lights || []).map((l) =>
-                      l.id === light.id ? { ...l, active: !l.active } : l
-                    );
+                    if (isRemoveMode) {
+                      // Modo de remoção de luz ativo: exclui este foco imediatamente
+                      const updated = (tacticalState.lights || []).filter((l) => l.id !== light.id);
+                      onUpdateTacticalState({ lights: updated });
+                    } else {
+                      // Modo normal: alterna foco ativo/inativo
+                      const updated = (tacticalState.lights || []).map((l) =>
+                        l.id === light.id ? { ...l, active: !l.active } : l
+                      );
+                      onUpdateTacticalState({ lights: updated });
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    // Botão direito sempre exclui o foco de luz diretamente!
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const updated = (tacticalState.lights || []).filter((l) => l.id !== light.id);
                     onUpdateTacticalState({ lights: updated });
                   }}
                 >
-                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} jardas) - Clique para ${light.active ? 'apagar' : 'acender'}`}</title>
+                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} jardas) — Botão esquerdo: ${isRemoveMode ? 'Excluir' : light.active ? 'Apagar' : 'Acender'} | Botão direito: Excluir`}</title>
                   <circle
                     cx="0"
                     cy="0"
                     r={hexSize * 0.45}
-                    fill="#020617"
-                    stroke={light.active ? (light.color || '#f59e0b') : '#64748b'}
+                    fill={isRemoveMode ? '#7f1d1d' : '#020617'}
+                    stroke={isRemoveMode ? '#ef4444' : light.active ? (light.color || '#f59e0b') : '#64748b'}
                     strokeWidth="2"
                     opacity="0.9"
                   />
@@ -1955,7 +1992,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     textAnchor="middle"
                     className="select-none pointer-events-none"
                   >
-                    {light.label === 'Fogueira' ? '🏕️' : light.label === 'Lanterna' ? '🏮' : light.label === 'Magia' ? '✨' : '🔥'}
+                    {isRemoveMode ? '❌' : light.label === 'Fogueira' ? '🏕️' : light.label === 'Lanterna' ? '🏮' : light.label === 'Magia' ? '✨' : '🔥'}
                   </text>
                 </g>
               );
@@ -2761,6 +2798,31 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {(() => {
                 const relCenter = getHexCenter(hoveredHex.col, hoveredHex.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+
+                if (lightAction === 'remove') {
+                  return (
+                    <g>
+                      <circle
+                        cx={center.x}
+                        cy={center.y}
+                        r={hexSize * 0.8}
+                        fill="rgba(239, 68, 68, 0.25)"
+                        stroke="#ef4444"
+                        strokeWidth="2"
+                        strokeDasharray="4 3"
+                      />
+                      <text
+                        x={center.x}
+                        y={center.y + 4.5}
+                        fontSize="14"
+                        textAnchor="middle"
+                      >
+                        ❌
+                      </text>
+                    </g>
+                  );
+                }
+
                 const radiusPixels = (customLightRadius || 5) * hexWidth * 0.95;
 
                 return (
