@@ -960,20 +960,21 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 </button>
               </div>
 
-              {/* Botão de Posicionar Luz */}
+              {/* Orientação para Posicionar Luz */}
               <div className="flex items-center gap-2">
+                <div className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                  <MousePointer size={13} className="text-amber-400" />
+                  <span>Clique no mapa com o mouse para posicionar</span>
+                </div>
                 <button
                   type="button"
                   onClick={onAddLightAtCenter}
-                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-                  title="Inserir um foco de luz no mapa"
+                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all flex items-center gap-1 active:scale-95"
+                  title="Inserir um foco de luz no centro do mapa"
                 >
                   <Flame size={12} />
-                  <span>Inserir Luz</span>
+                  <span>No Centro</span>
                 </button>
-                <span className="text-[10px] text-slate-400 hidden sm:inline">
-                  (ou clique no mapa para posicionar)
-                </span>
               </div>
 
               {/* Gerenciar Luzes Existentes */}
