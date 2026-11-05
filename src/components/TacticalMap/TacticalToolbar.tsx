@@ -197,7 +197,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
               }`}
-              title="Nível 1: Camada do Mapa (Imagem base e alinhamento do grid hexagonal - tokens ficam ocultos para calibrar)"
+              title="Nível 1: Camada do Mapa (Imagem base e alinhamento do grid - tokens ficam ocultos para calibrar)"
             >
               <MapIcon size={13} />
               <span>1. Mapa</span>
@@ -483,21 +483,115 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       </div>
                     </div>
 
-                    {/* Informações da Imagem Carregada */}
-                    <div className="p-2 bg-slate-950/80 border border-slate-800/80 rounded-lg flex items-center justify-between text-[11px] text-slate-300">
-                      <span className="flex items-center gap-1.5 text-slate-400">
-                        <FileImage size={13} className="text-amber-400" />
-                        <span>Dimensões originais:</span>
-                      </span>
-                      <span className="font-mono text-amber-300 font-bold">
-                        {tacticalState.mapImageWidth || 2000} × {tacticalState.mapImageHeight || 1400} px
-                        <span className="ml-1.5 text-[10px] text-slate-400 font-sans font-normal">
-                          {(tacticalState.mapImageHeight || 1400) > (tacticalState.mapImageWidth || 2000)
-                            ? '(Retrato / Em Pé)'
-                            : '(Paisagem / Deitado)'}
-                        </span>
-                      </span>
-                    </div>
+                    {/* Informações da Imagem Carregada e Ajuste de Tamanho (Mantendo Proporção) */}
+                    {(() => {
+                      const curMapW = tacticalState.mapImageWidth || 2000;
+                      const curMapH = tacticalState.mapImageHeight || 1400;
+                      const mapAspect = curMapW / curMapH;
+
+                      const handleResizeMapWidth = (newW: number) => {
+                        const safeW = Math.max(400, Math.min(8000, Math.round(newW)));
+                        const safeH = Math.max(200, Math.round(safeW / (mapAspect || 1.428)));
+                        onUpdateTacticalState({
+                          mapImageWidth: safeW,
+                          mapImageHeight: safeH,
+                        });
+                      };
+
+                      return (
+                        <div className="space-y-2 p-2.5 bg-slate-950/80 border border-slate-800/80 rounded-lg text-[11px] text-slate-300">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1.5 text-slate-400 font-semibold">
+                              <FileImage size={13} className="text-amber-400" />
+                              <span>Tamanho da Imagem do Mapa:</span>
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                              <Lock size={10} /> Proporção Preservada
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400">Largura:</span>
+                              <span className="font-mono text-xs font-bold text-amber-300">
+                                {curMapW}px
+                              </span>
+                            </div>
+                            <span className="text-slate-500 font-bold">×</span>
+                            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400">Altura:</span>
+                              <span className="font-mono text-xs font-bold text-amber-300">
+                                {curMapH}px
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Slider e Botões de Redimensionamento Proporcional */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleResizeMapWidth(curMapW - 100)}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold text-xs"
+                              title="Diminuir 100px"
+                            >
+                              -100
+                            </button>
+                            <input
+                              type="range"
+                              min="500"
+                              max="5000"
+                              step="50"
+                              value={curMapW}
+                              onChange={(e) => handleResizeMapWidth(Number(e.target.value))}
+                              className="flex-1 accent-amber-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleResizeMapWidth(curMapW + 100)}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold text-xs"
+                              title="Aumentar 100px"
+                            >
+                              +100
+                            </button>
+                          </div>
+
+                          {/* Presets Rápidos */}
+                          <div className="flex items-center justify-between gap-1 text-[10px] pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleResizeMapWidth(1200)}
+                              className="flex-1 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 text-center"
+                            >
+                              1200px
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleResizeMapWidth(2000)}
+                              className="flex-1 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 text-center"
+                            >
+                              2000px
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleResizeMapWidth(3000)}
+                              className="flex-1 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 text-center"
+                            >
+                              3000px
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleResizeMapWidth(4000)}
+                              className="flex-1 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 text-center"
+                            >
+                              4000px
+                            </button>
+                          </div>
+                          <div className="text-[10px] text-slate-400 italic">
+                            Altere o tamanho da imagem para calibrar a escala das salas e do grid sem esticar nem distorcer.
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Cenários Ilustrados Padrão */}
                     <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
@@ -545,45 +639,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       <Grid size={13} className="text-amber-400" /> Calibração da Grade & Escala Tática
                     </span>
 
-                    {/* Formato da Grade: Hexagonal vs Quadrada */}
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">
-                        Formato da Grade:
-                      </label>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => onUpdateTacticalState({ gridType: 'hex' })}
-                          className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border ${
-                            tacticalState.gridType === 'hex'
-                              ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
-                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
-                          }`}
-                        >
-                          <Sparkles size={13} />
-                          <span>Hexagonal (GURPS)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onUpdateTacticalState({ gridType: 'square' })}
-                          className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border ${
-                            tacticalState.gridType === 'square'
-                              ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
-                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
-                          }`}
-                        >
-                          <Grid size={13} />
-                          <span>Quadrado</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Escala da Grade: Tamanho do Hexágono (hexSize) */}
+                    {/* Escala da Grade: Tamanho do Quadrado (hexSize) */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[11px] text-slate-300 font-semibold">
-                        <span>Escala do Grid (Tamanho da Célula):</span>
+                        <span>Tamanho do Quadrado (Célula do Grid):</span>
                         <span className="font-mono text-amber-400 font-bold">
-                          {tacticalState.hexSize}px
+                          {tacticalState.hexSize || 50}px
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -591,18 +652,19 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                           type="button"
                           onClick={() =>
                             onUpdateTacticalState({
-                              hexSize: Math.max(16, (tacticalState.hexSize || 38) - 1),
+                              hexSize: Math.max(16, (tacticalState.hexSize || 50) - 2),
                             })
                           }
                           className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
+                          title="Diminuir célula"
                         >
                           -
                         </button>
                         <input
                           type="range"
                           min="16"
-                          max="95"
-                          value={tacticalState.hexSize || 38}
+                          max="130"
+                          value={tacticalState.hexSize || 50}
                           onChange={(e) =>
                             onUpdateTacticalState({ hexSize: Number(e.target.value) })
                           }
@@ -612,16 +674,17 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                           type="button"
                           onClick={() =>
                             onUpdateTacticalState({
-                              hexSize: Math.min(120, (tacticalState.hexSize || 38) + 1),
+                              hexSize: Math.min(150, (tacticalState.hexSize || 50) + 2),
                             })
                           }
                           className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
+                          title="Aumentar célula"
                         >
                           +
                         </button>
                       </div>
                       <div className="text-[10px] text-slate-400 italic">
-                        Aumente ou diminua para alinhar os hexágonos com a imagem de baixo sem esticar a imagem.
+                        Aumente ou diminua o tamanho de cada quadrado para alinhar a grade perfeitamente com as salas do mapa.
                       </div>
                     </div>
 
@@ -906,9 +969,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     ? 'bg-amber-500 text-slate-950'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="1 Hexágono"
+                title="1 Quadrado"
               >
-                1 Hex
+                1 Qdr
               </button>
               <button
                 type="button"
@@ -918,9 +981,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     ? 'bg-amber-500 text-slate-950'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="3 Hexes (raio de 1 jarda)"
+                title="Pequeno (raio de 1 quadrado)"
               >
-                3 Hexes
+                Pequeno
               </button>
               <button
                 type="button"
@@ -930,9 +993,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     ? 'bg-amber-500 text-slate-950'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="7 Hexes (raio de 2 jardas)"
+                title="Médio (raio de 2 quadrados)"
               >
-                7 Hexes
+                Médio
               </button>
             </div>
           )}

@@ -17,6 +17,65 @@ export interface CubeCoord {
 }
 
 /**
+ * Retorna as coordenadas de pixel do centro de uma célula quadrada
+ */
+export function getCellCenter(col: number, row: number, cellSize: number): Point {
+  return {
+    x: col * cellSize + cellSize / 2,
+    y: row * cellSize + cellSize / 2,
+  };
+}
+
+/**
+ * Converte coordenada de pixel para a célula quadrada mais próxima
+ */
+export function pixelToCell(pixelX: number, pixelY: number, cellSize: number): HexCoord {
+  return {
+    col: Math.floor(pixelX / cellSize),
+    row: Math.floor(pixelY / cellSize),
+  };
+}
+
+/**
+ * Distância em células quadradas (Chebyshev: 1 passo em qualquer direção = 1 jarda)
+ */
+export function getCellDistance(a: HexCoord, b: HexCoord): number {
+  return Math.max(Math.abs(b.col - a.col), Math.abs(b.row - a.row));
+}
+
+/**
+ * Retorna todas as células quadradas dentro de um raio de alcance (circular)
+ */
+export function getCellsInRange(center: HexCoord, radius: number): HexCoord[] {
+  const results: HexCoord[] = [];
+  const rCeil = Math.ceil(radius);
+  for (let r = center.row - rCeil; r <= center.row + rCeil; r++) {
+    for (let c = center.col - rCeil; c <= center.col + rCeil; c++) {
+      if (Math.hypot(c - center.col, r - center.row) <= radius + 0.15) {
+        results.push({ col: c, row: r });
+      }
+    }
+  }
+  return results;
+}
+
+/**
+ * Traça uma linha de células quadradas entre dois pontos (Supercover / Bresenham)
+ */
+export function getCellLine(a: HexCoord, b: HexCoord): HexCoord[] {
+  const n = getCellDistance(a, b);
+  if (n === 0) return [a];
+  const results: HexCoord[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const c = Math.round(a.col + (b.col - a.col) * t);
+    const r = Math.round(a.row + (b.row - a.row) * t);
+    results.push({ col: c, row: r });
+  }
+  return results;
+}
+
+/**
  * Retorna as coordenadas de pixel do centro de um hexágono pointy-topped
  */
 export function getHexCenter(col: number, row: number, hexSize: number): Point {
@@ -179,11 +238,9 @@ export function getTargetArcRelationship(
     return 'self';
   }
 
-  // Calcula o ângulo em radianos do token para o alvo
-  const pA = getHexCenter(tokenPos.col, tokenPos.row, 40);
-  const pB = getHexCenter(targetPos.col, targetPos.row, 40);
-  const dx = pB.x - pA.x;
-  const dy = pB.y - pA.y;
+  // Calcula o deslocamento relativo do token para o alvo na grade
+  const dx = targetPos.col - tokenPos.col;
+  const dy = targetPos.row - tokenPos.row;
 
   // Ângulo matemático: 0° é Leste, girando horário
   // Ajustamos para que 0° seja Norte (subindo y)
