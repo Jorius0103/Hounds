@@ -2054,8 +2054,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       const updated = (tacticalState.lights || []).filter((l) => l.id !== light.id);
                       onUpdateTacticalState({ lights: updated });
                     } else if (isDirectional) {
-                      // Foco direcional (180° ou 90°): clique esquerdo gira a direção em +45°
-                      const nextRot = (((light.rotation ?? 0) + 45) % 360);
+                      // Foco direcional (180° ou 90°): clique esquerdo gira a direção em +30°
+                      const nextRot = (((light.rotation ?? 0) + 30) % 360);
                       const updated = (tacticalState.lights || []).map((l) =>
                         l.id === light.id ? { ...l, rotation: nextRot } : l
                       );
@@ -2076,7 +2076,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     onUpdateTacticalState({ lights: updated });
                   }}
                 >
-                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} yd • ${light.angle || 360}°) — Botão esquerdo: ${isRemoveMode ? 'Excluir' : isDirectional ? 'Girar direção (+45°)' : light.active ? 'Apagar' : 'Acender'} | Botão direito: Excluir`}</title>
+                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} yd • ${light.angle || 360}°) — Botão esquerdo: ${isRemoveMode ? 'Excluir' : isDirectional ? 'Girar direção (+30°)' : light.active ? 'Apagar' : 'Acender'} | Botão direito: Excluir`}</title>
                   <circle
                     cx="0"
                     cy="0"
@@ -2187,8 +2187,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
-                      {/* Indicador de Camada M (Roxo - Mestre) / J (Verde - Jogadores) para o GM */}
-                      {isMaster && (
+                      {/* Indicador de Camada Mestre (Roxo) para o GM quando oculto dos jogadores */}
+                      {isMaster && marker.layer === 'gm' && (
                         <g
                           className="cursor-pointer"
                           onMouseDown={(e) => {
@@ -2201,23 +2201,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                             handleToggleMarkerLayer(marker.id);
                           }}
                         >
-                          <title>
-                            {marker.layer === 'gm'
-                              ? "Visão: Apenas Mestre (borda roxa). Clique para tornar visível aos jogadores."
-                              : "Visão: Jogadores (borda verde). Clique para ocultar dos jogadores."}
-                          </title>
+                          <title>Visão: Apenas Mestre (oculto dos jogadores). Clique para tornar visível aos jogadores.</title>
                           <circle
                             cx="-58"
                             cy="-3"
                             r="7"
                             fill="#020617"
-                            stroke={marker.layer === 'gm' ? '#a855f7' : '#10b981'}
+                            stroke="#a855f7"
                             strokeWidth="1.8"
                           />
                           <path
                             d="M -62 -3 C -60.3 -5.4 -55.7 -5.4 -54 -3 C -55.7 -0.6 -60.3 -0.6 -62 -3 Z"
                             fill="none"
-                            stroke={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                            stroke="#c084fc"
                             strokeWidth="1"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -2226,19 +2222,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                             cx="-58"
                             cy="-3"
                             r="1.1"
-                            fill={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                            fill="#c084fc"
                           />
-                          {marker.layer === 'gm' && (
-                            <line
-                              x1="-61"
-                              y1="-6"
-                              x2="-55"
-                              y2="0"
-                              stroke="#c084fc"
-                              strokeWidth="1"
-                              strokeLinecap="round"
-                            />
-                          )}
+                          <line
+                            x1="-61"
+                            y1="-6"
+                            x2="-55"
+                            y2="0"
+                            stroke="#c084fc"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                          />
                         </g>
                       )}
                       <text
@@ -2327,8 +2321,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
-                      {/* Indicador de Camada M (Roxo - Mestre) / J (Verde - Jogadores) para o GM */}
-                      {isMaster && (
+                      {/* Indicador de Camada Mestre (Roxo) para o GM quando oculto dos jogadores */}
+                      {isMaster && marker.layer === 'gm' && (
                         <g
                           className="cursor-pointer"
                           onMouseDown={(e) => {
@@ -2341,23 +2335,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                             handleToggleMarkerLayer(marker.id);
                           }}
                         >
-                          <title>
-                            {marker.layer === 'gm'
-                              ? "Visão: Apenas Mestre (borda roxa). Clique para tornar visível aos jogadores."
-                              : "Visão: Jogadores (borda verde). Clique para ocultar dos jogadores."}
-                          </title>
+                          <title>Visão: Apenas Mestre (oculto dos jogadores). Clique para tornar visível aos jogadores.</title>
                           <circle
                             cx="-58"
                             cy="-3"
                             r="7"
                             fill="#020617"
-                            stroke={marker.layer === 'gm' ? '#a855f7' : '#10b981'}
+                            stroke="#a855f7"
                             strokeWidth="1.8"
                           />
                           <path
                             d="M -62 -3 C -60.3 -5.4 -55.7 -5.4 -54 -3 C -55.7 -0.6 -60.3 -0.6 -62 -3 Z"
                             fill="none"
-                            stroke={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                            stroke="#c084fc"
                             strokeWidth="1"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -2366,19 +2356,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                             cx="-58"
                             cy="-3"
                             r="1.1"
-                            fill={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                            fill="#c084fc"
                           />
-                          {marker.layer === 'gm' && (
-                            <line
-                              x1="-61"
-                              y1="-6"
-                              x2="-55"
-                              y2="0"
-                              stroke="#c084fc"
-                              strokeWidth="1"
-                              strokeLinecap="round"
-                            />
-                          )}
+                          <line
+                            x1="-61"
+                            y1="-6"
+                            x2="-55"
+                            y2="0"
+                            stroke="#c084fc"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                          />
                         </g>
                       )}
                       <text
@@ -2744,8 +2732,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       })()
                     )}
 
-                    {/* MARCAÇÃO SUTIL DE VISIBILIDADE (MESTRE / JOGADORES): OLHO COM BORDA VERDE OU ROXA */}
-                    {isMaster && (
+                    {/* MARCAÇÃO DE VISIBILIDADE APENAS PARA O MESTRE (QUANDO OCULTO DOS JOGADORES): OLHO ROXO */}
+                    {isMaster && isTokenHidden && (
                       <g
                         transform={`translate(${badgeWidth / 2 + 10}, ${-tokenRadius - 10.5})`}
                         onClick={(e) => {
@@ -2754,24 +2742,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         }}
                         className="cursor-pointer hover:scale-125 transition-transform"
                       >
-                        <title>
-                          {isTokenHidden
-                            ? "Visão: Apenas Mestre (borda roxa). Clique para tornar visível aos jogadores."
-                            : "Visão: Jogadores (borda verde). Clique para ocultar dos jogadores."}
-                        </title>
+                        <title>Visão: Apenas Mestre (oculto dos jogadores). Clique para revelar aos jogadores.</title>
                         <circle
                           cx="0"
                           cy="0"
                           r="7"
                           fill="#020617"
                           fillOpacity="0.95"
-                          stroke={isTokenHidden ? "#a855f7" : "#10b981"}
+                          stroke="#a855f7"
                           strokeWidth="1.8"
                         />
                         <path
                           d="M -4.2 0 C -2.4 -2.6 2.4 -2.6 4.2 0 C 2.4 2.6 -2.4 2.6 -4.2 0 Z"
                           fill="none"
-                          stroke={isTokenHidden ? "#c084fc" : "#34d399"}
+                          stroke="#c084fc"
                           strokeWidth="1.1"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -2780,19 +2764,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           cx="0"
                           cy="0"
                           r="1.2"
-                          fill={isTokenHidden ? "#c084fc" : "#34d399"}
+                          fill="#c084fc"
                         />
-                        {isTokenHidden && (
-                          <line
-                            x1="-3.6"
-                            y1="-3.6"
-                            x2="3.6"
-                            y2="3.6"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                          />
-                        )}
+                        <line
+                          x1="-3.6"
+                          y1="-3.6"
+                          x2="3.6"
+                          y2="3.6"
+                          stroke="#c084fc"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                        />
                       </g>
                     )}
 

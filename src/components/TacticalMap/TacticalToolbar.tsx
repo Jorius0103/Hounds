@@ -18,6 +18,7 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  RotateCw,
   Sliders,
   Layers,
   Map as MapIcon,
@@ -1046,29 +1047,35 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     </button>
                   </div>
 
-                  {/* Seletor de Direção rápida para 180° ou 90° */}
+                  {/* Giro em passos de 30° (frente e trás) para 180° ou 90° */}
                   {customLightAngle && customLightAngle < 360 && (
-                    <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
-                      {[
-                        { rot: 270, label: '⬆️', title: 'Apontar para Cima/Norte' },
-                        { rot: 0, label: '➡️', title: 'Apontar para Direita/Leste' },
-                        { rot: 90, label: '⬇️', title: 'Apontar para Baixo/Sul' },
-                        { rot: 180, label: '⬅️', title: 'Apontar para Esquerda/Oeste' },
-                      ].map((d) => (
-                        <button
-                          key={d.rot}
-                          type="button"
-                          onClick={() => onSetCustomLightRotation?.(d.rot)}
-                          className={`px-1.5 py-0.5 rounded text-xs cursor-pointer transition-colors ${
-                            (customLightRotation ?? 0) === d.rot
-                              ? 'bg-amber-500/30 text-amber-200 border border-amber-400'
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                          title={d.title}
-                        >
-                          {d.label}
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
+                        Giro:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onSetCustomLightRotation?.(((customLightRotation ?? 0) - 30 + 360) % 360)
+                        }
+                        className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
+                        title="Girar 30° para trás / anti-horário"
+                      >
+                        <RotateCcw size={12} />
+                      </button>
+                      <span className="font-mono font-bold text-amber-300 text-xs px-1 min-w-[34px] text-center select-none">
+                        {(customLightRotation ?? 0)}°
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onSetCustomLightRotation?.(((customLightRotation ?? 0) + 30) % 360)
+                        }
+                        className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
+                        title="Girar 30° para frente / horário"
+                      >
+                        <RotateCw size={12} />
+                      </button>
                     </div>
                   )}
                 </>
@@ -1143,14 +1150,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const nextRot = (((l.rotation ?? 0) + 45) % 360);
+                                    const nextRot = (((l.rotation ?? 0) + 30) % 360);
                                     const updated = (tacticalState.lights || []).map((item) =>
                                       item.id === l.id ? { ...item, rotation: nextRot } : item
                                     );
                                     onUpdateTacticalState({ lights: updated });
                                   }}
                                   className="p-1 rounded text-amber-400 hover:bg-amber-500/20 cursor-pointer"
-                                  title={`Girar foco (+45° atual: ${l.rotation ?? 0}°)`}
+                                  title={`Girar foco (+30° atual: ${l.rotation ?? 0}°)`}
                                 >
                                   <RotateCcw size={12} />
                                 </button>
