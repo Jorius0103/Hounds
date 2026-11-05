@@ -184,6 +184,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [draggedPropId, setDraggedPropId] = useState<string | null>(null);
   const [dragPropOffset, setDragPropOffset] = useState<Point>({ x: 0, y: 0 });
   const [dragPropPos, setDragPropPos] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [draggedLightId, setDraggedLightId] = useState<string | null>(null);
+  const [dragLightPos, setDragLightPos] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [mouseMapPos, setMouseMapPos] = useState<Point | null>(null);
 
   // Map of characters by id
   const characterMap = useMemo(() => {
@@ -325,6 +328,21 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     }
     return path;
   }, [dynamicRows, dynamicCols, hexSize, mapX, mapY]);
+
+  // Retorna as coordenadas globais exatas (em pixels) de um foco de luz (suporta posicionamento rente à parede)
+  const getLightCenter = useCallback(
+    (light: TacticalLightSource) => {
+      if (dragLightPos && dragLightPos.id === light.id) {
+        return { x: mapX + dragLightPos.x, y: mapY + dragLightPos.y };
+      }
+      if (typeof light.x === 'number' && typeof light.y === 'number') {
+        return { x: mapX + light.x, y: mapY + light.y };
+      }
+      const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
+      return { x: mapX + relCenter.x, y: mapY + relCenter.y };
+    },
+    [mapX, mapY, hexSize, dragLightPos]
+  );
 
   // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
   const litCellsSet = useMemo(() => {
@@ -568,11 +586,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             onUpdateTacticalState({ lights: updated });
           }
         } else {
-          // Cria novo foco de luz com o raio e abertura de ângulo digitados
+          // Cria novo foco de luz com o raio, posição exata e abertura de ângulo digitados
           const newLight: TacticalLightSource = {
             id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
             gridX: hex.col,
             gridY: hex.row,
+            x: Math.round(p.x - mapX),
+            y: Math.round(p.y - mapY),
             radius: customLightRadius || 5,
             color: customLightColor || '#f59e0b',
             intensity: 0.85,
@@ -693,6 +713,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (draggedLightId) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      setDragLightPos({ id: draggedLightId, x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) });
+      return;
+    }
+
     if (draggedPropId) {
       const p = clientToMapCoords(e.clientX, e.clientY);
       const nextX = Math.round(p.x - dragPropOffset.x);
@@ -709,7 +735,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
     if (isOverOverlay) {
       setHoveredHex((prev) => (prev ? null : prev));
-      if (!fogBoxStart && !isPanning && !draggedTokenId && !draggedPropId && !rotatingTokenId) {
+      if (!fogBoxStart && !isPanning && !draggedTokenId && !draggedPropId && !draggedLightId && !rotatingTokenId) {
         return;
       }
     }
@@ -725,6 +751,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
     const p = clientToMapCoords(e.clientX, e.clientY);
     const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
+
+    if (activeTool === 'fog' && fogSubTool === 'light') {
+      setMouseMapPos({ x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) });
+    }
 
     if (!isOverOverlay) {
       setHoveredHex((prev) => {
@@ -771,6 +801,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   };
 
   const handleMouseUp = () => {
+    if (draggedLightId) {
+      if (dragLightPos) {
+        const hex = pixelToHex(dragLightPos.x, dragLightPos.y, hexSize);
+        const updated = (tacticalState.lights || []).map((l) =>
+          l.id === dragLightPos.id
+            ? { ...l, x: dragLightPos.x, y: dragLightPos.y, gridX: hex.col, gridY: hex.row }
+            : l
+        );
+        onUpdateTacticalState({ lights: updated });
+        setDragLightPos(null);
+      }
+      setDraggedLightId(null);
+    }
+
     if (draggedPropId) {
       if (dragPropPos) {
         const updatedProps = (tacticalState.props || []).map((prop) =>
@@ -1285,7 +1329,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       onMouseUp={handleMouseUp}
       onMouseLeave={() => {
         if (isPanning) setIsPanning(false);
+        if (draggedLightId) {
+          setDraggedLightId(null);
+          setDragLightPos(null);
+        }
         if (draggedPropId) setDraggedPropId(null);
+        setMouseMapPos(null);
         if (draggedTokenId) {
           setDraggedTokenId(null);
           setDragTokenOrigin(null);
@@ -1689,8 +1738,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
           {/* Gradientes radiais para focos de luz fixos (glow visual atenuando) */}
           {(tacticalState.lights || []).map((light) => {
-            const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
-            const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+            const center = getLightCenter(light);
             const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
 
             return (
@@ -1712,8 +1760,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
           {/* Gradientes radiais para a máscara da névoa (luz dissipa suavemente até a escuridão na borda sem linhas duras ou sobreposições escuras) */}
           {(tacticalState.lights || []).map((light) => {
-            const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
-            const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+            const center = getLightCenter(light);
             const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
 
             return (
@@ -1810,8 +1857,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {/* 3. Focos de luz fixos: degradê suave perdendo iluminação até as bordas (360°, 180° ou 90°) */}
               {(tacticalState.lights || []).map((light) => {
                 if (light.active === false || (light.radius || 0) <= 0) return null;
-                const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
-                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                const center = getLightCenter(light);
                 const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
 
                 if (light.angle && light.angle < 360) {
@@ -1988,8 +2034,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             {/* Brilho dos focos de luz fixos */}
             {(tacticalState.lights || []).map((light) => {
               if (light.active === false || light.radius <= 0) return null;
-              const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
-              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+              const center = getLightCenter(light);
               const radiusPixels = light.radius * hexWidth * 0.95;
 
               if (light.angle && light.angle < 360) {
@@ -2037,8 +2082,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* ÍCONES DOS FOCOS DE LUZ FIXOS NO TABULEIRO */}
           <g id="tactical-light-sources">
             {(tacticalState.lights || []).map((light) => {
-              const relCenter = getHexCenter(light.gridX, light.gridY, hexSize);
-              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+              const center = getLightCenter(light);
               const isRemoveMode = activeTool === 'fog' && fogSubTool === 'light' && lightAction === 'remove';
               const isDirectional = light.angle && light.angle < 360;
 
@@ -2046,7 +2090,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 <g
                   key={light.id}
                   transform={`translate(${center.x}, ${center.y})`}
-                  className="cursor-pointer"
+                  className={isRemoveMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
+                  onMouseDown={(e) => {
+                    if (e.button === 0 && !isRemoveMode) {
+                      e.stopPropagation();
+                      setDraggedLightId(light.id);
+                    }
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isRemoveMode) {
@@ -2054,8 +2104,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       const updated = (tacticalState.lights || []).filter((l) => l.id !== light.id);
                       onUpdateTacticalState({ lights: updated });
                     } else if (isDirectional) {
-                      // Foco direcional (180° ou 90°): clique esquerdo gira a direção em +30°
-                      const nextRot = (((light.rotation ?? 0) + 30) % 360);
+                      // Foco direcional (180° ou 90°): clique esquerdo gira a direção em +15°
+                      const nextRot = (((light.rotation ?? 0) + 15) % 360);
                       const updated = (tacticalState.lights || []).map((l) =>
                         l.id === light.id ? { ...l, rotation: nextRot } : l
                       );
@@ -2076,7 +2126,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     onUpdateTacticalState({ lights: updated });
                   }}
                 >
-                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} yd • ${light.angle || 360}°) — Botão esquerdo: ${isRemoveMode ? 'Excluir' : isDirectional ? 'Girar direção (+30°)' : light.active ? 'Apagar' : 'Acender'} | Botão direito: Excluir`}</title>
+                  <title>{`${light.label || 'Foco de Luz'} (${light.radius} yd • ${light.angle || 360}°) — Arraste para mover rente à parede | Botão esquerdo: ${isRemoveMode ? 'Excluir' : isDirectional ? 'Girar direção (+15°)' : light.active ? 'Apagar' : 'Acender'} | Botão direito: Excluir`}</title>
                   <circle
                     cx="0"
                     cy="0"
@@ -2884,11 +2934,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           )}
 
           {/* PREVIEW DO FOCO DE LUZ AO PASSAR O MOUSE (QUANDO SUB-FERRAMENTA LUZ ESTÁ SELECIONADA EM OCULTAR) */}
-          {activeTool === 'fog' && fogSubTool === 'light' && hoveredHex && (
+          {activeTool === 'fog' && fogSubTool === 'light' && (hoveredHex || mouseMapPos) && (
             <g id="light-brush-preview" pointerEvents="none">
               {(() => {
-                const relCenter = getHexCenter(hoveredHex.col, hoveredHex.row, hexSize);
-                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                const relCenter = hoveredHex ? getHexCenter(hoveredHex.col, hoveredHex.row, hexSize) : { x: 0, y: 0 };
+                const center = mouseMapPos
+                  ? { x: mapX + mouseMapPos.x, y: mapY + mouseMapPos.y }
+                  : { x: mapX + relCenter.x, y: mapY + relCenter.y };
 
                 if (lightAction === 'remove') {
                   return (

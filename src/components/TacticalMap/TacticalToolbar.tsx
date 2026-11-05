@@ -1047,35 +1047,95 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     </button>
                   </div>
 
-                  {/* Giro em passos de 30° (frente e trás) para 180° ou 90° */}
+                  {/* Giro e Alinhamento Preciso para 180° ou 90° (passos de 15°, campo numérico e atalhos de cantos/paredes) */}
                   {customLightAngle && customLightAngle < 360 && (
-                    <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                    <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
                       <span className="text-[10px] text-slate-400 uppercase font-mono font-bold px-1 select-none">
                         Giro:
                       </span>
                       <button
                         type="button"
                         onClick={() =>
-                          onSetCustomLightRotation?.(((customLightRotation ?? 0) - 30 + 360) % 360)
+                          onSetCustomLightRotation?.(((customLightRotation ?? 0) - 15 + 360) % 360)
                         }
                         className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
-                        title="Girar 30° para trás / anti-horário"
+                        title="Girar 15° para trás / anti-horário"
                       >
                         <RotateCcw size={12} />
                       </button>
-                      <span className="font-mono font-bold text-amber-300 text-xs px-1 min-w-[34px] text-center select-none">
-                        {(customLightRotation ?? 0)}°
-                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={359}
+                        value={customLightRotation ?? 0}
+                        onChange={(e) =>
+                          onSetCustomLightRotation?.(((parseInt(e.target.value) || 0) % 360 + 360) % 360)
+                        }
+                        className="w-12 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
+                        title="Digite o ângulo de rotação da luz em graus (0° a 359°)"
+                      />
+                      <span className="text-xs text-amber-400 font-bold -ml-1 mr-0.5 select-none">°</span>
                       <button
                         type="button"
                         onClick={() =>
-                          onSetCustomLightRotation?.(((customLightRotation ?? 0) + 30) % 360)
+                          onSetCustomLightRotation?.(((customLightRotation ?? 0) + 15) % 360)
                         }
                         className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
-                        title="Girar 30° para frente / horário"
+                        title="Girar 15° para frente / horário"
                       >
                         <RotateCw size={12} />
                       </button>
+
+                      {/* Atalhos Rápidos de Cantos e Paredes */}
+                      <div className="flex items-center gap-0.5 border-l border-slate-800 pl-1.5 ml-0.5">
+                        {customLightAngle === 90 ? (
+                          <>
+                            {[
+                              { rot: 135, label: '↙ 135°', title: 'Alinhar ao Canto Superior-Direito (Bordas: 90° vertical e 180° horizontal)' },
+                              { rot: 45, label: '↘ 45°', title: 'Alinhar ao Canto Superior-Esquerdo (Bordas: 0° horizontal e 90° vertical)' },
+                              { rot: 225, label: '↖ 225°', title: 'Alinhar ao Canto Inferior-Direito (Bordas: 180° horizontal e 270° vertical)' },
+                              { rot: 315, label: '↗ 315°', title: 'Alinhar ao Canto Inferior-Esquerdo (Bordas: 270° vertical e 0° horizontal)' },
+                            ].map((c) => (
+                              <button
+                                key={c.rot}
+                                type="button"
+                                onClick={() => onSetCustomLightRotation?.(c.rot)}
+                                className={`px-1.5 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                                  (customLightRotation ?? 0) === c.rot
+                                    ? 'bg-amber-500/30 text-amber-200 border border-amber-400 shadow-xs'
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                }`}
+                                title={c.title}
+                              >
+                                {c.label}
+                              </button>
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            {[
+                              { rot: 180, label: '⬅ Parede Dir', title: 'Alinhar verticalmente na Parede Direita (base 100% vertical)' },
+                              { rot: 0, label: 'Parede Esq ➡', title: 'Alinhar verticalmente na Parede Esquerda (base 100% vertical)' },
+                              { rot: 90, label: '⬇ Parede Sup', title: 'Alinhar horizontalmente na Parede Superior (base 100% horizontal)' },
+                              { rot: 270, label: '⬆ Parede Inf', title: 'Alinhar horizontalmente na Parede Inferior (base 100% horizontal)' },
+                            ].map((c) => (
+                              <button
+                                key={c.rot}
+                                type="button"
+                                onClick={() => onSetCustomLightRotation?.(c.rot)}
+                                className={`px-1.5 py-0.5 rounded text-[11px] font-semibold cursor-pointer transition-colors ${
+                                  (customLightRotation ?? 0) === c.rot
+                                    ? 'bg-amber-500/30 text-amber-200 border border-amber-400 shadow-xs'
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                }`}
+                                title={c.title}
+                              >
+                                {c.label}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </>

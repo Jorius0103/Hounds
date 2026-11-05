@@ -30,6 +30,8 @@ export interface TacticalLightSource {
   id: string;
   gridX: number; // Coluna no grid
   gridY: number; // Linha no grid
+  x?: number; // Posição exata em pixels X relativa ao mapa (permite encostar perfeitamente na parede)
+  y?: number; // Posição exata em pixels Y relativa ao mapa
   radius: number; // Raio em hexes/jardas (ex: 4 = tocha, 7 = lanterna, 10 = fogueira)
   color?: string; // Cor hex (padrão '#f59e0b')
   intensity?: number; // 0.2 a 1.0 (brilho)
