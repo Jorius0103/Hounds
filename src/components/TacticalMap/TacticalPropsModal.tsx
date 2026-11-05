@@ -123,10 +123,16 @@ export const TacticalPropsModal: React.FC<TacticalPropsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50" onClick={onClose} />
       <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50"
+        onClick={onClose}
+        onWheel={(e) => e.stopPropagation()}
+      />
+      <div
+        id="tactical-props-modal"
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-2xl max-h-[85vh] bg-slate-950 border border-amber-500/40 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden text-xs"
         onClick={(e) => e.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
       >
         {/* Cabeçalho */}
         <div className="p-4 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">

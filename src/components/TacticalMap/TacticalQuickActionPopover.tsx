@@ -82,7 +82,11 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
   const basicMoveNum = typeof npc.basicMove === 'number' ? npc.basicMove : parseInt(String(npc.basicMove)) || 5;
 
   return (
-    <div className="absolute z-50 bg-slate-950/95 backdrop-blur-md border border-slate-750 rounded-2xl shadow-2xl p-3.5 w-80 text-xs text-slate-200 animate-in fade-in zoom-in-95 duration-150">
+    <div
+      id="tactical-quick-action-popover"
+      onWheel={(e) => e.stopPropagation()}
+      className="absolute z-50 bg-slate-950/95 backdrop-blur-md border border-slate-750 rounded-2xl shadow-2xl p-3.5 w-80 text-xs text-slate-200 animate-in fade-in zoom-in-95 duration-150"
+    >
       {/* Header com avatar, nome e fechar */}
       <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-800">
         <div className="flex items-center gap-2.5 min-w-0">

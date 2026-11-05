@@ -476,6 +476,26 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   // Zoom direcionado pelo ponteiro do mouse (scroll do mouse vai em direção ao cursor)
   const handleWheel = (e: React.WheelEvent) => {
+    // Evita zoom/scroll no mapa se o scroll foi gerado dentro de janelas, modais, menus ou barras de ferramentas
+    const target = e.target as HTMLElement | SVGElement | null;
+    if (
+      target &&
+      (target.closest('#tactical-top-toolbar-container') ||
+        target.closest('#tactical-token-sidebar') ||
+        target.closest('#tactical-props-modal') ||
+        target.closest('#tactical-quick-action-popover') ||
+        target.closest('#tactical-context-menu') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('.overflow-y-auto') ||
+        target.closest('.overflow-auto') ||
+        target.closest('.overflow-x-auto') ||
+        target.closest('input') ||
+        target.closest('select') ||
+        target.closest('textarea'))
+    ) {
+      return;
+    }
+
     e.preventDefault();
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -1963,28 +1983,42 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         >
                           <title>
                             {marker.layer === 'gm'
-                              ? "Camada GM (Mestre). Clique para mover para Camada Jogadores (J)"
-                              : "Camada Jogadores (Visível a todos). Clique para mover para Camada GM (M)"}
+                              ? "Visão: Apenas Mestre (borda roxa). Clique para tornar visível aos jogadores."
+                              : "Visão: Jogadores (borda verde). Clique para ocultar dos jogadores."}
                           </title>
                           <circle
                             cx="-58"
                             cy="-3"
-                            r="8"
-                            fill={marker.layer === 'gm' ? '#581c87' : '#064e3b'}
-                            stroke={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
-                            strokeWidth="1.5"
+                            r="7"
+                            fill="#020617"
+                            stroke={marker.layer === 'gm' ? '#a855f7' : '#10b981'}
+                            strokeWidth="1.8"
                           />
-                          <text
-                            x="-58"
-                            y="0.5"
-                            fill={marker.layer === 'gm' ? '#f3e8ff' : '#ecfdf5'}
-                            fontSize="9"
-                            fontWeight="bold"
-                            textAnchor="middle"
-                            pointerEvents="none"
-                          >
-                            {marker.layer === 'gm' ? 'M' : 'J'}
-                          </text>
+                          <path
+                            d="M -62 -3 C -60.3 -5.4 -55.7 -5.4 -54 -3 C -55.7 -0.6 -60.3 -0.6 -62 -3 Z"
+                            fill="none"
+                            stroke={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle
+                            cx="-58"
+                            cy="-3"
+                            r="1.1"
+                            fill={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                          />
+                          {marker.layer === 'gm' && (
+                            <line
+                              x1="-61"
+                              y1="-6"
+                              x2="-55"
+                              y2="0"
+                              stroke="#c084fc"
+                              strokeWidth="1"
+                              strokeLinecap="round"
+                            />
+                          )}
                         </g>
                       )}
                       <text
@@ -2089,28 +2123,42 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         >
                           <title>
                             {marker.layer === 'gm'
-                              ? "Camada GM (Mestre). Clique para mover para Camada Jogadores (J)"
-                              : "Camada Jogadores (Visível a todos). Clique para mover para Camada GM (M)"}
+                              ? "Visão: Apenas Mestre (borda roxa). Clique para tornar visível aos jogadores."
+                              : "Visão: Jogadores (borda verde). Clique para ocultar dos jogadores."}
                           </title>
                           <circle
                             cx="-58"
                             cy="-3"
-                            r="8"
-                            fill={marker.layer === 'gm' ? '#581c87' : '#064e3b'}
-                            stroke={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
-                            strokeWidth="1.5"
+                            r="7"
+                            fill="#020617"
+                            stroke={marker.layer === 'gm' ? '#a855f7' : '#10b981'}
+                            strokeWidth="1.8"
                           />
-                          <text
-                            x="-58"
-                            y="0.5"
-                            fill={marker.layer === 'gm' ? '#f3e8ff' : '#ecfdf5'}
-                            fontSize="9"
-                            fontWeight="bold"
-                            textAnchor="middle"
-                            pointerEvents="none"
-                          >
-                            {marker.layer === 'gm' ? 'M' : 'J'}
-                          </text>
+                          <path
+                            d="M -62 -3 C -60.3 -5.4 -55.7 -5.4 -54 -3 C -55.7 -0.6 -60.3 -0.6 -62 -3 Z"
+                            fill="none"
+                            stroke={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle
+                            cx="-58"
+                            cy="-3"
+                            r="1.1"
+                            fill={marker.layer === 'gm' ? '#c084fc' : '#34d399'}
+                          />
+                          {marker.layer === 'gm' && (
+                            <line
+                              x1="-61"
+                              y1="-6"
+                              x2="-55"
+                              y2="0"
+                              stroke="#c084fc"
+                              strokeWidth="1"
+                              strokeLinecap="round"
+                            />
+                          )}
                         </g>
                       )}
                       <text
@@ -2476,43 +2524,55 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       })()
                     )}
 
-                    {/* NÍVEL 3: FLAG DO MESTRE NA CAMADA GM (com clique rápido para mover entre camadas) */}
-                    {isMaster && activeLayer === 'gm' && (
+                    {/* MARCAÇÃO SUTIL DE VISIBILIDADE (MESTRE / JOGADORES): OLHO COM BORDA VERDE OU ROXA */}
+                    {isMaster && (
                       <g
-                        transform={`translate(0, ${-tokenRadius - 32})`}
+                        transform={`translate(${badgeWidth / 2 + 10}, ${-tokenRadius - 10.5})`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleTokenVisibility(token.id);
                         }}
-                        className="cursor-pointer hover:scale-105 transition-transform"
+                        className="cursor-pointer hover:scale-125 transition-transform"
                       >
                         <title>
                           {isTokenHidden
-                            ? "Clique para mover para a Camada de Tokens (Visível aos Jogadores)"
-                            : "Clique para mover para a Camada do Mestre (Oculto)"}
+                            ? "Visão: Apenas Mestre (borda roxa). Clique para tornar visível aos jogadores."
+                            : "Visão: Jogadores (borda verde). Clique para ocultar dos jogadores."}
                         </title>
-                        <rect
-                          x="-38"
-                          y="-7.5"
-                          width="76"
-                          height="15"
-                          rx="7.5"
-                          fill={isTokenHidden ? "#4c1d95" : "#064e3b"}
+                        <circle
+                          cx="0"
+                          cy="0"
+                          r="7"
+                          fill="#020617"
                           fillOpacity="0.95"
-                          stroke={isTokenHidden ? "#c084fc" : "#34d399"}
-                          strokeWidth="1"
+                          stroke={isTokenHidden ? "#a855f7" : "#10b981"}
+                          strokeWidth="1.8"
                         />
-                        <text
-                          x="0"
-                          y="3"
-                          fill={isTokenHidden ? "#f5d0fe" : "#a7f3d0"}
-                          fontSize="8.5"
-                          fontWeight="bold"
-                          textAnchor="middle"
-                          letterSpacing="0.3"
-                        >
-                          {isTokenHidden ? "👁️‍🗨️ SÓ MESTRE" : "👁️ JOGADORES"}
-                        </text>
+                        <path
+                          d="M -4.2 0 C -2.4 -2.6 2.4 -2.6 4.2 0 C 2.4 2.6 -2.4 2.6 -4.2 0 Z"
+                          fill="none"
+                          stroke={isTokenHidden ? "#c084fc" : "#34d399"}
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <circle
+                          cx="0"
+                          cy="0"
+                          r="1.2"
+                          fill={isTokenHidden ? "#c084fc" : "#34d399"}
+                        />
+                        {isTokenHidden && (
+                          <line
+                            x1="-3.6"
+                            y1="-3.6"
+                            x2="3.6"
+                            y2="3.6"
+                            stroke="#c084fc"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                          />
+                        )}
                       </g>
                     )}
 
@@ -2728,7 +2788,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
         return (
           <div
+            id="tactical-context-menu"
             className="fixed inset-0 z-50 pointer-events-auto"
+            onWheel={(e) => e.stopPropagation()}
             onMouseDown={(e) => {
               e.stopPropagation();
               setContextMenu(null);
@@ -2745,6 +2807,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 left: `${posX}px`,
                 top: `${posY}px`,
               }}
+              onWheel={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onMouseUp={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}

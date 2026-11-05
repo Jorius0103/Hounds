@@ -163,6 +163,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   activeRulerMarkersCount = 0,
 }) => {
   const [mapConfigOpen, setMapConfigOpen] = useState(false);
+  const [sliderBaseWidth, setSliderBaseWidth] = useState<number | null>(null);
+  const [sliderBaseHexSize, setSliderBaseHexSize] = useState<number | null>(null);
   const [customUrlInput, setCustomUrlInput] = useState(tacticalState.customImageUrl || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -328,13 +330,20 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
         {isMaster && (
           <div className="relative">
             <button
-              onClick={() => setMapConfigOpen(!mapConfigOpen)}
+              onClick={() => {
+                const next = !mapConfigOpen;
+                if (next) {
+                  setSliderBaseWidth(tacticalState.mapImageWidth || 2000);
+                  setSliderBaseHexSize(tacticalState.hexSize || 38);
+                }
+                setMapConfigOpen(next);
+              }}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
                 mapConfigOpen
                   ? 'bg-amber-500 text-slate-950 font-bold border border-amber-500'
                   : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
               }`}
-              title="Configuração do Mapa (Upload de Imagem, Cenários Padrão e Grid)"
+              title="Configuração do Mapa (Upload de Imagem e Calibração do Grid)"
             >
               <Sliders size={13} />
               <span>Configuração do Mapa</span>
@@ -345,8 +354,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 <div
                   className="fixed inset-0 z-40"
                   onClick={() => setMapConfigOpen(false)}
+                  onWheel={(e) => e.stopPropagation()}
                 />
-                <div className="absolute top-full left-0 mt-2 w-96 max-w-[95vw] bg-slate-950 border border-amber-500/50 rounded-2xl shadow-2xl p-4 z-50 text-xs space-y-4 max-h-[85vh] overflow-y-auto">
+                <div
+                  className="absolute top-full left-0 mt-2 w-96 max-w-[95vw] bg-slate-950 border border-amber-500/50 rounded-2xl shadow-2xl p-4 z-50 text-xs space-y-4 max-h-[85vh] overflow-y-auto"
+                  onWheel={(e) => e.stopPropagation()}
+                >
                   {/* Cabeçalho */}
                   <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-slate-200 font-bold">
                     <span className="flex items-center gap-1.5 text-amber-400 text-sm">
@@ -373,10 +386,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       )}
                     </div>
 
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Faça upload de qualquer imagem do seu computador (sem depender de internet) ou informe um link. A imagem entra com seu tamanho e proporção 100% originais.
-                    </p>
-
                     {/* Botão de Upload de Arquivo Local */}
                     <input
                       ref={fileInputRef}
@@ -391,6 +400,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                           if (dataUrl) {
                             const img = new Image();
                             img.onload = () => {
+                              setSliderBaseWidth(img.naturalWidth);
                               onUpdateTacticalState({
                                 backgroundKey: 'custom',
                                 customImageUrl: dataUrl,
@@ -418,26 +428,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         <Upload size={14} />
                         <span>Fazer Upload do Computador</span>
                       </button>
-
-                      {tacticalState.backgroundKey === 'custom' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onUpdateTacticalState({
-                              backgroundKey: 'tavern',
-                              customImageUrl: undefined,
-                              mapImageWidth: 2000,
-                              mapImageHeight: 1400,
-                              mapImageX: 0,
-                              mapImageY: 0,
-                            });
-                          }}
-                          className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
-                          title="Restaurar mapa padrão"
-                        >
-                          Restaurar
-                        </button>
-                      )}
                     </div>
 
                     {/* Ou Link da Internet */}
@@ -459,6 +449,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                             if (!customUrlInput.trim()) return;
                             const img = new Image();
                             img.onload = () => {
+                              setSliderBaseWidth(img.naturalWidth);
                               onUpdateTacticalState({
                                 backgroundKey: 'custom',
                                 customImageUrl: customUrlInput.trim(),
@@ -489,9 +480,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       const curMapH = tacticalState.mapImageHeight || 1400;
                       const mapAspect = curMapW / curMapH;
 
+                      // Slider com ponto inicial no meio (50%) e margem balanceada para os dois lados
+                      const baseW = sliderBaseWidth || curMapW;
+                      const minW = Math.min(curMapW - 200, Math.max(300, Math.round(baseW * 0.3)));
+                      const maxW = Math.max(curMapW + 200, Math.round(baseW * 1.7));
+
                       const handleResizeMapWidth = (newW: number) => {
-                        const safeW = Math.max(400, Math.min(8000, Math.round(newW)));
-                        const safeH = Math.max(200, Math.round(safeW / (mapAspect || 1.428)));
+                        const safeW = Math.max(200, Math.min(10000, Math.round(newW)));
+                        const safeH = Math.max(150, Math.round(safeW / (mapAspect || 1.428)));
                         onUpdateTacticalState({
                           mapImageWidth: safeW,
                           mapImageHeight: safeH,
@@ -538,9 +534,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                             </button>
                             <input
                               type="range"
-                              min="500"
-                              max="5000"
-                              step="50"
+                              min={minW}
+                              max={maxW}
+                              step="20"
                               value={curMapW}
                               onChange={(e) => handleResizeMapWidth(Number(e.target.value))}
                               className="flex-1 accent-amber-500"
@@ -592,45 +588,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         </div>
                       );
                     })()}
-
-                    {/* Cenários Ilustrados Padrão */}
-                    <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
-                      <span className="text-[10px] text-slate-400 block font-semibold">
-                        Ou escolha um cenário ilustrado padrão:
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                        {TACTICAL_MAP_PRESETS.filter((p) => p.key !== 'custom').map((p) => {
-                          const isSel = tacticalState.backgroundKey === p.key && !tacticalState.customImageUrl;
-                          return (
-                            <button
-                              key={p.key}
-                              type="button"
-                              onClick={() => {
-                                onUpdateTacticalState({
-                                  backgroundKey: p.key,
-                                  customImageUrl: undefined,
-                                  mapImageWidth: 2000,
-                                  mapImageHeight: 1400,
-                                  mapImageX: 0,
-                                  mapImageY: 0,
-                                });
-                              }}
-                              className={`p-1.5 rounded-lg border text-left flex items-center gap-1.5 transition-all ${
-                                isSel
-                                  ? 'bg-amber-500/20 border-amber-500 text-white font-bold'
-                                  : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-850'
-                              }`}
-                            >
-                              <div
-                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: p.themeColor }}
-                              />
-                              <span className="truncate text-[11px]">{p.name.split('/')[0].trim()}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
                   </div>
 
                   {/* SEÇÃO 2: CALIBRAÇÃO DA GRADE (GRID) */}
@@ -639,54 +596,63 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       <Grid size={13} className="text-amber-400" /> Calibração da Grade & Escala Tática
                     </span>
 
-                    {/* Escala da Grade: Tamanho do Hexágono (hexSize) */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[11px] text-slate-300 font-semibold">
-                        <span>Tamanho do Hexágono (Célula do Grid):</span>
-                        <span className="font-mono text-amber-400 font-bold">
-                          {tacticalState.hexSize || 38}px
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onUpdateTacticalState({
-                              hexSize: Math.max(16, (tacticalState.hexSize || 38) - 1),
-                            })
-                          }
-                          className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
-                          title="Diminuir hexágono"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="range"
-                          min="16"
-                          max="110"
-                          value={tacticalState.hexSize || 38}
-                          onChange={(e) =>
-                            onUpdateTacticalState({ hexSize: Number(e.target.value) })
-                          }
-                          className="flex-1 accent-amber-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onUpdateTacticalState({
-                              hexSize: Math.min(130, (tacticalState.hexSize || 38) + 1),
-                            })
-                          }
-                          className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
-                          title="Aumentar hexágono"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <div className="text-[10px] text-slate-400 italic">
-                        Aumente ou diminua o tamanho de cada hexágono para alinhar a grade perfeitamente com a imagem do mapa.
-                      </div>
-                    </div>
+                    {/* Escala da Grade: Tamanho do Hexágono (hexSize) com ponto inicial no meio */}
+                    {(() => {
+                      const curHex = tacticalState.hexSize || 38;
+                      const baseHex = sliderBaseHexSize || curHex;
+                      const minHex = Math.min(curHex - 5, Math.max(10, Math.round(baseHex * 0.35)));
+                      const maxHex = Math.max(curHex + 5, Math.round(baseHex * 1.65));
+
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] text-slate-300 font-semibold">
+                            <span>Tamanho do Hexágono (Célula do Grid):</span>
+                            <span className="font-mono text-amber-400 font-bold">
+                              {curHex}px
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onUpdateTacticalState({
+                                  hexSize: Math.max(10, curHex - 1),
+                                })
+                              }
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
+                              title="Diminuir hexágono"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="range"
+                              min={minHex}
+                              max={maxHex}
+                              value={curHex}
+                              onChange={(e) =>
+                                onUpdateTacticalState({ hexSize: Number(e.target.value) })
+                              }
+                              className="flex-1 accent-amber-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onUpdateTacticalState({
+                                  hexSize: Math.min(140, curHex + 1),
+                                })
+                              }
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
+                              title="Aumentar hexágono"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <div className="text-[10px] text-slate-400 italic">
+                            Aumente ou diminua o tamanho de cada hexágono para alinhar a grade perfeitamente com a imagem do mapa.
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Contraste da Grade: Clara vs Escura */}
                     <div>

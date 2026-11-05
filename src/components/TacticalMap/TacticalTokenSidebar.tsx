@@ -207,6 +207,8 @@ export const TacticalTokenSidebar: React.FC<TacticalTokenSidebarProps> = ({
 
   return (
     <div
+      id="tactical-token-sidebar"
+      onWheel={(e) => e.stopPropagation()}
       className={`relative z-20 flex flex-col bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-2xl shadow-xl transition-all duration-200 ${
         collapsed ? 'w-10' : 'w-72 sm:w-80'
       }`}
