@@ -158,6 +158,7 @@ export interface TacticalState {
   mapImageHeight?: number; // Altura customizada da imagem de fundo (px)
   mapImageScale?: number; // Escala proporcional (mantido para compatibilidade)
   mapImageLocked?: boolean; // Travar imagem de fundo para não ser movida por acidente
+  mapRotation?: number; // Rotação do mapa em graus (0, 90, 180, 270)
   // Níveis e Visão (Roll20 Style)
   activeLayer?: TacticalLayer; // 'map' | 'tokens' | 'gm'
   viewMode?: TacticalViewMode; // 'gm' (Visão do Mestre) | 'player' (Visão dos Jogadores)
@@ -193,7 +194,8 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   mapImageWidth: 2000,
   mapImageHeight: 1400,
   mapImageScale: 1,
-  mapImageLocked: false,
+  mapImageLocked: true,
+  mapRotation: 0,
   activeLayer: 'tokens',
   gridType: 'hex',
   hexSize: 38,

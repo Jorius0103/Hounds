@@ -2358,34 +2358,54 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
             return (
               <g id="tactical-map-layer">
-                {mapBackgroundSrc ? (
-                  <image
-                    id="map-background"
-                    href={mapBackgroundSrc}
-                    x={mapX}
-                    y={mapY}
-                    width={mapW}
-                    height={mapH}
-                    preserveAspectRatio="xMidYMid meet"
-                    opacity={isMapActive ? "1" : "0.95"}
-                    onDragStart={(e) => e.preventDefault()}
-                    style={{ userSelect: 'none', pointerEvents: isMapActive ? 'auto' : 'none' }}
-                    onLoad={(e) => {
-                      const img = e.currentTarget as unknown as HTMLImageElement;
-                      if (img.naturalWidth && img.naturalHeight) {
-                        if (
-                          tacticalState.mapImageWidth !== img.naturalWidth ||
-                          tacticalState.mapImageHeight !== img.naturalHeight
-                        ) {
-                          onUpdateTacticalState({
-                            mapImageWidth: img.naturalWidth,
-                            mapImageHeight: img.naturalHeight,
-                          });
-                        }
-                      }
-                    }}
-                  />
-                ) : (
+                {mapBackgroundSrc ? (() => {
+                  const rot = (tacticalState.mapRotation || 0) % 360;
+                  let imgTransform: string | undefined = undefined;
+                  let imgW = mapW;
+                  let imgH = mapH;
+
+                  if (rot === 90) {
+                    imgTransform = `translate(${mapW}, 0) rotate(90)`;
+                    imgW = mapH;
+                    imgH = mapW;
+                  } else if (rot === 180) {
+                    imgTransform = `translate(${mapW}, ${mapH}) rotate(180)`;
+                    imgW = mapW;
+                    imgH = mapH;
+                  } else if (rot === 270) {
+                    imgTransform = `translate(0, ${mapH}) rotate(270)`;
+                    imgW = mapH;
+                    imgH = mapW;
+                  }
+
+                  return (
+                    <g transform={imgTransform}>
+                      <image
+                        id="map-background"
+                        href={mapBackgroundSrc}
+                        x={mapX}
+                        y={mapY}
+                        width={imgW}
+                        height={imgH}
+                        preserveAspectRatio="xMidYMid meet"
+                        opacity={isMapActive ? "1" : "0.95"}
+                        onDragStart={(e) => e.preventDefault()}
+                        style={{ userSelect: 'none', pointerEvents: isMapActive ? 'auto' : 'none' }}
+                        onLoad={(e) => {
+                          const img = e.currentTarget as unknown as HTMLImageElement;
+                          if (img.naturalWidth && img.naturalHeight) {
+                            if (!tacticalState.mapImageWidth || !tacticalState.mapImageHeight) {
+                              onUpdateTacticalState({
+                                mapImageWidth: img.naturalWidth,
+                                mapImageHeight: img.naturalHeight,
+                              });
+                            }
+                          }
+                        }}
+                      />
+                    </g>
+                  );
+                })() : (
                   <TacticalIllustrativePresets
                     backgroundKey={tacticalState.backgroundKey}
                     x={mapX}
