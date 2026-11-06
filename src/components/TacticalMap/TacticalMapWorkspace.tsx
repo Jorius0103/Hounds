@@ -404,13 +404,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
       const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
       const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
-      const poly = computeVisibilityPolygon(center, radiusPixels, blockingSegments, 360, 0);
+      const isRotating = rotatingTokenId === token.id;
+      const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
+        ? previewRotation.rotation
+        : (typeof token.rotation === 'number'
+            ? token.rotation
+            : ((token.facing * 60 + 180) % 360));
+      const facingAngleDegrees = ((tokenRotation + 90) % 360 + 360) % 360;
+      const angle = token.lightAngle || 360;
+
+      const poly = computeVisibilityPolygon(center, radiusPixels, blockingSegments, angle, facingAngleDegrees);
       if (poly.length >= 3) {
         result[token.id] = pointsToSvgPath(poly);
       }
     }
     return result;
-  }, [tokens, blockingSegments, draggedTokenId, dragHoverHex, hexSize, mapX, mapY, hexWidth]);
+  }, [tokens, blockingSegments, draggedTokenId, dragHoverHex, hexSize, mapX, mapY, hexWidth, rotatingTokenId, previewRotation]);
 
   // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
   const litCellsSet = useMemo(() => {
@@ -444,7 +453,24 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       if (token.emitsLight && (token.lightRadius || 4) > 0) {
         const radius = token.lightRadius || 4;
         const inRange = getHexesInRange({ col: token.gridX, row: token.gridY }, radius);
-        inRange.forEach((h) => set.add(`${h.col},${h.row}`));
+        const tRot = typeof token.rotation === 'number' ? token.rotation : ((token.facing * 60 + 180) % 360);
+        const facingDeg = ((tRot + 90) % 360 + 360) % 360;
+
+        inRange.forEach((h) => {
+          if (token.lightAngle && token.lightAngle < 360) {
+            const hCenter = getHexCenter(h.col, h.row, hexSize);
+            const tCenter = getHexCenter(token.gridX, token.gridY, hexSize);
+            const dx = hCenter.x - tCenter.x;
+            const dy = hCenter.y - tCenter.y;
+            if (dx !== 0 || dy !== 0) {
+              const deg = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
+              let diff = Math.abs(deg - facingDeg);
+              if (diff > 180) diff = 360 - diff;
+              if (diff > token.lightAngle / 2 + 15) return;
+            }
+          }
+          set.add(`${h.col},${h.row}`);
+        });
       }
     });
 
@@ -2051,12 +2077,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 gradientUnits="userSpaceOnUse"
                 cx={center.x}
                 cy={center.y}
-                r={radiusPixels * 1.55}
+                r={radiusPixels}
               >
                 <stop offset="0%" stopColor={light.color || '#f59e0b'} stopOpacity={0.65} />
                 <stop offset="45%" stopColor={light.color || '#f59e0b'} stopOpacity={0.4} />
-                <stop offset="75%" stopColor={light.color || '#f59e0b'} stopOpacity={0.2} />
-                <stop offset="100%" stopColor={light.color || '#f59e0b'} stopOpacity={0.06} />
+                <stop offset="80%" stopColor={light.color || '#f59e0b'} stopOpacity={0.15} />
+                <stop offset="100%" stopColor={light.color || '#f59e0b'} stopOpacity={0} />
               </radialGradient>
             );
           })}
@@ -2099,12 +2125,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   gradientUnits="userSpaceOnUse"
                   cx={center.x}
                   cy={center.y}
-                  r={radiusPixels * 1.55}
+                  r={radiusPixels}
                 >
                   <stop offset="0%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.65} />
                   <stop offset="45%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.4} />
-                  <stop offset="75%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.2} />
-                  <stop offset="100%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.06} />
+                  <stop offset="80%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.15} />
+                  <stop offset="100%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0} />
                 </radialGradient>
 
                 <radialGradient
@@ -2226,6 +2252,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           key={`token-light-mask-${token.id}`}
                           d={visPath}
                           fill="#000000"
+                        />
+                      );
+                    }
+
+                    if (token.lightAngle && token.lightAngle < 360) {
+                      const isRotating = rotatingTokenId === token.id;
+                      const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
+                        ? previewRotation.rotation
+                        : (typeof token.rotation === 'number'
+                            ? token.rotation
+                            : ((token.facing * 60 + 180) % 360));
+                      const facingAngleDegrees = ((tokenRotation + 90) % 360 + 360) % 360;
+                      return (
+                        <path
+                          key={`token-light-mask-${token.id}`}
+                          d={getCircleSectorPath(mapX + relCenter.x, mapY + relCenter.y, radiusPixels, token.lightAngle, facingAngleDegrees)}
+                          fill={`url(#fog-token-attenuation-${token.id})`}
                         />
                       );
                     }
@@ -2442,6 +2485,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   <path
                     key={`token-glow-${token.id}`}
                     d={visPath}
+                    fill={`url(#token-light-glow-${token.id})`}
+                  />
+                );
+              }
+
+              if (token.lightAngle && token.lightAngle < 360) {
+                const isRotating = rotatingTokenId === token.id;
+                const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
+                  ? previewRotation.rotation
+                  : (typeof token.rotation === 'number'
+                      ? token.rotation
+                      : ((token.facing * 60 + 180) % 360));
+                const facingAngleDegrees = ((tokenRotation + 90) % 360 + 360) % 360;
+                return (
+                  <path
+                    key={`token-glow-${token.id}`}
+                    d={getCircleSectorPath(center.x, center.y, radiusPixels, token.lightAngle, facingAngleDegrees)}
                     fill={`url(#token-light-glow-${token.id})`}
                   />
                 );
@@ -4012,7 +4072,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   </span>
                   {token.emitsLight && (
                     <span className="text-[9.5px] font-mono text-amber-300 font-bold">
-                      {token.lightRadius || 4} yd
+                      {token.lightRadius || 4} yd {token.lightAngle === 180 ? '(180° Frente)' : '(360°)'}
                     </span>
                   )}
                 </div>
@@ -4047,7 +4107,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           : t
                       );
                       onUpdateTacticalState({ tokens: updatedTokens });
-                      setContextMenu(null);
                     }}
                     className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
                       token.emitsLight && token.lightRadius === 4
@@ -4068,7 +4127,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           : t
                       );
                       onUpdateTacticalState({ tokens: updatedTokens });
-                      setContextMenu(null);
                     }}
                     className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
                       token.emitsLight && token.lightRadius === 7
@@ -4093,7 +4151,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         );
                         onUpdateTacticalState({ tokens: updatedTokens });
                       }
-                      setContextMenu(null);
                     }}
                     className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
                       token.emitsLight && token.lightRadius !== 4 && token.lightRadius !== 7
@@ -4104,6 +4161,50 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     ⚙️ Outro
                   </button>
                 </div>
+
+                {/* Seletor de Abertura: 360° Circular ou 180° Frente */}
+                {token.emitsLight && (
+                  <div className="grid grid-cols-2 gap-1 mt-1.5 pt-1 border-t border-slate-800/60">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const updatedTokens = tokens.map((t) =>
+                          t.id === token.id ? { ...t, lightAngle: 360 } : t
+                        );
+                        onUpdateTacticalState({ tokens: updatedTokens });
+                      }}
+                      className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
+                        (token.lightAngle || 360) === 360
+                          ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
+                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                      }`}
+                      title="Luz circular em todos os lados (tocha, lampião)"
+                    >
+                      🔄 360° Todo Redor
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const updatedTokens = tokens.map((t) =>
+                          t.id === token.id ? { ...t, lightAngle: 180 } : t
+                        );
+                        onUpdateTacticalState({ tokens: updatedTokens });
+                      }}
+                      className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
+                        token.lightAngle === 180
+                          ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
+                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                      }`}
+                      title="Luz de 180 graus sempre direcionada à frente do combatente"
+                    >
+                      🔦 180° À Frente
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Botão de Ação: Lançar Dano / Fadiga / Itens */}

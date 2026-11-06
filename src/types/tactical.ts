@@ -25,6 +25,7 @@ export interface TacticalToken {
   emitsLight?: boolean; // Se o token emite luz própria (tocha, lanterna)
   lightRadius?: number; // Raio de iluminação em hexes/jardas (padrão 4 para tocha)
   lightColor?: string; // Cor do brilho (ex: '#f59e0b' âmbar, '#38bdf8' mágico)
+  lightAngle?: number; // Ângulo de abertura da luz: 360 (circular) ou 180 (semicírculo sempre à frente do token)
 }
 
 export interface TacticalLightSource {

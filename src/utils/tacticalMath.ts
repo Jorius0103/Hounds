@@ -423,18 +423,15 @@ export function computeVisibilityPolygon(
   if (radius <= 0) return [];
   if (!segments || segments.length === 0) return [];
 
-  // Raio estendido para alcançar cantos diagonais de cômodos fechados por paredes
-  const maxReach = radius * 1.6;
-  const maxReachSq = maxReach * maxReach;
   const r2 = radius * radius;
   const relevantSegments: LineSegment[] = [];
 
-  // Filtra apenas os segmentos que estão dentro ou cruzam o alcance da luz (incluindo diagonais dos cantos)
+  // Filtra apenas os segmentos que estão dentro ou cruzam o raio de alcance da luz
   for (const seg of segments) {
     const d1sq = (seg.p1.x - center.x) ** 2 + (seg.p1.y - center.y) ** 2;
     const d2sq = (seg.p2.x - center.x) ** 2 + (seg.p2.y - center.y) ** 2;
 
-    if (d1sq <= maxReachSq || d2sq <= maxReachSq) {
+    if (d1sq <= r2 || d2sq <= r2) {
       relevantSegments.push(seg);
     } else {
       const dx = seg.p2.x - seg.p1.x;
@@ -446,7 +443,7 @@ export function computeVisibilityPolygon(
         const projX = seg.p1.x + t * dx;
         const projY = seg.p1.y + t * dy;
         const distSq = (projX - center.x) ** 2 + (projY - center.y) ** 2;
-        if (distSq <= maxReachSq) {
+        if (distSq <= r2) {
           relevantSegments.push(seg);
         }
       }
@@ -538,8 +535,7 @@ export function computeVisibilityPolygon(
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
     let bestDist = radius;
-    let hitWall = false;
-    let closestWallDist = maxReach;
+    let closestWallDist = radius;
 
     for (const seg of relevantSegments) {
       const vx = seg.p2.x - seg.p1.x;
@@ -555,12 +551,8 @@ export function computeVisibilityPolygon(
 
       if (s >= -0.0001 && s <= 1.0001 && t > 0.001 && t < closestWallDist) {
         closestWallDist = t;
-        hitWall = true;
+        bestDist = t;
       }
-    }
-
-    if (hitWall) {
-      bestDist = closestWallDist;
     }
 
     const sortKey = isDirectional ? normalizeDirectional(angle) : norm360(angle);
