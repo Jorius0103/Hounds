@@ -2079,9 +2079,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 cy={center.y}
                 r={radiusPixels}
               >
-                <stop offset="0%" stopColor={light.color || '#f59e0b'} stopOpacity={0.65} />
-                <stop offset="45%" stopColor={light.color || '#f59e0b'} stopOpacity={0.4} />
-                <stop offset="80%" stopColor={light.color || '#f59e0b'} stopOpacity={0.15} />
+                <stop offset="0%" stopColor={light.color || '#f59e0b'} stopOpacity={0.06} />
+                <stop offset="50%" stopColor={light.color || '#f59e0b'} stopOpacity={0.03} />
                 <stop offset="100%" stopColor={light.color || '#f59e0b'} stopOpacity={0} />
               </radialGradient>
             );
@@ -2127,9 +2126,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   cy={center.y}
                   r={radiusPixels}
                 >
-                  <stop offset="0%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.65} />
-                  <stop offset="45%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.4} />
-                  <stop offset="80%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.15} />
+                  <stop offset="0%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.06} />
+                  <stop offset="50%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.03} />
                   <stop offset="100%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0} />
                 </radialGradient>
 
@@ -2233,6 +2231,25 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         cy={center.y}
                         r={radiusPixels}
                         fill={`url(#fog-light-attenuation-${light.id})`}
+                      />
+                    );
+                  })}
+
+                  {/* 1.5 Iluminação mínima de 1 jarda para cada token: nunca corta o token ao meio e garante que sempre seja encontrado */}
+                  {tokens.map((token) => {
+                    if (isPlayerView && (token.hiddenFromPlayers || token.layer === 'gm')) return null;
+                    const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
+                    const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
+                    const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+                    const personalRadius = hexWidth * 0.95; // 1 jarda (1 hex completo ao redor do combatente)
+
+                    return (
+                      <circle
+                        key={`token-personal-halo-${token.id}`}
+                        cx={mapX + relCenter.x}
+                        cy={mapY + relCenter.y}
+                        r={personalRadius}
+                        fill="#000000"
                       />
                     );
                   })}
@@ -3386,14 +3403,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 : (typeof token.rotation === 'number'
                     ? token.rotation
                     : ((token.facing * 60 + 180) % 360));
-              const tokenRadius = hexSize * 0.75;
+              const tokenRadius = hexSize * 0.58;
 
               const hpPercent =
                 npc.hpMax > 0
                   ? Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))
                   : 100;
 
-              const badgeWidth = Math.min(110, Math.max(40, npc.name.length * 7));
+              const badgeWidth = Math.min(85, Math.max(34, npc.name.length * 5.8));
 
               // Manobra ativa do personagem / NPC para colorir a borda do token
               const maneuver = npc.combatManeuver ? getCombatManeuver(npc.combatManeuver) : undefined;
@@ -3436,14 +3453,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 >
                   {/* GRUPO ROTATIVO INTEGRAL: Foto, Nome (em cima), Frente (embaixo) e Pauzinho giram juntos */}
                   <g transform={`rotate(${tokenRotation})`}>
-                    {/* 1. Círculo de Base com Borda Cinza Neutra, Cor da Manobra ou Roxo GM */}
+                    {/* 1. Círculo de Base com Borda Fina de Manobra ou Roxo GM */}
                     <circle
                       cx="0"
                       cy="0"
-                      r={tokenRadius + 3}
+                      r={tokenRadius + 2}
                       fill="#0f172a"
                       stroke={maneuverBorderColor}
-                      strokeWidth={isSelected ? 3.5 : isTokenHidden ? 3 : 2.5}
+                      strokeWidth={isSelected ? 2 : isTokenHidden ? 1.8 : 1.4}
                       strokeDasharray={isTokenHidden ? "4,2" : undefined}
                     />
 
@@ -3452,10 +3469,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       <circle
                         cx="0"
                         cy="0"
-                        r={tokenRadius + 6.5}
+                        r={tokenRadius + 4.5}
                         fill="none"
                         stroke="#f59e0b"
-                        strokeWidth="2"
+                        strokeWidth="1.5"
                         strokeDasharray="4,3"
                       />
                     )}
@@ -3503,7 +3520,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     {/* MARCAÇÃO DE VISIBILIDADE APENAS PARA O MESTRE (QUANDO OCULTO DOS JOGADORES): OLHO ROXO */}
                     {isMaster && isTokenHidden && (
                       <g
-                        transform={`translate(${badgeWidth / 2 + 10}, ${-tokenRadius - 10.5})`}
+                        transform={`translate(${badgeWidth / 2 + 7}, ${-tokenRadius - 8.5})`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleTokenVisibility(token.id);
@@ -3514,31 +3531,31 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         <circle
                           cx="0"
                           cy="0"
-                          r="7"
+                          r="6"
                           fill="#020617"
                           fillOpacity="0.95"
                           stroke="#a855f7"
-                          strokeWidth="1.8"
+                          strokeWidth="1.5"
                         />
                         <path
-                          d="M -4.2 0 C -2.4 -2.6 2.4 -2.6 4.2 0 C 2.4 2.6 -2.4 2.6 -4.2 0 Z"
+                          d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z"
                           fill="none"
                           stroke="#c084fc"
-                          strokeWidth="1.1"
+                          strokeWidth="1"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
                         <circle
                           cx="0"
                           cy="0"
-                          r="1.2"
+                          r="1"
                           fill="#c084fc"
                         />
                         <line
-                          x1="-3.6"
-                          y1="-3.6"
-                          x2="3.6"
-                          y2="3.6"
+                          x1="-3"
+                          y1="-3"
+                          x2="3"
+                          y2="3"
                           stroke="#c084fc"
                           strokeWidth="1"
                           strokeLinecap="round"
@@ -3546,24 +3563,24 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       </g>
                     )}
 
-                    {/* 3. NOME DO PERSONAGEM EM CIMA DA FOTO (gira junto com o token) */}
+                    {/* 3. NOME DO PERSONAGEM EM CIMA DA FOTO (com transparência e fonte menor para não bloquear tokens abaixo) */}
                     <rect
                       x={-badgeWidth / 2}
-                      y={-tokenRadius - 18}
+                      y={-tokenRadius - 15}
                       width={badgeWidth}
-                      height="15"
-                      rx="4"
+                      height="13"
+                      rx="3.5"
                       fill="#020617"
-                      fillOpacity="0.9"
-                      stroke="#334155"
-                      strokeWidth="0.8"
+                      fillOpacity="0.55"
+                      stroke="rgba(148, 163, 184, 0.3)"
+                      strokeWidth="0.7"
                     />
                     <text
                       x="0"
-                      y={-tokenRadius - 7}
+                      y={-tokenRadius - 6}
                       fill="#f1f5f9"
-                      fontSize="9.5"
-                      fontWeight="bold"
+                      fontSize="8"
+                      fontWeight="600"
                       textAnchor="middle"
                     >
                       {npc.name}
@@ -3571,12 +3588,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
                     {/* 4. MARCAÇÃO DE FRENTE EMBAIXO DA FOTO (onde ficava o nome) */}
                     <polygon
-                      points={`0,${tokenRadius + 13} -8,${tokenRadius + 3} 8,${tokenRadius + 3}`}
+                      points={`0,${tokenRadius + 9} -5.5,${tokenRadius + 2.5} 5.5,${tokenRadius + 2.5}`}
                       fill="#f59e0b"
                       stroke="#020617"
-                      strokeWidth="1.2"
+                      strokeWidth="1"
                     />
-                    <circle cx="0" cy={tokenRadius + 5} r="1.5" fill="#ffffff" />
+                    <circle cx="0" cy={tokenRadius + 4} r="1.2" fill="#ffffff" />
 
                     {/* 5. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
                     {isSelected && (
@@ -3584,29 +3601,29 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         {/* Haste estendida conectando a marcação de frente até a alça */}
                         <line
                           x1="0"
-                          y1={tokenRadius + 13}
+                          y1={tokenRadius + 9}
                           x2="0"
-                          y2={tokenRadius + 30}
+                          y2={tokenRadius + 22}
                           stroke="#38bdf8"
-                          strokeWidth="2.5"
+                          strokeWidth="2"
                           strokeDasharray="3,2"
                         />
                         {/* Alça circular na ponta do pauzinho */}
                         <circle
                           cx="0"
-                          cy={tokenRadius + 30}
-                          r="6.5"
+                          cy={tokenRadius + 22}
+                          r="5"
                           fill="#0284c7"
                           stroke="#ffffff"
-                          strokeWidth="2"
+                          strokeWidth="1.5"
                           className="hover:scale-125 transition-transform"
                         />
-                        <circle cx="0" cy={tokenRadius + 30} r="2" fill="#ffffff" />
+                        <circle cx="0" cy={tokenRadius + 22} r="1.8" fill="#ffffff" />
                         {/* Hitbox invisível ampla para facilitar o clique e arrasto no mouse/touch */}
                         <circle
                           cx="0"
-                          cy={tokenRadius + 30}
-                          r="15"
+                          cy={tokenRadius + 22}
+                          r="13"
                           fill="transparent"
                           className="cursor-grab active:cursor-grabbing"
                           onMouseDown={(e) => handleRotationMouseDown(e, token)}
