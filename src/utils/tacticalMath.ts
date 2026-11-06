@@ -1,4 +1,4 @@
-import { FacingDirection } from '../types/tactical';
+import { FacingDirection, TacticalWall, TacticalDoor } from '../types/tactical';
 
 export interface Point {
   x: number;
@@ -360,4 +360,239 @@ export function getCircleSectorPath(
   const largeArcFlag = angleDegrees > 180 ? 1 : 0;
 
   return `M ${cx.toFixed(1)} ${cy.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 ${largeArcFlag} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z`;
+}
+
+export interface LineSegment {
+  p1: Point;
+  p2: Point;
+}
+
+/**
+ * Extrai todos os segmentos de reta bloqueadores de luz a partir das paredes e portas do mapa.
+ * Portas abertas NÃO bloqueiam luz; portas fechadas bloqueiam como paredes.
+ */
+export function extractBlockingSegments(
+  walls: TacticalWall[] = [],
+  doors: TacticalDoor[] = []
+): LineSegment[] {
+  const segments: LineSegment[] = [];
+
+  // Paredes (poligonais ou polilinhas)
+  for (const wall of walls) {
+    if (!wall.points || wall.points.length < 2) continue;
+    for (let i = 0; i < wall.points.length - 1; i++) {
+      segments.push({
+        p1: wall.points[i],
+        p2: wall.points[i + 1],
+      });
+    }
+    // Se o polígono é fechado, conecta o último vértice ao primeiro
+    if (wall.closed && wall.points.length >= 3) {
+      segments.push({
+        p1: wall.points[wall.points.length - 1],
+        p2: wall.points[0],
+      });
+    }
+  }
+
+  // Portas: apenas portas fechadas bloqueiam a luz
+  for (const door of doors) {
+    if (!door.isOpen) {
+      segments.push({
+        p1: { x: door.x1, y: door.y1 },
+        p2: { x: door.x2, y: door.y2 },
+      });
+    }
+  }
+
+  return segments;
+}
+
+/**
+ * Calcula o polígono 2D de visibilidade/iluminação dinâmica a partir do centro da luz,
+ * contido pelas paredes e portas fechadas.
+ * Utiliza ray-casting radial com amostras angulares e vértices dos obstáculos.
+ */
+export function computeVisibilityPolygon(
+  center: Point,
+  radius: number,
+  segments: LineSegment[],
+  angleDegrees: number = 360,
+  rotationDegrees: number = 0
+): Point[] {
+  if (radius <= 0) return [];
+  if (!segments || segments.length === 0) return [];
+
+  const r2 = radius * radius;
+  const relevantSegments: LineSegment[] = [];
+
+  // Filtra apenas os segmentos que estão dentro ou cruzam o raio de alcance da luz
+  for (const seg of segments) {
+    const d1sq = (seg.p1.x - center.x) ** 2 + (seg.p1.y - center.y) ** 2;
+    const d2sq = (seg.p2.x - center.x) ** 2 + (seg.p2.y - center.y) ** 2;
+
+    if (d1sq <= r2 || d2sq <= r2) {
+      relevantSegments.push(seg);
+    } else {
+      const dx = seg.p2.x - seg.p1.x;
+      const dy = seg.p2.y - seg.p1.y;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq > 0) {
+        let t = ((center.x - seg.p1.x) * dx + (center.y - seg.p1.y) * dy) / lenSq;
+        t = Math.max(0, Math.min(1, t));
+        const projX = seg.p1.x + t * dx;
+        const projY = seg.p1.y + t * dy;
+        const distSq = (projX - center.x) ** 2 + (projY - center.y) ** 2;
+        if (distSq <= r2) {
+          relevantSegments.push(seg);
+        }
+      }
+    }
+  }
+
+  // Se nenhum segmento bloqueia este foco de luz, retorna vazio para renderizar o círculo nativo
+  if (relevantSegments.length === 0) {
+    return [];
+  }
+
+  const isDirectional = angleDegrees < 360;
+  const halfAngleRad = (angleDegrees / 2) * (Math.PI / 180);
+  const rotRad = (rotationDegrees * Math.PI) / 180;
+  const minAngle = rotRad - halfAngleRad;
+  const maxAngle = rotRad + halfAngleRad;
+
+  const normalizeDirectional = (a: number) => {
+    while (a < rotRad - Math.PI) a += 2 * Math.PI;
+    while (a > rotRad + Math.PI) a -= 2 * Math.PI;
+    return a;
+  };
+
+  const inCone = (a: number) => {
+    if (!isDirectional) return true;
+    const norm = normalizeDirectional(a);
+    return norm >= minAngle - 0.002 && norm <= maxAngle + 0.002;
+  };
+
+  const rawAngles: number[] = [];
+  const addAngle = (a: number) => {
+    if (inCone(a)) rawAngles.push(a);
+  };
+
+  const addAngleTriplet = (a: number) => {
+    const delta = 0.00015;
+    addAngle(a - delta);
+    addAngle(a);
+    addAngle(a + delta);
+  };
+
+  // 1. Amostras circulares regulares para perímetro suave (72 raios a cada 5 graus)
+  const numCircleRays = isDirectional ? Math.max(16, Math.round((angleDegrees / 360) * 72)) : 72;
+  const arcSpan = isDirectional ? maxAngle - minAngle : 2 * Math.PI;
+  const startArc = isDirectional ? minAngle : 0;
+  for (let i = 0; i <= numCircleRays; i++) {
+    const a = startArc + (i / numCircleRays) * arcSpan;
+    addAngle(a);
+  }
+
+  if (isDirectional) {
+    addAngle(minAngle);
+    addAngle(maxAngle);
+  }
+
+  // 2. Vértices de paredes e cruzamentos com a circunferência
+  for (const seg of relevantSegments) {
+    const a1 = Math.atan2(seg.p1.y - center.y, seg.p1.x - center.x);
+    const a2 = Math.atan2(seg.p2.y - center.y, seg.p2.x - center.x);
+    addAngleTriplet(a1);
+    addAngleTriplet(a2);
+
+    // Cruzamento do segmento com a borda circular da luz
+    const dx = seg.p2.x - seg.p1.x;
+    const dy = seg.p2.y - seg.p1.y;
+    const fx = seg.p1.x - center.x;
+    const fy = seg.p1.y - center.y;
+    const qa = dx * dx + dy * dy;
+    const qb = 2 * (fx * dx + fy * dy);
+    const qc = fx * fx + fy * fy - r2;
+    const disc = qb * qb - 4 * qa * qc;
+    if (disc >= 0 && qa > 0) {
+      const sqrtDisc = Math.sqrt(disc);
+      const t1 = (-qb - sqrtDisc) / (2 * qa);
+      const t2 = (-qb + sqrtDisc) / (2 * qa);
+      if (t1 >= 0 && t1 <= 1) {
+        addAngleTriplet(Math.atan2(seg.p1.y + t1 * dy - center.y, seg.p1.x + t1 * dx - center.x));
+      }
+      if (t2 >= 0 && t2 <= 1) {
+        addAngleTriplet(Math.atan2(seg.p1.y + t2 * dy - center.y, seg.p1.x + t2 * dx - center.x));
+      }
+    }
+  }
+
+  // 3. Dispara cada raio e calcula a menor distância de colisão
+  const norm360 = (a: number) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+
+  const castRay = (angle: number) => {
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    let bestDist = radius;
+
+    for (const seg of relevantSegments) {
+      const vx = seg.p2.x - seg.p1.x;
+      const vy = seg.p2.y - seg.p1.y;
+      const wx = seg.p1.x - center.x;
+      const wy = seg.p1.y - center.y;
+
+      const det = cosA * vy - sinA * vx;
+      if (Math.abs(det) < 1e-9) continue;
+
+      const t = (wx * vy - wy * vx) / det;
+      const s = (wx * sinA - wy * cosA) / det;
+
+      if (s >= -0.0001 && s <= 1.0001 && t > 0.001 && t < bestDist) {
+        bestDist = t;
+      }
+    }
+
+    const sortKey = isDirectional ? normalizeDirectional(angle) : norm360(angle);
+    return {
+      sortKey,
+      point: {
+        x: center.x + bestDist * cosA,
+        y: center.y + bestDist * sinA,
+      },
+    };
+  };
+
+  const results = rawAngles.map(castRay);
+  results.sort((a, b) => a.sortKey - b.sortKey);
+
+  // Remove pontos idênticos consecutivos
+  const points: Point[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const pt = results[i].point;
+    if (points.length === 0) {
+      points.push(pt);
+    } else {
+      const prev = points[points.length - 1];
+      if (Math.hypot(pt.x - prev.x, pt.y - prev.y) > 0.3) {
+        points.push(pt);
+      }
+    }
+  }
+
+  if (isDirectional && points.length > 0) {
+    return [center, ...points];
+  }
+
+  return points;
+}
+
+/**
+ * Converte uma lista de vértices ordenados no path SVG `<path d="..." />` fechado com Z.
+ */
+export function pointsToSvgPath(points: Point[]): string {
+  if (!points || points.length < 3) return '';
+  return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)} ` +
+    points.slice(1).map((p) => `L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') +
+    ' Z';
 }

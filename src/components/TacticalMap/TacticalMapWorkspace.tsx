@@ -11,6 +11,8 @@ import {
   TacticalProp,
   TacticalFogRect,
   TacticalFogMode,
+  TacticalWall,
+  TacticalDoor,
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
@@ -33,6 +35,9 @@ import {
   FACING_NAMES,
   HexCoord,
   Point,
+  extractBlockingSegments,
+  computeVisibilityPolygon,
+  pointsToSvgPath,
 } from '../../utils/tacticalMath';
 import { getCombatManeuver, COMBAT_MANEUVERS } from '../../utils/gurps';
 import { NpcAvatar, PRESET_AVATARS, PRESET_BG_COLORS, resolveNpcPreset } from '../NpcAvatar';
@@ -54,6 +59,11 @@ import {
   CheckCheck,
   Plus,
   Flame,
+  Spline,
+  DoorClosed,
+  DoorOpen,
+  RotateCw,
+  RotateCcw,
 } from 'lucide-react';
 
 interface TacticalMapWorkspaceProps {
@@ -123,6 +133,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [activeTool, setActiveTool] = useState<TacticalToolMode>('select');
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoveredHex, setHoveredHex] = useState<HexCoord | null>(null);
+
+  // Paredes e Portas state (Contenção de Luminosidade)
+  const [wallPoints, setWallPoints] = useState<Point[]>([]);
+  const [doorStartPoint, setDoorStartPoint] = useState<Point | null>(null);
+  const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
 
   // Fog of War / Ocultação do Mapa state (Estilo Roll20 em Linhas Retas)
   const [fogBrushMode, setFogBrushMode] = useState<'reveal' | 'hide'>('reveal');
@@ -347,6 +362,55 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     [mapX, mapY, hexSize, dragLightPos]
   );
 
+  // Segmentos bloqueadores de luz extraídos das paredes e portas fechadas
+  const blockingSegments = useMemo(() => {
+    return extractBlockingSegments(tacticalState.walls, tacticalState.doors);
+  }, [tacticalState.walls, tacticalState.doors]);
+
+  // Mapa de polígonos de visibilidade calculados para cada foco de luz contido por paredes e portas
+  const lightVisibilityPaths = useMemo(() => {
+    if (blockingSegments.length === 0) return {};
+    const result: Record<string, string> = {};
+    const lights = tacticalState.lights || [];
+
+    for (const light of lights) {
+      if (light.active === false || (light.radius || 0) <= 0) continue;
+      const center = getLightCenter(light);
+      const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+      const poly = computeVisibilityPolygon(
+        center,
+        radiusPixels,
+        blockingSegments,
+        light.angle || 360,
+        light.rotation || 0
+      );
+      if (poly.length >= 3) {
+        result[light.id] = pointsToSvgPath(poly);
+      }
+    }
+    return result;
+  }, [tacticalState.lights, blockingSegments, getLightCenter, hexWidth]);
+
+  // Polígonos de visibilidade calculados para tokens que emitem luz própria
+  const tokenLightVisibilityPaths = useMemo(() => {
+    if (blockingSegments.length === 0) return {};
+    const result: Record<string, string> = {};
+
+    for (const token of tokens) {
+      if (!token.emitsLight || (token.lightRadius || 4) <= 0) continue;
+      const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
+      const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
+      const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+      const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+      const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+      const poly = computeVisibilityPolygon(center, radiusPixels, blockingSegments, 360, 0);
+      if (poly.length >= 3) {
+        result[token.id] = pointsToSvgPath(poly);
+      }
+    }
+    return result;
+  }, [tokens, blockingSegments, draggedTokenId, dragHoverHex, hexSize, mapX, mapY, hexWidth]);
+
   // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
   const litCellsSet = useMemo(() => {
     const set = new Set<string>();
@@ -413,14 +477,117 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       label: 'Luz',
       gridX: centerHex.col,
       gridY: centerHex.row,
+      x: Math.round(mapW / 2),
+      y: Math.round(mapH / 2),
       radius: customLightRadius || 5,
       color: customLightColor || '#f59e0b',
       active: true,
+      angle: customLightAngle || 360,
+      rotation: customLightRotation || 0,
     };
     onUpdateTacticalState({
       lights: [...(tacticalState.lights || []), newLight],
     });
-  }, [mapW, mapH, hexSize, customLightRadius, customLightColor, tacticalState.lights, onUpdateTacticalState]);
+  }, [mapW, mapH, hexSize, customLightRadius, customLightColor, customLightAngle, customLightRotation, tacticalState.lights, onUpdateTacticalState]);
+
+  // --- GERENCIAMENTO DE PAREDES E PORTAS (CONTENÇÃO DE LUZ) ---
+  const handleFinishWall = useCallback(() => {
+    if (wallPoints.length < 2) return;
+    const newWall: TacticalWall = {
+      id: `wall-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      points: [...wallPoints],
+      closed: false,
+      color: '#3b82f6',
+    };
+    onUpdateTacticalState({ walls: [...(tacticalState.walls || []), newWall] });
+    setWallPoints([]);
+  }, [wallPoints, tacticalState.walls, onUpdateTacticalState]);
+
+  const handleCloseWallPolygon = useCallback(() => {
+    if (wallPoints.length < 3) return;
+    const newWall: TacticalWall = {
+      id: `wall-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      points: [...wallPoints],
+      closed: true,
+      color: '#3b82f6',
+    };
+    onUpdateTacticalState({ walls: [...(tacticalState.walls || []), newWall] });
+    setWallPoints([]);
+  }, [wallPoints, tacticalState.walls, onUpdateTacticalState]);
+
+  const handleCancelWall = useCallback(() => {
+    setWallPoints([]);
+  }, []);
+
+  const handleUndoWallPoint = useCallback(() => {
+    setWallPoints((prev) => prev.slice(0, prev.length - 1));
+  }, []);
+
+  const handleDeleteWall = useCallback((wallId: string) => {
+    const updated = (tacticalState.walls || []).filter((w) => w.id !== wallId);
+    onUpdateTacticalState({ walls: updated });
+    if (selectedWallId === wallId) setSelectedWallId(null);
+  }, [tacticalState.walls, selectedWallId, onUpdateTacticalState]);
+
+  const handleClearWalls = useCallback(() => {
+    onUpdateTacticalState({ walls: [] });
+    setWallPoints([]);
+  }, [onUpdateTacticalState]);
+
+  const handleToggleDoor = useCallback((doorId: string) => {
+    const updated = (tacticalState.doors || []).map((d) =>
+      d.id === doorId ? { ...d, isOpen: !d.isOpen } : d
+    );
+    onUpdateTacticalState({ doors: updated });
+  }, [tacticalState.doors, onUpdateTacticalState]);
+
+  const handleDeleteDoor = useCallback((doorId: string) => {
+    const updated = (tacticalState.doors || []).filter((d) => d.id !== doorId);
+    onUpdateTacticalState({ doors: updated });
+  }, [tacticalState.doors, onUpdateTacticalState]);
+
+  const handleToggleAllDoors = useCallback((open: boolean) => {
+    const updated = (tacticalState.doors || []).map((d) => ({ ...d, isOpen: open }));
+    onUpdateTacticalState({ doors: updated });
+  }, [tacticalState.doors, onUpdateTacticalState]);
+
+  const handleClearDoors = useCallback(() => {
+    onUpdateTacticalState({ doors: [] });
+    setDoorStartPoint(null);
+  }, [onUpdateTacticalState]);
+
+  // Efeito de atalhos de teclado para Parede e Porta
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        if (wallPoints.length >= 2) {
+          e.preventDefault();
+          handleFinishWall();
+        }
+      } else if (e.key === 'Escape') {
+        if (wallPoints.length > 0) {
+          e.preventDefault();
+          handleCancelWall();
+        } else if (doorStartPoint) {
+          e.preventDefault();
+          setDoorStartPoint(null);
+        }
+      } else if (e.key === 'Backspace') {
+        if (wallPoints.length > 0) {
+          e.preventDefault();
+          handleUndoWallPoint();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [wallPoints, doorStartPoint, handleFinishWall, handleCancelWall, handleUndoWallPoint]);
 
   // Convert client mouse event to map coordinate (respecting pan and zoom)
   const clientToMapCoords = useCallback(
@@ -569,6 +736,71 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       setSelectedPropId(null);
     }
 
+    // Construção de Paredes por Ligação de Polígonos
+    if (activeTool === 'wall' && e.button === 0 && isMaster) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const pt = { x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) };
+
+      if (wallPoints.length >= 2) {
+        const first = wallPoints[0];
+        const dist = Math.hypot(pt.x - first.x, pt.y - first.y);
+        if (dist < 18) {
+          handleCloseWallPolygon();
+          return;
+        }
+      }
+
+      setWallPoints((prev) => [...prev, pt]);
+      return;
+    }
+
+    // Inserção de Portas (Abertas ou Fechadas)
+    if (activeTool === 'door' && e.button === 0 && isMaster) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const pt = { x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) };
+
+      if (!doorStartPoint) {
+        setDoorStartPoint(pt);
+      } else {
+        const newDoor: TacticalDoor = {
+          id: `door-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          x1: doorStartPoint.x,
+          y1: doorStartPoint.y,
+          x2: pt.x,
+          y2: pt.y,
+          isOpen: false,
+          name: `Porta ${(tacticalState.doors || []).length + 1}`,
+        };
+        onUpdateTacticalState({ doors: [...(tacticalState.doors || []), newDoor] });
+        setDoorStartPoint(null);
+      }
+      return;
+    }
+
+    // Iluminação Livre (Qualquer coordenada no mapa, sem respeitar hexágonos)
+    if (activeTool === 'light' && e.button === 0 && isMaster) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
+      const newLight: TacticalLightSource = {
+        id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        gridX: hex.col,
+        gridY: hex.row,
+        x: Math.round(p.x - mapX),
+        y: Math.round(p.y - mapY),
+        radius: customLightRadius || 5,
+        color: customLightColor || '#f59e0b',
+        intensity: 0.85,
+        label: `Luz (${customLightRadius || 5}yd)`,
+        active: true,
+        angle: customLightAngle || 360,
+        rotation: customLightRotation || 0,
+      };
+      onUpdateTacticalState({
+        lights: [...(tacticalState.lights || []), newLight],
+      });
+      return;
+    }
+
     // 1. Ferramenta de Ocultação do Mapa (3 Níveis de Revelação)
     if (activeTool === 'fog' && e.button === 0 && isMaster) {
       if (currentFogMode === 'open') {
@@ -580,14 +812,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
 
         if (lightAction === 'remove') {
-          // Remove o foco de luz mais próximo do hex clicado (em um raio de tolerância de 2.5 hexágonos)
+          // Remove o foco de luz mais próximo por distância em pixels (suporta posicionamento livre)
+          const clickX = Math.round(p.x - mapX);
+          const clickY = Math.round(p.y - mapY);
           const lights = tacticalState.lights || [];
           let targetIndex = -1;
-          let minDist = 2.5;
+          let minDist = 40;
           lights.forEach((l, idx) => {
-            const dist = getHexDistance({ col: hex.col, row: hex.row }, { col: l.gridX, row: l.gridY });
-            if (dist < minDist) {
-              minDist = dist;
+            const lx = typeof l.x === 'number' ? l.x : getHexCenter(l.gridX, l.gridY, hexSize).x;
+            const ly = typeof l.y === 'number' ? l.y : getHexCenter(l.gridX, l.gridY, hexSize).y;
+            const d = Math.hypot(clickX - lx, clickY - ly);
+            if (d < minDist) {
+              minDist = d;
               targetIndex = idx;
             }
           });
@@ -762,7 +998,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     const p = clientToMapCoords(e.clientX, e.clientY);
     const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
 
-    if (activeTool === 'fog' && fogSubTool === 'light') {
+    if (
+      (activeTool === 'fog' && fogSubTool === 'light') ||
+      activeTool === 'light' ||
+      activeTool === 'wall' ||
+      activeTool === 'door'
+    ) {
       setMouseMapPos({ x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) });
     }
 
@@ -1405,6 +1646,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           editorUserIds={editorUserIds}
           onTogglePlayerPermission={onTogglePlayerPermission}
           onSetAllPlayerPermissions={onSetAllPlayerPermissions}
+          wallPointsCount={wallPoints.length}
+          onFinishWall={handleFinishWall}
+          onCancelWall={handleCancelWall}
+          onUndoWallPoint={handleUndoWallPoint}
+          onCloseWallPolygon={handleCloseWallPolygon}
+          onClearWalls={handleClearWalls}
+          onDeleteWall={handleDeleteWall}
+          onClearDoors={handleClearDoors}
+          onDeleteDoor={handleDeleteDoor}
+          onToggleDoor={handleToggleDoor}
+          onToggleAllDoors={handleToggleAllDoors}
           fogBrushMode={fogBrushMode}
           onSetFogBrushMode={setFogBrushMode}
           fogSubTool={fogSubTool}
@@ -1872,11 +2124,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {/* NÍVEL 3: MODO ILUMINAÇÃO (Tudo sem luz fica oculto; Luzes revelam suavemente; Mestre pode ocultar áreas iluminadas) */}
               {currentFogMode === 'dynamic' && (
                 <>
-                  {/* 1. Focos de luz fixos furam a escuridão com degradê atenuado */}
+                  {/* 1. Focos de luz fixos furam a escuridão com degradê atenuado (contidos por paredes e portas) */}
                   {(tacticalState.lights || []).map((light) => {
                     if (light.active === false || (light.radius || 0) <= 0) return null;
                     const center = getLightCenter(light);
                     const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+                    const visPath = lightVisibilityPaths[light.id];
+
+                    if (visPath) {
+                      return (
+                        <path
+                          key={`light-mask-${light.id}`}
+                          d={visPath}
+                          fill={`url(#fog-light-attenuation-${light.id})`}
+                        />
+                      );
+                    }
 
                     if (light.angle && light.angle < 360) {
                       return (
@@ -1899,13 +2162,25 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     );
                   })}
 
-                  {/* 2. Tokens com luz própria furam a escuridão com degradê */}
+                  {/* 2. Tokens com luz própria furam a escuridão com degradê (contidos por paredes e portas) */}
                   {tokens.map((token) => {
                     if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
                     const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
                     const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
                     const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
                     const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+                    const visPath = tokenLightVisibilityPaths[token.id];
+
+                    if (visPath) {
+                      return (
+                        <path
+                          key={`token-light-mask-${token.id}`}
+                          d={visPath}
+                          fill={`url(#fog-token-attenuation-${token.id})`}
+                        />
+                      );
+                    }
+
                     return (
                       <circle
                         key={`token-light-mask-${token.id}`}
@@ -2063,13 +2338,24 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             )}
           </g>
 
-          {/* CAMADA 3: FOCOS DE LUZ (RADIAÇÃO & BRILHO AMBIENTE NO TABULEIRO - 360°, 180° OU 90°) */}
+          {/* CAMADA 3: FOCOS DE LUZ (RADIAÇÃO & BRILHO AMBIENTE NO TABULEIRO - CONTIDO POR PAREDES E PORTAS) */}
           <g id="tactical-lights-glow" pointerEvents="none">
             {/* Brilho dos focos de luz fixos */}
             {(tacticalState.lights || []).map((light) => {
               if (light.active === false || light.radius <= 0) return null;
               const center = getLightCenter(light);
               const radiusPixels = light.radius * hexWidth * 0.95;
+              const visPath = lightVisibilityPaths[light.id];
+
+              if (visPath) {
+                return (
+                  <path
+                    key={`glow-${light.id}`}
+                    d={visPath}
+                    fill={`url(#light-glow-${light.id})`}
+                  />
+                );
+              }
 
               if (light.angle && light.angle < 360) {
                 return (
@@ -2100,6 +2386,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
               const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+              const visPath = tokenLightVisibilityPaths[token.id];
+
+              if (visPath) {
+                return (
+                  <path
+                    key={`token-glow-${token.id}`}
+                    d={visPath}
+                    fill={`url(#token-light-glow-${token.id})`}
+                  />
+                );
+              }
 
               return (
                 <circle
@@ -2109,6 +2406,188 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   r={radiusPixels}
                   fill={`url(#token-light-glow-${token.id})`}
                 />
+              );
+            })}
+          </g>
+
+          {/* CAMADA DE PAREDES E PORTAS (CONTENÇÃO VISUAL E INTERAÇÃO NO TABULEIRO) */}
+          <g id="tactical-walls-doors-layer">
+            {/* 1. PAREDES POLIGONAIS */}
+            {(tacticalState.walls || []).map((wall, wallIdx) => {
+              if (!wall.points || wall.points.length < 2) return null;
+              const pointsStr = wall.points
+                .map((pt) => `${mapX + pt.x},${mapY + pt.y}`)
+                .join(' ');
+              const strokeColor = wall.color || '#3b82f6';
+              const isSelected = selectedWallId === wall.id;
+
+              return (
+                <g key={wall.id || `wall-${wallIdx}`} id={`wall-group-${wall.id}`}>
+                  {wall.closed ? (
+                    <polygon
+                      points={pointsStr}
+                      fill="rgba(30, 41, 59, 0.4)"
+                      stroke={strokeColor}
+                      strokeWidth={isSelected ? 6 : 4.5}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      opacity={activeLayer === 'map' ? 0.95 : 0.75}
+                      className={activeLayer === 'map' && isMaster ? 'cursor-pointer' : undefined}
+                      onClick={(e) => {
+                        if (activeLayer === 'map' && isMaster) {
+                          e.stopPropagation();
+                          setSelectedWallId(wall.id);
+                        }
+                      }}
+                      onContextMenu={(e) => {
+                        if (activeLayer === 'map' && isMaster) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteWall(wall.id);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <polyline
+                      points={pointsStr}
+                      fill="none"
+                      stroke={strokeColor}
+                      strokeWidth={isSelected ? 6 : 4.5}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      opacity={activeLayer === 'map' ? 0.95 : 0.75}
+                      className={activeLayer === 'map' && isMaster ? 'cursor-pointer' : undefined}
+                      onClick={(e) => {
+                        if (activeLayer === 'map' && isMaster) {
+                          e.stopPropagation();
+                          setSelectedWallId(wall.id);
+                        }
+                      }}
+                      onContextMenu={(e) => {
+                        if (activeLayer === 'map' && isMaster) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteWall(wall.id);
+                        }
+                      }}
+                    />
+                  )}
+
+                  {/* Vértices destacados na Camada do Mapa para o Mestre */}
+                  {activeLayer === 'map' && isMaster && (
+                    <g className="wall-vertices pointer-events-none">
+                      {wall.points.map((pt, pIdx) => (
+                        <circle
+                          key={`v-${pIdx}`}
+                          cx={mapX + pt.x}
+                          cy={mapY + pt.y}
+                          r={3.5}
+                          fill="#ffffff"
+                          stroke={strokeColor}
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* 2. PORTAS (ABERTAS OU FECHADAS COM CONTENÇÃO DE LUZ) */}
+            {(tacticalState.doors || []).map((door, doorIdx) => {
+              const x1 = mapX + door.x1;
+              const y1 = mapY + door.y1;
+              const x2 = mapX + door.x2;
+              const y2 = mapY + door.y2;
+              const midX = (x1 + x2) / 2;
+              const midY = (y1 + y2) / 2;
+              const angleRad = Math.atan2(y2 - y1, x2 - x1);
+              const doorLength = Math.hypot(x2 - x1, y2 - y1);
+
+              return (
+                <g key={door.id || `door-${doorIdx}`} id={`door-group-${door.id}`}>
+                  {door.isOpen ? (
+                    // Porta Aberta: batente aberto tracejado e folha girada aberta
+                    <g pointerEvents="none">
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke="#10b981"
+                        strokeWidth={2.5}
+                        strokeDasharray="4 3"
+                        opacity={0.8}
+                      />
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x1 + Math.cos(angleRad + Math.PI / 2) * Math.min(doorLength * 0.8, 32)}
+                        y2={y1 + Math.sin(angleRad + Math.PI / 2) * Math.min(doorLength * 0.8, 32)}
+                        stroke="#059669"
+                        strokeWidth={4.5}
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  ) : (
+                    // Porta Fechada: barra sólida robusta de madeira reforçada com borda âmbar
+                    <g pointerEvents="none">
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke="#451a03"
+                        strokeWidth={7}
+                        strokeLinecap="round"
+                      />
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke="#f59e0b"
+                        strokeWidth={2.5}
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  )}
+
+                  {/* Emblema central de Porta: clique para Abrir ou Fechar (interativo em qualquer camada) */}
+                  <g
+                    transform={`translate(${midX}, ${midY})`}
+                    className="cursor-pointer select-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleDoor(door.id);
+                    }}
+                    onContextMenu={(e) => {
+                      if (activeLayer === 'map' && isMaster) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDeleteDoor(door.id);
+                      }
+                    }}
+                  >
+                    <title>{door.isOpen ? 'Porta Aberta (Clique para fechar)' : 'Porta Fechada (Clique para abrir)'}</title>
+                    <circle
+                      r={13}
+                      fill={door.isOpen ? '#064e3b' : '#451a03'}
+                      stroke={door.isOpen ? '#34d399' : '#f59e0b'}
+                      strokeWidth={2}
+                      className="transition-transform hover:scale-125"
+                    />
+                    <text
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize="10"
+                      fill={door.isOpen ? '#a7f3d0' : '#fef3c7'}
+                      className="font-bold pointer-events-none"
+                    >
+                      {door.isOpen ? '🔓' : '🔒'}
+                    </text>
+                  </g>
+                </g>
               );
             })}
           </g>
@@ -2967,8 +3446,120 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </g>
           )}
 
-          {/* PREVIEW DO FOCO DE LUZ AO PASSAR O MOUSE (QUANDO SUB-FERRAMENTA LUZ ESTÁ SELECIONADA EM OCULTAR) */}
-          {activeTool === 'fog' && fogSubTool === 'light' && (hoveredHex || mouseMapPos) && (
+          {/* PREVIEW DA CONSTRUÇÃO DE PAREDES POLIGONAIS */}
+          {activeTool === 'wall' && (wallPoints.length > 0 || mouseMapPos) && (
+            <g id="wall-construction-preview" pointerEvents="none">
+              {wallPoints.length >= 2 && (
+                <polyline
+                  points={wallPoints.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth={5}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              )}
+
+              {wallPoints.length > 0 && mouseMapPos && (
+                <line
+                  x1={mapX + wallPoints[wallPoints.length - 1].x}
+                  y1={mapY + wallPoints[wallPoints.length - 1].y}
+                  x2={mapX + mouseMapPos.x}
+                  y2={mapY + mouseMapPos.y}
+                  stroke="#60a5fa"
+                  strokeWidth={3}
+                  strokeDasharray="6 4"
+                />
+              )}
+
+              {wallPoints.map((pt, pIdx) => {
+                const isFirst = pIdx === 0;
+                const isNearFirst = isFirst && mouseMapPos && Math.hypot(mouseMapPos.x - pt.x, mouseMapPos.y - pt.y) < 18;
+
+                return (
+                  <g key={`wall-vert-preview-${pIdx}`}>
+                    <circle
+                      cx={mapX + pt.x}
+                      cy={mapY + pt.y}
+                      r={isNearFirst ? 8 : 5}
+                      fill={isNearFirst ? '#10b981' : '#ffffff'}
+                      stroke={isNearFirst ? '#059669' : '#2563eb'}
+                      strokeWidth={2}
+                    />
+                    <text
+                      x={mapX + pt.x}
+                      y={mapY + pt.y + 14}
+                      fontSize="10"
+                      fill="#e2e8f0"
+                      textAnchor="middle"
+                      className="font-mono font-bold select-none drop-shadow"
+                    >
+                      {pIdx + 1}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {wallPoints.length === 0 && mouseMapPos && (
+                <circle
+                  cx={mapX + mouseMapPos.x}
+                  cy={mapY + mouseMapPos.y}
+                  r={6}
+                  fill="rgba(59, 130, 246, 0.4)"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                />
+              )}
+            </g>
+          )}
+
+          {/* PREVIEW DA INSERÇÃO DE PORTAS */}
+          {activeTool === 'door' && doorStartPoint && mouseMapPos && (
+            <g id="door-construction-preview" pointerEvents="none">
+              <line
+                x1={mapX + doorStartPoint.x}
+                y1={mapY + doorStartPoint.y}
+                x2={mapX + mouseMapPos.x}
+                y2={mapY + mouseMapPos.y}
+                stroke="#f59e0b"
+                strokeWidth={5}
+                strokeLinecap="round"
+                strokeDasharray="6 3"
+              />
+              <circle
+                cx={mapX + doorStartPoint.x}
+                cy={mapY + doorStartPoint.y}
+                r={5}
+                fill="#f59e0b"
+              />
+              <circle
+                cx={mapX + mouseMapPos.x}
+                cy={mapY + mouseMapPos.y}
+                r={5}
+                fill="#f59e0b"
+              />
+              <g
+                transform={`translate(${
+                  mapX + (doorStartPoint.x + mouseMapPos.x) / 2
+                }, ${
+                  mapY + (doorStartPoint.y + mouseMapPos.y) / 2
+                })`}
+              >
+                <circle r={10} fill="#78350f" stroke="#f59e0b" strokeWidth={1.5} />
+                <text
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize="8"
+                  fill="#fef3c7"
+                >
+                  🚪
+                </text>
+              </g>
+            </g>
+          )}
+
+          {/* PREVIEW DO FOCO DE LUZ AO PASSAR O MOUSE (QUANDO SUB-FERRAMENTA LUZ ESTÁ SELECIONADA EM OCULTAR OU LUZ LIVRE) */}
+          {((activeTool === 'fog' && fogSubTool === 'light') || activeTool === 'light') && (hoveredHex || mouseMapPos) && (
             <g id="light-brush-preview" pointerEvents="none">
               {(() => {
                 const relCenter = hoveredHex ? getHexCenter(hoveredHex.col, hoveredHex.row, hexSize) : { x: 0, y: 0 };
@@ -3390,6 +3981,75 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           )}
         </div>
       </div>
+
+      {/* 5.1 BARRA FLUTUANTE DE CONSTRUÇÃO DE PAREDE */}
+      {wallPoints.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900/95 border border-amber-500/80 shadow-2xl rounded-2xl px-4 py-2 flex items-center gap-2.5 backdrop-blur-md text-xs animate-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+            <Spline size={15} />
+            <span>Parede: {wallPoints.length} {wallPoints.length === 1 ? 'vértice' : 'vértices'}</span>
+          </div>
+          <div className="h-4 w-px bg-slate-700" />
+          <button
+            type="button"
+            onClick={handleFinishWall}
+            disabled={wallPoints.length < 2}
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            title="Concluir a parede (Enter)"
+          >
+            <Check size={14} />
+            <span>Concluir (Enter)</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleCloseWallPolygon}
+            disabled={wallPoints.length < 3}
+            className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            title="Fechar o polígono conectando ao ponto inicial"
+          >
+            <RotateCw size={13} />
+            <span>Fechar Polígono</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleUndoWallPoint}
+            className="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+            title="Desfazer último ponto (Backspace)"
+          >
+            <RotateCcw size={13} />
+            <span>Desfazer</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleCancelWall}
+            className="px-2 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+            title="Cancelar (Esc)"
+          >
+            <X size={13} />
+            <span>Cancelar</span>
+          </button>
+        </div>
+      )}
+
+      {/* 5.2 BARRA FLUTUANTE DE INSERÇÃO DE PORTA */}
+      {doorStartPoint && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900/95 border border-amber-500/80 shadow-2xl rounded-2xl px-4 py-2 flex items-center gap-3 backdrop-blur-md text-xs animate-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+            <DoorClosed size={15} />
+            <span>Porta: Clique no mapa para definir o ponto final</span>
+          </div>
+          <div className="h-4 w-px bg-slate-700" />
+          <button
+            type="button"
+            onClick={() => setDoorStartPoint(null)}
+            className="px-2.5 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+            title="Cancelar inserção da porta (Esc)"
+          >
+            <X size={13} />
+            <span>Cancelar (Esc)</span>
+          </button>
+        </div>
+      )}
 
       {/* 6. BARRAS DE ROLAGEM (HORIZONTAL E VERTICAL QUANDO O MAPA FOR MAIOR QUE A TELA) */}
       {showHScroll && (

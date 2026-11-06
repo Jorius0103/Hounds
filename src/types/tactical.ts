@@ -122,6 +122,30 @@ export interface TacticalProp {
   opacity?: number;
 }
 
+export interface TacticalWallPoint {
+  x: number; // Pixel X relativo à imagem do mapa
+  y: number; // Pixel Y relativo à imagem do mapa
+}
+
+export interface TacticalWall {
+  id: string;
+  points: TacticalWallPoint[]; // Seqüência de vértices do polígono / polilinha
+  closed?: boolean; // Se o polígono é fechado conectando o último ponto ao primeiro
+  color?: string; // Cor do traço visual
+  thickness?: number; // Espessura do traço
+}
+
+export interface TacticalDoor {
+  id: string;
+  x1: number; // Ponto inicial X
+  y1: number; // Ponto inicial Y
+  x2: number; // Ponto final X
+  y2: number; // Ponto final Y
+  isOpen: boolean; // Se a porta está aberta (luz passa) ou fechada (bloqueia luz)
+  name?: string; // Nome ou rótulo da porta
+  color?: string;
+}
+
 export interface TacticalState {
   backgroundKey: TacticalBackgroundKey;
   customImageUrl?: string;
@@ -148,6 +172,8 @@ export interface TacticalState {
   fogRevealedCells: string[]; // "col,row" (retrocompatibilidade)
   fogRects?: TacticalFogRect[]; // Áreas retangulares reveladas ou ocultas em linhas retas
   lights?: TacticalLightSource[]; // Focos de luz fixos no mapa
+  walls?: TacticalWall[]; // Paredes poligonais para contenção de luminosidade
+  doors?: TacticalDoor[]; // Portas (abertas/fechadas) para contenção de luminosidade
   tokens: TacticalToken[];
   props?: TacticalProp[]; // Elementos do cenário / mobília (mesas de taverna, baús, etc.)
   terrainCells: TacticalTerrainCell[];
@@ -180,6 +206,8 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   fogRevealedCells: [],
   fogRects: [],
   lights: [],
+  walls: [],
+  doors: [],
   tokens: [],
   props: [],
   terrainCells: [],
