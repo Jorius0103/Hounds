@@ -24,7 +24,7 @@ import { PassDayModal } from './components/PassDayModal';
 import { DiceRollOverlay, DiceRollResult } from './components/DiceRollOverlay';
 import { systemLogger } from './utils/systemLogger';
 import { hubAudio } from './utils/hubAudio';
-import { Swords, Plus, EyeOff, Search } from 'lucide-react';
+import { Swords, Plus, EyeOff, Search, ChevronLeft, ChevronRight, ScrollText, PanelRightClose } from 'lucide-react';
 import { hubAlert } from './utils/hubDialog';
 
 const STORAGE_KEY = 'gurps_combat_master_data_v2';
@@ -829,6 +829,24 @@ export default function App() {
   });
 
   // View Mode: 'global' | 'sheets' | 'tactical'
+  const [isLogCollapsed, setIsLogCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('hounds_log_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleLogCollapse = () => {
+    setIsLogCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('hounds_log_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const [activeViewMode, setActiveViewMode] = useState<ViewMode>(() => {
     if (!TACTICAL_MAP_ENABLED) return 'sheets';
     if (initialMesaViewState?.activeViewMode && ['global', 'sheets', 'tactical'].includes(initialMesaViewState.activeViewMode)) {
@@ -5514,8 +5532,8 @@ export default function App() {
       <main className="flex-1 w-full p-2.5 sm:p-3.5 lg:px-5">
         {activeViewMode === 'tactical' ? (
           /* MODO TABULEIRO TÁTICO COM LOG DE COMBATE INTEGRADO À DIREITA */
-          <div className="flex flex-col xl:flex-row gap-3.5 items-start w-full">
-            <div className="flex-1 min-w-0 w-full">
+          <div className="flex flex-col xl:flex-row gap-3 items-start w-full relative">
+            <div className="flex-1 min-w-0 w-full transition-all">
               <TacticalMapWorkspace
                 tacticalState={activeTacticalState}
                 onUpdateTacticalState={handleUpdateTacticalState}
@@ -5537,26 +5555,54 @@ export default function App() {
                 editorUserIds={effectiveEditorIds}
                 onTogglePlayerPermission={handleTogglePlayerPermission}
                 onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
+                isLogCollapsed={isLogCollapsed}
+                onToggleLogCollapse={handleToggleLogCollapse}
               />
             </div>
-            {/* Coluna da Direita: Log de Combate e Rolagens em Tempo Real */}
-            <div className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky" style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}>
-              <GeneralCombatLog
-                activeCombat={activeCombat}
-                additionalCharacters={allCharacters}
-                sessionEvents={sessionEvents}
-                onSelectNpc={(npcId) => {
-                  setSelectedNpcId(npcId);
-                }}
-                selectedNpcId={selectedNpcId}
-                currentUserRole={effectiveRole}
-                currentUserName={currentUser?.name}
-                canDelete={canEditCurrent}
-                onClearHistory={handleClearActiveCombatHistory}
-                onDeleteEntry={handleDeleteLogEntry}
-                onUpdateEntryComment={handleUpdateLogEntryComment}
-              />
-            </div>
+
+            {/* Quando o log estiver recolhido, exibe aba lateral compacta para reabrir */}
+            {isLogCollapsed ? (
+              <div
+                className="hidden xl:flex sticky shrink-0"
+                style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}
+              >
+                <button
+                  type="button"
+                  onClick={handleToggleLogCollapse}
+                  className="px-2.5 py-3.5 bg-slate-900/95 hover:bg-slate-850 text-amber-400 hover:text-amber-300 border border-amber-500/50 hover:border-amber-400 rounded-xl shadow-2xl flex flex-col items-center gap-2 text-xs font-bold transition-all cursor-pointer group active:scale-95"
+                  title="Expandir Log de Combate e Rolagens"
+                >
+                  <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+                  <ScrollText size={16} />
+                  <span className="text-[10px] [writing-mode:vertical-rl] tracking-wider uppercase font-black text-amber-300">
+                    Log da Mesa
+                  </span>
+                </button>
+              </div>
+            ) : (
+              /* Coluna da Direita: Log de Combate e Rolagens em Tempo Real */
+              <div
+                className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky transition-all"
+                style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}
+              >
+                <GeneralCombatLog
+                  activeCombat={activeCombat}
+                  additionalCharacters={allCharacters}
+                  sessionEvents={sessionEvents}
+                  onSelectNpc={(npcId) => {
+                    setSelectedNpcId(npcId);
+                  }}
+                  selectedNpcId={selectedNpcId}
+                  currentUserRole={effectiveRole}
+                  currentUserName={currentUser?.name}
+                  canDelete={canEditCurrent}
+                  onClearHistory={handleClearActiveCombatHistory}
+                  onDeleteEntry={handleDeleteLogEntry}
+                  onUpdateEntryComment={handleUpdateLogEntryComment}
+                  onToggleCollapse={handleToggleLogCollapse}
+                />
+              </div>
+            )}
           </div>
         ) : (
           /* MODO FICHAS & LOG GERAL */

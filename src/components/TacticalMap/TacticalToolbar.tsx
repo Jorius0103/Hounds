@@ -33,6 +33,7 @@ import {
   Grid,
   Users,
   Check,
+  ScrollText,
   CheckCheck,
   ShieldCheck,
   X,
@@ -132,6 +133,8 @@ interface TacticalToolbarProps {
   activeRulerMarkersCount?: number;
   onOpenPropsModal?: () => void;
   propsCount?: number;
+  isLogCollapsed?: boolean;
+  onToggleLogCollapse?: () => void;
 }
 
 export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
@@ -205,6 +208,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   keepMeasurementsOnMap = true,
   onSetKeepMeasurementsOnMap,
   activeRulerMarkersCount = 0,
+  isLogCollapsed = false,
+  onToggleLogCollapse,
 }) => {
   const [mapConfigOpen, setMapConfigOpen] = useState(false);
   const [sliderBaseWidth, setSliderBaseWidth] = useState<number | null>(null);
@@ -968,6 +973,23 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   {tokensCount}
                 </span>
               )}
+            </button>
+          )}
+
+          {/* Botão de Recolher / Expandir Log da Mesa */}
+          {onToggleLogCollapse && (
+            <button
+              type="button"
+              onClick={onToggleLogCollapse}
+              className={`px-2.5 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer ${
+                isLogCollapsed
+                  ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-amber-500/20'
+                  : 'bg-slate-800/90 hover:bg-slate-750 text-slate-300 hover:text-white border-slate-700'
+              }`}
+              title={isLogCollapsed ? 'Expandir Log da Mesa' : 'Recolher Log da Mesa (dar mais espaço ao tabuleiro)'}
+            >
+              <ScrollText size={14} className={isLogCollapsed ? 'text-slate-950' : 'text-amber-400'} />
+              <span>{isLogCollapsed ? 'Abrir Log' : 'Recolher Log'}</span>
             </button>
           )}
         </div>

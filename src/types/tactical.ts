@@ -26,6 +26,7 @@ export interface TacticalToken {
   lightRadius?: number; // Raio de iluminação em hexes/jardas (padrão 4 para tocha)
   lightColor?: string; // Cor do brilho (ex: '#f59e0b' âmbar, '#38bdf8' mágico)
   lightAngle?: number; // Ângulo de abertura da luz: 360 (circular) ou 180 (semicírculo sempre à frente do token)
+  hasInfiniteVision?: boolean; // Visão liberada: enxerga tudo no mapa sem limite de alcance, exceto por dentro de paredes
 }
 
 export interface TacticalLightSource {

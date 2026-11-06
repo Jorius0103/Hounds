@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Combat, UserRole, MesaRole, NPC, ActionLogEntry } from '../types/rpg';
 import { CombatLogCard } from './CombatLogCard';
 import { DetailedLogModal } from './DetailedLogModal';
-import { ScrollText, Search, X, SlidersHorizontal, Maximize2 } from 'lucide-react';
+import { ScrollText, Search, X, SlidersHorizontal, Maximize2, PanelRightClose, ChevronRight } from 'lucide-react';
 
 interface GeneralCombatLogProps {
   activeCombat: Combat | undefined;
@@ -16,6 +16,7 @@ interface GeneralCombatLogProps {
   onClearHistory?: () => void;
   onDeleteEntry?: (entryId: string, npcId?: string, revertValues?: boolean) => void;
   onUpdateEntryComment?: (entryId: string, npcId: string | undefined, comment: string) => void;
+  onToggleCollapse?: () => void;
 }
 
 export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
@@ -30,6 +31,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
   onClearHistory,
   onDeleteEntry,
   onUpdateEntryComment,
+  onToggleCollapse,
 }) => {
   const userCanDelete = canDelete !== undefined ? canDelete : (currentUserRole === 'mestre');
 
@@ -308,6 +310,18 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               <Maximize2 size={12} />
               <span>Detalhado</span>
             </button>
+
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="px-2 py-1 text-slate-300 hover:text-amber-300 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-amber-500/40 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-semibold cursor-pointer"
+                title="Recolher aba de log para dar mais espaço ao tabuleiro"
+              >
+                <PanelRightClose size={12} />
+                <span>Recolher</span>
+              </button>
+            )}
           </div>
         </div>
 

@@ -35,6 +35,7 @@ import {
   FACING_NAMES,
   HexCoord,
   Point,
+  LineSegment,
   extractBlockingSegments,
   computeVisibilityPolygon,
   pointsToSvgPath,
@@ -83,6 +84,8 @@ interface TacticalMapWorkspaceProps {
   editorUserIds?: string[];
   onTogglePlayerPermission?: (userId: string) => void;
   onSetAllPlayerPermissions?: (allow: boolean) => void;
+  isLogCollapsed?: boolean;
+  onToggleLogCollapse?: () => void;
 }
 
 export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
@@ -102,6 +105,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   editorUserIds = [],
   onTogglePlayerPermission,
   onSetAllPlayerPermissions,
+  isLogCollapsed,
+  onToggleLogCollapse,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -392,18 +397,26 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     return result;
   }, [tacticalState.lights, blockingSegments, getLightCenter, hexWidth]);
 
-  // Polígonos de visibilidade calculados para tokens que emitem luz própria
+  // Polígonos de visibilidade calculados para tokens que emitem luz própria ou possuem visão liberada
   const tokenLightVisibilityPaths = useMemo(() => {
-    if (blockingSegments.length === 0) return {};
     const result: Record<string, string> = {};
+    const mapBoundsSegments: LineSegment[] = [
+      { p1: { x: 0, y: 0 }, p2: { x: mapW, y: 0 } },
+      { p1: { x: mapW, y: 0 }, p2: { x: mapW, y: mapH } },
+      { p1: { x: mapW, y: mapH }, p2: { x: 0, y: mapH } },
+      { p1: { x: 0, y: mapH }, p2: { x: 0, y: 0 } },
+    ];
 
     for (const token of tokens) {
-      if (!token.emitsLight || (token.lightRadius || 4) <= 0) continue;
+      const hasLight = token.emitsLight && (token.lightRadius || 4) > 0;
+      const hasInfVision = !!token.hasInfiniteVision;
+      if (!hasLight && !hasInfVision) continue;
+
       const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
       const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
       const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
       const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-      const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+
       const isRotating = rotatingTokenId === token.id;
       const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
         ? previewRotation.rotation
@@ -413,13 +426,24 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       const facingAngleDegrees = ((tokenRotation + 90) % 360 + 360) % 360;
       const angle = token.lightAngle || 360;
 
-      const poly = computeVisibilityPolygon(center, radiusPixels, blockingSegments, angle, facingAngleDegrees);
+      let radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+      let segmentsToUse = blockingSegments;
+
+      if (hasInfVision) {
+        // Visão Liberada: todo o tabuleiro aberto, bloqueado apenas por paredes e limites do mapa
+        radiusPixels = Math.hypot(mapW, mapH);
+        segmentsToUse = [...blockingSegments, ...mapBoundsSegments];
+      }
+
+      if (segmentsToUse.length === 0 && !hasInfVision) continue;
+
+      const poly = computeVisibilityPolygon(center, radiusPixels, segmentsToUse, angle, facingAngleDegrees);
       if (poly.length >= 3) {
         result[token.id] = pointsToSvgPath(poly);
       }
     }
     return result;
-  }, [tokens, blockingSegments, draggedTokenId, dragHoverHex, hexSize, mapX, mapY, hexWidth, rotatingTokenId, previewRotation]);
+  }, [tokens, blockingSegments, draggedTokenId, dragHoverHex, hexSize, mapX, mapY, mapW, mapH, hexWidth, rotatingTokenId, previewRotation]);
 
   // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
   const litCellsSet = useMemo(() => {
@@ -1758,6 +1782,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           areaColor={areaColor}
           onSetAreaColor={setAreaColor}
           onClearAreaMarkers={handleClearAreaMarkers}
+          isLogCollapsed={isLogCollapsed}
+          onToggleLogCollapse={onToggleLogCollapse}
         />
       </div>
 
@@ -2254,9 +2280,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     );
                   })}
 
-                  {/* 2. Tokens com luz própria furam a escuridão com degradê (contidos por paredes e portas) */}
+                  {/* 2. Tokens com luz própria ou visão liberada furam a escuridão (contidos por paredes e portas) */}
                   {tokens.map((token) => {
-                    if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
+                    const hasLight = token.emitsLight && (token.lightRadius || 4) > 0;
+                    const hasInfVision = !!token.hasInfiniteVision;
+                    if (!hasLight && !hasInfVision) return null;
                     const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
                     const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
                     const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
@@ -4085,13 +4113,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 <div className="text-[10px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <Flame size={11} className="text-amber-400" />
-                    <span>Emissão de Luz:</span>
+                    <span>Emissão de Luz / Visão:</span>
                   </span>
-                  {token.emitsLight && (
-                    <span className="text-[9.5px] font-mono text-amber-300 font-bold">
-                      {token.lightRadius || 4} yd {token.lightAngle === 180 ? '(180° Frente)' : '(360°)'}
-                    </span>
-                  )}
+                  <span className="text-[9.5px] font-mono text-amber-300 font-bold">
+                    {token.hasInfiniteVision
+                      ? '👁️ Visão Liberada'
+                      : token.emitsLight
+                      ? `${token.lightRadius || 4} yd ${token.lightAngle === 180 ? '(180°)' : '(360°)'}`
+                      : 'Off'}
+                  </span>
                 </div>
                 <div className="grid grid-cols-4 gap-1">
                   <button
@@ -4222,6 +4252,29 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     </button>
                   </div>
                 )}
+
+                {/* Opção de Visão Liberada */}
+                <div className="mt-1.5 pt-1.5 border-t border-slate-800/60">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const updatedTokens = tokens.map((t) =>
+                        t.id === token.id ? { ...t, hasInfiniteVision: !t.hasInfiniteVision } : t
+                      );
+                      onUpdateTacticalState({ tokens: updatedTokens });
+                    }}
+                    className={`w-full py-1 px-2 rounded text-[10px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      token.hasInfiniteVision
+                        ? 'bg-sky-950/90 text-sky-200 border-sky-400 shadow-sm shadow-sky-500/20'
+                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+                    }`}
+                    title="Visão Liberada: o combatente enxerga todo o mapa sem limite de distância, exceto atrás de paredes e portas fechadas"
+                  >
+                    <span>👁️ Visão Liberada: {token.hasInfiniteVision ? 'Ativada (Enxerga Tudo)' : 'Desativada'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Botão de Ação: Lançar Dano / Fadiga / Itens */}

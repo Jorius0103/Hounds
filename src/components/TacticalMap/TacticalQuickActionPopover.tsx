@@ -297,10 +297,12 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-slate-400 flex items-center gap-1 font-medium">
             <Flame size={12} className="text-amber-400" />
-            <span>Luz do Token:</span>
+            <span>Iluminação:</span>
           </span>
           <span className="font-mono text-amber-300 font-bold text-[10px]">
-            {token.emitsLight
+            {token.hasInfiniteVision
+              ? '👁️ Visão Liberada'
+              : token.emitsLight
               ? `${token.lightRadius || 4} yd (${token.lightAngle === 180 ? '180° Frente' : '360°'})`
               : 'Desligada'}
           </span>
@@ -390,6 +392,22 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
             </button>
           </div>
         )}
+
+        {/* Opção de Visão Liberada */}
+        <div className="pt-1.5 border-t border-slate-800/60">
+          <button
+            type="button"
+            onClick={() => onUpdateToken({ hasInfiniteVision: !token.hasInfiniteVision })}
+            className={`w-full py-1 px-2 rounded text-[9.5px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              token.hasInfiniteVision
+                ? 'bg-sky-950/90 text-sky-200 border-sky-400 shadow-sm shadow-sky-500/20'
+                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+            }`}
+            title="Visão Liberada: o combatente enxerga todo o mapa sem limite de distância, exceto atrás de paredes"
+          >
+            <span>👁️ Visão Liberada: {token.hasInfiniteVision ? 'Ativada (Enxerga Tudo)' : 'Desativada'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Ações Rápidas de Token & Ficha */}
