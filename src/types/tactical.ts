@@ -4,6 +4,7 @@ export type FacingDirection = 0 | 1 | 2 | 3 | 4 | 5; // 6 hex directions (0 = To
 
 export type TacticalLayer = 'map' | 'tokens' | 'gm'; // 3 Níveis: Mapa (base), Tokens (jogo), GM (mestre)
 export type TacticalViewMode = 'gm' | 'player'; // Visão do Mestre ou Visão dos Jogadores
+export type TacticalFogMode = 'open' | 'hidden' | 'dynamic'; // 3 Níveis de Revelação: 'open' (Tudo Aberto) | 'hidden' (Tudo Oculto) | 'dynamic' (Modo Iluminação)
 
 export interface TacticalToken {
   id: string;
@@ -143,6 +144,7 @@ export interface TacticalState {
   scalePerCell: number; // 1 hex = 1 jarda
   scaleUnit: 'yd' | 'm';
   fogEnabled: boolean;
+  fogMode?: TacticalFogMode; // 'open' (Tudo Aberto) | 'hidden' (Tudo Oculto) | 'dynamic' (Modo Iluminação)
   fogRevealedCells: string[]; // "col,row" (retrocompatibilidade)
   fogRects?: TacticalFogRect[]; // Áreas retangulares reveladas ou ocultas em linhas retas
   lights?: TacticalLightSource[]; // Focos de luz fixos no mapa
@@ -174,6 +176,7 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   scalePerCell: 1,
   scaleUnit: 'yd',
   fogEnabled: false,
+  fogMode: 'open',
   fogRevealedCells: [],
   fogRects: [],
   lights: [],

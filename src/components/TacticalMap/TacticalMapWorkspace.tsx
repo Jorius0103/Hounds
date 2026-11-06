@@ -10,6 +10,7 @@ import {
   TacticalLightSource,
   TacticalProp,
   TacticalFogRect,
+  TacticalFogMode,
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
@@ -177,6 +178,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const activeLayer = tacticalState?.activeLayer || 'tokens';
   // A camada 'tokens' já é a visão dos jogadores (tokens públicos)!
   const isPlayerView = !isMaster || activeLayer === 'tokens';
+  const currentFogMode: TacticalFogMode =
+    tacticalState?.fogMode || (tacticalState?.fogEnabled ? 'dynamic' : 'open');
 
   // Elementos do Cenário / Mobília (Props - Estilo Roll20)
   const [isPropsModalOpen, setIsPropsModalOpen] = useState(false);
@@ -386,18 +389,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleRevealAllFog = useCallback(() => {
     onUpdateTacticalState({
       fogEnabled: true,
+      fogMode: currentFogMode === 'open' ? 'hidden' : currentFogMode,
       fogRects: [{ id: 'reveal-all', x: 0, y: 0, width: mapW, height: mapH, mode: 'reveal' }],
       fogRevealedCells: [],
     });
-  }, [mapW, mapH, onUpdateTacticalState]);
+  }, [mapW, mapH, currentFogMode, onUpdateTacticalState]);
 
   const handleHideAllFog = useCallback(() => {
     onUpdateTacticalState({
       fogEnabled: true,
-      fogRects: [],
+      fogMode: currentFogMode === 'open' ? 'hidden' : currentFogMode,
+      fogRects: currentFogMode === 'dynamic'
+        ? [{ id: 'hide-all', x: 0, y: 0, width: mapW, height: mapH, mode: 'hide' }]
+        : [],
       fogRevealedCells: [],
     });
-  }, [onUpdateTacticalState]);
+  }, [mapW, mapH, currentFogMode, onUpdateTacticalState]);
 
   const handleAddLightAtCenter = useCallback(() => {
     const centerHex = pixelToHex(mapW / 2, mapH / 2, hexSize);
@@ -562,8 +569,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       setSelectedPropId(null);
     }
 
-    // 1. Ferramenta de Ocultação do Mapa (Névoa de Guerra & Focos de Luz em Linhas Retas)
+    // 1. Ferramenta de Ocultação do Mapa (3 Níveis de Revelação)
     if (activeTool === 'fog' && e.button === 0 && isMaster) {
+      if (currentFogMode === 'open') {
+        return;
+      }
       const p = clientToMapCoords(e.clientX, e.clientY);
 
       if (fogSubTool === 'light') {
@@ -1813,7 +1823,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           })}
 
           {/* MÁSCARA DA NÉVOA DE GUERRA (LINHAS RETANGULARES PURAS E FOCOS DE LUZ COM DEGRADÊ SUAVE) */}
-          {tacticalState.fogEnabled && (
+          {tacticalState.fogEnabled && currentFogMode !== 'open' && (
             <mask
               id="tactical-fog-mask"
               maskUnits="userSpaceOnUse"
@@ -1826,78 +1836,102 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {/* 1. Base branca cobre todo o mapa de névoa (branco = névoa 100% opaca) */}
               <rect x={mapX} y={mapY} width={mapW} height={mapH} fill="#ffffff" />
 
-              {/* 2. Retângulos recortados em linhas retas (preto = revela o mapa; branco = volta a ocultar) */}
-              {(tacticalState.fogRects || []).map((r, idx) => (
-                <rect
-                  key={r.id || `fog-rect-${idx}`}
-                  x={mapX + r.x}
-                  y={mapY + r.y}
-                  width={r.width}
-                  height={r.height}
-                  fill={r.mode === 'hide' ? '#ffffff' : '#000000'}
-                />
-              ))}
-
-              {/* 2.1 Retrocompatibilidade com células reveladas antes */}
-              {(tacticalState.fogRevealedCells || []).map((cellKey) => {
-                const [cStr, rStr] = cellKey.split(',');
-                const c = parseInt(cStr, 10);
-                const r = parseInt(rStr, 10);
-                if (isNaN(c) || isNaN(r)) return null;
-                const relCenter = getHexCenter(c, r, hexSize);
-                return (
-                  <polygon
-                    key={`old-cell-${cellKey}`}
-                    points={getHexPointsString({ x: mapX + relCenter.x, y: mapY + relCenter.y }, hexSize)}
-                    fill="#000000"
-                  />
-                );
-              })}
-
-              {/* 3. Focos de luz fixos: degradê suave perdendo iluminação até as bordas (360°, 180° ou 90°) */}
-              {(tacticalState.lights || []).map((light) => {
-                if (light.active === false || (light.radius || 0) <= 0) return null;
-                const center = getLightCenter(light);
-                const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
-
-                if (light.angle && light.angle < 360) {
-                  return (
-                    <path
-                      key={`light-mask-${light.id}`}
-                      d={getCircleSectorPath(center.x, center.y, radiusPixels, light.angle, light.rotation ?? 0)}
-                      fill={`url(#fog-light-attenuation-${light.id})`}
+              {/* NÍVEL 2: TUDO OCULTO (O Mestre vai revelando e ocultando com o Retângulo sem luzes furando sozinhas) */}
+              {currentFogMode === 'hidden' && (
+                <>
+                  {/* Retângulos manuais do mestre: preto = revela o mapa; branco = volta a ocultar */}
+                  {(tacticalState.fogRects || []).map((r, idx) => (
+                    <rect
+                      key={r.id || `fog-rect-${idx}`}
+                      x={mapX + r.x}
+                      y={mapY + r.y}
+                      width={r.width}
+                      height={r.height}
+                      fill={r.mode === 'hide' ? '#ffffff' : '#000000'}
                     />
-                  );
-                }
+                  ))}
 
-                return (
-                  <circle
-                    key={`light-mask-${light.id}`}
-                    cx={center.x}
-                    cy={center.y}
-                    r={radiusPixels}
-                    fill={`url(#fog-light-attenuation-${light.id})`}
-                  />
-                );
-              })}
+                  {/* Retrocompatibilidade com células reveladas antes */}
+                  {(tacticalState.fogRevealedCells || []).map((cellKey) => {
+                    const [cStr, rStr] = cellKey.split(',');
+                    const c = parseInt(cStr, 10);
+                    const r = parseInt(rStr, 10);
+                    if (isNaN(c) || isNaN(r)) return null;
+                    const relCenter = getHexCenter(c, r, hexSize);
+                    return (
+                      <polygon
+                        key={`old-cell-${cellKey}`}
+                        points={getHexPointsString({ x: mapX + relCenter.x, y: mapY + relCenter.y }, hexSize)}
+                        fill="#000000"
+                      />
+                    );
+                  })}
+                </>
+              )}
 
-              {/* 4. Tokens com luz própria: degradê suave perdendo iluminação até as bordas */}
-              {tokens.map((token) => {
-                if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
-                const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
-                const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
-                const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-                const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
-                return (
-                  <circle
-                    key={`token-light-mask-${token.id}`}
-                    cx={mapX + relCenter.x}
-                    cy={mapY + relCenter.y}
-                    r={radiusPixels}
-                    fill={`url(#fog-token-attenuation-${token.id})`}
-                  />
-                );
-              })}
+              {/* NÍVEL 3: MODO ILUMINAÇÃO (Tudo sem luz fica oculto; Luzes revelam suavemente; Mestre pode ocultar áreas iluminadas) */}
+              {currentFogMode === 'dynamic' && (
+                <>
+                  {/* 1. Focos de luz fixos furam a escuridão com degradê atenuado */}
+                  {(tacticalState.lights || []).map((light) => {
+                    if (light.active === false || (light.radius || 0) <= 0) return null;
+                    const center = getLightCenter(light);
+                    const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+
+                    if (light.angle && light.angle < 360) {
+                      return (
+                        <path
+                          key={`light-mask-${light.id}`}
+                          d={getCircleSectorPath(center.x, center.y, radiusPixels, light.angle, light.rotation ?? 0)}
+                          fill={`url(#fog-light-attenuation-${light.id})`}
+                        />
+                      );
+                    }
+
+                    return (
+                      <circle
+                        key={`light-mask-${light.id}`}
+                        cx={center.x}
+                        cy={center.y}
+                        r={radiusPixels}
+                        fill={`url(#fog-light-attenuation-${light.id})`}
+                      />
+                    );
+                  })}
+
+                  {/* 2. Tokens com luz própria furam a escuridão com degradê */}
+                  {tokens.map((token) => {
+                    if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
+                    const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
+                    const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
+                    const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+                    const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+                    return (
+                      <circle
+                        key={`token-light-mask-${token.id}`}
+                        cx={mapX + relCenter.x}
+                        cy={mapY + relCenter.y}
+                        r={radiusPixels}
+                        fill={`url(#fog-token-attenuation-${token.id})`}
+                      />
+                    );
+                  })}
+
+                  {/* 3. Retângulos manuais do mestre no Modo Iluminação:
+                      - Retângulos de Revelar: abre o mapa mesmo sem luz
+                      - RETÂNGULOS DE OCULTAR: desenhados POR CIMA das luzes (branco = anula e bloqueia a luz na área!) */}
+                  {(tacticalState.fogRects || []).map((r, idx) => (
+                    <rect
+                      key={r.id || `dyn-rect-${idx}`}
+                      x={mapX + r.x}
+                      y={mapY + r.y}
+                      width={r.width}
+                      height={r.height}
+                      fill={r.mode === 'hide' ? '#ffffff' : '#000000'}
+                    />
+                  ))}
+                </>
+              )}
             </mask>
           )}
         </defs>
@@ -2903,7 +2937,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           )}
 
           {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20 - LINHAS RETANGULARES PURAS) */}
-          {tacticalState.fogEnabled && (
+          {tacticalState.fogEnabled && currentFogMode !== 'open' && (
             <g id="tactical-fog-layer" clipPath="url(#map-image-bounds)" pointerEvents="none">
               {/* Camada visual de Névoa: semitransparente para o Mestre, 100% preta para os Jogadores */}
               <rect
@@ -2918,7 +2952,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           )}
 
           {/* PREVIEW DO RETÂNGULO DE SELEÇÃO DA NÉVOA DE GUERRA (LINHAS RETAS PURAS) */}
-          {activeTool === 'fog' && fogSubTool === 'box' && fogBoxStart && fogBoxCurrent && (
+          {activeTool === 'fog' && currentFogMode !== 'open' && fogSubTool === 'box' && fogBoxStart && fogBoxCurrent && (
             <g id="fog-box-preview" pointerEvents="none">
               <rect
                 x={mapX + Math.min(fogBoxStart.x, fogBoxCurrent.x)}

@@ -6,6 +6,7 @@ import {
   GridType,
   TacticalLayer,
   TacticalViewMode,
+  TacticalFogMode,
 } from '../../types/tactical';
 import {
   MousePointer,
@@ -178,6 +179,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
   const isMaster = currentUserRole === 'mestre';
   const activeLayer: TacticalLayer = tacticalState.activeLayer || 'tokens';
+  const currentFogMode: TacticalFogMode =
+    tacticalState.fogMode || (tacticalState.fogEnabled ? 'dynamic' : 'open');
 
   const currentPreset =
     TACTICAL_MAP_PRESETS.find((p) => p.key === tacticalState.backgroundKey) ||
@@ -295,7 +298,13 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 }`}
                 title="Ocultação de Áreas / Névoa de Guerra & Focos de Luz"
               >
-                {tacticalState.fogEnabled ? <EyeOff size={14} /> : <Eye size={14} />}
+                {currentFogMode === 'open' ? (
+                  <Sun size={14} />
+                ) : currentFogMode === 'hidden' ? (
+                  <EyeOff size={14} />
+                ) : (
+                  <Flame size={14} />
+                )}
                 <span>Ocultar</span>
               </button>
             </>
@@ -747,19 +756,41 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         )}
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onUpdateTacticalState({ fogEnabled: !tacticalState.fogEnabled })
-                        }
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${
-                          tacticalState.fogEnabled
-                            ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
-                            : 'bg-slate-850 text-slate-400 hover:text-white border-slate-750'
-                        }`}
-                      >
-                        Névoa: {tacticalState.fogEnabled ? 'Ativada' : 'Desativada'}
-                      </button>
+                      <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                        {(['open', 'hidden', 'dynamic'] as const).map((m) => {
+                          const isActive = currentFogMode === m;
+                          return (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() =>
+                                onUpdateTacticalState({
+                                  fogMode: m,
+                                  fogEnabled: m !== 'open',
+                                })
+                              }
+                              className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                isActive
+                                  ? m === 'open'
+                                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                                    : m === 'hidden'
+                                    ? 'bg-purple-600 text-white font-bold shadow-xs'
+                                    : 'bg-emerald-600 text-white font-bold shadow-xs'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                              title={
+                                m === 'open'
+                                  ? 'Tudo Aberto: Sem névoa'
+                                  : m === 'hidden'
+                                  ? 'Tudo Oculto: Mestre revela com Retângulo'
+                                  : 'Modo Iluminação: Luzes revelam / Ocultar bloqueia'
+                              }
+                            >
+                              {m === 'open' ? '☀️ Aberto' : m === 'hidden' ? '👁️ Oculto' : '💡 Iluminação'}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -832,112 +863,194 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
       {/* BARRA DE CONTROLE: OCULTAÇÃO DO MAPA & FOCOS DE LUZ (UNIFICADOS) */}
       {isMaster && activeTool === 'fog' && (
         <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
-          {/* 1. Ativação da Névoa & Seleção de Sub-ferramenta */}
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 font-bold text-slate-200">
+          {/* 1. SELETOR DOS 3 NÍVEIS DE REVELAÇÃO */}
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1 font-bold text-slate-200 mr-0.5 select-none">
               <EyeOff size={14} className="text-amber-400" />
-              <span>Ocultação:</span>
+              <span>Revelação:</span>
             </span>
 
-            {/* Alternar Ativação da Névoa */}
-            <button
-              type="button"
-              onClick={() => onUpdateTacticalState({ fogEnabled: !tacticalState.fogEnabled })}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                tacticalState.fogEnabled
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              {tacticalState.fogEnabled ? 'Névoa Ativada' : 'Névoa Desativada'}
-            </button>
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 shadow-inner">
+              <button
+                type="button"
+                onClick={() => onUpdateTacticalState({ fogMode: 'open', fogEnabled: false })}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  currentFogMode === 'open'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-850'
+                }`}
+                title="1. Tudo Aberto: Sem névoa, mapa 100% visível para todos"
+              >
+                <Sun size={13} />
+                <span>1. Tudo Aberto</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onUpdateTacticalState({ fogMode: 'hidden', fogEnabled: true });
+                  onSetFogSubTool?.('box');
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  currentFogMode === 'hidden'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-850'
+                }`}
+                title="2. Tudo Oculto: Mapa coberto. O Mestre revela e oculta salas manualmente com o Retângulo"
+              >
+                <EyeOff size={13} />
+                <span>2. Tudo Oculto (Retângulo)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onUpdateTacticalState({ fogMode: 'dynamic', fogEnabled: true })}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  currentFogMode === 'dynamic'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-850'
+                }`}
+                title="3. Modo Iluminação: Tudo sem luz fica oculto. Focos e tochas revelam o mapa. O Mestre pode ocultar áreas iluminadas com Retângulo"
+              >
+                <Flame size={13} />
+                <span>3. Modo Iluminação</span>
+              </button>
+            </div>
           </div>
 
-          {/* Seletor: Retângulo de Névoa vs Foco de Luz */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <button
-              type="button"
-              onClick={() => onSetFogSubTool?.('box')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                fogSubTool === 'box'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="Seleção Retangular em linhas retas para revelar ou cobrir áreas com névoa"
-            >
-              <Square size={13} />
-              <span>Retângulo</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetFogSubTool?.('light')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                fogSubTool === 'light'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="Colocar focos de luz (tochas, lanternas, fogueiras) no mapa"
-            >
-              <Flame size={13} />
-              <span>Foco de Luz</span>
-            </button>
-          </div>
-
-          {/* CONTROLES QUANDO RETÂNGULO ESTÁ ATIVO */}
-          {fogSubTool === 'box' && (
+          {/* 2. SUB-FERRAMENTAS CONFORME O MODO SELECIONADO */}
+          {currentFogMode === 'open' ? (
+            <div className="flex items-center gap-2 text-slate-400 text-xs italic">
+              <span>☀️ O mapa está totalmente aberto e visível para todos os jogadores.</span>
+            </div>
+          ) : (
             <>
-              {/* Modo: Revelar vs Ocultar */}
+              {/* Seletor: Retângulo de Névoa vs Foco de Luz */}
               <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-                  Ação:
-                </span>
                 <button
                   type="button"
-                  onClick={() => onSetFogBrushMode?.('reveal')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                    fogBrushMode === 'reveal'
+                  onClick={() => onSetFogSubTool?.('box')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    fogSubTool === 'box'
+                      ? currentFogMode === 'dynamic' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'bg-purple-600 text-white font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title={
+                    currentFogMode === 'dynamic'
+                      ? 'Retângulo: desenhe para ocultar áreas iluminadas ou revelar áreas adicionais'
+                      : 'Retângulo: desenhe para revelar ou ocultar áreas no mapa'
+                  }
+                >
+                  <Square size={13} />
+                  <span>
+                    {currentFogMode === 'dynamic' ? 'Retângulo (Ocultar Área)' : 'Retângulo'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetFogSubTool?.('light')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    fogSubTool === 'light'
                       ? 'bg-emerald-600 text-white font-bold shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
-                  title="Revelar áreas para os jogadores (corta a névoa em linhas retas)"
+                  title="Focos de luz (tochas, lanternas, fogueiras) no mapa"
                 >
-                  <Eye size={13} />
-                  <span>Revelar</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSetFogBrushMode?.('hide')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                    fogBrushMode === 'hide'
-                      ? 'bg-rose-600 text-white font-bold shadow-xs'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Recobrir áreas dos jogadores com escuridão"
-                >
-                  <EyeOff size={13} />
-                  <span>Ocultar</span>
+                  <Flame size={13} />
+                  <span>Foco de Luz</span>
                 </button>
               </div>
 
-              {/* Ações em Lote */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={onRevealAllFog}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
-                  title="Revelar todo o mapa instantaneamente"
-                >
-                  Revelar Tudo
-                </button>
-                <button
-                  type="button"
-                  onClick={onHideAllFog}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
-                  title="Cobrir todo o mapa com escuridão"
-                >
-                  Ocultar Tudo
-                </button>
-              </div>
+              {/* CONTROLES QUANDO RETÂNGULO ESTÁ ATIVO */}
+              {fogSubTool === 'box' && (
+                <>
+                  {/* Modo: Revelar vs Ocultar */}
+                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                    <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
+                      Ação:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onSetFogBrushMode?.('reveal')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                        fogBrushMode === 'reveal'
+                          ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="Revelar áreas para os jogadores (corta a névoa em linhas retas)"
+                    >
+                      <Eye size={13} />
+                      <span>Revelar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSetFogBrushMode?.('hide')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                        fogBrushMode === 'hide'
+                          ? 'bg-rose-600 text-white font-bold shadow-xs'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title={
+                        currentFogMode === 'dynamic'
+                          ? 'Ocultar / Bloquear Luz: desenhe sobre áreas iluminadas para cobri-las com escuridão total'
+                          : 'Recobrir áreas dos jogadores com escuridão'
+                      }
+                    >
+                      <EyeOff size={13} />
+                      <span>{currentFogMode === 'dynamic' ? 'Ocultar (Bloquear Luz)' : 'Ocultar'}</span>
+                    </button>
+                  </div>
+
+                  {/* Ações em Lote e Desfazer */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={onRevealAllFog}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                      title="Revelar todo o mapa instantaneamente"
+                    >
+                      Revelar Tudo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onHideAllFog}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                      title={
+                        currentFogMode === 'dynamic'
+                          ? 'Cobrir todo o mapa com escuridão total'
+                          : 'Cobrir todo o mapa com escuridão'
+                      }
+                    >
+                      Ocultar Tudo
+                    </button>
+                    {(tacticalState.fogRects || []).length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = (tacticalState.fogRects || []).slice(0, -1);
+                            onUpdateTacticalState({ fogRects: next });
+                          }}
+                          className="px-2 py-1 bg-slate-850 hover:bg-slate-800 text-amber-300 border border-slate-750 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                          title="Desfazer o último retângulo desenhado"
+                        >
+                          Desfazer ({tacticalState.fogRects?.length})
+                        </button>
+                        {currentFogMode === 'dynamic' && (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateTacticalState({ fogRects: [] })}
+                            className="px-2 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                            title="Limpar todos os retângulos de bloqueio manual de luz"
+                          >
+                            Limpar Bloqueios
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
 
