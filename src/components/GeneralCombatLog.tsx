@@ -315,11 +315,10 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="px-2 py-1 text-slate-300 hover:text-amber-300 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-amber-500/40 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-semibold cursor-pointer"
-                title="Recolher aba de log para dar mais espaço ao tabuleiro"
+                className="p-1.5 text-slate-400 hover:text-amber-300 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-amber-500/40 rounded-lg transition-colors flex items-center justify-center cursor-pointer group"
+                title="Recolher aba lateral de log (seta para a direita)"
               >
-                <PanelRightClose size={12} />
-                <span>Recolher</span>
+                <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
               </button>
             )}
           </div>

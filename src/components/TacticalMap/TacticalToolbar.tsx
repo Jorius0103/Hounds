@@ -57,6 +57,8 @@ import {
   DoorOpen,
   Spline,
   PenTool,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { UserAccount } from '../../types/rpg';
 
@@ -976,20 +978,31 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </button>
           )}
 
-          {/* Botão de Recolher / Expandir Log da Mesa */}
+          {/* Botão de Recolher / Expandir Log da Mesa com Setas Laterais */}
           {onToggleLogCollapse && (
             <button
               type="button"
               onClick={onToggleLogCollapse}
-              className={`px-2.5 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer ${
+              className={`px-2 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer ${
                 isLogCollapsed
                   ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-amber-500/20'
                   : 'bg-slate-800/90 hover:bg-slate-750 text-slate-300 hover:text-white border-slate-700'
               }`}
-              title={isLogCollapsed ? 'Expandir Log da Mesa' : 'Recolher Log da Mesa (dar mais espaço ao tabuleiro)'}
+              title={isLogCollapsed ? 'Expandir Log da Mesa (◀)' : 'Recolher Log da Mesa (▶)'}
             >
-              <ScrollText size={14} className={isLogCollapsed ? 'text-slate-950' : 'text-amber-400'} />
-              <span>{isLogCollapsed ? 'Abrir Log' : 'Recolher Log'}</span>
+              {isLogCollapsed ? (
+                <>
+                  <ChevronLeft size={15} className="text-slate-950 font-black" />
+                  <ScrollText size={13} className="text-slate-950" />
+                  <span>Log</span>
+                </>
+              ) : (
+                <>
+                  <ScrollText size={13} className="text-amber-400" />
+                  <span>Log</span>
+                  <ChevronRight size={15} className="text-slate-400" />
+                </>
+              )}
             </button>
           )}
         </div>

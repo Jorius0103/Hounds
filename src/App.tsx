@@ -5560,27 +5560,32 @@ export default function App() {
               />
             </div>
 
-            {/* Quando o log estiver recolhido, exibe aba lateral compacta para reabrir */}
-            {isLogCollapsed ? (
-              <div
-                className="hidden xl:flex sticky shrink-0"
-                style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}
+            {/* BOTÃO LATERAL RETRÁTIL COM SETA (DIVISOR / BORDA ENTRE TABULEIRO E LOG) */}
+            <div
+              className="hidden xl:flex sticky z-30 shrink-0 self-start"
+              style={{ top: 'calc(var(--mesa-top-offset, 48px) + 24px)' }}
+            >
+              <button
+                type="button"
+                onClick={handleToggleLogCollapse}
+                className={`flex items-center justify-center transition-all cursor-pointer group active:scale-90 shadow-2xl ${
+                  isLogCollapsed
+                    ? 'w-6 h-20 bg-slate-900/95 hover:bg-slate-850 text-amber-400 hover:text-amber-300 border border-amber-500/70 hover:border-amber-400 rounded-l-xl -ml-2'
+                    : 'w-5 h-20 -mx-1 bg-slate-900/90 hover:bg-slate-850 text-slate-400 hover:text-amber-400 border border-slate-700/80 hover:border-amber-500/70 rounded-full'
+                }`}
+                title={isLogCollapsed ? 'Expandir Log da Mesa (◀)' : 'Recolher Log da Mesa (▶)'}
+                aria-label={isLogCollapsed ? 'Expandir Log' : 'Recolher Log'}
               >
-                <button
-                  type="button"
-                  onClick={handleToggleLogCollapse}
-                  className="px-2.5 py-3.5 bg-slate-900/95 hover:bg-slate-850 text-amber-400 hover:text-amber-300 border border-amber-500/50 hover:border-amber-400 rounded-xl shadow-2xl flex flex-col items-center gap-2 text-xs font-bold transition-all cursor-pointer group active:scale-95"
-                  title="Expandir Log de Combate e Rolagens"
-                >
-                  <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-                  <ScrollText size={16} />
-                  <span className="text-[10px] [writing-mode:vertical-rl] tracking-wider uppercase font-black text-amber-300">
-                    Log da Mesa
-                  </span>
-                </button>
-              </div>
-            ) : (
-              /* Coluna da Direita: Log de Combate e Rolagens em Tempo Real */
+                {isLogCollapsed ? (
+                  <ChevronLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                ) : (
+                  <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                )}
+              </button>
+            </div>
+
+            {/* Coluna da Direita: Log de Combate e Rolagens em Tempo Real */}
+            {!isLogCollapsed && (
               <div
                 className="w-full xl:w-[380px] 2xl:w-[440px] shrink-0 xl:sticky transition-all"
                 style={{ top: 'calc(var(--mesa-top-offset, 48px) + 10px)' }}
