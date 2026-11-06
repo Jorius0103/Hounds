@@ -60,6 +60,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { rotateTacticalState90 } from '../../utils/tacticalMath';
 import { UserAccount } from '../../types/rpg';
 
 export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog' | 'light' | 'wall' | 'door';
@@ -322,415 +323,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <>
               {activeLayer === 'map' ? (
                 <>
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        const next = !mapConfigOpen;
-                        if (next) {
-                          setSliderBaseWidth(tacticalState.mapImageWidth || 2000);
-                          setSliderBaseHexSize(tacticalState.hexSize || 38);
-                          onUpdateTacticalState({ mapImageLocked: false });
-                        } else {
-                          onUpdateTacticalState({ mapImageLocked: true });
-                        }
-                        setMapConfigOpen(next);
-                      }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                        mapConfigOpen
-                          ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                      }`}
-                      title="Configuração do Mapa e Grid (Upload de Imagem, Rotação e Calibração)"
-                    >
-                      <Sliders size={14} />
-                      <span>Configuração do Mapa e Grid</span>
-                    </button>
-
-                    {mapConfigOpen && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => {
-                            setMapConfigOpen(false);
-                            onUpdateTacticalState({ mapImageLocked: true });
-                          }}
-                          onWheel={(e) => e.stopPropagation()}
-                        />
-                        <div
-                          className="absolute top-full left-0 mt-2 w-96 max-w-[95vw] bg-slate-950 border border-amber-500/50 rounded-2xl shadow-2xl p-4 z-50 text-xs space-y-4 max-h-[85vh] overflow-y-auto"
-                          onWheel={(e) => e.stopPropagation()}
-                        >
-                          {/* Cabeçalho */}
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-slate-200 font-bold">
-                            <span className="flex items-center gap-1.5 text-amber-400 text-sm">
-                              <Sliders size={15} /> Configuração do Mapa & Grid
-                            </span>
-                            <button
-                              onClick={() => {
-                                setMapConfigOpen(false);
-                                onUpdateTacticalState({ mapImageLocked: true });
-                              }}
-                              className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
-                            >
-                              <X size={15} />
-                            </button>
-                          </div>
-
-                          {/* SEÇÃO 1: IMAGEM DE FUNDO (UPLOAD E URL) */}
-                          <div className="space-y-2.5 p-3 bg-slate-900/80 border border-slate-800 rounded-xl">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
-                                <Upload size={13} className="text-amber-400" /> Imagem de Fundo do Mapa
-                              </span>
-                              {tacticalState.backgroundKey === 'custom' && (
-                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono font-bold">
-                                  Personalizada
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Botão de Upload de Arquivo Local */}
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
-                                  const dataUrl = event.target?.result as string;
-                                  if (dataUrl) {
-                                    const img = new Image();
-                                    img.onload = () => {
-                                      setSliderBaseWidth(img.naturalWidth);
-                                      onUpdateTacticalState({
-                                        backgroundKey: 'custom',
-                                        customImageUrl: dataUrl,
-                                        mapImageWidth: img.naturalWidth,
-                                        mapImageHeight: img.naturalHeight,
-                                        mapImageX: 0,
-                                        mapImageY: 0,
-                                        mapRotation: 0,
-                                      });
-                                    };
-                                    img.src = dataUrl;
-                                  }
-                                };
-                                reader.readAsDataURL(file);
-                                if (fileInputRef.current) fileInputRef.current.value = '';
-                              }}
-                              className="hidden"
-                            />
-
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex-1 py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-95"
-                              >
-                                <Upload size={14} />
-                                <span>Fazer Upload do Computador</span>
-                              </button>
-                            </div>
-
-                            {/* Ou Link da Internet */}
-                            <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
-                              <span className="text-[10px] text-slate-400 block font-semibold">
-                                Ou insira um link de imagem da Web:
-                              </span>
-                              <div className="flex items-center gap-1.5">
-                                <input
-                                  type="text"
-                                  value={customUrlInput}
-                                  onChange={(e) => setCustomUrlInput(e.target.value)}
-                                  placeholder="https://exemplo.com/mapa.jpg"
-                                  className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-amber-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (!customUrlInput.trim()) return;
-                                    const img = new Image();
-                                    img.onload = () => {
-                                      setSliderBaseWidth(img.naturalWidth);
-                                      onUpdateTacticalState({
-                                        backgroundKey: 'custom',
-                                        customImageUrl: customUrlInput.trim(),
-                                        mapImageWidth: img.naturalWidth,
-                                        mapImageHeight: img.naturalHeight,
-                                        mapImageX: 0,
-                                        mapImageY: 0,
-                                        mapRotation: 0,
-                                      });
-                                    };
-                                    img.onerror = () => {
-                                      onUpdateTacticalState({
-                                        backgroundKey: 'custom',
-                                        customImageUrl: customUrlInput.trim(),
-                                      });
-                                    };
-                                    img.src = customUrlInput.trim();
-                                  }}
-                                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold rounded-lg text-xs"
-                                >
-                                  Aplicar
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Informações da Imagem Carregada e Ajuste de Tamanho (Mantendo Proporção) */}
-                            {(() => {
-                              const curMapW = tacticalState.mapImageWidth || 2000;
-                              const curMapH = tacticalState.mapImageHeight || 1400;
-                              const mapAspect = curMapW / curMapH;
-
-                              const baseW = sliderBaseWidth || curMapW;
-                              const minW = Math.min(curMapW - 200, Math.max(300, Math.round(baseW * 0.3)));
-                              const maxW = Math.max(curMapW + 200, Math.round(baseW * 1.7));
-
-                              const handleResizeMapWidth = (newW: number) => {
-                                const safeW = Math.max(200, Math.min(10000, Math.round(newW)));
-                                const safeH = Math.max(150, Math.round(safeW / (mapAspect || 1.428)));
-                                onUpdateTacticalState({
-                                  mapImageWidth: safeW,
-                                  mapImageHeight: safeH,
-                                });
-                              };
-
-                              return (
-                                <div className="space-y-2 p-2.5 bg-slate-950/80 border border-slate-800/80 rounded-lg text-[11px] text-slate-300">
-                                  <div className="flex items-center justify-between">
-                                    <span className="flex items-center gap-1.5 text-slate-400 font-semibold">
-                                      <FileImage size={13} className="text-amber-400" />
-                                      <span>Tamanho da Imagem do Mapa:</span>
-                                    </span>
-                                    {/* Opção de Girar o Mapa em 90° */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const curRot = (tacticalState.mapRotation || 0) % 360;
-                                        const nextRot = (curRot + 90) % 360;
-                                        const curW = tacticalState.mapImageWidth || 2000;
-                                        const curH = tacticalState.mapImageHeight || 1400;
-                                        onUpdateTacticalState({
-                                          mapRotation: nextRot,
-                                          mapImageWidth: curH,
-                                          mapImageHeight: curW,
-                                        });
-                                      }}
-                                      className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
-                                      title="Girar o mapa em 90° no sentido horário"
-                                    >
-                                      <RotateCw size={11} />
-                                      <span>Girar 90° ({tacticalState.mapRotation || 0}°)</span>
-                                    </button>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex items-center justify-between">
-                                      <span className="text-[10px] text-slate-400">Largura:</span>
-                                      <span className="font-mono text-xs font-bold text-amber-300">
-                                        {curMapW}px
-                                      </span>
-                                    </div>
-                                    <span className="text-slate-500 font-bold">×</span>
-                                    <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex items-center justify-between">
-                                      <span className="text-[10px] text-slate-400">Altura:</span>
-                                      <span className="font-mono text-xs font-bold text-amber-300">
-                                        {curMapH}px
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {/* Slider de Redimensionamento Proporcional */}
-                                  <div className="pt-1">
-                                    <input
-                                      type="range"
-                                      min={minW}
-                                      max={maxW}
-                                      step="20"
-                                      value={curMapW}
-                                      onChange={(e) => handleResizeMapWidth(Number(e.target.value))}
-                                      className="w-full accent-amber-500"
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-
-                          {/* SEÇÃO 2: CALIBRAÇÃO DA GRADE (GRID) */}
-                          <div className="space-y-3 p-3 bg-slate-900/80 border border-slate-800 rounded-xl">
-                            <span className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
-                              <Grid size={13} className="text-amber-400" /> Calibração da Grade & Escala Tática
-                            </span>
-
-                            {/* Escala da Grade: Tamanho do Hexágono (hexSize) */}
-                            {(() => {
-                              const curHex = tacticalState.hexSize || 38;
-                              const baseHex = sliderBaseHexSize || curHex;
-                              const minHex = Math.min(curHex - 5, Math.max(10, Math.round(baseHex * 0.35)));
-                              const maxHex = Math.max(curHex + 5, Math.round(baseHex * 1.65));
-
-                              return (
-                                <div className="space-y-1">
-                                  <div className="flex justify-end text-[11px] text-slate-300 font-semibold">
-                                    <span className="font-mono text-amber-400 font-bold">
-                                      {curHex}px
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        onUpdateTacticalState({
-                                          hexSize: Math.max(10, curHex - 1),
-                                        })
-                                      }
-                                      className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
-                                      title="Diminuir hexágono"
-                                    >
-                                      -
-                                    </button>
-                                    <input
-                                      type="range"
-                                      min={minHex}
-                                      max={maxHex}
-                                      value={curHex}
-                                      onChange={(e) =>
-                                        onUpdateTacticalState({ hexSize: Number(e.target.value) })
-                                      }
-                                      className="flex-1 accent-amber-500"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        onUpdateTacticalState({
-                                          hexSize: Math.min(140, curHex + 1),
-                                        })
-                                      }
-                                      className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
-                                      title="Aumentar hexágono"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Contraste da Grade: Clara vs Escura */}
-                            <div>
-                              <span className="text-[11px] text-slate-400 block mb-1">
-                                Contraste da Grade:
-                              </span>
-                              <div className="grid grid-cols-2 gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    onUpdateTacticalState({
-                                      gridColor: '#cbd5e1',
-                                      gridOpacity: 0.28,
-                                    })
-                                  }
-                                  className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
-                                    tacticalState.gridColor !== '#0f172a' &&
-                                    tacticalState.gridColor !== '#000000' &&
-                                    tacticalState.gridColor !== '#1e293b'
-                                      ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
-                                      : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
-                                  }`}
-                                >
-                                  <Moon size={12} />
-                                  <span>Grade Clara</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    onUpdateTacticalState({
-                                      gridColor: '#0f172a',
-                                      gridOpacity: 0.65,
-                                    })
-                                  }
-                                  className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
-                                    tacticalState.gridColor === '#0f172a' ||
-                                    tacticalState.gridColor === '#000000' ||
-                                    tacticalState.gridColor === '#1e293b'
-                                      ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
-                                      : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
-                                  }`}
-                                >
-                                  <Sun size={12} />
-                                  <span>Grade Escura</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Opacidade da Grade */}
-                            <div>
-                              <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                                <span>Opacidade das Linhas:</span>
-                                <span className="font-mono text-amber-300 font-bold">
-                                  {Math.round((tacticalState.gridOpacity ?? 0.28) * 100)}%
-                                </span>
-                              </div>
-                              <input
-                                type="range"
-                                min="0.05"
-                                max="0.8"
-                                step="0.05"
-                                value={tacticalState.gridOpacity ?? 0.28}
-                                onChange={(e) =>
-                                  onUpdateTacticalState({ gridOpacity: Number(e.target.value) })
-                                }
-                                className="w-full accent-amber-500"
-                              />
-                            </div>
-
-                            {/* Névoa de Guerra (Travar posição automático quando fechado) */}
-                            <div className="pt-2 border-t border-slate-800 flex items-center justify-end">
-                              <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
-                                {(['open', 'hidden', 'dynamic'] as const).map((m) => {
-                                  const isActive = currentFogMode === m;
-                                  return (
-                                    <button
-                                      key={m}
-                                      type="button"
-                                      onClick={() =>
-                                        onUpdateTacticalState({
-                                          fogMode: m,
-                                          fogEnabled: m !== 'open',
-                                        })
-                                      }
-                                      className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                                        isActive
-                                          ? m === 'open'
-                                            ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                                            : m === 'hidden'
-                                            ? 'bg-purple-600 text-white font-bold shadow-xs'
-                                            : 'bg-emerald-600 text-white font-bold shadow-xs'
-                                          : 'text-slate-400 hover:text-white'
-                                      }`}
-                                      title={
-                                        m === 'open'
-                                          ? 'Tudo Aberto: Sem névoa'
-                                          : m === 'hidden'
-                                          ? 'Tudo Oculto: Mestre revela com Retângulo'
-                                          : 'Modo Iluminação: Luzes revelam / Ocultar bloqueia'
-                                      }
-                                    >
-                                      {m === 'open' ? '☀️ Aberto' : m === 'hidden' ? '👁️ Oculto' : '💡 Iluminação'}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
                   <button
                     onClick={() => onSelectTool('wall')}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
@@ -818,47 +410,415 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     )}
                     <span>Ocultar</span>
                   </button>
-
-                  <button
-                    onClick={() => {
-                      onUpdateTacticalState({ activeLayer: 'map' });
-                      onSelectTool('wall');
-                    }}
-                    className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      activeTool === 'wall'
-                        ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    title="Construir Paredes na Camada do Mapa"
-                  >
-                    <Spline size={13} />
-                    <span className="hidden xl:inline">Paredes</span>
-                  </button>
                 </>
               )}
             </>
           )}
         </div>
-      </div>
 
-      {/* 2. MAPAS DO SISTEMA, CONFIGURAÇÃO DO MAPA & ELEMENTOS DE CENÁRIO */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {/* Botão de Elementos & Cenário (Props / Mobília Roll20) */}
-        {isMaster && (
-          <button
-            type="button"
-            onClick={onOpenPropsModal}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold transition-all shadow-sm"
-            title="Elementos & Cenário (Mesas de taverna, baús, barris, portas e mobília sobre o mapa)"
-          >
-            <Armchair size={13} className="text-amber-400" />
-            <span>Elementos / Cenário</span>
-            {typeof propsCount === 'number' && propsCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-amber-500/30 text-amber-200">
-                {propsCount}
-              </span>
+        {/* Opções na Camada 1. Mapa: botão no final da mesma div */}
+        {isMaster && activeLayer === 'map' && (
+          <div className="relative">
+            <button
+              onClick={() => {
+                const next = !mapConfigOpen;
+                if (next) {
+                  setSliderBaseWidth(tacticalState.mapImageWidth || 2000);
+                  setSliderBaseHexSize(tacticalState.hexSize || 38);
+                  onUpdateTacticalState({ mapImageLocked: false });
+                } else {
+                  onUpdateTacticalState({ mapImageLocked: true });
+                }
+                setMapConfigOpen(next);
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer ${
+                mapConfigOpen
+                  ? 'bg-amber-500 text-slate-950 font-bold border border-amber-500'
+                  : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
+              }`}
+              title="Configuração do Mapa e Grid"
+            >
+              <Sliders size={13} />
+              <span>Configuração do Mapa e Grid</span>
+            </button>
+
+            {mapConfigOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => {
+                    setMapConfigOpen(false);
+                    onUpdateTacticalState({ mapImageLocked: true });
+                  }}
+                  onWheel={(e) => e.stopPropagation()}
+                />
+                <div
+                  className="absolute top-full left-0 mt-2 w-96 max-w-[95vw] bg-slate-950 border border-amber-500/50 rounded-2xl shadow-2xl p-4 z-50 text-xs space-y-4 max-h-[85vh] overflow-y-auto"
+                  onWheel={(e) => e.stopPropagation()}
+                >
+                  {/* Cabeçalho */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-slate-200 font-bold">
+                    <span className="flex items-center gap-1.5 text-amber-400 text-sm">
+                      <Sliders size={15} /> Configuração do Mapa & Grid
+                    </span>
+                    <button
+                      onClick={() => {
+                        setMapConfigOpen(false);
+                        onUpdateTacticalState({ mapImageLocked: true });
+                      }}
+                      className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+
+                  {/* SEÇÃO 1: IMAGEM DE FUNDO (UPLOAD E URL) */}
+                  <div className="space-y-2.5 p-3 bg-slate-900/80 border border-slate-800 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
+                        <Upload size={13} className="text-amber-400" /> Imagem de Fundo do Mapa
+                      </span>
+                      {tacticalState.backgroundKey === 'custom' && (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono font-bold">
+                          Personalizada
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Botão de Upload de Arquivo Local */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const dataUrl = event.target?.result as string;
+                          if (dataUrl) {
+                            const img = new Image();
+                            img.onload = () => {
+                              setSliderBaseWidth(img.naturalWidth);
+                              onUpdateTacticalState({
+                                backgroundKey: 'custom',
+                                customImageUrl: dataUrl,
+                                mapImageWidth: img.naturalWidth,
+                                mapImageHeight: img.naturalHeight,
+                                mapImageX: 0,
+                                mapImageY: 0,
+                                mapRotation: 0,
+                              });
+                            };
+                            img.src = dataUrl;
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                      className="hidden"
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-95"
+                      >
+                        <Upload size={14} />
+                        <span>Fazer Upload do Computador</span>
+                      </button>
+                    </div>
+
+                    {/* Ou Link da Internet */}
+                    <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                      <span className="text-[10px] text-slate-400 block font-semibold">
+                        Ou insira um link de imagem da Web:
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={customUrlInput}
+                          onChange={(e) => setCustomUrlInput(e.target.value)}
+                          placeholder="https://exemplo.com/mapa.jpg"
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-amber-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!customUrlInput.trim()) return;
+                            const img = new Image();
+                            img.onload = () => {
+                              setSliderBaseWidth(img.naturalWidth);
+                              onUpdateTacticalState({
+                                backgroundKey: 'custom',
+                                customImageUrl: customUrlInput.trim(),
+                                mapImageWidth: img.naturalWidth,
+                                mapImageHeight: img.naturalHeight,
+                                mapImageX: 0,
+                                mapImageY: 0,
+                                mapRotation: 0,
+                              });
+                            };
+                            img.onerror = () => {
+                              onUpdateTacticalState({
+                                backgroundKey: 'custom',
+                                customImageUrl: customUrlInput.trim(),
+                              });
+                            };
+                            img.src = customUrlInput.trim();
+                          }}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold rounded-lg text-xs"
+                        >
+                          Aplicar
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Informações da Imagem Carregada e Ajuste de Tamanho (Mantendo Proporção) */}
+                    {(() => {
+                      const curMapW = tacticalState.mapImageWidth || 2000;
+                      const curMapH = tacticalState.mapImageHeight || 1400;
+                      const mapAspect = curMapW / curMapH;
+
+                      const baseW = sliderBaseWidth || curMapW;
+                      const minW = Math.min(curMapW - 200, Math.max(300, Math.round(baseW * 0.3)));
+                      const maxW = Math.max(curMapW + 200, Math.round(baseW * 1.7));
+
+                      const handleResizeMapWidth = (newW: number) => {
+                        const safeW = Math.max(200, Math.min(10000, Math.round(newW)));
+                        const safeH = Math.max(150, Math.round(safeW / (mapAspect || 1.428)));
+                        onUpdateTacticalState({
+                          mapImageWidth: safeW,
+                          mapImageHeight: safeH,
+                        });
+                      };
+
+                      return (
+                        <div className="space-y-2 p-2.5 bg-slate-950/80 border border-slate-800/80 rounded-lg text-[11px] text-slate-300">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1.5 text-slate-400 font-semibold">
+                              <FileImage size={13} className="text-amber-400" />
+                              <span>Tamanho da Imagem do Mapa:</span>
+                            </span>
+                            {/* Opção de Girar o Mapa e Tokens em 90° */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onUpdateTacticalState(rotateTacticalState90(tacticalState));
+                              }}
+                              className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                              title="Girar o mapa e todas as suas configurações e tokens em 90° no sentido horário"
+                            >
+                              <RotateCw size={11} />
+                              <span>Girar 90° ({tacticalState.mapRotation || 0}°)</span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400">Largura:</span>
+                              <span className="font-mono text-xs font-bold text-amber-300">
+                                {curMapW}px
+                              </span>
+                            </div>
+                            <span className="text-slate-500 font-bold">×</span>
+                            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400">Altura:</span>
+                              <span className="font-mono text-xs font-bold text-amber-300">
+                                {curMapH}px
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Slider de Redimensionamento Proporcional */}
+                          <div className="pt-1">
+                            <input
+                              type="range"
+                              min={minW}
+                              max={maxW}
+                              step="20"
+                              value={curMapW}
+                              onChange={(e) => handleResizeMapWidth(Number(e.target.value))}
+                              className="w-full accent-amber-500"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* SEÇÃO 2: CALIBRAÇÃO DA GRADE (GRID) */}
+                  <div className="space-y-3 p-3 bg-slate-900/80 border border-slate-800 rounded-xl">
+                    <span className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
+                      <Grid size={13} className="text-amber-400" /> Calibração da Grade & Escala Tática
+                    </span>
+
+                    {/* Escala da Grade: Tamanho do Hexágono (hexSize) */}
+                    {(() => {
+                      const curHex = tacticalState.hexSize || 38;
+                      const baseHex = sliderBaseHexSize || curHex;
+                      const minHex = Math.min(curHex - 5, Math.max(10, Math.round(baseHex * 0.35)));
+                      const maxHex = Math.max(curHex + 5, Math.round(baseHex * 1.65));
+
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex justify-end text-[11px] text-slate-300 font-semibold">
+                            <span className="font-mono text-amber-400 font-bold">
+                              {curHex}px
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onUpdateTacticalState({
+                                  hexSize: Math.max(10, curHex - 1),
+                                })
+                              }
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
+                              title="Diminuir hexágono"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="range"
+                              min={minHex}
+                              max={maxHex}
+                              value={curHex}
+                              onChange={(e) =>
+                                onUpdateTacticalState({ hexSize: Number(e.target.value) })
+                              }
+                              className="flex-1 accent-amber-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onUpdateTacticalState({
+                                  hexSize: Math.min(140, curHex + 1),
+                                })
+                              }
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-mono font-bold"
+                              title="Aumentar hexágono"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Contraste da Grade: Clara vs Escura */}
+                    <div>
+                      <span className="text-[11px] text-slate-400 block mb-1">
+                        Contraste da Grade:
+                      </span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateTacticalState({
+                              gridColor: '#cbd5e1',
+                              gridOpacity: 0.28,
+                            })
+                          }
+                          className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                            tacticalState.gridColor !== '#0f172a' &&
+                            tacticalState.gridColor !== '#000000' &&
+                            tacticalState.gridColor !== '#1e293b'
+                              ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
+                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
+                          }`}
+                        >
+                          <Moon size={12} />
+                          <span>Grade Clara</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateTacticalState({
+                              gridColor: '#0f172a',
+                              gridOpacity: 0.65,
+                            })
+                          }
+                          className={`px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                            tacticalState.gridColor === '#0f172a' ||
+                            tacticalState.gridColor === '#000000' ||
+                            tacticalState.gridColor === '#1e293b'
+                              ? 'bg-amber-500 text-slate-950 border-amber-500 font-bold'
+                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
+                          }`}
+                        >
+                          <Sun size={12} />
+                          <span>Grade Escura</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Opacidade da Grade */}
+                    <div>
+                      <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                        <span>Opacidade das Linhas:</span>
+                        <span className="font-mono text-amber-300 font-bold">
+                          {Math.round((tacticalState.gridOpacity ?? 0.28) * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.05"
+                        max="0.8"
+                        step="0.05"
+                        value={tacticalState.gridOpacity ?? 0.28}
+                        onChange={(e) =>
+                          onUpdateTacticalState({ gridOpacity: Number(e.target.value) })
+                        }
+                        className="w-full accent-amber-500"
+                      />
+                    </div>
+
+                    {/* Névoa de Guerra (Travar posição automático quando fechado) */}
+                    <div className="pt-2 border-t border-slate-800 flex items-center justify-end">
+                      <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                        {(['open', 'hidden', 'dynamic'] as const).map((m) => {
+                          const isActive = currentFogMode === m;
+                          return (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() =>
+                                onUpdateTacticalState({
+                                  fogMode: m,
+                                  fogEnabled: m !== 'open',
+                                })
+                              }
+                              className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                isActive
+                                  ? m === 'open'
+                                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                                    : m === 'hidden'
+                                    ? 'bg-purple-600 text-white font-bold shadow-xs'
+                                    : 'bg-emerald-600 text-white font-bold shadow-xs'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                              title={
+                                m === 'open'
+                                  ? 'Tudo Aberto: Sem névoa'
+                                  : m === 'hidden'
+                                  ? 'Tudo Oculto: Mestre revela com Retângulo'
+                                  : 'Modo Iluminação: Luzes revelam / Ocultar bloqueia'
+                              }
+                            >
+                              {m === 'open' ? '☀️ Aberto' : m === 'hidden' ? '👁️ Oculto' : '💡 Iluminação'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
-          </button>
+          </div>
         )}
       </div>
 
@@ -951,7 +911,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
       </div>
 
       {/* BARRA DE CONTROLE: CAMADA DO MAPA (PAREDES, PORTAS E ILUMINAÇÃO DINÂMICA) */}
-      {isMaster && (activeLayer === 'map' || activeTool === 'wall' || activeTool === 'door' || activeTool === 'light') && (
+      {isMaster && (activeTool === 'wall' || activeTool === 'door' || activeTool === 'light') && (
         <div className="bg-slate-900/95 backdrop-blur-md border border-amber-500/40 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
           {activeTool === 'wall' ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -1102,44 +1062,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 </button>
               )}
             </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="flex items-center gap-1.5 font-bold text-amber-400 select-none">
-                <MapIcon size={14} />
-                <span>Oficina da Camada do Mapa:</span>
-              </span>
-              <span className="text-slate-300 text-[11px]">
-                Construa paredes e portas para conter a luminosidade. Luzes podem ser colocadas em qualquer lugar.
-              </span>
-
-              <div className="flex items-center gap-1.5 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => onSelectTool('wall')}
-                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all"
-                >
-                  <Spline size={13} />
-                  <span>+ Parede (Polígono)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSelectTool('door')}
-                  className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
-                >
-                  <DoorClosed size={13} />
-                  <span>+ Porta</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSelectTool('light')}
-                  className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
-                >
-                  <Flame size={13} />
-                  <span>+ Luz Livre</span>
-                </button>
-              </div>
-            </div>
-          )}
+          ) : null}
 
           {/* Gerenciador / Lista de Paredes e Portas */}
           <div className="flex items-center gap-1.5 ml-auto">
@@ -1845,13 +1768,11 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <span className="text-[11px] text-slate-400">
               {rulerType === 'blast'
                 ? 'Clique no mapa para posicionar a área de efeito.'
-                : rulerType === 'fixed'
-                ? 'Passe o mouse ou clique no mapa para ver o círculo de alcance exato.'
                 : '1º clique marca origem, 2º clique fixa medição.'}
             </span>
           </div>
 
-          {/* Seletor de Tipo: Distância vs Área de Efeito vs Alcance Fixo */}
+          {/* Seletor de Tipo: Distância vs Área de Efeito */}
           <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
             <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
               Tipo:
@@ -1859,7 +1780,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <button
               type="button"
               onClick={() => onSetRulerType?.('line')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 rulerType === 'line'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -1872,7 +1793,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <button
               type="button"
               onClick={() => onSetRulerType?.('blast')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 rulerType === 'blast'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -1881,19 +1802,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             >
               <CircleDot size={12} />
               <span>Área de Efeito</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetRulerType?.('fixed')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                rulerType === 'fixed'
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="Alcance Fixo (Raio GURPS a partir de um ponto/token)"
-            >
-              <Crosshair size={12} />
-              <span>Alcance Fixo</span>
             </button>
           </div>
 
@@ -1907,7 +1815,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 <button
                   type="button"
                   onClick={() => onSetAreaRadius?.(Math.max(1, (areaRadius || 3) - 1))}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
+                  title="Diminuir raio"
                 >
                   <Minus size={11} />
                 </button>
@@ -1923,24 +1832,11 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 <button
                   type="button"
                   onClick={() => onSetAreaRadius?.((areaRadius || 3) + 1)}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
+                  title="Aumentar raio"
                 >
                   <Plus size={11} />
                 </button>
-                {[1, 2, 3, 5, 8].map((yd) => (
-                  <button
-                    key={yd}
-                    type="button"
-                    onClick={() => onSetAreaRadius?.(yd)}
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
-                      areaRadius === yd
-                        ? 'bg-amber-500 text-slate-950'
-                        : 'text-slate-400 hover:text-white bg-slate-850'
-                    }`}
-                  >
-                    {yd}y
-                  </button>
-                ))}
               </div>
 
               {/* Cores da Área */}
@@ -1959,7 +1855,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     key={c.color}
                     type="button"
                     onClick={() => onSetAreaColor?.(c.color)}
-                    className={`w-4 h-4 rounded-full border transition-transform ${
+                    className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
                       areaColor === c.color ? 'scale-125 border-white ring-2 ring-white/50' : 'border-transparent hover:scale-110'
                     }`}
                     style={{ backgroundColor: c.color }}
@@ -1970,67 +1866,13 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </div>
           )}
 
-          {/* Controles para Alcance Fixo */}
-          {rulerType === 'fixed' && (
-            <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-              <span className="text-[10px] text-slate-500 uppercase font-mono font-bold px-1 select-none">
-                Alcance:
-              </span>
-              <button
-                type="button"
-                onClick={() => onSetRulerFixedYards?.(Math.max(1, (rulerFixedYards || 5) - 1))}
-                className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-              >
-                <Minus size={11} />
-              </button>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={rulerFixedYards || 5}
-                onChange={(e) => onSetRulerFixedYards?.(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500"
-              />
-              <span className="text-[11px] text-amber-400 font-bold pr-1">yd</span>
-              <button
-                type="button"
-                onClick={() => onSetRulerFixedYards?.((rulerFixedYards || 5) + 1)}
-                className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-              >
-                <Plus size={11} />
-              </button>
-              {[1, 3, 5, 7, 10, 15].map((yd) => (
-                <button
-                  key={yd}
-                  type="button"
-                  onClick={() => onSetRulerFixedYards?.(yd)}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
-                    rulerFixedYards === yd
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white bg-slate-850'
-                  }`}
-                >
-                  {yd}y
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Ações e Contadores */}
+          {/* Indicador de Medições no Mapa (sem botão Limpar Medições) */}
           <div className="flex items-center gap-1.5">
             {activeRulerMarkersCount > 0 && (
               <span className="text-[11px] text-amber-300 font-mono font-bold bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg">
                 {activeRulerMarkersCount} {activeRulerMarkersCount === 1 ? 'marcação no mapa' : 'marcações no mapa'}
               </span>
             )}
-            <button
-              type="button"
-              onClick={onClearRulerMarkers}
-              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all"
-              title="Limpar todas as medições e áreas fixadas no mapa"
-            >
-              Limpar Medições
-            </button>
           </div>
         </div>
       )}

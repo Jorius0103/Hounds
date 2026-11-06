@@ -978,6 +978,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           markers: [...(tacticalState.markers || []), newMarker],
         });
         setPopoverToken(null);
+        setActiveTool('select');
         return;
       }
 
@@ -988,6 +989,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         } else {
           setRulerStart(null);
           setRulerCurrent(null);
+          setActiveTool('select');
         }
         return;
       }
@@ -1022,6 +1024,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         }
         setRulerStart(null);
         setRulerCurrent(null);
+        setActiveTool('select');
         return;
       }
     }
@@ -1597,6 +1600,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     });
     setRulerStart(null);
     setRulerCurrent(null);
+    setActiveTool('select');
   };
 
   const handleClearRulerMarkers = () => {
@@ -2584,10 +2588,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             })}
           </g>
 
-          {/* CAMADA DE PAREDES E PORTAS (CONTENÇÃO VISUAL E INTERAÇÃO NO TABULEIRO) */}
-          <g id="tactical-walls-doors-layer">
-            {/* 1. PAREDES POLIGONAIS */}
-            {(tacticalState.walls || []).map((wall, wallIdx) => {
+          {/* CAMADA DE PAREDES E PORTAS (CONTENÇÃO VISUAL E INTERAÇÃO NO TABULEIRO - APENAS NA CAMADA DO MAPA) */}
+          {activeLayer === 'map' && (
+            <g id="tactical-walls-doors-layer">
+              {/* 1. PAREDES POLIGONAIS */}
+              {(tacticalState.walls || []).map((wall, wallIdx) => {
               if (!wall.points || wall.points.length < 2) return null;
               const pointsStr = wall.points
                 .map((pt) => `${mapX + pt.x},${mapY + pt.y}`)
@@ -2861,6 +2866,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               );
             })}
           </g>
+          )}
 
           {/* ÍCONES DOS FOCOS DE LUZ FIXOS NO TABULEIRO */}
           <g id="tactical-light-sources">

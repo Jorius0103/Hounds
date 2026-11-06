@@ -1,4 +1,4 @@
-import { FacingDirection, TacticalWall, TacticalDoor } from '../types/tactical';
+import { FacingDirection, TacticalWall, TacticalDoor, TacticalState } from '../types/tactical';
 
 export interface Point {
   x: number;
@@ -597,4 +597,136 @@ export function pointsToSvgPath(points: Point[]): string {
   return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)} ` +
     points.slice(1).map((p) => `L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') +
     ' Z';
+}
+
+/**
+ * Gira todo o mapa e todas as suas configurações em 90° no sentido horário:
+ * Dimensões da imagem, tokens (posição e facing), focos de luz, paredes, portas, mobília e marcadores.
+ */
+export function rotateTacticalState90(tacticalState: TacticalState): Partial<TacticalState> {
+  const curW = tacticalState.mapImageWidth || 2000;
+  const curH = tacticalState.mapImageHeight || 1400;
+  const hexSize = tacticalState.hexSize || 38;
+  const newW = curH;
+  const newH = curW;
+
+  const rotPoint = (x: number, y: number) => ({
+    x: curH - y,
+    y: x,
+  });
+
+  const nextRotation = ((tacticalState.mapRotation || 0) + 90) % 360;
+
+  // 1. Tokens
+  const newTokens = (tacticalState.tokens || []).map((token) => {
+    const center = getHexCenter(token.gridX, token.gridY, hexSize);
+    const p = rotPoint(center.x, center.y);
+    const hex = pixelToHex(p.x, p.y, hexSize);
+    const curRot = typeof token.rotation === 'number' ? token.rotation : ((token.facing * 60 + 180) % 360);
+    const newRot = (curRot + 90) % 360;
+    const newFacing = ((Math.round((newRot - 180) / 60) % 6 + 6) % 6) as FacingDirection;
+    return {
+      ...token,
+      gridX: hex.col,
+      gridY: hex.row,
+      rotation: newRot,
+      facing: newFacing,
+    };
+  });
+
+  // 2. Focos de Luz
+  const newLights = (tacticalState.lights || []).map((light) => {
+    const lx = typeof light.x === 'number' ? light.x : getHexCenter(light.gridX, light.gridY, hexSize).x;
+    const ly = typeof light.y === 'number' ? light.y : getHexCenter(light.gridX, light.gridY, hexSize).y;
+    const p = rotPoint(lx, ly);
+    const hex = pixelToHex(p.x, p.y, hexSize);
+    return {
+      ...light,
+      x: Math.round(p.x),
+      y: Math.round(p.y),
+      gridX: hex.col,
+      gridY: hex.row,
+      rotation: ((light.rotation || 0) + 90) % 360,
+    };
+  });
+
+  // 3. Paredes Poligonais
+  const newWalls = (tacticalState.walls || []).map((wall) => ({
+    ...wall,
+    points: (wall.points || []).map((pt) => {
+      const p = rotPoint(pt.x, pt.y);
+      return { x: Math.round(p.x), y: Math.round(p.y) };
+    }),
+  }));
+
+  // 4. Portas
+  const newDoors = (tacticalState.doors || []).map((door) => {
+    const p1 = rotPoint(door.x1, door.y1);
+    const p2 = rotPoint(door.x2, door.y2);
+    return {
+      ...door,
+      x1: Math.round(p1.x),
+      y1: Math.round(p1.y),
+      x2: Math.round(p2.x),
+      y2: Math.round(p2.y),
+    };
+  });
+
+  // 5. Elementos de Cenário (Props)
+  const newProps = (tacticalState.props || []).map((prop) => {
+    const cx = prop.x + prop.width / 2;
+    const cy = prop.y + prop.height / 2;
+    const nc = rotPoint(cx, cy);
+    const newPropW = prop.height;
+    const newPropH = prop.width;
+    return {
+      ...prop,
+      x: Math.round(nc.x - newPropW / 2),
+      y: Math.round(nc.y - newPropH / 2),
+      width: newPropW,
+      height: newPropH,
+      rotation: ((prop.rotation || 0) + 90) % 360,
+    };
+  });
+
+  // 6. Marcadores e Réguas
+  const newMarkers = (tacticalState.markers || []).map((marker) => {
+    const pA = getHexCenter(marker.startX, marker.startY, hexSize);
+    const nA = rotPoint(pA.x, pA.y);
+    const hexA = pixelToHex(nA.x, nA.y, hexSize);
+    let hexB = undefined;
+    if (marker.endX !== undefined && marker.endY !== undefined) {
+      const pB = getHexCenter(marker.endX, marker.endY, hexSize);
+      const nB = rotPoint(pB.x, pB.y);
+      hexB = pixelToHex(nB.x, nB.y, hexSize);
+    }
+    return {
+      ...marker,
+      startX: hexA.col,
+      startY: hexA.row,
+      ...(hexB ? { endX: hexB.col, endY: hexB.row } : {}),
+    };
+  });
+
+  // 7. Retângulos de Névoa de Guerra
+  const newFogRects = (tacticalState.fogRects || []).map((r) => ({
+    ...r,
+    x: Math.round(curH - (r.y + r.height)),
+    y: Math.round(r.x),
+    width: Math.round(r.height),
+    height: Math.round(r.width),
+  }));
+
+  return {
+    mapRotation: nextRotation,
+    mapImageWidth: newW,
+    mapImageHeight: newH,
+    tokens: newTokens,
+    lights: newLights,
+    walls: newWalls,
+    doors: newDoors,
+    props: newProps,
+    markers: newMarkers,
+    fogRects: newFogRects,
+  };
 }
