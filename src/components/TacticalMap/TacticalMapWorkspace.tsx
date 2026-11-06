@@ -138,6 +138,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [wallPoints, setWallPoints] = useState<Point[]>([]);
   const [doorStartPoint, setDoorStartPoint] = useState<Point | null>(null);
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
+  const [selectedDoorId, setSelectedDoorId] = useState<string | null>(null);
 
   // Fog of War / Ocultação do Mapa state (Estilo Roll20 em Linhas Retas)
   const [fogBrushMode, setFogBrushMode] = useState<'reveal' | 'hide'>('reveal');
@@ -532,6 +533,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleClearWalls = useCallback(() => {
     onUpdateTacticalState({ walls: [] });
     setWallPoints([]);
+    setSelectedWallId(null);
   }, [onUpdateTacticalState]);
 
   const handleToggleDoor = useCallback((doorId: string) => {
@@ -544,7 +546,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleDeleteDoor = useCallback((doorId: string) => {
     const updated = (tacticalState.doors || []).filter((d) => d.id !== doorId);
     onUpdateTacticalState({ doors: updated });
-  }, [tacticalState.doors, onUpdateTacticalState]);
+    if (selectedDoorId === doorId) setSelectedDoorId(null);
+  }, [tacticalState.doors, selectedDoorId, onUpdateTacticalState]);
 
   const handleToggleAllDoors = useCallback((open: boolean) => {
     const updated = (tacticalState.doors || []).map((d) => ({ ...d, isOpen: open }));
@@ -554,6 +557,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleClearDoors = useCallback(() => {
     onUpdateTacticalState({ doors: [] });
     setDoorStartPoint(null);
+    setSelectedDoorId(null);
   }, [onUpdateTacticalState]);
 
   // Efeito de atalhos de teclado para Parede e Porta
@@ -737,21 +741,43 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     }
 
     // Construção de Paredes por Ligação de Polígonos
-    if (activeTool === 'wall' && e.button === 0 && isMaster) {
-      const p = clientToMapCoords(e.clientX, e.clientY);
-      const pt = { x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) };
-
-      if (wallPoints.length >= 2) {
-        const first = wallPoints[0];
-        const dist = Math.hypot(pt.x - first.x, pt.y - first.y);
-        if (dist < 18) {
-          handleCloseWallPolygon();
-          return;
+    if (activeTool === 'wall' && isMaster) {
+      if (e.button === 2) {
+        // Botão direito: conclui a parede imediatamente no ponto atual sem precisar voltar ao ponto 1
+        e.preventDefault();
+        if (wallPoints.length >= 2) {
+          handleFinishWall();
+        } else {
+          handleCancelWall();
         }
+        return;
       }
 
-      setWallPoints((prev) => [...prev, pt]);
-      return;
+      if (e.button === 0) {
+        const p = clientToMapCoords(e.clientX, e.clientY);
+        const pt = { x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) };
+
+        if (wallPoints.length >= 2) {
+          // Se clicar no ponto inicial (com 3+ pontos), fecha o polígono
+          const first = wallPoints[0];
+          const distFirst = Math.hypot(pt.x - first.x, pt.y - first.y);
+          if (distFirst < 18 && wallPoints.length >= 3) {
+            handleCloseWallPolygon();
+            return;
+          }
+
+          // Se clicar no último vértice adicionado, conclui a parede aqui sem precisar fechar
+          const last = wallPoints[wallPoints.length - 1];
+          const distLast = Math.hypot(pt.x - last.x, pt.y - last.y);
+          if (distLast < 18) {
+            handleFinishWall();
+            return;
+          }
+        }
+
+        setWallPoints((prev) => [...prev, pt]);
+        return;
+      }
     }
 
     // Inserção de Portas (Abertas ou Fechadas)
@@ -1578,6 +1604,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onContextMenu={(e) => {
+        if (activeTool === 'wall' || activeTool === 'door') {
+          e.preventDefault();
+        }
+      }}
+      onDoubleClick={(e) => {
+        if (activeTool === 'wall' && isMaster && wallPoints.length >= 2) {
+          e.preventDefault();
+          handleFinishWall();
+        }
+      }}
       onMouseLeave={() => {
         if (isPanning) setIsPanning(false);
         if (draggedLightId) {
@@ -1651,8 +1688,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onCancelWall={handleCancelWall}
           onUndoWallPoint={handleUndoWallPoint}
           onCloseWallPolygon={handleCloseWallPolygon}
+          selectedWallId={selectedWallId}
+          onSelectWall={setSelectedWallId}
           onClearWalls={handleClearWalls}
           onDeleteWall={handleDeleteWall}
+          selectedDoorId={selectedDoorId}
+          onSelectDoor={setSelectedDoorId}
           onClearDoors={handleClearDoors}
           onDeleteDoor={handleDeleteDoor}
           onToggleDoor={handleToggleDoor}
@@ -2010,12 +2051,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 gradientUnits="userSpaceOnUse"
                 cx={center.x}
                 cy={center.y}
-                r={radiusPixels}
+                r={radiusPixels * 1.55}
               >
                 <stop offset="0%" stopColor={light.color || '#f59e0b'} stopOpacity={0.65} />
-                <stop offset="40%" stopColor={light.color || '#f59e0b'} stopOpacity={0.35} />
-                <stop offset="75%" stopColor={light.color || '#f59e0b'} stopOpacity={0.12} />
-                <stop offset="100%" stopColor={light.color || '#f59e0b'} stopOpacity={0} />
+                <stop offset="45%" stopColor={light.color || '#f59e0b'} stopOpacity={0.4} />
+                <stop offset="75%" stopColor={light.color || '#f59e0b'} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={light.color || '#f59e0b'} stopOpacity={0.06} />
               </radialGradient>
             );
           })}
@@ -2045,25 +2086,33 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* Gradientes radiais para tokens com luz própria */}
           {tokens.map((token) => {
             if (!token.emitsLight) return null;
+            const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
+            const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
+            const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+            const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+            const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+
             return (
               <React.Fragment key={`token-grads-${token.id}`}>
                 <radialGradient
                   id={`token-light-glow-${token.id}`}
-                  cx="50%"
-                  cy="50%"
-                  r="50%"
+                  gradientUnits="userSpaceOnUse"
+                  cx={center.x}
+                  cy={center.y}
+                  r={radiusPixels * 1.55}
                 >
-                  <stop offset="0%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.6} />
-                  <stop offset="40%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.3} />
-                  <stop offset="75%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.1} />
-                  <stop offset="100%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0} />
+                  <stop offset="0%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.65} />
+                  <stop offset="45%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.4} />
+                  <stop offset="75%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.2} />
+                  <stop offset="100%" stopColor={token.lightColor || '#f59e0b'} stopOpacity={0.06} />
                 </radialGradient>
 
                 <radialGradient
                   id={`fog-token-attenuation-${token.id}`}
-                  cx="50%"
-                  cy="50%"
-                  r="50%"
+                  gradientUnits="userSpaceOnUse"
+                  cx={center.x}
+                  cy={center.y}
+                  r={radiusPixels}
                 >
                   <stop offset="0%" stopColor="#000000" stopOpacity="1" />
                   <stop offset="45%" stopColor="#000000" stopOpacity="0.85" />
@@ -2136,7 +2185,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         <path
                           key={`light-mask-${light.id}`}
                           d={visPath}
-                          fill={`url(#fog-light-attenuation-${light.id})`}
+                          fill="#000000"
                         />
                       );
                     }
@@ -2176,7 +2225,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         <path
                           key={`token-light-mask-${token.id}`}
                           d={visPath}
-                          fill={`url(#fog-token-attenuation-${token.id})`}
+                          fill="#000000"
                         />
                       );
                     }
@@ -2420,14 +2469,62 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 .join(' ');
               const strokeColor = wall.color || '#3b82f6';
               const isSelected = selectedWallId === wall.id;
+              const labelPt = wall.points[0];
 
               return (
                 <g key={wall.id || `wall-${wallIdx}`} id={`wall-group-${wall.id}`}>
+                  {/* Destaque pulsante quando a parede estiver selecionada na lista */}
+                  {isSelected && (
+                    <g pointerEvents="none">
+                      {wall.closed ? (
+                        <polygon
+                          points={pointsStr}
+                          fill="rgba(56, 189, 248, 0.2)"
+                          stroke="#38bdf8"
+                          strokeWidth={10}
+                          strokeDasharray="10 5"
+                          className="animate-pulse"
+                        />
+                      ) : (
+                        <polyline
+                          points={pointsStr}
+                          fill="none"
+                          stroke="#38bdf8"
+                          strokeWidth={10}
+                          strokeDasharray="10 5"
+                          className="animate-pulse"
+                        />
+                      )}
+                      <g transform={`translate(${mapX + labelPt.x}, ${mapY + labelPt.y - 18})`}>
+                        <rect
+                          x={-55}
+                          y={-11}
+                          width={110}
+                          height={22}
+                          rx={6}
+                          fill="#0284c7"
+                          stroke="#ffffff"
+                          strokeWidth={1.5}
+                          filter="drop-shadow(0 2px 6px rgba(0,0,0,0.6))"
+                        />
+                        <text
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize="10"
+                          fontWeight="bold"
+                          fill="#ffffff"
+                        >
+                          📍 Parede {wallIdx + 1}
+                        </text>
+                      </g>
+                    </g>
+                  )}
+
                   {wall.closed ? (
                     <polygon
                       points={pointsStr}
                       fill="rgba(30, 41, 59, 0.4)"
-                      stroke={strokeColor}
+                      stroke={isSelected ? '#38bdf8' : strokeColor}
                       strokeWidth={isSelected ? 6 : 4.5}
                       strokeLinejoin="round"
                       strokeLinecap="round"
@@ -2451,7 +2548,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     <polyline
                       points={pointsStr}
                       fill="none"
-                      stroke={strokeColor}
+                      stroke={isSelected ? '#38bdf8' : strokeColor}
                       strokeWidth={isSelected ? 6 : 4.5}
                       strokeLinejoin="round"
                       strokeLinecap="round"
@@ -2503,11 +2600,51 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               const midY = (y1 + y2) / 2;
               const angleRad = Math.atan2(y2 - y1, x2 - x1);
               const doorLength = Math.hypot(x2 - x1, y2 - y1);
+              const isSelected = selectedDoorId === door.id;
 
               return (
                 <g key={door.id || `door-${doorIdx}`} id={`door-group-${door.id}`}>
+                  {/* Destaque pulsante quando a porta estiver selecionada na lista */}
+                  {isSelected && (
+                    <g pointerEvents="none">
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke="#38bdf8"
+                        strokeWidth={10}
+                        strokeDasharray="6 4"
+                        strokeLinecap="round"
+                        className="animate-pulse"
+                      />
+                      <g transform={`translate(${midX}, ${midY - 18})`}>
+                        <rect
+                          x={-50}
+                          y={-10}
+                          width={100}
+                          height={20}
+                          rx={6}
+                          fill="#0284c7"
+                          stroke="#ffffff"
+                          strokeWidth={1.5}
+                          filter="drop-shadow(0 2px 6px rgba(0,0,0,0.6))"
+                        />
+                        <text
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize="10"
+                          fontWeight="bold"
+                          fill="#ffffff"
+                        >
+                          📍 Porta {doorIdx + 1}
+                        </text>
+                      </g>
+                    </g>
+                  )}
+
                   {door.isOpen ? (
-                    // Porta Aberta: batente aberto tracejado e folha girada aberta
+                    // Porta Aberta: batente sutil tracejado e folha aberta
                     <g pointerEvents="none">
                       <line
                         x1={x1}
@@ -2515,22 +2652,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         x2={x2}
                         y2={y2}
                         stroke="#10b981"
-                        strokeWidth={2.5}
+                        strokeWidth={2}
                         strokeDasharray="4 3"
                         opacity={0.8}
                       />
                       <line
                         x1={x1}
                         y1={y1}
-                        x2={x1 + Math.cos(angleRad + Math.PI / 2) * Math.min(doorLength * 0.8, 32)}
-                        y2={y1 + Math.sin(angleRad + Math.PI / 2) * Math.min(doorLength * 0.8, 32)}
+                        x2={x1 + Math.cos(angleRad + Math.PI / 2) * Math.min(doorLength * 0.8, 30)}
+                        y2={y1 + Math.sin(angleRad + Math.PI / 2) * Math.min(doorLength * 0.8, 30)}
                         stroke="#059669"
-                        strokeWidth={4.5}
+                        strokeWidth={3.5}
                         strokeLinecap="round"
                       />
                     </g>
                   ) : (
-                    // Porta Fechada: barra sólida robusta de madeira reforçada com borda âmbar
+                    // Porta Fechada: barra sólida elegante com borda âmbar refinada
                     <g pointerEvents="none">
                       <line
                         x1={x1}
@@ -2538,7 +2675,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         x2={x2}
                         y2={y2}
                         stroke="#451a03"
-                        strokeWidth={7}
+                        strokeWidth={4.5}
                         strokeLinecap="round"
                       />
                       <line
@@ -2546,19 +2683,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         y1={y1}
                         x2={x2}
                         y2={y2}
-                        stroke="#f59e0b"
-                        strokeWidth={2.5}
+                        stroke="#d97706"
+                        strokeWidth={1.8}
                         strokeLinecap="round"
                       />
                     </g>
                   )}
 
-                  {/* Emblema central de Porta: clique para Abrir ou Fechar (interativo em qualquer camada) */}
+                  {/* Ícone sutil e compacto de Porta (Abrir / Fechar) */}
                   <g
                     transform={`translate(${midX}, ${midY})`}
-                    className="cursor-pointer select-none"
+                    className="cursor-pointer select-none group"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (activeLayer === 'map' && isMaster) {
+                        setSelectedDoorId(door.id);
+                      }
                       handleToggleDoor(door.id);
                     }}
                     onContextMenu={(e) => {
@@ -2570,22 +2710,27 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     }}
                   >
                     <title>{door.isOpen ? 'Porta Aberta (Clique para fechar)' : 'Porta Fechada (Clique para abrir)'}</title>
+                    {/* Círculo base sutil e pequeno (raio 7px em vez de 13px) */}
                     <circle
-                      r={13}
-                      fill={door.isOpen ? '#064e3b' : '#451a03'}
+                      r={7}
+                      fill={door.isOpen ? '#064e3b' : '#1e1b4b'}
                       stroke={door.isOpen ? '#34d399' : '#f59e0b'}
-                      strokeWidth={2}
-                      className="transition-transform hover:scale-125"
+                      strokeWidth={1.2}
+                      className="transition-transform group-hover:scale-125"
                     />
-                    <text
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize="10"
-                      fill={door.isOpen ? '#a7f3d0' : '#fef3c7'}
-                      className="font-bold pointer-events-none"
-                    >
-                      {door.isOpen ? '🔓' : '🔒'}
-                    </text>
+                    {door.isOpen ? (
+                      // Cadeado aberto sutil em vetor SVG
+                      <g className="pointer-events-none" transform="scale(0.85)">
+                        <rect x={-2.5} y={-1.5} width={5} height={4} rx={1} fill="#34d399" />
+                        <path d="M -1.8 -1.5 V -3.2 A 1.8 1.8 0 0 1 1.8 -3.2 V -2" fill="none" stroke="#34d399" strokeWidth={1} strokeLinecap="round" />
+                      </g>
+                    ) : (
+                      // Cadeado fechado sutil em vetor SVG
+                      <g className="pointer-events-none" transform="scale(0.85)">
+                        <rect x={-2.5} y={-1.5} width={5} height={4} rx={1} fill="#fbbf24" />
+                        <path d="M -1.8 -1.5 V -3.2 A 1.8 1.8 0 0 1 1.8 -3.2 V -1.5" fill="none" stroke="#fbbf24" strokeWidth={1} strokeLinecap="round" />
+                      </g>
+                    )}
                   </g>
                 </g>
               );
@@ -3474,16 +3619,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
               {wallPoints.map((pt, pIdx) => {
                 const isFirst = pIdx === 0;
+                const isLast = pIdx === wallPoints.length - 1;
                 const isNearFirst = isFirst && mouseMapPos && Math.hypot(mouseMapPos.x - pt.x, mouseMapPos.y - pt.y) < 18;
+                const isNearLast = isLast && wallPoints.length >= 2 && mouseMapPos && Math.hypot(mouseMapPos.x - pt.x, mouseMapPos.y - pt.y) < 18;
 
                 return (
                   <g key={`wall-vert-preview-${pIdx}`}>
                     <circle
                       cx={mapX + pt.x}
                       cy={mapY + pt.y}
-                      r={isNearFirst ? 8 : 5}
-                      fill={isNearFirst ? '#10b981' : '#ffffff'}
-                      stroke={isNearFirst ? '#059669' : '#2563eb'}
+                      r={isNearFirst || isNearLast ? 8 : 5}
+                      fill={isNearFirst || isNearLast ? '#10b981' : '#ffffff'}
+                      stroke={isNearFirst || isNearLast ? '#059669' : '#2563eb'}
                       strokeWidth={2}
                     />
                     <text
@@ -3496,6 +3643,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     >
                       {pIdx + 1}
                     </text>
+                    {isNearLast && (
+                      <g transform={`translate(${mapX + pt.x}, ${mapY + pt.y - 18})`}>
+                        <rect x={-45} y={-9} width={90} height={18} rx={5} fill="#059669" />
+                        <text textAnchor="middle" dominantBaseline="central" fontSize="9" fontWeight="bold" fill="#ffffff">
+                          Concluir aqui
+                        </text>
+                      </g>
+                    )}
+                    {isNearFirst && wallPoints.length >= 3 && (
+                      <g transform={`translate(${mapX + pt.x}, ${mapY + pt.y - 18})`}>
+                        <rect x={-48} y={-9} width={96} height={18} rx={5} fill="#2563eb" />
+                        <text textAnchor="middle" dominantBaseline="central" fontSize="9" fontWeight="bold" fill="#ffffff">
+                          Fechar polígono
+                        </text>
+                      </g>
+                    )}
                   </g>
                 );
               })}

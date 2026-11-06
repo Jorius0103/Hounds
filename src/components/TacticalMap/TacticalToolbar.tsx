@@ -88,10 +88,14 @@ interface TacticalToolbarProps {
   onCloseWallPolygon?: () => void;
   onClearWalls?: () => void;
   onDeleteWall?: (wallId: string) => void;
+  selectedWallId?: string | null;
+  onSelectWall?: (wallId: string | null) => void;
   onClearDoors?: () => void;
   onDeleteDoor?: (doorId: string) => void;
   onToggleDoor?: (doorId: string) => void;
   onToggleAllDoors?: (open: boolean) => void;
+  selectedDoorId?: string | null;
+  onSelectDoor?: (doorId: string | null) => void;
   fogBrushMode?: 'reveal' | 'hide';
   onSetFogBrushMode?: (mode: 'reveal' | 'hide') => void;
   fogSubTool?: 'box' | 'light';
@@ -159,10 +163,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onCloseWallPolygon,
   onClearWalls,
   onDeleteWall,
+  selectedWallId,
+  onSelectWall,
   onClearDoors,
   onDeleteDoor,
   onToggleDoor,
   onToggleAllDoors,
+  selectedDoorId,
+  onSelectDoor,
   fogBrushMode = 'reveal',
   onSetFogBrushMode,
   fogSubTool = 'box',
@@ -1216,24 +1224,41 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                             Nenhuma parede construída ainda.
                           </div>
                         ) : (
-                          (tacticalState.walls || []).map((w, idx) => (
-                            <div
-                              key={w.id || idx}
-                              className="flex items-center justify-between bg-slate-900/80 px-2 py-1 rounded border border-slate-800 text-[11px]"
-                            >
-                              <span>
-                                Parede #{idx + 1} ({w.points?.length || 0} vértices{w.closed ? ', fechada' : ''})
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => onDeleteWall?.(w.id)}
-                                className="text-slate-400 hover:text-rose-400 p-0.5"
-                                title="Excluir esta parede"
+                          (tacticalState.walls || []).map((w, idx) => {
+                            const isSelected = selectedWallId === w.id;
+                            return (
+                              <div
+                                key={w.id || idx}
+                                onClick={() => onSelectWall?.(isSelected ? null : w.id)}
+                                className={`flex items-center justify-between px-2 py-1.5 rounded border text-[11px] cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'bg-sky-500/25 border-sky-400 text-sky-200 ring-1 ring-sky-400 font-bold shadow-xs'
+                                    : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-850'
+                                }`}
+                                title="Clique para destacar e localizar esta parede no mapa"
                               >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          ))
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[10px] ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>
+                                    {isSelected ? '📍' : `#${idx + 1}`}
+                                  </span>
+                                  <span>
+                                    Parede #{idx + 1} ({w.points?.length || 0} vértices{w.closed ? ', fechada' : ''})
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteWall?.(w.id);
+                                  }}
+                                  className="text-slate-400 hover:text-rose-400 p-0.5 rounded hover:bg-rose-500/20 transition-colors"
+                                  title="Excluir esta parede"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -1260,35 +1285,53 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                             Nenhuma porta inserida ainda.
                           </div>
                         ) : (
-                          (tacticalState.doors || []).map((d, idx) => (
-                            <div
-                              key={d.id || idx}
-                              className="flex items-center justify-between bg-slate-900/80 px-2 py-1 rounded border border-slate-800 text-[11px]"
-                            >
-                              <div className="flex items-center gap-1.5">
+                          (tacticalState.doors || []).map((d, idx) => {
+                            const isSelected = selectedDoorId === d.id;
+                            return (
+                              <div
+                                key={d.id || idx}
+                                onClick={() => onSelectDoor?.(isSelected ? null : d.id)}
+                                className={`flex items-center justify-between px-2 py-1.5 rounded border text-[11px] cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'bg-sky-500/25 border-sky-400 text-sky-200 ring-1 ring-sky-400 font-bold shadow-xs'
+                                    : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-850'
+                                }`}
+                                title="Clique para destacar e localizar esta porta no mapa"
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[10px] ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>
+                                    {isSelected ? '📍' : `#${idx + 1}`}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleDoor?.(d.id);
+                                    }}
+                                    className={`px-1.5 py-0.2 rounded font-bold text-[10px] transition-colors ${
+                                      d.isOpen
+                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                    }`}
+                                  >
+                                    {d.isOpen ? 'Aberta' : 'Fechada'}
+                                  </button>
+                                  <span>Porta #{idx + 1}</span>
+                                </div>
                                 <button
                                   type="button"
-                                  onClick={() => onToggleDoor?.(d.id)}
-                                  className={`px-1.5 py-0.2 rounded font-bold text-[10px] ${
-                                    d.isOpen
-                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteDoor?.(d.id);
+                                  }}
+                                  className="text-slate-400 hover:text-rose-400 p-0.5 rounded hover:bg-rose-500/20 transition-colors"
+                                  title="Excluir esta porta"
                                 >
-                                  {d.isOpen ? 'Aberta' : 'Fechada'}
+                                  <Trash2 size={12} />
                                 </button>
-                                <span>Porta #{idx + 1}</span>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => onDeleteDoor?.(d.id)}
-                                className="text-slate-400 hover:text-rose-400 p-0.5"
-                                title="Excluir esta porta"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </div>
