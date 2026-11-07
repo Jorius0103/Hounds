@@ -172,6 +172,7 @@ export interface TacticalState {
   scaleUnit: 'yd' | 'm';
   fogEnabled: boolean;
   fogMode?: TacticalFogMode; // 'open' (Tudo Aberto) | 'hidden' (Tudo Oculto) | 'dynamic' (Modo Iluminação)
+  useLightingVision?: boolean; // Se o mapa usa iluminação como fator de visão dos jogadores (true = apenas o que estiver iluminado na visão; false = enxergam o que o mestre liberar)
   fogRevealedCells: string[]; // "col,row" (retrocompatibilidade)
   fogRects?: TacticalFogRect[]; // Áreas retangulares reveladas ou ocultas em linhas retas
   lights?: TacticalLightSource[]; // Focos de luz fixos no mapa
@@ -207,6 +208,7 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   scaleUnit: 'yd',
   fogEnabled: false,
   fogMode: 'open',
+  useLightingVision: true,
   fogRevealedCells: [],
   fogRects: [],
   lights: [],
