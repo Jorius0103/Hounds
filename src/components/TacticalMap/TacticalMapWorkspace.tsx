@@ -402,6 +402,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     return result;
   }, [tacticalState.lights, blockingSegments, getLightCenter, hexWidth]);
 
+  // Helpers para identificar se um combatente emite luz e seu raio correspondente
+  const isTokenEmittingLight = useCallback((token: TacticalToken) => {
+    return token.emitsLight !== false && (!!token.emitsLight || (typeof token.lightRadius === 'number' && token.lightRadius > 0));
+  }, []);
+
+  const getTokenLightRadius = useCallback((token: TacticalToken) => {
+    if (typeof token.lightRadius === 'number' && token.lightRadius > 0) {
+      return token.lightRadius;
+    }
+    return token.emitsLight ? 4 : 0;
+  }, []);
+
   // Polígonos de visibilidade calculados para tokens que emitem luz própria ou possuem visão liberada
   const tokenLightVisibilityPaths = useMemo(() => {
     const result: Record<string, string> = {};
@@ -413,9 +425,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     ];
 
     for (const token of tokens) {
-      const hasLight = token.emitsLight && (token.lightRadius || 4) > 0;
+      const hasLight = isTokenEmittingLight(token);
       const hasInfVision = !!token.hasInfiniteVision;
       if (!hasLight && !hasInfVision) continue;
+
+      const radiusYards = getTokenLightRadius(token);
+      if (radiusYards <= 0 && !hasInfVision) continue;
 
       const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
       const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
@@ -431,7 +446,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       const facingAngleDegrees = ((tokenRotation + 90) % 360 + 360) % 360;
       const angle = token.lightAngle || 360;
 
-      let radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+      let radiusPixels = radiusYards * hexWidth * 0.95;
       let segmentsToUse = blockingSegments;
 
       if (hasInfVision) {
@@ -2175,11 +2190,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
           {/* Gradientes radiais para tokens com luz própria */}
           {tokens.map((token) => {
-            if (!token.emitsLight) return null;
+            if (!isTokenEmittingLight(token)) return null;
+            const radiusYards = getTokenLightRadius(token);
+            if (radiusYards <= 0) return null;
             const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
             const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
             const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-            const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+            const radiusPixels = radiusYards * hexWidth * 0.95;
             const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
 
             return (
@@ -2324,14 +2341,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       );
                     })}
 
-                    {/* 3. Tokens com luz própria (tochas / lanternas) */}
+                    {/* 3. Tokens com luz própria (tochas / lanternas / raio de iluminação configurado) */}
                     {tokens.map((token) => {
-                      if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
+                      if (!isTokenEmittingLight(token)) return null;
+                      const radiusYards = getTokenLightRadius(token);
+                      if (radiusYards <= 0) return null;
                       if (isPlayerView && (token.hiddenFromPlayers || token.layer === 'gm')) return null;
                       const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
                       const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
                       const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-                      const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+                      const radiusPixels = radiusYards * hexWidth * 0.95;
                       const visPath = tokenLightVisibilityPaths[token.id];
 
                       if (visPath) {
@@ -2356,7 +2375,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           <path
                             key={`token-light-mask-${token.id}`}
                             d={getCircleSectorPath(mapX + relCenter.x, mapY + relCenter.y, radiusPixels, token.lightAngle, facingAngleDegrees)}
-                            fill={`url(#fog-token-attenuation-${token.id})`}
+                            fill="#000000"
                           />
                         );
                       }
@@ -2367,7 +2386,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                           cx={mapX + relCenter.x}
                           cy={mapY + relCenter.y}
                           r={radiusPixels}
-                          fill={`url(#fog-token-attenuation-${token.id})`}
+                          fill="#000000"
                         />
                       );
                     })}
@@ -2386,20 +2405,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         />
                       );
                     })}
-
-                  {/* 5. Revelações manuais do Mestre no modo Iluminação (Mostrar Áreas): furam a escuridão mesmo sem luz */}
-                  {(tacticalState.fogRects || [])
-                    .filter((r) => r.mode === 'reveal')
-                    .map((r, idx) => (
-                      <rect
-                        key={r.id || `dyn-reveal-${idx}`}
-                        x={mapX + r.x}
-                        y={mapY + r.y}
-                        width={r.width}
-                        height={r.height}
-                        fill="#000000"
-                      />
-                    ))}
                 </>
               )}
 
@@ -2610,12 +2615,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
             {/* Brilho dos tokens que emitem luz própria */}
             {tokens.map((token) => {
-              if (!token.emitsLight || (token.lightRadius || 4) <= 0) return null;
+              if (!isTokenEmittingLight(token)) return null;
+              const radiusYards = getTokenLightRadius(token);
+              if (radiusYards <= 0) return null;
               const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
               const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
               const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-              const radiusPixels = (token.lightRadius || 4) * hexWidth * 0.95;
+              const radiusPixels = radiusYards * hexWidth * 0.95;
               const visPath = tokenLightVisibilityPaths[token.id];
 
               if (visPath) {
