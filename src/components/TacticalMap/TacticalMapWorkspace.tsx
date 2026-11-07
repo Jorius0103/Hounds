@@ -1023,15 +1023,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         });
       } else if (fogShape === 'polygon') {
         const clickPt = { x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) };
-        if (fogPolyPoints.length >= 3) {
-          const firstPt = fogPolyPoints[0];
-          const dist = Math.hypot(clickPt.x - firstPt.x, clickPt.y - firstPt.y);
-          if (dist < 20) {
-            handleFinishFogPolygon();
-            setPopoverToken(null);
-            return;
-          }
-        }
         setFogPolyPoints((prev) => [...prev, clickPt]);
       } else {
         // Seleção Retangular da Névoa (padrão)
@@ -1179,7 +1170,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
 
     if (
-      (activeTool === 'fog' && fogSubTool === 'light') ||
+      activeTool === 'fog' ||
       activeTool === 'light' ||
       activeTool === 'wall' ||
       activeTool === 'door'
@@ -1768,10 +1759,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         if (activeTool === 'wall' && isMaster && wallPoints.length >= 2) {
           e.preventDefault();
           handleFinishWall();
-        }
-        if (activeTool === 'fog' && fogShape === 'polygon' && isMaster && fogPolyPoints.length >= 3) {
-          e.preventDefault();
-          handleFinishFogPolygon();
         }
       }}
       onMouseLeave={() => {
@@ -3990,21 +3977,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   strokeDasharray="4 4"
                 />
               )}
-              {fogPolyPoints.map((pt, idx) => {
-                const isFirst = idx === 0;
-                const isHoverFirst = isFirst && fogPolyPoints.length >= 3 && mouseMapPos && Math.hypot(mouseMapPos.x - pt.x, mouseMapPos.y - pt.y) < 20;
-                return (
-                  <circle
-                    key={`fog-poly-vertex-${idx}`}
-                    cx={mapX + pt.x}
-                    cy={mapY + pt.y}
-                    r={isHoverFirst ? 8 : (isFirst ? 6 : 4)}
-                    fill={isHoverFirst ? '#fbbf24' : (fogBrushMode === 'reveal' ? '#10b981' : '#ef4444')}
-                    stroke="#ffffff"
-                    strokeWidth={2}
-                  />
-                );
-              })}
+              {fogPolyPoints.map((pt, idx) => (
+                <circle
+                  key={`fog-poly-vertex-${idx}`}
+                  cx={mapX + pt.x}
+                  cy={mapY + pt.y}
+                  r={idx === 0 ? 5 : 4}
+                  fill={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                  stroke="#ffffff"
+                  strokeWidth={1.5}
+                />
+              ))}
             </g>
           )}
 
