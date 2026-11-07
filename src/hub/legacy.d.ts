@@ -273,6 +273,14 @@ declare global {
   /** Os campos de um item além do nome e da descrição: [campo, rótulo, exemplo], na ordem do formulário e da página. */
   var ITEM_FIELDS: [ItemField, string, string][];
   type ItemField = 'cost' | 'weight' | 'tl' | 'category' | 'book' | 'page';
+  /** js/tabs/tab-melhoramentos.js: um melhoramento pelo id (ou o de uma entrada que mudou de página no livro), o endereço dele e
+   *  os valores já usados num campo (os tipos de equipamento vêm primeiro, na ordem de IMPROVEMENT_KINDS). */
+  function improvementById(id: string | null | undefined): Improvement | null;
+  function improvementHref(id: string): string;
+  function improvementValues(field: 'appliesTo' | 'category' | 'book'): string[];
+  /** Os campos de um melhoramento além do nome e da descrição: [campo, rótulo, exemplo], na ordem do formulário e da página. */
+  var IMPROVEMENT_FIELDS: [ImprovementField, string, string][];
+  type ImprovementField = 'cost' | 'weight' | 'tl' | 'appliesTo' | 'restriction' | 'category' | 'book' | 'page';
   /** js/tabs/tab-combate.js: o endereço de uma perícia aberta em Combate (#pericia-combate~id). */
   function combatSkillHref(id: string): string;
   /** Uma técnica e um estilo pelo id, e os endereços deles. */
@@ -461,6 +469,10 @@ declare global {
     saveItem(x: GearItem | null, fields: {name: string; description: string; visible: boolean; sharedWith: string[]} & Record<ItemField, string>): Promise<string>;
     /** Um item dos livros fica marcado como excluído; o do Mestre sai do banco. */
     deleteItem(x: GearItem): Promise<unknown>;
+    /** Só o Mestre. */
+    saveImprovement(x: Improvement | null, fields: {name: string; description: string; visible: boolean; sharedWith: string[]} & Record<ImprovementField, string>): Promise<string>;
+    /** Um melhoramento dos livros fica marcado como excluído; o do Mestre sai do banco. */
+    deleteImprovement(x: Improvement): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */

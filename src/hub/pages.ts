@@ -17,6 +17,8 @@ import {SpellPage} from './paginas/Magia';
 import {SpellsPage} from './paginas/Magias';
 import {MapPage} from './paginas/Mapa';
 import {MapsPage} from './paginas/Mapas';
+import {ImprovementPage} from './paginas/Melhoramento';
+import {ImprovementsPage} from './paginas/Melhoramentos';
 import {OrgPage} from './paginas/Organizacao';
 import {OrgsPage} from './paginas/Organizacoes';
 import {CharPage} from './paginas/Personagem';
@@ -66,9 +68,11 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   armor: ArmorPage,
   items: ItemsPage,
   item: ItemPage,
+  improvements: ImprovementsPage,
+  improvement: ImprovementPage,
   tabuleiro: TabuleiroPage,
 };
 
-// As listas longas de cartões usam a largura da tela (a classe wide do .page-inner), como as antigas que o renderPage de
+// As listas longas de cartões usam a largura da tela (a classe wide do .page-inner), como a ficha que o renderPage de
 // js/app.js marca.
-export const WIDE_PAGES = new Set(['spells', 'advs', 'perks', 'disadvs', 'skills', 'combat', 'weapons', 'armors', 'items']);
+export const WIDE_PAGES = new Set(['spells', 'advs', 'perks', 'disadvs', 'skills', 'combat', 'weapons', 'armors', 'items', 'improvements']);

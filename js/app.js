@@ -109,9 +109,6 @@ window.addEventListener('hashchange', function () { revealDraft = null; });
 var _rSheet = renderSheetPage;
 // @ts-expect-error -- substitui a função de tab-fichas.js por uma que também desenha o botão de visibilidade
 renderSheetPage = function () { _rSheet(); tagPage(sheetById(S.route.sheetId), 'sheets'); };
-var _rImprovement = renderImprovementPage;
-// @ts-expect-error -- idem, tab-melhoramentos.js
-renderImprovementPage = function () { _rImprovement(); tagPage(improvementById(S.route.improvementId), 'improvements'); };
 
 // One-time: items created before the visibility flag existed become Mestre-only.
 var migratedVis = false;
@@ -145,15 +142,13 @@ function renderPage() {
   // The map page is React; the markers it shows (S.markers) and the explorer over it are still started here.
   if (r.page === 'map' && W.store) { watchMarkersFor(r.mapId); var em = mapById(r.mapId); if (r.explore && em) Explorer.open(em); }
   if (window.hubIsReactPage && window.hubIsReactPage(r.page)) return; // drawn by the React shell (src/hub/)
-  // The long card lists use the width of the screen; the other pages keep a reading width.
-  pageRoot.classList.toggle('wide', r.page === 'improvements' || r.page === 'sheet');
+  // The sheet uses the width of the screen (the long card lists are React: WIDE_PAGES in src/hub/pages.ts); the other pages keep a reading width.
+  pageRoot.classList.toggle('wide', r.page === 'sheet');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
   else if (r.page === 'boards') renderBoardsPage();
   else if (r.page === 'sheets') renderSheetsPage();
   else if (r.page === 'sheet') renderSheetPage();
-  else if (r.page === 'improvements') renderImprovementsPage();
-  else if (r.page === 'improvement') renderImprovementPage();
   else if (r.page === 'notes') renderNotesPage();
   else if (r.page === 'nb') renderNotebookPage();
   else if (r.page === 'note') renderNotePage();
@@ -167,7 +162,7 @@ function onRoute() {
   // Another ally of the same sheet: its own drafts and choices, in the same tab (Ficha, Equip. or Magia).
   else if (r.page === 'sheet' && prev.allyId !== r.allyId) S.ui = { q: '', sheetTab: S.ui.sheetTab };
   S.route = r;
-  if (r.node && !byId[r.node] && /^(spell|adv|perk|disadv|c?skill|tech|style|weapon|armor|item):/.test(r.node)) renderMenu(); // the menu lists only the open one
+  if (r.node && !byId[r.node] && /^(spell|adv|perk|disadv|c?skill|tech|style|weapon|armor|item|impr):/.test(r.node)) renderMenu(); // the menu lists only the open one
   // The Mesa and a board use the whole screen: the menu stays collapsed and opens over them.
   var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa' || r.page === 'board';
   app.classList.toggle('on-mesa', isMesa);
@@ -240,7 +235,6 @@ function onData(kind) {
   if (S.route.page === 'sheet' && (S.ui.attrDraft || sheetDraftOpen() || gearEditing() || S.ui.dragging)) return; // a section being edited; the page redraws on save or cancel
   if (S.route.page === 'sheet' && document.activeElement && document.activeElement.classList.contains('gpts-in')) { S.ui.ptsStale = true; return; } // points being typed in the table; redraws when the field is left
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
-  if (S.route.page === 'improvements' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'improvementSearch') { renderImprovementList(); return; }
   renderPage();
 }
 
