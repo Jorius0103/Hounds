@@ -394,7 +394,7 @@ var MesaSync = (function () {
   }
   function save(p) {
     if (!canSave()) return Promise.resolve();
-    var pSeq = Promise.resolve();
+    var pSeq = /** @type {Promise<any>} */ (Promise.resolve());
     if (archivePending && W.store && W.store.put) {
       archivePending = false;
       pSeq = pSeq.then(function () {
