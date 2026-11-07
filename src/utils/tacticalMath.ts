@@ -420,14 +420,18 @@ export function computeVisibilityPolygon(
   angleDegrees: number = 360,
   rotationDegrees: number = 0
 ): Point[] {
-  if (radius <= 0) return [];
+  if (radius <= 0 || !Number.isFinite(radius) || !Number.isFinite(center.x) || !Number.isFinite(center.y)) return [];
   if (!segments || segments.length === 0) return [];
 
   const r2 = radius * radius;
   const relevantSegments: LineSegment[] = [];
 
-  // Filtra apenas os segmentos que estão dentro ou cruzam o raio de alcance da luz
+  // Filtra apenas os segmentos válidos que estão dentro ou cruzam o raio de alcance da luz
   for (const seg of segments) {
+    if (!seg || !seg.p1 || !seg.p2) continue;
+    if (!Number.isFinite(seg.p1.x) || !Number.isFinite(seg.p1.y) || !Number.isFinite(seg.p2.x) || !Number.isFinite(seg.p2.y)) continue;
+    if (Math.hypot(seg.p2.x - seg.p1.x, seg.p2.y - seg.p1.y) < 0.5) continue;
+
     const d1sq = (seg.p1.x - center.x) ** 2 + (seg.p1.y - center.y) ** 2;
     const d2sq = (seg.p2.x - center.x) ** 2 + (seg.p2.y - center.y) ** 2;
 
@@ -461,10 +465,14 @@ export function computeVisibilityPolygon(
   const minAngle = rotRad - halfAngleRad;
   const maxAngle = rotRad + halfAngleRad;
 
+  // Normalização puramente aritmética sem loops while (100% à prova de travamentos/crashes)
   const normalizeDirectional = (a: number) => {
-    while (a < rotRad - Math.PI) a += 2 * Math.PI;
-    while (a > rotRad + Math.PI) a -= 2 * Math.PI;
-    return a;
+    if (!Number.isFinite(a)) return rotRad;
+    const twoPi = 2 * Math.PI;
+    let diff = (a - rotRad) % twoPi;
+    if (diff < -Math.PI) diff += twoPi;
+    if (diff > Math.PI) diff -= twoPi;
+    return rotRad + diff;
   };
 
   const inCone = (a: number) => {
@@ -475,6 +483,7 @@ export function computeVisibilityPolygon(
 
   const rawAngles: number[] = [];
   const addAngle = (a: number) => {
+    if (!Number.isFinite(a)) return;
     if (inCone(a)) rawAngles.push(a);
   };
 
@@ -485,8 +494,8 @@ export function computeVisibilityPolygon(
     addAngle(a + delta);
   };
 
-  // 1. Amostras circulares regulares para perímetro suave (72 raios a cada 5 graus)
-  const numCircleRays = isDirectional ? Math.max(16, Math.round((angleDegrees / 360) * 72)) : 72;
+  // 1. Amostras circulares regulares para perímetro suave
+  const numCircleRays = isDirectional ? Math.max(16, Math.round((angleDegrees / 360) * 60)) : 60;
   const arcSpan = isDirectional ? maxAngle - minAngle : 2 * Math.PI;
   const startArc = isDirectional ? minAngle : 0;
   for (let i = 0; i <= numCircleRays; i++) {
@@ -528,8 +537,16 @@ export function computeVisibilityPolygon(
     }
   }
 
+  // Limite de segurança de raios para garantir estabilidade e fluidez total
+  if (rawAngles.length > 360) {
+    rawAngles.length = 360;
+  }
+
   // 3. Dispara cada raio e calcula a menor distância de colisão
-  const norm360 = (a: number) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  const norm360 = (a: number) => {
+    if (!Number.isFinite(a)) return 0;
+    return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  };
 
   const castRay = (angle: number) => {
     const cosA = Math.cos(angle);
@@ -587,6 +604,40 @@ export function computeVisibilityPolygon(
   }
 
   return points;
+}
+
+/**
+ * Verifica se dois segmentos de reta se cruzam em 2D
+ */
+function ccw(p1: Point, p2: Point, p3: Point): number {
+  return (p3.y - p1.y) * (p2.x - p1.x) - (p2.y - p1.y) * (p3.x - p1.x);
+}
+
+export function segmentsIntersect(p1: Point, p2: Point, p3: Point, p4: Point): boolean {
+  const d1 = ccw(p3, p4, p1);
+  const d2 = ccw(p3, p4, p2);
+  const d3 = ccw(p1, p2, p3);
+  const d4 = ccw(p1, p2, p4);
+
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Linha de Visão direta entre dois pontos no mapa.
+ * Retorna true se NÃO houver nenhuma parede ou porta fechada bloqueando a visão entre eles.
+ */
+export function hasLineOfSight(from: Point, to: Point, blockingSegments: LineSegment[]): boolean {
+  if (!blockingSegments || blockingSegments.length === 0) return true;
+  for (const seg of blockingSegments) {
+    if (segmentsIntersect(from, to, seg.p1, seg.p2)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**

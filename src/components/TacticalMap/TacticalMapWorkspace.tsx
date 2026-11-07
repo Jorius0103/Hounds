@@ -39,6 +39,7 @@ import {
   extractBlockingSegments,
   computeVisibilityPolygon,
   pointsToSvgPath,
+  hasLineOfSight,
 } from '../../utils/tacticalMath';
 import { getCombatManeuver, COMBAT_MANEUVERS } from '../../utils/gurps';
 import { NpcAvatar, PRESET_AVATARS, PRESET_BG_COLORS, resolveNpcPreset } from '../NpcAvatar';
@@ -449,49 +450,29 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     return result;
   }, [tokens, blockingSegments, draggedTokenId, dragHoverHex, hexSize, mapX, mapY, mapW, mapH, hexWidth, rotatingTokenId, previewRotation]);
 
-  // Polígonos de Linha de Visão (LOS) para combatentes dos jogadores
-  // Garante que salas fechadas e fora da visão do jogador NUNCA mostrem luminosidade
-  const playerLosPolygons = useMemo(() => {
-    const playerTokens = tokens.filter((t) => !t.hiddenFromPlayers && t.layer !== 'gm');
+  // Verifica se um foco de luz do mapa tem linha de visão direta desobstruída para algum dos combatentes dos jogadores.
+  // Salas fechadas fora da visão do jogador NUNCA mostram luminosidade (O(N) ultra-leve e 100% à prova de crashes)
+  const isLightVisibleToPlayer = useCallback(
+    (light: TacticalLightSource) => {
+      if (!isPlayerView) return true;
+      if (blockingSegments.length === 0) return true;
 
-    if (blockingSegments.length === 0 || playerTokens.length === 0) {
-      return [{
-        id: 'full-map',
-        path: `M 0 0 L ${mapW} 0 L ${mapW} ${mapH} L 0 ${mapH} Z`,
-      }];
-    }
+      const playerTokens = tokens.filter((t) => !t.hiddenFromPlayers && t.layer !== 'gm');
+      if (playerTokens.length === 0) return true;
 
-    const mapBoundsSegments: LineSegment[] = [
-      { p1: { x: 0, y: 0 }, p2: { x: mapW, y: 0 } },
-      { p1: { x: mapW, y: 0 }, p2: { x: mapW, y: mapH } },
-      { p1: { x: mapW, y: mapH }, p2: { x: 0, y: mapH } },
-      { p1: { x: 0, y: mapH }, p2: { x: 0, y: 0 } },
-    ];
-    const segmentsToUse = [...blockingSegments, ...mapBoundsSegments];
-    const maxVisionDist = Math.hypot(mapW, mapH);
+      const lightPos = getLightCenter(light);
 
-    const list: { id: string; path: string }[] = [];
-    for (const token of playerTokens) {
-      const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
-      const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
-      const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-      const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+      return playerTokens.some((t) => {
+        const displayGridX = draggedTokenId === t.id && dragHoverHex ? dragHoverHex.col : t.gridX;
+        const displayGridY = draggedTokenId === t.id && dragHoverHex ? dragHoverHex.row : t.gridY;
+        const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+        const tokenPos = { x: mapX + relCenter.x, y: mapY + relCenter.y };
 
-      const poly = computeVisibilityPolygon(center, maxVisionDist, segmentsToUse, 360, 0);
-      if (poly.length >= 3) {
-        list.push({ id: token.id, path: pointsToSvgPath(poly) });
-      }
-    }
-
-    if (list.length === 0) {
-      return [{
-        id: 'full-map',
-        path: `M 0 0 L ${mapW} 0 L ${mapW} ${mapH} L 0 ${mapH} Z`,
-      }];
-    }
-
-    return list;
-  }, [tokens, blockingSegments, mapW, mapH, mapX, mapY, hexSize, draggedTokenId, dragHoverHex]);
+        return hasLineOfSight(tokenPos, lightPos, blockingSegments);
+      });
+    },
+    [isPlayerView, blockingSegments, tokens, getLightCenter, draggedTokenId, dragHoverHex, hexSize, mapX, mapY]
+  );
 
   // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
   const litCellsSet = useMemo(() => {
@@ -2136,13 +2117,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             <rect x={mapX} y={mapY} width={mapW} height={mapH} />
           </clipPath>
 
-          {/* Campo de Linha de Visão (LOS) dos Jogadores (Salas fechadas ficam fora do clip) */}
-          <clipPath id="player-los-clip">
-            {playerLosPolygons.map((p, idx) => (
-              <path key={`player-los-${p.id || idx}`} d={p.path} />
-            ))}
-          </clipPath>
-
           {/* Ponta de seta tática para medições */}
           <marker
             id="ruler-arrow"
@@ -2292,46 +2266,43 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               {/* "se for usar os jogadores só enxergam o que estiver na sua visão e tiver dentro do raio da iluminação. Salas que ele não pode ver não mostram iluminação para o jogador." */}
               {tacticalState.useLightingVision !== false && (
                 <>
-                  {/* Grupo delimitado pelo campo de visão (LOS) dos combatentes dos jogadores:
-                      Luzes em salas fora do campo de visão do jogador são cortadas e NÃO aparecem! */}
-                  <g clipPath={isPlayerView ? 'url(#player-los-clip)' : undefined}>
-                    {/* 1. Focos de luz fixos ativos no mapa (contidos por paredes e portas) */}
-                    {(tacticalState.lights || []).map((light) => {
-                      if (light.active === false || (light.radius || 0) <= 0) return null;
-                      const center = getLightCenter(light);
-                      const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
-                      const visPath = lightVisibilityPaths[light.id];
+                  {/* 1. Focos de luz fixos ativos no mapa (contidos por paredes e portas e filtrados por linha de visão) */}
+                  {(tacticalState.lights || []).map((light) => {
+                    if (light.active === false || (light.radius || 0) <= 0 || !isLightVisibleToPlayer(light)) return null;
+                    const center = getLightCenter(light);
+                    const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+                    const visPath = lightVisibilityPaths[light.id];
 
-                      if (visPath) {
-                        return (
-                          <path
-                            key={`light-mask-${light.id}`}
-                            d={visPath}
-                            fill="#000000"
-                          />
-                        );
-                      }
-
-                      if (light.angle && light.angle < 360) {
-                        return (
-                          <path
-                            key={`light-mask-${light.id}`}
-                            d={getCircleSectorPath(center.x, center.y, radiusPixels, light.angle, light.rotation ?? 0)}
-                            fill={`url(#fog-light-attenuation-${light.id})`}
-                          />
-                        );
-                      }
-
+                    if (visPath) {
                       return (
-                        <circle
+                        <path
                           key={`light-mask-${light.id}`}
-                          cx={center.x}
-                          cy={center.y}
-                          r={radiusPixels}
+                          d={visPath}
+                          fill="#000000"
+                        />
+                      );
+                    }
+
+                    if (light.angle && light.angle < 360) {
+                      return (
+                        <path
+                          key={`light-mask-${light.id}`}
+                          d={getCircleSectorPath(center.x, center.y, radiusPixels, light.angle, light.rotation ?? 0)}
                           fill={`url(#fog-light-attenuation-${light.id})`}
                         />
                       );
-                    })}
+                    }
+
+                    return (
+                      <circle
+                        key={`light-mask-${light.id}`}
+                        cx={center.x}
+                        cy={center.y}
+                        r={radiusPixels}
+                        fill={`url(#fog-light-attenuation-${light.id})`}
+                      />
+                    );
+                  })}
 
                     {/* 2. Iluminação mínima pessoal (1 jarda) para cada combatente visível:
                         Garante que o combatente nunca seja cortado e seja sempre encontrado */}
@@ -2415,7 +2386,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         />
                       );
                     })}
-                  </g>
 
                   {/* 5. Revelações manuais do Mestre no modo Iluminação (Mostrar Áreas): furam a escuridão mesmo sem luz */}
                   {(tacticalState.fogRects || [])
@@ -2602,7 +2572,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           <g id="tactical-lights-glow" pointerEvents="none">
             {/* Brilho dos focos de luz fixos */}
             {(tacticalState.lights || []).map((light) => {
-              if (light.active === false || light.radius <= 0) return null;
+              if (light.active === false || light.radius <= 0 || !isLightVisibleToPlayer(light)) return null;
               const center = getLightCenter(light);
               const radiusPixels = light.radius * hexWidth * 0.95;
               const visPath = lightVisibilityPaths[light.id];
@@ -2970,6 +2940,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* ÍCONES DOS FOCOS DE LUZ FIXOS NO TABULEIRO */}
           <g id="tactical-light-sources">
             {(tacticalState.lights || []).map((light) => {
+              if (isPlayerView && (!light.active || !isLightVisibleToPlayer(light))) return null;
               const center = getLightCenter(light);
               const isRemoveMode = activeTool === 'fog' && fogSubTool === 'light' && lightAction === 'remove';
               const isDirectional = light.angle && light.angle < 360;

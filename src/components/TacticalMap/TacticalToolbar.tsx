@@ -852,44 +852,30 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
                     {/* SEÇÃO 3: ILUMINAÇÃO & VISÃO DOS JOGADORES */}
                     <div className="pt-2.5 border-t border-slate-800 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
-                          <Flame size={13} className="text-amber-400" /> Iluminação & Visão dos Jogadores
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const nextVal = tacticalState.useLightingVision === false;
+                      <label className="flex items-start gap-2.5 cursor-pointer select-none py-2 px-2.5 bg-slate-950/70 border border-slate-800 rounded-xl hover:border-amber-500/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={tacticalState.useLightingVision !== false}
+                          onChange={(e) => {
                             onUpdateTacticalState({
-                              useLightingVision: nextVal,
+                              useLightingVision: e.target.checked,
                               fogEnabled: true,
-                              fogMode: nextVal ? 'dynamic' : 'hidden',
                             });
                           }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                            tacticalState.useLightingVision !== false
-                              ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
-                              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                          }`}
-                        >
-                          {tacticalState.useLightingVision !== false ? '💡 Usar Iluminação: SIM' : '👁️ Usar Iluminação: NÃO'}
-                        </button>
-                      </div>
-
-                      <div className="text-[11px] text-slate-400 leading-relaxed bg-slate-950/70 p-2.5 rounded-lg border border-slate-800/80">
-                        {tacticalState.useLightingVision !== false ? (
-                          <>
-                            <strong className="text-amber-300">Modo Iluminação Ativo:</strong> Os jogadores só enxergam o que estiver na sua visão e dentro do raio de luminosidade (tochas ou focos). Salas fechadas fora da visão não mostram iluminação.
-                          </>
-                        ) : (
-                          <>
-                            <strong className="text-amber-300">Modo Sem Restrição de Luz:</strong> Os jogadores enxergam tudo que o mestre for liberando no mapa (<span className="text-emerald-400 font-semibold">Mostrar Áreas</span>).
-                          </>
-                        )}
-                        <div className="text-[10px] text-rose-400 font-medium mt-1.5">
-                          * Áreas com <span className="font-bold text-rose-300">Ocultar Áreas</span> nunca aparecem para os jogadores, mesmo com visão liberada ou iluminação.
+                          className="w-4 h-4 mt-0.5 rounded text-amber-500 focus:ring-amber-400 accent-amber-500 cursor-pointer"
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-200 text-xs flex items-center gap-1.5">
+                            <Flame size={13} className="text-amber-400" />
+                            Usar Iluminação
+                          </span>
+                          <span className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                            {tacticalState.useLightingVision !== false
+                              ? 'Habilitado: jogadores só veem o que estiver revelado pelo mestre e na visão/luz deles.'
+                              : 'Desabilitado: jogadores veem tudo o que o mestre disponibilizar no mapa.'}
+                          </span>
                         </div>
-                      </div>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -1497,8 +1483,30 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono text-slate-400">
+          <div className="flex items-center gap-1.5">
+            {onHideAllFog && (
+              <button
+                type="button"
+                onClick={onHideAllFog}
+                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
+                title="Cobre o mapa inteiro com névoa inicial"
+              >
+                <EyeOff size={12} />
+                <span>Ocultar Tudo</span>
+              </button>
+            )}
+            {onRevealAllFog && (
+              <button
+                type="button"
+                onClick={onRevealAllFog}
+                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
+                title="Libera a visão do mapa inteiro"
+              >
+                <Eye size={12} />
+                <span>Revelar Tudo</span>
+              </button>
+            )}
+            <span className="text-[11px] font-mono text-slate-400 ml-1">
               {(tacticalState.fogRects || []).length} áreas
             </span>
             {(tacticalState.fogRects || []).length > 0 && (
@@ -1509,7 +1517,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 title="Remover todas as áreas ocultadas e reveladas"
               >
                 <Trash2 size={12} />
-                <span>Limpar Áreas</span>
+                <span>Limpar</span>
               </button>
             )}
           </div>
