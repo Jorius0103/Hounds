@@ -14,10 +14,10 @@ permissions:
   pages: write
   id-token: write
 
-# Um push novo espera a publicação em andamento terminar, em vez de cancelá-la no meio.
+# Cancela publicações anteriores pendentes para evitar que o deploy fique preso em fila.
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   publicar:
