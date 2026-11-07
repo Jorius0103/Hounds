@@ -3660,7 +3660,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 <g
                   key={token.id}
                   transform={`translate(${center.x}, ${center.y})`}
-                  opacity={isTokenHidden ? 0.58 : 1}
+                  opacity={isTokenHidden ? 0.78 : 1}
                   pointerEvents="auto"
                   onClick={(e) => handleTokenClick(e, token)}
                   onMouseDown={(e) => handleTokenMouseDown(e, token)}
@@ -3873,13 +3873,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20 - LINHAS RETANGULARES PURAS) */}
           {tacticalState.fogEnabled && (
             <g id="tactical-fog-layer" clipPath="url(#map-image-bounds)" pointerEvents="none">
-              {/* Camada visual de Névoa: semitransparente para o Mestre, 100% preta para os Jogadores */}
+              {/* Camada visual de Névoa: semitransparente suave para o Mestre (fácil identificação dos elementos), 100% preta para os Jogadores */}
               <rect
                 x={mapX}
                 y={mapY}
                 width={mapW}
                 height={mapH}
-                fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.78)'}
+                fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.35)'}
                 mask="url(#tactical-fog-mask)"
               />
             </g>

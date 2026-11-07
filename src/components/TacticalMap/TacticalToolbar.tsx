@@ -1271,16 +1271,13 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 </div>
               )}
 
-              {/* Contador de áreas e botão Limpar */}
-              <span className="text-[11px] font-mono text-slate-400 ml-1">
-                {(tacticalState.fogRects || []).length} áreas
-              </span>
+              {/* Botão Limpar Névoa */}
               {(tacticalState.fogRects || []).length > 0 && (
                 <button
                   type="button"
                   onClick={() => onUpdateTacticalState({ fogRects: [] })}
-                  className="px-2 py-0.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
-                  title="Remover todas as áreas"
+                  className="px-2 py-0.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ml-1"
+                  title="Limpar todas as áreas de névoa"
                 >
                   <Trash2 size={11} />
                   <span>Limpar</span>
@@ -1323,7 +1320,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
           </button>
         </div>
 
-        {/* Itens no Tabuleiro: Paredes, Portas, Luzes & Áreas */}
+        {/* Itens no Tabuleiro: Paredes, Portas & Luzes */}
         {isMaster && (
           <div className="relative shrink-0">
             <button
@@ -1334,7 +1331,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm font-bold'
                   : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:text-white'
               }`}
-              title="Gerenciar Paredes, Portas, Iluminações e Áreas do Tabuleiro"
+              title="Gerenciar Paredes, Portas e Iluminações do Tabuleiro"
             >
               <Sliders size={13} className={isWallsDoorsOpen ? "text-slate-950" : "text-amber-400"} />
               <span>Itens no Tabuleiro</span>
@@ -1343,7 +1340,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   ? 'bg-slate-950 text-amber-400 border-slate-900'
                   : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
               }`}>
-                {(tacticalState.walls || []).length}P / {(tacticalState.doors || []).length}D / {(tacticalState.lights || []).length}L / {(tacticalState.fogRects || []).length}A
+                {(tacticalState.walls || []).length}P / {(tacticalState.doors || []).length}D / {(tacticalState.lights || []).length}L
               </span>
             </button>
 
@@ -1356,7 +1353,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 <div className="absolute top-full right-0 mt-2 w-96 max-w-[95vw] bg-slate-950 border border-amber-500/50 rounded-2xl shadow-2xl p-3.5 z-50 text-xs space-y-3.5 max-h-[85vh] overflow-y-auto">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-slate-200 font-bold">
                     <span className="flex items-center gap-1.5 text-amber-400 text-sm">
-                      <Sliders size={15} /> Itens no Tabuleiro
+                      <Sliders size={15} /> Paredes, Portas & Luzes
                     </span>
                     <button
                       onClick={() => setIsWallsDoorsOpen(false)}
@@ -1601,69 +1598,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                                 <Trash2 size={12} />
                               </button>
                             </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 4. Resumo de Áreas (Névoa: Reveladas e Ocultas) */}
-                  <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-300 font-semibold text-[11px]">
-                      <span className="flex items-center gap-1">
-                        <EyeOff size={12} className="text-amber-400" /> Áreas de Ocultar / Mostrar ({(tacticalState.fogRects || []).length})
-                      </span>
-                      {(tacticalState.fogRects || []).length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdateTacticalState({ fogRects: [] })}
-                          className="text-rose-400 hover:text-rose-300 text-[10px] underline cursor-pointer"
-                        >
-                          Limpar todas
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
-                      {(tacticalState.fogRects || []).length === 0 ? (
-                        <div className="text-[11px] text-slate-500 italic p-1.5 text-center">
-                          Nenhuma área criada no mapa ainda.
-                        </div>
-                      ) : (
-                        (tacticalState.fogRects || []).map((area, idx) => (
-                          <div
-                            key={area.id || idx}
-                            className="flex items-center justify-between px-2 py-1.5 rounded border border-slate-800 bg-slate-900/80 text-[11px]"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                area.mode === 'hide'
-                                  ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
-                                  : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                              }`}>
-                                {area.mode === 'hide' ? 'Oculta' : 'Revelada'}
-                              </span>
-                              <div className="truncate">
-                                <span className="text-slate-200 font-medium">
-                                  {area.shape === 'circle'
-                                    ? `Círculo (${area.radiusYards || 5} yd)`
-                                    : area.shape === 'polygon'
-                                    ? `Polígono (${area.points?.length || 0} pts)`
-                                    : `Retângulo (${Math.round(area.width)}x${Math.round(area.height)})`}
-                                </span>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = (tacticalState.fogRects || []).filter((_, i) => i !== idx);
-                                onUpdateTacticalState({ fogRects: updated });
-                              }}
-                              className="text-slate-400 hover:text-rose-400 p-0.5 rounded hover:bg-rose-500/20 transition-colors cursor-pointer ml-1"
-                              title="Excluir esta área"
-                            >
-                              <Trash2 size={12} />
-                            </button>
                           </div>
                         ))
                       )}
