@@ -968,10 +968,15 @@ export default function App() {
       ...current,
       ...updated,
     };
-    const updatedCombats = combats.map((c) =>
+    const baseCombats = stateRef.current.combats.length > 0 ? stateRef.current.combats : combats;
+    const updatedCombats = baseCombats.map((c) =>
       c.id === activeCombatId ? { ...c, tacticalState: merged } : c
     );
+    stateRef.current.combats = updatedCombats;
     setCombats(updatedCombats);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+    } catch (e) {}
     broadcastSync(updatedCombats);
   };
 
@@ -3408,7 +3413,12 @@ export default function App() {
     }
 
     // Sincronização unificada: se o NPC mudou isVisibleToPlayer na ficha/lista, sincroniza o token no tabuleiro tático
-    if (typeof npcWithTimestamp.isVisibleToPlayer === 'boolean') {
+    if (
+      npcWithTimestamp.characterType !== 'player' &&
+      typeof npcWithTimestamp.isVisibleToPlayer === 'boolean' &&
+      oldNpc &&
+      oldNpc.isVisibleToPlayer !== npcWithTimestamp.isVisibleToPlayer
+    ) {
       const isVisible = npcWithTimestamp.isVisibleToPlayer;
       let tokenUpdated = false;
       nextCombats = nextCombats.map((c: Combat) => {

@@ -3806,9 +3806,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 const isTokenHidden = isPlayer
                   ? (!!token.hiddenFromPlayers || token.layer === 'gm')
                   : (!npc.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
-                // A Camada Tokens já é a visão dos jogadores (tokens ocultos/GM não aparecem)
-                if (activeLayer === 'tokens' && isTokenHidden) return null;
-                // Jogadores comuns nunca enxergam tokens da camada do mestre
+                // Jogadores comuns nunca enxergam tokens da camada do mestre ou tokens ocultos
                 if (!isMaster && isTokenHidden) return null;
               const isSelected = token.id === selectedTokenId;
               const isDragging = token.id === draggedTokenId;
