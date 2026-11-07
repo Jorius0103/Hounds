@@ -47,6 +47,8 @@ import {
   SunMedium,
   Trash2,
   Square,
+  Circle,
+  Pentagon,
   Paintbrush,
   Plus,
   Minus,
@@ -104,6 +106,14 @@ interface TacticalToolbarProps {
   onSetFogBrushMode?: (mode: 'reveal' | 'hide') => void;
   fogSubTool?: 'box' | 'light';
   onSetFogSubTool?: (subTool: 'box' | 'light') => void;
+  fogShape?: 'rect' | 'circle' | 'polygon';
+  onSetFogShape?: (shape: 'rect' | 'circle' | 'polygon') => void;
+  fogCircleRadius?: number;
+  onSetFogCircleRadius?: (radius: number) => void;
+  fogPolyPointsCount?: number;
+  onCloseFogPolygon?: () => void;
+  onUndoFogPolyPoint?: () => void;
+  onCancelFogPolygon?: () => void;
   lightAction?: 'add' | 'remove';
   onSetLightAction?: (action: 'add' | 'remove') => void;
   onRevealAllFog?: () => void;
@@ -183,6 +193,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onSetFogBrushMode,
   fogSubTool = 'box',
   onSetFogSubTool,
+  fogShape = 'rect',
+  onSetFogShape,
+  fogCircleRadius = 5,
+  onSetFogCircleRadius,
+  fogPolyPointsCount = 0,
+  onCloseFogPolygon,
+  onUndoFogPolyPoint,
+  onCancelFogPolygon,
   lightAction = 'add',
   onSetLightAction,
   onRevealAllFog,
@@ -1107,23 +1125,154 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </div>
           )}
 
-          {/* 5. Ocultar / Mostrar Áreas (Fog) */}
+          {/* 5. Ocultar / Mostrar Áreas (Fog: Retângulo, Círculo e Polígono) */}
           {isMaster && activeTool === 'fog' && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-bold">
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+              {/* Badge indicativo do modo ativo */}
+              <span className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${
+                fogBrushMode === 'hide'
+                  ? 'bg-rose-950/60 text-rose-400 border-rose-800/60'
+                  : 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60'
+              }`}>
                 {fogBrushMode === 'hide' ? (
                   <>
-                    <EyeOff size={13} className="text-rose-400" />
-                    <span className="text-rose-400">Ocultando Áreas</span>
+                    <EyeOff size={13} />
+                    <span>Ocultar:</span>
                   </>
                 ) : (
                   <>
-                    <Eye size={13} className="text-emerald-400" />
-                    <span className="text-emerald-400">Mostrando Áreas</span>
+                    <Eye size={13} />
+                    <span>Mostrar:</span>
                   </>
                 )}
               </span>
-              <span className="text-[11px] font-mono text-slate-400">
+
+              {/* Seletor das 3 formas: Retângulo, Círculo, Polígono */}
+              <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => onSetFogShape?.('rect')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                    fogShape === 'rect'
+                      ? fogBrushMode === 'hide'
+                        ? 'bg-rose-600 text-white shadow-sm'
+                        : 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                  title="Retângulo: clique e arraste no mapa"
+                >
+                  <Square size={12} />
+                  <span>Retângulo</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onSetFogShape?.('circle')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                    fogShape === 'circle'
+                      ? fogBrushMode === 'hide'
+                        ? 'bg-rose-600 text-white shadow-sm'
+                        : 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                  title="Círculo: defina o raio em jardas e clique no mapa para estampar"
+                >
+                  <Circle size={12} />
+                  <span>Círculo</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onSetFogShape?.('polygon')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                    fogShape === 'polygon'
+                      ? fogBrushMode === 'hide'
+                        ? 'bg-rose-600 text-white shadow-sm'
+                        : 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                  title="Polígono: clique no mapa para criar vértices; fecha no 1º ponto ou no botão Fechar Polígono"
+                >
+                  <Pentagon size={12} />
+                  <span>Polígono</span>
+                </button>
+              </div>
+
+              {/* Controles específicos da forma selecionada */}
+              {fogShape === 'circle' && (
+                <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800">
+                  <span className="text-[10px] text-slate-400 font-mono">Raio:</span>
+                  <button
+                    type="button"
+                    onClick={() => onSetFogCircleRadius?.(Math.max(1, (fogCircleRadius || 5) - 1))}
+                    className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
+                    title="Diminuir raio"
+                  >
+                    <Minus size={11} />
+                  </button>
+                  <span className={`font-mono font-bold text-xs px-1 ${fogBrushMode === 'hide' ? 'text-rose-300' : 'text-emerald-300'}`}>
+                    {fogCircleRadius || 5} yd
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onSetFogCircleRadius?.((fogCircleRadius || 5) + 1)}
+                    className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
+                    title="Aumentar raio"
+                  >
+                    <Plus size={11} />
+                  </button>
+                </div>
+              )}
+
+              {fogShape === 'polygon' && (
+                <div className="flex items-center gap-1">
+                  {fogPolyPointsCount > 0 ? (
+                    <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800">
+                      <span className="font-mono text-[11px] text-amber-300 font-bold">
+                        {fogPolyPointsCount} {fogPolyPointsCount === 1 ? 'vértice' : 'vértices'}
+                      </span>
+                      {fogPolyPointsCount >= 3 && (
+                        <button
+                          type="button"
+                          onClick={onCloseFogPolygon}
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                            fogBrushMode === 'hide'
+                              ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                              : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                          }`}
+                          title="Fechar e aplicar polígono (ou clique no 1º ponto / Enter)"
+                        >
+                          <Check size={11} />
+                          <span>Fechar Polígono</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={onUndoFogPolyPoint}
+                        className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded cursor-pointer"
+                        title="Desfazer último ponto"
+                      >
+                        <RotateCcw size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onCancelFogPolygon}
+                        className="p-1 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 rounded cursor-pointer"
+                        title="Cancelar polígono"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
+                      Clique no mapa para ligar os pontos
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Contador de áreas e botão Limpar */}
+              <span className="text-[11px] font-mono text-slate-400 ml-1">
                 {(tacticalState.fogRects || []).length} áreas
               </span>
               {(tacticalState.fogRects || []).length > 0 && (

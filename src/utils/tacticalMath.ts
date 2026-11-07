@@ -759,14 +759,43 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     };
   });
 
-  // 7. Retângulos de Névoa de Guerra
-  const newFogRects = (tacticalState.fogRects || []).map((r) => ({
-    ...r,
-    x: Math.round(curH - (r.y + r.height)),
-    y: Math.round(r.x),
-    width: Math.round(r.height),
-    height: Math.round(r.width),
-  }));
+  // 7. Retângulos, Círculos e Polígonos de Névoa de Guerra
+  const newFogRects = (tacticalState.fogRects || []).map((r) => {
+    if (r.shape === 'circle') {
+      return {
+        ...r,
+        x: Math.round(curH - r.y),
+        y: Math.round(r.x),
+      };
+    }
+    if (r.shape === 'polygon' && r.points && r.points.length > 0) {
+      const rotPoints = r.points.map((p) => ({
+        x: Math.round(curH - p.y),
+        y: Math.round(p.x),
+      }));
+      const xs = rotPoints.map((p) => p.x);
+      const ys = rotPoints.map((p) => p.y);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      return {
+        ...r,
+        points: rotPoints,
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+      };
+    }
+    return {
+      ...r,
+      x: Math.round(curH - (r.y + r.height)),
+      y: Math.round(r.x),
+      width: Math.round(r.height),
+      height: Math.round(r.width),
+    };
+  });
 
   return {
     mapRotation: nextRotation,

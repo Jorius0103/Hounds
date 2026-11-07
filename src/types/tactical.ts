@@ -67,6 +67,10 @@ export interface TacticalFogRect {
   width: number;
   height: number;
   mode?: 'reveal' | 'hide';
+  shape?: 'rect' | 'circle' | 'polygon';
+  radius?: number; // pixels (para círculo)
+  radiusYards?: number; // jardas (para círculo)
+  points?: Array<{ x: number; y: number }>; // vértices do polígono relativos ao mapa
 }
 
 export interface TacticalTerrainCell {

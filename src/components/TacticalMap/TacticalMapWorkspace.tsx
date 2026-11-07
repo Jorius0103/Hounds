@@ -149,9 +149,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
   const [selectedDoorId, setSelectedDoorId] = useState<string | null>(null);
 
-  // Fog of War / Ocultação do Mapa state (Estilo Roll20 em Linhas Retas)
+  // Fog of War / Ocultação do Mapa state (Estilo Roll20: Retângulo, Círculo e Polígono)
   const [fogBrushMode, setFogBrushMode] = useState<'reveal' | 'hide'>('reveal');
   const [fogSubTool, setFogSubTool] = useState<'box' | 'light'>('box');
+  const [fogShape, setFogShape] = useState<'rect' | 'circle' | 'polygon'>('rect');
+  const [fogCircleRadius, setFogCircleRadius] = useState<number>(5);
+  const [fogPolyPoints, setFogPolyPoints] = useState<Point[]>([]);
   const [fogBoxStart, setFogBoxStart] = useState<Point | null>(null);
   const [fogBoxCurrent, setFogBoxCurrent] = useState<Point | null>(null);
 
@@ -658,7 +661,42 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     setSelectedDoorId(null);
   }, [onUpdateTacticalState]);
 
-  // Efeito de atalhos de teclado para Parede e Porta
+  // Funções para controle do Polígono de Névoa de Guerra
+  const handleFinishFogPolygon = useCallback((pointsToFinish?: Point[]) => {
+    const pts = pointsToFinish || fogPolyPoints;
+    if (pts.length < 3) return;
+    const xs = pts.map((pt) => pt.x);
+    const ys = pts.map((pt) => pt.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const newPolyArea: TacticalFogRect = {
+      id: `fog-poly-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      mode: fogBrushMode,
+      shape: 'polygon',
+      points: pts,
+    };
+    onUpdateTacticalState({
+      fogEnabled: true,
+      fogRects: [...(tacticalState.fogRects || []), newPolyArea],
+    });
+    setFogPolyPoints([]);
+  }, [fogPolyPoints, fogBrushMode, tacticalState.fogRects, onUpdateTacticalState]);
+
+  const handleCancelFogPolygon = useCallback(() => {
+    setFogPolyPoints([]);
+  }, []);
+
+  const handleUndoFogPolyPoint = useCallback(() => {
+    setFogPolyPoints((prev) => prev.slice(0, -1));
+  }, []);
+
+  // Efeito de atalhos de teclado para Parede, Porta e Polígono de Névoa
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -670,6 +708,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         if (wallPoints.length >= 2) {
           e.preventDefault();
           handleFinishWall();
+        } else if (fogPolyPoints.length >= 3) {
+          e.preventDefault();
+          handleFinishFogPolygon();
         }
       } else if (e.key === 'Escape') {
         if (wallPoints.length > 0) {
@@ -678,18 +719,34 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         } else if (doorStartPoint) {
           e.preventDefault();
           setDoorStartPoint(null);
+        } else if (fogPolyPoints.length > 0) {
+          e.preventDefault();
+          handleCancelFogPolygon();
         }
       } else if (e.key === 'Backspace') {
         if (wallPoints.length > 0) {
           e.preventDefault();
           handleUndoWallPoint();
+        } else if (fogPolyPoints.length > 0) {
+          e.preventDefault();
+          handleUndoFogPolyPoint();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [wallPoints, doorStartPoint, handleFinishWall, handleCancelWall, handleUndoWallPoint]);
+  }, [
+    wallPoints,
+    doorStartPoint,
+    fogPolyPoints,
+    handleFinishWall,
+    handleCancelWall,
+    handleUndoWallPoint,
+    handleFinishFogPolygon,
+    handleCancelFogPolygon,
+    handleUndoFogPolyPoint,
+  ]);
 
   // Convert client mouse event to map coordinate (respecting pan and zoom)
   const clientToMapCoords = useCallback(
@@ -929,63 +986,55 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       return;
     }
 
-    // 1. Ferramenta de Ocultação do Mapa (3 Níveis de Revelação)
-    if (activeTool === 'fog' && e.button === 0 && isMaster) {
-      if (currentFogMode === 'open') {
-        return;
+    // Cancelar ou desfazer ponto de polígono de névoa com botão direito
+    if (activeTool === 'fog' && e.button === 2 && isMaster) {
+      e.preventDefault();
+      if (fogPolyPoints.length > 0) {
+        handleUndoFogPolyPoint();
+      } else if (fogBoxStart) {
+        setFogBoxStart(null);
+        setFogBoxCurrent(null);
       }
+      return;
+    }
+
+    // 1. Ferramenta de Ocultação do Mapa (Retângulo, Círculo e Polígono)
+    if (activeTool === 'fog' && e.button === 0 && isMaster) {
       const p = clientToMapCoords(e.clientX, e.clientY);
 
-      if (fogSubTool === 'light') {
-        const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
-
-        if (lightAction === 'remove') {
-          // Remove o foco de luz mais próximo por distância em pixels (suporta posicionamento livre)
-          const clickX = Math.round(p.x - mapX);
-          const clickY = Math.round(p.y - mapY);
-          const lights = tacticalState.lights || [];
-          let targetIndex = -1;
-          let minDist = 40;
-          lights.forEach((l, idx) => {
-            const lx = typeof l.x === 'number' ? l.x : getHexCenter(l.gridX, l.gridY, hexSize).x;
-            const ly = typeof l.y === 'number' ? l.y : getHexCenter(l.gridX, l.gridY, hexSize).y;
-            const d = Math.hypot(clickX - lx, clickY - ly);
-            if (d < minDist) {
-              minDist = d;
-              targetIndex = idx;
-            }
-          });
-          if (targetIndex >= 0) {
-            const updated = lights.filter((_, idx) => idx !== targetIndex);
-            onUpdateTacticalState({ lights: updated });
+      if (fogShape === 'circle') {
+        const clickX = Math.round(p.x - mapX);
+        const clickY = Math.round(p.y - mapY);
+        const radiusPixels = Math.round((fogCircleRadius || 5) * hexWidth * 0.95);
+        const newCircleArea: TacticalFogRect = {
+          id: `fog-circle-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          x: clickX,
+          y: clickY,
+          width: radiusPixels * 2,
+          height: radiusPixels * 2,
+          mode: fogBrushMode,
+          shape: 'circle',
+          radius: radiusPixels,
+          radiusYards: fogCircleRadius || 5,
+        };
+        onUpdateTacticalState({
+          fogEnabled: true,
+          fogRects: [...(tacticalState.fogRects || []), newCircleArea],
+        });
+      } else if (fogShape === 'polygon') {
+        const clickPt = { x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) };
+        if (fogPolyPoints.length >= 3) {
+          const firstPt = fogPolyPoints[0];
+          const dist = Math.hypot(clickPt.x - firstPt.x, clickPt.y - firstPt.y);
+          if (dist < 20) {
+            handleFinishFogPolygon();
+            setPopoverToken(null);
+            return;
           }
-        } else {
-          // Cria novo foco de luz com o raio, posição exata e abertura de ângulo digitados
-          const newLight: TacticalLightSource = {
-            id: `light-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-            gridX: hex.col,
-            gridY: hex.row,
-            x: Math.round(p.x - mapX),
-            y: Math.round(p.y - mapY),
-            radius: customLightRadius || 5,
-            color: customLightColor || '#f59e0b',
-            intensity: 0.85,
-            label:
-              customLightAngle === 180
-                ? `Arandela 180° (${customLightRadius || 5}yd)`
-                : customLightAngle === 90
-                ? `Cone 90° (${customLightRadius || 5}yd)`
-                : `Luz (${customLightRadius || 5}yd)`,
-            active: true,
-            angle: customLightAngle || 360,
-            rotation: customLightRotation || 0,
-          };
-          onUpdateTacticalState({
-            lights: [...(tacticalState.lights || []), newLight],
-          });
         }
+        setFogPolyPoints((prev) => [...prev, clickPt]);
       } else {
-        // Seleção Retangular da Névoa (em linhas retas puras)
+        // Seleção Retangular da Névoa (padrão)
         setFogBoxStart({ x: p.x - mapX, y: p.y - mapY });
         setFogBoxCurrent({ x: p.x - mapX, y: p.y - mapY });
       }
@@ -1224,6 +1273,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           width: Math.round(width),
           height: Math.round(height),
           mode: fogBrushMode,
+          shape: 'rect',
         };
         onUpdateTacticalState({
           fogEnabled: true,
@@ -1719,6 +1769,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           e.preventDefault();
           handleFinishWall();
         }
+        if (activeTool === 'fog' && fogShape === 'polygon' && isMaster && fogPolyPoints.length >= 3) {
+          e.preventDefault();
+          handleFinishFogPolygon();
+        }
       }}
       onMouseLeave={() => {
         if (isPanning) setIsPanning(false);
@@ -1807,6 +1861,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           onSetFogBrushMode={setFogBrushMode}
           fogSubTool={fogSubTool}
           onSetFogSubTool={setFogSubTool}
+          fogShape={fogShape}
+          onSetFogShape={setFogShape}
+          fogCircleRadius={fogCircleRadius}
+          onSetFogCircleRadius={setFogCircleRadius}
+          fogPolyPointsCount={fogPolyPoints.length}
+          onCloseFogPolygon={() => handleFinishFogPolygon()}
+          onUndoFogPolyPoint={handleUndoFogPolyPoint}
+          onCancelFogPolygon={handleCancelFogPolygon}
           lightAction={lightAction}
           onSetLightAction={setLightAction}
           onRevealAllFog={handleRevealAllFog}
@@ -2253,16 +2315,39 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   {/* Revelações manuais do mestre: preto = revela o mapa */}
                   {(tacticalState.fogRects || [])
                     .filter((r) => r.mode === 'reveal')
-                    .map((r, idx) => (
-                      <rect
-                        key={r.id || `reveal-rect-${idx}`}
-                        x={mapX + r.x}
-                        y={mapY + r.y}
-                        width={r.width}
-                        height={r.height}
-                        fill="#000000"
-                      />
-                    ))}
+                    .map((r, idx) => {
+                      if (r.shape === 'circle') {
+                        const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
+                        return (
+                          <circle
+                            key={r.id || `reveal-circle-${idx}`}
+                            cx={mapX + r.x}
+                            cy={mapY + r.y}
+                            r={rad}
+                            fill="#000000"
+                          />
+                        );
+                      }
+                      if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
+                        return (
+                          <polygon
+                            key={r.id || `reveal-poly-${idx}`}
+                            points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                            fill="#000000"
+                          />
+                        );
+                      }
+                      return (
+                        <rect
+                          key={r.id || `reveal-rect-${idx}`}
+                          x={mapX + r.x}
+                          y={mapY + r.y}
+                          width={r.width}
+                          height={r.height}
+                          fill="#000000"
+                        />
+                      );
+                    })}
 
                   {/* Retrocompatibilidade com células reveladas antes */}
                   {(tacticalState.fogRevealedCells || []).map((cellKey) => {
@@ -2408,23 +2493,82 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         />
                       );
                     })}
+                    {/* 5. Revelações manuais do mestre no modo iluminação: áreas que o mestre mostrou */}
+                    {(tacticalState.fogRects || [])
+                      .filter((r) => r.mode === 'reveal')
+                      .map((r, idx) => {
+                        if (r.shape === 'circle') {
+                          const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
+                          return (
+                            <circle
+                              key={`vis-reveal-circle-${r.id || idx}`}
+                              cx={mapX + r.x}
+                              cy={mapY + r.y}
+                              r={rad}
+                              fill="#000000"
+                            />
+                          );
+                        }
+                        if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
+                          return (
+                            <polygon
+                              key={`vis-reveal-poly-${r.id || idx}`}
+                              points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                              fill="#000000"
+                            />
+                          );
+                        }
+                        return (
+                          <rect
+                            key={`vis-reveal-rect-${r.id || idx}`}
+                            x={mapX + r.x}
+                            y={mapY + r.y}
+                            width={r.width}
+                            height={r.height}
+                            fill="#000000"
+                          />
+                        );
+                      })}
                 </>
               )}
 
-              {/* RETÂNGULOS DE OCULTAR DO MESTRE (Ocultar Áreas): SEMPRE DESENHADOS POR CIMA DE TUDO EM BRANCO (#ffffff) */}
-              {/* "Nesse modo é possível liberar visualização de terrenos e ocultar (Áreas ocultadas não aparecem nem com visualização)." */}
+              {/* ÁREAS OCULTADAS PELO MESTRE (Ocultar Áreas: Retângulos, Círculos e Polígonos): SEMPRE DESENHADOS POR CIMA DE TUDO EM BRANCO (#ffffff) */}
+              {/* "Áreas ocultadas não aparecem nem com visualização." */}
               {(tacticalState.fogRects || [])
                 .filter((r) => r.mode === 'hide')
-                .map((r, idx) => (
-                  <rect
-                    key={r.id || `hide-rect-${idx}`}
-                    x={mapX + r.x}
-                    y={mapY + r.y}
-                    width={r.width}
-                    height={r.height}
-                    fill="#ffffff"
-                  />
-                ))}
+                .map((r, idx) => {
+                  if (r.shape === 'circle') {
+                    const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
+                    return (
+                      <circle
+                        key={r.id || `hide-circle-${idx}`}
+                        cx={mapX + r.x}
+                        cy={mapY + r.y}
+                        r={rad}
+                        fill="#ffffff"
+                      />
+                    );
+                  }
+                  if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
+                    return (
+                      <polygon
+                        key={r.id || `hide-poly-${idx}`}
+                        points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                        fill="#ffffff"
+                      />
+                    );
+                  }
+                  return (
+                    <rect
+                      key={r.id || `hide-rect-${idx}`}
+                      x={mapX + r.x}
+                      y={mapY + r.y}
+                      width={r.width}
+                      height={r.height}
+                      fill="#ffffff"
+                    />
+                  );
+                })}
             </mask>
           )}
         </defs>
@@ -3770,8 +3914,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </g>
           )}
 
-          {/* PREVIEW DO RETÂNGULO DE SELEÇÃO DA NÉVOA DE GUERRA (LINHAS RETAS PURAS) */}
-          {activeTool === 'fog' && fogBoxStart && fogBoxCurrent && (
+          {/* PREVIEWS DE OCULTAR / MOSTRAR ÁREAS (RETÂNGULO, CÍRCULO E POLÍGONO) */}
+          {activeTool === 'fog' && fogShape === 'rect' && fogBoxStart && fogBoxCurrent && (
             <g id="fog-box-preview" pointerEvents="none">
               <rect
                 x={mapX + Math.min(fogBoxStart.x, fogBoxCurrent.x)}
@@ -3783,6 +3927,84 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 strokeWidth={2}
                 strokeDasharray="6 4"
               />
+            </g>
+          )}
+
+          {activeTool === 'fog' && fogShape === 'circle' && isMaster && mouseMapPos && (
+            <g id="fog-circle-preview" pointerEvents="none">
+              <circle
+                cx={mapX + mouseMapPos.x}
+                cy={mapY + mouseMapPos.y}
+                r={(fogCircleRadius || 5) * hexWidth * 0.95}
+                fill={fogBrushMode === 'reveal' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}
+                stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                strokeWidth={2}
+                strokeDasharray="6 4"
+              />
+              <text
+                x={mapX + mouseMapPos.x}
+                y={mapY + mouseMapPos.y - (fogCircleRadius || 5) * hexWidth * 0.95 - 6}
+                fill={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                fontSize={12}
+                fontWeight="bold"
+                textAnchor="middle"
+              >
+                {fogCircleRadius || 5} yd ({fogBrushMode === 'reveal' ? 'Revelar' : 'Ocultar'})
+              </text>
+            </g>
+          )}
+
+          {activeTool === 'fog' && fogShape === 'polygon' && isMaster && fogPolyPoints.length > 0 && (
+            <g id="fog-polygon-preview" pointerEvents="none">
+              {fogPolyPoints.length >= 3 && (
+                <polygon
+                  points={fogPolyPoints.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                  fill={fogBrushMode === 'reveal' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}
+                  stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                  strokeWidth={2}
+                />
+              )}
+              {fogPolyPoints.map((pt, idx) => {
+                if (idx === 0) return null;
+                const prev = fogPolyPoints[idx - 1];
+                return (
+                  <line
+                    key={`fog-poly-line-${idx}`}
+                    x1={mapX + prev.x}
+                    y1={mapY + prev.y}
+                    x2={mapX + pt.x}
+                    y2={mapY + pt.y}
+                    stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                    strokeWidth={2.5}
+                  />
+                );
+              })}
+              {mouseMapPos && (
+                <line
+                  x1={mapX + fogPolyPoints[fogPolyPoints.length - 1].x}
+                  y1={mapY + fogPolyPoints[fogPolyPoints.length - 1].y}
+                  x2={mapX + mouseMapPos.x}
+                  y2={mapY + mouseMapPos.y}
+                  stroke={fogBrushMode === 'reveal' ? '#10b981' : '#ef4444'}
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                />
+              )}
+              {fogPolyPoints.map((pt, idx) => {
+                const isFirst = idx === 0;
+                const isHoverFirst = isFirst && fogPolyPoints.length >= 3 && mouseMapPos && Math.hypot(mouseMapPos.x - pt.x, mouseMapPos.y - pt.y) < 20;
+                return (
+                  <circle
+                    key={`fog-poly-vertex-${idx}`}
+                    cx={mapX + pt.x}
+                    cy={mapY + pt.y}
+                    r={isHoverFirst ? 8 : (isFirst ? 6 : 4)}
+                    fill={isHoverFirst ? '#fbbf24' : (fogBrushMode === 'reveal' ? '#10b981' : '#ef4444')}
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                  />
+                );
+              })}
             </g>
           )}
 
