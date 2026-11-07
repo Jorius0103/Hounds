@@ -162,6 +162,7 @@ function onRoute() {
   // Another ally of the same sheet: its own drafts and choices, in the same tab (Ficha, Equip. or Magia).
   else if (r.page === 'sheet' && prev.allyId !== r.allyId) S.ui = { q: '', sheetTab: S.ui.sheetTab };
   S.route = r;
+  if (W.store && W.store.listen) W.store.listen(r.page); // the tables this page keeps in sync (Supabase: the Mesa, the boards)
   if (r.node && !byId[r.node] && /^(spell|adv|perk|disadv|c?skill|tech|style|weapon|armor|item|impr):/.test(r.node)) renderMenu(); // the menu lists only the open one
   // The Mesa and a board use the whole screen: the menu stays collapsed and opens over them.
   var wasMesa = app.classList.contains('on-mesa'), isMesa = r.page === 'mesa' || r.page === 'board';
@@ -302,6 +303,7 @@ window.addEventListener('hub:user', function () { Object.keys(CATALOG).forEach(c
 connect().then(function (s) {
   if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, advantages: true, disadvantages: true, skills: true, techniques: true, styles: true, weapons: true, armors: true, items: true, improvements: true, sheets: true, events: true, users: true, notebooks: true, notes: true, boards: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
   W.store = s;
+  if (s.listen && S.route) s.listen(S.route.page);
   return s.init().then(function () {
     var fail = function () { toast('Não foi possível carregar os dados.', true); };
     s.watch('maps', function (l) { W.raw.maps = l; W.maps = pub(l); W.loaded.maps = true; onData('maps'); }, fail);

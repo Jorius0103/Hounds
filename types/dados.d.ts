@@ -652,6 +652,8 @@ interface Store {
   clearRolls?(): Promise<unknown>;
   /** Acorda e reconecta sincronização em background. */
   wake?(): void;
+  /** Supabase: a página aberta (a `page` da rota); só as tabelas dela ficam sincronizadas pelo Realtime (a Mesa, os tabuleiros). */
+  listen?(page: string): void;
   /** Supabase: o Mestre apaga o chat inteiro (hounds_limpar_chat), inclusive os sussurros que não lê. */
   clearChat?(): Promise<unknown>;
   /** Supabase: o banco rola os dados do chat; o site manda a rolagem sem o resultado. */

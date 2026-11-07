@@ -27,11 +27,16 @@
      of the site is loaded when it opens: what another browser changes
      shows here on the next load of the page.
      Two realtime channels:
-       "hounds"          postgres_changes of the tables in LIVE: the Mesa's
-                         head row, which comes whole in the notice and is
-                         not downloaded (it is small, as the state is saved
-                         in pieces, mesa_partes: MesaSync reads the pieces
-                         only of a revision it didn't get by broadcast), and
+       "hounds"          postgres_changes of the tables the open page needs
+                         (AREAS, see listen()), and none on the other pages:
+                         each notice is checked against the RLS of every
+                         browser that listens, so a tab open on a sheet costs
+                         the database nothing. On the Mesa, its head row,
+                         which comes whole in the notice and is not
+                         downloaded (it is small, as the state is saved in
+                         pieces, mesa_partes: MesaSync reads the pieces only
+                         of a revision it didn't get by broadcast), and its
+                         dice rolls; on a board and on the list of boards,
                          the boards, tokens, chat messages... downloaded row
                          by row (a whisper reaches only who reads it: RLS).
        "hounds-mesa"     private; broadcast messages straight to the other
@@ -40,9 +45,10 @@
      Writes show on this screen at once and the answer of the database
      replaces that copy; notices about an item with a write of this
      browser still on the way wait for it. A failed write downloads the
-     item again. The Mesa is checked again after every (re)connection,
+     item again. The tables of the open page are checked again after
+     every (re)connection (also when the page starts listening to them),
      when the tab comes back and every 60 s (15 s while the realtime is
-     down): only the row's id and updated_at, then the row if it changed
+     down): only the rows' id and updated_at, then the rows that changed
      (see check()). Channels that drop are made again (see revive()).
    ===================================================================== */
 function SupabaseStore(client, bucket) {
@@ -54,17 +60,25 @@ function SupabaseStore(client, bucket) {
     boardTurns: 'tabuleiro_turnos', boardArt: 'tabuleiro_arte', boardCampaign: 'tabuleiro_campanha', chatMessages: 'chat_mensagens',
     mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
   var COL_OF = {}; Object.keys(TABLES).forEach(function (k) { COL_OF[TABLES[k]] = k; });
-  // The tables kept in sync between browsers: the Mesa's head row and the boards with their tokens
-  // and drawings (a token that moves, a door that opens), the chat, the turn order and where the
-  // players are (the campaign). Not the Mesa's pieces (each save would bring the whole state to
-  // every browser) nor the rest of the site, loaded when it opens.
-  var LIVE = { mesa_estado: true, tabuleiros: true, tabuleiro_tokens: true, tabuleiro_desenhos: true,
-    tabuleiro_turnos: true, tabuleiro_campanha: true, chat_mensagens: true, mesa_rolagens: true };
+  // The tables kept in sync between browsers, by the page (the route's page) that shows them: on the
+  // Mesa its head row and dice rolls; on a board the board with its tokens and drawings (a token that
+  // moves, a door that opens), the chat, the turn order and where the players are (the campaign); on
+  // the list of boards the boards and where the group is. Not the Mesa's pieces (each save would
+  // bring the whole state to every browser) nor the rest of the site, loaded when it opens. Off the
+  // Mesa, MesaSync still gets each change by broadcast ("hounds-mesa" stays open everywhere).
+  var AREAS = {
+    mesa: ['mesa_estado', 'mesa_rolagens'],
+    board: ['tabuleiros', 'tabuleiro_tokens', 'tabuleiro_desenhos', 'tabuleiro_turnos', 'tabuleiro_campanha', 'chat_mensagens'],
+    boards: ['tabuleiros', 'tabuleiro_campanha']
+  };
   var MARKERS = /^maps\/([^/]+)\/markers$/;
   var cols = {}, channel = null, live = false, mesaChannel = null, mesaLive = false, bcast = {};
-  // mesaOk: the Mesa's channel connected once (so a drop of it is worth reconnecting). chGen
-  // tells the callbacks of channels already replaced to keep quiet.
-  var started = false, mesaOk = false, chGen = 0, reviving = false, reviveTimer = 0, reviveWait = 0;
+  // need: the tables of the open page (listen()); channel listens to them (openFor). mesaOk: the
+  // Mesa's channel connected once (so a drop of it is worth reconnecting). chGen and tGen tell the
+  // callbacks of channels already replaced to keep quiet; tablesQ puts the swaps of the tables'
+  // channel in a row (the SDK hands back a channel with the same name until it is removed).
+  var started = false, mesaOk = false, chGen = 0, tGen = 0, reviving = false, reviveTimer = 0, reviveWait = 0;
+  var need = [], openFor = '', tablesQ = Promise.resolve();
 
   // updated_at in one format, whether it came from a select or from realtime ("T" or " ",
   // with or without the time zone; the column is timestamptz, always UTC here). The format
@@ -163,7 +177,7 @@ function SupabaseStore(client, bucket) {
       if (changed) emit(c);
     }).catch(function (e) { console.warn('Hounds: não foi possível conferir ' + c.col + ' com o banco.', e); });
   }
-  function resync() { Object.keys(LIVE).forEach(function (t) { var c = cols[COL_OF[t]]; if (c) check(c); }); }
+  function resync() { need.forEach(function (t) { var c = cols[COL_OF[t]]; if (c) check(c); }); }
 
   // Items to download again, a few at once (one request for the ones asked for within 30 ms).
   function want(c, id) {
@@ -229,6 +243,37 @@ function SupabaseStore(client, bucket) {
     }
     want(c, id); // includes a Mesa row over the 1 MB realtime limit, which arrives without its state
   }
+  // The tables' notices follow each table's RLS (only accounts linked to a user get them). No
+  // channel when the open page needs no table.
+  function openTables() {
+    var gen = ++tGen;
+    channel = null; live = false; openFor = need.join();
+    if (!need.length) return;
+    channel = client.channel('hounds');
+    need.forEach(function (t) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, onChange);
+    });
+    channel.subscribe(function (status) {
+      if (gen !== tGen) return;
+      live = status === 'SUBSCRIBED';
+      if (live) { reviveWait = 0; resync(); } // first connection, every reconnection and a new page's tables
+      else reviveSoon();
+    });
+  }
+  // The open page (the route's page): its tables in the "hounds" channel, made again when they
+  // change (from a sheet to the Mesa, from the Mesa to a board...); the Mesa's channel stays.
+  function listen(page) {
+    var t = AREAS[page] || [];
+    if (t.join() === need.join()) return;
+    need = t;
+    if (!started) return; // ensureChannel() opens them
+    tablesQ = tablesQ.then(function () {
+      if (reviving || (channel && openFor === need.join()) || (!channel && !need.length)) return null;
+      var old = channel;
+      tGen++; channel = null; live = false;
+      return old ? Promise.race([Promise.resolve(client.removeChannel(old)).catch(function () {}), new Promise(function (r) { setTimeout(r, 3000); })]) : null;
+    }).then(function () { if (!reviving && !channel && need.length) openTables(); }).catch(function () {});
+  }
   function openChannels() {
     var gen = ++chGen;
     if (client.realtime && !client.realtime._hounds_bound) {
@@ -250,17 +295,7 @@ function SupabaseStore(client, bucket) {
         }
       } catch (e) {}
     }
-    // The tables' notices follow each table's RLS (only accounts linked to a user get them).
-    channel = client.channel('hounds');
-    Object.keys(LIVE).forEach(function (t) {
-      channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, onChange);
-    });
-    channel.subscribe(function (status) {
-      if (gen !== chGen) return;
-      live = status === 'SUBSCRIBED';
-      if (live) { reviveWait = 0; resync(); } // first connection and every reconnection
-      else reviveSoon();
-    });
+    openTables();
     // The Mesa's direct messages, on a private channel (policies on realtime.messages). If it
     // can't connect, the Mesa still syncs through the database, a moment later.
     mesaChannel = client.channel('hounds-mesa', { config: { private: true, broadcast: { self: false } } })
@@ -283,7 +318,7 @@ function SupabaseStore(client, bucket) {
   }
   function healthy() {
     var joined = (!channel || channel.state === 'joined') && (!mesaChannel || !mesaOk || mesaChannel.state === 'joined');
-    return live && (mesaLive || !mesaOk) && isSocketOpen() && joined;
+    return (live || !channel) && (mesaLive || !mesaOk) && isSocketOpen() && joined; // no tables' channel: a page that needs none
   }
   function wake() {
     clearTimeout(reviveTimer);
@@ -316,16 +351,17 @@ function SupabaseStore(client, bucket) {
     if (reviving) return;
     reviving = true;
     var old = [channel, mesaChannel];
-    chGen++; channel = mesaChannel = null; live = mesaLive = false;
+    chGen++; tGen++; channel = mesaChannel = null; live = mesaLive = false;
     // getSession() refreshes an expired session. The old channels go first: the SDK hands back
-    // an existing channel with the same name instead of making a new one.
+    // an existing channel with the same name instead of making a new one (also one that a change
+    // of page is removing: tablesQ).
     client.auth.getSession().then(function (res) {
       var s = res && res.data && res.data.session;
       if (s && client.realtime && client.realtime.setAuth) return client.realtime.setAuth(s.access_token);
     }).catch(function () {}).then(function () {
       var gone = Promise.all(old.filter(Boolean).map(function (ch) { return Promise.resolve(client.removeChannel(ch)).catch(function () {}); }));
       return Promise.race([gone, new Promise(function (r) { setTimeout(r, 3000); })]);
-    }).then(function () { reviving = false; openChannels(); });
+    }).then(function () { return tablesQ; }).then(function () { reviving = false; openChannels(); });
   }
   var lastUserAct = Date.now();
   function onUserActive() {
@@ -602,10 +638,15 @@ function SupabaseStore(client, bucket) {
     deleteRoll: deleteRoll,
     clearRolls: clearRolls,
     wake: wake,
-    // For MesaSync: save 1 s after the last change (the others get each change by broadcast; the
-    // database keeps it and covers a message lost), always in pieces (a small head row: its notice
-    // goes to every browser on every save), usually in one piece, and reach the others directly.
-    saveDelay: 1000,
+    // The tables that the open page keeps in sync (app.js calls it on each route).
+    listen: listen,
+    // For MesaSync: save 5 s after the first change, the latest state then, so at most once every
+    // 5 s (the others get each change by broadcast at once; the database keeps it and covers a
+    // message lost, and each save writes the whole state: saving less often spares the database),
+    // always in pieces (a small head row: its notice goes to every browser on every save), usually
+    // in one piece, and reach the others directly. A pending save goes when the tab is hidden or
+    // closed (MesaSync).
+    saveDelay: 5000,
     inlineMax: 0,
     chunkSize: 1000000,
     realtime: {

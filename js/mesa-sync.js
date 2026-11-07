@@ -460,7 +460,20 @@ var MesaSync = (function () {
     timer = null;
     if (writing || !pending) { if (pending && !timer) timer = setTimeout(flush, delay()); return; }
     var p = pending; pending = null; writing = true;
-    save(p).catch(function (er) { toast('Não foi possível salvar a Mesa: ' + errorText(er), true); }).then(function () { writing = false; if (pending && !timer) timer = setTimeout(flush, delay()); });
+    save(p).catch(function (er) { toast('Não foi possível salvar a Mesa: ' + errorText(er), true); }).then(function () {
+      writing = false;
+      if (pending && !timer) timer = setTimeout(flush, hurry ? 0 : delay());
+      hurry = false;
+    });
+  }
+  // A save waiting for its time goes now when the tab is hidden or closed: the timer dies with the
+  // page (the others already have the change by broadcast, but the database would miss it).
+  var hurry = false;
+  function flushPending() {
+    if (!pending) return;
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (writing) { hurry = true; return; } // goes as soon as the write on the way ends
+    flush();
   }
   return {
     start: function () {
@@ -805,6 +818,7 @@ var MesaSync = (function () {
       if (!timer) timer = setTimeout(flush, delay());
     },
     // Save now (used by the Mesa's "Sair" button) and confirm to the person.
+    flushPending: flushPending,
     flushNow: function () {
       if (timer) { clearTimeout(timer); timer = null; }
       var wait = function () { return writing ? new Promise(function (r) { setTimeout(r, 100); }).then(wait) : Promise.resolve(); };
@@ -887,4 +901,6 @@ window.hubMesaFlush = function () {
   go('#inicio');
   return saved;
 };
-window.addEventListener('beforeunload', function () { });
+// A save on the way goes when the tab is hidden or closed (it waits 5 s for more changes: see saveDelay in js/store/supabase.js).
+document.addEventListener('visibilitychange', function () { if (document.hidden) MesaSync.flushPending(); });
+window.addEventListener('pagehide', function () { MesaSync.flushPending(); });
