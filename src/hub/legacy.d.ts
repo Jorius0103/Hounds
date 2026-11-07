@@ -221,6 +221,24 @@ declare global {
   /** As classes de uma entrada, e os nomes delas em português numa linha. */
   function disadvClassList(d: Disadvantage | null): string[];
   function disadvClassText(d: Disadvantage): string;
+  /** js/tabs/tab-pericias.js: uma perícia pelo id (ou o de uma entrada que mudou de página no livro) e o endereço dela em Perícias. */
+  function skillById(id: string | null | undefined): Skill | null;
+  function skillHref(id: string): string;
+  /** Os valores já usados num campo (os atributos, os livros), em ordem alfabética. */
+  function skillValues(field: 'attribute' | 'book'): string[];
+  /** Os atributos e as dificuldades do formulário, os nomes delas (Fácil, Média…) e as cores do selo. */
+  var SKILL_CAT_ATTRS: string[];
+  var SKILL_CAT_DIFFS: string[];
+  var SKILL_CAT_LABELS: Record<string, string>;
+  var SKILL_CAT_CLASSES: Record<string, string>;
+  /** "Exige especialização · Cinemática", e a linha embaixo do título ("DX / Difícil", ou o tipo de uma remissão). */
+  function skillTags(s: Skill): string;
+  function skillLede(s: Skill): string;
+  /** Os grupos das perícias de combate, [valor, rótulo] ('' é uma perícia comum), e o de uma perícia, pelo começo do tipo dela. */
+  var SKILL_COMBAT_GROUPS: [string, string][];
+  function skillCombatGroup(s: Skill | null): string;
+  /** js/tabs/tab-combate.js: o endereço de uma perícia aberta em Combate (#pericia-combate~id). */
+  function combatSkillHref(id: string): string;
   /** js/tabs/ficha-efeitos.js: os efeitos que o livro dá a uma desvantagem para uma linha da ficha (o nome, os pontos e os níveis). */
   function disadvBookFx(d: Disadvantage, row: {name: string; cost: number; levels: number}): AdvEffect[];
   /** js/tabs/ficha-efeitos.js: os efeitos cadastrados de uma vantagem, limpos; e, sem eles, os do livro para uma linha da ficha (o nome e os pontos). */
@@ -328,6 +346,28 @@ declare global {
     ): Promise<string>;
     /** Uma desvantagem dos livros fica marcada como excluída; a do Mestre sai do banco. */
     deleteDisadvantage(d: Disadvantage): Promise<unknown>;
+    /** Só o Mestre. O tipo segue o atributo, a dificuldade e o grupo de combate ("Melee; DX/Average"); sem eles, a entrada fica com o dela. */
+    saveSkill(
+      s: Skill | null,
+      fields: {
+        name: string;
+        attribute: string;
+        difficulty: string;
+        combatGroup: string;
+        defaults: string;
+        prerequisites: string;
+        specialty: boolean;
+        cinematic: boolean;
+        book: string;
+        page: string;
+        description: string;
+        modifiers: string;
+        visible: boolean;
+        sharedWith: string[];
+      },
+    ): Promise<string>;
+    /** Uma perícia dos livros fica marcada como excluída; a do Mestre sai do banco. */
+    deleteSkill(s: Skill): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */

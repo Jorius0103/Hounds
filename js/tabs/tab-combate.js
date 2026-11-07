@@ -154,7 +154,7 @@ function renderCombatPage() {
   var nb = $('newTechBtn'); if (nb) nb.onclick = function () { openTechniqueForm(null); };
   var ns = $('newStyleBtn'); if (ns) ns.onclick = function () { openStyleForm(null); };
   // A skill made here is a combat one (its type starts with Melee, Ranged or General; see isCombatSkill).
-  var nk = $('newCombatSkillBtn'); if (nk) nk.onclick = function () { openSkillForm(null, { combat: true }); };
+  var nk = $('newCombatSkillBtn'); if (nk) nk.onclick = function () { window.hubOpenSkillForm(null, { combat: true }); };
   renderCombatList();
 }
 function renderCombatList() {

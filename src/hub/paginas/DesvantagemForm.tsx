@@ -1,5 +1,6 @@
 import {useRef, useState, type ChangeEvent} from 'react';
 import {useHub} from '../data';
+import {Check} from '../ui/Check';
 import {Datalist} from '../ui/Datalist';
 import {closeDialog, Dialog} from '../ui/Dialog';
 import {VisibilityFlag, visDraft, visFields, type VisDraft} from '../ui/Visibility';
@@ -154,17 +155,5 @@ export function DisadvForm({d}: {d: Disadvantage | null}) {
         </div>
       </form>
     </Dialog>
-  );
-}
-
-// Uma caixa de marcar com o rótulo em negrito, como as do formulário antigo.
-function Check({id, on, label, onChange}: {id: string; on: boolean; label: string; onChange: (on: boolean) => void}) {
-  return (
-    <label className="vis-flag" htmlFor={id}>
-      <input type="checkbox" id={id} checked={on} onChange={e => onChange(e.target.checked)} />
-      <span>
-        <b>{label}</b>
-      </span>
-    </label>
   );
 }

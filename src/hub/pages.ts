@@ -13,6 +13,8 @@ import {OrgPage} from './paginas/Organizacao';
 import {OrgsPage} from './paginas/Organizacoes';
 import {CharPage} from './paginas/Personagem';
 import {CharsPage} from './paginas/Personagens';
+import {SkillPage} from './paginas/Pericia';
+import {SkillsPage} from './paginas/Pericias';
 import {UsersPage} from './paginas/Usuarios';
 import {AdvantagePage} from './paginas/Vantagem';
 import {AdvantagesPage} from './paginas/Vantagens';
@@ -44,9 +46,11 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   perk: AdvantagePage,
   disadvs: DisadvantagesPage,
   disadv: DisadvantagePage,
+  skills: SkillsPage,
+  skill: SkillPage,
   tabuleiro: TabuleiroPage,
 };
 
 // As listas longas de cartões usam a largura da tela (a classe wide do .page-inner), como as antigas que o renderPage de
 // js/app.js marca.
-export const WIDE_PAGES = new Set(['spells', 'advs', 'perks', 'disadvs']);
+export const WIDE_PAGES = new Set(['spells', 'advs', 'perks', 'disadvs', 'skills']);

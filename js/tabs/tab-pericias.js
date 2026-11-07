@@ -1,5 +1,10 @@
 /* =====================================================================
    Hounds — Aba Perícias (Regras › Perícias)
+   A lista, a página e o formulário são React (src/hub/paginas/
+   Pericias.tsx, Pericia.tsx e PericiaForm.tsx); aqui ficam os dados
+   (atributos, dificuldades, livros, os grupos de combate), a gravação
+   (Ops), o selo que Combate também usa e as regras de uma perícia num
+   modal, para os links das fichas.
    Script clássico: as declarações de nível superior são globais e
    compartilhadas com os outros arquivos. A ordem de carregamento está
    no fim do index.html.
@@ -77,85 +82,14 @@ Ops.deleteSkill = function (skill) {
   if (skill.catalog) return patchCatalogItem('skills', skill, { deleted: true, updatedAt: now() });
   return W.store.remove('skills', skill.id);
 };
-// Typing in the search waits a moment before redrawing the list.
-var skillSearchTimer = 0;
-var SKILL_SEARCH_FIELDS = ['name', 'type', 'defaults', 'description'];
-// Search, filters and page of the list: kept while the site is open, so opening an entry and coming back returns to the same page.
-var skillView = { q: '', mine: false, attr: '', diff: '', book: '', page: 1 };
+
+// The groups of the combat skills (the start of their type in the books); '' is a skill out of Combate's list.
+var SKILL_COMBAT_GROUPS = [['', 'Não (perícia comum)'], ['Melee', 'Corpo a corpo'], ['Ranged', 'À distância'], ['General', 'Geral (combate)']];
+function skillCombatGroup(s) { var m = /^(Melee|Ranged|General);/.exec((s && s.type) || ''); return m ? m[1] : ''; }
 
 /* =====================================================================
-   Page: Perícias (list)
-   ===================================================================== */
-function renderSkillsPage() {
-  loadCatalog('skills');
-  var ui = skillView, can = isMestre();
-  var attrs = skillValues('attribute'), books = skillValues('book');
-  var diffs = SKILL_CAT_DIFFS.filter(function (d) { return (W.skills || []).some(function (s) { return s.difficulty === d; }); });
-  var head = crumbsHtml('skills') +
-    '<div class="head-row"><div><h1>' + svg(ICON.skill, 24, 2) + ' Perícias</h1>' +
-    '<p class="lede">Perícias para GURPS 4ª Edição.</p></div>' +
-    (can ? '<div class="btn-row">' +
-      '<button class="btn primary" type="button" id="newSkillBtn">' + svg(ICON.plus, 16, 2.4) + 'Nova perícia</button></div>' : '') +
-    '</div>';
-  var toolbar = '<div class="toolbar" style="margin-bottom:16px">' +
-    '<input class="search list-search" type="search" id="skillSearch" placeholder="Buscar por nome, padrão ou descrição…" value="' + esc(ui.q) + '" autocomplete="off" aria-label="Buscar perícias">' +
-    '<div class="field" style="margin:0"><select id="skillAttrFilter" aria-label="Filtrar por atributo"><option value="">Todos os atributos</option>' +
-    attrs.map(function (a) { return '<option value="' + esc(a) + '"' + (ui.attr === a ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('') + '</select></div>' +
-    '<div class="field" style="margin:0"><select id="skillDiffFilter" aria-label="Filtrar por dificuldade"><option value="">Todas as dificuldades</option>' +
-    diffs.map(function (d) { return '<option value="' + d + '"' + (ui.diff === d ? ' selected' : '') + '>' + esc(SKILL_CAT_LABELS[d]) + '</option>'; }).join('') + '</select></div>' +
-    '<div class="field" style="margin:0"><select id="skillBookFilter" aria-label="Filtrar por livro"><option value="">Todos os livros</option>' +
-    books.map(function (b) { return '<option value="' + esc(b) + '"' + (ui.book === b ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('') + '</select></div>' +
-    mestreOnlyHtml(ui.mine) + '</div>';
-  pageRoot.innerHTML = head + toolbar + notice() + '<div id="skillResults"></div>';
-
-  var q = $('skillSearch'); if (q) q.oninput = function () { ui.q = q.value; ui.page = 1; clearTimeout(skillSearchTimer); skillSearchTimer = setTimeout(renderSkillList, 150); };
-  var af = $('skillAttrFilter'); if (af) af.onchange = function () { ui.attr = af.value; ui.page = 1; renderSkillList(); };
-  var df = $('skillDiffFilter'); if (df) df.onchange = function () { ui.diff = df.value; ui.page = 1; renderSkillList(); };
-  var bf = $('skillBookFilter'); if (bf) bf.onchange = function () { ui.book = bf.value; ui.page = 1; renderSkillList(); };
-  wireMestreOnly(ui, renderSkillList);
-  var nb = $('newSkillBtn'); if (nb) nb.onclick = function () { openSkillForm(null); };
-  renderSkillList();
-}
-function filterSkillList() {
-  var ui = skillView;
-  return searchCatalog((W.skills || []).filter(function (s) {
-    if (ui.attr && s.attribute !== ui.attr) return false;
-    if (ui.diff && s.difficulty !== ui.diff) return false;
-    if (ui.book && s.book !== ui.book) return false;
-    if (ui.mine && s.catalog) return false;
-    return true;
-  }), ui.q, function (s) { return searchText(s, SKILL_SEARCH_FIELDS); }); // in name order (mergeCatalog); with a search, the most alike first
-}
-function renderSkillList() {
-  var el = $('skillResults'); if (!el) return;
-  if (!W.loaded.skills) { el.innerHTML = '<p class="lede">Carregando perícias…</p>'; return; }
-  var ui = skillView, all = filterSkillList(), pg = pageOf(all, ui.page);
-  ui.page = pg.page;
-  if (!all.length) {
-    if (!(W.skills || []).length) {
-      el.innerHTML = '<div class="empty-state">' + svg(ICON.skill, 34, 1.6) + '<strong>Nenhuma perícia cadastrada</strong>' +
-        '<span>' + (CATALOG.skills.failed ? 'Não foi possível carregar a lista dos livros.' : isMestre() ? 'Crie uma com <b>Nova perícia</b>.' : 'As perícias vão aparecer aqui.') + '</span></div>';
-      return;
-    }
-    el.innerHTML = '<p class="lede" style="padding:24px 0">Nenhuma perícia corresponde aos filtros aplicados.</p>';
-    return;
-  }
-  el.innerHTML = '<div class="list-bar"><span class="meta">' + pageCountText(pg, all.length, 'perícia', 'perícias') + '</span>' + pagerHtml(pg) + '</div>' +
-    '<div class="adv-grid">' + pg.items.map(function (s) {
-      var tags = skillTags(s);
-      return '<a class="spell-card adv-card" href="' + skillHref(s.id) + '">' +
-        '<div class="adv-card-top"><strong>' + esc(s.name) + '</strong>' + skillBadge(s) + '</div>' +
-        (s.attribute ? (s.defaults ? '<div class="adv-cost">Padrão: ' + esc(s.defaults) + '</div>' : '') : s.type ? '<div class="adv-cost">' + esc(s.type) + '</div>' : '') +
-        (tags ? '<div class="adv-src">' + esc(tags) + '</div>' : '') +
-        (s.description ? '<div class="adv-desc">' + esc(s.description) + '</div>' : '') +
-        '<div class="adv-src">' + esc([s.book, s.page ? 'p. ' + s.page : ''].filter(Boolean).join(' · ')) + '</div></a>';
-    }).join('') + '</div>' +
-    (pg.pages > 1 ? '<div class="list-bar end">' + pagerHtml(pg) + '</div>' : '');
-  wirePager(el, function (p) { ui.page = p; renderSkillList(); });
-}
-
-/* =====================================================================
-   Page: single skill (and the same text in a modal, see openSkillModal)
+   The rules of a skill in a modal, for the sheets (the page is React:
+   src/hub/paginas/Pericia.tsx)
    ===================================================================== */
 function skillLede(s) { return s.attribute && s.difficulty ? s.attribute + ' / ' + (SKILL_CAT_LABELS[s.difficulty] || s.difficulty) : s.type || 'Tipo não informado'; }
 // h: the heading tag of the sections (h3 inside the modal, whose h2 is the title).
@@ -207,101 +141,3 @@ document.addEventListener('click', function (e) {
   var t = /** @type {AnyEl} */ (e.target), a = t && t.closest && t.closest('[data-skill-modal]'); if (!a) return;
   e.preventDefault(); openSkillModal(a.getAttribute('data-skill-modal'));
 });
-// The same page opens under Perícias (#pericia~id) or under Combate (#pericia-combate~id, from the
-// combat skills): the crumbs, the way back and where a deleted one leaves to follow the one it came from.
-function renderSkillPage() {
-  loadCatalog('skills');
-  var s = skillById(S.route.skillId), ui = S.ui;
-  var list = S.route.node.indexOf('cskill:') === 0 ? 'combat' : 'skills';
-  if (!s) {
-    pageRoot.innerHTML = crumbsHtml(list) + (W.loaded.skills
-      ? '<h1>Perícia não encontrada</h1><p class="lede">Essa perícia pode ter sido excluída ou o link está incorreto.</p><div><a class="btn" href="' + hrefFor(list) + '">Voltar para ' + (list === 'combat' ? 'Combate' : 'Perícias') + '</a></div>'
-      : '<p class="lede">Carregando perícia…</p>');
-    return;
-  }
-  var can = isMestre(), tags = skillTags(s), lede = skillLede(s);
-  var head = crumbsHtml(S.route.node) +
-    '<div class="head-row"><div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="badge">' + svg(ICON.skill, 12, 2.4) + ' Perícia</span>' + skillBadge(s) + '</div>' +
-    '<h1>' + esc(s.name) + '</h1>' + ptNameHtml(s, 'p') + '<p class="lede">' + esc(lede) + (tags ? ' · ' + esc(tags) : '') + '</p></div>' +
-    (can ? '<div class="btn-row">' + (s.catalog && rawHas('skills', s.id) ? '<button class="btn" type="button" id="restoreSkillBtn" title="Desfaz as alterações do Mestre nesta entrada">Restaurar original</button>' : '') + '<button class="btn" type="button" id="editSkillBtn">' + svg(ICON.edit, 15) + 'Editar perícia</button><button class="btn danger" type="button" id="delSkillBtn">' + svg(ICON.trash, 15) + 'Excluir</button></div>' : '') +
-    '</div>' +
-    (ui.confirmDelete ? '<div class="confirm" role="alert"><span>Excluir a perícia <b>' + esc(s.name) + '</b>? Não dá para desfazer.</span><div class="btn-row"><button class="btn danger solid" type="button" id="delSkillYes">Excluir perícia</button><button class="btn ghost" type="button" id="delSkillNo">Cancelar</button></div></div>' : '');
-  // Open when the page opens; a click on its title closes it (see foldBox).
-  var side = foldBox('params', 'Parâmetros', null, skillFactsHtml(s), true);
-  var main = skillTextHtml(s);
-  pageRoot.innerHTML = head + '<div class="loc-layout"><div class="side" style="gap:22px">' + main + '</div><div class="side">' + side + '</div></div>';
-  wireFolds(pageRoot);
-  if (!can) return;
-  $('editSkillBtn').onclick = function () { openSkillForm(s); };
-  $('delSkillBtn').onclick = function () { ui.confirmDelete = true; renderSkillPage(); };
-  var dn = $('delSkillNo'); if (dn) dn.onclick = function () { ui.confirmDelete = false; renderSkillPage(); };
-  var dy = $('delSkillYes'); if (dy) dy.onclick = function () {
-    dy.disabled = true;
-    Ops.deleteSkill(s).then(function () { toast('Perícia excluída.'); go(hrefFor(list), true); }, function (er) { dy.disabled = false; toast(errorText(er), true); });
-  };
-  var rb = $('restoreSkillBtn'); if (rb) rb.onclick = function () {
-    rb.disabled = true;
-    Ops.restoreCatalogItem('skills', s).then(function () { toast('Perícia restaurada como no livro.'); }, function (er) { rb.disabled = false; toast(errorText(er), true); });
-  };
-}
-
-/* =====================================================================
-   Form: skill (Mestre)
-   ===================================================================== */
-// The groups of the combat skills (the start of their type in the books); '' is a skill out of Combate's list.
-var SKILL_COMBAT_GROUPS = [['', 'Não (perícia comum)'], ['Melee', 'Corpo a corpo'], ['Ranged', 'À distância'], ['General', 'Geral (combate)']];
-function skillCombatGroup(s) { var m = /^(Melee|Ranged|General);/.exec((s && s.type) || ''); return m ? m[1] : ''; }
-// how.combat: made from Regras › Combate (it starts as a combat skill, and its page opens there).
-function openSkillForm(s, how) {
-  if (!isMestre()) { toast('Apenas o Mestre pode criar ou editar perícias.', true); return; }
-  var editing = !!s, inCombat = !!(how && how.combat), group = editing ? skillCombatGroup(s) : inCombat ? 'Melee' : '';
-  function val(k) { return esc(editing ? s[k] || '' : ''); }
-  function opts(list, cur, labels, none) {
-    return '<option value="">' + none + '</option>' + list.map(function (x) { return '<option value="' + x + '"' + (cur === x ? ' selected' : '') + '>' + esc(labels ? labels[x] : x) + '</option>'; }).join('');
-  }
-  function check(id, on, label) { return '<label class="vis-flag" for="' + id + '"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span><b>' + label + '</b></span></label>'; }
-  var html = '<form id="skillForm" novalidate><h2 id="kfTitle">' + (editing ? 'Editar perícia' : 'Nova perícia') + '</h2>' +
-    '<div class="field" id="f_kname"><label for="kname">Nome da perícia</label><input type="text" id="kname" maxlength="100" autocomplete="off" placeholder="Ex.: Acrobatics" value="' + val('name') + '"><div class="err" id="err_kname"></div></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-    '<div class="field"><label for="kattr">Atributo</label><select id="kattr">' + opts(SKILL_CAT_ATTRS, editing ? s.attribute : 'IQ', null, '—') + '</select></div>' +
-    '<div class="field"><label for="kdiff">Dificuldade</label><select id="kdiff">' + opts(SKILL_CAT_DIFFS, editing ? s.difficulty : 'A', SKILL_CAT_LABELS, '—') + '</select></div></div>' +
-    '<div class="field"><label for="kgroup">Perícia de combate</label><select id="kgroup">' + SKILL_COMBAT_GROUPS.map(function (g) { return '<option value="' + g[0] + '"' + (g[0] === group ? ' selected' : '') + '>' + g[1] + '</option>'; }).join('') + '</select>' +
-    '<div class="hint-text" style="margin:4px 0 0">As de combate aparecem também em Regras › Combate.</div></div>' +
-    '<div class="field"><label for="kdef">Padrão (default)</label><input type="text" id="kdef" maxlength="300" placeholder="Ex.: IQ-5 ou Merchant-3" value="' + val('defaults') + '"></div>' +
-    '<div class="field"><label for="kpre">Pré-requisitos</label><input type="text" id="kpre" maxlength="300" placeholder="Ex.: Trained by a Master" value="' + val('prerequisites') + '"></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + check('kspec', editing && s.specialty, 'Exige especialização') + check('kcine', editing && s.cinematic, 'Cinemática') + '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-    '<div class="field"><label for="kbook">Livro</label><input type="text" id="kbook" list="skillBookList" maxlength="100" placeholder="Ex.: GURPS Basic Set" value="' + val('book') + '">' +
-    '<datalist id="skillBookList">' + skillValues('book').map(function (b) { return '<option value="' + esc(b) + '">'; }).join('') + '</datalist></div>' +
-    '<div class="field"><label for="kpage">Página</label><input type="text" id="kpage" maxlength="30" placeholder="Ex.: B174, MA61" value="' + val('page') + '"></div></div>' +
-    '<div class="field"><label for="kdesc">Descrição</label><textarea id="kdesc" rows="6" maxlength="20000" placeholder="O que a perícia faz, especializações…">' + val('description') + '</textarea></div>' +
-    '<div class="field"><label for="kmod">Modificadores</label><textarea id="kmod" rows="3" maxlength="5000" placeholder="Bônus e penalidades comuns">' + val('modifiers') + '</textarea></div>' +
-    flagHtml('kvis', s, true) +
-    '<div class="form-err" id="kfErr" role="alert"></div>' +
-    '<div class="btn-row" style="justify-content:flex-end"><button class="btn ghost" type="button" id="kfCancel">Cancelar</button><button class="btn primary" type="submit" id="kfSave">' + (editing ? 'Salvar perícia' : 'Criar perícia') + '</button></div></form>';
-  showModal(html);
-  modal.setAttribute('aria-labelledby', 'kfTitle');
-  var name = $('kname');
-  name.addEventListener('input', function () { if (name.value.trim()) { $('err_kname').textContent = ''; $('f_kname').classList.remove('invalid'); } });
-  $('kfCancel').onclick = function () { closeModal(); };
-  $('skillForm').onsubmit = function (e) {
-    e.preventDefault();
-    if (modalOpen.busy) return;
-    var n = name.value.trim();
-    if (!n) { $('err_kname').textContent = 'Informe o nome da perícia.'; $('f_kname').classList.add('invalid'); name.focus(); return; }
-    modalOpen.busy = true;
-    var btn = $('kfSave'); btn.disabled = true; btn.textContent = 'Salvando…'; $('kfCancel').disabled = true; $('kfErr').textContent = '';
-    Ops.saveSkill(s, { name: n, attribute: $('kattr').value, difficulty: $('kdiff').value, combatGroup: $('kgroup').value, defaults: $('kdef').value, prerequisites: $('kpre').value,
-      specialty: $('kspec').checked, cinematic: $('kcine').checked, book: $('kbook').value, page: $('kpage').value,
-      description: $('kdesc').value, modifiers: $('kmod').value,
-      visible: flagVal('kvis', s), sharedWith: shareVal('kvis', s) }).then(function (id) {
-      closeModal(true);
-      toast(editing ? 'Perícia salva.' : 'Perícia criada.');
-      if (!editing) go(inCombat && $('kgroup').value ? combatSkillHref(id) : skillHref(id));
-    }, function (er) {
-      if (!modalOpen) return;
-      modalOpen.busy = false; btn.disabled = false; btn.textContent = editing ? 'Salvar perícia' : 'Criar perícia'; $('kfCancel').disabled = false;
-      $('kfErr').textContent = errorText(er);
-    });
-  };
-}
