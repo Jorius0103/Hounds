@@ -5542,6 +5542,7 @@ export default function App() {
                 onSelectNpc={setSelectedNpcId}
                 onUpdateNpc={handleUpdateNpc}
                 currentUserRole={effectiveRole}
+                currentUser={currentUser}
                 onOpenFullNpcSheet={(npcId) => {
                   setSelectedNpcId(npcId);
                   setIsHomeScreen(false);

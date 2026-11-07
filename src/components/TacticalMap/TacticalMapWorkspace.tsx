@@ -81,6 +81,7 @@ interface TacticalMapWorkspaceProps {
   onSelectNpc: (npcId: string) => void;
   onUpdateNpc: (updated: NPC) => void;
   currentUserRole: string;
+  currentUser?: UserAccount | null;
   onOpenFullNpcSheet: (npcId: string) => void;
   onOpenDamageCalculator?: (npc: NPC) => void;
   hasEditPermission?: boolean;
@@ -102,6 +103,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   onSelectNpc,
   onUpdateNpc,
   currentUserRole,
+  currentUser,
   onOpenFullNpcSheet,
   onOpenDamageCalculator,
   hasEditPermission = false,
@@ -233,6 +235,111 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const tokens = useMemo(() => {
     return Array.isArray(tacticalState?.tokens) ? tacticalState.tokens : [];
   }, [tacticalState?.tokens]);
+
+  // Usuário autenticado efetivo (com fallbacks para hubUser / parent / localStorage)
+  const effectiveUser = useMemo(() => {
+    if (currentUser && (currentUser.name || currentUser.id)) {
+      return currentUser;
+    }
+    try {
+      if (typeof window !== 'undefined') {
+        const w = window as any;
+        if (w.hubUser && (w.hubUser.name || w.hubUser.id)) return w.hubUser;
+        if (w.parent && w.parent.hubUser && (w.parent.hubUser.name || w.parent.hubUser.id)) {
+          return w.parent.hubUser;
+        }
+      }
+      const saved = localStorage.getItem('hounds_active_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.name || parsed.id)) return parsed;
+      }
+    } catch {}
+    return currentUser || null;
+  }, [currentUser]);
+
+  // Helper para resolver o NPC associado a um token
+  const resolveTokenNpc = useCallback(
+    (token?: TacticalToken | null): NPC | null => {
+      if (!token) return null;
+      if (token.npcId) {
+        const byId = characterMap.get(token.npcId);
+        if (byId) return byId;
+        const byDirect = characters.find(
+          (c) =>
+            c.id === token.npcId ||
+            (c.name && token.npcId && c.name.trim().toLowerCase() === token.npcId.trim().toLowerCase())
+        );
+        if (byDirect) return byDirect;
+      }
+      if (token.id) {
+        const cleanTokenId = token.id.replace(/^token-/, '');
+        const byTokenId = characterMap.get(cleanTokenId) || characters.find((c) => c.id === cleanTokenId);
+        if (byTokenId) return byTokenId;
+      }
+      return null;
+    },
+    [characterMap, characters]
+  );
+
+  // Helper para verificar se um personagem/NPC pertence ou está vinculado ao usuário logado
+  const isCharOwnedByCurrentUser = useCallback(
+    (npc?: NPC | null): boolean => {
+      if (!npc) return false;
+      const u = effectiveUser;
+      if (!u) return false;
+
+      const norm = (s?: string) => String(s || '').trim().toLowerCase();
+      const normCleanId = (s?: string) => norm(s).replace(/^user-/, '');
+
+      const uId = norm(u.id);
+      const uCleanId = normCleanId(u.id);
+      const uName = norm(u.name);
+
+      const charUserId = norm(npc.userId);
+      const charCleanUserId = normCleanId(npc.userId);
+      const charOwnerId = norm(npc.ownerId);
+      const charCleanOwnerId = normCleanId(npc.ownerId);
+      const charPlayerName = norm(npc.playerName);
+      const charName = norm(npc.name);
+
+      // 1. Vínculo por ID do usuário
+      if (uId && (charUserId === uId || charOwnerId === uId)) return true;
+      if (uCleanId && (charCleanUserId === uCleanId || charCleanOwnerId === uCleanId)) return true;
+
+      // 2. Vínculo por nome do jogador (playerName configurado na aba Personagens & Vínculo)
+      if (uName && charPlayerName && (charPlayerName === uName || charPlayerName === uCleanId)) return true;
+
+      // 3. Vínculo se o ID de usuário foi gravado no campo playerName ou vice-versa
+      if (uId && charPlayerName && (charPlayerName === uId || charPlayerName === uCleanId)) return true;
+
+      // 4. Fallback se o nome do personagem coincide com o usuário
+      if (uName && charName && charName === uName) return true;
+
+      return false;
+    },
+    [effectiveUser]
+  );
+
+  // Helper que determina se o usuário atual tem permissão para mover/mexer neste token no tabuleiro
+  const canControlToken = useCallback(
+    (token?: TacticalToken | null): boolean => {
+      if (!token) return false;
+      // 1. O Mestre tem controle total sobre qualquer token no tabuleiro
+      if (isMaster || effectiveUser?.role === 'mestre' || currentUserRole === 'mestre') return true;
+
+      // 2. Token travado não pode ser movido
+      if (token.isPinned) return false;
+
+      // 3. Usuários sem login ou não identificados não podem mexer em tokens
+      if (!effectiveUser) return false;
+
+      // 4. Jogador só pode mexer no personagem que estiver vinculado a ele
+      const npc = resolveTokenNpc(token);
+      return isCharOwnedByCurrentUser(npc);
+    },
+    [isMaster, effectiveUser, currentUserRole, resolveTokenNpc, isCharOwnedByCurrentUser]
+  );
 
   // Alternar visibilidade de um token entre Mestre e Jogadores (unificado com a ficha do NPC)
   const handleToggleTokenVisibility = useCallback((tokenId: string) => {
@@ -1498,6 +1605,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       return;
     }
     const targetNpc = characterMap.get(npcId);
+    if (!isMaster && !isCharOwnedByCurrentUser(targetNpc)) return;
     const isPlayer = targetNpc?.characterType === 'player';
 
     const newToken: TacticalToken = {
@@ -1518,6 +1626,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
 
   // Alternar presença do token de um combatente no tabuleiro
   const handleToggleTokenPlacement = (npcId: string) => {
+    const targetNpc = characterMap.get(npcId);
+    if (!isMaster && !isCharOwnedByCurrentUser(targetNpc)) return;
     const existing = tokens.find((t) => t.npcId === npcId);
     if (existing) {
       const nextTokens = tokens.filter((t) => t.npcId !== npcId);
@@ -1623,9 +1733,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleTokenMouseDown = (e: React.MouseEvent, token: TacticalToken) => {
     if (activeTool !== 'select') return;
     if (e.button !== 0 || token.isPinned || rotatingTokenId) return;
-    const tokenNpc = characterMap.get(token.npcId);
-    const canEditToken = isMaster || hasEditPermission;
-    if (!canEditToken) return;
+    if (!canControlToken(token)) return;
     e.stopPropagation();
     if (contextMenu) setContextMenu(null);
     setDraggedTokenId(token.id);
@@ -1639,8 +1747,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Handle token rotation start via pauzinho (Roll20 rotation handle)
   const handleRotationMouseDown = (e: React.MouseEvent, token: TacticalToken) => {
     if (e.button !== 0 || token.isPinned) return;
-    const canEditToken = isMaster || hasEditPermission;
-    if (!canEditToken) return;
+    if (!canControlToken(token)) return;
     e.stopPropagation();
     e.preventDefault();
     if (contextMenu) setContextMenu(null);
@@ -3671,7 +3778,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* CAMADA 7: TOKENS DE COMBATE (visíveis em todas as camadas; na Camada Jogadores mostra apenas visão pública) */}
           <g id="tactical-tokens">
               {tokens.map((token) => {
-                const npc = characterMap.get(token.npcId);
+                const npc = resolveTokenNpc(token);
                 if (!npc) return null;
 
                 const isPlayer = npc.characterType === 'player';
@@ -3714,6 +3821,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   ? '#c084fc'
                   : '#64748b';
 
+              const canControl = canControlToken(token);
+
               return (
                 <g
                   key={token.id}
@@ -3734,7 +3843,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       y: e.clientY,
                     });
                   }}
-                  className="cursor-pointer transition-transform"
+                  className={`${canControl ? (isSelected ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer') : 'cursor-pointer'} transition-transform`}
                   style={{
                     filter: isSelected
                       ? 'drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.8))'
@@ -3888,7 +3997,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     <circle cx="0" cy={tokenRadius + 4} r="1.2" fill="#ffffff" />
 
                     {/* 5. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
-                    {isSelected && (
+                    {isSelected && canControl && (
                       <g className="cursor-grab">
                         {/* Haste estendida conectando a marcação de frente até a alça */}
                         <line
@@ -4322,8 +4431,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       {/* MENU DE CONTEXTO DO TOKEN (BOTÃO DIREITO: DADOS, MANOBRA E LANÇAR DANO) */}
       {contextMenu && (() => {
         const token = tokens.find((t) => t.id === contextMenu.tokenId);
-        const npc = token ? characterMap.get(token.npcId) : null;
+        const npc = token ? resolveTokenNpc(token) : null;
         if (!token || !npc) return null;
+        const canControlMenuToken = canControlToken(token);
 
         const hp = typeof npc.hpCurrent === 'number' ? npc.hpCurrent : (npc.hpMax || 0);
         const hpMax = npc.hpMax || 0;
@@ -4439,8 +4549,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       <button
                         key={m.id}
                         type="button"
+                        disabled={!canControlMenuToken}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
+                          if (!canControlMenuToken) return;
                           e.stopPropagation();
                           const newManeuver =
                             m.id === 'none' || isSelected ? undefined : m.id;
@@ -4449,7 +4561,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         className={`px-1.5 py-1 rounded-md text-[10px] font-semibold flex items-center justify-between transition-all border ${
                           isSelected
                             ? 'ring-2 ring-white/70 shadow-md font-bold'
-                            : 'opacity-85 hover:opacity-100 hover:scale-[1.02]'
+                            : canControlMenuToken
+                            ? 'opacity-85 hover:opacity-100 hover:scale-[1.02]'
+                            : 'opacity-40 cursor-not-allowed'
                         }`}
                         style={{
                           backgroundColor: m.bgHex,
@@ -4526,8 +4640,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 <div className="grid grid-cols-4 gap-1">
                   <button
                     type="button"
+                    disabled={!canControlMenuToken}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
+                      if (!canControlMenuToken) return;
                       e.stopPropagation();
                       const updatedTokens = tokens.map((t) =>
                         t.id === token.id ? { ...t, emitsLight: false } : t
@@ -4538,15 +4654,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
                       !token.emitsLight
                         ? 'bg-slate-700 text-slate-200 border-slate-500 font-bold'
-                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                        : canControlMenuToken
+                        ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                        : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
                     }`}
                   >
                     Off
                   </button>
                   <button
                     type="button"
+                    disabled={!canControlMenuToken}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
+                      if (!canControlMenuToken) return;
                       e.stopPropagation();
                       const updatedTokens = tokens.map((t) =>
                         t.id === token.id
@@ -4558,15 +4678,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
                       token.emitsLight && token.lightRadius === 4
                         ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                        : canControlMenuToken
+                        ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                        : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
                     }`}
                   >
                     🔥 4y
                   </button>
                   <button
                     type="button"
+                    disabled={!canControlMenuToken}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
+                      if (!canControlMenuToken) return;
                       e.stopPropagation();
                       const updatedTokens = tokens.map((t) =>
                         t.id === token.id
@@ -4578,15 +4702,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
                       token.emitsLight && token.lightRadius === 7
                         ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                        : canControlMenuToken
+                        ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                        : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
                     }`}
                   >
                     🏮 7y
                   </button>
                   <button
                     type="button"
+                    disabled={!canControlMenuToken}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
+                      if (!canControlMenuToken) return;
                       e.stopPropagation();
                       const val = window.prompt('Raio de luz emitido pelo combatente (em jardas):', String(token.lightRadius || 5));
                       const parsed = parseInt(val || '0');
@@ -4602,7 +4730,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
                       token.emitsLight && token.lightRadius !== 4 && token.lightRadius !== 7
                         ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                        : canControlMenuToken
+                        ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                        : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
                     }`}
                   >
                     ⚙️ Outro
@@ -4614,8 +4744,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   <div className="grid grid-cols-2 gap-1 mt-1.5 pt-1 border-t border-slate-800/60">
                     <button
                       type="button"
+                      disabled={!canControlMenuToken}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
+                        if (!canControlMenuToken) return;
                         e.stopPropagation();
                         const updatedTokens = tokens.map((t) =>
                           t.id === token.id ? { ...t, lightAngle: 360 } : t
@@ -4625,7 +4757,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
                         (token.lightAngle || 360) === 360
                           ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                          : canControlMenuToken
+                          ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                          : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
                       }`}
                       title="Luz circular em todos os lados (tocha, lampião)"
                     >
@@ -4633,8 +4767,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     </button>
                     <button
                       type="button"
+                      disabled={!canControlMenuToken}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
+                        if (!canControlMenuToken) return;
                         e.stopPropagation();
                         const updatedTokens = tokens.map((t) =>
                           t.id === token.id ? { ...t, lightAngle: 180 } : t
@@ -4644,7 +4780,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
                         token.lightAngle === 180
                           ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                          : canControlMenuToken
+                          ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                          : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
                       }`}
                       title="Luz de 180 graus sempre direcionada à frente do combatente"
                     >
