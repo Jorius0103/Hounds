@@ -2746,11 +2746,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         }
                       }}
                       onContextMenu={(e) => {
-                        if (activeLayer === 'map' && isMaster) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDeleteWall(wall.id);
-                        }
+                        e.preventDefault();
+                        e.stopPropagation();
                       }}
                     />
                   ) : (
@@ -2770,11 +2767,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         }
                       }}
                       onContextMenu={(e) => {
-                        if (activeLayer === 'map' && isMaster) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDeleteWall(wall.id);
-                        }
+                        e.preventDefault();
+                        e.stopPropagation();
                       }}
                     />
                   )}
@@ -2915,11 +2909,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       handleToggleDoor(door.id);
                     }}
                     onContextMenu={(e) => {
-                      if (activeLayer === 'map' && isMaster) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDeleteDoor(door.id);
-                      }
+                      e.preventDefault();
+                      e.stopPropagation();
                     }}
                   >
                     <title>
