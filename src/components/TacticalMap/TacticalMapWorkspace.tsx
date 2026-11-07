@@ -341,6 +341,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     [isMaster, effectiveUser, currentUserRole, resolveTokenNpc, isCharOwnedByCurrentUser]
   );
 
+  // Helper para verificar se o usuário pode alterar a manobra de combate do combatente
+  const canChangeManeuver = useCallback(
+    (npc?: NPC | null): boolean => {
+      if (!npc) return false;
+      // 1. Mestre tem controle total
+      if (isMaster || effectiveUser?.role === 'mestre' || currentUserRole === 'mestre') return true;
+      // 2. Jogadores editores podem mexer na manobra de qualquer outro jogador, e de NPCs visíveis
+      if (hasEditPermission) {
+        if (npc.characterType === 'player') return true;
+        return Boolean(npc.isVisibleToPlayer);
+      }
+      // 3. Jogador comum (sem ser editor) só pode mexer na manobra do seu próprio personagem
+      return isCharOwnedByCurrentUser(npc);
+    },
+    [isMaster, effectiveUser, currentUserRole, hasEditPermission, isCharOwnedByCurrentUser]
+  );
+
   // Alternar visibilidade de um token entre Mestre e Jogadores (unificado com a ficha do NPC)
   const handleToggleTokenVisibility = useCallback((tokenId: string) => {
     const token = tokens.find((t) => t.id === tokenId);
@@ -3237,14 +3254,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 <g
                   key={light.id}
                   transform={`translate(${center.x}, ${center.y})`}
-                  className={isRemoveMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
+                  className={isMaster ? (isRemoveMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing') : 'cursor-default pointer-events-none'}
                   onMouseDown={(e) => {
+                    if (!isMaster) return;
                     if (e.button === 0 && !isRemoveMode) {
                       e.stopPropagation();
                       setDraggedLightId(light.id);
                     }
                   }}
                   onClick={(e) => {
+                    if (!isMaster) return;
                     e.stopPropagation();
                     if (isRemoveMode) {
                       // Modo de remoção de luz ativo: exclui este foco imediatamente
@@ -3256,6 +3275,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     }
                   }}
                   onContextMenu={(e) => {
+                    if (!isMaster) return;
                     e.preventDefault();
                     e.stopPropagation();
                     setLightContextMenu({ id: light.id, x: e.clientX, y: e.clientY });
@@ -4434,6 +4454,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const npc = token ? resolveTokenNpc(token) : null;
         if (!token || !npc) return null;
         const canControlMenuToken = canControlToken(token);
+        const canEditManeuver = canChangeManeuver(npc);
+        const canLaunchDamage = isMaster || hasEditPermission;
 
         const hp = typeof npc.hpCurrent === 'number' ? npc.hpCurrent : (npc.hpMax || 0);
         const hpMax = npc.hpMax || 0;
@@ -4549,10 +4571,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       <button
                         key={m.id}
                         type="button"
-                        disabled={!canControlMenuToken}
+                        disabled={!canEditManeuver}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
-                          if (!canControlMenuToken) return;
+                          if (!canEditManeuver) return;
                           e.stopPropagation();
                           const newManeuver =
                             m.id === 'none' || isSelected ? undefined : m.id;
@@ -4561,7 +4583,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         className={`px-1.5 py-1 rounded-md text-[10px] font-semibold flex items-center justify-between transition-all border ${
                           isSelected
                             ? 'ring-2 ring-white/70 shadow-md font-bold'
-                            : canControlMenuToken
+                            : canEditManeuver
                             ? 'opacity-85 hover:opacity-100 hover:scale-[1.02]'
                             : 'opacity-40 cursor-not-allowed'
                         }`}
@@ -4622,217 +4644,197 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 );
               })()}
 
-              {/* FONTE DE LUZ DO TOKEN */}
-              <div className="pt-1.5 border-t border-slate-800">
-                <div className="text-[10px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Flame size={11} className="text-amber-400" />
-                    <span>Emissão de Luz / Visão:</span>
-                  </span>
-                  <span className="text-[9.5px] font-mono text-amber-300 font-bold">
-                    {token.hasInfiniteVision
-                      ? '👁️ Visão Liberada'
-                      : token.emitsLight
-                      ? `${token.lightRadius || 4} yd ${token.lightAngle === 180 ? '(180°)' : '(360°)'}`
-                      : 'Off'}
-                  </span>
-                </div>
-                <div className="grid grid-cols-4 gap-1">
-                  <button
-                    type="button"
-                    disabled={!canControlMenuToken}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      if (!canControlMenuToken) return;
-                      e.stopPropagation();
-                      const updatedTokens = tokens.map((t) =>
-                        t.id === token.id ? { ...t, emitsLight: false } : t
-                      );
-                      onUpdateTacticalState({ tokens: updatedTokens });
-                      setContextMenu(null);
-                    }}
-                    className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
-                      !token.emitsLight
-                        ? 'bg-slate-700 text-slate-200 border-slate-500 font-bold'
-                        : canControlMenuToken
-                        ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
-                        : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
-                    }`}
-                  >
-                    Off
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canControlMenuToken}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      if (!canControlMenuToken) return;
-                      e.stopPropagation();
-                      const updatedTokens = tokens.map((t) =>
-                        t.id === token.id
-                          ? { ...t, emitsLight: true, lightRadius: 4, lightColor: '#f59e0b' }
-                          : t
-                      );
-                      onUpdateTacticalState({ tokens: updatedTokens });
-                    }}
-                    className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
-                      token.emitsLight && token.lightRadius === 4
-                        ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                        : canControlMenuToken
-                        ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
-                        : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
-                    }`}
-                  >
-                    🔥 4y
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canControlMenuToken}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      if (!canControlMenuToken) return;
-                      e.stopPropagation();
-                      const updatedTokens = tokens.map((t) =>
-                        t.id === token.id
-                          ? { ...t, emitsLight: true, lightRadius: 7, lightColor: '#fbbf24' }
-                          : t
-                      );
-                      onUpdateTacticalState({ tokens: updatedTokens });
-                    }}
-                    className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
-                      token.emitsLight && token.lightRadius === 7
-                        ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                        : canControlMenuToken
-                        ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
-                        : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
-                    }`}
-                  >
-                    🏮 7y
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canControlMenuToken}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      if (!canControlMenuToken) return;
-                      e.stopPropagation();
-                      const val = window.prompt('Raio de luz emitido pelo combatente (em jardas):', String(token.lightRadius || 5));
-                      const parsed = parseInt(val || '0');
-                      if (parsed > 0) {
+              {/* FONTE DE LUZ DO TOKEN E VISÃO LIBERADA (APENAS MESTRE) */}
+              {isMaster && (
+                <div className="pt-1.5 border-t border-slate-800">
+                  <div className="text-[10px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Flame size={11} className="text-amber-400" />
+                      <span>Emissão de Luz / Visão:</span>
+                    </span>
+                    <span className="text-[9.5px] font-mono text-amber-300 font-bold">
+                      {token.hasInfiniteVision
+                        ? '👁️ Visão Liberada'
+                        : token.emitsLight
+                        ? `${token.lightRadius || 4} yd ${token.lightAngle === 180 ? '(180°)' : '(360°)'}`
+                        : 'Off'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const updatedTokens = tokens.map((t) =>
+                          t.id === token.id ? { ...t, emitsLight: false } : t
+                        );
+                        onUpdateTacticalState({ tokens: updatedTokens });
+                        setContextMenu(null);
+                      }}
+                      className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
+                        !token.emitsLight
+                          ? 'bg-slate-700 text-slate-200 border-slate-500 font-bold'
+                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                      }`}
+                    >
+                      Off
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const updatedTokens = tokens.map((t) =>
                           t.id === token.id
-                            ? { ...t, emitsLight: true, lightRadius: parsed, lightColor: '#f59e0b' }
+                            ? { ...t, emitsLight: true, lightRadius: 4, lightColor: '#f59e0b' }
                             : t
                         );
                         onUpdateTacticalState({ tokens: updatedTokens });
-                      }
-                    }}
-                    className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
-                      token.emitsLight && token.lightRadius !== 4 && token.lightRadius !== 7
-                        ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                        : canControlMenuToken
-                        ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
-                        : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
-                    }`}
-                  >
-                    ⚙️ Outro
-                  </button>
-                </div>
-
-                {/* Seletor de Abertura: 360° Circular ou 180° Frente */}
-                {token.emitsLight && (
-                  <div className="grid grid-cols-2 gap-1 mt-1.5 pt-1 border-t border-slate-800/60">
-                    <button
-                      type="button"
-                      disabled={!canControlMenuToken}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        if (!canControlMenuToken) return;
-                        e.stopPropagation();
-                        const updatedTokens = tokens.map((t) =>
-                          t.id === token.id ? { ...t, lightAngle: 360 } : t
-                        );
-                        onUpdateTacticalState({ tokens: updatedTokens });
                       }}
-                      className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
-                        (token.lightAngle || 360) === 360
+                      className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
+                        token.emitsLight && token.lightRadius === 4
                           ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                          : canControlMenuToken
-                          ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
-                          : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
+                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
                       }`}
-                      title="Luz circular em todos os lados (tocha, lampião)"
                     >
-                      🔄 360° Todo Redor
+                      🔥 4y
                     </button>
                     <button
                       type="button"
-                      disabled={!canControlMenuToken}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
-                        if (!canControlMenuToken) return;
                         e.stopPropagation();
                         const updatedTokens = tokens.map((t) =>
-                          t.id === token.id ? { ...t, lightAngle: 180 } : t
+                          t.id === token.id
+                            ? { ...t, emitsLight: true, lightRadius: 7, lightColor: '#fbbf24' }
+                            : t
                         );
                         onUpdateTacticalState({ tokens: updatedTokens });
                       }}
-                      className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
-                        token.lightAngle === 180
+                      className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
+                        token.emitsLight && token.lightRadius === 7
                           ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                          : canControlMenuToken
-                          ? 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
-                          : 'bg-slate-900/60 text-slate-600 border-slate-850 cursor-not-allowed'
+                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
                       }`}
-                      title="Luz de 180 graus sempre direcionada à frente do combatente"
                     >
-                      🔦 180° À Frente
+                      🏮 7y
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const val = window.prompt('Raio de luz emitido pelo combatente (em jardas):', String(token.lightRadius || 5));
+                        const parsed = parseInt(val || '0');
+                        if (parsed > 0) {
+                          const updatedTokens = tokens.map((t) =>
+                            t.id === token.id
+                              ? { ...t, emitsLight: true, lightRadius: parsed, lightColor: '#f59e0b' }
+                              : t
+                          );
+                          onUpdateTacticalState({ tokens: updatedTokens });
+                        }
+                      }}
+                      className={`py-1 px-1 rounded text-[9px] font-medium border text-center transition-all ${
+                        token.emitsLight && token.lightRadius !== 4 && token.lightRadius !== 7
+                          ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
+                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-amber-300'
+                      }`}
+                    >
+                      ⚙️ Outro
                     </button>
                   </div>
-                )}
 
-                {/* Opção de Visão Liberada */}
-                <div className="mt-1.5 pt-1.5 border-t border-slate-800/60">
+                  {/* Seletor de Abertura: 360° Circular ou 180° Frente */}
+                  {token.emitsLight && (
+                    <div className="grid grid-cols-2 gap-1 mt-1.5 pt-1 border-t border-slate-800/60">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const updatedTokens = tokens.map((t) =>
+                            t.id === token.id ? { ...t, lightAngle: 360 } : t
+                          );
+                          onUpdateTacticalState({ tokens: updatedTokens });
+                        }}
+                        className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
+                          (token.lightAngle || 360) === 360
+                            ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
+                            : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                        }`}
+                        title="Luz circular em todos os lados (tocha, lampião)"
+                      >
+                        🔄 360° Todo Redor
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const updatedTokens = tokens.map((t) =>
+                            t.id === token.id ? { ...t, lightAngle: 180 } : t
+                          );
+                          onUpdateTacticalState({ tokens: updatedTokens });
+                        }}
+                        className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
+                          token.lightAngle === 180
+                            ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
+                            : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200'
+                        }`}
+                        title="Luz de 180 graus sempre direcionada à frente do combatente"
+                      >
+                        🔦 180° À Frente
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Opção de Visão Liberada (Apenas Mestre) */}
+                  <div className="mt-1.5 pt-1.5 border-t border-slate-800/60">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const updatedTokens = tokens.map((t) =>
+                          t.id === token.id ? { ...t, hasInfiniteVision: !t.hasInfiniteVision } : t
+                        );
+                        onUpdateTacticalState({ tokens: updatedTokens });
+                      }}
+                      className={`w-full py-1 px-2 rounded text-[10px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        token.hasInfiniteVision
+                          ? 'bg-sky-950/90 text-sky-200 border-sky-400 shadow-sm shadow-sky-500/20'
+                          : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                      title="Visão Liberada: o combatente enxerga todo o mapa sem limite de distância, exceto atrás de paredes e portas fechadas"
+                    >
+                      <span>👁️ Visão Liberada: {token.hasInfiniteVision ? 'Ativada (Enxerga Tudo)' : 'Desativada'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Botão de Ação: Lançar Dano / Fadiga / Itens (Apenas Mestre ou Jogadores Editores) */}
+              {(isMaster || hasEditPermission) && (
+                <div className="pt-1 border-t border-slate-800">
                   <button
                     type="button"
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
-                      const updatedTokens = tokens.map((t) =>
-                        t.id === token.id ? { ...t, hasInfiniteVision: !t.hasInfiniteVision } : t
-                      );
-                      onUpdateTacticalState({ tokens: updatedTokens });
+                      e.preventDefault();
+                      setContextMenu(null);
+                      onSelectNpc(npc.id);
+                      onOpenDamageCalculator?.(npc);
                     }}
-                    className={`w-full py-1 px-2 rounded text-[10px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      token.hasInfiniteVision
-                        ? 'bg-sky-950/90 text-sky-200 border-sky-400 shadow-sm shadow-sky-500/20'
-                        : 'bg-slate-850 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
-                    }`}
-                    title="Visão Liberada: o combatente enxerga todo o mapa sem limite de distância, exceto atrás de paredes e portas fechadas"
+                    className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10 transition-all active:scale-[0.98]"
                   >
-                    <span>👁️ Visão Liberada: {token.hasInfiniteVision ? 'Ativada (Enxerga Tudo)' : 'Desativada'}</span>
+                    <Swords size={13} />
+                    <span>Lançar Dano / Fadiga / Itens</span>
                   </button>
                 </div>
-              </div>
-
-              {/* Botão de Ação: Lançar Dano / Fadiga / Itens */}
-              <div className="pt-1 border-t border-slate-800">
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setContextMenu(null);
-                    onSelectNpc(npc.id);
-                    onOpenDamageCalculator?.(npc);
-                  }}
-                  className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10 transition-all active:scale-[0.98]"
-                >
-                  <Swords size={13} />
-                  <span>Lançar Dano / Fadiga / Itens</span>
-                </button>
-              </div>
+              )}
             </div>
           </div>
         );
