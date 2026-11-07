@@ -373,10 +373,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     [mapX, mapY, hexSize, dragLightPos]
   );
 
-  // Segmentos bloqueadores de luz extraídos das paredes e portas fechadas
+  // Segmentos bloqueadores de luz extraídos das paredes e portas fechadas (alinhados com as coordenadas globais do SVG)
   const blockingSegments = useMemo(() => {
-    return extractBlockingSegments(tacticalState.walls, tacticalState.doors);
-  }, [tacticalState.walls, tacticalState.doors]);
+    const raw = extractBlockingSegments(tacticalState.walls, tacticalState.doors);
+    if (!mapX && !mapY) return raw;
+    return raw.map((seg) => ({
+      p1: { x: seg.p1.x + mapX, y: seg.p1.y + mapY },
+      p2: { x: seg.p2.x + mapX, y: seg.p2.y + mapY },
+    }));
+  }, [tacticalState.walls, tacticalState.doors, mapX, mapY]);
 
   // Mapa de polígonos de visibilidade calculados para cada foco de luz contido por paredes e portas
   const lightVisibilityPaths = useMemo(() => {
@@ -418,10 +423,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const tokenLightVisibilityPaths = useMemo(() => {
     const result: Record<string, string> = {};
     const mapBoundsSegments: LineSegment[] = [
-      { p1: { x: 0, y: 0 }, p2: { x: mapW, y: 0 } },
-      { p1: { x: mapW, y: 0 }, p2: { x: mapW, y: mapH } },
-      { p1: { x: mapW, y: mapH }, p2: { x: 0, y: mapH } },
-      { p1: { x: 0, y: mapH }, p2: { x: 0, y: 0 } },
+      { p1: { x: mapX, y: mapY }, p2: { x: mapX + mapW, y: mapY } },
+      { p1: { x: mapX + mapW, y: mapY }, p2: { x: mapX + mapW, y: mapY + mapH } },
+      { p1: { x: mapX + mapW, y: mapY + mapH }, p2: { x: mapX, y: mapY + mapH } },
+      { p1: { x: mapX, y: mapY + mapH }, p2: { x: mapX, y: mapY } },
     ];
 
     for (const token of tokens) {
@@ -469,7 +474,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Salas fechadas fora da visão do jogador NUNCA mostram luminosidade (O(N) ultra-leve e 100% à prova de crashes)
   const isLightVisibleToPlayer = useCallback(
     (light: TacticalLightSource) => {
-      if (!isPlayerView) return true;
       if (blockingSegments.length === 0) return true;
 
       const playerTokens = tokens.filter((t) => !t.hiddenFromPlayers && t.layer !== 'gm');
@@ -486,7 +490,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         return hasLineOfSight(tokenPos, lightPos, blockingSegments);
       });
     },
-    [isPlayerView, blockingSegments, tokens, getLightCenter, draggedTokenId, dragHoverHex, hexSize, mapX, mapY]
+    [blockingSegments, tokens, getLightCenter, draggedTokenId, dragHoverHex, hexSize, mapX, mapY]
   );
 
   // Conjunto de células iluminadas por focos de luz ou por tokens com luz própria
@@ -1569,7 +1573,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   // Handle token drag start
   const handleTokenMouseDown = (e: React.MouseEvent, token: TacticalToken) => {
     if (activeTool !== 'select') return;
-    if (activeLayer === 'map') return; // Na camada do mapa, os tokens ficam congelados para calibrar o fundo
     if (e.button !== 0 || token.isPinned || rotatingTokenId) return;
     const tokenNpc = characterMap.get(token.npcId);
     const canEditToken = isMaster || hasEditPermission;
@@ -2664,9 +2667,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             })}
           </g>
 
-          {/* CAMADA DE PAREDES E PORTAS (CONTENÇÃO VISUAL E INTERAÇÃO NO TABULEIRO - APENAS NA CAMADA DO MAPA) */}
+          {/* CAMADA DE PAREDES (CONTENÇÃO VISUAL E INTERAÇÃO NO TABULEIRO - APENAS NA CAMADA DO MAPA) */}
           {activeLayer === 'map' && (
-            <g id="tactical-walls-doors-layer">
+            <g id="tactical-walls-layer">
               {/* 1. PAREDES POLIGONAIS */}
               {(tacticalState.walls || []).map((wall, wallIdx) => {
               if (!wall.points || wall.points.length < 2) return null;
@@ -2795,9 +2798,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 </g>
               );
             })}
+          </g>
+        )}
 
-            {/* 2. PORTAS (ABERTAS OU FECHADAS COM CONTENÇÃO DE LUZ) */}
-            {(tacticalState.doors || []).map((door, doorIdx) => {
+        {/* 2. CAMADA DE PORTAS (VISÍVEIS PARA JOGADORES E MESTRE, TRAVA DE ABRIR/FECHAR APENAS PARA O MESTRE) */}
+        <g id="tactical-doors-layer">
+          {(tacticalState.doors || []).map((door, doorIdx) => {
               const x1 = mapX + door.x1;
               const y1 = mapY + door.y1;
               const x2 = mapX + door.x2;
@@ -2899,10 +2905,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   {/* Ícone sutil e compacto de Porta (Abrir / Fechar) */}
                   <g
                     transform={`translate(${midX}, ${midY})`}
-                    className="cursor-pointer select-none group"
+                    className={isMaster ? "cursor-pointer select-none group" : "select-none"}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (activeLayer === 'map' && isMaster) {
+                      if (!isMaster) return;
+                      if (activeLayer === 'map') {
                         setSelectedDoorId(door.id);
                       }
                       handleToggleDoor(door.id);
@@ -2915,14 +2922,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                       }
                     }}
                   >
-                    <title>{door.isOpen ? 'Porta Aberta (Clique para fechar)' : 'Porta Fechada (Clique para abrir)'}</title>
+                    <title>
+                      {isMaster
+                        ? (door.isOpen ? 'Porta Aberta (Clique para fechar)' : 'Porta Fechada (Clique para abrir)')
+                        : (door.isOpen ? 'Porta Aberta' : 'Porta Fechada')}
+                    </title>
                     {/* Círculo base sutil e pequeno (raio 7px em vez de 13px) */}
                     <circle
                       r={7}
                       fill={door.isOpen ? '#064e3b' : '#1e1b4b'}
                       stroke={door.isOpen ? '#34d399' : '#f59e0b'}
                       strokeWidth={1.2}
-                      className="transition-transform group-hover:scale-125"
+                      className={isMaster ? "transition-transform group-hover:scale-125" : undefined}
                     />
                     {door.isOpen ? (
                       // Cadeado aberto sutil em vetor SVG
@@ -2942,7 +2953,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               );
             })}
           </g>
-          )}
 
           {/* ÍCONES DOS FOCOS DE LUZ FIXOS NO TABULEIRO */}
           <g id="tactical-light-sources">
@@ -3013,7 +3023,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           </g>
 
           {/* CAMADA 4: ARCOS DE COMBATE GURPS (FRENTE, FLANCOS E RETAGUARDA) */}
-          {activeLayer !== 'map' && selectedToken && (
+          {selectedToken && (
             <g id="gurps-combat-arcs">
               {(() => {
                 const relCenter = getHexCenter(selectedToken.gridX, selectedToken.gridY, hexSize);
@@ -3494,9 +3504,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             </g>
           )}
 
-          {/* CAMADA 7: TOKENS DE COMBATE (ocultos na Camada do Mapa; na Camada Tokens mostra apenas visão pública de jogadores) */}
-          {activeLayer !== 'map' && (
-            <g id="tactical-tokens">
+          {/* CAMADA 7: TOKENS DE COMBATE (visíveis em todas as camadas; na Camada Jogadores mostra apenas visão pública) */}
+          <g id="tactical-tokens">
               {tokens.map((token) => {
                 const npc = characterMap.get(token.npcId);
                 if (!npc) return null;
@@ -3754,7 +3763,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               );
             })}
           </g>
-          )}
 
           {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20 - LINHAS RETANGULARES PURAS) */}
           {tacticalState.fogEnabled && (

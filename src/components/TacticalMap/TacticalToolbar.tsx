@@ -245,9 +245,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
       onPointerDown={(e) => e.stopPropagation()}
       onMouseMove={(e) => e.stopPropagation()}
     >
-      <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-1.5 shadow-xl flex flex-wrap items-center justify-between gap-2 z-20">
-      {/* 1. SELETOR DE 3 NÍVEIS / CAMADAS (ESTILO ROLL20) & FERRAMENTAS DE INTERAÇÃO */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-1.5 shadow-xl flex flex-col gap-1.5 z-20">
+        {/* LINHA 1: SELETOR DE CAMADAS & FERRAMENTAS DO TABULEIRO */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
         {/* Seletor de Camadas (Mapa, Tokens, Mestre) */}
         {isMaster && (
           <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800 shadow-inner">
@@ -274,10 +274,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   ? 'bg-emerald-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
               }`}
-              title="Nível 2: Camada de Tokens (Visão real dos Jogadores: combatentes e tokens públicos)"
+              title="Nível 2: Camada de Jogadores (Visão real dos Jogadores: combatentes, portas e tokens públicos)"
             >
               <Users size={13} />
-              <span>2. Tokens</span>
+              <span>2. Jogadores</span>
             </button>
 
             <button
@@ -468,29 +468,13 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </>
           )}
         </div>
+      </div>
 
-        {/* Simulação de Visão do Jogador para o Mestre */}
-        {isMaster && onTogglePlayerView && (
-          <button
-            type="button"
-            onClick={onTogglePlayerView}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-              isPlayerView
-                ? 'bg-purple-600 text-white border-purple-500 shadow-sm'
-                : 'bg-slate-950 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-850'
-            }`}
-            title={
-              isPlayerView
-                ? 'Simulando VISÃO DO JOGADOR (escuridão total). Clique para voltar à visão do Mestre.'
-                : 'Visão do MESTRE (névoa translúcida). Clique para ver como os Jogadores veem o mapa.'
-            }
-          >
-            {isPlayerView ? <EyeOff size={13} className="text-purple-200" /> : <Eye size={13} className="text-amber-400" />}
-            <span>{isPlayerView ? 'Visão: Jogador' : 'Visão: Mestre'}</span>
-          </button>
-        )}
-
-        {/* Opções na Camada 1. Mapa: botão no final da mesma div */}
+      {/* LINHA 2: CONFIGURAÇÕES & VISÃO (ESQUERDA) | ZOOM & TOKENS (DIREITA) */}
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
+        {/* Esquerda: Configuração do Mapa e Grid + Visão Mestre/Jogador */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Opções na Camada 1. Mapa: botão Configuração do Mapa e Grid */}
         {isMaster && activeLayer === 'map' && (
           <div className="relative">
             <button
@@ -883,11 +867,31 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             )}
           </div>
         )}
+
+        {/* Simulação de Visão do Jogador para o Mestre */}
+        {isMaster && onTogglePlayerView && (
+          <button
+            type="button"
+            onClick={onTogglePlayerView}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer shrink-0 ${
+              isPlayerView
+                ? 'bg-purple-600 text-white border-purple-500 shadow-sm'
+                : 'bg-slate-950 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-850'
+            }`}
+            title={
+              isPlayerView
+                ? 'Simulando VISÃO DO JOGADOR (escuridão total). Clique para voltar à visão do Mestre.'
+                : 'Visão do MESTRE (névoa translúcida). Clique para ver como os Jogadores veem o mapa.'
+            }
+          >
+            {isPlayerView ? <EyeOff size={13} className="text-purple-200" /> : <Eye size={13} className="text-amber-400" />}
+            <span>{isPlayerView ? 'Visão: Jogador' : 'Visão: Mestre'}</span>
+          </button>
+        )}
       </div>
 
-        {/* Separador */}
-        <div className="w-px h-5 bg-slate-800 mx-0.5" />
-
+      {/* Direita: Controles de Zoom e Tokens no Tabuleiro */}
+      <div className="flex items-center gap-1.5 shrink-0">
         {/* Controles de Zoom e Centralização */}
         <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800">
           <button
@@ -916,62 +920,26 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
           </button>
         </div>
 
-        {/* Limpar e Posicionar */}
-        <div className="flex items-center gap-1">
+        {/* Tokens no Tabuleiro */}
+        {isMaster && (
           <button
-            onClick={onClearMarkers}
-            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors"
-            title="Limpar Linhas de Medição e Marcadores da Mesa"
+            type="button"
+            onClick={onOpenTokensModal}
+            className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+            title="Selecionar quais tokens exibir no tabuleiro"
           >
-            <Eraser size={14} />
+            <Users size={14} className="text-amber-400" />
+            <span>Tokens no Tabuleiro</span>
+            {typeof tokensCount === 'number' && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                {tokensCount}
+              </span>
+            )}
           </button>
-
-          {isMaster && (
-            <button
-              type="button"
-              onClick={onOpenTokensModal}
-              className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
-              title="Selecionar quais tokens exibir no tabuleiro"
-            >
-              <Users size={14} className="text-amber-400" />
-              <span>Tokens no Tabuleiro</span>
-              {typeof tokensCount === 'number' && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  {tokensCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Botão de Recolher / Expandir Log da Mesa com Setas Laterais */}
-          {onToggleLogCollapse && (
-            <button
-              type="button"
-              onClick={onToggleLogCollapse}
-              className={`px-2 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer ${
-                isLogCollapsed
-                  ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-amber-500/20'
-                  : 'bg-slate-800/90 hover:bg-slate-750 text-slate-300 hover:text-white border-slate-700'
-              }`}
-              title={isLogCollapsed ? 'Expandir Log da Mesa (◀)' : 'Recolher Log da Mesa (▶)'}
-            >
-              {isLogCollapsed ? (
-                <>
-                  <ChevronLeft size={15} className="text-slate-950 font-black" />
-                  <ScrollText size={13} className="text-slate-950" />
-                  <span>Log</span>
-                </>
-              ) : (
-                <>
-                  <ScrollText size={13} className="text-amber-400" />
-                  <span>Log</span>
-                  <ChevronRight size={15} className="text-slate-400" />
-                </>
-              )}
-            </button>
-          )}
-        </div>
+        )}
       </div>
+    </div>
+  </div>
 
       {/* BARRA DE CONTROLE: CAMADA DO MAPA (PAREDES, PORTAS E ILUMINAÇÃO DINÂMICA) */}
       {isMaster && (activeTool === 'wall' || activeTool === 'door' || activeTool === 'light') && (
@@ -1439,74 +1407,29 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
       {isMaster && activeTool === 'fog' && (
         <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-1">
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 font-bold text-slate-200 mr-1 select-none">
+            <span className="flex items-center gap-1.5 font-bold text-slate-200 mr-1 select-none">
               {fogBrushMode === 'hide' ? (
-                <EyeOff size={14} className="text-rose-400" />
+                <>
+                  <EyeOff size={14} className="text-rose-400" />
+                  <span className="text-rose-400">Ocultar Áreas:</span>
+                </>
               ) : (
-                <Eye size={14} className="text-emerald-400" />
+                <>
+                  <Eye size={14} className="text-emerald-400" />
+                  <span className="text-emerald-400">Mostrar Áreas:</span>
+                </>
               )}
-              <span>{fogBrushMode === 'hide' ? 'Ocultar Áreas:' : 'Mostrar Áreas:'}</span>
             </span>
 
-            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-              <button
-                type="button"
-                onClick={() => onSetFogBrushMode?.('hide')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  fogBrushMode === 'hide'
-                    ? 'bg-rose-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-                title="Ocultar Área: Desenhe um retângulo no mapa para esconder dos jogadores. Áreas ocultadas não aparecem nem com visualização."
-              >
-                <EyeOff size={13} />
-                <span>Ocultar Área</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onSetFogBrushMode?.('reveal')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  fogBrushMode === 'reveal'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-                title="Mostrar Área: Desenhe um retângulo no mapa para liberar a visão dos jogadores."
-              >
-                <Eye size={13} />
-                <span>Mostrar Área</span>
-              </button>
-            </div>
-
-            <span className="text-[11px] text-slate-400 hidden sm:inline">
-              Arraste no mapa para desenhar o retângulo.
+            <span className="text-[11px] text-slate-400">
+              {fogBrushMode === 'hide'
+                ? 'Arraste no mapa para desenhar retângulos e ocultar áreas dos jogadores (áreas ocultadas não aparecem nem com iluminação).'
+                : 'Arraste no mapa para desenhar retângulos e liberar a visão inicial dos jogadores.'}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {onHideAllFog && (
-              <button
-                type="button"
-                onClick={onHideAllFog}
-                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
-                title="Cobre o mapa inteiro com névoa inicial"
-              >
-                <EyeOff size={12} />
-                <span>Ocultar Tudo</span>
-              </button>
-            )}
-            {onRevealAllFog && (
-              <button
-                type="button"
-                onClick={onRevealAllFog}
-                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
-                title="Libera a visão do mapa inteiro"
-              >
-                <Eye size={12} />
-                <span>Revelar Tudo</span>
-              </button>
-            )}
-            <span className="text-[11px] font-mono text-slate-400 ml-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono text-slate-400">
               {(tacticalState.fogRects || []).length} áreas
             </span>
             {(tacticalState.fogRects || []).length > 0 && (
