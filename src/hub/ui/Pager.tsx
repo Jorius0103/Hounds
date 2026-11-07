@@ -58,9 +58,14 @@ export function Pager({pg, onPage}: {pg: PageSlice; onPage: (n: number) => void}
 export function usePageJump(box: RefObject<HTMLElement | null>, setPage: (n: number) => void) {
   const pending = useRef(false);
   useLayoutEffect(() => {
-    if (!pending.current) return;
-    pending.current = false;
     const root = box.current;
+    if (!pending.current) {
+      // Desenhada por outro motivo (um filtro, uma aba, os dados): como a versão antiga, que redesenhava a lista, o
+      // número da página deixa de receber o foco.
+      root?.querySelectorAll('.pager-cur[tabindex]').forEach(el => el.removeAttribute('tabindex'));
+      return;
+    }
+    pending.current = false;
     if (!root) return;
     root.scrollIntoView({block: 'start'});
     const cur = root.querySelector('.pager-cur');

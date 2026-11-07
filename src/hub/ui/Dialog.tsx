@@ -33,6 +33,13 @@ export function closeDialog() {
   notify();
 }
 
+// O modal aberto conta como alterado, como o modalOpen.touched de js/modal.js: para o que não é campo (os itens
+// escolhidos de um estilo). O Esc, o X e o clique fora perguntam antes de fechar.
+let touchOpen: (() => void) | null = null;
+export function touchDialog() {
+  if (touchOpen) touchOpen();
+}
+
 /** Onde o modal aberto é desenhado (src/hub/HubApp.tsx). */
 export function DialogHost() {
   const open = useSyncExternalStore(subscribe, () => current);
@@ -110,6 +117,10 @@ export function Dialog({labelledBy, busy = false, children}: DialogProps) {
     };
     legacy.current = m;
     modalOpen = m;
+    const touch = () => {
+      st.current.touched = true;
+    };
+    touchOpen = touch;
     // Como o showModal: o primeiro campo de texto recebe o foco, e o estado dos campos é guardado logo depois
     // de o formulário se preencher.
     const field = box.current!.querySelector<HTMLElement>('input[type=text],textarea,select');
@@ -120,6 +131,7 @@ export function Dialog({labelledBy, busy = false, children}: DialogProps) {
     return () => {
       clearTimeout(focusTimer);
       clearTimeout(baseTimer);
+      if (touchOpen === touch) touchOpen = null;
       // Fechado por aqui (e não pelo closeModal de js/modal.js, que já faz isto): as páginas antigas recebem
       // os dados que chegaram com o modal aberto, e o foco volta para onde estava.
       if (modalOpen === m) {

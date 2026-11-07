@@ -1038,7 +1038,7 @@ function wireSheetCombat(s) {
     var x = opts[n]; if (!x) return;
     pick.value = x.name; hideStyles();
     if (x.custom && isMestre()) {
-      openStyleForm(null, { name: x.name, then: function (id, fields) {
+      window.hubOpenStyleForm(null, { name: x.name, then: function (id, fields) {
         if (ui.combatDraft !== d) return; // the editor was closed meanwhile
         addStyle(styleById(id) || Object.assign({ id: id }, fields));
       } });

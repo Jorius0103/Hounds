@@ -38,9 +38,10 @@ interface Window {
   THREE: any;
   /** A casca React (src/hub/main.tsx): se a página já foi migrada e é desenhada por ela, não pelo renderPage. */
   hubIsReactPage?(page: string): boolean;
-  /** O formulário de perícia, em React (src/hub/paginas/PericiaForm.tsx), para a página de Combate, que ainda é antiga.
-   *  how.combat: criada por Combate (começa como de combate, e a página dela abre lá). */
-  hubOpenSkillForm(s: Skill | null, how?: { combat?: boolean }): void;
+  /** O formulário de estilo, em React (src/hub/paginas/EstiloForm.tsx), para a ficha (js/tabs/ficha-combate.js), que ainda é
+   *  antiga. how (só num estilo novo): name, o nome com que começa; then(id, fields), chamado depois de salvo no lugar
+   *  de abrir a página dele. */
+  hubOpenStyleForm(x: FightingStyle | null, how?: { name?: string; then?(id: string, fields: Record<string, unknown>): void }): void;
   /** Na janela da Mesa (iframe): reabre a escolha de jogo. */
   __mesaOpenPicker?(): void;
   /** firebase-config.js */

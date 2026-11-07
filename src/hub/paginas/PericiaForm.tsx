@@ -13,7 +13,6 @@ const pick = (list: string[], v: string | undefined) => (v && list.includes(v) ?
  * Criar (s null) ou editar uma perícia, só o Mestre: nome, atributo, dificuldade, grupo de combate, padrão,
  * pré-requisitos, especialização, cinemática, livro, página, descrição, modificadores e visibilidade. Grava com o
  * Ops.saveSkill de js/tabs/tab-pericias.js. combat: criada por Combate, começa no corpo a corpo e, salva, abre lá.
- * A página de Combate, ainda antiga, abre este formulário pelo window.hubOpenSkillForm (src/hub/main.tsx).
  */
 export function SkillForm({s, combat = false}: {s: Skill | null; combat?: boolean}) {
   useHub();

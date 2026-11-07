@@ -239,6 +239,34 @@ declare global {
   function skillCombatGroup(s: Skill | null): string;
   /** js/tabs/tab-combate.js: o endereço de uma perícia aberta em Combate (#pericia-combate~id). */
   function combatSkillHref(id: string): string;
+  /** Uma técnica e um estilo pelo id, e os endereços deles. */
+  function techById(id: string | null | undefined): Technique | null;
+  function techHref(id: string): string;
+  function styleById(id: string | null | undefined): FightingStyle | null;
+  function styleHref(id: string): string;
+  /** As perícias que contam como de combate (pelo nome ou pelo tipo "Melee; …"), e as técnicas de combate. */
+  function isCombatSkill(s: Skill): boolean;
+  function isCombatTech(t: Technique): boolean;
+  /** As dificuldades das técnicas (Média, Difícil), os nomes delas e as cores do selo. */
+  var TECH_DIFFS: string[];
+  var TECH_DIFF_LABELS: Record<string, string>;
+  var TECH_DIFF_CLASSES: Record<string, string>;
+  /** As listas de um estilo, [campo, título]: as que ele ensina e os traços opcionais. */
+  var STYLE_LISTS: [StyleList, string][];
+  var STYLE_OPT_LISTS: [StyleList, string][];
+  type StyleList = 'skills' | 'techniques' | 'cinematicSkills' | 'cinematicTechniques' | 'perks' | 'spells' | 'optAdvantages' | 'optDisadvantages' | 'optSkills' | 'optTechniques' | 'optPerks';
+  /** Os itens de uma lista de um estilo (separados por "; "), e o custo dele em pontos ("3 pontos"). */
+  function styleItems(text: string | undefined): string[];
+  function styleCost(x: FightingStyle): string;
+  /** A entrada dos catálogos que um item de um estilo nomeia ('skill', 'tech', 'adv' ou 'spell'); null quando não há. */
+  function styleFind(kind: string, item: string): {id: string; name: string} | null;
+  /** De que catálogo são os itens de cada lista: para os links da página (STYLE_KINDS) e para a busca do formulário (STYLE_LIST_KIND). */
+  var STYLE_KINDS: Record<string, string>;
+  var STYLE_LIST_KIND: Record<string, string>;
+  /** O nome da página de cada catálogo, as entradas que o formulário oferece e a linha de informação de cada uma. */
+  var STYLE_KIND_PAGE: Record<string, string>;
+  function styleKindList(kind: string): {id: string; name: string; specialty?: boolean}[];
+  function styleKindInfo(kind: string, e: object): string;
   /** js/tabs/ficha-efeitos.js: os efeitos que o livro dá a uma desvantagem para uma linha da ficha (o nome, os pontos e os níveis). */
   function disadvBookFx(d: Disadvantage, row: {name: string; cost: number; levels: number}): AdvEffect[];
   /** js/tabs/ficha-efeitos.js: os efeitos cadastrados de uma vantagem, limpos; e, sem eles, os do livro para uma linha da ficha (o nome e os pontos). */
@@ -368,6 +396,20 @@ declare global {
     ): Promise<string>;
     /** Uma perícia dos livros fica marcada como excluída; a do Mestre sai do banco. */
     deleteSkill(s: Skill): Promise<unknown>;
+    /** Só o Mestre. */
+    saveTechnique(
+      t: Technique | null,
+      fields: {name: string; difficulty: string; cinematic: boolean; defaults: string; prerequisites: string; book: string; page: string; description: string; modifiers: string; visible: boolean; sharedWith: string[]},
+    ): Promise<string>;
+    /** Uma técnica dos livros fica marcada como excluída; a do Mestre sai do banco. */
+    deleteTechnique(t: Technique): Promise<unknown>;
+    /** Só o Mestre. As listas vão como no livro, com os itens separados por "; ". */
+    saveStyle(
+      x: FightingStyle | null,
+      fields: {name: string; cost: string; book: string; page: string; description: string; visible: boolean; sharedWith: string[]} & Record<StyleList, string>,
+    ): Promise<string>;
+    /** Um estilo dos livros fica marcado como excluído; o do Mestre sai do banco. */
+    deleteStyle(x: FightingStyle): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */
