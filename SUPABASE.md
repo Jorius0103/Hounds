@@ -114,7 +114,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 | 43 | `20261120120000_partes_corpo_ingles.sql` | As partes do corpo de Criar Armadura (`armadura_localizacoes`) com os nomes do GURPS Low-Tech em inglês (Head, Skull, Face, Neck, Torso...). Só muda o nome; ids e percentuais ficam. Pode rodar a qualquer momento, e de novo sem efeito. |
 | 44 | `20261121120000_mochilas_independentes.sql` | Mochilas e casas cada uma por si: `salvar_ficha` passa a conferir cada mochila e cada casa separadamente (nenhuma guarda mais do que a lista tem), e não mais a soma de todas; o mesmo item pode estar em várias. Rode depois da 42. **Rode antes de publicar** a versão do site com essa regra; sem ela, o banco recusa salvar um item em duas mochilas. Pode rodar de novo sem efeito. |
 
-**Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`), mas rodar de novo não muda nada.
+**Pelo SQL Editor:** abra o [SQL Editor do Supabase](https://supabase.com/dashboard/project/cjjhlorfnjspikjhsanx/sql). Para cada arquivo, na ordem, clique em **New query**, cole o conteúdo e clique em **Run**. No banco atual, a 1 já foi executada (era o `supabase-setup.sql`). **Não rode a 1 de novo** num banco que já passou da 6: ela reabre o `hounds_docs`, o `patch_hounds_doc` e as imagens para a chave pública e põe o `hounds_docs` de volta no Realtime. Se rodou, rode a 53 (`20261129120000_jj_hounds_docs_fechado.sql`) depois.
 
 **Pela Supabase CLI:** `supabase link --project-ref cjjhlorfnjspikjhsanx` e depois `supabase db push`.
 
