@@ -31,10 +31,14 @@ function erro(status: number, mensagem: string, code?: string): Response {
   return resposta(status, { error: mensagem, code });
 }
 // Mensagens do Supabase Auth para quem usa o site.
-function erroDaConta(e: { code?: string; message?: string }): Response {
+function erroDaConta(e: { code?: string; message?: string; reasons?: string[] }): Response {
   const msg = e.message || '';
   if (e.code === 'email_exists' || /already been registered/i.test(msg)) {
     return erro(409, 'Já existe uma conta de login com esse email. Para usar essa conta, crie o usuário com a senha em branco.', 'email_exists');
+  }
+  // Com a proteção contra senhas vazadas (Authentication, HaveIBeenPwned), uma senha comprida também pode ser recusada.
+  if ((e.reasons || []).includes('pwned') || /known to be weak|easy to guess|pwned/i.test(msg)) {
+    return erro(400, 'Essa senha aparece em vazamentos de dados conhecidos. Escolha outra.', 'weak_password');
   }
   if (e.code === 'weak_password' || /password/i.test(msg)) return erro(400, 'A senha precisa ter pelo menos 6 caracteres.', 'weak_password');
   if (e.code === 'email_address_invalid' || /email/i.test(msg)) return erro(400, 'Esse email não parece válido.', 'email_invalid');
