@@ -2542,6 +2542,56 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
               </mask>
             );
           })()}
+
+          {/* MÁSCARA DE ÁREAS OCULTADAS PELO MESTRE (PARA DAR OPACIDADE REFORÇADA E DESTAQUE EXCLUSIVO AO MESTRE) */}
+          {tacticalState.fogEnabled && !isPlayerView && (
+            <mask
+              id="master-hide-overlay-mask"
+              maskUnits="userSpaceOnUse"
+              maskContentUnits="userSpaceOnUse"
+              x={mapX}
+              y={mapY}
+              width={mapW}
+              height={mapH}
+            >
+              {/* Base preta = nada do overlay extra é ativado */}
+              <rect x={mapX} y={mapY} width={mapW} height={mapH} fill="#000000" />
+
+              {/* Ações cronológicas de névoa:
+                  - hide: pinta branco (#ffffff) ativando o escurecimento e contorno extra
+                  - reveal: pinta preto (#000000) desativando o overlay extra naquele trecho
+              */}
+              {(tacticalState.fogRects || []).map((r, idx) => {
+                const isHide = r.mode === 'hide';
+                const fill = isHide ? '#ffffff' : '#000000';
+                const key = `master-overlay-${r.id || idx}`;
+
+                if (r.shape === 'circle') {
+                  const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
+                  return <circle key={key} cx={mapX + r.x} cy={mapY + r.y} r={rad} fill={fill} />;
+                }
+                if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
+                  return (
+                    <polygon
+                      key={key}
+                      points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                      fill={fill}
+                    />
+                  );
+                }
+                return (
+                  <rect
+                    key={key}
+                    x={mapX + r.x}
+                    y={mapY + r.y}
+                    width={r.width}
+                    height={r.height}
+                    fill={fill}
+                  />
+                );
+              })}
+            </mask>
+          )}
         </defs>
 
         {/* Grupo com Pan & Zoom transform */}
@@ -3873,7 +3923,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20 - LINHAS RETANGULARES PURAS) */}
           {tacticalState.fogEnabled && (
             <g id="tactical-fog-layer" clipPath="url(#map-image-bounds)" pointerEvents="none">
-              {/* Camada visual de Névoa: semitransparente suave para o Mestre (fácil identificação dos elementos), 100% preta para os Jogadores */}
+              {/* 1. Camada visual de Névoa base:
+                  - 35% de opacidade suave para o Mestre (fácil identificação de tokens, portas e mapa)
+                  - 100% preta e opaca para os Jogadores */}
               <rect
                 x={mapX}
                 y={mapY}
@@ -3882,6 +3934,67 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.35)'}
                 mask="url(#tactical-fog-mask)"
               />
+
+              {/* 2. Destaque exclusivo para o Mestre: áreas explicitamente ocultadas pelo Mestre
+                  recebem opacidade mais forte (~65%) e contorno tracejado sutil para que o Mestre
+                  bata o olho e identifique com precisão que aquela área foi ocultada por ele! */}
+              {!isPlayerView && (
+                <g id="master-explicit-hide-layer" mask="url(#master-hide-overlay-mask)">
+                  {/* Escurecimento reforçado para diferenciar da névoa natural de falta de luz */}
+                  <rect
+                    x={mapX}
+                    y={mapY}
+                    width={mapW}
+                    height={mapH}
+                    fill="rgba(2, 6, 23, 0.30)"
+                  />
+                  {/* Borda tracejada sutil nas áreas ocultadas pelo mestre */}
+                  {(tacticalState.fogRects || []).map((r, idx) => {
+                    if (r.mode !== 'hide') return null;
+                    const key = `master-hide-border-${r.id || idx}`;
+                    if (r.shape === 'circle') {
+                      const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
+                      return (
+                        <circle
+                          key={key}
+                          cx={mapX + r.x}
+                          cy={mapY + r.y}
+                          r={rad}
+                          fill="none"
+                          stroke="rgba(244, 63, 94, 0.55)"
+                          strokeWidth={2}
+                          strokeDasharray="6 4"
+                        />
+                      );
+                    }
+                    if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
+                      return (
+                        <polygon
+                          key={key}
+                          points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                          fill="none"
+                          stroke="rgba(244, 63, 94, 0.55)"
+                          strokeWidth={2}
+                          strokeDasharray="6 4"
+                        />
+                      );
+                    }
+                    return (
+                      <rect
+                        key={key}
+                        x={mapX + r.x}
+                        y={mapY + r.y}
+                        width={r.width}
+                        height={r.height}
+                        fill="none"
+                        stroke="rgba(244, 63, 94, 0.55)"
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                      />
+                    );
+                  })}
+                </g>
+              )}
             </g>
           )}
 
