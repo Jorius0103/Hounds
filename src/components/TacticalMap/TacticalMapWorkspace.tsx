@@ -40,6 +40,8 @@ import {
   computeVisibilityPolygon,
   pointsToSvgPath,
   hasLineOfSight,
+  pruneRedundantFogRects,
+  addAndPruneFogRect,
 } from '../../utils/tacticalMath';
 import { getCombatManeuver, COMBAT_MANEUVERS } from '../../utils/gurps';
 import { NpcAvatar, PRESET_AVATARS, PRESET_BG_COLORS, resolveNpcPreset } from '../NpcAvatar';
@@ -386,6 +388,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     }));
   }, [tacticalState.walls, tacticalState.doors, mapX, mapY]);
 
+  // Lista limpa de áreas de névoa (sem sobreposições concêntricas ou ocultações já reveladas)
+  const activeFogRects = useMemo(
+    () => pruneRedundantFogRects(tacticalState.fogRects || []),
+    [tacticalState.fogRects]
+  );
+
   // Mapa de polígonos de visibilidade calculados para cada foco de luz contido por paredes e portas
   const lightVisibilityPaths = useMemo(() => {
     if (blockingSegments.length === 0) return {};
@@ -683,7 +691,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     };
     onUpdateTacticalState({
       fogEnabled: true,
-      fogRects: [...(tacticalState.fogRects || []), newPolyArea],
+      fogRects: addAndPruneFogRect(tacticalState.fogRects || [], newPolyArea),
     });
     setFogPolyPoints([]);
   }, [fogPolyPoints, fogBrushMode, tacticalState.fogRects, onUpdateTacticalState]);
@@ -1019,7 +1027,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         };
         onUpdateTacticalState({
           fogEnabled: true,
-          fogRects: [...(tacticalState.fogRects || []), newCircleArea],
+          fogRects: addAndPruneFogRect(tacticalState.fogRects || [], newCircleArea),
         });
       } else if (fogShape === 'polygon') {
         const clickPt = { x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) };
@@ -1268,7 +1276,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         };
         onUpdateTacticalState({
           fogEnabled: true,
-          fogRects: [...(tacticalState.fogRects || []), newRect],
+          fogRects: addAndPruneFogRect(tacticalState.fogRects || [], newRect),
         });
       }
       setFogBoxStart(null);
@@ -2282,7 +2290,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
           })}
 
           {/* CLIPPATHS PARA REVELAÇÕES CRONOLÓGICAS DE NÉVOA */}
-          {tacticalState.fogEnabled && (tacticalState.fogRects || []).map((r, idx) => {
+          {tacticalState.fogEnabled && activeFogRects.map((r, idx) => {
             if (r.mode !== 'reveal') return null;
             const clipId = `fog-reveal-clip-${r.id || `idx-${idx}`}`;
             if (r.shape === 'circle') {
@@ -2489,7 +2497,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                 {/* Ordem cronológica estrita: a última ação na área prevalece (revelar = preto, ocultar = branco) */}
                 {tacticalState.useLightingVision === false && (
                   <>
-                    {(tacticalState.fogRects || []).map((r, idx) => {
+                    {activeFogRects.map((r, idx) => {
                       const isReveal = r.mode === 'reveal';
                       return renderFogShape(r, isReveal ? '#000000' : '#ffffff', `fog-action-${r.id || idx}`);
                     })}
@@ -2525,7 +2533,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                         - 'reveal': aplica clipPath da forma e restaura a iluminação (#000000) apenas onde houver tochas/visão nela!
                           As partes sem luz dentro da forma continuam escuras (#ffffff), impedindo que o jogador enxergue no escuro além de sua luz.
                     */}
-                    {(tacticalState.fogRects || []).map((r, idx) => {
+                    {activeFogRects.map((r, idx) => {
                       const key = `fog-action-${r.id || idx}`;
                       if (r.mode === 'hide') {
                         return renderFogShape(r, '#ffffff', key);
@@ -2561,7 +2569,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                   - hide: pinta branco (#ffffff) ativando o escurecimento e contorno extra
                   - reveal: pinta preto (#000000) desativando o overlay extra naquele trecho
               */}
-              {(tacticalState.fogRects || []).map((r, idx) => {
+              {activeFogRects.map((r, idx) => {
                 const isHide = r.mode === 'hide';
                 const fill = isHide ? '#ffffff' : '#000000';
                 const key = `master-overlay-${r.id || idx}`;
@@ -3949,7 +3957,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
                     fill="rgba(2, 6, 23, 0.30)"
                   />
                   {/* Borda tracejada sutil nas áreas ocultadas pelo mestre */}
-                  {(tacticalState.fogRects || []).map((r, idx) => {
+                  {activeFogRects.map((r, idx) => {
                     if (r.mode !== 'hide') return null;
                     const key = `master-hide-border-${r.id || idx}`;
                     if (r.shape === 'circle') {

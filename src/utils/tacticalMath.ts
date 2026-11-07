@@ -1,4 +1,4 @@
-import { FacingDirection, TacticalWall, TacticalDoor, TacticalState } from '../types/tactical';
+import { FacingDirection, TacticalWall, TacticalDoor, TacticalState, TacticalFogRect } from '../types/tactical';
 
 export interface Point {
   x: number;
@@ -809,4 +809,182 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     markers: newMarkers,
     fogRects: newFogRects,
   };
+}
+
+/**
+ * Teste padrão de ponto dentro de polígono 2D (Ray-casting / Jordan curve).
+ */
+export function isPointInPolygon(point: Point, vs: Point[]): boolean {
+  if (!vs || vs.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    const xi = vs[i].x, yi = vs[i].y;
+    const xj = vs[j].x, yj = vs[j].y;
+    const intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Verifica se um ponto (px, py) está dentro de uma forma de névoa (retângulo, círculo ou polígono).
+ */
+export function isPointInsideFogShape(pt: Point, shape: TacticalFogRect, tolerance = 6): boolean {
+  if (shape.shape === 'circle') {
+    const rad = (shape.radius || 30) + tolerance;
+    return Math.hypot(pt.x - shape.x, pt.y - shape.y) <= rad;
+  }
+  if (shape.shape === 'polygon' && shape.points && shape.points.length >= 3) {
+    if (isPointInPolygon(pt, shape.points)) return true;
+    // Tolerância em relação aos vértices
+    for (const vp of shape.points) {
+      if (Math.hypot(pt.x - vp.x, pt.y - vp.y) <= tolerance) return true;
+    }
+    return false;
+  }
+  // Retângulo por padrão
+  const minX = shape.x - tolerance;
+  const maxX = shape.x + shape.width + tolerance;
+  const minY = shape.y - tolerance;
+  const maxY = shape.y + shape.height + tolerance;
+  return pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY;
+}
+
+/**
+ * Amostra de pontos críticos da geometria para teste de contenção de áreas.
+ */
+export function getFogShapeSamplePoints(shape: TacticalFogRect): Point[] {
+  if (shape.shape === 'circle') {
+    const r = shape.radius || 30;
+    const pts: Point[] = [{ x: shape.x, y: shape.y }];
+    for (let a = 0; a < 360; a += 45) {
+      const rad = (a * Math.PI) / 180;
+      pts.push({ x: shape.x + r * Math.cos(rad), y: shape.y + r * Math.sin(rad) });
+    }
+    return pts;
+  }
+  if (shape.shape === 'polygon' && shape.points && shape.points.length >= 3) {
+    const pts = [...shape.points];
+    const avgX = shape.points.reduce((sum, p) => sum + p.x, 0) / shape.points.length;
+    const avgY = shape.points.reduce((sum, p) => sum + p.y, 0) / shape.points.length;
+    pts.push({ x: avgX, y: avgY });
+    return pts;
+  }
+  // Retângulo
+  const w = shape.width;
+  const h = shape.height;
+  return [
+    { x: shape.x, y: shape.y },
+    { x: shape.x + w, y: shape.y },
+    { x: shape.x + w, y: shape.y + h },
+    { x: shape.x, y: shape.y + h },
+    { x: shape.x + w / 2, y: shape.y + h / 2 },
+  ];
+}
+
+/**
+ * Verifica se a forma de névoa `target` está substancialmente ou totalmente contida dentro de `container`.
+ */
+export function isFogShapeContained(target: TacticalFogRect, container: TacticalFogRect, tolerance = 8): boolean {
+  const samplePts = getFogShapeSamplePoints(target);
+  if (samplePts.length === 0) return false;
+
+  let insideCount = 0;
+  for (const pt of samplePts) {
+    if (isPointInsideFogShape(pt, container, tolerance)) {
+      insideCount++;
+    }
+  }
+
+  // Se pelo menos 80% dos pontos amostrados (incluindo centro e bordas) estiverem dentro do contêiner
+  return insideCount / samplePts.length >= 0.8;
+}
+
+/**
+ * Limpa marcações redundantes ou obsoletas de névoa:
+ * - Remove áreas ocultas (hide) que foram totalmente cobertas por uma revelação posterior (reveal)
+ * - Remove áreas ocultas menores que foram engolidas por áreas ocultas maiores (evita caixas concêntricas)
+ */
+export function pruneRedundantFogRects(rects: TacticalFogRect[]): TacticalFogRect[] {
+  if (!rects || rects.length <= 1) return rects || [];
+  const result: TacticalFogRect[] = [];
+
+  for (let i = 0; i < rects.length; i++) {
+    const cur = rects[i];
+    let isRedundant = false;
+
+    // 1. Se 'cur' for coberto por alguma forma POSTERIOR:
+    for (let j = i + 1; j < rects.length; j++) {
+      const later = rects[j];
+      // Se 'cur' era hide e 'later' é reveal que o cobriu, ou hide maior que o cobriu:
+      if (isFogShapeContained(cur, later)) {
+        isRedundant = true;
+        break;
+      }
+    }
+
+    // 2. Se 'cur' é hide e um hide ANTERIOR maior já o cobria:
+    if (!isRedundant && cur.mode === 'hide') {
+      for (let k = 0; k < i; k++) {
+        const prev = rects[k];
+        if (prev.mode === 'hide' && isFogShapeContained(cur, prev)) {
+          isRedundant = true;
+          break;
+        }
+      }
+    }
+
+    if (!isRedundant) {
+      result.push(cur);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Adiciona uma nova área de névoa aplicando limpeza inteligente imediata:
+ * - Se for 'reveal', remove da lista qualquer área 'hide' anterior que foi revelada por completo.
+ * - Se for 'hide', não adiciona se já estiver dentro de um 'hide' existente e remove 'hides' menores já cobertos.
+ */
+export function addAndPruneFogRect(existingRects: TacticalFogRect[], newShape: TacticalFogRect): TacticalFogRect[] {
+  let list = [...(existingRects || [])];
+
+  if (newShape.mode === 'reveal') {
+    // "se uma area for revelada por completo podemos retirar ela da lista de areas ocultas"
+    list = list.filter((old) => {
+      if (old.mode === 'hide') {
+        const isCovered = isFogShapeContained(old, newShape);
+        return !isCovered;
+      }
+      if (old.mode === 'reveal') {
+        const isCovered = isFogShapeContained(old, newShape);
+        return !isCovered;
+      }
+      return true;
+    });
+
+    list.push(newShape);
+  } else {
+    // newShape.mode === 'hide'
+    // 1. Se já está contido em um hide existente maior, descarta o novo (evita marcações duplicadas)
+    const alreadyCovered = list.some((old) => old.mode === 'hide' && isFogShapeContained(newShape, old));
+    if (alreadyCovered) {
+      return pruneRedundantFogRects(list);
+    }
+
+    // 2. Remove áreas ocultas menores anteriores cobertas por este novo hide
+    list = list.filter((old) => {
+      if (old.mode === 'hide') {
+        const isCovered = isFogShapeContained(old, newShape);
+        return !isCovered;
+      }
+      return true;
+    });
+
+    list.push(newShape);
+  }
+
+  return pruneRedundantFogRects(list);
 }
