@@ -62,10 +62,12 @@ type DialogProps = {
   labelledBy: string;
   /** Salvando: o X, o clique fora e o Esc não fecham. */
   busy?: boolean;
+  /** O modal largo (modal-wide), para os formulários com linhas de campos (os ataques de uma arma). */
+  wide?: boolean;
   children: ReactNode;
 };
 
-export function Dialog({labelledBy, busy = false, children}: DialogProps) {
+export function Dialog({labelledBy, busy = false, wide = false, children}: DialogProps) {
   const box = useRef<HTMLDivElement>(null);
   const [discard, setDiscard] = useState(false);
   const st = useRef({base: null as string | null, touched: false, focusBack: null as Element | null, pressOnBack: false});
@@ -163,7 +165,7 @@ export function Dialog({labelledBy, busy = false, children}: DialogProps) {
       }}
     >
       <div
-        className="modal"
+        className={'modal' + (wide ? ' modal-wide' : '')}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}

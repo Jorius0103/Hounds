@@ -237,6 +237,23 @@ declare global {
   /** Os grupos das perícias de combate, [valor, rótulo] ('' é uma perícia comum), e o de uma perícia, pelo começo do tipo dela. */
   var SKILL_COMBAT_GROUPS: [string, string][];
   function skillCombatGroup(s: Skill | null): string;
+  /** js/tabs/tab-armas.js: uma arma pelo id (ou o de uma entrada que mudou de página no livro) e o endereço dela. */
+  function weaponById(id: string | null | undefined): Weapon | null;
+  function weaponHref(id: string): string;
+  /** Os tipos das tabelas (Melee, Ranged) em português, e o de uma arma ("Arma" quando não tem). */
+  var WEAPON_TYPE_LABELS: Record<string, string>;
+  function weaponTypeLabel(t: string | undefined): string;
+  /** As perícias dos ataques, cada uma uma vez; o primeiro ataque com dano numa linha ("sw+1 cut · alcance 1"); o modo de um ataque ("ou"). */
+  function weaponSkills(w: Weapon): string[];
+  function weaponSummary(w: Weapon): string;
+  function weaponModeText(m: string | undefined): string;
+  /** Os valores já usados num campo (os livros) e as perícias dos ataques, em ordem alfabética; o texto de busca de uma arma, com o dos ataques. */
+  function weaponValues(field: 'book'): string[];
+  function weaponSkillValues(): string[];
+  function weaponSearchText(w: Weapon): string;
+  /** As colunas dos ataques, na ordem dos livros: [campo, título da tabela, rótulo do formulário, exemplo]; e as que o formulário mostra em cada tipo. */
+  var WEAPON_ATTACK_COLS: [keyof WeaponAttack, string, string, string][];
+  var WEAPON_FORM_COLS: Record<'Melee' | 'Ranged', (keyof WeaponAttack)[]>;
   /** js/tabs/tab-combate.js: o endereço de uma perícia aberta em Combate (#pericia-combate~id). */
   function combatSkillHref(id: string): string;
   /** Uma técnica e um estilo pelo id, e os endereços deles. */
@@ -410,6 +427,13 @@ declare global {
     ): Promise<string>;
     /** Um estilo dos livros fica marcado como excluído; o do Mestre sai do banco. */
     deleteStyle(x: FightingStyle): Promise<unknown>;
+    /** Só o Mestre. attacks: as linhas da tabela, cada uma com os campos preenchidos. */
+    saveWeapon(
+      w: Weapon | null,
+      fields: {name: string; type: string; tl: string; cost: string; weight: string; lc: string; table: string; book: string; page: string; description: string; footnotes: string; attacks: WeaponAttack[]; visible: boolean; sharedWith: string[]},
+    ): Promise<string>;
+    /** Uma arma dos livros fica marcada como excluída; a do Mestre sai do banco. */
+    deleteWeapon(w: Weapon): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */
