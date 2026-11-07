@@ -254,6 +254,18 @@ declare global {
   /** As colunas dos ataques, na ordem dos livros: [campo, título da tabela, rótulo do formulário, exemplo]; e as que o formulário mostra em cada tipo. */
   var WEAPON_ATTACK_COLS: [keyof WeaponAttack, string, string, string][];
   var WEAPON_FORM_COLS: Record<'Melee' | 'Ranged', (keyof WeaponAttack)[]>;
+  /** js/tabs/tab-armaduras.js: uma armadura ou escudo pelo id (ou o de uma entrada que mudou de página no livro) e o endereço dela. */
+  function armorById(id: string | null | undefined): Armor | null;
+  function armorHref(id: string): string;
+  /** Os tipos das tabelas (Armor, Shield) em português, e o de uma entrada ("Armadura" quando não tem). */
+  var ARMOR_TYPE_LABELS: Record<string, string>;
+  function armorTypeLabel(t: string | undefined): string;
+  /** O que protege, numa linha ("RD 4/2* · torso, groin"), e os valores já usados num campo (categorias, tabelas, livros). */
+  function armorSummary(a: Armor): string;
+  function armorValues(field: 'category' | 'table' | 'book'): string[];
+  /** Os campos de uma armadura ou escudo: [campo, rótulo, exemplo], na ordem do formulário e da página. */
+  var ARMOR_FIELDS: [ArmorField, string, string][];
+  type ArmorField = 'tl' | 'location' | 'dr' | 'db' | 'hp' | 'coverDr' | 'cost' | 'weight' | 'don' | 'lc' | 'category' | 'skill' | 'defaults' | 'table' | 'book' | 'page';
   /** js/tabs/tab-combate.js: o endereço de uma perícia aberta em Combate (#pericia-combate~id). */
   function combatSkillHref(id: string): string;
   /** Uma técnica e um estilo pelo id, e os endereços deles. */
@@ -434,6 +446,10 @@ declare global {
     ): Promise<string>;
     /** Uma arma dos livros fica marcada como excluída; a do Mestre sai do banco. */
     deleteWeapon(w: Weapon): Promise<unknown>;
+    /** Só o Mestre. O tipo é Armor ou Shield; os campos vão como texto. */
+    saveArmor(a: Armor | null, fields: {name: string; type: string; notes: string; footnotes: string; visible: boolean; sharedWith: string[]} & Record<ArmorField, string>): Promise<string>;
+    /** Uma armadura dos livros fica marcada como excluída; a do Mestre sai do banco. */
+    deleteArmor(a: Armor): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */

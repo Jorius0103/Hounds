@@ -1,6 +1,8 @@
 import type {ComponentType} from 'react';
 import {WeaponPage} from './paginas/Arma';
 import {WeaponsPage} from './paginas/Armas';
+import {ArmorPage} from './paginas/Armadura';
+import {ArmorsPage} from './paginas/Armaduras';
 import {CombatPage} from './paginas/Combate';
 import {DisadvantagePage} from './paginas/Desvantagem';
 import {DisadvantagesPage} from './paginas/Desvantagens';
@@ -58,9 +60,11 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   style: StylePage,
   weapons: WeaponsPage,
   weapon: WeaponPage,
+  armors: ArmorsPage,
+  armor: ArmorPage,
   tabuleiro: TabuleiroPage,
 };
 
 // As listas longas de cartões usam a largura da tela (a classe wide do .page-inner), como as antigas que o renderPage de
 // js/app.js marca.
-export const WIDE_PAGES = new Set(['spells', 'advs', 'perks', 'disadvs', 'skills', 'combat', 'weapons']);
+export const WIDE_PAGES = new Set(['spells', 'advs', 'perks', 'disadvs', 'skills', 'combat', 'weapons', 'armors']);

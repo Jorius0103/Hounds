@@ -109,9 +109,6 @@ window.addEventListener('hashchange', function () { revealDraft = null; });
 var _rSheet = renderSheetPage;
 // @ts-expect-error -- substitui a função de tab-fichas.js por uma que também desenha o botão de visibilidade
 renderSheetPage = function () { _rSheet(); tagPage(sheetById(S.route.sheetId), 'sheets'); };
-var _rArmor = renderArmorPage;
-// @ts-expect-error -- idem, tab-armaduras.js
-renderArmorPage = function () { _rArmor(); tagPage(armorById(S.route.armorId), 'armors'); };
 var _rItem = renderItemPage;
 // @ts-expect-error -- idem, tab-itens.js
 renderItemPage = function () { _rItem(); tagPage(itemById(S.route.itemId), 'items'); };
@@ -152,14 +149,12 @@ function renderPage() {
   if (r.page === 'map' && W.store) { watchMarkersFor(r.mapId); var em = mapById(r.mapId); if (r.explore && em) Explorer.open(em); }
   if (window.hubIsReactPage && window.hubIsReactPage(r.page)) return; // drawn by the React shell (src/hub/)
   // The long card lists use the width of the screen; the other pages keep a reading width.
-  pageRoot.classList.toggle('wide', r.page === 'armors' || r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
+  pageRoot.classList.toggle('wide', r.page === 'items' || r.page === 'improvements' || r.page === 'sheet');
   if (!W.store) { pageRoot.innerHTML = '<p class="lede">Carregando…</p>'; return; }
   if (r.page === 'home') renderHomePage();
   else if (r.page === 'boards') renderBoardsPage();
   else if (r.page === 'sheets') renderSheetsPage();
   else if (r.page === 'sheet') renderSheetPage();
-  else if (r.page === 'armors') renderArmorsPage();
-  else if (r.page === 'armor') renderArmorPage();
   else if (r.page === 'items') renderItemsPage();
   else if (r.page === 'item') renderItemPage();
   else if (r.page === 'improvements') renderImprovementsPage();
@@ -250,7 +245,6 @@ function onData(kind) {
   if (S.route.page === 'sheet' && (S.ui.attrDraft || sheetDraftOpen() || gearEditing() || S.ui.dragging)) return; // a section being edited; the page redraws on save or cancel
   if (S.route.page === 'sheet' && document.activeElement && document.activeElement.classList.contains('gpts-in')) { S.ui.ptsStale = true; return; } // points being typed in the table; redraws when the field is left
   if (S.route.page === 'sheets' && document.activeElement && document.activeElement.id === 'sheetSearch') { renderSheetList(); return; }
-  if (S.route.page === 'armors' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'armorSearch') { renderArmorList(); return; }
   if (S.route.page === 'items' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'itemSearch') { renderItemList(); return; }
   if (S.route.page === 'improvements' && kind !== 'maps' && document.activeElement && document.activeElement.id === 'improvementSearch') { renderImprovementList(); return; }
   renderPage();
