@@ -58,7 +58,7 @@ Todas têm chave primária composta, que impede vínculo repetido, e chaves estr
 ### Leitura e gravação
 
 - **Leitura:** cada tabela principal tem uma view `<tabela>_doc` que junta a tabela e os vínculos dela e devolve o item já montado, no formato que as páginas usam. Assim os componentes do site continuam iguais.
-- **Gravação:** só pelas funções `hounds_put`, `hounds_patch`, `hounds_remove`, `hounds_remove_many` e `hounds_trocar_imagem_mapa`. Cada chamada roda numa transação: a tabela principal e todos os vínculos mudam juntos, ou nada muda. As funções:
+- **Gravação:** só pelas funções `hounds_put`, `hounds_patch`, `hounds_remove`, `hounds_remove_many` e `hounds_trocar_imagem_mapa`. Desde a migration 59, as do `public` são cascas que chamam as de verdade, em `hounds_interno` (que a API não expõe); para mudar uma delas, mude a de `hounds_interno`. Cada chamada roda numa transação: a tabela principal e todos os vínculos mudam juntos, ou nada muda. As funções:
   - validam os campos com as mesmas regras do site;
   - ignoram ids de itens que não existem mais;
   - nas exclusões, seguem as regras de cada entidade. Os submapas e locais de um mapa excluído sobem para o mapa pai. Os sublocais de um local excluído sobem. Um personagem excluído sai das organizações, locais e eventos. A troca da imagem de um mapa exclui os marcadores dele e, se houver marcadores, só acontece com confirmação.
