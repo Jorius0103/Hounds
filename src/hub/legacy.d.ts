@@ -266,6 +266,13 @@ declare global {
   /** Os campos de uma armadura ou escudo: [campo, rótulo, exemplo], na ordem do formulário e da página. */
   var ARMOR_FIELDS: [ArmorField, string, string][];
   type ArmorField = 'tl' | 'location' | 'dr' | 'db' | 'hp' | 'coverDr' | 'cost' | 'weight' | 'don' | 'lc' | 'category' | 'skill' | 'defaults' | 'table' | 'book' | 'page';
+  /** js/tabs/tab-itens.js: um item pelo id (ou o de uma entrada que mudou de página no livro), o endereço dele e os valores já usados num campo. */
+  function itemById(id: string | null | undefined): GearItem | null;
+  function itemHref(id: string): string;
+  function itemValues(field: 'category' | 'book'): string[];
+  /** Os campos de um item além do nome e da descrição: [campo, rótulo, exemplo], na ordem do formulário e da página. */
+  var ITEM_FIELDS: [ItemField, string, string][];
+  type ItemField = 'cost' | 'weight' | 'tl' | 'category' | 'book' | 'page';
   /** js/tabs/tab-combate.js: o endereço de uma perícia aberta em Combate (#pericia-combate~id). */
   function combatSkillHref(id: string): string;
   /** Uma técnica e um estilo pelo id, e os endereços deles. */
@@ -450,6 +457,10 @@ declare global {
     saveArmor(a: Armor | null, fields: {name: string; type: string; notes: string; footnotes: string; visible: boolean; sharedWith: string[]} & Record<ArmorField, string>): Promise<string>;
     /** Uma armadura dos livros fica marcada como excluída; a do Mestre sai do banco. */
     deleteArmor(a: Armor): Promise<unknown>;
+    /** Só o Mestre. */
+    saveItem(x: GearItem | null, fields: {name: string; description: string; visible: boolean; sharedWith: string[]} & Record<ItemField, string>): Promise<string>;
+    /** Um item dos livros fica marcado como excluído; o do Mestre sai do banco. */
+    deleteItem(x: GearItem): Promise<unknown>;
   };
 
   /** js/pagina.js: se o usuário pode gravar (banco conectado e permissão). */
