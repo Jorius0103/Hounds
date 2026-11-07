@@ -2281,283 +2281,267 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
             );
           })}
 
+          {/* CLIPPATHS PARA REVELAÇÕES CRONOLÓGICAS DE NÉVOA */}
+          {tacticalState.fogEnabled && (tacticalState.fogRects || []).map((r, idx) => {
+            if (r.mode !== 'reveal') return null;
+            const clipId = `fog-reveal-clip-${r.id || `idx-${idx}`}`;
+            if (r.shape === 'circle') {
+              const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
+              return (
+                <clipPath id={clipId} key={clipId}>
+                  <circle cx={mapX + r.x} cy={mapY + r.y} r={rad} />
+                </clipPath>
+              );
+            }
+            if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
+              return (
+                <clipPath id={clipId} key={clipId}>
+                  <polygon points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')} />
+                </clipPath>
+              );
+            }
+            return (
+              <clipPath id={clipId} key={clipId}>
+                <rect x={mapX + r.x} y={mapY + r.y} width={r.width} height={r.height} />
+              </clipPath>
+            );
+          })}
+
           {/* MÁSCARA DA NÉVOA DE GUERRA (LINHAS RETANGULARES PURAS E FOCOS DE LUZ COM DEGRADÊ SUAVE) */}
-          {tacticalState.fogEnabled && (
-            <mask
-              id="tactical-fog-mask"
-              maskUnits="userSpaceOnUse"
-              maskContentUnits="userSpaceOnUse"
-              x={mapX}
-              y={mapY}
-              width={mapW}
-              height={mapH}
-            >
-              {/* 1. Base branca cobre todo o mapa de névoa (branco = névoa 100% opaca) */}
-              <rect x={mapX} y={mapY} width={mapW} height={mapH} fill="#ffffff" />
+          {tacticalState.fogEnabled && (() => {
+            // Helper para renderizar a forma de uma área de névoa (retângulo, círculo ou polígono)
+            const renderFogShape = (r: TacticalFogRect, fill: string, key: string) => {
+              if (r.shape === 'circle') {
+                const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
+                return (
+                  <circle
+                    key={key}
+                    cx={mapX + r.x}
+                    cy={mapY + r.y}
+                    r={rad}
+                    fill={fill}
+                  />
+                );
+              }
+              if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
+                return (
+                  <polygon
+                    key={key}
+                    points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                    fill={fill}
+                  />
+                );
+              }
+              return (
+                <rect
+                  key={key}
+                  x={mapX + r.x}
+                  y={mapY + r.y}
+                  width={r.width}
+                  height={r.height}
+                  fill={fill}
+                />
+              );
+            };
 
-              {/* CASO 1: NÃO USAR ILUMINAÇÃO COMO FATOR DE VISÃO (useLightingVision === false) */}
-              {/* "se não for usar os jogadores enxergam tudo que o mestre for liberando" */}
-              {tacticalState.useLightingVision === false && (
-                <>
-                  {/* Revelações manuais do mestre: preto = revela o mapa */}
-                  {(tacticalState.fogRects || [])
-                    .filter((r) => r.mode === 'reveal')
-                    .map((r, idx) => {
-                      if (r.shape === 'circle') {
-                        const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
-                        return (
-                          <circle
-                            key={r.id || `reveal-circle-${idx}`}
-                            cx={mapX + r.x}
-                            cy={mapY + r.y}
-                            r={rad}
-                            fill="#000000"
-                          />
-                        );
-                      }
-                      if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
-                        return (
-                          <polygon
-                            key={r.id || `reveal-poly-${idx}`}
-                            points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
-                            fill="#000000"
-                          />
-                        );
-                      }
-                      return (
-                        <rect
-                          key={r.id || `reveal-rect-${idx}`}
-                          x={mapX + r.x}
-                          y={mapY + r.y}
-                          width={r.width}
-                          height={r.height}
-                          fill="#000000"
-                        />
-                      );
-                    })}
+            // Helper para renderizar a camada de iluminação (focos de luz, halos pessoais e tochas dos tokens)
+            // Preto (#000000) na máscara remove a névoa e torna o terreno visível
+            const renderLightingMaskElements = (prefix: string) => (
+              <g key={`lighting-elements-${prefix}`}>
+                {/* 1. Focos de luz fixos ativos no mapa (contidos por paredes e portas e filtrados por linha de visão) */}
+                {(tacticalState.lights || []).map((light) => {
+                  if (light.active === false || (light.radius || 0) <= 0 || !isLightVisibleToPlayer(light)) return null;
+                  const center = getLightCenter(light);
+                  const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
+                  const visPath = lightVisibilityPaths[light.id];
 
-                  {/* Retrocompatibilidade com células reveladas antes */}
-                  {(tacticalState.fogRevealedCells || []).map((cellKey) => {
-                    const [cStr, rStr] = cellKey.split(',');
-                    const c = parseInt(cStr, 10);
-                    const r = parseInt(rStr, 10);
-                    if (isNaN(c) || isNaN(r)) return null;
-                    const relCenter = getHexCenter(c, r, hexSize);
+                  if (visPath) {
                     return (
-                      <polygon
-                        key={`old-cell-${cellKey}`}
-                        points={getHexPointsString({ x: mapX + relCenter.x, y: mapY + relCenter.y }, hexSize)}
+                      <path
+                        key={`${prefix}-light-mask-${light.id}`}
+                        d={visPath}
                         fill="#000000"
                       />
                     );
-                  })}
-                </>
-              )}
+                  }
 
-              {/* CASO 2: USAR ILUMINAÇÃO COMO FATOR DE VISÃO (useLightingVision !== false) */}
-              {/* "se for usar os jogadores só enxergam o que estiver na sua visão e tiver dentro do raio da iluminação. Salas que ele não pode ver não mostram iluminação para o jogador." */}
-              {tacticalState.useLightingVision !== false && (
-                <>
-                  {/* 1. Focos de luz fixos ativos no mapa (contidos por paredes e portas e filtrados por linha de visão) */}
-                  {(tacticalState.lights || []).map((light) => {
-                    if (light.active === false || (light.radius || 0) <= 0 || !isLightVisibleToPlayer(light)) return null;
-                    const center = getLightCenter(light);
-                    const radiusPixels = (light.radius || 4) * hexWidth * 0.95;
-                    const visPath = lightVisibilityPaths[light.id];
-
-                    if (visPath) {
-                      return (
-                        <path
-                          key={`light-mask-${light.id}`}
-                          d={visPath}
-                          fill="#000000"
-                        />
-                      );
-                    }
-
-                    if (light.angle && light.angle < 360) {
-                      return (
-                        <path
-                          key={`light-mask-${light.id}`}
-                          d={getCircleSectorPath(center.x, center.y, radiusPixels, light.angle, light.rotation ?? 0)}
-                          fill={`url(#fog-light-attenuation-${light.id})`}
-                        />
-                      );
-                    }
-
+                  if (light.angle && light.angle < 360) {
                     return (
-                      <circle
-                        key={`light-mask-${light.id}`}
-                        cx={center.x}
-                        cy={center.y}
-                        r={radiusPixels}
+                      <path
+                        key={`${prefix}-light-mask-${light.id}`}
+                        d={getCircleSectorPath(center.x, center.y, radiusPixels, light.angle, light.rotation ?? 0)}
                         fill={`url(#fog-light-attenuation-${light.id})`}
                       />
                     );
-                  })}
-
-                    {/* 2. Iluminação mínima pessoal (1 jarda) para cada combatente visível:
-                        Garante que o combatente nunca seja cortado e seja sempre encontrado */}
-                    {tokens.map((token) => {
-                      if (isPlayerView && (token.hiddenFromPlayers || token.layer === 'gm')) return null;
-                      const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
-                      const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
-                      const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-                      const personalRadius = hexWidth * 0.95;
-
-                      return (
-                        <circle
-                          key={`token-personal-halo-${token.id}`}
-                          cx={mapX + relCenter.x}
-                          cy={mapY + relCenter.y}
-                          r={personalRadius}
-                          fill="#000000"
-                        />
-                      );
-                    })}
-
-                    {/* 3. Tokens com luz própria (tochas / lanternas / raio de iluminação configurado) */}
-                    {tokens.map((token) => {
-                      if (!isTokenEmittingLight(token)) return null;
-                      const radiusYards = getTokenLightRadius(token);
-                      if (radiusYards <= 0) return null;
-                      if (isPlayerView && (token.hiddenFromPlayers || token.layer === 'gm')) return null;
-                      const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
-                      const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
-                      const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-                      const radiusPixels = radiusYards * hexWidth * 0.95;
-                      const visPath = tokenLightVisibilityPaths[token.id];
-
-                      if (visPath) {
-                        return (
-                          <path
-                            key={`token-light-mask-${token.id}`}
-                            d={visPath}
-                            fill="#000000"
-                          />
-                        );
-                      }
-
-                      if (token.lightAngle && token.lightAngle < 360) {
-                        const isRotating = rotatingTokenId === token.id;
-                        const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
-                          ? previewRotation.rotation
-                          : (typeof token.rotation === 'number'
-                              ? token.rotation
-                              : ((token.facing * 60 + 180) % 360));
-                        const facingAngleDegrees = ((tokenRotation + 90) % 360 + 360) % 360;
-                        return (
-                          <path
-                            key={`token-light-mask-${token.id}`}
-                            d={getCircleSectorPath(mapX + relCenter.x, mapY + relCenter.y, radiusPixels, token.lightAngle, facingAngleDegrees)}
-                            fill="#000000"
-                          />
-                        );
-                      }
-
-                      return (
-                        <circle
-                          key={`token-light-mask-${token.id}`}
-                          cx={mapX + relCenter.x}
-                          cy={mapY + relCenter.y}
-                          r={radiusPixels}
-                          fill="#000000"
-                        />
-                      );
-                    })}
-
-                    {/* 4. Tokens com Visão Liberada (hasInfiniteVision): enxergam tudo em sua linha de visão */}
-                    {tokens.map((token) => {
-                      if (!token.hasInfiniteVision) return null;
-                      if (isPlayerView && (token.hiddenFromPlayers || token.layer === 'gm')) return null;
-                      const visPath = tokenLightVisibilityPaths[token.id];
-                      if (!visPath) return null;
-                      return (
-                        <path
-                          key={`token-inf-vision-${token.id}`}
-                          d={visPath}
-                          fill="#000000"
-                        />
-                      );
-                    })}
-                    {/* 5. Revelações manuais do mestre no modo iluminação: áreas que o mestre mostrou */}
-                    {(tacticalState.fogRects || [])
-                      .filter((r) => r.mode === 'reveal')
-                      .map((r, idx) => {
-                        if (r.shape === 'circle') {
-                          const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
-                          return (
-                            <circle
-                              key={`vis-reveal-circle-${r.id || idx}`}
-                              cx={mapX + r.x}
-                              cy={mapY + r.y}
-                              r={rad}
-                              fill="#000000"
-                            />
-                          );
-                        }
-                        if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
-                          return (
-                            <polygon
-                              key={`vis-reveal-poly-${r.id || idx}`}
-                              points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
-                              fill="#000000"
-                            />
-                          );
-                        }
-                        return (
-                          <rect
-                            key={`vis-reveal-rect-${r.id || idx}`}
-                            x={mapX + r.x}
-                            y={mapY + r.y}
-                            width={r.width}
-                            height={r.height}
-                            fill="#000000"
-                          />
-                        );
-                      })}
-                </>
-              )}
-
-              {/* ÁREAS OCULTADAS PELO MESTRE (Ocultar Áreas: Retângulos, Círculos e Polígonos): SEMPRE DESENHADOS POR CIMA DE TUDO EM BRANCO (#ffffff) */}
-              {/* "Áreas ocultadas não aparecem nem com visualização." */}
-              {(tacticalState.fogRects || [])
-                .filter((r) => r.mode === 'hide')
-                .map((r, idx) => {
-                  if (r.shape === 'circle') {
-                    const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
-                    return (
-                      <circle
-                        key={r.id || `hide-circle-${idx}`}
-                        cx={mapX + r.x}
-                        cy={mapY + r.y}
-                        r={rad}
-                        fill="#ffffff"
-                      />
-                    );
                   }
-                  if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
-                    return (
-                      <polygon
-                        key={r.id || `hide-poly-${idx}`}
-                        points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
-                        fill="#ffffff"
-                      />
-                    );
-                  }
+
                   return (
-                    <rect
-                      key={r.id || `hide-rect-${idx}`}
-                      x={mapX + r.x}
-                      y={mapY + r.y}
-                      width={r.width}
-                      height={r.height}
-                      fill="#ffffff"
+                    <circle
+                      key={`${prefix}-light-mask-${light.id}`}
+                      cx={center.x}
+                      cy={center.y}
+                      r={radiusPixels}
+                      fill={`url(#fog-light-attenuation-${light.id})`}
                     />
                   );
                 })}
-            </mask>
-          )}
+
+                {/* 2. Iluminação mínima pessoal (1 jarda) para cada combatente visível */}
+                {tokens.map((token) => {
+                  if (isPlayerView && (token.hiddenFromPlayers || token.layer === 'gm')) return null;
+                  const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
+                  const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
+                  const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+                  const personalRadius = hexWidth * 0.95;
+
+                  return (
+                    <circle
+                      key={`${prefix}-token-personal-halo-${token.id}`}
+                      cx={mapX + relCenter.x}
+                      cy={mapY + relCenter.y}
+                      r={personalRadius}
+                      fill="#000000"
+                    />
+                  );
+                })}
+
+                {/* 3. Tokens com luz própria (tochas / lanternas / raio de iluminação configurado) */}
+                {tokens.map((token) => {
+                  if (!isTokenEmittingLight(token)) return null;
+                  const radiusYards = getTokenLightRadius(token);
+                  if (radiusYards <= 0) return null;
+                  if (isPlayerView && (token.hiddenFromPlayers || token.layer === 'gm')) return null;
+                  const displayGridX = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.col : token.gridX;
+                  const displayGridY = draggedTokenId === token.id && dragHoverHex ? dragHoverHex.row : token.gridY;
+                  const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+                  const radiusPixels = radiusYards * hexWidth * 0.95;
+                  const visPath = tokenLightVisibilityPaths[token.id];
+
+                  if (visPath) {
+                    return (
+                      <path
+                        key={`${prefix}-token-light-mask-${token.id}`}
+                        d={visPath}
+                        fill="#000000"
+                      />
+                    );
+                  }
+
+                  if (token.lightAngle && token.lightAngle < 360) {
+                    const isRotating = rotatingTokenId === token.id;
+                    const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
+                      ? previewRotation.rotation
+                      : (typeof token.rotation === 'number'
+                          ? token.rotation
+                          : ((token.facing * 60 + 180) % 360));
+                    const facingAngleDegrees = ((tokenRotation + 90) % 360 + 360) % 360;
+                    return (
+                      <path
+                        key={`${prefix}-token-light-mask-${token.id}`}
+                        d={getCircleSectorPath(mapX + relCenter.x, mapY + relCenter.y, radiusPixels, token.lightAngle, facingAngleDegrees)}
+                        fill="#000000"
+                      />
+                    );
+                  }
+
+                  return (
+                    <circle
+                      key={`${prefix}-token-light-mask-${token.id}`}
+                      cx={mapX + relCenter.x}
+                      cy={mapY + relCenter.y}
+                      r={radiusPixels}
+                      fill="#000000"
+                    />
+                  );
+                })}
+
+                {/* 4. Tokens com Visão Liberada (hasInfiniteVision): enxergam tudo em sua linha de visão */}
+                {tokens.map((token) => {
+                  if (!token.hasInfiniteVision) return null;
+                  if (isPlayerView && (token.hiddenFromPlayers || token.layer === 'gm')) return null;
+                  const visPath = tokenLightVisibilityPaths[token.id];
+                  if (!visPath) return null;
+                  return (
+                    <path
+                      key={`${prefix}-token-inf-vision-${token.id}`}
+                      d={visPath}
+                      fill="#000000"
+                    />
+                  );
+                })}
+              </g>
+            );
+
+            return (
+              <mask
+                id="tactical-fog-mask"
+                maskUnits="userSpaceOnUse"
+                maskContentUnits="userSpaceOnUse"
+                x={mapX}
+                y={mapY}
+                width={mapW}
+                height={mapH}
+              >
+                {/* 1. Base branca cobre todo o mapa de névoa (branco = névoa 100% opaca) */}
+                <rect x={mapX} y={mapY} width={mapW} height={mapH} fill="#ffffff" />
+
+                {/* CASO 1: NÃO USAR ILUMINAÇÃO COMO FATOR DE VISÃO (useLightingVision === false) */}
+                {/* Ordem cronológica estrita: a última ação na área prevalece (revelar = preto, ocultar = branco) */}
+                {tacticalState.useLightingVision === false && (
+                  <>
+                    {(tacticalState.fogRects || []).map((r, idx) => {
+                      const isReveal = r.mode === 'reveal';
+                      return renderFogShape(r, isReveal ? '#000000' : '#ffffff', `fog-action-${r.id || idx}`);
+                    })}
+
+                    {/* Retrocompatibilidade com células reveladas antes */}
+                    {(tacticalState.fogRevealedCells || []).map((cellKey) => {
+                      const [cStr, rStr] = cellKey.split(',');
+                      const c = parseInt(cStr, 10);
+                      const r = parseInt(rStr, 10);
+                      if (isNaN(c) || isNaN(r)) return null;
+                      const relCenter = getHexCenter(c, r, hexSize);
+                      return (
+                        <polygon
+                          key={`old-cell-${cellKey}`}
+                          points={getHexPointsString({ x: mapX + relCenter.x, y: mapY + relCenter.y }, hexSize)}
+                          fill="#000000"
+                        />
+                      );
+                    })}
+                  </>
+                )}
+
+                {/* CASO 2: USAR ILUMINAÇÃO COMO FATOR DE VISÃO (useLightingVision !== false) */}
+                {/* "os jogadores só enxergam o que estiver na sua visão e tiver dentro do raio da iluminação" */}
+                {/* A iluminação dos personagens é estritamente respeitada (Mostrar Áreas não concede visão no escuro além da luz) */}
+                {tacticalState.useLightingVision !== false && (
+                  <>
+                    {/* Camada de luz base dos personagens e tochas */}
+                    {renderLightingMaskElements('base')}
+
+                    {/* Ações cronológicas do mestre:
+                        - 'hide': desenha branco (#ffffff) por cima, forçando a área a ficar oculta da visão/luz dos jogadores.
+                        - 'reveal': aplica clipPath da forma e restaura a iluminação (#000000) apenas onde houver tochas/visão nela!
+                          As partes sem luz dentro da forma continuam escuras (#ffffff), impedindo que o jogador enxergue no escuro além de sua luz.
+                    */}
+                    {(tacticalState.fogRects || []).map((r, idx) => {
+                      const key = `fog-action-${r.id || idx}`;
+                      if (r.mode === 'hide') {
+                        return renderFogShape(r, '#ffffff', key);
+                      }
+                      const clipId = `fog-reveal-clip-${r.id || `idx-${idx}`}`;
+                      return (
+                        <g key={key} clipPath={`url(#${clipId})`}>
+                          {renderLightingMaskElements(`restored-${r.id || idx}`)}
+                        </g>
+                      );
+                    })}
+                  </>
+                )}
+              </mask>
+            );
+          })()}
         </defs>
 
         {/* Grupo com Pan & Zoom transform */}
