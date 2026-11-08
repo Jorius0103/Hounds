@@ -1,5 +1,5 @@
 // Revisão dos textos dos catálogos de GURPS (dados/magias.json, vantagens.json, desvantagens.json,
-// pericias.json, tecnicas.json, estilos.json, armas.json, armaduras.json e itens.json): conserta o que a extração dos PDFs estragou — espaço antes da
+// pericias.json, tecnicas.json, estilos.json, cinematicas.json, armas.json, armaduras.json e itens.json): conserta o que a extração dos PDFs estragou — espaço antes da
 // pontuação, hífen de fim de linha ("high- Will", "pp. 242- 253"), palavras que perderam o hífen
 // ("onehanded", "IQbased"), reticências espaçadas (". . ."), restos do custo no começo da
 // descrição, listas com "•" num parágrafo só — sem mudar o que o texto diz.
@@ -82,7 +82,8 @@ export function revisarItem(x) {
     if (/^see\b/.test(d)) d = 'S' + d.slice(1);
     // A heading inside the text ("… 5 points. Magery 1+: Higher levels…", "Enhanced Dodge: You…")
     // starts a paragraph: up to six words, each capitalized (or a number), then ":" and a capital.
-    d = d.replace(/([.!?…”):]) (?=[A-Z0-9][\w’'/+-]*(?: (?:[A-Z0-9(][\w’'/+()-]*|of|the|and|or|to|a|in|on|for|with|vs\.)){0,5}: [A-Z“(0-9])/g, '$1\n\n');
+    // Not after "p." or "pp." ("the Kayo rule on p. 24 of Action 3: Furious Fists" is no heading).
+    d = d.replace(/(?<!\bpp?)([.!?…”):]) (?=[A-Z0-9][\w’'/+-]*(?: (?:[A-Z0-9(][\w’'/+()-]*|of|the|and|or|to|a|in|on|for|with|vs\.)){0,5}: [A-Z“(0-9])/g, '$1\n\n');
     // "Special Limitations"/"Special Enhancements" head the list of the ones that follow: a line of their own.
     d = d.replace(/(^|\n)(Special (?:Limitations|Enhancements|Modifiers)) (?=[A-Z])/g, '$1$2\n');
     // Not after a table of numbers ("0 -1 -2") nor after a closing quote, which has its own.
@@ -94,9 +95,9 @@ export function revisarItem(x) {
   return out;
 }
 
-// CLI: revisa os dez arquivos no lugar, no mesmo formato compacto.
+// CLI: revisa os arquivos dos catálogos no lugar, no mesmo formato compacto.
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  for (const f of ['magias', 'vantagens', 'desvantagens', 'pericias', 'tecnicas', 'estilos', 'armas', 'armaduras', 'itens', 'melhoramentos']) {
+  for (const f of ['magias', 'vantagens', 'desvantagens', 'pericias', 'tecnicas', 'estilos', 'cinematicas', 'armas', 'armaduras', 'itens', 'melhoramentos']) {
     const file = path.join(ROOT, 'dados', f + '.json');
     const list = JSON.parse(readFileSync(file, 'utf8'));
     let n = 0;

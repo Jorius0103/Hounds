@@ -11,6 +11,7 @@
      #mesa · #maps · #map~<id> · #map~<id>~explorar · #locais · #local~<id>
      #fichas · #ficha~<id> · #ficha~<id>~<ally id> (an ally, in its main sheet's page) · #eventos · #evento~<id>
      #pericia~<id> is a skill under Perícias; #pericia-combate~<id> the same page under Combate
+     #tecnica~<id> · #estilo~<id> · #cinematica~<id>: a technique, a fighting style and a cinematic rule, under Combate
      #desvantagens · #desvantagem~<id> · #armas · #arma~<id> · #armaduras · #armadura~<id> · #itens · #item~<id>
      #melhoramentos · #melhoramento~<id> · #tabuleiros · #tabuleiro~<id>
      #perks · #perk~<id>: the perks of the advantages' catalog, apart from #vantagens
@@ -44,6 +45,7 @@ function parseRoute() {
   if (p[0] === 'pericia-combate' && p[1]) return { page: 'skill', skillId: p[1], node: 'cskill:' + p[1] };
   if (p[0] === 'tecnica' && p[1]) return { page: 'tech', techId: p[1], node: 'tech:' + p[1] };
   if (p[0] === 'estilo' && p[1]) return { page: 'style', styleId: p[1], node: 'style:' + p[1] };
+  if (p[0] === 'cinematica' && p[1]) return { page: 'cinematic', cineId: p[1], node: 'cine:' + p[1] };
   if (p[0] === 'armas') return { page: 'weapons', node: 'weapons' };
   if (p[0] === 'arma' && p[1]) return { page: 'weapon', weaponId: p[1], node: 'weapon:' + p[1] };
   if (p[0] === 'armaduras') return { page: 'armors', node: 'armors' };
@@ -93,6 +95,7 @@ function hrefFor(node) {
   if (node.indexOf('cskill:') === 0) return '#pericia-combate~' + encodeURIComponent(node.slice(7));
   if (node.indexOf('tech:') === 0) return '#tecnica~' + encodeURIComponent(node.slice(5));
   if (node.indexOf('style:') === 0) return '#estilo~' + encodeURIComponent(node.slice(6));
+  if (node.indexOf('cine:') === 0) return '#cinematica~' + encodeURIComponent(node.slice(5));
   if (node === 'weapons') return '#armas';
   if (node.indexOf('weapon:') === 0) return '#arma~' + encodeURIComponent(node.slice(7));
   if (node === 'armors') return '#armaduras';

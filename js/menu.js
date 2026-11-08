@@ -77,7 +77,8 @@ function buildMenu() {
       { id: 'skills', label: 'Perícias', icon: ICON.skill, route: true, hideKids: true,
         children: openLeaf('skill:', ICON.skill, skillById, 'Perícia') },
       { id: 'combat', label: 'Combate', icon: ICON.combat, route: true, hideKids: true,
-        children: openLeaf('cskill:', ICON.skill, skillById, 'Perícia').concat(openLeaf('tech:', ICON.combat, techById, 'Técnica')).concat(openLeaf('style:', ICON.combat, styleById, 'Estilo')) },
+        children: openLeaf('cskill:', ICON.skill, skillById, 'Perícia').concat(openLeaf('tech:', ICON.combat, techById, 'Técnica')).concat(openLeaf('style:', ICON.combat, styleById, 'Estilo'))
+          .concat(openLeaf('cine:', ICON.cinematic, cinematicById, 'Cinematic')) },
       { id: 'weapons', label: 'Armas', icon: ICON.weapon, route: true, hideKids: true,
         children: openLeaf('weapon:', ICON.weapon, weaponById, 'Arma') },
       { id: 'armors', label: 'Armaduras', icon: ICON.armor, route: true, hideKids: true,

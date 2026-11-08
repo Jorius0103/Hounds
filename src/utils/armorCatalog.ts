@@ -1112,6 +1112,60 @@ export function doesArmorFitLocation(armorLocStr?: string, bodyPartLoc?: string)
   return false;
 }
 
+// Os locais das tabelas em português, com artigo para entrar na frase. "body" é tronco e virilha; "limbs", braços e pernas.
+const COVERAGE_PARTS: Record<string, string> = {
+  torso: 'o tronco',
+  groin: 'a virilha',
+  arms: 'os braços',
+  hands: 'as mãos',
+  legs: 'as pernas',
+  feet: 'os pés',
+  head: 'a cabeça',
+  skull: 'o crânio',
+  face: 'o rosto',
+  eyes: 'os olhos',
+  neck: 'o pescoço',
+};
+const COVERAGE_GROUPS: Record<string, string[]> = { body: ['torso', 'groin'], limbs: ['arms', 'legs'] };
+
+function joinParts(parts: string[]): string {
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}` : parts[0] || '';
+}
+
+/**
+ * Descreve em português o que a armadura cobre, para a descrição do catálogo. Numa armadura de tronco (um peitoral),
+ * diz se ela cobre também outras partes ("Cobre o tronco (e os órgãos vitais) e também a virilha.") ou só o tronco;
+ * RD com F é só a frente e † é cobertura parcial. Vazio quando o local não é conhecido.
+ */
+export function describeArmorCoverage(armor: { location?: string; dr?: string }): string {
+  const loc = String(armor.location || '').toLowerCase().trim();
+  if (!loc) return '';
+  if (loc === 'all') return 'Serve para qualquer parte do corpo.';
+  if (loc.includes('full suit')) return 'Cobre o corpo todo.';
+  if (loc.includes('qualquer')) return 'Cobre o tronco (e os órgãos vitais); o mesmo material serve para qualquer outra parte do corpo.';
+
+  const partial = loc.includes('†');
+  const front = /\dF/.test(String(armor.dr || ''));
+  const parts = loc
+    .replace(/†/g, '')
+    .split(/\s*,\s*/)
+    .flatMap((w) => COVERAGE_GROUPS[w] || [w])
+    .filter((w, i, all) => COVERAGE_PARTS[w] && all.indexOf(w) === i);
+  if (!parts.length) return '';
+
+  if (!parts.includes('torso')) {
+    return `Cobre ${joinParts(parts.map((p) => COVERAGE_PARTS[p]))}${front ? ' (só pela frente)' : ''}.`;
+  }
+  const others = parts.filter((p) => p !== 'torso').map((p) => COVERAGE_PARTS[p]);
+  if (others.length) {
+    const torso = front ? 'a frente do tronco (e dos órgãos vitais)' : 'o tronco (e os órgãos vitais)';
+    return `Cobre ${torso}${partial ? ' em parte (†)' : ''} e também ${joinParts(others)}.`;
+  }
+  if (front) return 'Cobre só a frente do tronco (e dos órgãos vitais); não protege as costas nem outras partes.';
+  if (partial) return 'Cobre só parte do tronco (†); não cobre outras partes.';
+  return 'Cobre só o tronco (e os órgãos vitais); não cobre outras partes.';
+}
+
 /**
  * Retorna as partes do corpo que esta armadura cobre, baseado na lista completa de partes
  */

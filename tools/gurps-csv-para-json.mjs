@@ -1,8 +1,9 @@
 // Converte as planilhas de GURPS (Gurps/magias.csv, Gurps/advantages.csv, Gurps/desvantagens.csv,
-// Gurps/pericias.csv, Gurps/tecnicas.csv, Gurps/estilos.csv, Gurps/armas.csv, Gurps/armaduras.csv,
-// Gurps/itens.csv e Gurps/melhoramentos.csv) nos arquivos que o site sincroniza: dados/magias.json,
-// dados/vantagens.json, dados/desvantagens.json, dados/pericias.json, dados/tecnicas.json,
-// dados/estilos.json, dados/armas.json, dados/armaduras.json, dados/itens.json e dados/melhoramentos.json.
+// Gurps/pericias.csv, Gurps/tecnicas.csv, Gurps/estilos.csv, Gurps/cinematicas.csv, Gurps/armas.csv,
+// Gurps/armaduras.csv, Gurps/itens.csv e Gurps/melhoramentos.csv) nos arquivos que o site sincroniza:
+// dados/magias.json, dados/vantagens.json, dados/desvantagens.json, dados/pericias.json, dados/tecnicas.json,
+// dados/estilos.json, dados/cinematicas.json, dados/armas.json, dados/armaduras.json, dados/itens.json e
+// dados/melhoramentos.json.
 //
 //   node tools/gurps-csv-para-json.mjs
 //
@@ -270,6 +271,25 @@ const styles = uniqueIds(mergeSame(resolveReferences(parseCsv(readFileSync(path.
   };
 }))));
 write('estilos.json', styles);
+
+// ---------- cinemáticas ----------
+// The cinematic rules of the books (Cinematic Combat Rules of the Basic Set, the Cinematic Combat chapter of
+// Martial Arts, the cinematic weapons of Low-Tech Companion 2…), one entry per rule, for the Cinematic tab of
+// Combate. They are running text with sidebars, without the fixed format the extraction scripts recognize:
+// Gurps/cinematicas.csv was transcribed from the PDFs and revised by hand (the book's typos too, such as
+// "p. 1007" for p. 107). categoria is the theme of the tab's filter; secao, the heading of the book it is under.
+const CINEMATIC_BOOKS = { ...TECH_BOOKS, 'GURPS Powers': 'P', 'GURPS 4th: Power Ups 5: Impulse Buys': 'PU5',
+  'GURPS 4th: Power Ups 7: Wildcard Skills': 'PU7' };
+const cinematics = uniqueIds(parseCsv(readFileSync(path.join(ROOT, 'Gurps', 'cinematicas.csv'), 'utf8')).map((r) => {
+  const code = bookCode(CINEMATIC_BOOKS, r.livro, 'cinematicas.csv');
+  return {
+    id: 'cine_' + slug(r.regra) + '_' + code.toLowerCase() + r.pagina,
+    name: r.regra, category: r.categoria, section: r.secao, description: r.descricao,
+    // A code that ends in a number gets a colon before the page: "LTC2:16", not "LTC216".
+    book: r.livro, page: code + (/\d$/.test(code) ? ':' : '') + r.pagina
+  };
+}));
+write('cinematicas.json', cinematics);
 
 // ---------- armas ----------
 // The books with weapon and armor tables; the same codes as the other catalogs.

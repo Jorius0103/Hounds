@@ -3,6 +3,7 @@ import {WeaponPage} from './paginas/Arma';
 import {WeaponsPage} from './paginas/Armas';
 import {ArmorPage} from './paginas/Armadura';
 import {ArmorsPage} from './paginas/Armaduras';
+import {CinematicPage} from './paginas/Cinematica';
 import {CombatPage} from './paginas/Combate';
 import {DisadvantagePage} from './paginas/Desvantagem';
 import {DisadvantagesPage} from './paginas/Desvantagens';
@@ -62,6 +63,7 @@ export const PAGES: Partial<Record<string, ComponentType<HubPageProps>>> = {
   combat: CombatPage,
   tech: TechniquePage,
   style: StylePage,
+  cinematic: CinematicPage,
   weapons: WeaponsPage,
   weapon: WeaponPage,
   armors: ArmorsPage,

@@ -311,6 +311,14 @@ declare global {
   var STYLE_KIND_PAGE: Record<string, string>;
   function styleKindList(kind: string): {id: string; name: string; specialty?: boolean}[];
   function styleKindInfo(kind: string, e: object): string;
+  /** js/tabs/tab-combate.js: uma regra cinemática pelo id (ou a de uma entrada que mudou de página no livro) e o endereço dela. */
+  function cinematicById(id: string | null | undefined): Cinematic | null;
+  function cinematicHref(id: string): string;
+  /** Os temas do filtro da aba Cinematic, na ordem, e o que ela lista: [valor, rótulo] (regras, perícias, técnicas ou tudo). */
+  var CINEMATIC_CATEGORIES: string[];
+  var CINEMATIC_KINDS: [string, string][];
+  /** As perícias que os livros marcam como cinemáticas (*), sem as remissões. */
+  function isCinematicSkill(s: Skill): boolean;
   /** js/tabs/ficha-efeitos.js: os efeitos que o livro dá a uma desvantagem para uma linha da ficha (o nome, os pontos e os níveis). */
   function disadvBookFx(d: Disadvantage, row: {name: string; cost: number; levels: number}): AdvEffect[];
   /** js/tabs/ficha-efeitos.js: os efeitos cadastrados de uma vantagem, limpos; e, sem eles, os do livro para uma linha da ficha (o nome e os pontos). */

@@ -1,8 +1,8 @@
 /* =====================================================================
-   Hounds — Aba Combate (Regras › Combate): perícias de combate, técnicas e estilos
-   A página com as três listas, a de técnica, a de estilo e os formulários
+   Hounds — Aba Combate (Regras › Combate): perícias de combate, técnicas, estilos e regras cinemáticas
+   A página com as quatro listas, a de técnica, a de estilo, a de regra cinemática e os formulários
    são React (src/hub/paginas/Combate.tsx, Tecnica.tsx, TecnicaForm.tsx,
-   Estilo.tsx e EstiloForm.tsx); aqui ficam os dados (o que é de combate,
+   Estilo.tsx, EstiloForm.tsx e Cinematica.tsx); aqui ficam os dados (o que é de combate,
    as listas dos estilos e o que cada item nomeia nos catálogos), a gravação
    (Ops) e as regras de uma técnica num modal, para os links das fichas.
    Script clássico: as declarações de nível superior são globais e
@@ -13,7 +13,7 @@
 
 /* =====================================================================
    Combate de GURPS
-   Três listas na mesma página:
+   Quatro listas na mesma página (a quarta, Cinematic, mais abaixo):
      - Perícias de combate: as entradas de Regras › Perícias (dados/pericias.json)
        que são de armas, combate desarmado e luta (COMBAT_SKILLS), mais as de
        imbuement (tipo "Melee; DX/Very Hard"). Abrem a página da perícia dentro de
@@ -148,6 +148,24 @@ function styleChipsHtml(text, kind) {
 // What each list holds, to know which catalog its items link to.
 var STYLE_KINDS = { skills: 'skill', cinematicSkills: 'skill', optSkills: 'skill', techniques: 'tech', cinematicTechniques: 'tech', optTechniques: 'tech',
   perks: 'adv', optPerks: 'adv', optAdvantages: 'adv', optDisadvantages: '', spells: 'spell' };
+
+/* =====================================================================
+   Cinematic: as regras cinemáticas dos livros (dados/cinematicas.json, ids cine_*), da aba Cinematic de
+   Combate e da página de cada uma (src/hub/paginas/Cinematica.tsx). Vêm de Gurps/cinematicas.csv (veja
+   "cinemáticas" em tools/gurps-csv-para-json.mjs) e não têm tabela no banco: só leitura.
+   A aba também lista as perícias e técnicas que os livros marcam como cinemáticas (*).
+   ===================================================================== */
+// A clapperboard.
+ICON.cinematic = '<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>';
+function indexCinematics() { var idx = /** @type {Record<string, Cinematic>} */ ({}); (W.cinematics || []).forEach(function (x) { idx[x.id] = x; }); W.cineIdx = idx; }
+function cinematicById(id) { return (id && (W.cineIdx[id] || movedCatalogItem('cinematics', id))) || null; }
+function cinematicHref(id) { return hrefFor('cine:' + id); }
+// The themes of the tab's filter, in this order (the categoria of each line of Gurps/cinematicas.csv).
+var CINEMATIC_CATEGORIES = ['Regras de combate', 'Ataques múltiplos', 'Chambara', 'Esforço extra', 'Jogos mentais', 'Perícias e técnicas', 'Armas', 'Campanha'];
+// What the tab lists: the rules, the skills or the techniques marked as cinematic in the books, or all of them.
+var CINEMATIC_KINDS = [['rules', 'Regras cinemáticas'], ['skills', 'Perícias cinemáticas'], ['techs', 'Técnicas cinemáticas'], ['all', 'Tudo que é cinemático']];
+// Only the skills with attribute and difficulty: the cross-references ("see Melee Weapon") stay in Perícias.
+function isCinematicSkill(s) { return !!s.cinematic && !!s.attribute; }
 
 /* ---------- The lists of the style form (src/hub/paginas/EstiloForm.tsx) ---------- */
 // Each list of a style is picked from the page it belongs to (STYLE_LIST_KIND): typed, the entries

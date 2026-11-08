@@ -4,6 +4,7 @@ import {
   ArmorCatalogItem,
   loadArmorCatalog,
   parseArmorDr,
+  describeArmorCoverage,
   ParsedArmorDR,
   matchArmorCategory,
   ArmorCategoryFilter,
@@ -406,6 +407,7 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
           ) : (
             filteredArmors.map((armor) => {
               const parsed = parseArmorDr(armor);
+              const coverage = describeArmorCoverage(armor);
 
               return (
                 <div
@@ -535,6 +537,13 @@ export const ArmorSearchModal: React.FC<ArmorSearchModalProps> = ({
                         </span>
                       )}
                     </div>
+
+                    {/* O que a armadura cobre: um peitoral diz se cobre só o tronco ou também outras partes */}
+                    {coverage && (
+                      <p style={{ fontSize: '11px', color: '#cbd5e1', margin: '2px 0 0 0' }}>
+                        {coverage}
+                      </p>
+                    )}
 
                     {(armor.footnotes || armor.notes) && (
                       <p style={{ fontSize: '11px', color: '#94a3b8', margin: '2px 0 0 0', fontStyle: 'italic' }}>

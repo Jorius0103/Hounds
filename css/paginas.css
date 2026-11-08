@@ -506,6 +506,9 @@ a.style-chip.linked:hover { background: var(--accent-soft); }
 .seg button:hover { color: var(--text); }
 .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px var(--shadow); }
 .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* As quatro abas de Combate quebram a linha em telas estreitas; o ícone da Cinematic fica alinhado ao texto. */
+.seg.combat-tabs { flex-wrap: wrap; }
+.seg.combat-tabs button svg { vertical-align: -2px; margin-right: 5px; }
 
 /* Paginação das listas longas (magias, vantagens) */
 .list-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 12px; }

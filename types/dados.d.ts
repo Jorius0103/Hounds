@@ -660,6 +660,19 @@ interface Store {
   rollsDice?: boolean;
 }
 
+/** Coleção `cinematics` (regras cinemáticas dos livros, a aba Cinematic de Combate). Ids `cine_*` vêm de
+ * dados/cinematicas.json; não há tabela no banco. */
+interface Cinematic extends Doc {
+  name: string;
+  /** O tema do filtro da aba (CINEMATIC_CATEGORIES em js/tabs/tab-combate.js): "Regras de combate", "Chambara"… */
+  category?: string;
+  /** O título do livro sob o qual a regra está ("Cinematic Combat Rules", "More Cinematic Combat Rules"…). */
+  section?: string;
+  description?: string;
+  book?: string;
+  page?: string;
+}
+
 /** Estado global `W` (js/mundo.js): listas visíveis ao usuário atual, dados brutos e índices. */
 interface World {
   store: Store | null;
@@ -673,6 +686,7 @@ interface World {
   skills: Skill[];
   techniques: Technique[];
   styles: FightingStyle[];
+  cinematics: Cinematic[];
   weapons: Weapon[];
   armors: Armor[];
   items: GearItem[];
@@ -687,8 +701,8 @@ interface World {
   sheetNotes: Note[];
   users: HubUser[];
   /** Tudo que veio do banco, inclusive o que o usuário atual não vê. */
-  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; improvements: Improvement[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[]; armorLocs: ArmorLoc[]; boards: Board[] };
-  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; disadvantages: boolean; skills: boolean; techniques: boolean; styles: boolean; weapons: boolean; armors: boolean; items: boolean; improvements: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean; boards: boolean };
+  raw: { maps: HMap[]; locations: HLocation[]; characters: Character[]; organizations: Organization[]; spells: Spell[]; advantages: Advantage[]; disadvantages: Disadvantage[]; skills: Skill[]; techniques: Technique[]; styles: FightingStyle[]; cinematics: Cinematic[]; weapons: Weapon[]; armors: Armor[]; items: GearItem[]; improvements: Improvement[]; sheets: Sheet[]; events: HEvent[]; notebooks: Notebook[]; notes: Note[]; armorLocs: ArmorLoc[]; boards: Board[] };
+  loaded: { maps: boolean; locations: boolean; characters: boolean; organizations: boolean; spells: boolean; advantages: boolean; disadvantages: boolean; skills: boolean; techniques: boolean; styles: boolean; cinematics: boolean; weapons: boolean; armors: boolean; items: boolean; improvements: boolean; sheets: boolean; events: boolean; users: boolean; notebooks: boolean; notes: boolean; boards: boolean };
   mapIdx: Record<string, HMap>;
   locIdx: Record<string, HLocation>;
   charIdx: Record<string, Character>;
@@ -699,6 +713,7 @@ interface World {
   skillIdx: Record<string, Skill>;
   techIdx: Record<string, Technique>;
   styleIdx: Record<string, FightingStyle>;
+  cineIdx: Record<string, Cinematic>;
   weaponIdx: Record<string, Weapon>;
   armorIdx: Record<string, Armor>;
   itemIdx: Record<string, GearItem>;
@@ -731,6 +746,7 @@ interface Route {
   skillId?: string;
   techId?: string;
   styleId?: string;
+  cineId?: string;
   weaponId?: string;
   armorId?: string;
   itemId?: string;

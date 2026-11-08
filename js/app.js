@@ -212,6 +212,7 @@ function onData(kind) {
   if (kind === 'skills') indexSkills();
   if (kind === 'techniques') indexTechniques();
   if (kind === 'styles') indexStyles();
+  if (kind === 'cinematics') indexCinematics();
   if (kind === 'weapons') indexWeapons();
   if (kind === 'armors') indexArmors();
   if (kind === 'items') indexItems();
@@ -301,7 +302,7 @@ function cleanCatalogCopies(col) {
 window.addEventListener('hub:user', function () { Object.keys(CATALOG).forEach(cleanCatalogCopies); });
 
 connect().then(function (s) {
-  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, advantages: true, disadvantages: true, skills: true, techniques: true, styles: true, weapons: true, armors: true, items: true, improvements: true, sheets: true, events: true, users: true, notebooks: true, notes: true, boards: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
+  if (!s) { W.loaded = { maps: true, locations: true, characters: true, organizations: true, spells: true, advantages: true, disadvantages: true, skills: true, techniques: true, styles: true, cinematics: true, weapons: true, armors: true, items: true, improvements: true, sheets: true, events: true, users: true, notebooks: true, notes: true, boards: true }; renderMenu(); pageRoot.innerHTML = '<p class="notice">Não foi possível acessar o armazenamento nesta visualização.</p>'; return; }
   W.store = s;
   if (s.listen && S.route) s.listen(S.route.page);
   return s.init().then(function () {
