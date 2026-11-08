@@ -1006,6 +1006,7 @@ export default function App() {
   const currentUserRef = useRef<UserAccount | null>(currentUser);
   currentUserRef.current = currentUser;
   const fetchSupabaseRollsRef = useRef<(() => void) | null>(null);
+  const seenRollIdsRef = useRef<Set<string>>(new Set());
 
   const wakeAndSyncSystem = useCallback(() => {
     try {
@@ -1240,12 +1241,24 @@ export default function App() {
       if ((payload as any).type === 'SYNC_DICE_ROLL' && (payload as any).rollData) {
         const rollObj = (payload as any).rollData;
         const entry = (payload as any).logEntry;
+        const rollId = rollObj.id || entry?.id;
 
-        const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
-        if (roller && typeof roller.roll === 'function') {
-          roller.roll(rollObj);
+        const alreadyPlayed = rollId && seenRollIdsRef.current.has(rollId);
+        if (rollId) {
+          seenRollIdsRef.current.add(rollId);
+          if (seenRollIdsRef.current.size > 200) {
+            const first = seenRollIdsRef.current.values().next().value;
+            if (first) seenRollIdsRef.current.delete(first);
+          }
         }
-        setActiveDiceRoll(rollObj);
+
+        if (!alreadyPlayed) {
+          const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
+          if (roller && typeof roller.roll === 'function') {
+            roller.roll(rollObj);
+          }
+          setActiveDiceRoll(rollObj);
+        }
 
         if (entry) {
           const cId = entry.combatId || stateRef.current.activeCombatId;
@@ -1996,12 +2009,24 @@ export default function App() {
         if (event.data?.type === 'SYNC_DICE_ROLL' && event.data?.rollData) {
           const rollObj = event.data.rollData;
           const entry = event.data.logEntry;
+          const rollId = rollObj.id || entry?.id;
 
-          const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
-        if (roller && typeof roller.roll === 'function') {
-          roller.roll(rollObj);
-        }
-        setActiveDiceRoll(rollObj);
+          const alreadyPlayed = rollId && seenRollIdsRef.current.has(rollId);
+          if (rollId) {
+            seenRollIdsRef.current.add(rollId);
+            if (seenRollIdsRef.current.size > 200) {
+              const first = seenRollIdsRef.current.values().next().value;
+              if (first) seenRollIdsRef.current.delete(first);
+            }
+          }
+
+          if (!alreadyPlayed) {
+            const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
+            if (roller && typeof roller.roll === 'function') {
+              roller.roll(rollObj);
+            }
+            setActiveDiceRoll(rollObj);
+          }
 
           if (entry) {
             const cId = entry.combatId || stateRef.current.activeCombatId;
@@ -4552,6 +4577,10 @@ export default function App() {
       avatarPreset: char?.avatarPreset,
       timestamp: now,
     };
+
+    // Registra para evitar que o eco de rede/realtime reinicie a animação já iniciada localmente
+    if (rollSharedId) seenRollIdsRef.current.add(rollSharedId);
+    if (newEntry?.id) seenRollIdsRef.current.add(newEntry.id);
 
     // Sincroniza o rolamento de dados pela rede apenas se NÃO for rolagem oculta do Mestre
     if (!isSecretRoll) {

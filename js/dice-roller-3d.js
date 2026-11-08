@@ -530,6 +530,16 @@
   }
 
   var activeSession = null;
+  var recentRollsMap = {};
+
+  function rememberRoll(id) {
+    if (!id) return;
+    recentRollsMap[id] = Date.now();
+    var cutoff = Date.now() - 8000;
+    Object.keys(recentRollsMap).forEach(function (k) {
+      if (recentRollsMap[k] < cutoff) delete recentRollsMap[k];
+    });
+  }
 
   function dismiss(immediate) {
     if (activeSession) {
@@ -540,6 +550,14 @@
 
   function roll(rollData, onSettled) {
     if (!rollData || !Array.isArray(rollData.rolls) || rollData.rolls.length === 0) return;
+
+    // Se esta mesma rolagem já está em andamento ou foi disparada há pouco (eco de rede/broadcast), ignora
+    if (rollData.id && recentRollsMap[rollData.id]) {
+      return;
+    }
+    if (rollData.id) {
+      rememberRoll(rollData.id);
+    }
 
     // Clean up previous session if any immediately
     dismiss(true);
