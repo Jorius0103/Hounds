@@ -462,6 +462,13 @@ declare global {
     ): Promise<string>;
     /** Um estilo dos livros fica marcado como excluído; o do Mestre sai do banco. */
     deleteStyle(x: FightingStyle): Promise<unknown>;
+    /** Só o Mestre: uma regra cinemática (a aba Cinematic de Combate). */
+    saveCinematic(
+      x: Cinematic | null,
+      fields: {name: string; category: string; section: string; description: string; book: string; page: string; visible: boolean; sharedWith: string[]},
+    ): Promise<string>;
+    /** Uma regra cinemática dos livros fica marcada como excluída; a do Mestre sai do banco. */
+    deleteCinematic(x: Cinematic): Promise<unknown>;
     /** Só o Mestre. attacks: as linhas da tabela, cada uma com os campos preenchidos. */
     saveWeapon(
       w: Weapon | null,

@@ -271,7 +271,7 @@ function connect() {
     try { return window.indexedDB ? LocalStore() : null; } catch (e) { return null; }
   });
 }
-// The spells, advantages, disadvantages, skills, techniques, styles, weapons, armors, items and improvements of the books are files, not database documents (see
+// The spells, advantages, disadvantages, skills, techniques, styles, cinematic rules, weapons, armors, items and improvements of the books are files, not database documents (see
 // "Catálogos de GURPS" in mundo.js). Their documents change in bursts (a cleanup removes
 // hundreds at once), so their redraws wait a moment and happen once per burst.
 var catalogTimers = {};
@@ -328,6 +328,12 @@ connect().then(function (s) {
     s.watch('skills', function (l) { onCatalogDocs('skills', l); }, fail);
     s.watch('techniques', function (l) { onCatalogDocs('techniques', l); }, fail);
     s.watch('styles', function (l) { onCatalogDocs('styles', l); }, fail);
+    // The cinematic rules: without their table (migration 20261209120000_jj_cinematicas not run yet),
+    // the tab still shows the books' rules; saving one gives the database's error.
+    s.watch('cinematics', function (l) { onCatalogDocs('cinematics', l); }, function (er) {
+      console.warn('Hounds: não foi possível ler as regras cinemáticas do Mestre.', er);
+      onCatalogDocs('cinematics', []);
+    });
     s.watch('weapons', function (l) { onCatalogDocs('weapons', l); }, fail);
     s.watch('armors', function (l) { onCatalogDocs('armors', l); }, fail);
     s.watch('items', function (l) { onCatalogDocs('items', l); }, fail);

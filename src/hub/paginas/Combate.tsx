@@ -6,6 +6,7 @@ import {Icon} from '../ui/Icon';
 import {useListView} from '../ui/listView';
 import {MestreOnly} from '../ui/MestreOnly';
 import {PageCount, Pager} from '../ui/Pager';
+import {CinematicForm} from './CinematicaForm';
 import {StyleForm} from './EstiloForm';
 import {SkillBadge} from './Pericias';
 import {SkillForm} from './PericiaForm';
@@ -64,8 +65,7 @@ function filterCombat(v: CombatView) {
     entries(v).filter(x => {
       if (v.diff && x.difficulty !== v.diff) return false;
       if (v.book && x.book !== v.book) return false;
-      // "Criado pelo Mestre" não aparece na aba Cinematic (as regras são só dos livros).
-      if (v.mine && !cine && x.catalog) return false;
+      if (v.mine && x.catalog) return false;
       if (techs && v.kind && isCombatTech(x as Technique) !== (v.kind === 'combat')) return false;
       if (cine && v.cat && x.category !== v.cat) return false;
       return true;
@@ -105,13 +105,17 @@ export function CombatPage() {
     return {
       diffs: styles || cine ? [] : (techs ? TECH_DIFFS : SKILL_CAT_DIFFS).filter(d => list.some(x => x.difficulty === d)),
       books: Object.keys(books).sort((a, b) => a.localeCompare(b, 'pt')),
-      cats: CINEMATIC_CATEGORIES.filter(c => (W.cinematics || []).some(x => x.category === c)),
+      // Os temas da aba na ordem dela, e depois os que o Mestre inventou.
+      cats: CINEMATIC_CATEGORIES.concat((W.cinematics || []).map(x => x.category || '').filter(c => c && !CINEMATIC_CATEGORIES.includes(c)).sort())
+        .filter((c, i, l) => l.indexOf(c) === i && (W.cinematics || []).some(x => x.category === c)),
     };
   }, [version, v.tab, v.cine]);
 
   function newEntry() {
     if (techs) openDialog(<TechForm t={null} />);
     else if (styles) openDialog(<StyleForm x={null} />);
+    // Uma regra nova começa no tema que a aba está filtrando.
+    else if (cine) openDialog(<CinematicForm x={null} category={v.cat} />);
     // Uma perícia criada aqui é de combate (o tipo começa com Melee, Ranged ou General; veja isCombatSkill).
     else openDialog(<SkillForm s={null} combat />);
   }
@@ -127,8 +131,12 @@ export function CombatPage() {
             <span>
               {CATALOG[t.col].failed ? (
                 'Não foi possível carregar a lista dos livros.'
-              ) : !can || cine ? (
+              ) : !can ? (
                 'Vão aparecer aqui.'
+              ) : cine ? (
+                <>
+                  Crie uma com <b>Nova regra</b>.
+                </>
               ) : techs ? (
                 <>
                   Crie uma com <b>Nova técnica</b>.
@@ -193,12 +201,11 @@ export function CombatPage() {
           </h1>
           <p className="lede">Perícias de combate, técnicas, estilos de luta e regras cinemáticas para GURPS 4ª Edição.</p>
         </div>
-        {/* As regras cinemáticas são só dos livros (não há onde gravar uma nova). */}
-        {can && !cine ? (
+        {can ? (
           <div className="btn-row">
-            <button className="btn primary" type="button" id={techs ? 'newTechBtn' : styles ? 'newStyleBtn' : 'newCombatSkillBtn'} onClick={newEntry}>
+            <button className="btn primary" type="button" id={techs ? 'newTechBtn' : styles ? 'newStyleBtn' : cine ? 'newCineBtn' : 'newCombatSkillBtn'} onClick={newEntry}>
               <Icon paths={ICON.plus} size={16} stroke={2.4} />
-              {techs ? 'Nova técnica' : styles ? 'Novo estilo' : 'Nova perícia'}
+              {techs ? 'Nova técnica' : styles ? 'Novo estilo' : cine ? 'Nova regra' : 'Nova perícia'}
             </button>
           </div>
         ) : null}
@@ -279,7 +286,7 @@ export function CombatPage() {
             </select>
           </div>
         ) : null}
-        {cine ? null : <MestreOnly on={v.mine} onChange={mine => filter({mine})} />}
+        <MestreOnly on={v.mine} onChange={mine => filter({mine})} />
       </div>
       {warning ? <p className="notice">{warning}</p> : null}
       <div id="combatResults" ref={results}>

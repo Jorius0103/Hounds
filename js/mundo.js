@@ -84,8 +84,8 @@ function spellById(id) {
    same id (spell_*, adv_*, disadv_*, skill_*, tech_*, style_*, weapon_*, armor_*, item_*, impr_*) holding his
    edits, his visibility choice, or deleted: true. W.spells / W.advantages / W.disadvantages / W.skills /
    W.techniques / W.styles / W.weapons / W.armors / W.items / W.improvements are the book list with those documents on top.
-   The cinematic rules (dados/cinematicas.json, ids cine_*, the Cinematic tab of Combate) have no table in
-   the database: they are only the book list (dbReady from the start, nothing to edit).
+   The cinematic rules (dados/cinematicas.json, ids cine_*, the Cinematic tab of Combate) work the same way,
+   with the table cinematicas (migration 20261209120000_jj_cinematicas).
    ===================================================================== */
 var CATALOG_VERSION = '2026-11-07-v1';
 // fields: what an entry holds besides visibility; over: the documents of book entries by id;
@@ -104,7 +104,7 @@ var CATALOG = {
   styles: { file: 'dados/estilos.json', prefix: 'style_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
     fields: ['name', 'cost', 'description', 'skills', 'techniques', 'cinematicSkills', 'cinematicTechniques', 'perks', 'spells',
       'optAdvantages', 'optDisadvantages', 'optSkills', 'optTechniques', 'optPerks', 'book', 'page'] },
-  cinematics: { file: 'dados/cinematicas.json', prefix: 'cine_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: true,
+  cinematics: { file: 'dados/cinematicas.json', prefix: 'cine_', list: null, idx: null, over: {}, deleted: [], loading: null, failed: false, dbReady: false,
     fields: ['name', 'category', 'section', 'description', 'book', 'page'] },
   // attacks: the weapon's lines of the book's table (see Weapon in types/dados.d.ts); an edit replaces them all.
   // keep: the book entries the campaign uses (up to TL4, see lowTech); the Mestre's own always show.

@@ -24,7 +24,7 @@
        um estilo, as perícias, técnicas e vantagens das listas levam às regras.
    Permissão:
      - Jogador: apenas busca e visualização.
-     - Mestre: criar, editar, excluir e alternar visibilidade das técnicas e estilos.
+     - Mestre: criar, editar, excluir e alternar visibilidade das técnicas, estilos e regras cinemáticas.
    ===================================================================== */
 // One sword (the Mesa de Combate has the crossed ones).
 ICON.combat = '<polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/>';
@@ -151,9 +151,11 @@ var STYLE_KINDS = { skills: 'skill', cinematicSkills: 'skill', optSkills: 'skill
 
 /* =====================================================================
    Cinematic: as regras cinemáticas dos livros (dados/cinematicas.json, ids cine_*), da aba Cinematic de
-   Combate e da página de cada uma (src/hub/paginas/Cinematica.tsx). Vêm de Gurps/cinematicas.csv (veja
-   "cinemáticas" em tools/gurps-csv-para-json.mjs) e não têm tabela no banco: só leitura.
+   Combate e da página de cada uma (src/hub/paginas/Cinematica.tsx; o formulário, CinematicaForm.tsx). Vêm
+   de Gurps/cinematicas.csv (veja "cinemáticas" em tools/gurps-csv-para-json.mjs); o banco (tabela
+   cinematicas) guarda só o que o Mestre criou ou mudou, como nos outros catálogos.
    A aba também lista as perícias e técnicas que os livros marcam como cinemáticas (*).
+   Permissão: o Jogador só busca e lê; o Mestre cria, edita, exclui e oculta regras.
    ===================================================================== */
 // A clapperboard.
 ICON.cinematic = '<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>';
@@ -166,6 +168,26 @@ var CINEMATIC_CATEGORIES = ['Regras de combate', 'Ataques múltiplos', 'Chambara
 var CINEMATIC_KINDS = [['rules', 'Regras cinemáticas'], ['skills', 'Perícias cinemáticas'], ['techs', 'Técnicas cinemáticas'], ['all', 'Tudo que é cinemático']];
 // Only the skills with attribute and difficulty: the cross-references ("see Melee Weapon") stay in Perícias.
 function isCinematicSkill(s) { return !!s.cinematic && !!s.attribute; }
+
+var CINEMATIC_FIELDS = ['name', 'category', 'section', 'description', 'book', 'page'];
+Ops.saveCinematic = function (x, fields) {
+  if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode criar ou editar regras cinemáticas.' });
+  var t = now(), body = { v: 1 };
+  CINEMATIC_FIELDS.forEach(function (k) { body[k] = String(fields[k] || '').trim(); });
+  return W.store.put('cinematics', x ? x.id : null, Object.assign(body, {
+    visible: fields.visible !== false,
+    sharedWith: fields.sharedWith || (x && x.sharedWith) || [],
+    createdBy: owner(x),
+    createdAt: (x && x.createdAt) || t,
+    updatedAt: t
+  }));
+};
+// A book rule is not removed from the file: its document says deleted: true.
+Ops.deleteCinematic = function (x) {
+  if (!isMestre()) return Promise.reject({ message: 'Apenas o Mestre pode excluir regras cinemáticas.' });
+  if (x.catalog) return patchCatalogItem('cinematics', x, { deleted: true, updatedAt: now() });
+  return W.store.remove('cinematics', x.id);
+};
 
 /* ---------- The lists of the style form (src/hub/paginas/EstiloForm.tsx) ---------- */
 // Each list of a style is picked from the page it belongs to (STYLE_LIST_KIND): typed, the entries

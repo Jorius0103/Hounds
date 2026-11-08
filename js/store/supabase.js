@@ -55,7 +55,7 @@ function SupabaseStore(client, bucket) {
   var bName = bucket || 'hounds-images', BATCH = 100;
   var TABLES = { users: 'usuarios', maps: 'mapas', locations: 'locais', characters: 'personagens', organizations: 'organizacoes',
     sheets: 'fichas', events: 'eventos', notebooks: 'cadernos', notes: 'anotacoes', spells: 'magias', advantages: 'vantagens', disadvantages: 'desvantagens',
-    skills: 'pericias', techniques: 'tecnicas', styles: 'estilos', weapons: 'armas', armors: 'armaduras', items: 'itens', improvements: 'melhoramentos',
+    skills: 'pericias', techniques: 'tecnicas', styles: 'estilos', cinematics: 'cinematicas', weapons: 'armas', armors: 'armaduras', items: 'itens', improvements: 'melhoramentos',
     armorLocs: 'armadura_localizacoes', boards: 'tabuleiros', boardTokens: 'tabuleiro_tokens', boardDrawings: 'tabuleiro_desenhos',
     boardTurns: 'tabuleiro_turnos', boardArt: 'tabuleiro_arte', boardCampaign: 'tabuleiro_campanha', chatMessages: 'chat_mensagens',
     mesa: 'mesa_estado', mesa_chunks: 'mesa_partes' };
