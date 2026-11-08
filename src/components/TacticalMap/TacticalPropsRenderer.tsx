@@ -48,7 +48,7 @@ interface TacticalPropsRendererProps {
   isMaster: boolean;
 }
 
-export const TacticalPropsRenderer: React.FC<TacticalPropsRendererProps> = ({
+export const TacticalPropsRenderer: React.FC<TacticalPropsRendererProps> = React.memo(({
   props,
   selectedPropId,
   onSelectProp,
@@ -340,4 +340,4 @@ export const TacticalPropsRenderer: React.FC<TacticalPropsRendererProps> = ({
       })}
     </g>
   );
-};
+});

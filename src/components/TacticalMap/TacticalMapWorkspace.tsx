@@ -95,7 +95,7 @@ interface TacticalMapWorkspaceProps {
   onToggleLogCollapse?: () => void;
 }
 
-export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
+export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.memo(({
   tacticalState,
   onUpdateTacticalState,
   characters,
@@ -1264,7 +1264,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (draggedLightId) {
       const p = clientToMapCoords(e.clientX, e.clientY);
-      setDragLightPos({ id: draggedLightId, x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) });
+      const nx = Math.round(p.x - mapX);
+      const ny = Math.round(p.y - mapY);
+      setDragLightPos((prev) => (prev && prev.id === draggedLightId && prev.x === nx && prev.y === ny ? prev : { id: draggedLightId, x: nx, y: ny }));
       return;
     }
 
@@ -1272,7 +1274,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       const p = clientToMapCoords(e.clientX, e.clientY);
       const nextX = Math.round(p.x - dragPropOffset.x);
       const nextY = Math.round(p.y - dragPropOffset.y);
-      setDragPropPos({ id: draggedPropId, x: nextX, y: nextY });
+      setDragPropPos((prev) => (prev && prev.id === draggedPropId && prev.x === nextX && prev.y === nextY ? prev : { id: draggedPropId, x: nextX, y: nextY }));
       return;
     }
 
@@ -1307,7 +1309,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       activeTool === 'wall' ||
       activeTool === 'door'
     ) {
-      setMouseMapPos({ x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) });
+      const mx = Math.round(p.x - mapX);
+      const my = Math.round(p.y - mapY);
+      setMouseMapPos((prev) => (prev && prev.x === mx && prev.y === my ? prev : { x: mx, y: my }));
     }
 
     if (!isOverOverlay) {
@@ -1318,15 +1322,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
     }
 
     if (activeTool === 'fog' && isMaster && fogSubTool === 'box' && fogBoxStart) {
-      setFogBoxCurrent({ x: p.x - mapX, y: p.y - mapY });
+      const fx = Math.round(p.x - mapX);
+      const fy = Math.round(p.y - mapY);
+      setFogBoxCurrent((prev) => (prev && prev.x === fx && prev.y === fy ? prev : { x: fx, y: fy }));
     }
 
     if (activeTool === 'ruler' && rulerStart) {
-      setRulerCurrent(hex);
+      setRulerCurrent((prev) => (prev && prev.col === hex.col && prev.row === hex.row ? prev : hex));
     }
 
     if (activeTool === 'area' || (activeTool === 'ruler' && rulerType === 'blast')) {
-      setAreaCenter(hex);
+      setAreaCenter((prev) => (prev && prev.col === hex.col && prev.row === hex.row ? prev : hex));
     }
 
     // Rotação ativa do token pelo "pauzinho" (Roll20 rotation handle) - apenas preview local no mousemove
@@ -1343,14 +1349,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
         const snappedRot = (Math.round(rot / 30) * 30) % 360;
         const facingIndex = (Math.round(((snappedRot + 180) % 360) / 60) % 6) as FacingDirection;
 
-        setPreviewRotation({ id: rotatingTokenId, rotation: snappedRot, facing: facingIndex });
+        setPreviewRotation((prev) => {
+          if (prev && prev.id === rotatingTokenId && prev.rotation === snappedRot && prev.facing === facingIndex) return prev;
+          return { id: rotatingTokenId, rotation: snappedRot, facing: facingIndex };
+        });
       }
       return;
     }
 
     // Live dragging of a token - apenas atualiza preview local de hover sem disparar sync a cada pixel
     if (draggedTokenId) {
-      setDragHoverHex(hex);
+      setDragHoverHex((prev) => (prev && prev.col === hex.col && prev.row === hex.row ? prev : hex));
     }
   };
 
@@ -5069,4 +5078,4 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = ({
       />
     </div>
   );
-};
+});

@@ -494,8 +494,8 @@ export function computeVisibilityPolygon(
     addAngle(a + delta);
   };
 
-  // 1. Amostras circulares regulares para perímetro suave
-  const numCircleRays = isDirectional ? Math.max(16, Math.round((angleDegrees / 360) * 60)) : 60;
+  // 1. Amostras circulares regulares para perímetro suave (36 amostras bastam para 10 graus por setor)
+  const numCircleRays = isDirectional ? Math.max(12, Math.round((angleDegrees / 360) * 36)) : 36;
   const arcSpan = isDirectional ? maxAngle - minAngle : 2 * Math.PI;
   const startArc = isDirectional ? minAngle : 0;
   for (let i = 0; i <= numCircleRays; i++) {
@@ -538,8 +538,8 @@ export function computeVisibilityPolygon(
   }
 
   // Limite de segurança de raios para garantir estabilidade e fluidez total
-  if (rawAngles.length > 360) {
-    rawAngles.length = 360;
+  if (rawAngles.length > 180) {
+    rawAngles.length = 180;
   }
 
   // 3. Dispara cada raio e calcula a menor distância de colisão

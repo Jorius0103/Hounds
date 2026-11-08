@@ -40,6 +40,8 @@ const MESA_VIEW_STATE_KEY = 'hounds_mesa_view_state_v1';
 
 // Mapa tático e Visão Dividida habilitados para o Tabuleiro de Combate integrado
 const TACTICAL_MAP_ENABLED = true;
+// Limite máximo de histórico retido na ficha de cada combatente em memória para evitar inchaço do JSON
+const MAX_NPC_HISTORY = 30;
 
 function getMesaSessionStorage(): Storage | null {
   try {
@@ -794,10 +796,20 @@ export default function App() {
   const [playerPermsModalOpen, setPlayerPermsModalOpen] = useState(false);
   const [playerPermsFocusCharId, setPlayerPermsFocusCharId] = useState<string | null>(null);
 
-  const handleOpenPlayerPermissions = (characterId?: string) => {
+  const handleOpenPlayerPermissions = useCallback((characterId?: string) => {
     setPlayerPermsFocusCharId(characterId || null);
     setPlayerPermsModalOpen(true);
-  };
+  }, []);
+
+  const handleOpenFullNpcSheet = useCallback((npcId: string) => {
+    setSelectedNpcId(npcId);
+    setIsHomeScreen(false);
+    setActiveViewMode('sheets');
+  }, []);
+
+  const handleOpenDamageCalculator = useCallback((npc: NPC) => {
+    setDamageModalNpc(npc);
+  }, []);
   const [combatPlayersModalOpen, setCombatPlayersModalOpen] = useState(false);
   const [activeDiceRoll, setActiveDiceRoll] = useState<DiceRollResult | null>(null);
   const [hideGmRolls, setHideGmRolls] = useState<boolean>(() => {
@@ -961,6 +973,8 @@ export default function App() {
     };
   }, [activeCombat?.tacticalState]);
 
+  const saveStorageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleUpdateTacticalState = (updated: Partial<TacticalState>) => {
     if (!activeCombat) return;
     const current = activeTacticalState;
@@ -974,9 +988,15 @@ export default function App() {
     );
     stateRef.current.combats = updatedCombats;
     setCombats(updatedCombats);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
-    } catch (e) {}
+
+    // Gravação no localStorage com debounce leve (150ms) para não bloquear operações contínuas no mapa
+    if (saveStorageTimerRef.current) clearTimeout(saveStorageTimerRef.current);
+    saveStorageTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
+      } catch (e) {}
+    }, 150);
+
     broadcastSync(updatedCombats);
   };
 
@@ -1234,7 +1254,7 @@ export default function App() {
           if (charId) {
             setPlayers((prev) =>
               prev.map((p) =>
-                p.id === charId ? { ...p, history: [entry, ...(p.history || []).filter((h) => h.id !== entry.id)] } : p
+                p.id === charId ? { ...p, history: [entry, ...(p.history || []).filter((h) => h.id !== entry.id)].slice(0, MAX_NPC_HISTORY) } : p
               )
             );
           }
@@ -1250,7 +1270,7 @@ export default function App() {
 
               const updatedNpcs = charId
                 ? (c.npcs || []).map((n) =>
-                    n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)] } : n
+                    n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)].slice(0, MAX_NPC_HISTORY) } : n
                   )
                 : c.npcs;
 
@@ -1874,7 +1894,7 @@ export default function App() {
                   setPlayers((prev) =>
                     prev.map((p) =>
                       p.id === charId && !(p.history || []).some((h) => h.id === entry.id)
-                        ? { ...p, history: [entry, ...(p.history || [])] }
+                        ? { ...p, history: [entry, ...(p.history || [])].slice(0, MAX_NPC_HISTORY) }
                         : p
                     )
                   );
@@ -1888,7 +1908,7 @@ export default function App() {
                             events: [entry, ...(c.events || [])],
                             npcs: (c.npcs || []).map((n) =>
                               n.id === charId && !(n.history || []).some((h) => h.id === entry.id)
-                                ? { ...n, history: [entry, ...(n.history || [])] }
+                                ? { ...n, history: [entry, ...(n.history || [])].slice(0, MAX_NPC_HISTORY) }
                                 : n
                             ),
                           }
@@ -1905,9 +1925,8 @@ export default function App() {
 
     fetchSupabaseRollsRef.current = fetchSupabaseRolls;
     fetchSupabaseRolls();
-    window.addEventListener('focus', fetchSupabaseRolls);
-    // Polling espaçado de segurança (rolagens novas já chegam instantaneamente pelo Realtime e MQTT)
-    const rollsPollInterval = setInterval(fetchSupabaseRolls, 30000);
+    // Polling espaçado de segurança a cada 3 min (rolagens novas já chegam instantaneamente pelo Realtime e MQTT)
+    const rollsPollInterval = setInterval(fetchSupabaseRolls, 180000);
 
     let unsubHub: (() => void) | null = null;
     if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus?.subscribe) {
@@ -1938,36 +1957,27 @@ export default function App() {
         } catch (e) {}
       }
       clearInterval(rollsPollInterval);
-      window.removeEventListener('focus', fetchSupabaseRolls);
     };
   }, []);
 
-  // Monitora inatividade do usuário e visibilidade da aba para reativar sincronização e rolagens
+  // Monitora visibilidade da aba para reativar sincronização apenas se ficou oculta por mais de 60s
   useEffect(() => {
-    let lastActive = Date.now();
-    const handleUserActivity = () => {
+    let lastWake = Date.now();
+    const handleVis = () => {
       const now = Date.now();
-      if (now - lastActive > 15000) {
-        lastActive = now;
+      if (document.visibilityState === 'visible' && now - lastWake > 60000) {
+        lastWake = now;
         wakeAndSyncSystem();
-      } else {
-        lastActive = now;
       }
     };
-    window.addEventListener('pointerdown', handleUserActivity, { passive: true });
-    window.addEventListener('keydown', handleUserActivity, { passive: true });
-    window.addEventListener('focus', handleUserActivity);
-    const handleVis = () => {
-      if (document.visibilityState === 'visible') {
-        wakeAndSyncSystem();
-      }
+    const handleOnline = () => {
+      wakeAndSyncSystem();
     };
     document.addEventListener('visibilitychange', handleVis);
+    window.addEventListener('online', handleOnline);
     return () => {
-      window.removeEventListener('pointerdown', handleUserActivity);
-      window.removeEventListener('keydown', handleUserActivity);
-      window.removeEventListener('focus', handleUserActivity);
       document.removeEventListener('visibilitychange', handleVis);
+      window.removeEventListener('online', handleOnline);
     };
   }, [wakeAndSyncSystem]);
 
@@ -2000,7 +2010,7 @@ export default function App() {
             if (charId) {
               setPlayers((prev) =>
                 prev.map((p) =>
-                  p.id === charId ? { ...p, history: [entry, ...(p.history || []).filter((h) => h.id !== entry.id)] } : p
+                  p.id === charId ? { ...p, history: [entry, ...(p.history || []).filter((h) => h.id !== entry.id)].slice(0, MAX_NPC_HISTORY) } : p
                 )
               );
             }
@@ -2016,7 +2026,7 @@ export default function App() {
 
                 const updatedNpcs = charId
                   ? (c.npcs || []).map((n) =>
-                      n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)] } : n
+                      n.id === charId ? { ...n, history: [entry, ...(n.history || []).filter((h) => h.id !== entry.id)].slice(0, MAX_NPC_HISTORY) } : n
                     )
                   : c.npcs;
 
@@ -4429,7 +4439,7 @@ export default function App() {
             updatedNpc = {
               ...n,
               extraItems: updatedItems,
-              history: [entryWithId, ...(n.history || [])],
+              history: [entryWithId, ...(n.history || [])].slice(0, MAX_NPC_HISTORY),
               updatedAt: now,
             };
             return updatedNpc;
@@ -4442,7 +4452,6 @@ export default function App() {
   };
 
   const handleRollDice = (diceCount: number, diceSides: number = 6) => {
-    wakeAndSyncSystem();
     const rolls: number[] = [];
     for (let i = 0; i < diceCount; i++) {
       rolls.push(Math.floor(Math.random() * diceSides) + 1);
@@ -4515,7 +4524,7 @@ export default function App() {
       handleUpdateNpc({
         ...char,
         updatedAt: now,
-        history: [newEntry, ...(char.history || [])],
+        history: [newEntry, ...(char.history || [])].slice(0, MAX_NPC_HISTORY),
       });
     }
 
@@ -5553,14 +5562,10 @@ export default function App() {
                 onUpdateNpc={handleUpdateNpc}
                 currentUserRole={effectiveRole}
                 currentUser={currentUser}
-                onOpenFullNpcSheet={(npcId) => {
-                  setSelectedNpcId(npcId);
-                  setIsHomeScreen(false);
-                  setActiveViewMode('sheets');
-                }}
-                onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
+                onOpenFullNpcSheet={handleOpenFullNpcSheet}
+                onOpenDamageCalculator={handleOpenDamageCalculator}
                 hasEditPermission={canEditCurrent}
-                onOpenPlayerPermissions={() => handleOpenPlayerPermissions()}
+                onOpenPlayerPermissions={handleOpenPlayerPermissions}
                 editorCount={effectiveEditorIds.length}
                 users={users}
                 editorUserIds={effectiveEditorIds}
