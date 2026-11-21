@@ -43,6 +43,12 @@ import {
   Check,
   CheckCheck,
   Plus,
+  Minus,
+  Trash2,
+  Sparkles,
+  Upload,
+  CircleDot,
+  Pencil,
 } from 'lucide-react';
 
 interface TacticalMapWorkspaceProps {
@@ -161,8 +167,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
   // Modal de gerenciamento de tokens no tabuleiro
   const [isTokensModalOpen, setIsTokensModalOpen] = useState(false);
-  const [tokensModalFilter, setTokensModalFilter] = useState<'all' | 'players' | 'npcs'>('all');
+  const [tokensModalFilter, setTokensModalFilter] = useState<'all' | 'players' | 'npcs' | 'instant'>('all');
   const [tokensModalSearch, setTokensModalSearch] = useState('');
+
+  // Modal de criação de Token Instantâneo (Mestre)
+  const [isInstantTokenModalOpen, setIsInstantTokenModalOpen] = useState(false);
+  const [instantName, setInstantName] = useState('');
+  const [instantColor, setInstantColor] = useState('#f59e0b');
+  const [instantPreset, setInstantPreset] = useState('knight');
+  const [instantAvatarUrl, setInstantAvatarUrl] = useState('');
+  const [instantAuraRadius, setInstantAuraRadius] = useState<number>(0);
+  const [instantAuraColor, setInstantAuraColor] = useState('#38bdf8');
+  const [instantAuraVisibleToPlayers, setInstantAuraVisibleToPlayers] = useState(true);
+  const instantFileInputRef = useRef<HTMLInputElement>(null);
 
   const isMaster = currentUserRole === 'mestre';
   const activeLayer = tacticalState?.activeLayer || 'tokens';
@@ -331,13 +348,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   const handleToggleTokenVisibility = useCallback((tokenId: string) => {
     const token = tokens.find((t) => t.id === tokenId);
     if (!token) return;
-    const targetNpc = characterMap.get(token.npcId);
+    const targetNpc = token.isInstant ? undefined : characterMap.get(token.npcId);
     const isPlayer = targetNpc?.characterType === 'player';
 
-    // Determina se o combatente está atualmente oculto para os jogadores
-    const currentlyHidden = isPlayer
+    // Determina se o token está atualmente oculto para os jogadores
+    const currentlyHidden = token.isInstant
       ? (!!token.hiddenFromPlayers || token.layer === 'gm')
-      : (!targetNpc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
+      : isPlayer
+        ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+        : (!targetNpc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
 
     const willBeVisible = currentlyHidden; // Se estava oculto, vai ficar visível aos jogadores
 
@@ -354,7 +373,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     });
     onUpdateTacticalState({ tokens: updatedTokens });
 
-    // 2. Unifica diretamente com a ficha do NPC (isVisibleToPlayer)
+    // 2. Unifica diretamente com a ficha do NPC (isVisibleToPlayer) quando houver vínculo
     if (targetNpc) {
       onUpdateNpc({
         ...targetNpc,
@@ -362,6 +381,24 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       });
     }
   }, [tokens, characterMap, onUpdateTacticalState, onUpdateNpc]);
+
+  // Atualizar propriedades de um token específico (ex: aura, nome/cor de token instantâneo)
+  const handleUpdateToken = useCallback((tokenId: string, updated: Partial<TacticalToken>) => {
+    const updatedTokens = tokens.map((t) => (t.id === tokenId ? { ...t, ...updated } : t));
+    onUpdateTacticalState({ tokens: updatedTokens });
+  }, [tokens, onUpdateTacticalState]);
+
+  // Remover um token específico do tabuleiro (usado para tokens instantâneos e remoção rápida)
+  const handleRemoveToken = useCallback((tokenId: string) => {
+    const nextTokens = tokens.filter((t) => t.id !== tokenId);
+    onUpdateTacticalState({ tokens: nextTokens });
+    if (selectedTokenId === tokenId) {
+      setSelectedTokenId(null);
+    }
+    if (contextMenu?.tokenId === tokenId) {
+      setContextMenu(null);
+    }
+  }, [tokens, selectedTokenId, contextMenu, onUpdateTacticalState]);
 
   // Selected token object
   const selectedToken = useMemo(() => {
@@ -1314,12 +1351,72 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     setSelectedTokenId(token.id);
   };
 
+  // Criar Token Instantâneo (sem vínculo obrigatório com personagem/NPC)
+  const handleCreateInstantToken = () => {
+    if (!isMaster) return;
+    const viewCenterX = (containerSize.width / 2 - panX) / zoom;
+    const viewCenterY = (containerSize.height / 2 - panY) / zoom;
+    const clampedX = Math.max(hexSize, Math.min(mapW - hexSize, viewCenterX - mapX));
+    const clampedY = Math.max(hexSize, Math.min(mapH - hexSize, viewCenterY - mapY));
+    let targetHex = pixelToHex(clampedX, clampedY, hexSize);
+
+    // Evita empilhar exatamente sobre outro token se a célula já estiver ocupada
+    const occupied = new Set(tokens.map((t) => `${t.gridX},${t.gridY}`));
+    if (occupied.has(`${targetHex.col},${targetHex.row}`)) {
+      for (let offset = 1; offset <= 10; offset++) {
+        const candidate = { col: targetHex.col + offset, row: targetHex.row };
+        if (!occupied.has(`${candidate.col},${candidate.row}`)) {
+          targetHex = candidate;
+          break;
+        }
+      }
+    }
+
+    const instantCount = tokens.filter((t) => t.isInstant).length;
+    const initialFacing: FacingDirection = 1;
+    const newToken: TacticalToken = {
+      id: `instant-token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      npcId: '',
+      isInstant: true,
+      customName: instantName.trim() || `Token ${instantCount + 1}`,
+      customAvatar: instantAvatarUrl.trim() || undefined,
+      customPreset: instantPreset || 'knight',
+      color: instantColor || '#f59e0b',
+      gridX: targetHex.col,
+      gridY: targetHex.row,
+      facing: initialFacing,
+      rotation: facingToRotation(initialFacing),
+      elevation: 0,
+      reach: 1,
+      size: 1,
+      // Sempre entra oculto para evitar exposição acidental pelo mestre
+      hiddenFromPlayers: true,
+      layer: 'gm',
+      ...(instantAuraRadius > 0
+        ? {
+            auraRadius: instantAuraRadius,
+            auraColor: instantAuraColor || '#38bdf8',
+            auraVisibleToPlayers: instantAuraVisibleToPlayers,
+          }
+        : {}),
+    };
+
+    onUpdateTacticalState({ tokens: [...tokens, newToken] });
+    setSelectedTokenId(newToken.id);
+    setInstantName('');
+    setInstantAvatarUrl('');
+    setInstantAuraRadius(0);
+    setIsInstantTokenModalOpen(false);
+  };
+
   // Handle token click: apenas seleciona o token e seu NPC (sem abrir popover intrusivo)
   const handleTokenClick = (e: React.MouseEvent, token: TacticalToken) => {
     if (activeTool !== 'select') return;
     e.stopPropagation();
     setSelectedTokenId(token.id);
-    onSelectNpc(token.npcId);
+    if (!token.isInstant && token.npcId) {
+      onSelectNpc(token.npcId);
+    }
     setPopoverToken(null);
     if (contextMenu) setContextMenu(null);
   };
@@ -1335,7 +1432,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     setDragTokenOrigin({ col: token.gridX, row: token.gridY });
     setDragHoverHex({ col: token.gridX, row: token.gridY });
     setSelectedTokenId(token.id);
-    onSelectNpc(token.npcId);
+    if (!token.isInstant && token.npcId) {
+      onSelectNpc(token.npcId);
+    }
     setPopoverToken(null);
   };
 
@@ -1514,6 +1613,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           onClearMarkers={handleClearMarkers}
           onAutoPlaceTokens={handleAutoPlaceTokens}
           onOpenTokensModal={() => setIsTokensModalOpen(true)}
+          onOpenInstantTokenModal={() => setIsInstantTokenModalOpen(true)}
           tokensCount={tokens.length}
           onOpenPropsModal={() => setIsPropsModalOpen(true)}
           propsCount={(tacticalState.props || []).length}
@@ -1650,6 +1750,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       {npcsList.filter((c) => placedNpcIdSet.has(c.id)).length}/{npcsList.length}
                     </span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTokensModalFilter('instant')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                      tokensModalFilter === 'instant'
+                        ? 'bg-sky-500 text-slate-950 font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>Instantâneos</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                      tokensModalFilter === 'instant' ? 'bg-slate-950/20 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
+                    }`}>
+                      {tokens.filter((t) => t.isInstant).length}
+                    </span>
+                  </button>
                 </div>
 
                 {/* Campo de Busca */}
@@ -1677,38 +1794,138 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               {/* Botões de Ação em Lote para o Filtro Ativo */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs">
                 <span className="text-[11px] text-slate-400 font-medium">
-                  {tokensModalFilter === 'all'
+                  {tokensModalFilter === 'instant'
+                    ? 'Tokens instantâneos criados direto no mapa:'
+                    : tokensModalFilter === 'all'
                     ? 'Ações para todos os combatentes:'
                     : tokensModalFilter === 'players'
                     ? 'Ações para os personagens dos jogadores:'
                     : 'Ações para os NPCs / Criaturas:'}
                 </span>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handlePlaceAllInFilter(activeCategoryList)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80 rounded-lg transition-all active:scale-95 shadow-xs"
-                    title="Exibir todos os combatentes deste filtro no tabuleiro"
-                  >
-                    <CheckCheck size={14} />
-                    <span>Exibir Todos deste filtro</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveAllInFilter(activeCategoryList)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg transition-all active:scale-95 shadow-xs"
-                    title="Remover todos os combatentes deste filtro do tabuleiro"
-                  >
-                    <EyeOff size={14} />
-                    <span>Ocultar Todos deste filtro</span>
-                  </button>
+                  {tokensModalFilter === 'instant' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTokensModalOpen(false);
+                        setIsInstantTokenModalOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg transition-all active:scale-95 shadow-xs cursor-pointer"
+                    >
+                      <Plus size={14} />
+                      <span>Novo Token Instantâneo</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handlePlaceAllInFilter(activeCategoryList)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80 rounded-lg transition-all active:scale-95 shadow-xs"
+                        title="Exibir todos os combatentes deste filtro no tabuleiro"
+                      >
+                        <CheckCheck size={14} />
+                        <span>Exibir Todos deste filtro</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAllInFilter(activeCategoryList)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-lg transition-all active:scale-95 shadow-xs"
+                        title="Remover todos os combatentes deste filtro do tabuleiro"
+                      >
+                        <EyeOff size={14} />
+                        <span>Ocultar Todos deste filtro</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Lista com Rolagem */}
             <div className="flex-1 overflow-y-auto p-3.5 sm:px-5 space-y-2 max-h-[50vh]">
-              {filteredModalCharacters.length === 0 ? (
+              {tokensModalFilter === 'instant' ? (() => {
+                const instantTokensList = tokens
+                  .filter((t) => t.isInstant)
+                  .filter((t) =>
+                    !tokensModalSearch.trim() ||
+                    (t.customName || 'Token').toLowerCase().includes(tokensModalSearch.toLowerCase().trim())
+                  );
+
+                if (instantTokensList.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-slate-400 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800 p-6 space-y-2">
+                      <Sparkles size={24} className="mx-auto text-sky-500/70 mb-1" />
+                      <p className="font-semibold text-slate-300">Nenhum token instantâneo no mapa</p>
+                      <p className="text-[11px] text-slate-500">Crie tokens rápidos para objetos, marcadores, criaturas avulsas ou efeitos.</p>
+                    </div>
+                  );
+                }
+
+                return instantTokensList.map((t) => {
+                  const isHidden = !!t.hiddenFromPlayers || t.layer === 'gm';
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        handleFocusToken(t);
+                        setIsTokensModalOpen(false);
+                      }}
+                      className="p-2.5 sm:p-3 rounded-xl border border-sky-500/30 bg-sky-950/15 hover:bg-sky-950/30 transition-all cursor-pointer flex items-center justify-between gap-3 select-none"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-900 flex items-center justify-center">
+                          <NpcAvatar
+                            avatar={t.customAvatar}
+                            preset={t.customPreset || 'knight'}
+                            name={t.customName || 'Token'}
+                            size="sm"
+                            className="!w-9 !h-9 !rounded-lg"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white text-xs truncate">{t.customName || 'Token'}</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                              Instantâneo
+                            </span>
+                            {t.auraRadius && t.auraRadius > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                Aura {t.auraRadius}yd
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                            Hex [{t.gridX}, {t.gridY}] • {isHidden ? 'Oculto (Mestre)' : 'Visível p/ Jogadores'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTokenVisibility(t.id)}
+                          className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                            isHidden
+                              ? 'bg-purple-950/60 border-purple-500/50 text-purple-300 hover:bg-purple-900'
+                              : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900'
+                          }`}
+                          title={isHidden ? 'Revelar para jogadores' : 'Ocultar dos jogadores'}
+                        >
+                          {isHidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveToken(t.id)}
+                          className="p-1.5 rounded-lg border border-rose-800/60 bg-rose-950/40 text-rose-300 hover:bg-rose-900/60 transition-colors cursor-pointer"
+                          title="Excluir token instantâneo"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                });
+              })() : filteredModalCharacters.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800 p-6 space-y-1">
                   <Users size={24} className="mx-auto text-slate-600 mb-2" />
                   <p className="font-semibold text-slate-300">Nenhum combatente encontrado</p>
@@ -1799,6 +2016,265 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all shadow-md active:scale-95"
               >
                 Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2.5 MODAL DE CRIAÇÃO DE TOKEN INSTANTÂNEO (MESTRE) */}
+      {isMaster && isInstantTokenModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setIsInstantTokenModalOpen(false)}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-slate-900 border border-sky-500/40 rounded-2xl shadow-2xl max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden text-slate-100 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-950/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Novo Token Instantâneo</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Entra oculto na visão do mestre, sem precisar criar ficha de personagem ou NPC
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInstantTokenModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Corpo */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs">
+              {/* Nome & Cor da Borda */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300 block">
+                    Nome / Rótulo
+                  </label>
+                  <input
+                    type="text"
+                    value={instantName}
+                    onChange={(e) => setInstantName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreateInstantToken();
+                    }}
+                    placeholder={`Token ${tokens.filter((t) => t.isInstant).length + 1}`}
+                    autoFocus
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300 block">
+                    Cor da Borda
+                  </label>
+                  <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                    {['#64748b', '#ef4444', '#f59e0b', '#10b981', '#38bdf8', '#a855f7', '#ec4899', '#e2e8f0'].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setInstantColor(c)}
+                        className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer ${
+                          instantColor === c ? 'border-white scale-110 ring-2 ring-sky-400/60' : 'border-slate-700 hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Ícone Rápido (Presets) */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-300 block">
+                  Ícone do Token
+                </span>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                  {PRESET_AVATARS.map((p) => {
+                    const PIcon = p.icon;
+                    const colors = PRESET_BG_COLORS[p.id] || PRESET_BG_COLORS['knight'];
+                    const selected = !instantAvatarUrl && instantPreset === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setInstantPreset(p.id);
+                          setInstantAvatarUrl('');
+                        }}
+                        className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all cursor-pointer ${
+                          selected
+                            ? 'border-sky-400 bg-sky-500/15 ring-1 ring-sky-400'
+                            : 'border-slate-800 bg-slate-900/70 hover:border-slate-600'
+                        }`}
+                        title={p.label}
+                      >
+                        <div
+                          className="w-7 h-7 rounded-md flex items-center justify-center"
+                          style={{ background: `linear-gradient(135deg, ${colors.bg1}, ${colors.bg2})` }}
+                        >
+                          <PIcon size={15} color="#ffffff" />
+                        </div>
+                        <span className="text-[9px] text-slate-300 truncate w-full text-center">
+                          {p.label.split('/')[0].trim().split(' ')[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Imagem Personalizada (Upload ou URL) */}
+              <div className="space-y-1.5 p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <span className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Upload size={12} className="text-sky-400" />
+                  Imagem Personalizada (opcional)
+                </span>
+                <input
+                  ref={instantFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const dataUrl = ev.target?.result as string;
+                      if (dataUrl) setInstantAvatarUrl(dataUrl);
+                    };
+                    reader.readAsDataURL(file);
+                    if (instantFileInputRef.current) instantFileInputRef.current.value = '';
+                  }}
+                />
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => instantFileInputRef.current?.click()}
+                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 rounded-lg font-semibold text-[11px] shrink-0 cursor-pointer"
+                  >
+                    Upload
+                  </button>
+                  <input
+                    type="text"
+                    value={instantAvatarUrl.startsWith('data:') ? '(Imagem carregada do computador)' : instantAvatarUrl}
+                    onChange={(e) => setInstantAvatarUrl(e.target.value)}
+                    placeholder="Ou cole a URL da imagem..."
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                  />
+                  {instantAvatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setInstantAvatarUrl('')}
+                      className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 cursor-pointer"
+                      title="Remover imagem"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Aura inicial (opcional) */}
+              <div className="space-y-2 p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                    <CircleDot size={12} className="text-amber-400" />
+                    Aura Inicial em Jardas (opcional)
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-amber-300">
+                    {instantAuraRadius > 0 ? `${instantAuraRadius} yd` : 'Desligada'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[0, 1, 2, 3, 5, 10].map((yd) => (
+                    <button
+                      key={yd}
+                      type="button"
+                      onClick={() => setInstantAuraRadius(yd)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                        instantAuraRadius === yd
+                          ? 'bg-amber-500 text-slate-950 border-amber-400'
+                          : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-600'
+                      }`}
+                    >
+                      {yd === 0 ? 'Off' : `${yd} yd`}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={instantAuraRadius}
+                    onChange={(e) => setInstantAuraRadius(Math.max(0, Number(e.target.value) || 0))}
+                    className="w-16 bg-slate-900 border border-slate-800 rounded-md px-2 py-1 text-[11px] font-mono text-white focus:outline-none focus:border-amber-500"
+                    title="Raio personalizado em jardas"
+                  />
+                </div>
+
+                {instantAuraRadius > 0 && (
+                  <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-800/70">
+                    <div className="flex items-center gap-1.5">
+                      {['#38bdf8', '#f59e0b', '#ef4444', '#10b981', '#a855f7', '#e2e8f0'].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setInstantAuraColor(c)}
+                          className={`w-5 h-5 rounded-full border-2 cursor-pointer ${
+                            instantAuraColor === c ? 'border-white scale-110' : 'border-slate-700'
+                          }`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInstantAuraVisibleToPlayers((v) => !v)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-semibold border cursor-pointer ${
+                        instantAuraVisibleToPlayers
+                          ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60'
+                          : 'bg-purple-950/60 text-purple-300 border-purple-700/60'
+                      }`}
+                    >
+                      {instantAuraVisibleToPlayers ? 'Visível p/ Jogadores' : 'Só Mestre'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Rodapé */}
+            <div className="px-5 py-3 border-t border-slate-800 bg-slate-950/70 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsInstantTokenModalOpen(false)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateInstantToken}
+                className="px-4 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Criar no Mapa</span>
               </button>
             </div>
           </div>
@@ -2137,46 +2613,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               />
             )}
           </g>
-
-          {/* CAMADA 4: ARCOS DE COMBATE GURPS (FRENTE, FLANCOS E RETAGUARDA) */}
-          {selectedToken && (
-            <g id="gurps-combat-arcs">
-              {(() => {
-                const isSelectedDragging = selectedToken.id === draggedTokenId;
-                const displayGridX = isSelectedDragging && dragHoverHex ? dragHoverHex.col : selectedToken.gridX;
-                const displayGridY = isSelectedDragging && dragHoverHex ? dragHoverHex.row : selectedToken.gridY;
-                const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-                const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const rawRotation =
-                  rotatingTokenId === selectedToken.id && previewRotation && previewRotation.id === selectedToken.id
-                    ? previewRotation.rotation
-                    : (typeof selectedToken.rotation === 'number'
-                        ? selectedToken.rotation
-                        : facingToRotation(selectedToken.facing));
-                const tokenRotation = snapRotationToHexFace(rawRotation);
-                const frontAngle = (tokenRotation + 90) % 360;
-                const arcRadius = hexSize * 1.6;
-                const arcCircumference = 2 * Math.PI * arcRadius;
-
-                return (
-                  <g transform={`translate(${center.x}, ${center.y})`}>
-                    {/* Arco Frontal (Verde): 120 graus centralizados exatamente na frente do token */}
-                    <circle
-                      cx="0"
-                      cy="0"
-                      r={arcRadius}
-                      fill="none"
-                      stroke="#10b981"
-                      strokeWidth="3"
-                      strokeOpacity="0.4"
-                      strokeDasharray={`${arcCircumference / 3} ${(arcCircumference * 2) / 3}`}
-                      transform={`rotate(${frontAngle - 60})`}
-                    />
-                  </g>
-                );
-              })()}
-            </g>
-          )}
 
           {/* CAMADA 5: MARCADORES E ÁREAS PERSISTENTES NO TABULEIRO */}
           <g id="tactical-persistent-markers">
@@ -2626,17 +3062,93 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
             </g>
           )}
 
+          {/* CAMADA 6.5: AURAS DOS TOKENS (MEDIDAS EM JARDAS - ANDAM JUNTO COM O TOKEN) */}
+          <g id="tactical-token-auras" pointerEvents="none">
+            {tokens.map((token) => {
+              const auraYards = typeof token.auraRadius === 'number' ? token.auraRadius : 0;
+              if (auraYards <= 0) return null;
+
+              const npc = token.isInstant ? null : resolveTokenNpc(token);
+              if (!token.isInstant && !npc) return null;
+
+              const isPlayer = npc?.characterType === 'player';
+              const isTokenHidden = token.isInstant
+                ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                : isPlayer
+                  ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                  : (!npc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
+
+              // Na visão de jogador, oculta a aura se o token estiver oculto ou se a aura for exclusiva do mestre
+              if (isPlayerView && (isTokenHidden || token.auraVisibleToPlayers === false)) return null;
+
+              const isDragging = token.id === draggedTokenId;
+              const displayGridX = isDragging && dragHoverHex ? dragHoverHex.col : token.gridX;
+              const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
+              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+              const auraColor = token.auraColor || '#38bdf8';
+              const auraRadiusPx = auraYards * hexWidth;
+              const isMasterOnlyAura = token.auraVisibleToPlayers === false;
+
+              return (
+                <g key={`aura-${token.id}`} id={`token-aura-${token.id}`} opacity={isTokenHidden ? 0.65 : 1}>
+                  <circle
+                    cx={center.x}
+                    cy={center.y}
+                    r={auraRadiusPx}
+                    fill={auraColor}
+                    fillOpacity={isMasterOnlyAura ? 0.1 : 0.14}
+                    stroke={auraColor}
+                    strokeWidth={2}
+                    strokeOpacity={0.85}
+                    strokeDasharray={isMasterOnlyAura ? '4 4' : '8 4'}
+                  />
+                  {/* Etiqueta discreta no topo da aura indicando o raio em jardas */}
+                  <g transform={`translate(${center.x}, ${center.y - auraRadiusPx - 10})`}>
+                    <rect
+                      x={isMasterOnlyAura ? -36 : -24}
+                      y={-9}
+                      width={isMasterOnlyAura ? 72 : 48}
+                      height={16}
+                      rx={5}
+                      fill="#020617"
+                      fillOpacity={0.85}
+                      stroke={auraColor}
+                      strokeWidth={1}
+                    />
+                    <text
+                      x={0}
+                      y={2}
+                      fill={auraColor}
+                      fontSize="9"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                    >
+                      {isMasterOnlyAura ? `👁 ${auraYards} yd` : `${auraYards} yd`}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
+          </g>
+
           {/* CAMADA 7: TOKENS DE COMBATE (visíveis em todas as camadas; na Camada Jogadores mostra apenas visão pública) */}
           <g id="tactical-tokens">
               {tokens.map((token) => {
-                const npc = resolveTokenNpc(token);
-                if (!npc) return null;
+                const npc = token.isInstant ? null : resolveTokenNpc(token);
+                if (!token.isInstant && !npc) return null;
 
-                const isPlayer = npc.characterType === 'player';
+                const isPlayer = npc?.characterType === 'player';
+                const displayName = token.isInstant ? (token.customName || 'Token') : npc!.name;
+                const displayAvatar = token.isInstant ? token.customAvatar : npc!.avatar;
+                const displayPresetId = token.isInstant ? (token.customPreset || 'knight') : npc!.avatarPreset;
+
                 // Visibilidade unificada: NPCs respeitam isVisibleToPlayer da ficha e a flag do tabuleiro
-                const isTokenHidden = isPlayer
+                const isTokenHidden = token.isInstant
                   ? (!!token.hiddenFromPlayers || token.layer === 'gm')
-                  : (!npc.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
+                  : isPlayer
+                    ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                    : (!npc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
                 // Na visão de jogador (jogadores reais ou Mestre na aba "2. Jogadores"), oculta tokens da camada do mestre ou ocultos
                 if (isPlayerView && isTokenHidden) return null;
               const isSelected = token.id === selectedTokenId;
@@ -2659,22 +3171,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               const tokenInnerHexPoints = getFlatHexPointsString(tokenHexRadius);
               const tokenSelectionHexPoints = getFlatHexPointsString(tokenHexRadius + 5);
 
-              const hpPercent =
-                npc.hpMax > 0
-                  ? Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100))
-                  : 100;
+              const badgeWidth = Math.min(85, Math.max(34, displayName.length * 5.8));
 
-              const badgeWidth = Math.min(85, Math.max(34, npc.name.length * 5.8));
-
-              // Manobra ativa do personagem / NPC para colorir a borda do token
-              const maneuver = npc.combatManeuver ? getCombatManeuver(npc.combatManeuver) : undefined;
+              // Manobra ativa do personagem / NPC para colorir a borda do token (sem borda roxa quando oculto; mantém apenas glow roxo + olho)
+              const maneuver = npc?.combatManeuver ? getCombatManeuver(npc.combatManeuver) : undefined;
               const hasManeuver = !!maneuver && maneuver.id !== 'none';
-              // Contorno cinza neutro se não houver manobra para não confundir com as manobras
               const maneuverBorderColor = hasManeuver
                 ? (maneuver.borderHex || maneuver.bgHex)
-                : isTokenHidden
-                  ? '#c084fc'
-                  : '#64748b';
+                : (token.color || '#64748b');
 
               const canControl = canControlToken(token);
 
@@ -2690,33 +3194,36 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     e.preventDefault();
                     e.stopPropagation();
                     setSelectedTokenId(token.id);
-                    onSelectNpc(token.npcId);
+                    if (!token.isInstant && token.npcId) {
+                      onSelectNpc(token.npcId);
+                    }
                     setContextMenu({
                       tokenId: token.id,
-                      npcId: token.npcId,
+                      npcId: token.npcId || '',
                       x: e.clientX,
                       y: e.clientY,
                     });
                   }}
                   className={`${canControl ? (isSelected ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer') : 'cursor-pointer'} transition-transform`}
                   style={{
-                    filter: isSelected
-                      ? 'drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.8))'
+                    filter: isTokenHidden && isSelected
+                      ? 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9)) drop-shadow(0px 0px 6px rgba(245, 158, 11, 0.75))'
                       : isTokenHidden
-                        ? 'drop-shadow(0px 0px 7px rgba(168, 85, 247, 0.8))'
-                        : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
+                        ? 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))'
+                        : isSelected
+                          ? 'drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.8))'
+                          : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
                   }}
                 >
                   {/* GRUPO ROTATIVO INTEGRAL: Token Hexagonal, Foto, Nome (atrás), Frente (na face frontal) e Pauzinho giram juntos */}
                   <g transform={`rotate(${tokenRotation})`}>
-                    {/* 1. Hexágono de Base com Borda de Manobra ou Roxo GM */}
+                    {/* 1. Hexágono de Base com Borda de Manobra ou Cor do Token (sem borda roxa quando oculto) */}
                     <polygon
                       points={tokenBaseHexPoints}
                       fill="#0f172a"
                       stroke={maneuverBorderColor}
-                      strokeWidth={isSelected ? 2 : isTokenHidden ? 1.8 : 1.5}
+                      strokeWidth={isSelected ? 2 : 1.5}
                       strokeLinejoin="round"
-                      strokeDasharray={isTokenHidden ? "4,2" : undefined}
                     />
 
                     {/* Contorno Hexagonal Externo Dourado Indicador de Seleção */}
@@ -2736,9 +3243,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       <polygon points={tokenInnerHexPoints} />
                     </clipPath>
 
-                    {npc.avatar ? (
+                    {displayAvatar ? (
                       <image
-                        href={npc.avatar}
+                        href={displayAvatar}
                         x={-tokenHexRadius}
                         y={-tokenHexRadius}
                         width={tokenHexRadius * 2}
@@ -2749,8 +3256,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     ) : (
                       (() => {
                         const matchedPreset =
-                          PRESET_AVATARS.find((p) => p.id === npc.avatarPreset) ||
-                          resolveNpcPreset(npc);
+                          PRESET_AVATARS.find((p) => p.id === displayPresetId) ||
+                          (npc ? resolveNpcPreset(npc) : PRESET_AVATARS[0]);
                         const colors =
                           PRESET_BG_COLORS[matchedPreset.id] || PRESET_BG_COLORS['knight'];
                         const PresetIcon = matchedPreset.icon || Shield;
@@ -2837,7 +3344,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       fontWeight="600"
                       textAnchor="middle"
                     >
-                      {npc.name}
+                      {displayName}
                     </text>
 
                     {/* 4. MARCAÇÃO DE FRENTE NA ARESTA FRONTAL (APONTANDO EXATAMENTE PARA O MEIO DO HEXÁGONO À FRENTE) */}
@@ -3061,19 +3568,27 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
         </g>
       </svg>
 
-      {/* MENU DE CONTEXTO DO TOKEN (BOTÃO DIREITO: DADOS, MANOBRA E LANÇAR DANO) */}
+      {/* MENU DE CONTEXTO DO TOKEN (BOTÃO DIREITO: DADOS, MANOBRA, AURA E LANÇAR DANO) */}
       {contextMenu && (() => {
         const token = tokens.find((t) => t.id === contextMenu.tokenId);
-        const npc = token ? resolveTokenNpc(token) : null;
-        if (!token || !npc) return null;
-        const canControlMenuToken = canControlToken(token);
-        const canEditManeuver = canChangeManeuver(npc);
-        const canLaunchDamage = isMaster || hasEditPermission;
+        if (!token) return null;
+        const isInstantToken = !!token.isInstant;
+        const npc = isInstantToken ? null : resolveTokenNpc(token);
+        if (!isInstantToken && !npc) return null;
 
-        const hp = typeof npc.hpCurrent === 'number' ? npc.hpCurrent : (npc.hpMax || 0);
-        const hpMax = npc.hpMax || 0;
-        const fp = typeof npc.fpCurrent === 'number' ? npc.fpCurrent : (npc.fpMax || 0);
-        const fpMax = npc.fpMax || 0;
+        const canEditManeuver = npc ? canChangeManeuver(npc) : false;
+        const displayName = isInstantToken ? (token.customName || 'Token') : npc!.name;
+        const displayAvatar = isInstantToken ? token.customAvatar : npc!.avatar;
+        const displayPreset = isInstantToken ? (token.customPreset || 'knight') : npc!.avatarPreset;
+
+        const hp = npc ? (typeof npc.hpCurrent === 'number' ? npc.hpCurrent : (npc.hpMax || 0)) : 0;
+        const hpMax = npc ? (npc.hpMax || 0) : 0;
+        const fp = npc ? (typeof npc.fpCurrent === 'number' ? npc.fpCurrent : (npc.fpMax || 0)) : 0;
+        const fpMax = npc ? (npc.fpMax || 0) : 0;
+
+        const currentAuraRadius = typeof token.auraRadius === 'number' ? token.auraRadius : 0;
+        const currentAuraColor = token.auraColor || '#38bdf8';
+        const isAuraVisibleToPlayers = token.auraVisibleToPlayers !== false;
 
         // Lista de 8 manobras (7 oficiais + Nenhuma)
         const maneuversList = [
@@ -3090,10 +3605,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
         ];
 
         // Clamping para manter o menu sempre visível e compacto na tela
-        const menuWidth = 220;
-        const menuHeight = 230;
+        const menuWidth = 240;
+        const menuHeight = isInstantToken ? 290 : 390;
         const posX = Math.min(Math.max(8, contextMenu.x), window.innerWidth - menuWidth - 8);
-        const posY = Math.min(Math.max(8, contextMenu.y), window.innerHeight - menuHeight - 8);
+        const posY = Math.min(Math.max(8, contextMenu.y), Math.max(8, window.innerHeight - menuHeight - 8));
+
+        const isContextTokenHidden = isInstantToken
+          ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+          : npc!.characterType === 'player'
+            ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+            : (!npc!.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
 
         return (
           <div
@@ -3111,7 +3632,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
             }}
           >
             <div
-              className="absolute bg-slate-950/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 shadow-2xl w-[220px] space-y-2 text-slate-100 select-none animate-in fade-in zoom-in-95 duration-100"
+              className="absolute bg-slate-950/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 shadow-2xl w-[240px] max-h-[85vh] overflow-y-auto space-y-2 text-slate-100 select-none animate-in fade-in zoom-in-95 duration-100"
               style={{
                 left: `${posX}px`,
                 top: `${posY}px`,
@@ -3125,33 +3646,58 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 e.stopPropagation();
               }}
             >
-              {/* Cabeçalho Compacto: Avatar, Nome e PV/FP lado a lado */}
+              {/* Cabeçalho Compacto: Avatar, Nome e PV/FP (ou selo Instantâneo) */}
               <div className="flex items-center justify-between gap-1.5 border-b border-slate-800 pb-1.5">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-900 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-900 flex items-center justify-center">
                     <NpcAvatar
-                      avatar={npc.avatar}
-                      preset={npc.avatarPreset}
-                      name={npc.name}
+                      avatar={displayAvatar}
+                      preset={displayPreset}
+                      name={displayName}
                       size="sm"
-                      className="!w-7 !h-7 !rounded-full"
+                      className="!w-7 !h-7 !rounded-lg"
                     />
                   </div>
                   <div className="min-w-0 flex flex-col">
-                    <span className="font-bold text-white text-xs truncate leading-tight">
-                      {npc.name}
-                    </span>
-                    <div className="flex items-center gap-1 text-[10px] font-mono leading-none pt-0.5">
-                      <span className={hp <= 0 ? 'text-rose-400 font-bold' : hp < hpMax / 3 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
-                        {hp}/{hpMax}
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="font-bold text-white text-xs truncate leading-tight">
+                        {displayName}
                       </span>
-                      <span className="text-slate-500 text-[9px]">PV</span>
-                      <span className="text-slate-600">•</span>
-                      <span className={fp <= 0 ? 'text-rose-400 font-bold' : fp < fpMax / 3 ? 'text-amber-400 font-bold' : 'text-cyan-400 font-bold'}>
-                        {fp}/{fpMax}
-                      </span>
-                      <span className="text-slate-500 text-[9px]">FP</span>
+                      {isMaster && isInstantToken && (
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const next = window.prompt('Novo nome do token instantâneo:', displayName);
+                            if (next !== null && next.trim()) {
+                              handleUpdateToken(token.id, { customName: next.trim() });
+                            }
+                          }}
+                          className="p-0.5 text-slate-400 hover:text-sky-300 rounded cursor-pointer shrink-0"
+                          title="Renomear token instantâneo"
+                        >
+                          <Pencil size={10} />
+                        </button>
+                      )}
                     </div>
+                    {npc ? (
+                      <div className="flex items-center gap-1 text-[10px] font-mono leading-none pt-0.5">
+                        <span className={hp <= 0 ? 'text-rose-400 font-bold' : hp < hpMax / 3 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                          {hp}/{hpMax}
+                        </span>
+                        <span className="text-slate-500 text-[9px]">PV</span>
+                        <span className="text-slate-600">•</span>
+                        <span className={fp <= 0 ? 'text-rose-400 font-bold' : fp < fpMax / 3 ? 'text-amber-400 font-bold' : 'text-cyan-400 font-bold'}>
+                          {fp}/{fpMax}
+                        </span>
+                        <span className="text-slate-500 text-[9px]">FP</span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-sky-400 font-semibold leading-none pt-0.5">
+                        Token Instantâneo
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button
@@ -3167,98 +3713,231 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 </button>
               </div>
 
-              {/* Seletor com 8 Manobras de Combate (Grid 2x4) */}
-              <div className="space-y-1">
-                <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
-                  <Shield size={11} className="text-amber-400" /> Manobra de Combate
+              {/* Seletor com 8 Manobras de Combate (Grid 2x4) — apenas para Personagens e NPCs */}
+              {npc && (
+                <div className="space-y-1">
+                  <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                    <Shield size={11} className="text-amber-400" /> Manobra de Combate
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1">
+                    {maneuversList.map((m) => {
+                      const isSelected =
+                        m.id === 'none'
+                          ? !npc.combatManeuver
+                          : npc.combatManeuver === m.id;
+
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          disabled={!canEditManeuver}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            if (!canEditManeuver) return;
+                            e.stopPropagation();
+                            const newManeuver =
+                              m.id === 'none' || isSelected ? undefined : m.id;
+                            onUpdateNpc({ ...npc, combatManeuver: newManeuver });
+                          }}
+                          className={`px-1.5 py-1 rounded-md text-[10px] font-semibold flex items-center justify-between transition-all border ${
+                            isSelected
+                              ? 'ring-2 ring-white/70 shadow-md font-bold'
+                              : canEditManeuver
+                              ? 'opacity-85 hover:opacity-100 hover:scale-[1.02]'
+                              : 'opacity-40 cursor-not-allowed'
+                          }`}
+                          style={{
+                            backgroundColor: m.bgHex,
+                            color: m.textHex,
+                            borderColor: m.borderHex,
+                          }}
+                        >
+                          <span className="truncate">{m.name}</span>
+                          {isSelected && <span className="text-[11px] leading-none ml-0.5">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+              )}
 
-                <div className="grid grid-cols-2 gap-1">
-                  {maneuversList.map((m) => {
-                    const isSelected =
-                      m.id === 'none'
-                        ? !npc.combatManeuver
-                        : npc.combatManeuver === m.id;
+              {/* AURA EM VOLTA DO TOKEN (MEDIDA EM JARDAS — ACOMPANHA O TOKEN) — APENAS MESTRE */}
+              {isMaster && (
+                <div className="pt-1.5 border-t border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                      <CircleDot size={11} className="text-sky-400" />
+                      <span>Aura (jardas):</span>
+                    </span>
+                    <span className="font-mono font-bold text-amber-300">
+                      {currentAuraRadius > 0 ? `${currentAuraRadius} yd` : 'Off'}
+                    </span>
+                  </div>
 
-                    return (
+                  {/* Presets rápidos + stepper */}
+                  <div className="grid grid-cols-6 gap-1">
+                    {[0, 1, 2, 3, 5, 10].map((yd) => (
                       <button
-                        key={m.id}
+                        key={yd}
                         type="button"
-                        disabled={!canEditManeuver}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
-                          if (!canEditManeuver) return;
                           e.stopPropagation();
-                          const newManeuver =
-                            m.id === 'none' || isSelected ? undefined : m.id;
-                          onUpdateNpc({ ...npc, combatManeuver: newManeuver });
+                          handleUpdateToken(token.id, {
+                            auraRadius: yd,
+                            ...(yd > 0 && !token.auraColor ? { auraColor: currentAuraColor } : {}),
+                          });
                         }}
-                        className={`px-1.5 py-1 rounded-md text-[10px] font-semibold flex items-center justify-between transition-all border ${
-                          isSelected
-                            ? 'ring-2 ring-white/70 shadow-md font-bold'
-                            : canEditManeuver
-                            ? 'opacity-85 hover:opacity-100 hover:scale-[1.02]'
-                            : 'opacity-40 cursor-not-allowed'
+                        className={`py-1 rounded text-[9.5px] font-bold border text-center transition-all cursor-pointer ${
+                          currentAuraRadius === yd
+                            ? yd === 0
+                              ? 'bg-slate-700 text-white border-slate-500'
+                              : 'bg-sky-600 text-white border-sky-400'
+                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
                         }`}
-                        style={{
-                          backgroundColor: m.bgHex,
-                          color: m.textHex,
-                          borderColor: m.borderHex,
-                        }}
                       >
-                        <span className="truncate">{m.name}</span>
-                        {isSelected && <span className="text-[11px] leading-none ml-0.5">✓</span>}
+                        {yd === 0 ? 'Off' : `${yd}y`}
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
+                    ))}
+                  </div>
 
-              {/* NÍVEL 3: UNIFICADO COM A FICHA DO NPC (MOVER ENTRE CAMADA DE TOKENS E GM) */}
-              {isMaster && (() => {
-                const isContextTokenHidden = npc.characterType === 'player'
-                  ? (!!token.hiddenFromPlayers || token.layer === 'gm')
-                  : (!npc.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
-
-                return (
-                  <div className="pt-1 border-t border-slate-800">
+                  {/* Ajuste fino +/- e valor personalizado em jardas */}
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleToggleTokenVisibility(token.id);
-                        setContextMenu(null);
+                        handleUpdateToken(token.id, {
+                          auraRadius: Math.max(0, Number((currentAuraRadius - 1).toFixed(1))),
+                        });
                       }}
-                      className={`w-full py-1.5 px-2 rounded-lg font-bold text-[10.5px] flex items-center justify-center gap-1.5 border transition-all ${
-                        isContextTokenHidden
-                          ? 'bg-purple-950/70 hover:bg-purple-900 text-purple-200 border-purple-500/50 shadow-sm'
-                          : 'bg-slate-850 hover:bg-slate-800 text-slate-300 border-slate-750'
-                      }`}
-                      title={
-                        isContextTokenHidden
-                          ? 'Tornar este combatente visível para os jogadores conectados'
-                          : 'Ocultar este combatente dos jogadores (Camada do Mestre)'
-                      }
+                      className="p-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 hover:text-white cursor-pointer"
+                      title="Diminuir 1 jarda"
                     >
-                      {isContextTokenHidden ? (
-                        <>
-                          <Eye size={12} className="text-emerald-400" />
-                          <span>Mover para Camada de Tokens (Jogadores)</span>
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff size={12} className="text-purple-400" />
-                          <span>Mover para Camada do Mestre (GM)</span>
-                        </>
-                      )}
+                      <Minus size={11} />
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      value={currentAuraRadius}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value) || 0);
+                        handleUpdateToken(token.id, {
+                          auraRadius: val,
+                          ...(val > 0 && !token.auraColor ? { auraColor: currentAuraColor } : {}),
+                        });
+                      }}
+                      className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded px-2 py-0.5 text-[11px] font-mono text-center text-white focus:outline-none focus:border-sky-500"
+                      title="Raio da aura em jardas"
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateToken(token.id, {
+                          auraRadius: Number((currentAuraRadius + 1).toFixed(1)),
+                          ...(!token.auraColor ? { auraColor: currentAuraColor } : {}),
+                        });
+                      }}
+                      className="p-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 hover:text-white cursor-pointer"
+                      title="Aumentar 1 jarda"
+                    >
+                      <Plus size={11} />
                     </button>
                   </div>
-                );
-              })()}
 
-              {/* Botão de Ação: Lançar Dano / Fadiga / Itens (Apenas Mestre ou Jogadores Editores) */}
-              {(isMaster || hasEditPermission) && (
+                  {/* Cor da aura e visibilidade para jogadores (quando ativa) */}
+                  {currentAuraRadius > 0 && (
+                    <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                      <div className="flex items-center gap-1">
+                        {['#38bdf8', '#f59e0b', '#ef4444', '#10b981', '#a855f7', '#e2e8f0'].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateToken(token.id, { auraColor: c });
+                            }}
+                            className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
+                              currentAuraColor === c ? 'border-white scale-115 ring-1 ring-white/60' : 'border-slate-700'
+                            }`}
+                            style={{ backgroundColor: c }}
+                            title={`Cor da aura: ${c}`}
+                          />
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUpdateToken(token.id, { auraVisibleToPlayers: !isAuraVisibleToPlayers });
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold border transition-all cursor-pointer ${
+                          isAuraVisibleToPlayers
+                            ? 'bg-emerald-950/70 text-emerald-300 border-emerald-700/60'
+                            : 'bg-purple-950/70 text-purple-300 border-purple-700/60'
+                        }`}
+                        title={
+                          isAuraVisibleToPlayers
+                            ? 'Aura visível para jogadores (clique para deixar só para o Mestre)'
+                            : 'Aura visível apenas para o Mestre (clique para exibir aos jogadores)'
+                        }
+                      >
+                        {isAuraVisibleToPlayers ? 'Jogadores' : 'Só Mestre'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* NÍVEL 3: MOVER ENTRE CAMADA DE TOKENS (JOGADORES) E GM (MESTRE) */}
+              {isMaster && (
+                <div className="pt-1 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleTokenVisibility(token.id);
+                      setContextMenu(null);
+                    }}
+                    className={`w-full py-1.5 px-2 rounded-lg font-bold text-[10.5px] flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      isContextTokenHidden
+                        ? 'bg-purple-950/70 hover:bg-purple-900 text-purple-200 border-purple-500/50 shadow-sm'
+                        : 'bg-slate-850 hover:bg-slate-800 text-slate-300 border-slate-750'
+                    }`}
+                    title={
+                      isContextTokenHidden
+                        ? 'Tornar este token visível para os jogadores conectados'
+                        : 'Ocultar este token dos jogadores (Camada do Mestre)'
+                    }
+                  >
+                    {isContextTokenHidden ? (
+                      <>
+                        <Eye size={12} className="text-emerald-400" />
+                        <span>Mover para Camada de Tokens</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff size={12} className="text-purple-400" />
+                        <span>Mover para Camada do Mestre</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Botão de Ação: Lançar Dano / Fadiga / Itens (apenas para Personagens e NPCs) */}
+              {npc && (isMaster || hasEditPermission) && (
                 <div className="pt-1 border-t border-slate-800">
                   <button
                     type="button"
@@ -3270,10 +3949,28 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       onSelectNpc(npc.id);
                       onOpenDamageCalculator?.(npc);
                     }}
-                    className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10 transition-all active:scale-[0.98]"
+                    className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10 transition-all active:scale-[0.98] cursor-pointer"
                   >
                     <Swords size={13} />
                     <span>Lançar Dano / Fadiga / Itens</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Excluir Token Instantâneo (apenas Mestre) */}
+              {isMaster && isInstantToken && (
+                <div className="pt-1 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveToken(token.id);
+                    }}
+                    className="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 border border-rose-800/60 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Trash2 size={12} />
+                    <span>Excluir Token Instantâneo</span>
                   </button>
                 </div>
               )}

@@ -22,6 +22,15 @@ export interface TacticalToken {
   layer?: TacticalLayer; // 'tokens' ou 'gm'
   notes?: string;
   movedThisTurn?: number; // Hexes percorridos nesta rodada
+  // Token Instantâneo (criado direto no mapa sem vínculo obrigatório com personagem/NPC)
+  isInstant?: boolean;
+  customName?: string;
+  customAvatar?: string; // URL ou imagem enviada pelo computador
+  customPreset?: string; // ID de preset de ícone (NpcAvatar PRESET_AVATARS)
+  // Aura ao redor do token medida em jardas (acompanha o token ao se mover)
+  auraRadius?: number; // Raio em jardas (0 ou undefined = sem aura)
+  auraColor?: string; // Cor hex da aura
+  auraVisibleToPlayers?: boolean; // true por padrão; false = visível apenas para o mestre
   emitsLight?: boolean; // Se o token emite luz própria (tocha, lanterna)
   lightRadius?: number; // Raio de iluminação em hexes/jardas (padrão 4 para tocha)
   lightColor?: string; // Cor do brilho (ex: '#f59e0b' âmbar, '#38bdf8' mágico)

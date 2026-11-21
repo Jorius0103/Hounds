@@ -48,6 +48,7 @@ interface TacticalToolbarProps {
   onClearMarkers: () => void;
   onAutoPlaceTokens: () => void;
   onOpenTokensModal?: () => void;
+  onOpenInstantTokenModal?: () => void;
   tokensCount?: number;
   currentUserRole: string;
   onOpenPlayerPermissions?: () => void;
@@ -101,6 +102,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onZoomIn,
   onZoomOut,
   onOpenTokensModal,
+  onOpenInstantTokenModal,
   tokensCount,
   currentUserRole,
   fogBrushMode = 'reveal',
@@ -937,6 +939,19 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <RotateCcw size={13} />
           </button>
         </div>
+
+        {/* Criar Token Instantâneo (Mestre) */}
+        {isMaster && onOpenInstantTokenModal && (
+          <button
+            type="button"
+            onClick={onOpenInstantTokenModal}
+            className="px-2.5 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+            title="Criar um token instantâneo no mapa (sem precisar de personagem ou NPC)"
+          >
+            <Plus size={14} className="text-sky-400" />
+            <span>Token Instantâneo</span>
+          </button>
+        )}
 
         {/* Tokens no Tabuleiro */}
         {isMaster && (
