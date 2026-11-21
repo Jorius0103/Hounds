@@ -515,13 +515,13 @@ function SupabaseStore(client, bucket) {
     });
   }
 
-  function upload(file) {
+  function upload(file, opts) {
     var ext = file.name ? file.name.slice(file.name.lastIndexOf('.')) : '';
     if (!ext && file.type) {
       var map = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
       ext = map[file.type] || '';
     }
-    var ref = uid() + (ext || '');
+    var ref = (opts && opts.ref) ? String(opts.ref) : (uid() + (ext || ''));
     return client.storage.from(bName).upload(ref, file, { contentType: file.type, upsert: true }).then(function (res) {
       if (res.error) throw res.error;
       return { ref: ref, type: file.type, size: file.size };

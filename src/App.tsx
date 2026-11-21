@@ -702,6 +702,10 @@ export default function App() {
     }
     return allCharacters[0]?.id || '';
   });
+  const selectedNpcIdRef = useRef<string>(selectedNpcId);
+  selectedNpcIdRef.current = selectedNpcId;
+  const sessionPlayerIdsRef = useRef<string[]>(sessionPlayerIds);
+  sessionPlayerIdsRef.current = sessionPlayerIds;
 
   const [activeFilterInfo, setActiveFilterInfo] = useState<{ filter: string; count: number }>({
     filter: 'all',
@@ -1073,7 +1077,7 @@ export default function App() {
     const finalActiveCombat =
       updatedActiveCombatId !== undefined ? updatedActiveCombatId : stateRef.current.activeCombatId;
     const finalPlayers = updatedPlayers || stateRef.current.players;
-    const finalSessionPlayerIds = updatedSessionPlayerIds || sessionPlayerIds;
+    const finalSessionPlayerIds = updatedSessionPlayerIds || sessionPlayerIdsRef.current;
 
     // Guarda NPCs no pool para qualquer combate com NPCs carregados
     finalCombats.forEach((c) => {
@@ -1210,6 +1214,9 @@ export default function App() {
     });
 
     const handleIncomingSync = (payload: RemoteSyncPayload) => {
+      const myClientId = onlineSyncService.getClientId();
+      if ((payload as any).sourceId && (payload as any).sourceId === myClientId) return;
+      if (payload.clientId && payload.clientId === myClientId) return;
       if ((payload as any).userName) markUserOnline((payload as any).userName);
       if ((payload as any).authorName) markUserOnline((payload as any).authorName);
       if ((payload as any).type === 'PRESENCE_PING') return;
@@ -1652,42 +1659,49 @@ export default function App() {
           }
 
           if (targetCombat) {
+            const curUser = currentUserRef.current;
             const myChar = (stateRef.current.players || []).find(
               (p) =>
-                currentUser &&
-                (p.userId === currentUser.id ||
-                  p.ownerId === currentUser.id ||
-                  p.name === currentUser.name ||
-                  (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                curUser &&
+                (p.userId === curUser.id ||
+                  p.ownerId === curUser.id ||
+                  p.name === curUser.name ||
+                  (p.playerName && p.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
             ) || targetCombat.npcs?.find(
               (n) =>
-                currentUser &&
-                (n.userId === currentUser.id ||
-                  n.ownerId === currentUser.id ||
-                  n.name === currentUser.name ||
-                  (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                curUser &&
+                (n.userId === curUser.id ||
+                  n.ownerId === curUser.id ||
+                  n.name === curUser.name ||
+                  (n.playerName && n.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
             );
             if (myChar) {
+              selectedNpcIdRef.current = myChar.id;
               setSelectedNpcId(myChar.id);
             } else if (targetCombat.npcs && targetCombat.npcs.length > 0) {
+              selectedNpcIdRef.current = targetCombat.npcs[0].id;
               setSelectedNpcId(targetCombat.npcs[0].id);
             } else if (stateRef.current.players && stateRef.current.players.length > 0) {
+              selectedNpcIdRef.current = stateRef.current.players[0].id;
               setSelectedNpcId(stateRef.current.players[0].id);
             }
           }
         } else {
           // Sem combate ativo: seleciona o personagem do jogador na lista de personagens
+          const curUser = currentUserRef.current;
           const myPlayerChar = (stateRef.current.players || []).find(
             (p) =>
-              currentUser &&
-              (p.userId === currentUser.id ||
-                p.ownerId === currentUser.id ||
-                p.name === currentUser.name ||
-                (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+              curUser &&
+              (p.userId === curUser.id ||
+                p.ownerId === curUser.id ||
+                p.name === curUser.name ||
+                (p.playerName && p.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
           );
           if (myPlayerChar) {
+            selectedNpcIdRef.current = myPlayerChar.id;
             setSelectedNpcId(myPlayerChar.id);
           } else if (stateRef.current.players.length > 0) {
+            selectedNpcIdRef.current = stateRef.current.players[0].id;
             setSelectedNpcId(stateRef.current.players[0].id);
           }
         }
@@ -1765,6 +1779,8 @@ export default function App() {
 
         if (Array.isArray((payload as any).sessionPlayerIds)) {
           const sIds = (payload as any).sessionPlayerIds;
+          stateRef.current.sessionPlayerIds = sIds;
+          sessionPlayerIdsRef.current = sIds;
           setSessionPlayerIds(sIds);
           try {
             localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(sIds));
@@ -1786,47 +1802,56 @@ export default function App() {
         if (effectiveActiveId) {
           const newActiveCombat = nextCombats.find((c) => c.id === effectiveActiveId);
           if (newActiveCombat) {
-            const currentSelectedValid = (newActiveCombat.npcs || []).some((n) => n.id === selectedNpcId) ||
-              (nextPlayers || []).some((p) => p.id === selectedNpcId);
+            const curSelectedId = selectedNpcIdRef.current;
+            const curUser = currentUserRef.current;
+            const currentSelectedValid = (newActiveCombat.npcs || []).some((n) => n.id === curSelectedId) ||
+              (nextPlayers || []).some((p) => p.id === curSelectedId);
             if (!currentSelectedValid || activeCombatIdChanged) {
               const myChar = (nextPlayers || []).find(
                 (p) =>
-                  currentUser &&
-                  (p.userId === currentUser.id ||
-                    p.ownerId === currentUser.id ||
-                    p.name === currentUser.name ||
-                    (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                  curUser &&
+                  (p.userId === curUser.id ||
+                    p.ownerId === curUser.id ||
+                    p.name === curUser.name ||
+                    (p.playerName && p.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
               ) || newActiveCombat.npcs?.find(
                 (n) =>
-                  currentUser &&
-                  (n.userId === currentUser.id ||
-                    n.ownerId === currentUser.id ||
-                    n.name === currentUser.name ||
-                    (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                  curUser &&
+                  (n.userId === curUser.id ||
+                    n.ownerId === curUser.id ||
+                    n.name === curUser.name ||
+                    (n.playerName && n.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
               );
               if (myChar) {
+                selectedNpcIdRef.current = myChar.id;
                 setSelectedNpcId(myChar.id);
               } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
+                selectedNpcIdRef.current = newActiveCombat.npcs[0].id;
                 setSelectedNpcId(newActiveCombat.npcs[0].id);
               } else if (nextPlayers && nextPlayers.length > 0) {
+                selectedNpcIdRef.current = nextPlayers[0].id;
                 setSelectedNpcId(nextPlayers[0].id);
               }
             }
           }
         } else {
-          const currentSelectedValid = (nextPlayers || []).some((p) => p.id === selectedNpcId);
+          const curSelectedId = selectedNpcIdRef.current;
+          const curUser = currentUserRef.current;
+          const currentSelectedValid = (nextPlayers || []).some((p) => p.id === curSelectedId);
           if (!currentSelectedValid || activeCombatIdChanged) {
             const myPlayerChar = (nextPlayers || []).find(
               (p) =>
-                currentUser &&
-                (p.userId === currentUser.id ||
-                  p.ownerId === currentUser.id ||
-                  p.name === currentUser.name ||
-                  (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                curUser &&
+                (p.userId === curUser.id ||
+                  p.ownerId === curUser.id ||
+                  p.name === curUser.name ||
+                  (p.playerName && p.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
             );
             if (myPlayerChar) {
+              selectedNpcIdRef.current = myPlayerChar.id;
               setSelectedNpcId(myPlayerChar.id);
             } else if (nextPlayers && nextPlayers.length > 0) {
+              selectedNpcIdRef.current = nextPlayers[0].id;
               setSelectedNpcId(nextPlayers[0].id);
             }
           }
@@ -1846,7 +1871,7 @@ export default function App() {
             users: stateRef.current.users,
             activeCombatId: stateRef.current.activeCombatId,
             players: stateRef.current.players,
-            sessionPlayerIds: sessionPlayerIds,
+            sessionPlayerIds: sessionPlayerIdsRef.current,
             deletedCombatIds: getDeletedCombatIds(),
             timestamp: lastLocalEditTimestampRef.current || 1,
           });
@@ -1943,6 +1968,8 @@ export default function App() {
           try {
             const p = typeof msgStr === 'string' ? JSON.parse(msgStr) : msgStr;
             if (p && p.type) {
+              const myClientId = onlineSyncService.getClientId();
+              if (p.clientId === myClientId || p.sourceId === myClientId) return;
               handleIncomingSync(p);
             }
           } catch (e) {}
@@ -2392,41 +2419,48 @@ export default function App() {
             }
 
             if (targetCombat) {
+              const curUser = currentUserRef.current;
               const myChar = (stateRef.current.players || []).find(
                 (p) =>
-                  currentUser &&
-                  (p.userId === currentUser.id ||
-                    p.ownerId === currentUser.id ||
-                    p.name === currentUser.name ||
-                    (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                  curUser &&
+                  (p.userId === curUser.id ||
+                    p.ownerId === curUser.id ||
+                    p.name === curUser.name ||
+                    (p.playerName && p.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
               ) || targetCombat.npcs?.find(
                 (n) =>
-                  currentUser &&
-                  (n.userId === currentUser.id ||
-                    n.ownerId === currentUser.id ||
-                    n.name === currentUser.name ||
-                    (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                  curUser &&
+                  (n.userId === curUser.id ||
+                    n.ownerId === curUser.id ||
+                    n.name === curUser.name ||
+                    (n.playerName && n.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
               );
               if (myChar) {
+                selectedNpcIdRef.current = myChar.id;
                 setSelectedNpcId(myChar.id);
               } else if (targetCombat.npcs && targetCombat.npcs.length > 0) {
+                selectedNpcIdRef.current = targetCombat.npcs[0].id;
                 setSelectedNpcId(targetCombat.npcs[0].id);
               } else if (stateRef.current.players && stateRef.current.players.length > 0) {
+                selectedNpcIdRef.current = stateRef.current.players[0].id;
                 setSelectedNpcId(stateRef.current.players[0].id);
               }
             }
           } else {
+            const curUser = currentUserRef.current;
             const myPlayerChar = (stateRef.current.players || []).find(
               (p) =>
-                currentUser &&
-                (p.userId === currentUser.id ||
-                  p.ownerId === currentUser.id ||
-                  p.name === currentUser.name ||
-                  (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                curUser &&
+                (p.userId === curUser.id ||
+                  p.ownerId === curUser.id ||
+                  p.name === curUser.name ||
+                  (p.playerName && p.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
             );
             if (myPlayerChar) {
+              selectedNpcIdRef.current = myPlayerChar.id;
               setSelectedNpcId(myPlayerChar.id);
             } else if (stateRef.current.players.length > 0) {
+              selectedNpcIdRef.current = stateRef.current.players[0].id;
               setSelectedNpcId(stateRef.current.players[0].id);
             }
           }
@@ -2492,6 +2526,8 @@ export default function App() {
           }
 
           if (Array.isArray(event.data.sessionPlayerIds)) {
+            stateRef.current.sessionPlayerIds = event.data.sessionPlayerIds;
+            sessionPlayerIdsRef.current = event.data.sessionPlayerIds;
             setSessionPlayerIds(event.data.sessionPlayerIds);
             try {
               localStorage.setItem(SESSION_VISIBLE_PLAYERS_KEY, JSON.stringify(event.data.sessionPlayerIds));
@@ -2513,47 +2549,56 @@ export default function App() {
           if (effectiveActiveId) {
             const newActiveCombat = nextCombats.find((c) => c.id === effectiveActiveId);
             if (newActiveCombat) {
-              const currentSelectedValid = (newActiveCombat.npcs || []).some((n) => n.id === selectedNpcId) ||
-                (nextPlayers || []).some((p) => p.id === selectedNpcId);
+              const curSelectedId = selectedNpcIdRef.current;
+              const curUser = currentUserRef.current;
+              const currentSelectedValid = (newActiveCombat.npcs || []).some((n) => n.id === curSelectedId) ||
+                (nextPlayers || []).some((p) => p.id === curSelectedId);
               if (!currentSelectedValid || activeCombatIdChanged) {
                 const myChar = (nextPlayers || []).find(
                   (p) =>
-                    currentUser &&
-                    (p.userId === currentUser.id ||
-                      p.ownerId === currentUser.id ||
-                      p.name === currentUser.name ||
-                      (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                    curUser &&
+                    (p.userId === curUser.id ||
+                      p.ownerId === curUser.id ||
+                      p.name === curUser.name ||
+                      (p.playerName && p.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
                 ) || newActiveCombat.npcs?.find(
                   (n) =>
-                    currentUser &&
-                    (n.userId === currentUser.id ||
-                      n.ownerId === currentUser.id ||
-                      n.name === currentUser.name ||
-                      (n.playerName && n.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                    curUser &&
+                    (n.userId === curUser.id ||
+                      n.ownerId === curUser.id ||
+                      n.name === curUser.name ||
+                      (n.playerName && n.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
                 );
                 if (myChar) {
+                  selectedNpcIdRef.current = myChar.id;
                   setSelectedNpcId(myChar.id);
                 } else if (newActiveCombat.npcs && newActiveCombat.npcs.length > 0) {
+                  selectedNpcIdRef.current = newActiveCombat.npcs[0].id;
                   setSelectedNpcId(newActiveCombat.npcs[0].id);
                 } else if (nextPlayers && nextPlayers.length > 0) {
+                  selectedNpcIdRef.current = nextPlayers[0].id;
                   setSelectedNpcId(nextPlayers[0].id);
                 }
               }
             }
           } else {
-            const currentSelectedValid = (nextPlayers || []).some((p) => p.id === selectedNpcId);
+            const curSelectedId = selectedNpcIdRef.current;
+            const curUser = currentUserRef.current;
+            const currentSelectedValid = (nextPlayers || []).some((p) => p.id === curSelectedId);
             if (!currentSelectedValid || activeCombatIdChanged) {
               const myPlayerChar = (nextPlayers || []).find(
                 (p) =>
-                  currentUser &&
-                  (p.userId === currentUser.id ||
-                    p.ownerId === currentUser.id ||
-                    p.name === currentUser.name ||
-                    (p.playerName && p.playerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()))
+                  curUser &&
+                  (p.userId === curUser.id ||
+                    p.ownerId === curUser.id ||
+                    p.name === curUser.name ||
+                    (p.playerName && p.playerName.trim().toLowerCase() === curUser.name.trim().toLowerCase()))
               );
               if (myPlayerChar) {
+                selectedNpcIdRef.current = myPlayerChar.id;
                 setSelectedNpcId(myPlayerChar.id);
               } else if (nextPlayers && nextPlayers.length > 0) {
+                selectedNpcIdRef.current = nextPlayers[0].id;
                 setSelectedNpcId(nextPlayers[0].id);
               }
             }
@@ -3183,6 +3228,7 @@ export default function App() {
         type: 'SYNC_MASTER_ORDER',
         combatId: activeCombat?.id,
         customOrder: newOrderIds,
+        sourceId: onlineSyncService.getClientId(),
         timestamp: Date.now(),
       });
     } catch {}
@@ -4561,11 +4607,14 @@ export default function App() {
     // SEMPRE adiciona ao log global da Mesa (sessionEvents)
     setSessionEvents((prev) => [newEntry, ...prev.filter((e) => e.id !== newEntry.id)]);
 
-    if (activeCombat) {
-      // Vincula também aos eventos do combate para histórico e compatibilidade
-      const updatedCombats = combats.map((c) =>
-        c.id === activeCombat.id ? { ...c, events: [newEntry, ...(c.events || []).filter((e) => e.id !== newEntry.id)] } : c
+    const latestActiveId = stateRef.current.activeCombatId || activeCombat?.id;
+    const latestCombats = stateRef.current.combats.length > 0 ? stateRef.current.combats : combats;
+    if (latestActiveId && latestCombats.some((c) => c.id === latestActiveId)) {
+      // Vincula também aos eventos do combate usando stateRef mais recente para não perder mutação do mesmo tick
+      const updatedCombats = latestCombats.map((c) =>
+        c.id === latestActiveId ? { ...c, events: [newEntry, ...(c.events || []).filter((e) => e.id !== newEntry.id)] } : c
       );
+      stateRef.current.combats = updatedCombats;
       setCombats(updatedCombats);
       if (!isSecretRoll) {
         broadcastSync(updatedCombats);
@@ -4690,7 +4739,7 @@ export default function App() {
     broadcastSync(updatedCombats, undefined, undefined, undefined, updatedPlayers);
 
     // 4. Notifica outras abas e conexões em tempo real
-    const clearPayload = { type: 'SYNC_LOG_CLEAR' as const, timestamp: now };
+    const clearPayload = { type: 'SYNC_LOG_CLEAR' as const, sourceId: onlineSyncService.getClientId(), timestamp: now };
     onlineSyncService.sendPayloadImmediate(clearPayload);
     if (broadcastChannelRef.current) {
       try { broadcastChannelRef.current.postMessage(clearPayload); } catch (e) {}
@@ -5275,7 +5324,7 @@ export default function App() {
     });
 
     // Envia payload de exclusão para todas as abas e clientes conectados
-    const deletePayload = { type: 'SYNC_ENTRY_DELETE' as const, entryId, timestamp: now };
+    const deletePayload = { type: 'SYNC_ENTRY_DELETE' as const, entryId, sourceId: onlineSyncService.getClientId(), timestamp: now };
     onlineSyncService.sendPayloadImmediate(deletePayload);
     if (broadcastChannelRef.current) {
       try { broadcastChannelRef.current.postMessage(deletePayload); } catch (e) {}
