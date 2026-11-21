@@ -3,6 +3,7 @@ import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole
 import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
 import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, normalizeLocationKey, COMBAT_MANEUVERS, BODY_PARTS_CONFIG, LIMB_RELATED_KEYS } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';
+import { sanitizeCombatForSync, sanitizeNpcForSync, sanitizeUsersForSync } from './utils/mesaPermissions';
 import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
 import { NpcDetailView } from './components/NpcDetailView';
@@ -1097,18 +1098,7 @@ export default function App() {
       }
     });
 
-    const sanitizeNpcForSync = (npc: NPC): NPC => ({
-      ...npc,
-      history: Array.isArray(npc.history) ? npc.history.filter((h) => !h?.isSecret) : npc.history,
-    });
-
-    const sanitizeCombatForSync = (c: Combat): Combat => ({
-      ...c,
-      npcs: Array.isArray(c.npcs) ? c.npcs.map(sanitizeNpcForSync) : [],
-      events: Array.isArray(c.events) ? c.events.filter((e) => !e?.isSecret) : [],
-    });
-
-    const sanitizedUsers = (finalUsers || []).map(({ password: _password, ...safeUser }) => safeUser) as UserAccount[];
+    const sanitizedUsers = sanitizeUsersForSync(finalUsers);
     const sanitizedUpdatedNpc = updatedNpc ? sanitizeNpcForSync(updatedNpc) : undefined;
 
     // Otimizacao Online: Envia pacote enxuto para rede e banco (salvo quando isFullSnapshot for true)
@@ -1874,11 +1864,11 @@ export default function App() {
         if (stateRef.current.combats.length > 0 || stateRef.current.players.length > 0) {
           onlineSyncService.sendPayloadImmediate({
             type: 'SYNC_FULL',
-            combats: stateRef.current.combats,
+            combats: stateRef.current.combats.map(sanitizeCombatForSync),
             conditions: stateRef.current.conditions,
-            users: stateRef.current.users,
+            users: sanitizeUsersForSync(stateRef.current.users),
             activeCombatId: stateRef.current.activeCombatId,
-            players: stateRef.current.players,
+            players: stateRef.current.players.map(sanitizeNpcForSync),
             sessionPlayerIds: sessionPlayerIdsRef.current,
             deletedCombatIds: getDeletedCombatIds(),
             timestamp: lastLocalEditTimestampRef.current || 1,

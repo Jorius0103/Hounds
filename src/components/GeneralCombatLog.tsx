@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Combat, UserRole, MesaRole, NPC, ActionLogEntry } from '../types/rpg';
+import { filterVisibleLogEntries } from '../utils/mesaPermissions';
 import { CombatLogCard } from './CombatLogCard';
 import { DetailedLogModal } from './DetailedLogModal';
 import { ScrollText, Search, X, SlidersHorizontal, Maximize2, PanelRightClose, ChevronRight } from 'lucide-react';
@@ -57,88 +58,12 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
 
   // Collect and sort all logs across all active combat NPCs and Personagens
   const allLogs = useMemo(() => {
-    const isNoCombat =
-      !activeCombat ||
-      activeCombat.id === 'combat-vazio' ||
-      activeCombat.name?.toLowerCase().includes('vazio') ||
-      activeCombat.name?.toLowerCase().trim() === 'sem combate';
-    const combinedCharacters = [
-      ...(additionalCharacters || []),
-      ...(isNoCombat ? [] : activeCombat?.npcs?.filter((n) => !additionalCharacters?.some((p) => p.id === n.id)) || [])
-    ];
-
-    const list: any[] = [];
-    const seenIds = new Set<string>();
-
-    // 1. Eventos e rolagens gerais da Mesa de RPG (Globais, não pertencem a combates)
-    const baseEvents = [
-      ...(sessionEvents || []),
-      ...(activeCombat?.events || [])
-    ];
-    for (const ev of baseEvents) {
-      if (currentUserRole !== 'mestre' && (ev.isSecret || (ev as any).hiddenFromPlayers)) {
-        continue;
-      }
-      if (!seenIds.has(ev.id)) {
-        seenIds.add(ev.id);
-        let comment = ev.comment;
-        if (!comment && ev.npcId) {
-          const char = combinedCharacters.find((c) => c.id === ev.npcId);
-          const histEntry = char?.history?.find((h: any) => h.id === ev.id);
-          if (histEntry?.comment) {
-            comment = histEntry.comment;
-          }
-        }
-        list.push({
-          ...ev,
-          comment,
-          npcName: ev.npcName || ev.authorName || 'Mestre',
-          npcCharacterType: ev.npcCharacterType || 'npc',
-        });
-      }
-    }
-
-    // 2. Histórico individual dos combatentes
-    for (const npc of combinedCharacters) {
-      const isPlayerChar = npc.characterType === 'player';
-
-      // 1. Visibilidade do combatente:
-      // Personagens são SEMPRE visíveis para jogadores (podem ver completo).
-      // NPCs respeitam a visibilidade isVisibleToPlayer.
-      if (currentUserRole !== 'mestre' && !isPlayerChar && npc.isVisibleToPlayer === false) {
-        continue;
-      }
-
-      for (const entry of npc.history || []) {
-        // Se a rolagem ou evento estiver oculto para jogadores, oculta
-        if (currentUserRole !== 'mestre' && (entry.isSecret || (entry as any).hiddenFromPlayers)) {
-          continue;
-        }
-
-        // 2. As alterações de status feitas pelo mestre nos NPCs não devem refletir para os jogadores
-        if (currentUserRole !== 'mestre' && !isPlayerChar && entry.author === 'mestre' && entry.type !== 'roll') {
-          continue;
-        }
-
-        if (!seenIds.has(entry.id)) {
-          seenIds.add(entry.id);
-          list.push({
-            ...entry,
-            npcId: npc.id,
-            npcName: npc.name || 'Personagem',
-            npcAvatar: npc.avatar,
-            npcPreset: npc.avatarPreset,
-            npcCharacterType: npc.characterType || 'npc',
-            playerName: npc.playerName || '',
-          });
-        } else {
-          const existing = list.find((x) => x.id === entry.id);
-          if (existing && !existing.comment && entry.comment) {
-            existing.comment = entry.comment;
-          }
-        }
-      }
-    }
+    const list = filterVisibleLogEntries({
+      activeCombat,
+      additionalCharacters,
+      sessionEvents,
+      currentUserRole,
+    });
 
     // Sort newest to oldest
     return list.sort((a, b) => {

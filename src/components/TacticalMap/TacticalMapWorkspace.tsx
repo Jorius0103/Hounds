@@ -43,6 +43,7 @@ import {
   Point,
 } from '../../utils/tacticalMath';
 import { getCombatManeuver, COMBAT_MANEUVERS } from '../../utils/gurps';
+import { findVisibleRulerTargetToken } from '../../utils/mesaPermissions';
 import { NpcAvatar, PRESET_AVATARS, PRESET_BG_COLORS, resolveNpcPreset } from '../NpcAvatar';
 
 // Helpers para formatação compacta em linha única das medições: ex. 8(-4) Renato
@@ -3812,48 +3813,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const distanceYards = getHexDistance(rulerStart, rulerCurrent);
                 const isPrivatePreview = rulerVisibility === 'private';
 
-                // Verifica se o ponto alvo está sob névoa oculta (mesmo espaço relativo a mapX/mapY)
-                const isTargetUnderFog = (() => {
-                  if (!isPlayerView && isMaster) return false;
-                  let hidden = fogMask.base === 'hidden';
-                  for (const item of fogMask.ops) {
-                    let inside = false;
-                    if (item.shape === 'circle') {
-                      const dx = relB.x - item.x;
-                      const dy = relB.y - item.y;
-                      inside = dx * dx + dy * dy <= item.radius * item.radius;
-                    } else if (item.shape === 'rect') {
-                      inside =
-                        relB.x >= item.x &&
-                        relB.x <= item.x + item.width &&
-                        relB.y >= item.y &&
-                        relB.y <= item.y + item.height;
-                    } else if (item.shape === 'polygon' && Array.isArray(item.points) && item.points.length >= 3) {
-                      inside = isPointInPolygon(relB, item.points);
-                    }
-                    if (inside) {
-                      hidden = item.op === 'hide';
-                    }
-                  }
-                  return hidden;
-                })();
-
-                // Detecta arco de defesa se o alvo for um token visível para o usuário atual
-                const targetToken = isTargetUnderFog
-                  ? undefined
-                  : tokens.find((t) => {
-                      if (t.gridX !== rulerCurrent.col || t.gridY !== rulerCurrent.row) return false;
-                      if (isPlayerView || !isMaster) {
-                        const npc = characters.find((c) => c.id === t.npcId);
-                        const isTokenHidden = t.isInstant
-                          ? (!!t.hiddenFromPlayers || t.layer === 'gm')
-                          : npc?.characterType === 'player'
-                            ? (!!t.hiddenFromPlayers || t.layer === 'gm')
-                            : (!npc?.isVisibleToPlayer || !!t.hiddenFromPlayers || t.layer === 'gm');
-                        if (isTokenHidden) return false;
-                      }
-                      return true;
-                    });
+                // Detecta arco de defesa apenas se o alvo for um token visível e fora de névoa para o usuário atual
+                const targetToken = findVisibleRulerTargetToken({
+                  targetCoord: rulerCurrent,
+                  targetPoint: relB,
+                  tokens,
+                  characters,
+                  fogMask,
+                  isMaster,
+                  isPlayerView,
+                });
 
                 let arcText = '';
                 if (targetToken) {

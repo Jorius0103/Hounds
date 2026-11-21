@@ -1,5 +1,6 @@
 import { connectHubBus, HubBusClient } from './hubBus';
 import { Combat, ConditionDefinition, UserAccount, NPC, ActionLogEntry } from '../types/rpg';
+import { sanitizeOutgoingSyncPayload } from './mesaPermissions';
 
 export interface RemoteSyncPayload {
   clientId: string;
@@ -314,10 +315,11 @@ class OnlineSyncService {
   public sendPayloadImmediate(
     payload: Omit<RemoteSyncPayload, 'clientId' | 'timestamp'> & { clientId?: string; timestamp?: number }
   ) {
+    const sanitized = sanitizeOutgoingSyncPayload(payload);
     const fullPayload: RemoteSyncPayload = {
-      ...payload,
+      ...sanitized,
       clientId: CLIENT_ID,
-      timestamp: payload.timestamp || Date.now(),
+      timestamp: sanitized.timestamp || Date.now(),
     };
 
     if (!this.client || this.status !== 'connected') {
