@@ -37,6 +37,13 @@ export interface TacticalToken {
   hasInfiniteVision?: boolean; // Visão liberada: enxerga tudo no mapa sem limite de alcance, exceto por dentro de paredes
 }
 
+export interface TacticalTokenSavedPosition {
+  gridX: number;
+  gridY: number;
+  facing?: FacingDirection;
+  rotation?: number;
+}
+
 export interface TacticalLightSource {
   id: string;
   gridX: number; // Coluna no grid
@@ -205,6 +212,7 @@ export interface TacticalState {
   props?: TacticalProp[]; // Elementos do cenário / mobília (mesas de taverna, baús, etc.)
   terrainCells: TacticalTerrainCell[];
   markers: TacticalMarker[];
+  lastTokenPositions?: Record<string, TacticalTokenSavedPosition>;
   zoom?: number;
   panX?: number;
   panY?: number;
@@ -239,6 +247,7 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   props: [],
   terrainCells: [],
   markers: [],
+  lastTokenPositions: {},
   zoom: 1,
   panX: 36,
   panY: 36,

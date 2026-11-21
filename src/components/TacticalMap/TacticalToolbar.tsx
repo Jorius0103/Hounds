@@ -35,7 +35,7 @@ import { rotateTacticalState90 } from '../../utils/tacticalMath';
 import { UserAccount } from '../../types/rpg';
 import { ConfirmModal } from '../ConfirmModal';
 
-export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog';
+export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'fog';
 
 interface TacticalToolbarProps {
   tacticalState: TacticalState;
@@ -267,19 +267,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 </>
               ) : (
                 <>
-                  <button
-                    onClick={() => onSelectTool('terrain')}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
-                      activeTool === 'terrain'
-                        ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    title="Pincel de Terreno (Coberturas, Paredes, Terreno Difícil)"
-                  >
-                    <ShieldAlert size={13} />
-                    <span>Terreno</span>
-                  </button>
-
                   <button
                     onClick={() => {
                       onSelectTool('fog');

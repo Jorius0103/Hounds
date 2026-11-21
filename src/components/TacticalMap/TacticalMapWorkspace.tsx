@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import {
   TacticalState,
   TacticalToken,
+  TacticalTokenSavedPosition,
   FacingDirection,
   TACTICAL_MAP_PRESETS,
   TacticalMarker,
@@ -25,6 +26,8 @@ import {
   facingToRotation,
   rotationToFacing,
   pixelToHex,
+  getCellCenter,
+  pixelToCell,
   getHexDistance,
   getGurpsRangePenalty,
   getTargetArcRelationship,
@@ -391,15 +394,32 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
   // Remover um token específico do tabuleiro (usado para tokens instantâneos e remoção rápida)
   const handleRemoveToken = useCallback((tokenId: string) => {
+    const targetToken = tokens.find((t) => t.id === tokenId);
     const nextTokens = tokens.filter((t) => t.id !== tokenId);
-    onUpdateTacticalState({ tokens: nextTokens });
+    const updatedPositions = { ...(tacticalState.lastTokenPositions || {}) };
+    if (targetToken) {
+      const pos: TacticalTokenSavedPosition = {
+        gridX: targetToken.gridX,
+        gridY: targetToken.gridY,
+        facing: targetToken.facing,
+        rotation: targetToken.rotation,
+      };
+      updatedPositions[targetToken.id] = pos;
+      if (targetToken.npcId) {
+        updatedPositions[targetToken.npcId] = pos;
+      }
+    }
+    onUpdateTacticalState({
+      tokens: nextTokens,
+      lastTokenPositions: updatedPositions,
+    });
     if (selectedTokenId === tokenId) {
       setSelectedTokenId(null);
     }
     if (contextMenu?.tokenId === tokenId) {
       setContextMenu(null);
     }
-  }, [tokens, selectedTokenId, contextMenu, onUpdateTacticalState]);
+  }, [tokens, selectedTokenId, contextMenu, onUpdateTacticalState, tacticalState.lastTokenPositions]);
 
   // Selected token object
   const selectedToken = useMemo(() => {
@@ -1213,6 +1233,68 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     onUpdateTacticalState({ tokens: newTokens });
   };
 
+  // Helper para calcular o centro do tabuleiro ajustado ao grid/hexágono
+  const getBoardCenterCoord = useCallback((): HexCoord => {
+    const centerX = mapW / 2;
+    const centerY = mapH / 2;
+    if (tacticalState.gridType === 'square') {
+      return pixelToCell(centerX, centerY, hexSize);
+    }
+    return pixelToHex(centerX, centerY, hexSize);
+  }, [mapW, mapH, hexSize, tacticalState.gridType]);
+
+  // Validador de limites do mapa para posições salvas
+  const isCoordWithinBounds = useCallback((col: number, row: number): boolean => {
+    const center = tacticalState.gridType === 'square'
+      ? getCellCenter(col, row, hexSize)
+      : getHexCenter(col, row, hexSize);
+    return center.x >= 0 && center.x <= mapW && center.y >= 0 && center.y <= mapH;
+  }, [mapW, mapH, hexSize, tacticalState.gridType]);
+
+  // Resolver posição para novos tokens ou tokens recolocados
+  const resolveTokenPlacementCoord = useCallback((
+    key: string,
+    fallbackFacing: FacingDirection,
+    occupied?: Set<string>
+  ) => {
+    const saved =
+      tacticalState.lastTokenPositions?.[key] ||
+      tacticalState.lastTokenPositions?.[`token-${key}`];
+
+    if (saved && isCoordWithinBounds(saved.gridX, saved.gridY)) {
+      const facing = typeof saved.facing === 'number' ? saved.facing : fallbackFacing;
+      const rotation = typeof saved.rotation === 'number' ? saved.rotation : facingToRotation(facing);
+      return {
+        gridX: saved.gridX,
+        gridY: saved.gridY,
+        facing,
+        rotation,
+      };
+    }
+
+    // Token novo ou posição fora dos limites: centro do tabuleiro
+    let centerHex = getBoardCenterCoord();
+    if (occupied && occupied.has(`${centerHex.col},${centerHex.row}`)) {
+      for (let offset = 1; offset <= 15; offset++) {
+        const candidate = {
+          col: centerHex.col + (offset % 2 === 0 ? Math.floor(offset / 2) : -Math.ceil(offset / 2)),
+          row: centerHex.row + (offset % 3 === 0 ? 1 : 0),
+        };
+        if (!occupied.has(`${candidate.col},${candidate.row}`) && isCoordWithinBounds(candidate.col, candidate.row)) {
+          centerHex = candidate;
+          break;
+        }
+      }
+    }
+
+    return {
+      gridX: centerHex.col,
+      gridY: centerHex.row,
+      facing: fallbackFacing,
+      rotation: facingToRotation(fallbackFacing),
+    };
+  }, [tacticalState.lastTokenPositions, isCoordWithinBounds, getBoardCenterCoord]);
+
   // Place a specific token on map
   const handlePlaceToken = (npcId: string) => {
     const existing = tokens.find((t) => t.npcId === npcId);
@@ -1224,14 +1306,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     if (!isMaster && !isCharOwnedByCurrentUser(targetNpc)) return;
     const isPlayer = targetNpc?.characterType === 'player';
     const initialFacing = (isPlayer ? 1 : 4) as FacingDirection;
+    const occupied = new Set(tokens.map((t) => `${t.gridX},${t.gridY}`));
+    const placement = resolveTokenPlacementCoord(npcId, initialFacing, occupied);
 
     const newToken: TacticalToken = {
       id: `token-${npcId}`,
       npcId,
-      gridX: isPlayer ? 4 : 12,
-      gridY: 6 + (tokens.length % 6) * 2,
-      facing: initialFacing,
-      rotation: facingToRotation(initialFacing),
+      gridX: placement.gridX,
+      gridY: placement.gridY,
+      facing: placement.facing,
+      rotation: placement.rotation,
       elevation: 0,
       reach: 1,
       size: 1,
@@ -1250,7 +1334,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     const existing = tokens.find((t) => t.npcId === npcId);
     if (existing) {
       const nextTokens = tokens.filter((t) => t.npcId !== npcId);
-      onUpdateTacticalState({ tokens: nextTokens });
+      const pos: TacticalTokenSavedPosition = {
+        gridX: existing.gridX,
+        gridY: existing.gridY,
+        facing: existing.facing,
+        rotation: existing.rotation,
+      };
+      onUpdateTacticalState({
+        tokens: nextTokens,
+        lastTokenPositions: {
+          ...(tacticalState.lastTokenPositions || {}),
+          [existing.id]: pos,
+          [npcId]: pos,
+        },
+      });
       if (selectedTokenId === existing.id) {
         setSelectedTokenId(null);
       }
@@ -1258,13 +1355,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       const targetNpc = characterMap.get(npcId);
       const isPlayer = targetNpc?.characterType === 'player';
       const initialFacing = (isPlayer ? 1 : 4) as FacingDirection;
+      const occupied = new Set(tokens.map((t) => `${t.gridX},${t.gridY}`));
+      const placement = resolveTokenPlacementCoord(npcId, initialFacing, occupied);
       const newToken: TacticalToken = {
         id: `token-${npcId}`,
         npcId,
-        gridX: isPlayer ? 4 : 14,
-        gridY: 4 + (tokens.length % 7) * 2,
-        facing: initialFacing,
-        rotation: facingToRotation(initialFacing),
+        gridX: placement.gridX,
+        gridY: placement.gridY,
+        facing: placement.facing,
+        rotation: placement.rotation,
         elevation: 0,
         reach: 1,
         size: 1,
@@ -1281,42 +1380,28 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     const missing = filterChars.filter((c) => !tokens.some((t) => t.npcId === c.id));
     if (missing.length === 0) return;
 
-    let playerRow = 4;
-    let playerCol = 4;
-    let npcRow = 4;
-    let npcCol = 14;
     const newTokens = [...tokens];
+    const occupied = new Set(newTokens.map((t) => `${t.gridX},${t.gridY}`));
 
     missing.forEach((char) => {
       const isPlayer = char.characterType === 'player';
       const initialFacing = (isPlayer ? 1 : 4) as FacingDirection;
+      const placement = resolveTokenPlacementCoord(char.id, initialFacing, occupied);
+      occupied.add(`${placement.gridX},${placement.gridY}`);
+
       newTokens.push({
         id: `token-${char.id}`,
         npcId: char.id,
-        gridX: isPlayer ? playerCol : npcCol,
-        gridY: isPlayer ? playerRow : npcRow,
-        facing: initialFacing,
-        rotation: facingToRotation(initialFacing),
+        gridX: placement.gridX,
+        gridY: placement.gridY,
+        facing: placement.facing,
+        rotation: placement.rotation,
         elevation: 0,
         reach: 1,
         size: 1,
         hiddenFromPlayers: true,
         layer: 'gm',
       });
-
-      if (isPlayer) {
-        playerRow += 2;
-        if (playerRow > 18) {
-          playerRow = 4;
-          playerCol += 2;
-        }
-      } else {
-        npcRow += 2;
-        if (npcRow > 18) {
-          npcRow = 4;
-          npcCol += 2;
-        }
-      }
     });
 
     onUpdateTacticalState({ tokens: newTokens });
@@ -1326,7 +1411,25 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   const handleRemoveAllInFilter = (filterChars: NPC[]) => {
     const filterIds = new Set(filterChars.map((c) => c.id));
     const nextTokens = tokens.filter((t) => !filterIds.has(t.npcId));
-    onUpdateTacticalState({ tokens: nextTokens });
+    const updatedPositions = { ...(tacticalState.lastTokenPositions || {}) };
+    tokens.forEach((t) => {
+      if (filterIds.has(t.npcId)) {
+        const pos: TacticalTokenSavedPosition = {
+          gridX: t.gridX,
+          gridY: t.gridY,
+          facing: t.facing,
+          rotation: t.rotation,
+        };
+        updatedPositions[t.id] = pos;
+        if (t.npcId) {
+          updatedPositions[t.npcId] = pos;
+        }
+      }
+    });
+    onUpdateTacticalState({
+      tokens: nextTokens,
+      lastTokenPositions: updatedPositions,
+    });
     if (selectedTokenId && !nextTokens.some((t) => t.id === selectedTokenId)) {
       setSelectedTokenId(null);
     }
@@ -1347,18 +1450,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   // Criar Token Instantâneo (sem vínculo obrigatório com personagem/NPC)
   const handleCreateInstantToken = () => {
     if (!isMaster) return;
-    const viewCenterX = (containerSize.width / 2 - panX) / zoom;
-    const viewCenterY = (containerSize.height / 2 - panY) / zoom;
-    const clampedX = Math.max(hexSize, Math.min(mapW - hexSize, viewCenterX - mapX));
-    const clampedY = Math.max(hexSize, Math.min(mapH - hexSize, viewCenterY - mapY));
-    let targetHex = pixelToHex(clampedX, clampedY, hexSize);
+    let targetHex = getBoardCenterCoord();
 
     // Evita empilhar exatamente sobre outro token se a célula já estiver ocupada
     const occupied = new Set(tokens.map((t) => `${t.gridX},${t.gridY}`));
     if (occupied.has(`${targetHex.col},${targetHex.row}`)) {
       for (let offset = 1; offset <= 10; offset++) {
         const candidate = { col: targetHex.col + offset, row: targetHex.row };
-        if (!occupied.has(`${candidate.col},${candidate.row}`)) {
+        if (!occupied.has(`${candidate.col},${candidate.row}`) && isCoordWithinBounds(candidate.col, candidate.row)) {
           targetHex = candidate;
           break;
         }

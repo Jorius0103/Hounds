@@ -974,6 +974,10 @@ export default function App() {
       lights: Array.isArray(raw?.lights) ? raw.lights : [],
       terrainCells: Array.isArray(raw?.terrainCells) ? raw.terrainCells : [],
       markers: Array.isArray(raw?.markers) ? raw.markers : [],
+      lastTokenPositions:
+        raw?.lastTokenPositions && typeof raw.lastTokenPositions === 'object'
+          ? raw.lastTokenPositions
+          : {},
       fogMask,
     };
   }, [activeCombat?.tacticalState]);
