@@ -147,7 +147,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
               Camada:
             </span>
             <button
-              onClick={() => onUpdateTacticalState({ activeLayer: 'map' })}
+              onClick={() => {
+                onUpdateTacticalState({ activeLayer: 'map' });
+                onSelectTool('select');
+              }}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'map'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
@@ -160,7 +163,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </button>
 
             <button
-              onClick={() => onUpdateTacticalState({ activeLayer: 'tokens' })}
+              onClick={() => {
+                onUpdateTacticalState({ activeLayer: 'tokens' });
+                onSelectTool('select');
+              }}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'tokens'
                   ? 'bg-emerald-600 text-white font-bold shadow-sm'
@@ -173,7 +179,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </button>
 
             <button
-              onClick={() => onUpdateTacticalState({ activeLayer: 'gm' })}
+              onClick={() => {
+                onUpdateTacticalState({ activeLayer: 'gm' });
+                onSelectTool('select');
+              }}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'gm'
                   ? 'bg-purple-600 text-white font-bold shadow-sm'

@@ -17,6 +17,10 @@ import {
   getHexCenter,
   getHexCornerPoints,
   getHexPointsString,
+  getFlatHexPointsString,
+  snapRotationToHexFace,
+  facingToRotation,
+  rotationToFacing,
   pixelToHex,
   getHexDistance,
   getGurpsRangePenalty,
@@ -167,6 +171,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   // - Na aba "2. Jogadores" ('tokens'), o Mestre tem a visão dos jogadores
   // - Na aba "3. Mestre" ('gm') ou "1. Mapa" ('map'), o Mestre tem a visão do mestre
   const isPlayerView = !isMaster || activeLayer === 'tokens';
+
+  // Sempre que o mestre entrar ou alternar entre as abas do Tabuleiro (1. Mapa, 2. Jogadores, 3. Mestre),
+  // inicia automaticamente na opção "Mover" ('select') e limpa pré-visualizações temporárias.
+  useEffect(() => {
+    if (!isMaster) return;
+    setActiveTool('select');
+    setRulerStart(null);
+    setRulerCurrent(null);
+    setAreaCenter(null);
+    setFogBoxStart(null);
+    setFogBoxCurrent(null);
+    setFogPolyPoints([]);
+  }, [activeLayer, isMaster]);
 
   // Elementos do Cenário / Mobília (Props - Estilo Roll20)
   const [isPropsModalOpen, setIsPropsModalOpen] = useState(false);
@@ -897,8 +914,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
         const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
         let rot = deg - 90;
         rot = ((rot % 360) + 360) % 360;
-        const snappedRot = (Math.round(rot / 30) * 30) % 360;
-        const facingIndex = (Math.round(((snappedRot + 180) % 360) / 60) % 6) as FacingDirection;
+        // Encaixa estritamente em uma das 6 faces voltadas para o centro do hexágono adjacente (sem parar entre hexágonos)
+        const snappedRot = snapRotationToHexFace(rot);
+        const facingIndex = rotationToFacing(snappedRot);
 
         setPreviewRotation((prev) => {
           if (prev && prev.id === rotatingTokenId && prev.rotation === snappedRot && prev.facing === facingIndex) return prev;
@@ -1130,16 +1148,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
         const col = isPlayer ? playerCol : npcCol;
         const row = isPlayer ? playerRow : npcRow;
 
+        const initialFacing = (isPlayer ? 1 : 4) as FacingDirection;
         newTokens.push({
           id: `token-${char.id}`,
           npcId: char.id,
           gridX: col,
           gridY: row,
-          facing: (isPlayer ? 1 : 4) as FacingDirection, // Jogadores olham SE, Inimigos olham SW/NW
+          facing: initialFacing,
+          rotation: facingToRotation(initialFacing),
           elevation: 0,
           reach: 1,
           size: 1,
-          hiddenFromPlayers: !isPlayer && !char.isVisibleToPlayer,
+          // Tokens sempre entram ocultos no mapa ao serem carregados para evitar exposição acidental pelo mestre
+          hiddenFromPlayers: true,
+          layer: 'gm',
         });
 
         if (isPlayer) {
@@ -1171,17 +1193,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     const targetNpc = characterMap.get(npcId);
     if (!isMaster && !isCharOwnedByCurrentUser(targetNpc)) return;
     const isPlayer = targetNpc?.characterType === 'player';
+    const initialFacing = (isPlayer ? 1 : 4) as FacingDirection;
 
     const newToken: TacticalToken = {
       id: `token-${npcId}`,
       npcId,
       gridX: isPlayer ? 4 : 12,
       gridY: 6 + (tokens.length % 6) * 2,
-      facing: (isPlayer ? 1 : 4) as FacingDirection,
+      facing: initialFacing,
+      rotation: facingToRotation(initialFacing),
       elevation: 0,
       reach: 1,
       size: 1,
-      hiddenFromPlayers: !isPlayer && !targetNpc?.isVisibleToPlayer,
+      hiddenFromPlayers: true,
+      layer: 'gm',
     };
 
     onUpdateTacticalState({ tokens: [...tokens, newToken] });
@@ -1202,16 +1227,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     } else {
       const targetNpc = characterMap.get(npcId);
       const isPlayer = targetNpc?.characterType === 'player';
+      const initialFacing = (isPlayer ? 1 : 4) as FacingDirection;
       const newToken: TacticalToken = {
         id: `token-${npcId}`,
         npcId,
         gridX: isPlayer ? 4 : 14,
         gridY: 4 + (tokens.length % 7) * 2,
-        facing: (isPlayer ? 1 : 4) as FacingDirection,
+        facing: initialFacing,
+        rotation: facingToRotation(initialFacing),
         elevation: 0,
         reach: 1,
         size: 1,
-        hiddenFromPlayers: !isPlayer && !targetNpc?.isVisibleToPlayer,
+        hiddenFromPlayers: true,
+        layer: 'gm',
       };
       onUpdateTacticalState({ tokens: [...tokens, newToken] });
       setSelectedTokenId(newToken.id);
@@ -1231,16 +1259,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
     missing.forEach((char) => {
       const isPlayer = char.characterType === 'player';
+      const initialFacing = (isPlayer ? 1 : 4) as FacingDirection;
       newTokens.push({
         id: `token-${char.id}`,
         npcId: char.id,
         gridX: isPlayer ? playerCol : npcCol,
         gridY: isPlayer ? playerRow : npcRow,
-        facing: (isPlayer ? 1 : 4) as FacingDirection,
+        facing: initialFacing,
+        rotation: facingToRotation(initialFacing),
         elevation: 0,
         reach: 1,
         size: 1,
-        hiddenFromPlayers: !isPlayer && !char.isVisibleToPlayer,
+        hiddenFromPlayers: true,
+        layer: 'gm',
       });
 
       if (isPlayer) {
@@ -2111,29 +2142,35 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           {selectedToken && (
             <g id="gurps-combat-arcs">
               {(() => {
-                const relCenter = getHexCenter(selectedToken.gridX, selectedToken.gridY, hexSize);
+                const isSelectedDragging = selectedToken.id === draggedTokenId;
+                const displayGridX = isSelectedDragging && dragHoverHex ? dragHoverHex.col : selectedToken.gridX;
+                const displayGridY = isSelectedDragging && dragHoverHex ? dragHoverHex.row : selectedToken.gridY;
+                const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const tokenRotation =
-                  typeof selectedToken.rotation === 'number'
-                    ? selectedToken.rotation
-                    : ((selectedToken.facing * 60 + 180) % 360);
-                const aimAngle = (tokenRotation + 180) % 360;
+                const rawRotation =
+                  rotatingTokenId === selectedToken.id && previewRotation && previewRotation.id === selectedToken.id
+                    ? previewRotation.rotation
+                    : (typeof selectedToken.rotation === 'number'
+                        ? selectedToken.rotation
+                        : facingToRotation(selectedToken.facing));
+                const tokenRotation = snapRotationToHexFace(rawRotation);
+                const frontAngle = (tokenRotation + 90) % 360;
+                const arcRadius = hexSize * 1.6;
+                const arcCircumference = 2 * Math.PI * arcRadius;
 
                 return (
                   <g transform={`translate(${center.x}, ${center.y})`}>
-                    {/* Arco Frontal (Verde): 120 graus à frente */}
+                    {/* Arco Frontal (Verde): 120 graus centralizados exatamente na frente do token */}
                     <circle
                       cx="0"
                       cy="0"
-                      r={hexSize * 1.6}
+                      r={arcRadius}
                       fill="none"
                       stroke="#10b981"
                       strokeWidth="3"
                       strokeOpacity="0.4"
-                      strokeDasharray={`${(Math.PI * hexSize * 1.6) / 3} ${
-                        (Math.PI * hexSize * 1.6 * 2) / 3
-                      }`}
-                      transform={`rotate(${aimAngle - 60})`}
+                      strokeDasharray={`${arcCircumference / 3} ${(arcCircumference * 2) / 3}`}
+                      transform={`rotate(${frontAngle - 60})`}
                     />
                   </g>
                 );
@@ -2609,12 +2646,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
               const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-              const tokenRotation = isRotating && previewRotation && previewRotation.id === token.id
+              const rawTokenRotation = isRotating && previewRotation && previewRotation.id === token.id
                 ? previewRotation.rotation
                 : (typeof token.rotation === 'number'
                     ? token.rotation
-                    : ((token.facing * 60 + 180) % 360));
-              const tokenRadius = hexSize * 0.58;
+                    : facingToRotation(token.facing));
+              const tokenRotation = snapRotationToHexFace(rawTokenRotation);
+              // Token hexagonal encaixado na grade: arestas alinhadas ao hexágono da grade
+              const tokenHexRadius = hexSize * 0.72;
+              const tokenApothem = tokenHexRadius * (Math.sqrt(3) / 2);
+              const tokenBaseHexPoints = getFlatHexPointsString(tokenHexRadius + 2);
+              const tokenInnerHexPoints = getFlatHexPointsString(tokenHexRadius);
+              const tokenSelectionHexPoints = getFlatHexPointsString(tokenHexRadius + 5);
 
               const hpPercent =
                 npc.hpMax > 0
@@ -2664,44 +2707,42 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                         : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
                   }}
                 >
-                  {/* GRUPO ROTATIVO INTEGRAL: Foto, Nome (em cima), Frente (embaixo) e Pauzinho giram juntos */}
+                  {/* GRUPO ROTATIVO INTEGRAL: Token Hexagonal, Foto, Nome (atrás), Frente (na face frontal) e Pauzinho giram juntos */}
                   <g transform={`rotate(${tokenRotation})`}>
-                    {/* 1. Círculo de Base com Borda Fina de Manobra ou Roxo GM */}
-                    <circle
-                      cx="0"
-                      cy="0"
-                      r={tokenRadius + 2}
+                    {/* 1. Hexágono de Base com Borda de Manobra ou Roxo GM */}
+                    <polygon
+                      points={tokenBaseHexPoints}
                       fill="#0f172a"
                       stroke={maneuverBorderColor}
-                      strokeWidth={isSelected ? 2 : isTokenHidden ? 1.8 : 1.4}
+                      strokeWidth={isSelected ? 2 : isTokenHidden ? 1.8 : 1.5}
+                      strokeLinejoin="round"
                       strokeDasharray={isTokenHidden ? "4,2" : undefined}
                     />
 
-                    {/* Anel Externo Dourado Indicador de Seleção */}
+                    {/* Contorno Hexagonal Externo Dourado Indicador de Seleção */}
                     {isSelected && (
-                      <circle
-                        cx="0"
-                        cy="0"
-                        r={tokenRadius + 4.5}
+                      <polygon
+                        points={tokenSelectionHexPoints}
                         fill="none"
                         stroke="#f59e0b"
                         strokeWidth="1.5"
+                        strokeLinejoin="round"
                         strokeDasharray="4,3"
                       />
                     )}
 
-                    {/* 2. Retrato / Avatar recortado (com suporte total a fotos básicas/presets do sistema) */}
+                    {/* 2. Retrato / Avatar recortado em formato hexagonal */}
                     <clipPath id={`clip-${token.id}`}>
-                      <circle cx="0" cy="0" r={tokenRadius} />
+                      <polygon points={tokenInnerHexPoints} />
                     </clipPath>
 
                     {npc.avatar ? (
                       <image
                         href={npc.avatar}
-                        x={-tokenRadius}
-                        y={-tokenRadius}
-                        width={tokenRadius * 2}
-                        height={tokenRadius * 2}
+                        x={-tokenHexRadius}
+                        y={-tokenHexRadius}
+                        width={tokenHexRadius * 2}
+                        height={tokenHexRadius * 2}
                         clipPath={`url(#clip-${token.id})`}
                         preserveAspectRatio="xMidYMid slice"
                       />
@@ -2713,12 +2754,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                         const colors =
                           PRESET_BG_COLORS[matchedPreset.id] || PRESET_BG_COLORS['knight'];
                         const PresetIcon = matchedPreset.icon || Shield;
-                        const iconSize = tokenRadius * 1.25;
+                        const iconSize = tokenApothem * 1.2;
 
                         return (
                           <g clipPath={`url(#clip-${token.id})`}>
-                            <circle cx="0" cy="0" r={tokenRadius} fill={colors.bg1} />
-                            <circle cx="0" cy="0" r={tokenRadius} fill={colors.bg2} fillOpacity="0.5" />
+                            <polygon points={tokenInnerHexPoints} fill={colors.bg1} />
+                            <polygon points={tokenInnerHexPoints} fill={colors.bg2} fillOpacity="0.5" />
                             <g
                               transform={`translate(${-iconSize / 2}, ${-iconSize / 2})`}
                               style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8))' }}
@@ -2733,7 +2774,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     {/* MARCAÇÃO DE VISIBILIDADE APENAS PARA O MESTRE (QUANDO OCULTO DOS JOGADORES): OLHO ROXO */}
                     {isMaster && isTokenHidden && (
                       <g
-                        transform={`translate(${badgeWidth / 2 + 7}, ${-tokenRadius - 8.5})`}
+                        transform={`translate(${badgeWidth / 2 + 7}, ${-tokenApothem - 8.5})`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleTokenVisibility(token.id);
@@ -2776,10 +2817,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       </g>
                     )}
 
-                    {/* 3. NOME DO PERSONAGEM EM CIMA DA FOTO (com transparência e fonte menor para não bloquear tokens abaixo) */}
+                    {/* 3. NOME DO PERSONAGEM NA ARESTA TRASEIRA DO HEXÁGONO */}
                     <rect
                       x={-badgeWidth / 2}
-                      y={-tokenRadius - 15}
+                      y={-tokenApothem - 15}
                       width={badgeWidth}
                       height="13"
                       rx="3.5"
@@ -2790,7 +2831,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     />
                     <text
                       x="0"
-                      y={-tokenRadius - 6}
+                      y={-tokenApothem - 6}
                       fill="#f1f5f9"
                       fontSize="8"
                       fontWeight="600"
@@ -2799,14 +2840,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       {npc.name}
                     </text>
 
-                    {/* 4. MARCAÇÃO DE FRENTE EMBAIXO DA FOTO (onde ficava o nome) */}
+                    {/* 4. MARCAÇÃO DE FRENTE NA ARESTA FRONTAL (APONTANDO EXATAMENTE PARA O MEIO DO HEXÁGONO À FRENTE) */}
                     <polygon
-                      points={`0,${tokenRadius + 9} -5.5,${tokenRadius + 2.5} 5.5,${tokenRadius + 2.5}`}
+                      points={`0,${tokenApothem + 8.5} -5.5,${tokenApothem + 2} 5.5,${tokenApothem + 2}`}
                       fill="#f59e0b"
                       stroke="#020617"
                       strokeWidth="1"
                     />
-                    <circle cx="0" cy={tokenRadius + 4} r="1.2" fill="#ffffff" />
+                    <circle cx="0" cy={tokenApothem + 3.5} r="1.2" fill="#ffffff" />
 
                     {/* 5. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
                     {isSelected && canControl && (
@@ -2814,9 +2855,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                         {/* Haste estendida conectando a marcação de frente até a alça */}
                         <line
                           x1="0"
-                          y1={tokenRadius + 9}
+                          y1={tokenApothem + 8.5}
                           x2="0"
-                          y2={tokenRadius + 22}
+                          y2={tokenApothem + 21}
                           stroke="#38bdf8"
                           strokeWidth="2"
                           strokeDasharray="3,2"
@@ -2824,18 +2865,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                         {/* Alça circular na ponta do pauzinho */}
                         <circle
                           cx="0"
-                          cy={tokenRadius + 22}
+                          cy={tokenApothem + 21}
                           r="5"
                           fill="#0284c7"
                           stroke="#ffffff"
                           strokeWidth="1.5"
                           className="hover:scale-125 transition-transform"
                         />
-                        <circle cx="0" cy={tokenRadius + 22} r="1.8" fill="#ffffff" />
+                        <circle cx="0" cy={tokenApothem + 21} r="1.8" fill="#ffffff" />
                         {/* Hitbox invisível ampla para facilitar o clique e arrasto no mouse/touch */}
                         <circle
                           cx="0"
-                          cy={tokenRadius + 22}
+                          cy={tokenApothem + 21}
                           r="13"
                           fill="transparent"
                           className="cursor-grab active:cursor-grabbing"

@@ -1,7 +1,7 @@
 import React from 'react';
 import { TacticalToken, FacingDirection } from '../../types/tactical';
 import { NPC } from '../../types/rpg';
-import { FACING_NAMES } from '../../utils/tacticalMath';
+import { FACING_NAMES, facingToRotation } from '../../utils/tacticalMath';
 import { NpcAvatar } from '../NpcAvatar';
 import {
   RotateCw,
@@ -64,7 +64,7 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
 
   const rotateFacing = (delta: number) => {
     const next = ((token.facing + delta + 6) % 6) as FacingDirection;
-    onUpdateToken({ facing: next });
+    onUpdateToken({ facing: next, rotation: facingToRotation(next) });
   };
 
   const handleHpChange = (amount: number) => {
@@ -161,12 +161,17 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
 
         <div className="grid grid-cols-6 gap-1 pt-1">
           {[0, 1, 2, 3, 4, 5].map((direction) => {
-            const labels = ['N', 'NE', 'SE', 'S', 'SW', 'NW'];
+            const labels = ['NE', 'E', 'SE', 'SW', 'W', 'NW'];
             const isSelected = token.facing === direction;
             return (
               <button
                 key={direction}
-                onClick={() => onUpdateToken({ facing: direction as FacingDirection })}
+                onClick={() =>
+                  onUpdateToken({
+                    facing: direction as FacingDirection,
+                    rotation: facingToRotation(direction as FacingDirection),
+                  })
+                }
                 className={`py-1 rounded font-bold text-[10px] transition-all border ${
                   isSelected
                     ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm'

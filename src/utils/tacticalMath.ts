@@ -111,6 +111,45 @@ export function getHexPointsString(center: Point, hexSize: number): string {
 }
 
 /**
+ * Retorna string de pontos SVG de um hexágono flat-topped centrado em (0, 0).
+ * Rotacionado em 30° + 60°*k (as 6 faces válidas), fica exatamente alinhado à grade pointy-topped,
+ * mantendo uma aresta reta voltada para a frente (+Y local) e outra para trás (-Y local).
+ */
+export function getFlatHexPointsString(radius: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const angleRad = (Math.PI / 180) * (60 * i);
+    pts.push(`${(radius * Math.cos(angleRad)).toFixed(1)},${(radius * Math.sin(angleRad)).toFixed(1)}`);
+  }
+  return pts.join(' ');
+}
+
+/**
+ * Ajusta qualquer rotação do token (em graus) para uma das 6 faces válidas que apontam
+ * exatamente para o meio de um hexágono adjacente (30°, 90°, 150°, 210°, 270°, 330°),
+ * impedindo que o token aponte entre hexágonos (vértices).
+ */
+export function snapRotationToHexFace(deg: number): number {
+  const norm = ((deg % 360) + 360) % 360;
+  return (((Math.round((norm - 30) / 60) * 60 + 30) % 360) + 360) % 360;
+}
+
+/**
+ * Converte FacingDirection (0=NE, 1=E, 2=SE, 3=SW, 4=W, 5=NW) para a rotação SVG do token.
+ */
+export function facingToRotation(facing: FacingDirection): number {
+  return (((facing * 60 + 210) % 360) + 360) % 360;
+}
+
+/**
+ * Converte a rotação SVG do token (após snap para face) em FacingDirection (0..5).
+ */
+export function rotationToFacing(deg: number): FacingDirection {
+  const snapped = snapRotationToHexFace(deg);
+  return ((((snapped - 210) / 60) % 6) + 6) % 6 as FacingDirection;
+}
+
+/**
  * Converte coordenada de pixel para a célula hexagonal mais próxima
  */
 export function pixelToHex(pixelX: number, pixelY: number, hexSize: number): HexCoord {
@@ -196,20 +235,20 @@ export function getGurpsRangePenalty(yards: number): number {
 }
 
 /**
- * Retorna o ângulo em graus para a direção de Facing do hexágono (0 a 5)
- * 0: Norte (0°), 1: Nordeste (60°), 2: Sudeste (120°), 3: Sul (180°), 4: Sudoeste (240°), 5: Noroeste (300°)
+ * Retorna o ângulo em graus (bússola, 0° = Norte) para a direção de Facing do hexágono pointy-topped (0 a 5)
+ * 0: Nordeste (30°), 1: Leste (90°), 2: Sudeste (150°), 3: Sudoeste (210°), 4: Oeste (270°), 5: Noroeste (330°)
  */
 export function getFacingAngleDegrees(facing: FacingDirection): number {
-  return facing * 60;
+  return facing * 60 + 30;
 }
 
 export const FACING_NAMES: Record<FacingDirection, string> = {
-  0: 'Norte (Frente Superior)',
-  1: 'Nordeste (Frente Direita)',
-  2: 'Sudeste (Flanco Traseiro D.)',
-  3: 'Sul (Retaguarda)',
-  4: 'Sudoeste (Flanco Traseiro E.)',
-  5: 'Noroeste (Frente Esquerda)',
+  0: 'Nordeste (NE)',
+  1: 'Leste (E)',
+  2: 'Sudeste (SE)',
+  3: 'Sudoeste (SW)',
+  4: 'Oeste (W)',
+  5: 'Noroeste (NW)',
 };
 
 /**
@@ -673,9 +712,9 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     const center = getHexCenter(token.gridX, token.gridY, hexSize);
     const p = rotPoint(center.x, center.y);
     const hex = pixelToHex(p.x, p.y, hexSize);
-    const curRot = typeof token.rotation === 'number' ? token.rotation : ((token.facing * 60 + 180) % 360);
-    const newRot = (curRot + 90) % 360;
-    const newFacing = ((Math.round((newRot - 180) / 60) % 6 + 6) % 6) as FacingDirection;
+    const curRot = typeof token.rotation === 'number' ? token.rotation : facingToRotation(token.facing);
+    const newRot = snapRotationToHexFace(curRot + 90);
+    const newFacing = rotationToFacing(newRot);
     return {
       ...token,
       gridX: hex.col,
