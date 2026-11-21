@@ -115,13 +115,26 @@ export function getHexPointsString(center: Point, hexSize: number): string {
  * Rotacionado em 30° + 60°*k (as 6 faces válidas), fica exatamente alinhado à grade pointy-topped,
  * mantendo uma aresta reta voltada para a frente (+Y local) e outra para trás (-Y local).
  */
+const flatHexPointsCache = new Map<string, string>();
+const MAX_FLAT_HEX_CACHE = 64;
+
 export function getFlatHexPointsString(radius: number): string {
+  const key = radius.toFixed(2);
+  const cached = flatHexPointsCache.get(key);
+  if (cached !== undefined) return cached;
+
   const pts: string[] = [];
   for (let i = 0; i < 6; i++) {
     const angleRad = (Math.PI / 180) * (60 * i);
     pts.push(`${(radius * Math.cos(angleRad)).toFixed(1)},${(radius * Math.sin(angleRad)).toFixed(1)}`);
   }
-  return pts.join(' ');
+  const result = pts.join(' ');
+  if (flatHexPointsCache.size >= MAX_FLAT_HEX_CACHE) {
+    const oldestKey = flatHexPointsCache.keys().next().value;
+    if (oldestKey !== undefined) flatHexPointsCache.delete(oldestKey);
+  }
+  flatHexPointsCache.set(key, result);
+  return result;
 }
 
 /**
@@ -375,6 +388,9 @@ export function getHexesInRange(center: HexCoord, radius: number): HexCoord[] {
  * Calcula o contorno externo exato (SVG path fechado) de todos os hexágonos dentro de `radiusYards` jardas
  * a partir de `center`, seguindo estritamente as arestas externas dos hexágonos (nunca cortando no meio de um hex).
  */
+const hexRangePerimeterCache = new Map<string, string>();
+const MAX_HEX_PERIMETER_CACHE = 500;
+
 export function getHexRangePerimeterPath(
   center: HexCoord,
   radiusYards: number,
@@ -383,12 +399,32 @@ export function getHexRangePerimeterPath(
   offsetY = 0
 ): string {
   const r = Math.max(1, Math.round(radiusYards));
+  const cacheKey = `${center.col},${center.row},${r},${hexSize},${offsetX},${offsetY}`;
+  const cached = hexRangePerimeterCache.get(cacheKey);
+  if (cached !== undefined) {
+    // Atualiza ordem LRU
+    hexRangePerimeterCache.delete(cacheKey);
+    hexRangePerimeterCache.set(cacheKey, cached);
+    return cached;
+  }
+
+  const storeResult = (val: string): string => {
+    if (hexRangePerimeterCache.size >= MAX_HEX_PERIMETER_CACHE) {
+      const oldestKey = hexRangePerimeterCache.keys().next().value;
+      if (oldestKey !== undefined) hexRangePerimeterCache.delete(oldestKey);
+    }
+    hexRangePerimeterCache.set(cacheKey, val);
+    return val;
+  };
+
   if (r > 25) {
     const c = getHexCenter(center.col, center.row, hexSize);
     const cx = offsetX + c.x;
     const cy = offsetY + c.y;
     const radPx = (r + 0.5) * Math.sqrt(3) * hexSize;
-    return `M ${(cx - radPx).toFixed(1)} ${cy.toFixed(1)} A ${radPx.toFixed(1)} ${radPx.toFixed(1)} 0 1 0 ${(cx + radPx).toFixed(1)} ${cy.toFixed(1)} A ${radPx.toFixed(1)} ${radPx.toFixed(1)} 0 1 0 ${(cx - radPx).toFixed(1)} ${cy.toFixed(1)} Z`;
+    return storeResult(
+      `M ${(cx - radPx).toFixed(1)} ${cy.toFixed(1)} A ${radPx.toFixed(1)} ${radPx.toFixed(1)} 0 1 0 ${(cx + radPx).toFixed(1)} ${cy.toFixed(1)} A ${radPx.toFixed(1)} ${radPx.toFixed(1)} 0 1 0 ${(cx - radPx).toFixed(1)} ${cy.toFixed(1)} Z`
+    );
   }
 
   const hexes = getHexesInRange(center, r);
@@ -409,7 +445,7 @@ export function getHexRangePerimeterPath(
     }
   }
 
-  if (boundaryEdges.size === 0) return '';
+  if (boundaryEdges.size === 0) return storeResult('');
 
   const ptKey = (p: Point) => `${Math.round(p.x * 10)},${Math.round(p.y * 10)}`;
   const nextByStart = new Map<string, { a: Point; b: Point }>();
@@ -418,7 +454,7 @@ export function getHexRangePerimeterPath(
   }
 
   const firstEntry = nextByStart.entries().next();
-  if (firstEntry.done) return '';
+  if (firstEntry.done) return storeResult('');
 
   const [startKey, firstEdge] = firstEntry.value;
   const ordered: Point[] = [firstEdge.a];
@@ -434,8 +470,8 @@ export function getHexRangePerimeterPath(
     guard++;
   }
 
-  if (ordered.length < 3) return '';
-  return (
+  if (ordered.length < 3) return storeResult('');
+  return storeResult(
     `M ${ordered[0].x.toFixed(1)} ${ordered[0].y.toFixed(1)} ` +
     ordered.slice(1).map((p) => `L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') +
     ' Z'

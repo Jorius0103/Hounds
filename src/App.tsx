@@ -596,16 +596,8 @@ export default function App() {
     } catch (e) {}
   }, [sessionEvents]);
 
-  // Presence tracking for online players
-  const [onlineUsersMap, setOnlineUsersMap] = useState<Record<string, number>>({});
-  const [presenceClock, setPresenceClock] = useState<number>(Date.now());
-
-  useEffect(() => {
-    const clockInterval = setInterval(() => setPresenceClock(Date.now()), 3000);
-    return () => clearInterval(clockInterval);
-  }, []);
-
-  const markUserOnline = (name?: string) => {
+  // Presence tracking for online players (isolado em window._houndsOnlineUsers + evento customizado para não re-renderizar App.tsx a cada 3s)
+  const markUserOnline = useCallback((name?: string) => {
     if (name && name.trim()) {
       const lower = name.trim().toLowerCase();
       if (typeof window !== 'undefined') {
@@ -613,9 +605,8 @@ export default function App() {
         (window as any)._houndsOnlineUsers[lower] = Date.now();
         window.dispatchEvent(new CustomEvent('hounds_presence_updated'));
       }
-      setOnlineUsersMap((prev) => ({ ...prev, [lower]: Date.now() }));
     }
-  };
+  }, []);
 
   useEffect(() => {
     const sendPing = () => {
@@ -639,49 +630,6 @@ export default function App() {
     const interval = setInterval(sendPing, 8000);
     return () => clearInterval(interval);
   }, [currentUser?.name]);
-
-  const onlinePlayerNames = useMemo(() => {
-    const set = new Set<string>();
-    const now = Date.now();
-    if (currentUser?.name) {
-      set.add(currentUser.name.trim().toLowerCase());
-    }
-    try {
-      const saved = localStorage.getItem('hounds_active_user');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed?.name) set.add(parsed.name.trim().toLowerCase());
-      }
-    } catch (e) {}
-    try {
-      if (typeof window !== 'undefined') {
-        const p = (window as any).parent;
-        if (p?.hubUser?.name) set.add(p.hubUser.name.trim().toLowerCase());
-        if (p?.hubOnlineUsers) {
-          for (const [k, t] of Object.entries(p.hubOnlineUsers as Record<string, number>)) {
-            if (now - t < 35000) set.add(k.trim().toLowerCase());
-          }
-        }
-        if (p?.BoardView && typeof p.BoardView.presence === 'function') {
-          const pres = p.BoardView.presence();
-          if (pres && typeof pres === 'object') {
-            for (const k of Object.keys(pres)) {
-              const entry = pres[k];
-              if (entry?.nm && (!entry.t || now - entry.t < 35000)) {
-                set.add(entry.nm.trim().toLowerCase());
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {}
-    for (const [name, lastSeen] of Object.entries(onlineUsersMap)) {
-      if (now - lastSeen < 35000) {
-        set.add(name.trim().toLowerCase());
-      }
-    }
-    return set;
-  }, [currentUser?.name, onlineUsersMap, presenceClock]);
 
   // IDs dos personagens de jogadores visíveis na Mesa de RPG (Global, independe de combates)
   const activeCombatPlayerIds = sessionPlayerIds;
@@ -849,7 +797,7 @@ export default function App() {
     }
   });
 
-  const handleToggleLogCollapse = () => {
+  const handleToggleLogCollapse = useCallback(() => {
     setIsLogCollapsed((prev) => {
       const next = !prev;
       try {
@@ -857,7 +805,7 @@ export default function App() {
       } catch {}
       return next;
     });
-  };
+  }, []);
 
   const [activeViewMode, setActiveViewMode] = useState<ViewMode>(() => {
     if (!TACTICAL_MAP_ENABLED) return 'sheets';
@@ -985,29 +933,25 @@ export default function App() {
   }, [activeCombat?.tacticalState]);
 
   const saveStorageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeTacticalStateRef = useRef<TacticalState>(activeTacticalState);
+  activeTacticalStateRef.current = activeTacticalState;
 
   const handleUpdateTacticalState = (updated: Partial<TacticalState>) => {
-    if (!activeCombat) return;
-    const current = activeTacticalState;
+    const currentActiveId = stateRef.current.activeCombatId;
+    const baseCombats = stateRef.current.combats.length > 0 ? stateRef.current.combats : combats;
+    if (!currentActiveId || !baseCombats.some((c) => c.id === currentActiveId)) return;
+    const current = activeTacticalStateRef.current;
     const merged: TacticalState = {
       ...current,
       ...updated,
     };
-    const baseCombats = stateRef.current.combats.length > 0 ? stateRef.current.combats : combats;
+    activeTacticalStateRef.current = merged;
     const updatedCombats = baseCombats.map((c) =>
-      c.id === activeCombatId ? { ...c, tacticalState: merged } : c
+      c.id === currentActiveId ? { ...c, tacticalState: merged } : c
     );
     stateRef.current.combats = updatedCombats;
     setCombats(updatedCombats);
-
-    // Gravação no localStorage com debounce leve (150ms) para não bloquear operações contínuas no mapa
-    if (saveStorageTimerRef.current) clearTimeout(saveStorageTimerRef.current);
-    saveStorageTimerRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCombats));
-      } catch (e) {}
-    }, 150);
-
+    // A persistência no localStorage é feita pelo ponto único com debounce em useEffect([combats])
     broadcastSync(updatedCombats);
   };
 
@@ -2624,14 +2568,41 @@ export default function App() {
     } catch (e) {}
   }, []);
 
-  // Save Combats to LocalStorage
+  // Save Combats to LocalStorage (ponto único com debounce de 150ms + flush no pagehide/unmount)
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(combats));
-    } catch (e) {
-      console.error('Failed to save combats to localStorage', e);
-    }
+    if (saveStorageTimerRef.current) clearTimeout(saveStorageTimerRef.current);
+    saveStorageTimerRef.current = setTimeout(() => {
+      saveStorageTimerRef.current = null;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(combats));
+      } catch (e) {
+        console.error('Failed to save combats to localStorage', e);
+      }
+    }, 150);
+    return () => {
+      if (saveStorageTimerRef.current) {
+        clearTimeout(saveStorageTimerRef.current);
+        saveStorageTimerRef.current = null;
+      }
+    };
   }, [combats]);
+
+  useEffect(() => {
+    const flushCombatsToStorage = () => {
+      if (saveStorageTimerRef.current) {
+        clearTimeout(saveStorageTimerRef.current);
+        saveStorageTimerRef.current = null;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(stateRef.current.combats));
+        } catch (e) {}
+      }
+    };
+    window.addEventListener('pagehide', flushCombatsToStorage);
+    return () => {
+      window.removeEventListener('pagehide', flushCombatsToStorage);
+      flushCombatsToStorage();
+    };
+  }, []);
 
   // Save Conditions to LocalStorage
   useEffect(() => {
@@ -2641,15 +2612,6 @@ export default function App() {
       console.error('Failed to save conditions to localStorage', e);
     }
   }, [conditions]);
-
-  // Save Users to LocalStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    } catch (e) {
-      console.error('Failed to save users to localStorage', e);
-    }
-  }, [users]);
 
   // Combat Handlers
   const handleSelectCombat = (id: string) => {
@@ -3548,21 +3510,13 @@ export default function App() {
     if (playersChanged) {
       stateRef.current.players = nextPlayers;
       setPlayers(nextPlayers);
-      try {
-        localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(nextPlayers));
-      } catch (e) {}
     }
     if (combatsChanged) {
       stateRef.current.combats = nextCombats;
       setCombats(nextCombats);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCombats));
-      } catch (e) {}
     }
 
-    if (damageModalNpc && damageModalNpc.id === npcWithTimestamp.id) {
-      setDamageModalNpc(npcWithTimestamp);
-    }
+    setDamageModalNpc((prev) => (prev && prev.id === npcWithTimestamp.id ? npcWithTimestamp : prev));
 
     systemLogger.addLog(
       'LOCAL_EDIT',
@@ -5520,11 +5474,79 @@ export default function App() {
   };
 
   const isMaster = Boolean(currentUser && currentUser.role === 'mestre');
-  const effectiveEditorIds = [...new Set(editorUserIds)].filter((x) => {
-    if (!x) return false;
-    const cleaned = String(x).toLowerCase().trim().replace(/^user-/, '');
-    return cleaned.length > 0;
+  const effectiveEditorIds = useMemo(
+    () =>
+      [...new Set(editorUserIds)].filter((x) => {
+        if (!x) return false;
+        const cleaned = String(x).toLowerCase().trim().replace(/^user-/, '');
+        return cleaned.length > 0;
+      }),
+    [editorUserIds]
+  );
+  const localClientId = useMemo(() => onlineSyncService.getClientId(), []);
+
+  // Refs para estabilizar callbacks passados a componentes memoizados (TacticalMapWorkspace e NpcDetailView)
+  const latestHandlersRef = useRef({
+    handleUpdateTacticalState,
+    handleUpdateNpc,
+    handleDeleteNpc,
+    handleDuplicateNpc,
+    handleRemoveActiveSpell,
+    handleRemoveAffectedSpell,
+    handleTogglePlayerPermission,
+    handleSetAllPlayerPermissions,
   });
+  latestHandlersRef.current = {
+    handleUpdateTacticalState,
+    handleUpdateNpc,
+    handleDeleteNpc,
+    handleDuplicateNpc,
+    handleRemoveActiveSpell,
+    handleRemoveAffectedSpell,
+    handleTogglePlayerPermission,
+    handleSetAllPlayerPermissions,
+  };
+
+  const stableUpdateTacticalState = useCallback(
+    (updated: Partial<TacticalState>) => latestHandlersRef.current.handleUpdateTacticalState(updated),
+    []
+  );
+  const stableUpdateNpc = useCallback(
+    (updatedNpc: NPC) => latestHandlersRef.current.handleUpdateNpc(updatedNpc),
+    []
+  );
+  const stableDeleteNpc = useCallback(
+    (npcId: string) => latestHandlersRef.current.handleDeleteNpc(npcId),
+    []
+  );
+  const stableDuplicateNpc = useCallback(
+    (npc: NPC) => latestHandlersRef.current.handleDuplicateNpc(npc),
+    []
+  );
+  const stableRemoveActiveSpell = useCallback(
+    (casterId: string, spellId: string) =>
+      latestHandlersRef.current.handleRemoveActiveSpell(casterId, spellId),
+    []
+  );
+  const stableRemoveAffectedSpell = useCallback(
+    (targetId: string, spellId: string) =>
+      latestHandlersRef.current.handleRemoveAffectedSpell(targetId, spellId),
+    []
+  );
+  const stableTogglePlayerPermission = useCallback(
+    (userId: string) => latestHandlersRef.current.handleTogglePlayerPermission(userId),
+    []
+  );
+  const stableSetAllPlayerPermissions = useCallback(
+    (allow: boolean) => latestHandlersRef.current.handleSetAllPlayerPermissions(allow),
+    []
+  );
+  const handleOpenAvatarPicker = useCallback((npc: NPC) => setAvatarModalNpc(npc), []);
+  const handleOpenConditionsCrud = useCallback(() => setConditionsCrudOpen(true), []);
+  const handleOpenWeaponModal = useCallback(
+    (weapon?: Weapon | null) => setWeaponModalState({ isOpen: true, weapon: weapon || null }),
+    []
+  );
   const isEditor = Boolean(
     currentUser &&
       effectiveEditorIds.some((x) => {
@@ -5632,7 +5654,6 @@ export default function App() {
         isHomeScreen={isHomeScreen && activeViewMode === 'sheets'}
         customMasterOrder={activeCombat?.customOrder || localMasterOrder}
         onSaveMasterOrder={handleSaveMasterOrder}
-        onlinePlayerNames={onlinePlayerNames}
         users={users}
       />
       )}
@@ -5646,11 +5667,11 @@ export default function App() {
             <div className="flex-1 min-w-0 w-full transition-all">
               <TacticalMapWorkspace
                 tacticalState={activeTacticalState}
-                onUpdateTacticalState={handleUpdateTacticalState}
+                onUpdateTacticalState={stableUpdateTacticalState}
                 characters={allCharacters}
                 selectedNpcId={selectedNpcId}
                 onSelectNpc={setSelectedNpcId}
-                onUpdateNpc={handleUpdateNpc}
+                onUpdateNpc={stableUpdateNpc}
                 currentUserRole={effectiveRole}
                 currentUser={currentUser}
                 onOpenFullNpcSheet={handleOpenFullNpcSheet}
@@ -5660,12 +5681,12 @@ export default function App() {
                 editorCount={effectiveEditorIds.length}
                 users={users}
                 editorUserIds={effectiveEditorIds}
-                onTogglePlayerPermission={handleTogglePlayerPermission}
-                onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
+                onTogglePlayerPermission={stableTogglePlayerPermission}
+                onSetAllPlayerPermissions={stableSetAllPlayerPermissions}
                 isLogCollapsed={isLogCollapsed}
                 onToggleLogCollapse={handleToggleLogCollapse}
                 onBroadcastRulerPreview={handleBroadcastRulerPreview}
-                localClientId={onlineSyncService.getClientId()}
+                localClientId={localClientId}
               />
             </div>
 
@@ -5775,24 +5796,21 @@ export default function App() {
               ) : selectedNpc ? (
                 <NpcDetailView
                   npc={selectedNpc}
-                  onUpdateNpc={handleUpdateNpc}
-                  onDeleteNpc={handleDeleteNpc}
-                  onDuplicateNpc={handleDuplicateNpc}
-                  onOpenAvatarPicker={(npc) => setAvatarModalNpc(npc)}
-                  onOpenConditionsCrud={() => setConditionsCrudOpen(true)}
-                  onOpenDamageCalculator={(npc) => setDamageModalNpc(npc)}
-                  onOpenWeaponModal={(weapon) =>
-                    setWeaponModalState({ isOpen: true, weapon: weapon || null })
-                  }
-                  onRemoveActiveSpell={handleRemoveActiveSpell}
-                  onRemoveAffectedSpell={handleRemoveAffectedSpell}
+                  onUpdateNpc={stableUpdateNpc}
+                  onDeleteNpc={stableDeleteNpc}
+                  onDuplicateNpc={stableDuplicateNpc}
+                  onOpenAvatarPicker={handleOpenAvatarPicker}
+                  onOpenConditionsCrud={handleOpenConditionsCrud}
+                  onOpenDamageCalculator={handleOpenDamageCalculator}
+                  onOpenWeaponModal={handleOpenWeaponModal}
+                  onRemoveActiveSpell={stableRemoveActiveSpell}
+                  onRemoveAffectedSpell={stableRemoveAffectedSpell}
                   isPlayerUser={isPlayerUser}
                   currentUserRole={effectiveRole}
                   hasEditPermission={canEditCurrent}
                   currentRound={effectiveRound}
                   conditions={conditions}
                   users={users}
-                  onlinePlayerNames={onlinePlayerNames}
                   allCharacters={allCharacters}
                   onOpenPlayerPermissions={handleOpenPlayerPermissions}
                 />
@@ -5896,7 +5914,6 @@ export default function App() {
         activePlayerIds={activeCombatPlayerIds}
         onTogglePlayerVisibility={handleTogglePlayerInCombat}
         onSetAllPlayersVisibility={handleSetAllPlayersInCombat}
-        onlinePlayerNames={onlinePlayerNames}
         onAddNewPlayer={handleAddNewPlayer}
         onDeleteCharacter={handleDeletePlayer}
       />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserAccount, NPC } from '../types/rpg';
 import { hubConfirm } from '../utils/hubDialog';
 import { NpcAvatar } from './NpcAvatar';
+import { useOnlinePlayerNames } from '../hooks/useOnlinePresence';
 import {
   ShieldCheck,
   Eye,
@@ -52,6 +53,7 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
   const [activeTab, setActiveTab] = useState<'permissions' | 'characters'>('permissions');
   const [charSearch, setCharSearch] = useState('');
   const [permSearch, setPermSearch] = useState('');
+  const resolvedOnlineNames = useOnlinePlayerNames(onlinePlayerNames, isOpen);
 
   if (!isOpen) return null;
 
@@ -76,8 +78,8 @@ export const PlayerPermissionsModal: React.FC<PlayerPermissionsModalProps> = ({
 
   // Helper para verificar se um usuário está online
   const isUserOnline = (userName?: string): boolean => {
-    if (!userName || !onlinePlayerNames) return false;
-    return onlinePlayerNames.has(userName.trim().toLowerCase());
+    if (!userName) return false;
+    return resolvedOnlineNames.has(userName.trim().toLowerCase());
   };
 
   // Helper para encontrar o usuário vinculado a um personagem

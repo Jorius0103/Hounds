@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   TacticalState,
   TacticalLayer,
@@ -99,7 +99,7 @@ interface TacticalToolbarProps {
   onToggleLogCollapse?: () => void;
 }
 
-export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
+export const TacticalToolbar: React.FC<TacticalToolbarProps> = React.memo(({
   tacticalState,
   zoom,
   onUpdateTacticalState,
@@ -140,6 +140,101 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   const [sliderBaseHexSize, setSliderBaseHexSize] = useState<number | null>(null);
   const [customUrlInput, setCustomUrlInput] = useState(tacticalState.customImageUrl || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Estados locais com debounce para os sliders (evita 60Hz de setState em App.tsx + localStorage + sync)
+  const [draftMapW, setDraftMapW] = useState<number | null>(null);
+  const [draftHexSize, setDraftHexSize] = useState<number | null>(null);
+  const [draftGridOpacity, setDraftGridOpacity] = useState<number | null>(null);
+
+  const mapWidthTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hexSizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gridOpacityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setDraftMapW(null);
+  }, [tacticalState.mapImageWidth]);
+
+  useEffect(() => {
+    setDraftHexSize(null);
+  }, [tacticalState.hexSize]);
+
+  useEffect(() => {
+    setDraftGridOpacity(null);
+  }, [tacticalState.gridOpacity]);
+
+  useEffect(() => {
+    return () => {
+      if (mapWidthTimerRef.current) clearTimeout(mapWidthTimerRef.current);
+      if (hexSizeTimerRef.current) clearTimeout(hexSizeTimerRef.current);
+      if (gridOpacityTimerRef.current) clearTimeout(gridOpacityTimerRef.current);
+    };
+  }, []);
+
+  const commitMapWidth = (newW: number, mapAspect: number) => {
+    const safeW = Math.max(200, Math.min(10000, Math.round(newW)));
+    const safeH = Math.max(150, Math.round(safeW / (mapAspect || 1.428)));
+    onUpdateTacticalState({
+      mapImageWidth: safeW,
+      mapImageHeight: safeH,
+    });
+  };
+
+  const scheduleMapWidthUpdate = (newW: number, mapAspect: number) => {
+    setDraftMapW(newW);
+    if (mapWidthTimerRef.current) clearTimeout(mapWidthTimerRef.current);
+    mapWidthTimerRef.current = setTimeout(() => {
+      mapWidthTimerRef.current = null;
+      commitMapWidth(newW, mapAspect);
+    }, 120);
+  };
+
+  const flushMapWidthUpdate = (mapAspect: number) => {
+    if (mapWidthTimerRef.current) {
+      clearTimeout(mapWidthTimerRef.current);
+      mapWidthTimerRef.current = null;
+      if (draftMapW !== null) {
+        commitMapWidth(draftMapW, mapAspect);
+      }
+    }
+  };
+
+  const scheduleHexSizeUpdate = (newHex: number) => {
+    setDraftHexSize(newHex);
+    if (hexSizeTimerRef.current) clearTimeout(hexSizeTimerRef.current);
+    hexSizeTimerRef.current = setTimeout(() => {
+      hexSizeTimerRef.current = null;
+      onUpdateTacticalState({ hexSize: newHex });
+    }, 120);
+  };
+
+  const flushHexSizeUpdate = () => {
+    if (hexSizeTimerRef.current) {
+      clearTimeout(hexSizeTimerRef.current);
+      hexSizeTimerRef.current = null;
+      if (draftHexSize !== null) {
+        onUpdateTacticalState({ hexSize: draftHexSize });
+      }
+    }
+  };
+
+  const scheduleGridOpacityUpdate = (newOpacity: number) => {
+    setDraftGridOpacity(newOpacity);
+    if (gridOpacityTimerRef.current) clearTimeout(gridOpacityTimerRef.current);
+    gridOpacityTimerRef.current = setTimeout(() => {
+      gridOpacityTimerRef.current = null;
+      onUpdateTacticalState({ gridOpacity: newOpacity });
+    }, 120);
+  };
+
+  const flushGridOpacityUpdate = () => {
+    if (gridOpacityTimerRef.current) {
+      clearTimeout(gridOpacityTimerRef.current);
+      gridOpacityTimerRef.current = null;
+      if (draftGridOpacity !== null) {
+        onUpdateTacticalState({ gridOpacity: draftGridOpacity });
+      }
+    }
+  };
 
   const isMaster = currentUserRole === 'mestre';
   const activeLayer: TacticalLayer = tacticalState.activeLayer || 'tokens';
@@ -499,19 +594,15 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       const curMapW = tacticalState.mapImageWidth || 2000;
                       const curMapH = tacticalState.mapImageHeight || 1400;
                       const mapAspect = curMapW / curMapH;
+                      const displayMapW = draftMapW !== null ? draftMapW : curMapW;
+                      const displayMapH =
+                        draftMapW !== null
+                          ? Math.max(150, Math.round(displayMapW / (mapAspect || 1.428)))
+                          : curMapH;
 
                       const baseW = sliderBaseWidth || curMapW;
                       const minW = Math.min(curMapW - 200, Math.max(300, Math.round(baseW * 0.3)));
                       const maxW = Math.max(curMapW + 200, Math.round(baseW * 1.7));
-
-                      const handleResizeMapWidth = (newW: number) => {
-                        const safeW = Math.max(200, Math.min(10000, Math.round(newW)));
-                        const safeH = Math.max(150, Math.round(safeW / (mapAspect || 1.428)));
-                        onUpdateTacticalState({
-                          mapImageWidth: safeW,
-                          mapImageHeight: safeH,
-                        });
-                      };
 
                       return (
                         <div className="space-y-2 p-2.5 bg-slate-950/80 border border-slate-800/80 rounded-lg text-[11px] text-slate-300">
@@ -538,14 +629,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                             <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex items-center justify-between">
                               <span className="text-[10px] text-slate-400">Largura:</span>
                               <span className="font-mono text-xs font-bold text-amber-300">
-                                {curMapW}px
+                                {displayMapW}px
                               </span>
                             </div>
                             <span className="text-slate-500 font-bold">×</span>
                             <div className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex items-center justify-between">
                               <span className="text-[10px] text-slate-400">Altura:</span>
                               <span className="font-mono text-xs font-bold text-amber-300">
-                                {curMapH}px
+                                {displayMapH}px
                               </span>
                             </div>
                           </div>
@@ -557,8 +648,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                               min={minW}
                               max={maxW}
                               step="20"
-                              value={curMapW}
-                              onChange={(e) => handleResizeMapWidth(Number(e.target.value))}
+                              value={displayMapW}
+                              onChange={(e) => scheduleMapWidthUpdate(Number(e.target.value), mapAspect)}
+                              onPointerUp={() => flushMapWidthUpdate(mapAspect)}
+                              onMouseUp={() => flushMapWidthUpdate(mapAspect)}
+                              onTouchEnd={() => flushMapWidthUpdate(mapAspect)}
+                              onBlur={() => flushMapWidthUpdate(mapAspect)}
                               className="w-full accent-amber-500"
                             />
                           </div>
@@ -576,6 +671,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     {/* Escala da Grade: Tamanho do Hexágono (hexSize) */}
                     {(() => {
                       const curHex = tacticalState.hexSize || 38;
+                      const displayHex = draftHexSize !== null ? draftHexSize : curHex;
                       const baseHex = sliderBaseHexSize || curHex;
                       const minHex = Math.min(curHex - 5, Math.max(10, Math.round(baseHex * 0.35)));
                       const maxHex = Math.max(curHex + 5, Math.round(baseHex * 1.65));
@@ -584,7 +680,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         <div className="space-y-1">
                           <div className="flex justify-end text-[11px] text-slate-300 font-semibold">
                             <span className="font-mono text-amber-400 font-bold">
-                              {curHex}px
+                              {displayHex}px
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -604,10 +700,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                               type="range"
                               min={minHex}
                               max={maxHex}
-                              value={curHex}
-                              onChange={(e) =>
-                                onUpdateTacticalState({ hexSize: Number(e.target.value) })
-                              }
+                              value={displayHex}
+                              onChange={(e) => scheduleHexSizeUpdate(Number(e.target.value))}
+                              onPointerUp={flushHexSizeUpdate}
+                              onMouseUp={flushHexSizeUpdate}
+                              onTouchEnd={flushHexSizeUpdate}
+                              onBlur={flushHexSizeUpdate}
                               className="flex-1 accent-amber-500"
                             />
                             <button
@@ -675,25 +773,32 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     </div>
 
                     {/* Opacidade da Grade */}
-                    <div>
-                      <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                        <span>Opacidade das Linhas:</span>
-                        <span className="font-mono text-amber-300 font-bold">
-                          {Math.round((tacticalState.gridOpacity ?? 0.28) * 100)}%
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.05"
-                        max="0.8"
-                        step="0.05"
-                        value={tacticalState.gridOpacity ?? 0.28}
-                        onChange={(e) =>
-                          onUpdateTacticalState({ gridOpacity: Number(e.target.value) })
-                        }
-                        className="w-full accent-amber-500"
-                      />
-                    </div>
+                    {(() => {
+                      const displayOpacity = draftGridOpacity !== null ? draftGridOpacity : (tacticalState.gridOpacity ?? 0.28);
+                      return (
+                        <div>
+                          <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                            <span>Opacidade das Linhas:</span>
+                            <span className="font-mono text-amber-300 font-bold">
+                              {Math.round(displayOpacity * 100)}%
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.05"
+                            max="0.8"
+                            step="0.05"
+                            value={displayOpacity}
+                            onChange={(e) => scheduleGridOpacityUpdate(Number(e.target.value))}
+                            onPointerUp={flushGridOpacityUpdate}
+                            onMouseUp={flushGridOpacityUpdate}
+                            onTouchEnd={flushGridOpacityUpdate}
+                            onBlur={flushGridOpacityUpdate}
+                            className="w-full accent-amber-500"
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </>
@@ -1060,4 +1165,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
 
     </div>
   );
-};
+});
+
+TacticalToolbar.displayName = 'TacticalToolbar';

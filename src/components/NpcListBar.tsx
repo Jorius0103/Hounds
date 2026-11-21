@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NPC, MesaRole, UserAccount } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
 import { CombatHomeScreen } from './CombatHomeScreen';
+import { useOnlinePlayerNames } from '../hooks/useOnlinePresence';
 import { getHpStatus, getFpStatus, getCombatManeuver, getConditionDescription, getCrippledBodyParts } from '../utils/gurps';
 import { Eye, EyeOff, Skull, Users, Shield, UserPlus, Heart, X, ArrowUpDown, Sun } from 'lucide-react';
 
@@ -68,16 +69,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
     }
   }, [customMasterOrder, hasUnsavedOrder]);
 
-  const [, setPresenceTick] = useState<number>(0);
-  useEffect(() => {
-    const interval = setInterval(() => setPresenceTick((t) => t + 1), 3000);
-    const onPresenceUpdate = () => setPresenceTick((t) => t + 1);
-    window.addEventListener('hounds_presence_updated', onPresenceUpdate);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('hounds_presence_updated', onPresenceUpdate);
-    };
-  }, []);
+  const resolvedOnlineNames = useOnlinePlayerNames(onlinePlayerNames);
 
   const getPlayerDisplayName = (npc: NPC) => {
     if (npc.userId && users) {
@@ -94,37 +86,7 @@ export const NpcListBar: React.FC<NpcListBarProps> = ({
       if (u) resolvedName = u.name;
     }
     if (!resolvedName || !resolvedName.trim()) return false;
-    const pName = resolvedName.trim().toLowerCase();
-    const now = Date.now();
-    if (onlinePlayerNames && onlinePlayerNames.has(pName)) return true;
-    try {
-      const saved = localStorage.getItem('hounds_active_user');
-      if (saved) {
-        const u = JSON.parse(saved);
-        if (u?.name && u.name.trim().toLowerCase() === pName) return true;
-      }
-    } catch (e) {}
-    try {
-      if (typeof window !== 'undefined') {
-        const p = (window as any).parent;
-        if (p?.hubUser?.name && p.hubUser.name.trim().toLowerCase() === pName) return true;
-        if (p?.hubOnlineUsers && p.hubOnlineUsers[pName] && now - p.hubOnlineUsers[pName] < 35000) return true;
-        if (p?.BoardView && typeof p.BoardView.presence === 'function') {
-          const pres = p.BoardView.presence();
-          if (pres && typeof pres === 'object') {
-            for (const k of Object.keys(pres)) {
-              const entry = pres[k];
-              if (entry?.nm && entry.nm.trim().toLowerCase() === pName && (!entry.t || now - entry.t < 35000)) return true;
-            }
-          }
-        }
-        if ((window as any)._houndsOnlineUsers) {
-          const last = (window as any)._houndsOnlineUsers[pName];
-          if (last && now - last < 35000) return true;
-        }
-      }
-    } catch (e) {}
-    return false;
+    return resolvedOnlineNames.has(resolvedName.trim().toLowerCase());
   };
 
   const handleSelectSortMode = (mode: 'speed' | 'alpha' | 'mestre') => {

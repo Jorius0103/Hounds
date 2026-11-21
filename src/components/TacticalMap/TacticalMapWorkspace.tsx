@@ -17,6 +17,9 @@ import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
 import { TacticalIllustrativePresets } from './TacticalIllustrativePresets';
 import { TacticalPropsRenderer } from './TacticalPropsRenderer';
 import { TacticalPropsModal } from './TacticalPropsModal';
+import { TacticalTokenItem } from './TacticalTokenItem';
+
+const EMPTY_PROPS: TacticalProp[] = [];
 import {
   getHexCenter,
   getHexCornerPoints,
@@ -670,6 +673,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   const panY = viewport.panY;
   const zoom = viewport.zoom;
 
+  const viewportStorageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestViewportRef = useRef(viewport);
+  latestViewportRef.current = viewport;
+
+  useEffect(() => {
+    return () => {
+      if (viewportStorageTimerRef.current) {
+        clearTimeout(viewportStorageTimerRef.current);
+        viewportStorageTimerRef.current = null;
+        try {
+          localStorage.setItem('hounds_tactical_viewport_v1', JSON.stringify(latestViewportRef.current));
+        } catch {}
+      }
+    };
+  }, []);
+
   const updateViewport = useCallback((next: { panX?: number; panY?: number; zoom?: number }) => {
     setViewport((prev) => {
       const updated = {
@@ -677,9 +696,14 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
         panY: next.panY !== undefined ? next.panY : prev.panY,
         zoom: next.zoom !== undefined ? next.zoom : prev.zoom,
       };
-      try {
-        localStorage.setItem('hounds_tactical_viewport_v1', JSON.stringify(updated));
-      } catch {}
+      latestViewportRef.current = updated;
+      if (viewportStorageTimerRef.current) clearTimeout(viewportStorageTimerRef.current);
+      viewportStorageTimerRef.current = setTimeout(() => {
+        viewportStorageTimerRef.current = null;
+        try {
+          localStorage.setItem('hounds_tactical_viewport_v1', JSON.stringify(updated));
+        } catch {}
+      }, 250);
       return updated;
     });
   }, []);
@@ -2087,6 +2111,74 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     return list;
   }, [characters, playersList, npcsList, tokensModalFilter, tokensModalSearch]);
 
+  const resolvedProps = useMemo(() => {
+    const base = tacticalState.props || EMPTY_PROPS;
+    if (!dragPropPos) return base;
+    return base.map((p) =>
+      p.id === dragPropPos.id ? { ...p, x: dragPropPos.x, y: dragPropPos.y } : p
+    );
+  }, [tacticalState.props, dragPropPos]);
+
+  const tokenHexGeom = useMemo(() => {
+    const tokenHexRadius = hexSize * 0.72;
+    const tokenApothem = tokenHexRadius * (Math.sqrt(3) / 2);
+    return {
+      tokenHexRadius,
+      tokenApothem,
+      tokenBaseHexPoints: getFlatHexPointsString(tokenHexRadius + 2),
+      tokenInnerHexPoints: getFlatHexPointsString(tokenHexRadius),
+      tokenSelectionHexPoints: getFlatHexPointsString(tokenHexRadius + 5),
+    };
+  }, [hexSize]);
+
+  const fogMaskPolygonPoints = useMemo(() => {
+    return fogMask.ops.map((item) =>
+      item.shape === 'polygon' && item.points.length >= 3
+        ? item.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')
+        : ''
+    );
+  }, [fogMask.ops, mapX, mapY]);
+
+  const tokenHandlersRef = useRef({
+    handleTokenClick,
+    handleTokenMouseDown,
+    handleRotationMouseDown,
+    onSelectNpc,
+  });
+  tokenHandlersRef.current = {
+    handleTokenClick,
+    handleTokenMouseDown,
+    handleRotationMouseDown,
+    onSelectNpc,
+  };
+
+  const stableTokenClick = useCallback(
+    (e: React.MouseEvent, token: TacticalToken) => tokenHandlersRef.current.handleTokenClick(e, token),
+    []
+  );
+  const stableTokenMouseDown = useCallback(
+    (e: React.MouseEvent, token: TacticalToken) => tokenHandlersRef.current.handleTokenMouseDown(e, token),
+    []
+  );
+  const stableRotationMouseDown = useCallback(
+    (e: React.MouseEvent, token: TacticalToken) => tokenHandlersRef.current.handleRotationMouseDown(e, token),
+    []
+  );
+  const stableTokenContextMenu = useCallback((e: React.MouseEvent, token: TacticalToken) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedTokenId(token.id);
+    if (!token.isInstant && token.npcId) {
+      tokenHandlersRef.current.onSelectNpc(token.npcId);
+    }
+    setContextMenu({
+      tokenId: token.id,
+      npcId: token.npcId || '',
+      x: e.clientX,
+      y: e.clientY,
+    });
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -2096,6 +2188,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       onMouseLeave={() => {
         if (isPanning) setIsPanning(false);
         if (draggedPropId) setDraggedPropId(null);
+        if (dragPropPos) setDragPropPos(null);
+        if (draggedNoteId) {
+          setDraggedNoteId(null);
+          setDragNotePos(null);
+        }
         setMouseMapPos(null);
         if (draggedTokenId) {
           setDraggedTokenId(null);
@@ -2109,6 +2206,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
         if (rotatingTokenId) {
           setRotatingTokenId(null);
           setPreviewRotation(null);
+        }
+        if (rulerDuration === 'instant' && (rulerStart || isInstantBlastPressed)) {
+          setRulerStart(null);
+          setRulerCurrent(null);
+          setIsInstantBlastPressed(false);
+          clearRulerPreview();
+        } else if (isInstantBlastPressed) {
+          setIsInstantBlastPressed(false);
+          clearRulerPreview();
         }
       }}
       onWheel={handleWheel}
@@ -2928,7 +3034,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                   return (
                     <polygon
                       key={`fog-op-${idx}`}
-                      points={item.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                      points={fogMaskPolygonPoints[idx]}
                       fill={fill}
                     />
                   );
@@ -3052,13 +3158,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
           {/* CAMADA DE ELEMENTOS DE CENÁRIO (PROPS / MOBÍLIA - ESTILO ROLL20) */}
           <TacticalPropsRenderer
-            props={
-              dragPropPos
-                ? (tacticalState.props || []).map((p) =>
-                    p.id === dragPropPos.id ? { ...p, x: dragPropPos.x, y: dragPropPos.y } : p
-                  )
-                : tacticalState.props || []
-            }
+            props={resolvedProps}
             selectedPropId={selectedPropId}
             onSelectProp={setSelectedPropId}
             onStartDragProp={handleStartDragProp}
@@ -3208,14 +3308,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     ? token.rotation
                     : facingToRotation(token.facing));
               const tokenRotation = snapRotationToHexFace(rawTokenRotation);
-              // Token hexagonal encaixado na grade: arestas alinhadas ao hexágono da grade
-              const tokenHexRadius = hexSize * 0.72;
-              const tokenApothem = tokenHexRadius * (Math.sqrt(3) / 2);
-              const tokenBaseHexPoints = getFlatHexPointsString(tokenHexRadius + 2);
-              const tokenInnerHexPoints = getFlatHexPointsString(tokenHexRadius);
-              const tokenSelectionHexPoints = getFlatHexPointsString(tokenHexRadius + 5);
-
-              const badgeWidth = Math.min(85, Math.max(34, displayName.length * 5.8));
 
               // Manobra ativa do personagem / NPC para colorir a borda do token (sem borda roxa quando oculto; mantém apenas glow roxo + olho)
               const maneuver = npc?.combatManeuver ? getCombatManeuver(npc.combatManeuver) : undefined;
@@ -3227,211 +3319,31 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               const canControl = canControlToken(token);
 
               return (
-                <g
+                <TacticalTokenItem
                   key={token.id}
-                  transform={`translate(${center.x}, ${center.y})`}
-                  opacity={isTokenHidden ? 0.78 : 1}
-                  pointerEvents="auto"
-                  onClick={(e) => handleTokenClick(e, token)}
-                  onMouseDown={(e) => handleTokenMouseDown(e, token)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedTokenId(token.id);
-                    if (!token.isInstant && token.npcId) {
-                      onSelectNpc(token.npcId);
-                    }
-                    setContextMenu({
-                      tokenId: token.id,
-                      npcId: token.npcId || '',
-                      x: e.clientX,
-                      y: e.clientY,
-                    });
-                  }}
-                  className={`${canControl ? (isSelected ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer') : 'cursor-pointer'} transition-transform`}
-                  style={{
-                    filter: isTokenHidden && isSelected
-                      ? 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9)) drop-shadow(0px 0px 6px rgba(245, 158, 11, 0.75))'
-                      : isTokenHidden
-                        ? 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))'
-                        : isSelected
-                          ? 'drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.8))'
-                          : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
-                  }}
-                >
-                  {/* GRUPO ROTATIVO INTEGRAL: Token Hexagonal, Foto, Nome (atrás), Frente (na face frontal) e Pauzinho giram juntos */}
-                  <g transform={`rotate(${tokenRotation})`}>
-                    {/* 1. Hexágono de Base com Borda de Manobra ou Cor do Token (sem borda roxa quando oculto) */}
-                    <polygon
-                      points={tokenBaseHexPoints}
-                      fill="#0f172a"
-                      stroke={maneuverBorderColor}
-                      strokeWidth={isSelected ? 2 : 1.5}
-                      strokeLinejoin="round"
-                    />
-
-                    {/* Contorno Hexagonal Externo Dourado Indicador de Seleção */}
-                    {isSelected && (
-                      <polygon
-                        points={tokenSelectionHexPoints}
-                        fill="none"
-                        stroke="#f59e0b"
-                        strokeWidth="1.5"
-                        strokeLinejoin="round"
-                        strokeDasharray="4,3"
-                      />
-                    )}
-
-                    {/* 2. Retrato / Avatar recortado em formato hexagonal */}
-                    <clipPath id={`clip-${token.id}`}>
-                      <polygon points={tokenInnerHexPoints} />
-                    </clipPath>
-
-                    {displayAvatar ? (
-                      <image
-                        href={displayAvatar}
-                        x={-tokenHexRadius}
-                        y={-tokenHexRadius}
-                        width={tokenHexRadius * 2}
-                        height={tokenHexRadius * 2}
-                        clipPath={`url(#clip-${token.id})`}
-                        preserveAspectRatio="xMidYMid slice"
-                      />
-                    ) : (
-                      (() => {
-                        const matchedPreset =
-                          PRESET_AVATARS.find((p) => p.id === displayPresetId) ||
-                          (npc ? resolveNpcPreset(npc) : PRESET_AVATARS[0]);
-                        const colors =
-                          PRESET_BG_COLORS[matchedPreset.id] || PRESET_BG_COLORS['knight'];
-                        const PresetIcon = matchedPreset.icon || Shield;
-                        const iconSize = tokenApothem * 1.2;
-
-                        return (
-                          <g clipPath={`url(#clip-${token.id})`}>
-                            <polygon points={tokenInnerHexPoints} fill={colors.bg1} />
-                            <polygon points={tokenInnerHexPoints} fill={colors.bg2} fillOpacity="0.5" />
-                            <g
-                              transform={`translate(${-iconSize / 2}, ${-iconSize / 2})`}
-                              style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8))' }}
-                            >
-                              <PresetIcon size={iconSize} color="#ffffff" strokeWidth={2} />
-                            </g>
-                          </g>
-                        );
-                      })()
-                    )}
-
-                    {/* MARCAÇÃO VISUAL DE VISIBILIDADE APENAS PARA O MESTRE (QUANDO OCULTO DOS JOGADORES): OLHO ROXO (alteração apenas via botão direito) */}
-                    {isMaster && isTokenHidden && (
-                      <g
-                        transform={`translate(${badgeWidth / 2 + 7}, ${-tokenApothem - 8.5})`}
-                        pointerEvents="none"
-                      >
-                        <circle
-                          cx="0"
-                          cy="0"
-                          r="6"
-                          fill="#020617"
-                          fillOpacity="0.95"
-                          stroke="#a855f7"
-                          strokeWidth="1.5"
-                        />
-                        <path
-                          d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z"
-                          fill="none"
-                          stroke="#c084fc"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <circle
-                          cx="0"
-                          cy="0"
-                          r="1"
-                          fill="#c084fc"
-                        />
-                        <line
-                          x1="-3"
-                          y1="-3"
-                          x2="3"
-                          y2="3"
-                          stroke="#c084fc"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                        />
-                      </g>
-                    )}
-
-                    {/* 3. NOME DO PERSONAGEM NA ARESTA TRASEIRA DO HEXÁGONO */}
-                    <rect
-                      x={-badgeWidth / 2}
-                      y={-tokenApothem - 15}
-                      width={badgeWidth}
-                      height="13"
-                      rx="3.5"
-                      fill="#020617"
-                      fillOpacity="0.55"
-                      stroke="rgba(148, 163, 184, 0.3)"
-                      strokeWidth="0.7"
-                    />
-                    <text
-                      x="0"
-                      y={-tokenApothem - 6}
-                      fill="#f1f5f9"
-                      fontSize="8"
-                      fontWeight="600"
-                      textAnchor="middle"
-                    >
-                      {displayName}
-                    </text>
-
-                    {/* 4. MARCAÇÃO DE FRENTE NA ARESTA FRONTAL (APONTANDO EXATAMENTE PARA O MEIO DO HEXÁGONO À FRENTE) */}
-                    <polygon
-                      points={`0,${tokenApothem + 8.5} -5.5,${tokenApothem + 2} 5.5,${tokenApothem + 2}`}
-                      fill="#f59e0b"
-                      stroke="#020617"
-                      strokeWidth="1"
-                    />
-                    <circle cx="0" cy={tokenApothem + 3.5} r="1.2" fill="#ffffff" />
-
-                    {/* 5. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
-                    {isSelected && canControl && (
-                      <g className="cursor-grab">
-                        {/* Haste estendida conectando a marcação de frente até a alça */}
-                        <line
-                          x1="0"
-                          y1={tokenApothem + 8.5}
-                          x2="0"
-                          y2={tokenApothem + 21}
-                          stroke="#38bdf8"
-                          strokeWidth="2"
-                          strokeDasharray="3,2"
-                        />
-                        {/* Alça circular na ponta do pauzinho */}
-                        <circle
-                          cx="0"
-                          cy={tokenApothem + 21}
-                          r="5"
-                          fill="#0284c7"
-                          stroke="#ffffff"
-                          strokeWidth="1.5"
-                          className="hover:scale-125 transition-transform"
-                        />
-                        <circle cx="0" cy={tokenApothem + 21} r="1.8" fill="#ffffff" />
-                        {/* Hitbox invisível ampla para facilitar o clique e arrasto no mouse/touch */}
-                        <circle
-                          cx="0"
-                          cy={tokenApothem + 21}
-                          r="13"
-                          fill="transparent"
-                          className="cursor-grab active:cursor-grabbing"
-                          onMouseDown={(e) => handleRotationMouseDown(e, token)}
-                        />
-                      </g>
-                    )}
-                  </g>
-                </g>
+                  token={token}
+                  npc={npc}
+                  centerX={center.x}
+                  centerY={center.y}
+                  tokenRotation={tokenRotation}
+                  tokenHexRadius={tokenHexGeom.tokenHexRadius}
+                  tokenApothem={tokenHexGeom.tokenApothem}
+                  tokenBaseHexPoints={tokenHexGeom.tokenBaseHexPoints}
+                  tokenInnerHexPoints={tokenHexGeom.tokenInnerHexPoints}
+                  tokenSelectionHexPoints={tokenHexGeom.tokenSelectionHexPoints}
+                  displayName={displayName}
+                  displayAvatar={displayAvatar}
+                  displayPresetId={displayPresetId}
+                  maneuverBorderColor={maneuverBorderColor}
+                  isTokenHidden={isTokenHidden}
+                  isSelected={isSelected}
+                  isMaster={isMaster}
+                  canControl={canControl}
+                  onTokenClick={stableTokenClick}
+                  onTokenMouseDown={stableTokenMouseDown}
+                  onTokenContextMenu={stableTokenContextMenu}
+                  onRotationMouseDown={stableRotationMouseDown}
+                />
               );
             })}
           </g>

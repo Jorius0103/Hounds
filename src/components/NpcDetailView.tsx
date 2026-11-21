@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { NPC, Weapon, Spell, ParryEntry, BodyArmorLocation, ExtraItem, MesaRole, ArmorKit, ConditionDefinition, ActiveSpell, AffectedSpell, UserAccount } from '../types/rpg';
 import { NpcAvatar } from './NpcAvatar';
+import { useIsPlayerOnline } from '../hooks/useOnlinePresence';
 import {
   getHpStatus,
   getFpStatus,
@@ -106,7 +107,7 @@ interface NpcDetailViewProps {
   onOpenPlayerPermissions?: (characterId?: string) => void;
 }
 
-export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
+export const NpcDetailView: React.FC<NpcDetailViewProps> = React.memo(({
   npc,
   onUpdateNpc,
   onDeleteNpc,
@@ -206,11 +207,7 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
   const displayPlayerName = linkedUser?.name || npc.playerName || '';
 
-  const isLinkedPlayerOnline = displayPlayerName
-
-    ? Boolean(onlinePlayerNames && onlinePlayerNames.has(displayPlayerName.trim().toLowerCase()))
-
-    : false;
+  const isLinkedPlayerOnline = useIsPlayerOnline(displayPlayerName, onlinePlayerNames);
 
   const handleSelectLinkedUser = (selectedUser: UserAccount | null) => {
 
@@ -404,12 +401,13 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       createdAt: new Date().toISOString(),
     };
     const nextList = [...(npc.activeSpells || []), newEntry];
-    updateField('activeSpells', nextList);
+    const patch: Partial<NPC> = { activeSpells: nextList };
 
-    // Se houver custo de fadiga e o usuário informou, atualiza fpCurrent
+    // Se houver custo de fadiga e o usuário informou, atualiza fpCurrent em lote na mesma atualização
     if (typeof manualActiveSpellCost === 'number' && manualActiveSpellCost > 0) {
-      updateField('fpCurrent', Math.max(-npc.fpMax, (npc.fpCurrent || 0) - manualActiveSpellCost));
+      patch.fpCurrent = Math.max(-npc.fpMax, (npc.fpCurrent || 0) - manualActiveSpellCost);
     }
+    updateFields(patch);
 
     setManualActiveSpellName('');
     setManualActiveSpellCost('');
@@ -461,35 +459,44 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     'naturalDr',
   ];
 
-  // Quick field updates helper (bloqueado para visualizador e protegido contra inconsistências)
-  const updateField = <K extends keyof NPC>(field: K, value: NPC[K]) => {
+  // Batch field updates helper (bloqueado para visualizador e protegido contra inconsistências; envia 1 único update/sync)
+  const updateFields = (patch: Partial<NPC>) => {
     if (isViewer) return;
-    if (!isMaster && masterOnlyFields.includes(field)) return;
-    if (!isMaster && !isPlayerChar) {
-      // Quando for NPC visualizado por jogador editor, apenas campos de combate/interação permitidos
-      const allowedNpcFields: (keyof NPC)[] = [
-        'assistantNotes',
-        'turnActions',
-        'extraItems',
-        'statusConditions',
-        'conditionMetadata',
-        'combatManeuver',
-        'hpCurrent',
-        'fpCurrent',
-        'activeSpells',
-        'affectedSpells',
-        'isDead',
-        'bodyPartDamageOverrides',
-        'bodyPartCustomRules',
-        'spells',
-        'weapons',
-      ];
-      if (!allowedNpcFields.includes(field)) return;
+    const allowedNpcFields: (keyof NPC)[] = [
+      'assistantNotes',
+      'turnActions',
+      'extraItems',
+      'statusConditions',
+      'conditionMetadata',
+      'combatManeuver',
+      'hpCurrent',
+      'fpCurrent',
+      'activeSpells',
+      'affectedSpells',
+      'isDead',
+      'bodyPartDamageOverrides',
+      'bodyPartCustomRules',
+      'spells',
+      'weapons',
+    ];
+    const filteredPatch: Partial<NPC> = {};
+    let hasChanges = false;
+    for (const key of Object.keys(patch) as (keyof NPC)[]) {
+      if (!isMaster && masterOnlyFields.includes(key)) continue;
+      if (!isMaster && !isPlayerChar && !allowedNpcFields.includes(key)) continue;
+      (filteredPatch as any)[key] = patch[key];
+      hasChanges = true;
     }
+    if (!hasChanges) return;
     const now = Date.now();
-    const next = { ...currentNpcRef.current, [field]: value, updatedAt: now };
+    const next = { ...currentNpcRef.current, ...filteredPatch, updatedAt: now };
     currentNpcRef.current = next;
     onUpdateNpc(next);
+  };
+
+  // Quick field updates helper (bloqueado para visualizador e protegido contra inconsistências)
+  const updateField = <K extends keyof NPC>(field: K, value: NPC[K]) => {
+    updateFields({ [field]: value } as Partial<NPC>);
   };
 
   // Remove single condition
@@ -607,22 +614,25 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
       ...k,
       isActive: k.id === kitId,
     }));
-    updateField('armorKits', nextKits);
-    updateField('activeArmorKitId', kitId);
-    updateField('armorLocations', targetKit.locations);
+    updateFields({
+      armorKits: nextKits,
+      activeArmorKitId: kitId,
+      armorLocations: targetKit.locations,
+    });
   };
 
   const handleRemoveArmorKit = (kitId: string) => {
     if (isViewer || kits.length <= 1) return;
     const nextKits = kits.filter((k) => k.id !== kitId);
     let nextActiveId = npc.activeArmorKitId;
+    const patch: Partial<NPC> = { armorKits: nextKits };
     if (kitId === npc.activeArmorKitId || !nextKits.some((k) => k.id === nextActiveId)) {
-      nextKits[0].isActive = true;
+      nextKits[0] = { ...nextKits[0], isActive: true };
       nextActiveId = nextKits[0].id;
-      updateField('armorLocations', nextKits[0].locations);
+      patch.armorLocations = nextKits[0].locations;
     }
-    updateField('armorKits', nextKits);
-    updateField('activeArmorKitId', nextActiveId);
+    patch.activeArmorKitId = nextActiveId;
+    updateFields(patch);
     if (selectedKitId === kitId) {
       setSelectedKitId(nextKits[0].id);
     }
@@ -657,11 +667,11 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     const nextKits = kits.map((k) =>
       k.id === currentKit.id ? { ...k, locations: nextLocations } : k
     );
-    updateField('armorKits', nextKits);
-
-    // Se o kit editado for o ativo, mantém npc.armorLocations sincronizado!
+    // Se o kit editado for o ativo, mantém npc.armorLocations sincronizado em 1 única atualização
     if (currentKit.isActive || currentKit.id === npc.activeArmorKitId) {
-      updateField('armorLocations', nextLocations);
+      updateFields({ armorKits: nextKits, armorLocations: nextLocations });
+    } else {
+      updateField('armorKits', nextKits);
     }
   };
 
@@ -720,10 +730,10 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
     const nextKits = kits.map((k) =>
       k.id === currentKit.id ? { ...k, locations: nextLocations } : k
     );
-    updateField('armorKits', nextKits);
-
     if (currentKit.isActive || currentKit.id === npc.activeArmorKitId) {
-      updateField('armorLocations', nextLocations);
+      updateFields({ armorKits: nextKits, armorLocations: nextLocations });
+    } else {
+      updateField('armorKits', nextKits);
     }
   };
 
@@ -5141,4 +5151,6 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = ({
 
     </div>
   );
-};
+});
+
+NpcDetailView.displayName = 'NpcDetailView';

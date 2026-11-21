@@ -9,7 +9,7 @@ interface IllustrativeMapProps {
   height: number;
 }
 
-export const TacticalIllustrativePresets: React.FC<IllustrativeMapProps> = ({
+export const TacticalIllustrativePresets: React.FC<IllustrativeMapProps> = React.memo(({
   backgroundKey,
   x,
   y,
@@ -489,5 +489,7 @@ export const TacticalIllustrativePresets: React.FC<IllustrativeMapProps> = ({
       strokeWidth="4"
     />
   );
-};
+});
+
+TacticalIllustrativePresets.displayName = 'TacticalIllustrativePresets';
 
