@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Combat, NPC, ConditionDefinition, ActionLogEntry, UserAccount, UserRole, MesaRole, Weapon, ExtraItem } from './types/rpg';
-import { INITIAL_COMBATS, EMPTY_COMBAT_PRESET, HOUNDS_PLAYERS, AZUR_CHARACTER } from './utils/presets';
+import {
+  INITIAL_COMBATS,
+  EMPTY_COMBAT_PRESET,
+  loadHoundsPresets,
+  getHoundsPresets,
+  findHoundsPreset,
+  useHoundsPresetsState,
+} from './utils/presets';
 import { createNewNpc, DEFAULT_CONDITIONS, getNextIncrementalName, isSameLocation, normalizeLocationKey, COMBAT_MANEUVERS, BODY_PARTS_CONFIG, LIMB_RELATED_KEYS } from './utils/gurps';
 import { onlineSyncService, SyncStatus, RemoteSyncPayload } from './utils/onlineSync';
 import { sanitizeCombatForSync, sanitizeNpcForSync, sanitizeUsersForSync } from './utils/mesaPermissions';
@@ -105,9 +112,7 @@ function mergeNpcLists(currentList: NPC[], incomingList: NPC[]): { merged: NPC[]
 
   for (const incoming of incomingList) {
     const existing = currentMap.get(incoming.id);
-    const preset = HOUNDS_PLAYERS.find(
-      (hp) => hp.id === incoming.id || (hp.name && incoming.name && hp.name.trim().toLowerCase() === incoming.name.trim().toLowerCase())
-    );
+    const preset = findHoundsPreset(incoming.id, incoming.name);
     if (!incoming.spells || incoming.spells.length === 0) {
       if (existing && existing.spells && existing.spells.length > 0) {
         incoming.spells = existing.spells;
@@ -325,6 +330,14 @@ const DEFAULT_USERS: UserAccount[] = [
 ];
 
 export default function App() {
+  const presetsState = useHoundsPresetsState();
+  const [presetsBannerDismissed, setPresetsBannerDismissed] = useState(false);
+
+  // Dispara o carregamento assíncrono dos presets externos (dados/hounds-presets.json) na inicialização
+  useEffect(() => {
+    void loadHoundsPresets();
+  }, []);
+
   // 1. Combates Cadastrados (Opcionais; permite 0 combates para foco total no dia a dia dos personagens)
   const [combats, setCombats] = useState<Combat[]>(() => {
     try {
@@ -336,15 +349,7 @@ export default function App() {
             .filter((c: Combat) => c && c.id !== 'combat-vazio' && !isEmptyCombat(c))
             .map((c: Combat) => ({
               ...c,
-              npcs: (c.npcs || []).map((n: NPC) => {
-                const preset = HOUNDS_PLAYERS.find(
-                  (hp) => hp.id === n.id || (hp.name && n.name && hp.name.trim().toLowerCase() === n.name.trim().toLowerCase())
-                );
-                if (preset && preset.spells && preset.spells.length > 0 && (!n.spells || n.spells.length === 0)) {
-                  return { ...n, spells: preset.spells };
-                }
-                return n;
-              }),
+              npcs: c.npcs || [],
             }));
         }
       }
@@ -361,16 +366,7 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const list = parsed.filter((p: NPC) => p && p.characterType !== 'npc');
-          return list.map((p: NPC) => {
-            const preset = HOUNDS_PLAYERS.find(
-              (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
-            );
-            if (preset && preset.spells && preset.spells.length > 0 && (!p.spells || p.spells.length === 0)) {
-              return { ...p, spells: preset.spells };
-            }
-            return p;
-          });
+          return parsed.filter((p: NPC) => p && p.characterType !== 'npc');
         }
       }
       // Se não havia chave específica, recupera os personagens de combates anteriores
@@ -389,39 +385,47 @@ export default function App() {
             }
           }
           if (found.length > 0) {
-            return found.map((p: NPC) => {
-              const preset = HOUNDS_PLAYERS.find(
-                (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
-              );
-              if (preset && preset.spells && preset.spells.length > 0 && (!p.spells || p.spells.length === 0)) {
-                return { ...p, spells: preset.spells };
-              }
-              return p;
-            });
+            return found;
           }
         }
       }
     } catch (e) {
       console.error('Failed to load saved players', e);
     }
-    return HOUNDS_PLAYERS; // Padrão: Azur + 10 Personagens
+    // Sem dados locais: aguarda conclusão de loadHoundsPresets() antes de popular presets padrão
+    return [];
   });
+  const hadSavedPlayersOnBootRef = useRef<boolean>(players.length > 0);
 
-  // Salva Personagens Fixos no LocalStorage
+  // Salva Personagens Fixos no LocalStorage (evitando gravar [] antes dos presets carregarem numa inicialização limpa)
   useEffect(() => {
+    if (players.length === 0 && !hadSavedPlayersOnBootRef.current && presetsState.status !== 'ready') {
+      return;
+    }
     try {
       localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(players));
     } catch (e) {}
-  }, [players]);
+  }, [players, presetsState.status]);
 
-  // Auto-sincronização de Magias e Dados Faltantes dos Personagens Pré-definidos
+  // Hidratação pós-carregamento: popula personagens padrão (se inicialização limpa) e sincroniza magias faltantes somente após presetsState.status === 'ready'
   useEffect(() => {
+    if (presetsState.status !== 'ready') return;
+
+    const loadedPresets = getHoundsPresets();
+    if (loadedPresets.length === 0) return;
+
     setPlayers((prev) => {
+      if (prev.length === 0 && !hadSavedPlayersOnBootRef.current) {
+        hadSavedPlayersOnBootRef.current = true;
+        try {
+          localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(loadedPresets));
+        } catch (e) {}
+        return loadedPresets;
+      }
+
       let changed = false;
       const updated = prev.map((p) => {
-        const preset = HOUNDS_PLAYERS.find(
-          (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
-        );
+        const preset = findHoundsPreset(p.id, p.name);
         if (preset && preset.spells && preset.spells.length > 0 && (!p.spells || p.spells.length === 0)) {
           changed = true;
           return { ...p, spells: preset.spells, updatedAt: Date.now() };
@@ -437,14 +441,14 @@ export default function App() {
       return prev;
     });
 
+    setSessionPlayerIds((prev) => (prev.length === 0 ? loadedPresets.map((p) => p.id) : prev));
+
     setCombats((prev) => {
       let changed = false;
       const updated = prev.map((c) => ({
         ...c,
         npcs: (c.npcs || []).map((n) => {
-          const preset = HOUNDS_PLAYERS.find(
-            (hp) => hp.id === n.id || (hp.name && n.name && hp.name.trim().toLowerCase() === n.name.trim().toLowerCase())
-          );
+          const preset = findHoundsPreset(n.id, n.name);
           if (preset && preset.spells && preset.spells.length > 0 && (!n.spells || n.spells.length === 0)) {
             changed = true;
             return { ...n, spells: preset.spells, updatedAt: Date.now() };
@@ -460,7 +464,7 @@ export default function App() {
       }
       return prev;
     });
-  }, []);
+  }, [presetsState.status]);
 
   // Personagens visíveis na sessão (persiste mesmo sem combate ativo)
   const [sessionPlayerIds, setSessionPlayerIds] = useState<string[]>(() => {
@@ -655,9 +659,7 @@ export default function App() {
       );
       if (p.characterType !== 'npc' && (activePlayerSet.has(p.id) || isMyChar) && !seen.has(p.id)) {
         seen.add(p.id);
-        const preset = HOUNDS_PLAYERS.find(
-          (hp) => hp.id === p.id || (hp.name && p.name && hp.name.trim().toLowerCase() === p.name.trim().toLowerCase())
-        );
+        const preset = presetsState.status === 'ready' ? findHoundsPreset(p.id, p.name) : undefined;
         if (preset && preset.spells && preset.spells.length > 0 && (!p.spells || p.spells.length === 0)) {
           list.push({ ...p, spells: preset.spells });
         } else {
@@ -670,9 +672,7 @@ export default function App() {
       for (const n of activeCombat.npcs || []) {
         if (n.characterType !== 'player' && !seen.has(n.id)) {
           seen.add(n.id);
-          const preset = HOUNDS_PLAYERS.find(
-            (hp) => hp.id === n.id || (hp.name && n.name && hp.name.trim().toLowerCase() === n.name.trim().toLowerCase())
-          );
+          const preset = presetsState.status === 'ready' ? findHoundsPreset(n.id, n.name) : undefined;
           if (preset && preset.spells && preset.spells.length > 0 && (!n.spells || n.spells.length === 0)) {
             list.push({ ...n, spells: preset.spells });
           } else {
@@ -682,7 +682,7 @@ export default function App() {
       }
     }
     return list;
-  }, [players, activeCombat, sessionPlayerIds, isNoCombat, currentUser]);
+  }, [players, activeCombat, sessionPlayerIds, isNoCombat, currentUser, presetsState.status]);
 
   // Lista unificada de Personagens de Jogadores (para modais e recarga de recursos)
   const allPlayerCharacters = useMemo(() => {
@@ -5679,6 +5679,37 @@ export default function App() {
         hideGmRolls={hideGmRolls}
         onToggleHideGmRolls={handleToggleHideGmRolls}
       />
+
+      {presetsState.status === 'error' && !presetsBannerDismissed && (
+        <div
+          role="alert"
+          className="bg-amber-950/80 border-b border-amber-700/60 px-4 py-2 text-xs text-amber-100 flex flex-wrap items-center justify-between gap-2"
+        >
+          <span>
+            <strong className="text-amber-300">Personagens padrão indisponíveis:</strong>{' '}
+            {presetsState.errorMessage || 'Não foi possível carregar dados/hounds-presets.json.'}
+          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setPresetsBannerDismissed(false);
+                void loadHoundsPresets({ forceReload: true });
+              }}
+              className="px-2.5 py-1 rounded bg-amber-600/80 hover:bg-amber-500 text-slate-950 font-semibold transition-colors cursor-pointer"
+            >
+              Tentar novamente
+            </button>
+            <button
+              type="button"
+              onClick={() => setPresetsBannerDismissed(true)}
+              className="px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. BARRA DE PERSONAGENS & NPCS (Oculta na visão tática para liberar o espaço total do tabuleiro) */}
       {activeViewMode !== 'tactical' && (

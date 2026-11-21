@@ -27,7 +27,7 @@ import { SingleSpellModal, loadSpellsDatabase, normalizeSpellText, getCollegePt,
 import { CombatLogCard } from './CombatLogCard';
 import { ConfirmModal } from './ConfirmModal';
 import { systemLogger } from '../utils/systemLogger';
-import { HOUNDS_PLAYERS } from '../utils/presets';
+import { findHoundsPreset, useHoundsPresetsState } from '../utils/presets';
 import {
   Shield,
   Heart,
@@ -870,23 +870,23 @@ export const NpcDetailView: React.FC<NpcDetailViewProps> = React.memo(({
   };
 
   const [spellFilterQuery, setSpellFilterQuery] = useState('');
+  const presetsState = useHoundsPresetsState();
 
-  // Magias efetivas: se o personagem não tiver magias salvas mas o preset tiver (ex: Warren), usa as magias do preset
+  // Magias efetivas: se o personagem não tiver magias salvas mas o preset tiver (ex: Warren), usa as magias do preset após carregamento
   const effectiveNpcSpells = useMemo(() => {
     if (npc.spells && Array.isArray(npc.spells) && npc.spells.length > 0) return npc.spells;
-    const preset = HOUNDS_PLAYERS.find(
-      (hp) => hp.id === npc.id || (hp.name && npc.name && hp.name.trim().toLowerCase() === npc.name.trim().toLowerCase())
-    );
+    if (presetsState.status !== 'ready') return [];
+    const preset = findHoundsPreset(npc.id, npc.name);
     if (preset && preset.spells && preset.spells.length > 0) return preset.spells;
     return [];
-  }, [npc.id, npc.name, npc.spells]);
+  }, [npc.id, npc.name, npc.spells, presetsState.status]);
 
-  // Se o personagem for do preset com magias mas ainda estiver com lista vazia no state, persiste as magias
+  // Se o personagem for do preset com magias mas ainda estiver com lista vazia no state, persiste as magias (somente quem pode editar)
   useEffect(() => {
-    if ((!npc.spells || npc.spells.length === 0) && effectiveNpcSpells.length > 0) {
+    if (!isViewer && presetsState.status === 'ready' && (!npc.spells || npc.spells.length === 0) && effectiveNpcSpells.length > 0) {
       updateField('spells', effectiveNpcSpells);
     }
-  }, [npc.spells, effectiveNpcSpells]);
+  }, [isViewer, presetsState.status, npc.spells, effectiveNpcSpells]);
 
   // Sorted spells: Favorites always at the top, then alphabetical by English name (Lazy + Schwartzian Transform)
   const sortedSpells = useMemo(() => {

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 /* O hub (src/hub/) usa o CSS de css/, não o Tailwind: as classes dele ficam fora do CSS da Mesa. */
 @source not "./hub";
+@source not "./components/TacticalMap/backup-iluminacao";
 
 @theme {
   --color-slate-100: #f7f3ee;
