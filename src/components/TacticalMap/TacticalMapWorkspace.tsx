@@ -10,6 +10,7 @@ import {
   TacticalProp,
   TacticalFogMask,
   TacticalFogOp,
+  TacticalNote,
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
@@ -77,6 +78,7 @@ import {
   Upload,
   CircleDot,
   Pencil,
+  StickyNote,
 } from 'lucide-react';
 
 interface TacticalMapWorkspaceProps {
@@ -239,7 +241,27 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     setFogBoxStart(null);
     setFogBoxCurrent(null);
     setFogPolyPoints([]);
+    if (activeLayer === 'tokens') {
+      setSelectedNoteId(null);
+      setIsEditingNote(false);
+    }
   }, [activeLayer, isMaster]);
+
+  // Lembretes sutis do Mestre no mapa (100% invisíveis para Jogadores)
+  const notes = useMemo(() => {
+    return Array.isArray(tacticalState?.notes) ? tacticalState.notes : [];
+  }, [tacticalState?.notes]);
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [editNoteTitle, setEditNoteTitle] = useState('');
+  const [editNoteContent, setEditNoteContent] = useState('');
+  const [isNewNoteModalOpen, setIsNewNoteModalOpen] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState('');
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
+  const [dragNoteOffset, setDragNoteOffset] = useState<Point>({ x: 0, y: 0 });
+  const [dragNoteStartClient, setDragNoteStartClient] = useState<Point | null>(null);
+  const [dragNotePos, setDragNotePos] = useState<{ id: string; x: number; y: number } | null>(null);
 
   // Elementos do Cenário / Mobília (Props - Estilo Roll20)
   const [isPropsModalOpen, setIsPropsModalOpen] = useState(false);
@@ -920,8 +942,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       target &&
       (target.closest('button') ||
         target.closest('input') ||
+        target.closest('textarea') ||
         target.closest('select') ||
         target.closest('#tactical-top-toolbar-container') ||
+        target.closest('#tactical-gm-note-card') ||
         target.closest('[role="dialog"]') ||
         target.closest('.modal-content'))
     ) {
@@ -934,6 +958,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
     if (contextMenu) {
       setContextMenu(null);
+    }
+
+    if (selectedNoteId && !target?.closest('#tactical-gm-notes') && !target?.closest('#tactical-gm-note-card')) {
+      setSelectedNoteId(null);
+      setIsEditingNote(false);
     }
 
     if (selectedPropId && !target?.closest('#tactical-props-layer')) {
@@ -1122,6 +1151,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (draggedNoteId && isMaster && !isPlayerView) {
+      const p = clientToMapCoords(e.clientX, e.clientY);
+      const nextX = Math.round(p.x - mapX - dragNoteOffset.x);
+      const nextY = Math.round(p.y - mapY - dragNoteOffset.y);
+      setDragNotePos((prev) =>
+        prev && prev.id === draggedNoteId && prev.x === nextX && prev.y === nextY
+          ? prev
+          : { id: draggedNoteId, x: nextX, y: nextY }
+      );
+      return;
+    }
+
     if (draggedPropId) {
       const p = clientToMapCoords(e.clientX, e.clientY);
       const nextX = Math.round(p.x - dragPropOffset.x);
@@ -1238,7 +1279,32 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e?: React.MouseEvent) => {
+    if (draggedNoteId) {
+      const movedDist =
+        dragNoteStartClient && e
+          ? Math.hypot(e.clientX - dragNoteStartClient.x, e.clientY - dragNoteStartClient.y)
+          : 0;
+      if (movedDist <= 4) {
+        if (selectedNoteId === draggedNoteId) {
+          setSelectedNoteId(null);
+          setIsEditingNote(false);
+        } else {
+          setSelectedNoteId(draggedNoteId);
+          setIsEditingNote(false);
+        }
+      } else if (dragNotePos) {
+        const updatedNotes = notes.map((n) =>
+          n.id === dragNotePos.id ? { ...n, x: dragNotePos.x, y: dragNotePos.y } : n
+        );
+        onUpdateTacticalState({ notes: updatedNotes });
+      }
+      setDraggedNoteId(null);
+      setDragNotePos(null);
+      setDragNoteStartClient(null);
+      return;
+    }
+
     if (isInstantBlastPressed) {
       setIsInstantBlastPressed(false);
       clearRulerPreview();
@@ -1350,6 +1416,65 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       setDragTokenOrigin(null);
       setDragHoverHex(null);
     }
+  };
+
+  // Handlers de Lembretes Sutis do Mestre (100% invisíveis para jogadores)
+  const handleCreateNote = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!isMaster) return;
+    const title = newNoteTitle.trim();
+    if (!title) return;
+    const centerMapX = (containerSize.width / 2 - panX) / zoom - mapX;
+    const centerMapY = (containerSize.height / 2 - panY) / zoom - mapY;
+    const clampedX = Math.round(Math.max(40, Math.min(mapW - 40, centerMapX)));
+    const clampedY = Math.round(Math.max(40, Math.min(mapH - 40, centerMapY)));
+    const newNote: TacticalNote = {
+      id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      title,
+      content: newNoteContent.trim(),
+      x: clampedX,
+      y: clampedY,
+    };
+    onUpdateTacticalState({ notes: [...notes, newNote] });
+    setIsNewNoteModalOpen(false);
+    setNewNoteTitle('');
+    setNewNoteContent('');
+    setSelectedNoteId(newNote.id);
+    setIsEditingNote(false);
+  };
+
+  const handleSaveEditNote = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!isMaster || !selectedNoteId) return;
+    const title = editNoteTitle.trim();
+    if (!title) return;
+    const updatedNotes = notes.map((n) =>
+      n.id === selectedNoteId ? { ...n, title, content: editNoteContent.trim() } : n
+    );
+    onUpdateTacticalState({ notes: updatedNotes });
+    setIsEditingNote(false);
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    if (!isMaster) return;
+    onUpdateTacticalState({ notes: notes.filter((n) => n.id !== noteId) });
+    if (selectedNoteId === noteId) {
+      setSelectedNoteId(null);
+      setIsEditingNote(false);
+    }
+  };
+
+  const handleNoteMouseDown = (e: React.MouseEvent, note: TacticalNote) => {
+    if (!isMaster || isPlayerView || e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const p = clientToMapCoords(e.clientX, e.clientY);
+    const relX = p.x - mapX;
+    const relY = p.y - mapY;
+    setDraggedNoteId(note.id);
+    setDragNoteOffset({ x: relX - note.x, y: relY - note.y });
+    setDragNoteStartClient({ x: e.clientX, y: e.clientY });
+    setDragNotePos({ id: note.id, x: note.x, y: note.y });
   };
 
   // Zoom helpers locais
@@ -2011,6 +2136,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           tokensCount={tokens.length}
           onOpenPropsModal={() => setIsPropsModalOpen(true)}
           propsCount={(tacticalState.props || []).length}
+          onOpenNewNoteModal={() => {
+            if (!isMaster) return;
+            setNewNoteTitle('');
+            setNewNoteContent('');
+            setIsNewNoteModalOpen(true);
+          }}
+          notesCount={notes.length}
           currentUserRole={currentUserRole}
           onOpenPlayerPermissions={onOpenPlayerPermissions}
           editorCount={editorCount}
@@ -2949,6 +3081,363 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
             )}
           </g>
 
+          {/* CAMADA 6.5: AURAS DOS TOKENS (MEDIDAS EM JARDAS - ANDAM JUNTO COM O TOKEN) */}
+          <g id="tactical-token-auras" pointerEvents="none">
+            {tokens.map((token) => {
+              const auraYards = typeof token.auraRadius === 'number' ? token.auraRadius : 0;
+              if (auraYards <= 0) return null;
+
+              const npc = token.isInstant ? null : resolveTokenNpc(token);
+              if (!token.isInstant && !npc) return null;
+
+              const isPlayer = npc?.characterType === 'player';
+              const isTokenHidden = token.isInstant
+                ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                : isPlayer
+                  ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                  : (!npc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
+
+              // Na visão de jogador, oculta a aura se o token estiver oculto ou se a aura for exclusiva do mestre
+              if (isPlayerView && (isTokenHidden || token.auraVisibleToPlayers === false)) return null;
+
+              const isDragging = token.id === draggedTokenId;
+              const displayGridX = isDragging && dragHoverHex ? dragHoverHex.col : token.gridX;
+              const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
+              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+              const auraColor = token.auraColor || '#38bdf8';
+              const auraYardsInt = Math.max(1, Math.round(auraYards));
+              const auraPath = getHexRangePerimeterPath(
+                { col: displayGridX, row: displayGridY },
+                auraYardsInt,
+                hexSize,
+                mapX,
+                mapY
+              );
+              const auraTopY = getHexRangeTopY({ col: displayGridX, row: displayGridY }, auraYardsInt, hexSize, mapY);
+              const isMasterOnlyAura = token.auraVisibleToPlayers === false;
+
+              return (
+                <g key={`aura-${token.id}`} id={`token-aura-${token.id}`} opacity={isTokenHidden ? 0.65 : 1}>
+                  <path
+                    d={auraPath}
+                    fill={auraColor}
+                    fillOpacity={isMasterOnlyAura ? 0.1 : 0.14}
+                    stroke={auraColor}
+                    strokeWidth={2}
+                    strokeOpacity={0.85}
+                    strokeLinejoin="round"
+                    strokeDasharray={isMasterOnlyAura ? '4 4' : '8 4'}
+                  />
+                  {/* Etiqueta discreta no topo da aura indicando o raio em jardas */}
+                  <g transform={`translate(${center.x}, ${auraTopY - 12})`}>
+                    <rect
+                      x={isMasterOnlyAura ? -36 : -24}
+                      y={-9}
+                      width={isMasterOnlyAura ? 72 : 48}
+                      height={16}
+                      rx={5}
+                      fill="#020617"
+                      fillOpacity={0.85}
+                      stroke={auraColor}
+                      strokeWidth={1}
+                    />
+                    <text
+                      x={0}
+                      y={2}
+                      fill={auraColor}
+                      fontSize="9"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                    >
+                      {isMasterOnlyAura ? `👁 ${auraYardsInt} yd` : `${auraYardsInt} yd`}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
+          </g>
+
+          {/* CAMADA 7: TOKENS DE COMBATE (visíveis em todas as camadas; na Camada Jogadores mostra apenas visão pública) */}
+          <g id="tactical-tokens">
+              {tokens.map((token) => {
+                const npc = token.isInstant ? null : resolveTokenNpc(token);
+                if (!token.isInstant && !npc) return null;
+
+                const isPlayer = npc?.characterType === 'player';
+                const displayName = token.isInstant ? (token.customName || 'Token') : npc!.name;
+                const displayAvatar = token.isInstant ? token.customAvatar : npc!.avatar;
+                const displayPresetId = token.isInstant ? (token.customPreset || 'knight') : npc!.avatarPreset;
+
+                // Visibilidade unificada: NPCs respeitam isVisibleToPlayer da ficha e a flag do tabuleiro
+                const isTokenHidden = token.isInstant
+                  ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                  : isPlayer
+                    ? (!!token.hiddenFromPlayers || token.layer === 'gm')
+                    : (!npc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
+                // Na visão de jogador (jogadores reais ou Mestre na aba "2. Jogadores"), oculta tokens da camada do mestre ou ocultos
+                if (isPlayerView && isTokenHidden) return null;
+              const isSelected = token.id === selectedTokenId;
+              const isDragging = token.id === draggedTokenId;
+              const isRotating = token.id === rotatingTokenId;
+              const displayGridX = isDragging && dragHoverHex ? dragHoverHex.col : token.gridX;
+              const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
+              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
+              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+              const rawTokenRotation = isRotating && previewRotation && previewRotation.id === token.id
+                ? previewRotation.rotation
+                : (typeof token.rotation === 'number'
+                    ? token.rotation
+                    : facingToRotation(token.facing));
+              const tokenRotation = snapRotationToHexFace(rawTokenRotation);
+              // Token hexagonal encaixado na grade: arestas alinhadas ao hexágono da grade
+              const tokenHexRadius = hexSize * 0.72;
+              const tokenApothem = tokenHexRadius * (Math.sqrt(3) / 2);
+              const tokenBaseHexPoints = getFlatHexPointsString(tokenHexRadius + 2);
+              const tokenInnerHexPoints = getFlatHexPointsString(tokenHexRadius);
+              const tokenSelectionHexPoints = getFlatHexPointsString(tokenHexRadius + 5);
+
+              const badgeWidth = Math.min(85, Math.max(34, displayName.length * 5.8));
+
+              // Manobra ativa do personagem / NPC para colorir a borda do token (sem borda roxa quando oculto; mantém apenas glow roxo + olho)
+              const maneuver = npc?.combatManeuver ? getCombatManeuver(npc.combatManeuver) : undefined;
+              const hasManeuver = !!maneuver && maneuver.id !== 'none';
+              const maneuverBorderColor = hasManeuver
+                ? (maneuver.borderHex || maneuver.bgHex)
+                : (token.color || '#64748b');
+
+              const canControl = canControlToken(token);
+
+              return (
+                <g
+                  key={token.id}
+                  transform={`translate(${center.x}, ${center.y})`}
+                  opacity={isTokenHidden ? 0.78 : 1}
+                  pointerEvents="auto"
+                  onClick={(e) => handleTokenClick(e, token)}
+                  onMouseDown={(e) => handleTokenMouseDown(e, token)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedTokenId(token.id);
+                    if (!token.isInstant && token.npcId) {
+                      onSelectNpc(token.npcId);
+                    }
+                    setContextMenu({
+                      tokenId: token.id,
+                      npcId: token.npcId || '',
+                      x: e.clientX,
+                      y: e.clientY,
+                    });
+                  }}
+                  className={`${canControl ? (isSelected ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer') : 'cursor-pointer'} transition-transform`}
+                  style={{
+                    filter: isTokenHidden && isSelected
+                      ? 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9)) drop-shadow(0px 0px 6px rgba(245, 158, 11, 0.75))'
+                      : isTokenHidden
+                        ? 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))'
+                        : isSelected
+                          ? 'drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.8))'
+                          : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
+                  }}
+                >
+                  {/* GRUPO ROTATIVO INTEGRAL: Token Hexagonal, Foto, Nome (atrás), Frente (na face frontal) e Pauzinho giram juntos */}
+                  <g transform={`rotate(${tokenRotation})`}>
+                    {/* 1. Hexágono de Base com Borda de Manobra ou Cor do Token (sem borda roxa quando oculto) */}
+                    <polygon
+                      points={tokenBaseHexPoints}
+                      fill="#0f172a"
+                      stroke={maneuverBorderColor}
+                      strokeWidth={isSelected ? 2 : 1.5}
+                      strokeLinejoin="round"
+                    />
+
+                    {/* Contorno Hexagonal Externo Dourado Indicador de Seleção */}
+                    {isSelected && (
+                      <polygon
+                        points={tokenSelectionHexPoints}
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                        strokeDasharray="4,3"
+                      />
+                    )}
+
+                    {/* 2. Retrato / Avatar recortado em formato hexagonal */}
+                    <clipPath id={`clip-${token.id}`}>
+                      <polygon points={tokenInnerHexPoints} />
+                    </clipPath>
+
+                    {displayAvatar ? (
+                      <image
+                        href={displayAvatar}
+                        x={-tokenHexRadius}
+                        y={-tokenHexRadius}
+                        width={tokenHexRadius * 2}
+                        height={tokenHexRadius * 2}
+                        clipPath={`url(#clip-${token.id})`}
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                    ) : (
+                      (() => {
+                        const matchedPreset =
+                          PRESET_AVATARS.find((p) => p.id === displayPresetId) ||
+                          (npc ? resolveNpcPreset(npc) : PRESET_AVATARS[0]);
+                        const colors =
+                          PRESET_BG_COLORS[matchedPreset.id] || PRESET_BG_COLORS['knight'];
+                        const PresetIcon = matchedPreset.icon || Shield;
+                        const iconSize = tokenApothem * 1.2;
+
+                        return (
+                          <g clipPath={`url(#clip-${token.id})`}>
+                            <polygon points={tokenInnerHexPoints} fill={colors.bg1} />
+                            <polygon points={tokenInnerHexPoints} fill={colors.bg2} fillOpacity="0.5" />
+                            <g
+                              transform={`translate(${-iconSize / 2}, ${-iconSize / 2})`}
+                              style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8))' }}
+                            >
+                              <PresetIcon size={iconSize} color="#ffffff" strokeWidth={2} />
+                            </g>
+                          </g>
+                        );
+                      })()
+                    )}
+
+                    {/* MARCAÇÃO VISUAL DE VISIBILIDADE APENAS PARA O MESTRE (QUANDO OCULTO DOS JOGADORES): OLHO ROXO (alteração apenas via botão direito) */}
+                    {isMaster && isTokenHidden && (
+                      <g
+                        transform={`translate(${badgeWidth / 2 + 7}, ${-tokenApothem - 8.5})`}
+                        pointerEvents="none"
+                      >
+                        <circle
+                          cx="0"
+                          cy="0"
+                          r="6"
+                          fill="#020617"
+                          fillOpacity="0.95"
+                          stroke="#a855f7"
+                          strokeWidth="1.5"
+                        />
+                        <path
+                          d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z"
+                          fill="none"
+                          stroke="#c084fc"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <circle
+                          cx="0"
+                          cy="0"
+                          r="1"
+                          fill="#c084fc"
+                        />
+                        <line
+                          x1="-3"
+                          y1="-3"
+                          x2="3"
+                          y2="3"
+                          stroke="#c084fc"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    )}
+
+                    {/* 3. NOME DO PERSONAGEM NA ARESTA TRASEIRA DO HEXÁGONO */}
+                    <rect
+                      x={-badgeWidth / 2}
+                      y={-tokenApothem - 15}
+                      width={badgeWidth}
+                      height="13"
+                      rx="3.5"
+                      fill="#020617"
+                      fillOpacity="0.55"
+                      stroke="rgba(148, 163, 184, 0.3)"
+                      strokeWidth="0.7"
+                    />
+                    <text
+                      x="0"
+                      y={-tokenApothem - 6}
+                      fill="#f1f5f9"
+                      fontSize="8"
+                      fontWeight="600"
+                      textAnchor="middle"
+                    >
+                      {displayName}
+                    </text>
+
+                    {/* 4. MARCAÇÃO DE FRENTE NA ARESTA FRONTAL (APONTANDO EXATAMENTE PARA O MEIO DO HEXÁGONO À FRENTE) */}
+                    <polygon
+                      points={`0,${tokenApothem + 8.5} -5.5,${tokenApothem + 2} 5.5,${tokenApothem + 2}`}
+                      fill="#f59e0b"
+                      stroke="#020617"
+                      strokeWidth="1"
+                    />
+                    <circle cx="0" cy={tokenApothem + 3.5} r="1.2" fill="#ffffff" />
+
+                    {/* 5. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
+                    {isSelected && canControl && (
+                      <g className="cursor-grab">
+                        {/* Haste estendida conectando a marcação de frente até a alça */}
+                        <line
+                          x1="0"
+                          y1={tokenApothem + 8.5}
+                          x2="0"
+                          y2={tokenApothem + 21}
+                          stroke="#38bdf8"
+                          strokeWidth="2"
+                          strokeDasharray="3,2"
+                        />
+                        {/* Alça circular na ponta do pauzinho */}
+                        <circle
+                          cx="0"
+                          cy={tokenApothem + 21}
+                          r="5"
+                          fill="#0284c7"
+                          stroke="#ffffff"
+                          strokeWidth="1.5"
+                          className="hover:scale-125 transition-transform"
+                        />
+                        <circle cx="0" cy={tokenApothem + 21} r="1.8" fill="#ffffff" />
+                        {/* Hitbox invisível ampla para facilitar o clique e arrasto no mouse/touch */}
+                        <circle
+                          cx="0"
+                          cy={tokenApothem + 21}
+                          r="13"
+                          fill="transparent"
+                          className="cursor-grab active:cursor-grabbing"
+                          onMouseDown={(e) => handleRotationMouseDown(e, token)}
+                        />
+                      </g>
+                    )}
+                  </g>
+                </g>
+              );
+            })}
+          </g>
+
+          {/* CAMADA 8: MÁSCARA ÚNICA DE NÉVOA DE GUERRA (ACIMA DOS TOKENS, POINTER-EVENTS NONE) */}
+          {hasFog && (
+            <g
+              id="tactical-fog-layer"
+              clipPath="url(#map-image-bounds)"
+              pointerEvents="none"
+              style={{ pointerEvents: 'none' }}
+            >
+              {/* 100% opaca para os Jogadores; semitransparente para o Mestre */}
+              <rect
+                x={mapX}
+                y={mapY}
+                width={mapW}
+                height={mapH}
+                fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.55)'}
+                mask="url(#tactical-fog-mask)"
+              />
+            </g>
+          )}
+
           {/* CAMADA 5: MARCADORES E ÁREAS PERSISTENTES NO TABULEIRO */}
           <g id="tactical-persistent-markers">
             {(tacticalState.markers || []).map((marker) => {
@@ -3579,360 +4068,72 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
             </g>
           )}
 
-          {/* CAMADA 6.5: AURAS DOS TOKENS (MEDIDAS EM JARDAS - ANDAM JUNTO COM O TOKEN) */}
-          <g id="tactical-token-auras" pointerEvents="none">
-            {tokens.map((token) => {
-              const auraYards = typeof token.auraRadius === 'number' ? token.auraRadius : 0;
-              if (auraYards <= 0) return null;
-
-              const npc = token.isInstant ? null : resolveTokenNpc(token);
-              if (!token.isInstant && !npc) return null;
-
-              const isPlayer = npc?.characterType === 'player';
-              const isTokenHidden = token.isInstant
-                ? (!!token.hiddenFromPlayers || token.layer === 'gm')
-                : isPlayer
-                  ? (!!token.hiddenFromPlayers || token.layer === 'gm')
-                  : (!npc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
-
-              // Na visão de jogador, oculta a aura se o token estiver oculto ou se a aura for exclusiva do mestre
-              if (isPlayerView && (isTokenHidden || token.auraVisibleToPlayers === false)) return null;
-
-              const isDragging = token.id === draggedTokenId;
-              const displayGridX = isDragging && dragHoverHex ? dragHoverHex.col : token.gridX;
-              const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
-              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-              const auraColor = token.auraColor || '#38bdf8';
-              const auraYardsInt = Math.max(1, Math.round(auraYards));
-              const auraPath = getHexRangePerimeterPath(
-                { col: displayGridX, row: displayGridY },
-                auraYardsInt,
-                hexSize,
-                mapX,
-                mapY
-              );
-              const auraTopY = getHexRangeTopY({ col: displayGridX, row: displayGridY }, auraYardsInt, hexSize, mapY);
-              const isMasterOnlyAura = token.auraVisibleToPlayers === false;
-
-              return (
-                <g key={`aura-${token.id}`} id={`token-aura-${token.id}`} opacity={isTokenHidden ? 0.65 : 1}>
-                  <path
-                    d={auraPath}
-                    fill={auraColor}
-                    fillOpacity={isMasterOnlyAura ? 0.1 : 0.14}
-                    stroke={auraColor}
-                    strokeWidth={2}
-                    strokeOpacity={0.85}
-                    strokeLinejoin="round"
-                    strokeDasharray={isMasterOnlyAura ? '4 4' : '8 4'}
-                  />
-                  {/* Etiqueta discreta no topo da aura indicando o raio em jardas */}
-                  <g transform={`translate(${center.x}, ${auraTopY - 12})`}>
-                    <rect
-                      x={isMasterOnlyAura ? -36 : -24}
-                      y={-9}
-                      width={isMasterOnlyAura ? 72 : 48}
-                      height={16}
-                      rx={5}
-                      fill="#020617"
-                      fillOpacity={0.85}
-                      stroke={auraColor}
-                      strokeWidth={1}
+          {/* LEMBRETES SUTIS DO MESTRE (100% INVISÍVEIS PARA OS JOGADORES) */}
+          {isMaster && !isPlayerView && notes.length > 0 && (
+            <g id="tactical-gm-notes">
+              {notes.map((note) => {
+                const isDraggingThis = draggedNoteId === note.id && dragNotePos?.id === note.id;
+                const posX = mapX + (isDraggingThis ? dragNotePos.x : note.x);
+                const posY = mapY + (isDraggingThis ? dragNotePos.y : note.y);
+                const isSelected = selectedNoteId === note.id;
+                const displayTitle =
+                  note.title.length > 26 ? `${note.title.slice(0, 25)}…` : note.title;
+                const pillWidth = Math.max(46, Math.min(168, Math.ceil(displayTitle.length * 5.2) + 20));
+                return (
+                  <g
+                    key={note.id}
+                    transform={`translate(${posX}, ${posY})`}
+                    pointerEvents="auto"
+                    onMouseDown={(e) => handleNoteMouseDown(e, note)}
+                    onClick={(e) => e.stopPropagation()}
+                    className={isDraggingThis ? 'cursor-grabbing' : 'cursor-pointer'}
+                    opacity={isSelected || isDraggingThis ? 1 : 0.88}
+                  >
+                    <title>{`${note.title} (Clique para ler/editar • Arraste para mover)`}</title>
+                    {/* Pino discreto de ancoragem */}
+                    <circle
+                      cx="0"
+                      cy="0"
+                      r={isSelected ? 4 : 3}
+                      fill={isSelected ? '#c084fc' : '#a855f7'}
+                      stroke="#020617"
+                      strokeWidth="1.2"
                     />
-                    <text
-                      x={0}
-                      y={2}
-                      fill={auraColor}
-                      fontSize="9"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                    >
-                      {isMasterOnlyAura ? `👁 ${auraYardsInt} yd` : `${auraYardsInt} yd`}
-                    </text>
-                  </g>
-                </g>
-              );
-            })}
-          </g>
-
-          {/* CAMADA 7: TOKENS DE COMBATE (visíveis em todas as camadas; na Camada Jogadores mostra apenas visão pública) */}
-          <g id="tactical-tokens">
-              {tokens.map((token) => {
-                const npc = token.isInstant ? null : resolveTokenNpc(token);
-                if (!token.isInstant && !npc) return null;
-
-                const isPlayer = npc?.characterType === 'player';
-                const displayName = token.isInstant ? (token.customName || 'Token') : npc!.name;
-                const displayAvatar = token.isInstant ? token.customAvatar : npc!.avatar;
-                const displayPresetId = token.isInstant ? (token.customPreset || 'knight') : npc!.avatarPreset;
-
-                // Visibilidade unificada: NPCs respeitam isVisibleToPlayer da ficha e a flag do tabuleiro
-                const isTokenHidden = token.isInstant
-                  ? (!!token.hiddenFromPlayers || token.layer === 'gm')
-                  : isPlayer
-                    ? (!!token.hiddenFromPlayers || token.layer === 'gm')
-                    : (!npc?.isVisibleToPlayer || !!token.hiddenFromPlayers || token.layer === 'gm');
-                // Na visão de jogador (jogadores reais ou Mestre na aba "2. Jogadores"), oculta tokens da camada do mestre ou ocultos
-                if (isPlayerView && isTokenHidden) return null;
-              const isSelected = token.id === selectedTokenId;
-              const isDragging = token.id === draggedTokenId;
-              const isRotating = token.id === rotatingTokenId;
-              const displayGridX = isDragging && dragHoverHex ? dragHoverHex.col : token.gridX;
-              const displayGridY = isDragging && dragHoverHex ? dragHoverHex.row : token.gridY;
-              const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
-              const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-              const rawTokenRotation = isRotating && previewRotation && previewRotation.id === token.id
-                ? previewRotation.rotation
-                : (typeof token.rotation === 'number'
-                    ? token.rotation
-                    : facingToRotation(token.facing));
-              const tokenRotation = snapRotationToHexFace(rawTokenRotation);
-              // Token hexagonal encaixado na grade: arestas alinhadas ao hexágono da grade
-              const tokenHexRadius = hexSize * 0.72;
-              const tokenApothem = tokenHexRadius * (Math.sqrt(3) / 2);
-              const tokenBaseHexPoints = getFlatHexPointsString(tokenHexRadius + 2);
-              const tokenInnerHexPoints = getFlatHexPointsString(tokenHexRadius);
-              const tokenSelectionHexPoints = getFlatHexPointsString(tokenHexRadius + 5);
-
-              const badgeWidth = Math.min(85, Math.max(34, displayName.length * 5.8));
-
-              // Manobra ativa do personagem / NPC para colorir a borda do token (sem borda roxa quando oculto; mantém apenas glow roxo + olho)
-              const maneuver = npc?.combatManeuver ? getCombatManeuver(npc.combatManeuver) : undefined;
-              const hasManeuver = !!maneuver && maneuver.id !== 'none';
-              const maneuverBorderColor = hasManeuver
-                ? (maneuver.borderHex || maneuver.bgHex)
-                : (token.color || '#64748b');
-
-              const canControl = canControlToken(token);
-
-              return (
-                <g
-                  key={token.id}
-                  transform={`translate(${center.x}, ${center.y})`}
-                  opacity={isTokenHidden ? 0.78 : 1}
-                  pointerEvents="auto"
-                  onClick={(e) => handleTokenClick(e, token)}
-                  onMouseDown={(e) => handleTokenMouseDown(e, token)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedTokenId(token.id);
-                    if (!token.isInstant && token.npcId) {
-                      onSelectNpc(token.npcId);
-                    }
-                    setContextMenu({
-                      tokenId: token.id,
-                      npcId: token.npcId || '',
-                      x: e.clientX,
-                      y: e.clientY,
-                    });
-                  }}
-                  className={`${canControl ? (isSelected ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer') : 'cursor-pointer'} transition-transform`}
-                  style={{
-                    filter: isTokenHidden && isSelected
-                      ? 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9)) drop-shadow(0px 0px 6px rgba(245, 158, 11, 0.75))'
-                      : isTokenHidden
-                        ? 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))'
-                        : isSelected
-                          ? 'drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.8))'
-                          : 'drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.6))',
-                  }}
-                >
-                  {/* GRUPO ROTATIVO INTEGRAL: Token Hexagonal, Foto, Nome (atrás), Frente (na face frontal) e Pauzinho giram juntos */}
-                  <g transform={`rotate(${tokenRotation})`}>
-                    {/* 1. Hexágono de Base com Borda de Manobra ou Cor do Token (sem borda roxa quando oculto) */}
-                    <polygon
-                      points={tokenBaseHexPoints}
-                      fill="#0f172a"
-                      stroke={maneuverBorderColor}
-                      strokeWidth={isSelected ? 2 : 1.5}
-                      strokeLinejoin="round"
-                    />
-
-                    {/* Contorno Hexagonal Externo Dourado Indicador de Seleção */}
-                    {isSelected && (
-                      <polygon
-                        points={tokenSelectionHexPoints}
-                        fill="none"
-                        stroke="#f59e0b"
-                        strokeWidth="1.5"
-                        strokeLinejoin="round"
-                        strokeDasharray="4,3"
+                    {/* Etiqueta compacta exibindo apenas o Título */}
+                    <g transform="translate(0, -14)">
+                      <rect
+                        x={-pillWidth / 2}
+                        y="-9"
+                        width={pillWidth}
+                        height="17"
+                        rx="5"
+                        fill="#0f172a"
+                        fillOpacity={isSelected ? 0.96 : 0.82}
+                        stroke={isSelected ? '#c084fc' : 'rgba(168, 85, 247, 0.55)'}
+                        strokeWidth={isSelected ? 1.4 : 0.9}
                       />
-                    )}
-
-                    {/* 2. Retrato / Avatar recortado em formato hexagonal */}
-                    <clipPath id={`clip-${token.id}`}>
-                      <polygon points={tokenInnerHexPoints} />
-                    </clipPath>
-
-                    {displayAvatar ? (
-                      <image
-                        href={displayAvatar}
-                        x={-tokenHexRadius}
-                        y={-tokenHexRadius}
-                        width={tokenHexRadius * 2}
-                        height={tokenHexRadius * 2}
-                        clipPath={`url(#clip-${token.id})`}
-                        preserveAspectRatio="xMidYMid slice"
+                      <circle
+                        cx={-pillWidth / 2 + 7}
+                        cy="-0.5"
+                        r="2.2"
+                        fill={isSelected ? '#e9d5ff' : '#c084fc'}
                       />
-                    ) : (
-                      (() => {
-                        const matchedPreset =
-                          PRESET_AVATARS.find((p) => p.id === displayPresetId) ||
-                          (npc ? resolveNpcPreset(npc) : PRESET_AVATARS[0]);
-                        const colors =
-                          PRESET_BG_COLORS[matchedPreset.id] || PRESET_BG_COLORS['knight'];
-                        const PresetIcon = matchedPreset.icon || Shield;
-                        const iconSize = tokenApothem * 1.2;
-
-                        return (
-                          <g clipPath={`url(#clip-${token.id})`}>
-                            <polygon points={tokenInnerHexPoints} fill={colors.bg1} />
-                            <polygon points={tokenInnerHexPoints} fill={colors.bg2} fillOpacity="0.5" />
-                            <g
-                              transform={`translate(${-iconSize / 2}, ${-iconSize / 2})`}
-                              style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8))' }}
-                            >
-                              <PresetIcon size={iconSize} color="#ffffff" strokeWidth={2} />
-                            </g>
-                          </g>
-                        );
-                      })()
-                    )}
-
-                    {/* MARCAÇÃO VISUAL DE VISIBILIDADE APENAS PARA O MESTRE (QUANDO OCULTO DOS JOGADORES): OLHO ROXO (alteração apenas via botão direito) */}
-                    {isMaster && isTokenHidden && (
-                      <g
-                        transform={`translate(${badgeWidth / 2 + 7}, ${-tokenApothem - 8.5})`}
+                      <text
+                        x={4}
+                        y="-0.5"
+                        dominantBaseline="central"
+                        textAnchor="middle"
+                        fontSize="8.5"
+                        fontWeight="600"
+                        fill={isSelected ? '#f3e8ff' : '#e2e8f0'}
                         pointerEvents="none"
                       >
-                        <circle
-                          cx="0"
-                          cy="0"
-                          r="6"
-                          fill="#020617"
-                          fillOpacity="0.95"
-                          stroke="#a855f7"
-                          strokeWidth="1.5"
-                        />
-                        <path
-                          d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z"
-                          fill="none"
-                          stroke="#c084fc"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <circle
-                          cx="0"
-                          cy="0"
-                          r="1"
-                          fill="#c084fc"
-                        />
-                        <line
-                          x1="-3"
-                          y1="-3"
-                          x2="3"
-                          y2="3"
-                          stroke="#c084fc"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                        />
-                      </g>
-                    )}
-
-                    {/* 3. NOME DO PERSONAGEM NA ARESTA TRASEIRA DO HEXÁGONO */}
-                    <rect
-                      x={-badgeWidth / 2}
-                      y={-tokenApothem - 15}
-                      width={badgeWidth}
-                      height="13"
-                      rx="3.5"
-                      fill="#020617"
-                      fillOpacity="0.55"
-                      stroke="rgba(148, 163, 184, 0.3)"
-                      strokeWidth="0.7"
-                    />
-                    <text
-                      x="0"
-                      y={-tokenApothem - 6}
-                      fill="#f1f5f9"
-                      fontSize="8"
-                      fontWeight="600"
-                      textAnchor="middle"
-                    >
-                      {displayName}
-                    </text>
-
-                    {/* 4. MARCAÇÃO DE FRENTE NA ARESTA FRONTAL (APONTANDO EXATAMENTE PARA O MEIO DO HEXÁGONO À FRENTE) */}
-                    <polygon
-                      points={`0,${tokenApothem + 8.5} -5.5,${tokenApothem + 2} 5.5,${tokenApothem + 2}`}
-                      fill="#f59e0b"
-                      stroke="#020617"
-                      strokeWidth="1"
-                    />
-                    <circle cx="0" cy={tokenApothem + 3.5} r="1.2" fill="#ffffff" />
-
-                    {/* 5. "PAUZINHO" DE ROTAÇÃO (Roll20 Rotation Handle) QUANDO SELECIONADO */}
-                    {isSelected && canControl && (
-                      <g className="cursor-grab">
-                        {/* Haste estendida conectando a marcação de frente até a alça */}
-                        <line
-                          x1="0"
-                          y1={tokenApothem + 8.5}
-                          x2="0"
-                          y2={tokenApothem + 21}
-                          stroke="#38bdf8"
-                          strokeWidth="2"
-                          strokeDasharray="3,2"
-                        />
-                        {/* Alça circular na ponta do pauzinho */}
-                        <circle
-                          cx="0"
-                          cy={tokenApothem + 21}
-                          r="5"
-                          fill="#0284c7"
-                          stroke="#ffffff"
-                          strokeWidth="1.5"
-                          className="hover:scale-125 transition-transform"
-                        />
-                        <circle cx="0" cy={tokenApothem + 21} r="1.8" fill="#ffffff" />
-                        {/* Hitbox invisível ampla para facilitar o clique e arrasto no mouse/touch */}
-                        <circle
-                          cx="0"
-                          cy={tokenApothem + 21}
-                          r="13"
-                          fill="transparent"
-                          className="cursor-grab active:cursor-grabbing"
-                          onMouseDown={(e) => handleRotationMouseDown(e, token)}
-                        />
-                      </g>
-                    )}
+                        {displayTitle}
+                      </text>
+                    </g>
                   </g>
-                </g>
-              );
-            })}
-          </g>
-
-          {/* CAMADA 8: MÁSCARA ÚNICA DE NÉVOA DE GUERRA (ACIMA DOS TOKENS, POINTER-EVENTS NONE) */}
-          {hasFog && (
-            <g
-              id="tactical-fog-layer"
-              clipPath="url(#map-image-bounds)"
-              pointerEvents="none"
-              style={{ pointerEvents: 'none' }}
-            >
-              {/* 100% opaca para os Jogadores; semitransparente para o Mestre */}
-              <rect
-                x={mapX}
-                y={mapY}
-                width={mapW}
-                height={mapH}
-                fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.55)'}
-                mask="url(#tactical-fog-mask)"
-              />
+                );
+              })}
             </g>
           )}
 
@@ -4385,7 +4586,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     {isContextTokenHidden ? (
                       <>
                         <Eye size={12} className="text-emerald-400" />
-                        <span>Mover para Camada de Tokens</span>
+                        <span>Mover para a camada dos Jogadores</span>
                       </>
                     ) : (
                       <>
@@ -4492,6 +4693,218 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
             }}
             className="absolute left-0.5 right-0.5 bg-slate-500 hover:bg-amber-500 active:bg-amber-400 rounded-full cursor-grab active:cursor-grabbing transition-colors shadow-sm"
           />
+        </div>
+      )}
+
+      {/* CARD COMPACTO DO LEMBRETE SELECIONADO (EXCLUSIVO DO MESTRE) */}
+      {isMaster && !isPlayerView && selectedNoteId && (() => {
+        const activeNote = notes.find((n) => n.id === selectedNoteId);
+        if (!activeNote) return null;
+        return (
+          <div
+            id="tactical-gm-note-card"
+            onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onWheel={(e) => e.stopPropagation()}
+            className="absolute bottom-14 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] bg-slate-950/95 backdrop-blur-md border border-purple-500/50 rounded-xl shadow-2xl p-3.5 text-slate-100"
+          >
+            {isEditingNote ? (
+              <form onSubmit={handleSaveEditNote} className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-800">
+                  <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                    <StickyNote size={13} />
+                    Editar Lembrete
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingNote(false)}
+                    className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
+                    title="Cancelar edição"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+                    Título
+                  </label>
+                  <input
+                    type="text"
+                    value={editNoteTitle}
+                    onChange={(e) => setEditNoteTitle(e.target.value)}
+                    placeholder="Título do lembrete..."
+                    maxLength={80}
+                    required
+                    autoFocus
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 focus:border-purple-500 focus:outline-none text-xs text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+                    Texto / Descrição
+                  </label>
+                  <textarea
+                    value={editNoteContent}
+                    onChange={(e) => setEditNoteContent(e.target.value)}
+                    placeholder="Detalhes visíveis apenas para o Mestre..."
+                    rows={4}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 focus:border-purple-500 focus:outline-none text-xs text-slate-200 resize-y"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingNote(false)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!editNoteTitle.trim()}
+                    className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Check size={12} />
+                    Salvar
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-2 pb-1.5 border-b border-slate-800">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <StickyNote size={13} className="text-purple-400 shrink-0" />
+                    <h4 className="text-xs font-bold text-purple-100 truncate" title={activeNote.title}>
+                      {activeNote.title}
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditNoteTitle(activeNote.title);
+                        setEditNoteContent(activeNote.content || '');
+                        setIsEditingNote(true);
+                      }}
+                      className="p-1 text-slate-400 hover:text-purple-300 rounded hover:bg-slate-800 cursor-pointer"
+                      title="Editar lembrete"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNote(activeNote.id)}
+                      className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-slate-800 cursor-pointer"
+                      title="Excluir lembrete"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedNoteId(null);
+                        setIsEditingNote(false);
+                      }}
+                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
+                      title="Fechar"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-300 whitespace-pre-wrap break-words max-h-52 overflow-y-auto leading-relaxed">
+                  {activeNote.content ? (
+                    activeNote.content
+                  ) : (
+                    <span className="italic text-slate-500">Sem descrição adicional.</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800/70 flex items-center justify-between">
+                  <span>Visível apenas para o Mestre</span>
+                  <span>Arraste o marcador no mapa</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* MODAL DE CRIAÇÃO DE LEMBRETE DO MESTRE */}
+      {isMaster && isNewNoteModalOpen && (
+        <div
+          role="dialog"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/75 backdrop-blur-sm"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => setIsNewNoteModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-slate-900 border border-purple-500/50 rounded-2xl shadow-2xl p-4 text-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-800">
+              <h3 className="text-sm font-bold text-purple-200 flex items-center gap-2">
+                <StickyNote size={15} className="text-purple-400" />
+                Novo Lembrete do Mestre
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsNewNoteModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateNote} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Título (visível no marcador do mapa)
+                </label>
+                <input
+                  type="text"
+                  value={newNoteTitle}
+                  onChange={(e) => setNewNoteTitle(e.target.value)}
+                  placeholder="Ex: Armadilha na porta, Emboscada, Pista..."
+                  maxLength={80}
+                  required
+                  autoFocus
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 focus:border-purple-500 focus:outline-none text-xs text-slate-100"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                  Texto / Descrição (oculto até selecionar)
+                </label>
+                <textarea
+                  value={newNoteContent}
+                  onChange={(e) => setNewNoteContent(e.target.value)}
+                  placeholder="Anotações secretas, testes de Percepção, CD, gatilhos..."
+                  rows={4}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 focus:border-purple-500 focus:outline-none text-xs text-slate-200 resize-y"
+                />
+              </div>
+              <p className="text-[10.5px] text-purple-300/80">
+                100% invisível para os jogadores. Depois de criar, arraste o marcador livremente pelo mapa.
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsNewNoteModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newNoteTitle.trim()}
+                  className="px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus size={13} />
+                  Criar Lembrete
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

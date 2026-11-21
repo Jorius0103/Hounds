@@ -198,6 +198,15 @@ export interface TacticalDoor {
   color?: string;
 }
 
+export interface TacticalNote {
+  id: string;
+  title: string;
+  content: string;
+  x: number; // Coordenada X relativa à imagem do mapa (px)
+  y: number; // Coordenada Y relativa à imagem do mapa (px)
+  color?: string;
+}
+
 export interface TacticalState {
   backgroundKey: TacticalBackgroundKey;
   customImageUrl?: string;
@@ -229,6 +238,7 @@ export interface TacticalState {
   props?: TacticalProp[]; // Elementos do cenário / mobília (mesas de taverna, baús, etc.)
   terrainCells: TacticalTerrainCell[];
   markers: TacticalMarker[];
+  notes?: TacticalNote[]; // Lembretes sutis exclusivos do Mestre no mapa
   lastTokenPositions?: Record<string, TacticalTokenSavedPosition>;
   zoom?: number;
   panX?: number;
@@ -264,6 +274,7 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   props: [],
   terrainCells: [],
   markers: [],
+  notes: [],
   lastTokenPositions: {},
   zoom: 1,
   panX: 36,

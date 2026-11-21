@@ -30,6 +30,7 @@ import {
   Plus,
   Minus,
   FileImage,
+  StickyNote,
 } from 'lucide-react';
 import { rotateTacticalState90 } from '../../utils/tacticalMath';
 import { UserAccount } from '../../types/rpg';
@@ -92,6 +93,8 @@ interface TacticalToolbarProps {
   activeRulerMarkersCount?: number;
   onOpenPropsModal?: () => void;
   propsCount?: number;
+  onOpenNewNoteModal?: () => void;
+  notesCount?: number;
   isLogCollapsed?: boolean;
   onToggleLogCollapse?: () => void;
 }
@@ -128,6 +131,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onSetRulerDuration,
   areaRadius = 3,
   onSetAreaRadius,
+  onOpenNewNoteModal,
+  notesCount = 0,
 }) => {
   const [mapConfigOpen, setMapConfigOpen] = useState(false);
   const [fogConfirmAction, setFogConfirmAction] = useState<'reveal-all' | 'hide-all' | null>(null);
@@ -311,6 +316,24 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </>
           )}
         </div>
+
+        {/* Opções na Camada 3. Mestre (GM): botão para criar Lembrete no mapa */}
+        {isMaster && activeLayer === 'gm' && (
+          <button
+            type="button"
+            onClick={onOpenNewNoteModal}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer bg-purple-600/20 hover:bg-purple-600/35 text-purple-200 border border-purple-500/40 active:scale-95"
+            title="Criar um lembrete sutil no mapa (visível apenas para o Mestre)"
+          >
+            <StickyNote size={13} className="text-purple-300" />
+            <span>Lembrete</span>
+            {notesCount > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-purple-500/25 text-purple-200 border border-purple-400/30">
+                {notesCount}
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Opções na Camada 1. Mapa: botão Configuração do Mapa e Grid (na mesma linha) */}
         {isMaster && activeLayer === 'map' && (

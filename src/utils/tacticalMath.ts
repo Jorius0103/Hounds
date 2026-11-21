@@ -883,7 +883,17 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     };
   });
 
-  // 7. Máscara única de Névoa de Guerra
+  // 7. Lembretes do Mestre
+  const newNotes = (tacticalState.notes || []).map((note) => {
+    const p = rotPoint(note.x, note.y);
+    return {
+      ...note,
+      x: Math.round(p.x),
+      y: Math.round(p.y),
+    };
+  });
+
+  // 8. Máscara única de Névoa de Guerra
   const currentFogMask: TacticalFogMask =
     tacticalState.fogMask &&
     (tacticalState.fogMask.base === 'revealed' || tacticalState.fogMask.base === 'hidden') &&
@@ -927,6 +937,7 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     doors: newDoors,
     props: newProps,
     markers: newMarkers,
+    notes: newNotes,
     fogMask: {
       base: currentFogMask.base,
       ops: newFogOps,
