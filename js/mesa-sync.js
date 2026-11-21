@@ -589,6 +589,11 @@ var MesaSync = (function () {
             if (loaded()) push({ type: 'PRESENCE_PING', userName: m.userName, role: m.role, timestamp: m.ts || Date.now() });
           }
         });
+        rt().on('mesa-ruler-preview', function (m) {
+          if (m && m.preview && loaded()) {
+            push({ type: 'RULER_PREVIEW', preview: m.preview, clientId: m.clientId || m.preview.clientId, timestamp: m.ts || Date.now() });
+          }
+        });
         var sendHubPresence = function () {
           var u = getHubUser();
           if (rt()) {
@@ -650,6 +655,10 @@ var MesaSync = (function () {
         window.hubOnlineUsers = window.hubOnlineUsers || {};
         window.hubOnlineUsers[String(m.userName).trim().toLowerCase()] = Date.now();
         if (rt()) rt().send('mesa-presence', { userName: m.userName, role: m.role || 'jogador', ts: m.timestamp || Date.now() });
+        return;
+      }
+      if (m.type === 'RULER_PREVIEW' && m.preview) {
+        if (rt()) rt().send('mesa-ruler-preview', { preview: m.preview, clientId: m.clientId || m.preview.clientId, ts: m.timestamp || Date.now() });
         return;
       }
       if (m.type === 'SYNC_ROUND' && m.combatId) {

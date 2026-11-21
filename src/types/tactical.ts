@@ -120,7 +120,24 @@ export interface TacticalMarker {
   color: string;
   label?: string;
   layer?: TacticalLayer;
+  visibility?: 'private' | 'public';
+  authorId?: string;
   authorName?: string;
+}
+
+export interface TacticalRulerPreview {
+  clientId: string;
+  active: boolean;
+  kind: 'line' | 'blast';
+  startX: number;
+  startY: number;
+  endX?: number;
+  endY?: number;
+  radius?: number;
+  color?: string;
+  authorId?: string;
+  authorName: string;
+  timestamp: number;
 }
 
 export type TacticalPropType =

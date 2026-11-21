@@ -73,6 +73,10 @@ interface TacticalToolbarProps {
   onSetRulerMode?: (mode: 'free' | 'fixed') => void;
   rulerType?: 'line' | 'blast' | 'fixed';
   onSetRulerType?: (type: 'line' | 'blast' | 'fixed') => void;
+  rulerVisibility?: 'private' | 'public';
+  onSetRulerVisibility?: (visibility: 'private' | 'public') => void;
+  rulerDuration?: 'instant' | 'fixed';
+  onSetRulerDuration?: (duration: 'instant' | 'fixed') => void;
   rulerFixedYards?: number;
   onSetRulerFixedYards?: (yards: number) => void;
   onFixRulerMarker?: () => void;
@@ -118,6 +122,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onHideAllFog,
   rulerType = 'line',
   onSetRulerType,
+  rulerVisibility = 'private',
+  onSetRulerVisibility,
+  rulerDuration = 'instant',
+  onSetRulerDuration,
   areaRadius = 3,
   onSetAreaRadius,
 }) => {
@@ -717,58 +725,118 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
         <div className="flex items-center justify-center gap-1.5 pt-1 border-t border-slate-800/60 flex-wrap">
           {/* 1. Medir */}
           {activeTool === 'ruler' && (
-            <div className="flex items-center gap-1.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 shrink-0">
-              <button
-                type="button"
-                onClick={() => onSetRulerType?.('line')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
-                  rulerType === 'line'
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Distância (Seta)"
-              >
-                <Ruler size={12} />
-                <span>Distância (Seta)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetRulerType?.('blast')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
-                  rulerType === 'blast'
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Área de Efeito"
-              >
-                <CircleDot size={12} />
-                <span>Área de Efeito</span>
-              </button>
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <div className="flex items-center gap-1 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onSetRulerType?.('line')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
+                    rulerType === 'line'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Distância (Seta)"
+                >
+                  <Ruler size={12} />
+                  <span>Distância (Seta)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetRulerType?.('blast')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
+                    rulerType === 'blast'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Área de Efeito"
+                >
+                  <CircleDot size={12} />
+                  <span>Área de Efeito</span>
+                </button>
 
-              {rulerType === 'blast' && (
-                <div className="flex items-center gap-1 pl-1.5 border-l border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-mono">Raio:</span>
-                  <button
-                    type="button"
-                    onClick={() => onSetAreaRadius?.(Math.max(1, (areaRadius || 3) - 1))}
-                    className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
-                    title="Diminuir raio"
-                  >
-                    <Minus size={11} />
-                  </button>
-                  <span className="font-mono font-bold text-amber-300 text-xs px-0.5">
-                    {areaRadius || 3} yd
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onSetAreaRadius?.((areaRadius || 3) + 1)}
-                    className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
-                    title="Aumentar raio"
-                  >
-                    <Plus size={11} />
-                  </button>
-                </div>
-              )}
+                {rulerType === 'blast' && (
+                  <div className="flex items-center gap-1 pl-1.5 border-l border-slate-800">
+                    <span className="text-[10px] text-slate-400 font-mono">Raio:</span>
+                    <button
+                      type="button"
+                      onClick={() => onSetAreaRadius?.(Math.max(1, (areaRadius || 3) - 1))}
+                      className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
+                      title="Diminuir raio"
+                    >
+                      <Minus size={11} />
+                    </button>
+                    <span className="font-mono font-bold text-amber-300 text-xs px-0.5">
+                      {areaRadius || 3} yd
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onSetAreaRadius?.((areaRadius || 3) + 1)}
+                      className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
+                      title="Aumentar raio"
+                    >
+                      <Plus size={11} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Visibilidade da Medição: Só para mim (padrão) vs Para todos */}
+              <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onSetRulerVisibility?.('private')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
+                    rulerVisibility === 'private'
+                      ? 'bg-purple-600 text-white font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Visível apenas para você (com indicador roxo)"
+                >
+                  <EyeOff size={12} />
+                  <span>Só para mim</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetRulerVisibility?.('public')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
+                    rulerVisibility === 'public'
+                      ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Visível para todos na mesa"
+                >
+                  <Eye size={12} />
+                  <span>Para todos</span>
+                </button>
+              </div>
+
+              {/* Duração da Medição: Instantânea (padrão) vs Fixa */}
+              <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onSetRulerDuration?.('instant')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
+                    rulerDuration === 'instant'
+                      ? 'bg-sky-600 text-white font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Mede e desaparece ao soltar ou concluir"
+                >
+                  <span>Instantânea</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetRulerDuration?.('fixed')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
+                    rulerDuration === 'fixed'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Permanece marcada no tabuleiro até ser apagada"
+                >
+                  <span>Fixa</span>
+                </button>
+              </div>
             </div>
           )}
 

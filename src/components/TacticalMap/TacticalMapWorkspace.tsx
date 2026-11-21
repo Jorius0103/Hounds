@@ -6,6 +6,7 @@ import {
   FacingDirection,
   TACTICAL_MAP_PRESETS,
   TacticalMarker,
+  TacticalRulerPreview,
   TacticalProp,
   TacticalFogMask,
   TacticalFogOp,
@@ -75,6 +76,8 @@ interface TacticalMapWorkspaceProps {
   onSetAllPlayerPermissions?: (allow: boolean) => void;
   isLogCollapsed?: boolean;
   onToggleLogCollapse?: () => void;
+  onBroadcastRulerPreview?: (preview: TacticalRulerPreview) => void;
+  localClientId?: string;
 }
 
 export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.memo(({
@@ -97,6 +100,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   onSetAllPlayerPermissions,
   isLogCollapsed,
   onToggleLogCollapse,
+  onBroadcastRulerPreview,
+  localClientId,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -144,6 +149,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   const [rulerMode, setRulerMode] = useState<'free' | 'fixed'>('free');
   const [rulerFixedYards, setRulerFixedYards] = useState<number>(5);
   const [keepMeasurementsOnMap, setKeepMeasurementsOnMap] = useState<boolean>(true);
+  // Padrão inicial para Mestre e Jogadores: sempre "Só para mim" + "Instantânea"
+  const [rulerVisibility, setRulerVisibility] = useState<'private' | 'public'>('private');
+  const [rulerDuration, setRulerDuration] = useState<'instant' | 'fixed'>('instant');
+  const [isInstantBlastPressed, setIsInstantBlastPressed] = useState<boolean>(false);
+  const [remoteRulerPreviews, setRemoteRulerPreviews] = useState<Record<string, TacticalRulerPreview>>({});
+  const rulerPreviewThrottleRef = useRef<number>(0);
+  const rulerPreviewSentRef = useRef<boolean>(false);
 
   // Area template state
   const [areaRadius, setAreaRadius] = useState<number>(3); // em jardas
@@ -247,6 +259,160 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     } catch {}
     return currentUser || null;
   }, [currentUser]);
+
+  // Identificação do autor para medições (id e nome do usuário logado)
+  const currentAuthorId = useMemo(() => {
+    const rawId = effectiveUser?.id ? String(effectiveUser.id).trim() : '';
+    if (rawId) return rawId;
+    const rawName = effectiveUser?.name ? String(effectiveUser.name).trim().toLowerCase() : '';
+    return rawName || (isMaster ? 'mestre' : 'jogador');
+  }, [effectiveUser?.id, effectiveUser?.name, isMaster]);
+
+  const currentAuthorName = useMemo(() => {
+    const rawName = effectiveUser?.name ? String(effectiveUser.name).trim() : '';
+    if (rawName) return rawName;
+    return isMaster ? 'Mestre' : 'Jogador';
+  }, [effectiveUser?.name, isMaster]);
+
+  const isMarkerOwnedByCurrentUser = useCallback(
+    (marker: TacticalMarker): boolean => {
+      const mAuthorId = marker.authorId ? String(marker.authorId).trim() : '';
+      if (mAuthorId) {
+        return mAuthorId === currentAuthorId;
+      }
+      const mAuthorName = marker.authorName ? String(marker.authorName).trim().toLowerCase() : '';
+      const curName = effectiveUser?.name ? String(effectiveUser.name).trim().toLowerCase() : '';
+      if (mAuthorName && curName && mAuthorName === curName) {
+        return true;
+      }
+      return false;
+    },
+    [effectiveUser?.name, currentAuthorId]
+  );
+
+  // Filtro estrito por authorId para medições "Só para mim" (private)
+  const isPrivateMarkerVisibleToCurrentUser = useCallback(
+    (marker: TacticalMarker): boolean => {
+      const mAuthorId = marker.authorId ? String(marker.authorId).trim() : '';
+      return !!mAuthorId && mAuthorId === currentAuthorId;
+    },
+    [currentAuthorId]
+  );
+
+  const canDeleteMarker = useCallback(
+    (marker: TacticalMarker): boolean => {
+      if (isMaster) return true;
+      return isMarkerOwnedByCurrentUser(marker);
+    },
+    [isMaster, isMarkerOwnedByCurrentUser]
+  );
+
+  // Envio efêmero (sem persistência em banco) da prévia de medição Instantânea + "Para todos" com throttle ~100ms
+  const sendRulerPreview = useCallback(
+    (preview: Omit<TacticalRulerPreview, 'clientId' | 'authorId' | 'authorName' | 'timestamp'>, force = false) => {
+      if (!onBroadcastRulerPreview) return;
+      const now = Date.now();
+      if (preview.active) {
+        if (!force && now - rulerPreviewThrottleRef.current < 100) return;
+        rulerPreviewThrottleRef.current = now;
+        rulerPreviewSentRef.current = true;
+      } else {
+        if (!force && !rulerPreviewSentRef.current) return;
+        rulerPreviewSentRef.current = false;
+        rulerPreviewThrottleRef.current = 0;
+      }
+      onBroadcastRulerPreview({
+        ...preview,
+        clientId: localClientId || currentAuthorId,
+        authorId: currentAuthorId,
+        authorName: currentAuthorName,
+        timestamp: now,
+      });
+    },
+    [onBroadcastRulerPreview, localClientId, currentAuthorId, currentAuthorName]
+  );
+
+  const clearRulerPreview = useCallback(() => {
+    if (!rulerPreviewSentRef.current) return;
+    sendRulerPreview(
+      {
+        active: false,
+        kind: rulerType === 'blast' ? 'blast' : 'line',
+        startX: 0,
+        startY: 0,
+      },
+      true
+    );
+  }, [sendRulerPreview, rulerType]);
+
+  // Recebe prévias efêmeras de medição instantânea ("Para todos") de outros usuários
+  useEffect(() => {
+    const handleRemotePreview = (e: Event) => {
+      const preview = (e as CustomEvent<TacticalRulerPreview>).detail;
+      if (!preview || !preview.clientId) return;
+      if (localClientId && preview.clientId === localClientId) return;
+      setRemoteRulerPreviews((prev) => {
+        if (!preview.active) {
+          if (!prev[preview.clientId]) return prev;
+          const next = { ...prev };
+          delete next[preview.clientId];
+          return next;
+        }
+        return {
+          ...prev,
+          [preview.clientId]: { ...preview, timestamp: Date.now() },
+        };
+      });
+    };
+    window.addEventListener('hounds_ruler_preview', handleRemotePreview);
+    // Timeout de segurança: expira prévias remotas após ~4s sem atualização
+    const cleanupTimer = setInterval(() => {
+      const cutoff = Date.now() - 4000;
+      setRemoteRulerPreviews((prev) => {
+        let changed = false;
+        const next: Record<string, TacticalRulerPreview> = {};
+        for (const [k, v] of Object.entries(prev)) {
+          if (v.timestamp >= cutoff) {
+            next[k] = v;
+          } else {
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => {
+      window.removeEventListener('hounds_ruler_preview', handleRemotePreview);
+      clearInterval(cleanupTimer);
+    };
+  }, [localClientId]);
+
+  // Limpa prévia remota caso a janela perca foco no meio de uma medição instantânea
+  useEffect(() => {
+    const handleWindowBlur = () => {
+      if (rulerDuration === 'instant' && (rulerStart || isInstantBlastPressed)) {
+        setRulerStart(null);
+        setRulerCurrent(null);
+        setIsInstantBlastPressed(false);
+        clearRulerPreview();
+      }
+    };
+    window.addEventListener('blur', handleWindowBlur);
+    return () => window.removeEventListener('blur', handleWindowBlur);
+  }, [rulerDuration, rulerStart, isInstantBlastPressed, clearRulerPreview]);
+
+  // Limpa prévia remota ao trocar ferramenta, alternar para "Só para mim" / "Fixa" ou desmontar
+  useEffect(() => {
+    if (activeTool !== 'ruler' || rulerVisibility !== 'public' || rulerDuration !== 'instant') {
+      clearRulerPreview();
+    }
+  }, [activeTool, rulerVisibility, rulerDuration, clearRulerPreview]);
+
+  useEffect(() => {
+    return () => {
+      clearRulerPreview();
+    };
+  }, [clearRulerPreview]);
 
   // Helper para resolver o NPC associado a um token
   const resolveTokenNpc = useCallback(
@@ -805,19 +971,39 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     }
 
     // Cancelar medição em andamento ao clicar com botão direito
-    if (activeTool === 'ruler' && e.button === 2 && rulerStart) {
+    if (activeTool === 'ruler' && e.button === 2 && (rulerStart || isInstantBlastPressed)) {
       e.preventDefault();
       setRulerStart(null);
       setRulerCurrent(null);
+      setIsInstantBlastPressed(false);
+      clearRulerPreview();
       return;
     }
 
-    // 3. Ferramenta de Medir (Distância por Dois Cliques, Área de Efeito e Alcance Fixo)
+    // 3. Ferramenta de Medir (Distância, Área de Efeito e Alcance Fixo)
     if ((activeTool === 'ruler' || activeTool === 'area') && e.button === 0) {
       const p = clientToMapCoords(e.clientX, e.clientY);
       const hex = pixelToHex(p.x - mapX, p.y - mapY, hexSize);
 
       if (rulerType === 'blast' || activeTool === 'area') {
+        if (rulerDuration === 'instant') {
+          setIsInstantBlastPressed(true);
+          setAreaCenter(hex);
+          if (rulerVisibility === 'public') {
+            sendRulerPreview(
+              {
+                active: true,
+                kind: 'blast',
+                startX: hex.col,
+                startY: hex.row,
+                radius: areaRadius,
+                color: areaColor,
+              },
+              true
+            );
+          }
+          return;
+        }
         const newMarker: TacticalMarker = {
           id: `area-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
           type: 'blast',
@@ -826,8 +1012,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           radius: areaRadius,
           color: areaColor,
           label: `Área (${areaRadius}yd)`,
-          layer: isMaster && activeLayer === 'gm' ? 'gm' : 'tokens',
-          authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
+          layer: rulerVisibility === 'private' ? 'gm' : 'tokens',
+          visibility: rulerVisibility,
+          authorId: currentAuthorId,
+          authorName: currentAuthorName,
         };
         onUpdateTacticalState({
           markers: [...(tacticalState.markers || []), newMarker],
@@ -849,37 +1037,55 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
         return;
       }
 
-      // Modo Distância (Seta) com DOIS CLIQUES: 1º clique marca origem, 2º clique fixa
+      // Modo Distância (Seta): suporta arrastar-e-soltar ou dois cliques
       if (!rulerStart) {
-        // 1º Clique: marca origem da medição
         setRulerStart(hex);
         setRulerCurrent(hex);
+        if (rulerDuration === 'instant' && rulerVisibility === 'public') {
+          sendRulerPreview(
+            {
+              active: true,
+              kind: 'line',
+              startX: hex.col,
+              startY: hex.row,
+              endX: hex.col,
+              endY: hex.row,
+              color: '#f59e0b',
+            },
+            true
+          );
+        }
         return;
       } else {
-        // 2º Clique: destino da medição e fixação no mapa
-        const distanceYards = getHexDistance(rulerStart, hex);
-        if (distanceYards > 0) {
-          const rangePenalty = getGurpsRangePenalty(distanceYards);
-          const newMarker: TacticalMarker = {
-            id: `ruler-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-            type: 'ruler',
-            startX: rulerStart.col,
-            startY: rulerStart.row,
-            endX: hex.col,
-            endY: hex.row,
-            radius: distanceYards,
-            color: '#f59e0b',
-            label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
-            layer: isMaster && activeLayer === 'gm' ? 'gm' : 'tokens',
-            authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
-          };
-          onUpdateTacticalState({
-            markers: [...(tacticalState.markers || []), newMarker],
-          });
+        // 2º Clique: conclui a medição (se Fixa, persiste; se Instantânea, apenas limpa)
+        if (rulerDuration === 'fixed') {
+          const distanceYards = getHexDistance(rulerStart, hex);
+          if (distanceYards > 0) {
+            const rangePenalty = getGurpsRangePenalty(distanceYards);
+            const newMarker: TacticalMarker = {
+              id: `ruler-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+              type: 'ruler',
+              startX: rulerStart.col,
+              startY: rulerStart.row,
+              endX: hex.col,
+              endY: hex.row,
+              radius: distanceYards,
+              color: '#f59e0b',
+              label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
+              layer: rulerVisibility === 'private' ? 'gm' : 'tokens',
+              visibility: rulerVisibility,
+              authorId: currentAuthorId,
+              authorName: currentAuthorName,
+            };
+            onUpdateTacticalState({
+              markers: [...(tacticalState.markers || []), newMarker],
+            });
+          }
+          setActiveTool('select');
         }
         setRulerStart(null);
         setRulerCurrent(null);
-        setActiveTool('select');
+        clearRulerPreview();
         return;
       }
     }
@@ -946,11 +1152,38 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     }
 
     if (activeTool === 'ruler' && rulerStart) {
-      setRulerCurrent((prev) => (prev && prev.col === hex.col && prev.row === hex.row ? prev : hex));
+      setRulerCurrent((prev) => {
+        if (prev && prev.col === hex.col && prev.row === hex.row) return prev;
+        if (rulerDuration === 'instant' && rulerVisibility === 'public') {
+          sendRulerPreview({
+            active: true,
+            kind: 'line',
+            startX: rulerStart.col,
+            startY: rulerStart.row,
+            endX: hex.col,
+            endY: hex.row,
+            color: '#f59e0b',
+          });
+        }
+        return hex;
+      });
     }
 
     if (activeTool === 'area' || (activeTool === 'ruler' && rulerType === 'blast')) {
-      setAreaCenter((prev) => (prev && prev.col === hex.col && prev.row === hex.row ? prev : hex));
+      setAreaCenter((prev) => {
+        if (prev && prev.col === hex.col && prev.row === hex.row) return prev;
+        if (isInstantBlastPressed && rulerDuration === 'instant' && rulerVisibility === 'public') {
+          sendRulerPreview({
+            active: true,
+            kind: 'blast',
+            startX: hex.col,
+            startY: hex.row,
+            radius: areaRadius,
+            color: areaColor,
+          });
+        }
+        return hex;
+      });
     }
 
     // Rotação ativa do token pelo "pauzinho" (Roll20 rotation handle) - apenas preview local no mousemove
@@ -983,6 +1216,45 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   };
 
   const handleMouseUp = () => {
+    if (isInstantBlastPressed) {
+      setIsInstantBlastPressed(false);
+      clearRulerPreview();
+    }
+
+    // Arrastar-e-soltar na régua de distância: se soltou em um hex diferente da origem, conclui
+    if (activeTool === 'ruler' && rulerType === 'line' && rulerStart && rulerCurrent) {
+      if (rulerStart.col !== rulerCurrent.col || rulerStart.row !== rulerCurrent.row) {
+        if (rulerDuration === 'fixed') {
+          const distanceYards = getHexDistance(rulerStart, rulerCurrent);
+          if (distanceYards > 0) {
+            const rangePenalty = getGurpsRangePenalty(distanceYards);
+            const newMarker: TacticalMarker = {
+              id: `ruler-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+              type: 'ruler',
+              startX: rulerStart.col,
+              startY: rulerStart.row,
+              endX: rulerCurrent.col,
+              endY: rulerCurrent.row,
+              radius: distanceYards,
+              color: '#f59e0b',
+              label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
+              layer: rulerVisibility === 'private' ? 'gm' : 'tokens',
+              visibility: rulerVisibility,
+              authorId: currentAuthorId,
+              authorName: currentAuthorName,
+            };
+            onUpdateTacticalState({
+              markers: [...(tacticalState.markers || []), newMarker],
+            });
+          }
+          setActiveTool('select');
+        }
+        setRulerStart(null);
+        setRulerCurrent(null);
+        clearRulerPreview();
+      }
+    }
+
     if (draggedPropId) {
       if (dragPropPos) {
         const updatedProps = (tacticalState.props || []).map((prop) =>
@@ -1544,8 +1816,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     setPopoverToken(null);
   };
 
-  // Excluir marcador individual do mapa
+  // Excluir marcador individual do mapa (Mestre apaga qualquer; Jogador apaga apenas os próprios)
   const handleDeleteMarker = (id: string) => {
+    const targetMarker = (tacticalState.markers || []).find((m) => m.id === id);
+    if (!targetMarker || !canDeleteMarker(targetMarker)) return;
     onUpdateTacticalState({
       markers: (tacticalState.markers || []).filter((m) => m.id !== id),
     });
@@ -1585,8 +1859,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       radius: distanceYards,
       color: '#f59e0b',
       label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
-      layer: isMaster && activeLayer === 'gm' ? 'gm' : 'tokens',
-      authorName: currentUserRole === 'mestre' ? 'Mestre' : 'Jogador',
+      layer: rulerVisibility === 'private' ? 'gm' : 'tokens',
+      visibility: rulerVisibility,
+      authorId: currentAuthorId,
+      authorName: currentAuthorName,
     };
     onUpdateTacticalState({
       markers: [...(tacticalState.markers || []), newMarker],
@@ -1729,6 +2005,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           onHideAllFog={handleHideAllFog}
           rulerType={rulerType}
           onSetRulerType={setRulerType}
+          rulerVisibility={rulerVisibility}
+          onSetRulerVisibility={setRulerVisibility}
+          rulerDuration={rulerDuration}
+          onSetRulerDuration={setRulerDuration}
           rulerMode={rulerMode}
           onSetRulerMode={setRulerMode}
           rulerFixedYards={rulerFixedYards}
@@ -2645,10 +2925,21 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           {/* CAMADA 5: MARCADORES E ÁREAS PERSISTENTES NO TABULEIRO */}
           <g id="tactical-persistent-markers">
             {(tacticalState.markers || []).map((marker) => {
-              // Marcadores na camada tokens são públicos e visíveis para TODOS (jogadores e mestre).
-              // Marcadores na camada GM só são visíveis na visão do mestre (aba 3. Mestre / 1. Mapa).
-              const isVisible = !isPlayerView || marker.layer === 'tokens' || !marker.layer;
+              // Visibilidade:
+              // - "private" ("Só para mim"): renderizado APENAS para o próprio autor (nem mesmo o Mestre vê o de outros jogadores).
+              // - "public" ("Para todos"): renderizado para todos.
+              // - Legado sem visibility: mantém comportamento anterior baseado em layer.
+              const isPrivateMarker = marker.visibility === 'private' || (!marker.visibility && marker.layer === 'gm');
+              const isVisible =
+                marker.visibility === 'private'
+                  ? isPrivateMarkerVisibleToCurrentUser(marker)
+                  : marker.visibility === 'public'
+                    ? true
+                    : (!isPlayerView || marker.layer === 'tokens' || !marker.layer);
               if (!isVisible) return null;
+
+              const canDelete = canDeleteMarker(marker);
+              const authorLabel = marker.authorName ? String(marker.authorName).trim() : '';
 
               if (marker.type === 'blast') {
                 const relCenter = getHexCenter(marker.startX, marker.startY, hexSize);
@@ -2662,12 +2953,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                   mapY
                 );
                 const topY = getHexRangeTopY({ col: marker.startX, row: marker.startY }, blastYards, hexSize, mapY);
+                const mainLabel = marker.label || `Área (${marker.radius} yd)`;
+                const maxChars = Math.max(mainLabel.length, authorLabel.length);
+                const badgeW = Math.max(150, Math.round(maxChars * 6.2) + (isPrivateMarker ? 28 : 10) + (canDelete ? 26 : 10));
+                const badgeH = authorLabel ? 36 : 26;
+                const textOffsetX = (isPrivateMarker ? 9 : 0) - (canDelete ? 9 : 0);
 
                 return (
                   <g
                     key={marker.id}
                     id={`marker-${marker.id}`}
+                    style={
+                      isPrivateMarker
+                        ? { filter: 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))' }
+                        : undefined
+                    }
                     onContextMenu={(e) => {
+                      if (!canDelete) return;
                       e.preventDefault();
                       e.stopPropagation();
                       handleDeleteMarker(marker.id);
@@ -2681,21 +2983,76 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       strokeLinejoin="round"
                       strokeDasharray="6 4"
                     />
-                    {/* Tag de Identificação com Botão de Excluir e Indicador de Camada M/J */}
-                    <g transform={`translate(${center.x}, ${topY - 14})`} pointerEvents="auto">
+                    {/* Tag de Identificação com Autor, Olho Roxo (quando oculto) e Botão Individual de Excluir */}
+                    <g transform={`translate(${center.x}, ${topY - 18})`} pointerEvents="auto">
                       <rect
-                        x="-75"
-                        y="-16"
-                        width="150"
-                        height="26"
+                        x={-badgeW / 2}
+                        y={-badgeH / 2}
+                        width={badgeW}
+                        height={badgeH}
                         rx="7"
                         fill="#020617"
-                        stroke={marker.color || '#ef4444'}
+                        stroke={isPrivateMarker ? '#a855f7' : (marker.color || '#ef4444')}
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
-                      {/* Indicador de Camada Mestre (Roxo) para o GM quando oculto dos jogadores */}
-                      {isMaster && marker.layer === 'gm' && (
+                      {/* Indicador de Medição Oculta ("Só para mim"): Olho Roxo */}
+                      {isPrivateMarker && (
+                        <g transform={`translate(${-badgeW / 2 + 13}, 0)`} pointerEvents="none">
+                          <title>Só para mim (visível apenas para você)</title>
+                          <circle
+                            cx="0"
+                            cy="0"
+                            r="6.5"
+                            fill="#020617"
+                            fillOpacity="0.95"
+                            stroke="#a855f7"
+                            strokeWidth="1.6"
+                          />
+                          <path
+                            d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z"
+                            fill="none"
+                            stroke="#c084fc"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle cx="0" cy="0" r="1" fill="#c084fc" />
+                          <line
+                            x1="-3"
+                            y1="-3"
+                            x2="3"
+                            y2="3"
+                            stroke="#c084fc"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      )}
+                      <text
+                        x={textOffsetX}
+                        y={authorLabel ? -3 : 3.5}
+                        fill={marker.color || '#ef4444'}
+                        fontSize="10"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {mainLabel}
+                      </text>
+                      {authorLabel && (
+                        <text
+                          x={textOffsetX}
+                          y={10}
+                          fill={isPrivateMarker ? '#d8b4fe' : '#cbd5e1'}
+                          fontSize="8.5"
+                          fontWeight="600"
+                          textAnchor="middle"
+                        >
+                          {authorLabel}
+                        </text>
+                      )}
+                      {/* Botão Individual de Excluir Área (Mestre: qualquer; Jogador: apenas própria) */}
+                      {canDelete && (
                         <g
                           className="cursor-pointer"
                           onMouseDown={(e) => {
@@ -2705,81 +3062,25 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
-                            handleToggleMarkerLayer(marker.id);
+                            handleDeleteMarker(marker.id);
                           }}
                         >
-                          <title>Visão: Apenas Mestre (oculto dos jogadores). Clique para tornar visível aos jogadores.</title>
-                          <circle
-                            cx="-58"
-                            cy="-3"
-                            r="7"
-                            fill="#020617"
-                            stroke="#a855f7"
-                            strokeWidth="1.8"
-                          />
-                          <path
-                            d="M -62 -3 C -60.3 -5.4 -55.7 -5.4 -54 -3 C -55.7 -0.6 -60.3 -0.6 -62 -3 Z"
-                            fill="none"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <circle
-                            cx="-58"
-                            cy="-3"
-                            r="1.1"
-                            fill="#c084fc"
-                          />
-                          <line
-                            x1="-61"
-                            y1="-6"
-                            x2="-55"
-                            y2="0"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                          />
+                          <title>Apagar esta área do mapa</title>
+                          <circle cx={badgeW / 2 - 13} cy="0" r="12" fill="transparent" />
+                          <circle cx={badgeW / 2 - 13} cy="0" r="7.5" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
+                          <text
+                            x={badgeW / 2 - 13}
+                            y="3.5"
+                            fill="#ffffff"
+                            fontSize="10.5"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            pointerEvents="none"
+                          >
+                            ✕
+                          </text>
                         </g>
                       )}
-                      <text
-                        x={isMaster ? "0" : "-10"}
-                        y="1"
-                        fill={marker.color || '#ef4444'}
-                        fontSize="10"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {marker.label || `Área (${marker.radius} yd)`}
-                      </text>
-                      {/* Botão Individual de Excluir Área */}
-                      <g
-                        className="cursor-pointer"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleDeleteMarker(marker.id);
-                        }}
-                      >
-                        <title>Apagar esta área do mapa</title>
-                        <circle cx="56" cy="-3" r="12" fill="transparent" />
-                        <circle cx="56" cy="-3" r="8" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
-                        <text
-                          x="56"
-                          y="0.5"
-                          fill="#ffffff"
-                          fontSize="11"
-                          fontWeight="bold"
-                          textAnchor="middle"
-                          pointerEvents="none"
-                        >
-                          ✕
-                        </text>
-                      </g>
                     </g>
                   </g>
                 );
@@ -2792,12 +3093,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const pB = { x: mapX + relB.x, y: mapY + relB.y };
                 const midX = (pA.x + pB.x) / 2;
                 const midY = (pA.y + pB.y) / 2;
+                const mainLabel = marker.label || `${marker.radius} yd`;
+                const maxChars = Math.max(mainLabel.length, authorLabel.length);
+                const badgeW = Math.max(150, Math.round(maxChars * 6.2) + (isPrivateMarker ? 28 : 10) + (canDelete ? 26 : 10));
+                const badgeH = authorLabel ? 36 : 26;
+                const textOffsetX = (isPrivateMarker ? 9 : 0) - (canDelete ? 9 : 0);
 
                 return (
                   <g
                     key={marker.id}
                     id={`marker-ruler-${marker.id}`}
+                    style={
+                      isPrivateMarker
+                        ? { filter: 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))' }
+                        : undefined
+                    }
                     onContextMenu={(e) => {
+                      if (!canDelete) return;
                       e.preventDefault();
                       e.stopPropagation();
                       handleDeleteMarker(marker.id);
@@ -2815,21 +3127,76 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     />
                     <circle cx={pA.x} cy={pA.y} r="5" fill={marker.color || '#f59e0b'} />
                     <circle cx={pB.x} cy={pB.y} r="5" fill={marker.color || '#f59e0b'} />
-                    {/* Badge da Medição com Botão Individual de Excluir e Indicador M/J */}
-                    <g transform={`translate(${midX}, ${midY - 20})`} pointerEvents="auto">
+                    {/* Badge da Medição com Autor, Olho Roxo (quando oculto) e Botão Individual de Excluir */}
+                    <g transform={`translate(${midX}, ${midY - 22})`} pointerEvents="auto">
                       <rect
-                        x="-75"
-                        y="-16"
-                        width="150"
-                        height="26"
+                        x={-badgeW / 2}
+                        y={-badgeH / 2}
+                        width={badgeW}
+                        height={badgeH}
                         rx="7"
                         fill="#020617"
-                        stroke={marker.color || '#f59e0b'}
+                        stroke={isPrivateMarker ? '#a855f7' : (marker.color || '#f59e0b')}
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
-                      {/* Indicador de Camada Mestre (Roxo) para o GM quando oculto dos jogadores */}
-                      {isMaster && marker.layer === 'gm' && (
+                      {/* Indicador de Medição Oculta ("Só para mim"): Olho Roxo */}
+                      {isPrivateMarker && (
+                        <g transform={`translate(${-badgeW / 2 + 13}, 0)`} pointerEvents="none">
+                          <title>Só para mim (visível apenas para você)</title>
+                          <circle
+                            cx="0"
+                            cy="0"
+                            r="6.5"
+                            fill="#020617"
+                            fillOpacity="0.95"
+                            stroke="#a855f7"
+                            strokeWidth="1.6"
+                          />
+                          <path
+                            d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z"
+                            fill="none"
+                            stroke="#c084fc"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle cx="0" cy="0" r="1" fill="#c084fc" />
+                          <line
+                            x1="-3"
+                            y1="-3"
+                            x2="3"
+                            y2="3"
+                            stroke="#c084fc"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      )}
+                      <text
+                        x={textOffsetX}
+                        y={authorLabel ? -3 : 3.5}
+                        fill="#fbbf24"
+                        fontSize="10"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {mainLabel}
+                      </text>
+                      {authorLabel && (
+                        <text
+                          x={textOffsetX}
+                          y={10}
+                          fill={isPrivateMarker ? '#d8b4fe' : '#cbd5e1'}
+                          fontSize="8.5"
+                          fontWeight="600"
+                          textAnchor="middle"
+                        >
+                          {authorLabel}
+                        </text>
+                      )}
+                      {/* Botão Individual de Excluir Medição (Mestre: qualquer; Jogador: apenas própria) */}
+                      {canDelete && (
                         <g
                           className="cursor-pointer"
                           onMouseDown={(e) => {
@@ -2839,81 +3206,25 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
-                            handleToggleMarkerLayer(marker.id);
+                            handleDeleteMarker(marker.id);
                           }}
                         >
-                          <title>Visão: Apenas Mestre (oculto dos jogadores). Clique para tornar visível aos jogadores.</title>
-                          <circle
-                            cx="-58"
-                            cy="-3"
-                            r="7"
-                            fill="#020617"
-                            stroke="#a855f7"
-                            strokeWidth="1.8"
-                          />
-                          <path
-                            d="M -62 -3 C -60.3 -5.4 -55.7 -5.4 -54 -3 C -55.7 -0.6 -60.3 -0.6 -62 -3 Z"
-                            fill="none"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <circle
-                            cx="-58"
-                            cy="-3"
-                            r="1.1"
-                            fill="#c084fc"
-                          />
-                          <line
-                            x1="-61"
-                            y1="-6"
-                            x2="-55"
-                            y2="0"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                          />
+                          <title>Apagar esta medição do mapa</title>
+                          <circle cx={badgeW / 2 - 13} cy="0" r="12" fill="transparent" />
+                          <circle cx={badgeW / 2 - 13} cy="0" r="7.5" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
+                          <text
+                            x={badgeW / 2 - 13}
+                            y="3.5"
+                            fill="#ffffff"
+                            fontSize="10.5"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            pointerEvents="none"
+                          >
+                            ✕
+                          </text>
                         </g>
                       )}
-                      <text
-                        x={isMaster ? "0" : "-10"}
-                        y="1"
-                        fill="#fbbf24"
-                        fontSize="10"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {marker.label || `${marker.radius} yd`}
-                      </text>
-                      {/* Botão Individual de Excluir Medição */}
-                      <g
-                        className="cursor-pointer"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleDeleteMarker(marker.id);
-                        }}
-                      >
-                        <title>Apagar esta medição do mapa</title>
-                        <circle cx="56" cy="-3" r="12" fill="transparent" />
-                        <circle cx="56" cy="-3" r="8" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
-                        <text
-                          x="56"
-                          y="0.5"
-                          fill="#ffffff"
-                          fontSize="11"
-                          fontWeight="bold"
-                          textAnchor="middle"
-                          pointerEvents="none"
-                        >
-                          ✕
-                        </text>
-                      </g>
                     </g>
                   </g>
                 );
@@ -2925,7 +3236,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
           {/* PREVIEW DO MODELO DE ÁREA / EXPLOSÃO (AO PASSAR O MOUSE) */}
           {(activeTool === 'area' || (activeTool === 'ruler' && rulerType === 'blast')) && (areaCenter || hoveredHex) && (
-            <g id="area-template" pointerEvents="none">
+            <g
+              id="area-template"
+              pointerEvents="none"
+              style={
+                rulerVisibility === 'private'
+                  ? { filter: 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))' }
+                  : undefined
+              }
+            >
               {(() => {
                 const targetCenter = areaCenter || hoveredHex;
                 if (!targetCenter) return null;
@@ -2933,6 +3252,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
                 const areaPath = getHexRangePerimeterPath(targetCenter, areaRadius, hexSize, mapX, mapY);
                 const topY = getHexRangeTopY(targetCenter, areaRadius, hexSize, mapY);
+                const isPrivatePreview = rulerVisibility === 'private';
+                const labelText = `Raio: ${areaRadius} yd (${areaRadius} hex)`;
+                const badgeW = Math.max(150, Math.round(Math.max(labelText.length, currentAuthorName.length) * 6.2) + (isPrivatePreview ? 28 : 16));
                 return (
                   <g>
                     <path
@@ -2943,16 +3265,47 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       strokeLinejoin="round"
                       strokeDasharray="4 4"
                     />
-                    <text
-                      x={center.x}
-                      y={topY - 8}
-                      fill={areaColor || '#ef4444'}
-                      fontSize="12"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                    >
-                      Raio: {areaRadius} jardas ({areaRadius} hexes)
-                    </text>
+                    <g transform={`translate(${center.x}, ${topY - 22})`}>
+                      <rect
+                        x={-badgeW / 2}
+                        y="-18"
+                        width={badgeW}
+                        height="34"
+                        rx="7"
+                        fill="#020617"
+                        stroke={isPrivatePreview ? '#a855f7' : (areaColor || '#ef4444')}
+                        strokeWidth="1.5"
+                        opacity="0.95"
+                      />
+                      {isPrivatePreview && (
+                        <g transform={`translate(${-badgeW / 2 + 13}, -1)`}>
+                          <circle cx="0" cy="0" r="6" fill="#020617" stroke="#a855f7" strokeWidth="1.5" />
+                          <path d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z" fill="none" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="0" cy="0" r="1" fill="#c084fc" />
+                          <line x1="-3" y1="-3" x2="3" y2="3" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" />
+                        </g>
+                      )}
+                      <text
+                        x={isPrivatePreview ? 8 : 0}
+                        y="-4"
+                        fill={areaColor || '#ef4444'}
+                        fontSize="10.5"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {labelText}
+                      </text>
+                      <text
+                        x={isPrivatePreview ? 8 : 0}
+                        y="9"
+                        fill={isPrivatePreview ? '#d8b4fe' : '#cbd5e1'}
+                        fontSize="8.5"
+                        fontWeight="600"
+                        textAnchor="middle"
+                      >
+                        {currentAuthorName}
+                      </text>
+                    </g>
                   </g>
                 );
               })()}
@@ -2998,7 +3351,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
           {/* CAMADA 6: RÉGUA TÁTICA (DISTÂNCIA E PENALIDADE GURPS) */}
           {rulerStart && rulerCurrent && (
-            <g id="tactical-ruler">
+            <g
+              id="tactical-ruler"
+              pointerEvents="none"
+              style={
+                rulerVisibility === 'private'
+                  ? { filter: 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))' }
+                  : undefined
+              }
+            >
               {(() => {
                 const relA = getHexCenter(rulerStart.col, rulerStart.row, hexSize);
                 const pA = { x: mapX + relA.x, y: mapY + relA.y };
@@ -3006,6 +3367,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const pB = { x: mapX + relB.x, y: mapY + relB.y };
                 const distanceYards = getHexDistance(rulerStart, rulerCurrent);
                 const rangePenalty = getGurpsRangePenalty(distanceYards);
+                const isPrivatePreview = rulerVisibility === 'private';
 
                 // Detecta arco de defesa se o alvo for um token
                 const targetToken = tokens.find(
@@ -3027,6 +3389,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
                 const midX = (pA.x + pB.x) / 2;
                 const midY = (pA.y + pB.y) / 2;
+                const boxW = isPrivatePreview ? 202 : 186;
+                const boxH = arcText ? 66 : 52;
 
                 return (
                   <g>
@@ -3046,21 +3410,29 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     <circle cx={pB.x} cy={pB.y} r="5" fill="#f59e0b" />
 
                     {/* Caixa de Informações Táticas Flutuante */}
-                    <g transform={`translate(${midX}, ${midY - 20})`}>
+                    <g transform={`translate(${midX}, ${midY - 24})`}>
                       <rect
-                        x="-90"
-                        y="-35"
-                        width="180"
-                        height={arcText ? "55" : "40"}
+                        x={-boxW / 2}
+                        y="-38"
+                        width={boxW}
+                        height={boxH}
                         rx="8"
                         fill="#020617"
-                        stroke="#f59e0b"
+                        stroke={isPrivatePreview ? '#a855f7' : '#f59e0b'}
                         strokeWidth="1.5"
                         opacity="0.95"
                       />
+                      {isPrivatePreview && (
+                        <g transform={`translate(${-boxW / 2 + 13}, -20)`}>
+                          <circle cx="0" cy="0" r="6" fill="#020617" stroke="#a855f7" strokeWidth="1.5" />
+                          <path d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z" fill="none" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="0" cy="0" r="1" fill="#c084fc" />
+                          <line x1="-3" y1="-3" x2="3" y2="3" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" />
+                        </g>
+                      )}
                       <text
-                        x="0"
-                        y="-18"
+                        x={isPrivatePreview ? 8 : 0}
+                        y="-22"
                         fill="#ffffff"
                         fontSize="11"
                         fontWeight="bold"
@@ -3069,8 +3441,8 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                         Distância: {distanceYards} yd ({distanceYards} hex)
                       </text>
                       <text
-                        x="0"
-                        y="-4"
+                        x={isPrivatePreview ? 8 : 0}
+                        y="-8"
                         fill="#fbbf24"
                         fontSize="10"
                         fontWeight="bold"
@@ -3078,10 +3450,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       >
                         Penalidade GURPS: {rangePenalty >= 0 ? '0' : rangePenalty}
                       </text>
+                      <text
+                        x={isPrivatePreview ? 8 : 0}
+                        y="6"
+                        fill={isPrivatePreview ? '#d8b4fe' : '#cbd5e1'}
+                        fontSize="9"
+                        fontWeight="600"
+                        textAnchor="middle"
+                      >
+                        {currentAuthorName}
+                      </text>
                       {arcText && (
                         <text
-                          x="0"
-                          y="11"
+                          x={isPrivatePreview ? 8 : 0}
+                          y="20"
                           fill={arcText.includes('Sem Defesa') ? '#ef4444' : '#38bdf8'}
                           fontSize="9.5"
                           fontWeight="bold"
@@ -3094,6 +3476,110 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                   </g>
                 );
               })()}
+            </g>
+          )}
+
+          {/* PRÉVIAS EFÊMERAS REMOTAS (MEDIÇÃO INSTANTÂNEA + "PARA TODOS") */}
+          {Object.keys(remoteRulerPreviews).length > 0 && (
+            <g id="tactical-remote-ruler-previews" pointerEvents="none">
+              {Object.values(remoteRulerPreviews).map((preview) => {
+                if (!preview.active) return null;
+                if (preview.kind === 'blast') {
+                  const blastYards = Math.max(1, Math.round(preview.radius || 3));
+                  const relCenter = getHexCenter(preview.startX, preview.startY, hexSize);
+                  const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
+                  const blastPath = getHexRangePerimeterPath(
+                    { col: preview.startX, row: preview.startY },
+                    blastYards,
+                    hexSize,
+                    mapX,
+                    mapY
+                  );
+                  const topY = getHexRangeTopY({ col: preview.startX, row: preview.startY }, blastYards, hexSize, mapY);
+                  const labelText = `Área (${blastYards} yd)`;
+                  const badgeW = Math.max(140, Math.round(Math.max(labelText.length, preview.authorName.length) * 6.2) + 20);
+                  return (
+                    <g key={`remote-blast-${preview.clientId}`}>
+                      <path
+                        d={blastPath}
+                        fill={preview.color ? `${preview.color}28` : 'rgba(239, 68, 68, 0.16)'}
+                        stroke={preview.color || '#ef4444'}
+                        strokeWidth="2"
+                        strokeLinejoin="round"
+                        strokeDasharray="4 4"
+                      />
+                      <g transform={`translate(${center.x}, ${topY - 20})`}>
+                        <rect
+                          x={-badgeW / 2}
+                          y="-17"
+                          width={badgeW}
+                          height="34"
+                          rx="7"
+                          fill="#020617"
+                          stroke={preview.color || '#ef4444'}
+                          strokeWidth="1.5"
+                          opacity="0.92"
+                        />
+                        <text x="0" y="-3" fill={preview.color || '#ef4444'} fontSize="10" fontWeight="bold" textAnchor="middle">
+                          {labelText}
+                        </text>
+                        <text x="0" y="10" fill="#cbd5e1" fontSize="8.5" fontWeight="600" textAnchor="middle">
+                          {preview.authorName}
+                        </text>
+                      </g>
+                    </g>
+                  );
+                }
+
+                const relA = getHexCenter(preview.startX, preview.startY, hexSize);
+                const pA = { x: mapX + relA.x, y: mapY + relA.y };
+                const relB = getHexCenter(preview.endX ?? preview.startX, preview.endY ?? preview.startY, hexSize);
+                const pB = { x: mapX + relB.x, y: mapY + relB.y };
+                const distanceYards = getHexDistance(
+                  { col: preview.startX, row: preview.startY },
+                  { col: preview.endX ?? preview.startX, row: preview.endY ?? preview.startY }
+                );
+                const rangePenalty = getGurpsRangePenalty(distanceYards);
+                const midX = (pA.x + pB.x) / 2;
+                const midY = (pA.y + pB.y) / 2;
+                const labelText = `${distanceYards} yd (${rangePenalty >= 0 ? '0' : rangePenalty})`;
+                const badgeW = Math.max(140, Math.round(Math.max(labelText.length, preview.authorName.length) * 6.2) + 20);
+                return (
+                  <g key={`remote-line-${preview.clientId}`}>
+                    <line
+                      x1={pA.x}
+                      y1={pA.y}
+                      x2={pB.x}
+                      y2={pB.y}
+                      stroke={preview.color || '#f59e0b'}
+                      strokeWidth="2.5"
+                      strokeDasharray="6 4"
+                      markerEnd="url(#ruler-arrow)"
+                    />
+                    <circle cx={pA.x} cy={pA.y} r="4.5" fill={preview.color || '#f59e0b'} />
+                    <circle cx={pB.x} cy={pB.y} r="4.5" fill={preview.color || '#f59e0b'} />
+                    <g transform={`translate(${midX}, ${midY - 20})`}>
+                      <rect
+                        x={-badgeW / 2}
+                        y="-17"
+                        width={badgeW}
+                        height="34"
+                        rx="7"
+                        fill="#020617"
+                        stroke={preview.color || '#f59e0b'}
+                        strokeWidth="1.5"
+                        opacity="0.92"
+                      />
+                      <text x="0" y="-3" fill="#fbbf24" fontSize="10" fontWeight="bold" textAnchor="middle">
+                        {labelText}
+                      </text>
+                      <text x="0" y="10" fill="#cbd5e1" fontSize="8.5" fontWeight="600" textAnchor="middle">
+                        {preview.authorName}
+                      </text>
+                    </g>
+                  </g>
+                );
+              })}
             </g>
           )}
 

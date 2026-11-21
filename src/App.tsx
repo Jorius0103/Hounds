@@ -7,7 +7,7 @@ import { TopNav, ViewMode } from './components/TopNav';
 import { NpcListBar } from './components/NpcListBar';
 import { NpcDetailView } from './components/NpcDetailView';
 import { TacticalMapWorkspace } from './components/TacticalMap/TacticalMapWorkspace';
-import { TacticalState, DEFAULT_TACTICAL_STATE } from './types/tactical';
+import { TacticalState, DEFAULT_TACTICAL_STATE, TacticalRulerPreview } from './types/tactical';
 import { DamageCalculatorModal } from './components/DamageCalculatorModal';
 import { AvatarPickerModal } from './components/AvatarPickerModal';
 import { CombatManagerModal } from './components/CombatManagerModal';
@@ -1009,6 +1009,30 @@ export default function App() {
     broadcastSync(updatedCombats);
   };
 
+  // Broadcast efêmero para prévia de medição instantânea ("Para todos") — nunca grava no banco
+  const handleBroadcastRulerPreview = useCallback((preview: TacticalRulerPreview) => {
+    const clientId = onlineSyncService.getClientId();
+    const payload = {
+      type: 'RULER_PREVIEW' as const,
+      clientId,
+      sourceId: clientId,
+      preview: { ...preview, clientId },
+      timestamp: Date.now(),
+    };
+    try {
+      broadcastChannelRef.current?.postMessage(payload);
+    } catch {}
+    try {
+      onlineSyncService.sendPayloadImmediate(payload as any);
+    } catch {}
+    try {
+      const bus = (window as any).parent?.hubMesaBus;
+      if (bus && typeof bus.publish === 'function') {
+        bus.publish(JSON.stringify(payload));
+      }
+    } catch {}
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
@@ -1227,6 +1251,10 @@ export default function App() {
       if ((payload as any).userName) markUserOnline((payload as any).userName);
       if ((payload as any).authorName) markUserOnline((payload as any).authorName);
       if ((payload as any).type === 'PRESENCE_PING') return;
+      if ((payload as any).type === 'RULER_PREVIEW' && (payload as any).preview) {
+        window.dispatchEvent(new CustomEvent('hounds_ruler_preview', { detail: (payload as any).preview }));
+        return;
+      }
       if ((payload as any).type?.startsWith('AUDIO_STREAM_') || (payload as any).type?.startsWith('RTC_')) {
         hubAudio().handleSignalMessage(payload);
         return;
@@ -2014,6 +2042,10 @@ export default function App() {
         if (event.data?.authorName) markUserOnline(event.data.authorName);
         if (event.data?.type === 'PRESENCE_PING') return;
         if (event.data?.sourceId === onlineSyncService.getClientId()) return;
+        if (event.data?.type === 'RULER_PREVIEW' && event.data?.preview) {
+          window.dispatchEvent(new CustomEvent('hounds_ruler_preview', { detail: event.data.preview }));
+          return;
+        }
 
         if (event.data?.type === 'SYNC_DICE_ROLL' && event.data?.rollData) {
           const rollObj = event.data.rollData;
@@ -5611,6 +5643,8 @@ export default function App() {
                 onSetAllPlayerPermissions={handleSetAllPlayerPermissions}
                 isLogCollapsed={isLogCollapsed}
                 onToggleLogCollapse={handleToggleLogCollapse}
+                onBroadcastRulerPreview={handleBroadcastRulerPreview}
+                localClientId={onlineSyncService.getClientId()}
               />
             </div>
 
