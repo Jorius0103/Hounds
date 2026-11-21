@@ -374,7 +374,7 @@ export const CombatManagerModal: React.FC<CombatManagerModalProps> = ({
   };
 
   const handleExportSnapshot = (snap: CombatSnapshot) => {
-    const safeName = snap.name.toLowerCase().replace(/[^a-z0-9]/gi, '-').slice(0, 30);
+    const safeName = (snap.name || 'backup').toLowerCase().replace(/[^a-z0-9]/gi, '-').slice(0, 30);
     downloadJson(
       {
         app: 'Hounds GURPS',

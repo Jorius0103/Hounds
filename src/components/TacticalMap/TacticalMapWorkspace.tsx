@@ -37,6 +37,8 @@ import {
   getGurpsRangePenalty,
   getTargetArcRelationship,
   isPointInPolygon,
+  clampHexSize,
+  clampZoom,
   HexCoord,
   Point,
 } from '../../utils/tacticalMath';
@@ -657,15 +659,31 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       const saved = localStorage.getItem('hounds_tactical_viewport_v1');
       if (saved) {
         const p = JSON.parse(saved);
-        if (typeof p.panX === 'number' && typeof p.panY === 'number' && typeof p.zoom === 'number') {
-          return p;
+        if (
+          p &&
+          typeof p.panX === 'number' &&
+          Number.isFinite(p.panX) &&
+          typeof p.panY === 'number' &&
+          Number.isFinite(p.panY)
+        ) {
+          return {
+            panX: p.panX,
+            panY: p.panY,
+            zoom: clampZoom(p.zoom, 1),
+          };
         }
       }
     } catch {}
     return {
-      panX: typeof tacticalState?.panX === 'number' ? tacticalState.panX : DEFAULT_PAN_X,
-      panY: typeof tacticalState?.panY === 'number' ? tacticalState.panY : DEFAULT_PAN_Y,
-      zoom: typeof tacticalState?.zoom === 'number' ? tacticalState.zoom : 1,
+      panX:
+        typeof tacticalState?.panX === 'number' && Number.isFinite(tacticalState.panX)
+          ? tacticalState.panX
+          : DEFAULT_PAN_X,
+      panY:
+        typeof tacticalState?.panY === 'number' && Number.isFinite(tacticalState.panY)
+          ? tacticalState.panY
+          : DEFAULT_PAN_Y,
+      zoom: clampZoom(tacticalState?.zoom, 1),
     };
   });
 
@@ -691,10 +709,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
   const updateViewport = useCallback((next: { panX?: number; panY?: number; zoom?: number }) => {
     setViewport((prev) => {
+      const nextPanX =
+        next.panX !== undefined && Number.isFinite(next.panX) ? next.panX : prev.panX;
+      const nextPanY =
+        next.panY !== undefined && Number.isFinite(next.panY) ? next.panY : prev.panY;
+      const nextZoom =
+        next.zoom !== undefined ? clampZoom(next.zoom, prev.zoom) : clampZoom(prev.zoom, 1);
       const updated = {
-        panX: next.panX !== undefined ? next.panX : prev.panX,
-        panY: next.panY !== undefined ? next.panY : prev.panY,
-        zoom: next.zoom !== undefined ? next.zoom : prev.zoom,
+        panX: nextPanX,
+        panY: nextPanY,
+        zoom: nextZoom,
       };
       latestViewportRef.current = updated;
       if (viewportStorageTimerRef.current) clearTimeout(viewportStorageTimerRef.current);
@@ -721,13 +745,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   // Imagem base entra com o tamanho e proporção 100% originais (sem distorção de escala)
   const mapX = 0;
   const mapY = 0;
-  const baseW = tacticalState.mapImageWidth || 2000;
-  const baseH = tacticalState.mapImageHeight || 1400;
+  const baseW =
+    typeof tacticalState.mapImageWidth === 'number' &&
+    Number.isFinite(tacticalState.mapImageWidth) &&
+    tacticalState.mapImageWidth > 0
+      ? tacticalState.mapImageWidth
+      : 2000;
+  const baseH =
+    typeof tacticalState.mapImageHeight === 'number' &&
+    Number.isFinite(tacticalState.mapImageHeight) &&
+    tacticalState.mapImageHeight > 0
+      ? tacticalState.mapImageHeight
+      : 1400;
   const mapW = baseW;
   const mapH = baseH;
 
   // Dimensões do grid hexagonal calibradas exatamente para o tamanho da imagem (nem falta nem sobra)
-  const hexSize = tacticalState?.hexSize || 38;
+  const hexSize = clampHexSize(tacticalState?.hexSize);
   const hexWidth = Math.sqrt(3) * hexSize;
   const rowSpacing = 1.5 * hexSize;
   const dynamicCols = Math.ceil(mapW / hexWidth) + 2;
@@ -2133,7 +2167,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
 
   const fogMaskPolygonPoints = useMemo(() => {
     return fogMask.ops.map((item) =>
-      item.shape === 'polygon' && item.points.length >= 3
+      item.shape === 'polygon' && Array.isArray(item.points) && item.points.length >= 3
         ? item.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')
         : ''
     );
@@ -3030,7 +3064,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     />
                   );
                 }
-                if (item.shape === 'polygon' && item.points.length >= 3) {
+                if (item.shape === 'polygon' && Array.isArray(item.points) && item.points.length >= 3) {
                   return (
                     <polygon
                       key={`fog-op-${idx}`}
@@ -3065,63 +3099,64 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           {(() => {
             const isMapActive = activeLayer === 'map';
 
+            const rot = (((tacticalState.mapRotation || 0) % 360) + 360) % 360;
+            let bgTransform: string | undefined =
+              mapX !== 0 || mapY !== 0 ? `translate(${mapX}, ${mapY})` : undefined;
+            let bgW = mapW;
+            let bgH = mapH;
+
+            if (rot === 90) {
+              bgTransform = `translate(${mapX + mapW}, ${mapY}) rotate(90)`;
+              bgW = mapH;
+              bgH = mapW;
+            } else if (rot === 180) {
+              bgTransform = `translate(${mapX + mapW}, ${mapY + mapH}) rotate(180)`;
+              bgW = mapW;
+              bgH = mapH;
+            } else if (rot === 270) {
+              bgTransform = `translate(${mapX}, ${mapY + mapH}) rotate(270)`;
+              bgW = mapH;
+              bgH = mapW;
+            }
+
             return (
               <g id="tactical-map-layer">
-                {mapBackgroundSrc ? (() => {
-                  const rot = (tacticalState.mapRotation || 0) % 360;
-                  let imgTransform: string | undefined = undefined;
-                  let imgW = mapW;
-                  let imgH = mapH;
-
-                  if (rot === 90) {
-                    imgTransform = `translate(${mapW}, 0) rotate(90)`;
-                    imgW = mapH;
-                    imgH = mapW;
-                  } else if (rot === 180) {
-                    imgTransform = `translate(${mapW}, ${mapH}) rotate(180)`;
-                    imgW = mapW;
-                    imgH = mapH;
-                  } else if (rot === 270) {
-                    imgTransform = `translate(0, ${mapH}) rotate(270)`;
-                    imgW = mapH;
-                    imgH = mapW;
-                  }
-
-                  return (
-                    <g transform={imgTransform}>
-                      <image
-                        id="map-background"
-                        href={mapBackgroundSrc}
-                        x={mapX}
-                        y={mapY}
-                        width={imgW}
-                        height={imgH}
-                        preserveAspectRatio="xMidYMid meet"
-                        opacity={isMapActive ? "1" : "0.95"}
-                        onDragStart={(e) => e.preventDefault()}
-                        style={{ userSelect: 'none', pointerEvents: isMapActive ? 'auto' : 'none' }}
-                        onLoad={(e) => {
-                          const img = e.currentTarget as unknown as HTMLImageElement;
-                          if (img.naturalWidth && img.naturalHeight) {
-                            if (!tacticalState.mapImageWidth || !tacticalState.mapImageHeight) {
-                              onUpdateTacticalState({
-                                mapImageWidth: img.naturalWidth,
-                                mapImageHeight: img.naturalHeight,
-                              });
-                            }
+                {mapBackgroundSrc ? (
+                  <g transform={bgTransform}>
+                    <image
+                      id="map-background"
+                      href={mapBackgroundSrc}
+                      x={0}
+                      y={0}
+                      width={bgW}
+                      height={bgH}
+                      preserveAspectRatio="xMidYMid meet"
+                      opacity={isMapActive ? "1" : "0.95"}
+                      onDragStart={(e) => e.preventDefault()}
+                      style={{ userSelect: 'none', pointerEvents: isMapActive ? 'auto' : 'none' }}
+                      onLoad={(e) => {
+                        const img = e.currentTarget as unknown as HTMLImageElement;
+                        if (img.naturalWidth && img.naturalHeight) {
+                          if (!tacticalState.mapImageWidth || !tacticalState.mapImageHeight) {
+                            onUpdateTacticalState({
+                              mapImageWidth: img.naturalWidth,
+                              mapImageHeight: img.naturalHeight,
+                            });
                           }
-                        }}
-                      />
-                    </g>
-                  );
-                })() : (
-                  <TacticalIllustrativePresets
-                    backgroundKey={tacticalState.backgroundKey}
-                    x={mapX}
-                    y={mapY}
-                    width={mapW}
-                    height={mapH}
-                  />
+                        }
+                      }}
+                    />
+                  </g>
+                ) : (
+                  <g transform={bgTransform}>
+                    <TacticalIllustrativePresets
+                      backgroundKey={tacticalState.backgroundKey}
+                      x={0}
+                      y={0}
+                      width={bgW}
+                      height={bgH}
+                    />
+                  </g>
                 )}
 
                 {/* Contorno de Calibração da Camada do Mapa (Roll20 Map Layer Outline) */}
@@ -4044,8 +4079,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const posX = mapX + (isDraggingThis ? dragNotePos.x : note.x);
                 const posY = mapY + (isDraggingThis ? dragNotePos.y : note.y);
                 const isSelected = selectedNoteId === note.id;
+                const safeTitle = typeof note.title === 'string' ? note.title : '';
                 const displayTitle =
-                  note.title.length > 26 ? `${note.title.slice(0, 25)}…` : note.title;
+                  safeTitle.length > 26 ? `${safeTitle.slice(0, 25)}…` : safeTitle;
                 const pillWidth = Math.max(46, Math.min(168, Math.ceil(displayTitle.length * 5.2) + 20));
                 return (
                   <g
@@ -4057,7 +4093,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     className={isDraggingThis ? 'cursor-grabbing' : 'cursor-pointer'}
                     opacity={isSelected || isDraggingThis ? 1 : 0.88}
                   >
-                    <title>{`${note.title} (Clique para ler/editar • Arraste para mover)`}</title>
+                    <title>{`${safeTitle} (Clique para ler/editar • Arraste para mover)`}</title>
                     {/* Pino discreto de ancoragem */}
                     <circle
                       cx="0"
@@ -4743,15 +4779,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 <div className="flex items-start justify-between gap-2 pb-1.5 border-b border-slate-800">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <StickyNote size={13} className="text-purple-400 shrink-0" />
-                    <h4 className="text-xs font-bold text-purple-100 truncate" title={activeNote.title}>
-                      {activeNote.title}
+                    <h4 className="text-xs font-bold text-purple-100 truncate" title={activeNote.title || ''}>
+                      {activeNote.title || ''}
                     </h4>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
                       onClick={() => {
-                        setEditNoteTitle(activeNote.title);
+                        setEditNoteTitle(activeNote.title || '');
                         setEditNoteContent(activeNote.content || '');
                         setIsEditingNote(true);
                       }}

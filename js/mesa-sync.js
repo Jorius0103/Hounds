@@ -66,7 +66,8 @@ var MesaSync = (function () {
     return c.id === 'combat-vazio' || nm.indexOf('vazio') !== -1 || nm === 'sem combate';
   }
   function ensureSemCombateFirst(combats) {
-    if (!Array.isArray(combats) || combats.length === 0) return combats;
+    if (!Array.isArray(combats)) return [];
+    if (combats.length === 0) return combats;
     var empty = null, others = [];
     for (var i = 0; i < combats.length; i++) {
       var c = combats[i];

@@ -193,14 +193,6 @@ export function normalizeLocationKey(name: string): string {
     return 'hand';
   }
 
-  // Feet / Foot
-  const isFoot = lower.includes('foot') || lower.includes('feet') || lower.includes('pé') || lower.includes('pe');
-  if (isFoot) {
-    if (lower.includes('left') || lower.includes('esquerd')) return 'left_foot';
-    if (lower.includes('right') || lower.includes('direit')) return 'right_foot';
-    return 'feet';
-  }
-
   // Forearms (antes de Arm pois contém 'arm')
   const isForearm = lower.includes('forearm') || lower.includes('antebraço') || lower.includes('antebraco');
   if (isForearm) {
@@ -225,12 +217,24 @@ export function normalizeLocationKey(name: string): string {
     return 'arm';
   }
 
-  // Legs
+  // Legs (antes de Foot pois 'perna' contém 'pe')
   const isLeg = lower.includes('leg') || lower.includes('perna');
   if (isLeg) {
     if (lower.includes('left') || lower.includes('esquerd')) return 'left_leg';
     if (lower.includes('right') || lower.includes('direit')) return 'right_leg';
     return 'leg';
+  }
+
+  // Feet / Foot
+  const isFoot =
+    lower.includes('foot') ||
+    lower.includes('feet') ||
+    lower.includes('pé') ||
+    /\bpes?\b/.test(lower);
+  if (isFoot) {
+    if (lower.includes('left') || lower.includes('esquerd')) return 'left_foot';
+    if (lower.includes('right') || lower.includes('direit')) return 'right_foot';
+    return 'feet';
   }
 
   return lower;
@@ -748,7 +752,8 @@ export function getCrippledBodyParts(npc: NPC): CrippledBodyPartInfo[] {
 }
 
 export function getBaseDamageMultiplier(type: string): number {
-  switch (type) {
+  const dt = (type || '').toLowerCase().trim();
+  switch (dt) {
     case 'corte':
     case 'cutting':
       return 1.5;
@@ -835,11 +840,13 @@ export function calculateLocationDamage(params: {
     hpMax,
   } = params;
 
+  const normDamageType = (damageType || '').toLowerCase().trim();
+
   if (isNoLocation) {
     const defaultMult =
-      customMultiplier !== undefined && (damageType === 'personalizado' || damageType === 'custom')
+      customMultiplier !== undefined && (normDamageType === 'personalizado' || normDamageType === 'custom')
         ? customMultiplier
-        : getBaseDamageMultiplier(damageType);
+        : getBaseDamageMultiplier(normDamageType);
     const finalDamage = Math.floor(rawDamage * defaultMult);
     return {
       armorDr: 0,
@@ -870,14 +877,14 @@ export function calculateLocationDamage(params: {
   const penetratingDamage = Math.max(0, rawDamage - totalDr);
 
   // Multiplicador padrão
-  let woundMultiplier = getBaseDamageMultiplier(damageType);
+  let woundMultiplier = getBaseDamageMultiplier(normDamageType);
 
   let requiresEyeConfirmation = false;
   let eyeWarningMessage: string | undefined = undefined;
   let torsoVitalsNotice: string | undefined = undefined;
 
   if (normKey === 'torso') {
-    if (isTorsoVitalsEligibleDamageType(damageType)) {
+    if (isTorsoVitalsEligibleDamageType(normDamageType)) {
       torsoVitalsNotice =
         'Sempre que um ataque dos tipos Contusão, Perfuração ou Queima / fogo: Role 1d, se o resultado for 1, o ataque atinge o Vitals.';
     }
@@ -887,20 +894,20 @@ export function calculateLocationDamage(params: {
     appliedRules.push('Cabeça: Qualquer dano vira x4');
   } else if (normKey === 'neck') {
     // Regra Neck: "Contusão vira 1,5, corte vai de 1,5 para 2.0"
-    if (damageType === 'contusao' || damageType === 'crushing') {
+    if (normDamageType === 'contusao' || normDamageType === 'crushing') {
       woundMultiplier = 1.5;
       appliedRules.push('Pescoço: Contusão vira x1.5');
-    } else if (damageType === 'corte' || damageType === 'cutting') {
+    } else if (normDamageType === 'corte' || normDamageType === 'cutting') {
       woundMultiplier = 2.0;
       appliedRules.push('Pescoço: Corte vai de 1.5 para x2.0');
     }
   } else if (normKey === 'vitals') {
     // Regra Vitals: "Empalamento e perfuração vira x3"
     if (
-      damageType === 'empalamento' ||
-      damageType === 'impaling' ||
-      damageType.startsWith('perfurante') ||
-      damageType.startsWith('piercing')
+      normDamageType === 'empalamento' ||
+      normDamageType === 'impaling' ||
+      normDamageType.startsWith('perfurante') ||
+      normDamageType.startsWith('piercing')
     ) {
       woundMultiplier = 3.0;
       appliedRules.push('Órgãos Vitais: Empalamento e perfuração vira x3');
@@ -933,14 +940,14 @@ export function calculateLocationDamage(params: {
   ) {
     // Regra Membros/Extremidades: "Perfurante, perfurante grande e empalamento vira x1"
     if (
-      damageType === 'empalamento' ||
-      damageType === 'impaling' ||
-      damageType === 'perfurante' ||
-      damageType === 'perfurante_grande' ||
-      damageType === 'piercing' ||
-      damageType === 'large_piercing' ||
-      damageType.startsWith('perfurante_grande') ||
-      damageType.startsWith('large_piercing')
+      normDamageType === 'empalamento' ||
+      normDamageType === 'impaling' ||
+      normDamageType === 'perfurante' ||
+      normDamageType === 'perfurante_grande' ||
+      normDamageType === 'piercing' ||
+      normDamageType === 'large_piercing' ||
+      normDamageType.startsWith('perfurante_grande') ||
+      normDamageType.startsWith('large_piercing')
     ) {
       woundMultiplier = 1.0;
       appliedRules.push('Membro/Extremidade: Empalamento / Perfuração vira x1');
@@ -948,15 +955,15 @@ export function calculateLocationDamage(params: {
   } else if (normKey === 'eye') {
     // Regra Eye: "Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia"
     const isImpalingOrPiercing =
-      damageType === 'empalamento' ||
-      damageType === 'impaling' ||
-      damageType.startsWith('perfurante') ||
-      damageType.startsWith('piercing') ||
-      damageType === 'magia' ||
-      damageType === 'queima' ||
-      damageType === 'burning';
+      normDamageType === 'empalamento' ||
+      normDamageType === 'impaling' ||
+      normDamageType.startsWith('perfurante') ||
+      normDamageType.startsWith('piercing') ||
+      normDamageType === 'magia' ||
+      normDamageType === 'queima' ||
+      normDamageType === 'burning';
 
-    if (!isImpalingOrPiercing && damageType) {
+    if (!isImpalingOrPiercing && normDamageType) {
       requiresEyeConfirmation = true;
       eyeWarningMessage = 'Só consegue acertar o olho danos de Empalamento, Perfurante ou Magia. Confirme antes de registrar.';
     }
@@ -965,7 +972,7 @@ export function calculateLocationDamage(params: {
     appliedRules.push('Olho: Dano atinge o cérebro (x4)');
   }
 
-  if (customMultiplier !== undefined && (damageType === 'personalizado' || damageType === 'custom')) {
+  if (customMultiplier !== undefined && (normDamageType === 'personalizado' || normDamageType === 'custom')) {
     woundMultiplier = customMultiplier;
     appliedRules.push(`Multiplicador Personalizado: x${customMultiplier}`);
   }
@@ -1225,6 +1232,14 @@ export function getFpWarnings(current: number, max: number): string[] {
 }
 
 export function getHpStatus(current: number, max: number): { label: string; color: string; badgeBg: string; warningText?: string; warningTexts: string[] } {
+  if (!Number.isFinite(max) || max <= 0) {
+    return {
+      label: 'Não configurado',
+      color: 'text-slate-400',
+      badgeBg: 'bg-slate-900/60 border-slate-700 text-slate-300',
+      warningTexts: [],
+    };
+  }
   const warningTexts = getHpWarnings(current, max);
   if (current <= -5 * max) {
     return { label: 'Morto (-5x Máx)', color: 'text-red-500', badgeBg: 'bg-red-950/80 border-red-800 text-red-300', warningText: 'Morte instantânea', warningTexts };
@@ -1245,6 +1260,13 @@ export function getHpStatus(current: number, max: number): { label: string; colo
 }
 
 export function getFpStatus(current: number, max: number): { label: string; color: string; warningText?: string; warningTexts: string[] } {
+  if (!Number.isFinite(max) || max <= 0) {
+    return {
+      label: 'Não configurado',
+      color: 'text-slate-400',
+      warningTexts: [],
+    };
+  }
   const warningTexts = getFpWarnings(current, max);
   if (current <= -1 * max) {
     return { label: 'Inconsciente (Exaustão)', color: 'text-red-400', warningText: 'Incapacitado por estafa extrema', warningTexts };

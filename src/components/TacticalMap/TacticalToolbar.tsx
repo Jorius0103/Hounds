@@ -32,7 +32,7 @@ import {
   FileImage,
   StickyNote,
 } from 'lucide-react';
-import { rotateTacticalState90 } from '../../utils/tacticalMath';
+import { rotateTacticalState90, clampHexSize } from '../../utils/tacticalMath';
 import { UserAccount } from '../../types/rpg';
 import { ConfirmModal } from '../ConfirmModal';
 
@@ -199,11 +199,12 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = React.memo(({
   };
 
   const scheduleHexSizeUpdate = (newHex: number) => {
-    setDraftHexSize(newHex);
+    const safeHex = clampHexSize(newHex);
+    setDraftHexSize(safeHex);
     if (hexSizeTimerRef.current) clearTimeout(hexSizeTimerRef.current);
     hexSizeTimerRef.current = setTimeout(() => {
       hexSizeTimerRef.current = null;
-      onUpdateTacticalState({ hexSize: newHex });
+      onUpdateTacticalState({ hexSize: safeHex });
     }, 120);
   };
 
@@ -212,7 +213,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = React.memo(({
       clearTimeout(hexSizeTimerRef.current);
       hexSizeTimerRef.current = null;
       if (draftHexSize !== null) {
-        onUpdateTacticalState({ hexSize: draftHexSize });
+        onUpdateTacticalState({ hexSize: clampHexSize(draftHexSize) });
       }
     }
   };

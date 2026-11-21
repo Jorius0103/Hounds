@@ -1051,8 +1051,17 @@ export function doesArmorFitLocation(armorLocStr?: string, bodyPartLoc?: string)
   const aLoc = armorLocStr.toLowerCase().trim();
   const bLoc = bodyPartLoc.toLowerCase().trim();
 
-  // 'all', 'any', Full Suit e Body, Limbs cobrem tudo
-  if (aLoc === 'all' || aLoc === 'any' || aLoc === 'todos' || aLoc === 'todas') return true;
+  // 'all', 'any', 'qualquer', Full Suit e Body, Limbs cobrem tudo
+  if (
+    aLoc === 'all' ||
+    aLoc === 'any' ||
+    aLoc === 'todos' ||
+    aLoc === 'todas' ||
+    aLoc.includes('qualquer') ||
+    /\bany\b/.test(aLoc)
+  ) {
+    return true;
+  }
   if (aLoc.includes('full suit') || aLoc.includes('full barding')) return true;
   if (aLoc.includes('body, limbs')) {
     return !bLoc.includes('eye') && !bLoc.includes('head') && !bLoc.includes('face');
@@ -1060,53 +1069,156 @@ export function doesArmorFitLocation(armorLocStr?: string, bodyPartLoc?: string)
 
   // Cabeça e Face
   if (bLoc.includes('head') || bLoc.includes('cabeça') || bLoc.includes('cabeca')) {
-    return aLoc.includes('skull') || aLoc.includes('head') || aLoc.includes('helmet');
+    return (
+      aLoc.includes('skull') ||
+      aLoc.includes('head') ||
+      aLoc.includes('helmet') ||
+      aLoc.includes('cabeça') ||
+      aLoc.includes('cabeca') ||
+      aLoc.includes('crânio') ||
+      aLoc.includes('cranio') ||
+      aLoc.includes('elmo')
+    );
   }
   if (bLoc.includes('eye') || bLoc.includes('olho')) {
-    return aLoc.includes('eyes') || aLoc.includes('visor') || aLoc.includes('face') || aLoc.includes('mask');
+    return (
+      aLoc.includes('eyes') ||
+      aLoc.includes('visor') ||
+      aLoc.includes('face') ||
+      aLoc.includes('mask') ||
+      aLoc.includes('olho') ||
+      aLoc.includes('rosto') ||
+      aLoc.includes('viseira')
+    );
   }
   if (bLoc.includes('face') || bLoc.includes('rosto')) {
-    return aLoc.includes('face') || aLoc.includes('mask') || aLoc.includes('helmet') || aLoc.includes('head');
+    return (
+      aLoc.includes('face') ||
+      aLoc.includes('mask') ||
+      aLoc.includes('helmet') ||
+      aLoc.includes('head') ||
+      aLoc.includes('rosto') ||
+      aLoc.includes('cabeça') ||
+      aLoc.includes('cabeca') ||
+      aLoc.includes('elmo')
+    );
   }
   if (bLoc.includes('neck') || bLoc.includes('pescoço') || bLoc.includes('pescoco')) {
-    return aLoc.includes('neck') || aLoc.includes('coif') || aLoc.includes('greathelm');
+    return (
+      aLoc.includes('neck') ||
+      aLoc.includes('coif') ||
+      aLoc.includes('greathelm') ||
+      aLoc.includes('pescoço') ||
+      aLoc.includes('pescoco')
+    );
   }
 
   // Tronco, Virilha, Vitais
   if (bLoc.includes('torso') || bLoc.includes('tronco')) {
-    return aLoc.includes('torso') || aLoc.includes('vest') || aLoc.includes('breastplate') || aLoc.includes('corselet');
+    return (
+      aLoc.includes('torso') ||
+      aLoc.includes('tronco') ||
+      aLoc.includes('vest') ||
+      aLoc.includes('breastplate') ||
+      aLoc.includes('corselet') ||
+      aLoc.includes('peitoral') ||
+      aLoc.includes('colete')
+    );
   }
   if (bLoc.includes('vitals') || bLoc.includes('vitais')) {
-    return aLoc.includes('torso') || aLoc.includes('vest') || aLoc.includes('breastplate') || aLoc.includes('corselet');
+    return (
+      aLoc.includes('torso') ||
+      aLoc.includes('tronco') ||
+      aLoc.includes('vest') ||
+      aLoc.includes('breastplate') ||
+      aLoc.includes('corselet') ||
+      aLoc.includes('peitoral') ||
+      aLoc.includes('colete')
+    );
   }
   if (bLoc.includes('groin') || bLoc.includes('virilha')) {
-    return aLoc.includes('groin') || aLoc.includes('loincloth') || aLoc.includes('skirt') || aLoc.includes('pants');
+    return (
+      aLoc.includes('groin') ||
+      aLoc.includes('virilha') ||
+      aLoc.includes('loincloth') ||
+      aLoc.includes('skirt') ||
+      aLoc.includes('pants')
+    );
   }
 
   // Braços e Antebraços
   if (bLoc.includes('forearm') || bLoc.includes('antebraço') || bLoc.includes('antebraco')) {
-    return aLoc.includes('arms') || aLoc.includes('sleeves') || aLoc.includes('armbands') || aLoc.includes('bracers');
+    return (
+      aLoc.includes('arms') ||
+      aLoc.includes('braço') ||
+      aLoc.includes('braco') ||
+      aLoc.includes('antebraço') ||
+      aLoc.includes('antebraco') ||
+      aLoc.includes('sleeves') ||
+      aLoc.includes('armbands') ||
+      aLoc.includes('bracers')
+    );
   }
   if (bLoc.includes('arm') || bLoc.includes('braço') || bLoc.includes('braco')) {
-    return aLoc.includes('arms') || aLoc.includes('sleeves') || aLoc.includes('jacket');
+    return (
+      aLoc.includes('arms') ||
+      aLoc.includes('braço') ||
+      aLoc.includes('braco') ||
+      aLoc.includes('sleeves') ||
+      aLoc.includes('jacket')
+    );
   }
 
   // Mãos
   if (bLoc.includes('hand') || bLoc.includes('mão') || bLoc.includes('mao')) {
-    return aLoc.includes('hands') || aLoc.includes('gloves') || aLoc.includes('gauntlets');
+    return (
+      aLoc.includes('hands') ||
+      aLoc.includes('mão') ||
+      aLoc.includes('mao') ||
+      aLoc.includes('gloves') ||
+      aLoc.includes('gauntlets') ||
+      aLoc.includes('luva') ||
+      aLoc.includes('manopla')
+    );
   }
 
   // Pernas e Canelas
   if (bLoc.includes('shin') || bLoc.includes('canela')) {
-    return aLoc.includes('legs') || aLoc.includes('greaves') || aLoc.includes('leggings') || aLoc.includes('pants');
+    return (
+      aLoc.includes('legs') ||
+      aLoc.includes('perna') ||
+      aLoc.includes('canela') ||
+      aLoc.includes('greaves') ||
+      aLoc.includes('greva') ||
+      aLoc.includes('leggings') ||
+      aLoc.includes('pants')
+    );
   }
   if (bLoc.includes('leg') || bLoc.includes('perna')) {
-    return aLoc.includes('legs') || aLoc.includes('greaves') || aLoc.includes('leggings') || aLoc.includes('pants');
+    return (
+      aLoc.includes('legs') ||
+      aLoc.includes('perna') ||
+      aLoc.includes('greaves') ||
+      aLoc.includes('greva') ||
+      aLoc.includes('leggings') ||
+      aLoc.includes('pants')
+    );
   }
 
   // Pés
-  if (bLoc.includes('foot') || bLoc.includes('feet') || bLoc.includes('pé') || bLoc.includes('pe')) {
-    return aLoc.includes('feet') || aLoc.includes('boots') || aLoc.includes('shoes') || aLoc.includes('sollerets') || aLoc.includes('sandals');
+  if (bLoc.includes('foot') || bLoc.includes('feet') || bLoc.includes('pé') || /\bpes?\b/.test(bLoc)) {
+    return (
+      aLoc.includes('feet') ||
+      aLoc.includes('foot') ||
+      aLoc.includes('pé') ||
+      /\bpes?\b/.test(aLoc) ||
+      aLoc.includes('boots') ||
+      aLoc.includes('bota') ||
+      aLoc.includes('shoes') ||
+      aLoc.includes('sapato') ||
+      aLoc.includes('sollerets') ||
+      aLoc.includes('sandals')
+    );
   }
 
   return false;

@@ -8,6 +8,7 @@ import { NpcListBar } from './components/NpcListBar';
 import { NpcDetailView } from './components/NpcDetailView';
 import { TacticalMapWorkspace } from './components/TacticalMap/TacticalMapWorkspace';
 import { TacticalState, DEFAULT_TACTICAL_STATE, TacticalRulerPreview } from './types/tactical';
+import { clampHexSize, clampZoom } from './utils/tacticalMath';
 import { DamageCalculatorModal } from './components/DamageCalculatorModal';
 import { AvatarPickerModal } from './components/AvatarPickerModal';
 import { CombatManagerModal } from './components/CombatManagerModal';
@@ -945,9 +946,16 @@ export default function App() {
     const baseCombats = stateRef.current.combats.length > 0 ? stateRef.current.combats : combats;
     if (!currentActiveId || !baseCombats.some((c) => c.id === currentActiveId)) return;
     const current = activeTacticalStateRef.current;
+    const sanitizedUpdated: Partial<TacticalState> = { ...updated };
+    if (sanitizedUpdated.hexSize !== undefined) {
+      sanitizedUpdated.hexSize = clampHexSize(sanitizedUpdated.hexSize);
+    }
+    if (sanitizedUpdated.zoom !== undefined) {
+      sanitizedUpdated.zoom = clampZoom(sanitizedUpdated.zoom);
+    }
     const merged: TacticalState = {
       ...current,
-      ...updated,
+      ...sanitizedUpdated,
     };
     activeTacticalStateRef.current = merged;
     const updatedCombats = baseCombats.map((c) =>
@@ -1417,7 +1425,7 @@ export default function App() {
           prev.map((c) => ({
             ...c,
             events: [],
-            npcs: c.npcs.map((n) => ({ ...n, history: [], updatedAt: clearTime })),
+            npcs: (Array.isArray(c.npcs) ? c.npcs : []).map((n) => ({ ...n, history: [], updatedAt: clearTime })),
           }))
         );
         Object.keys(combatsPoolRef.current).forEach((cid) => {
@@ -2192,7 +2200,7 @@ export default function App() {
             prev.map((c) => ({
               ...c,
               events: [],
-              npcs: c.npcs.map((n) => ({ ...n, history: [], updatedAt: clearTime })),
+              npcs: (Array.isArray(c.npcs) ? c.npcs : []).map((n) => ({ ...n, history: [], updatedAt: clearTime })),
             }))
           );
           Object.keys(combatsPoolRef.current).forEach((cid) => {
@@ -3667,10 +3675,11 @@ export default function App() {
   // Weapon Modal Handlers
   const handleSaveWeapon = (savedWeapon: Weapon) => {
     if (!selectedNpc) return;
-    const exists = selectedNpc.weapons.some((w: Weapon) => w.id === savedWeapon.id);
+    const currentWeapons = Array.isArray(selectedNpc.weapons) ? selectedNpc.weapons : [];
+    const exists = currentWeapons.some((w: Weapon) => w.id === savedWeapon.id);
     const updatedWeapons = exists
-      ? selectedNpc.weapons.map((w: Weapon) => (w.id === savedWeapon.id ? savedWeapon : w))
-      : [...selectedNpc.weapons, savedWeapon];
+      ? currentWeapons.map((w: Weapon) => (w.id === savedWeapon.id ? savedWeapon : w))
+      : [...currentWeapons, savedWeapon];
     handleUpdateNpc({
       ...selectedNpc,
       weapons: updatedWeapons,
@@ -3723,7 +3732,7 @@ export default function App() {
 
     const updatedCombats = combats.map((c) => ({
       ...c,
-      npcs: c.npcs.map((n) => ({
+      npcs: (Array.isArray(c.npcs) ? c.npcs : []).map((n) => ({
         ...n,
         statusConditions: (n.statusConditions || []).filter((id) => id !== conditionId),
       })),
@@ -4112,7 +4121,7 @@ export default function App() {
         if (c.id !== activeCombat.id) return c;
         return {
           ...c,
-          npcs: c.npcs.map((n) => {
+          npcs: (Array.isArray(c.npcs) ? c.npcs : []).map((n) => {
             if (n.id !== npcId) return n;
             const isHeal = finalDamage < 0 || entryWithId.type === 'heal';
             let newHp: number;
@@ -4148,7 +4157,7 @@ export default function App() {
               armorLocations: updatedLocations,
               armorKits: updatedKits,
               bodyPartDamageOverrides: updateOverridesForHeal(n.bodyPartDamageOverrides),
-              history: [effectiveLogEntry, ...n.history],
+              history: [effectiveLogEntry, ...(Array.isArray(n.history) ? n.history : [])],
               updatedAt: now,
             };
             return updatedNpc;
@@ -4276,7 +4285,7 @@ export default function App() {
           fpCurrent: newFp,
           extraItems: nextExtraItems,
           activeSpells: nextActiveSpells,
-          history: [effectiveLogEntry, ...n.history],
+          history: [effectiveLogEntry, ...(Array.isArray(n.history) ? n.history : [])],
           updatedAt: now,
         };
         return updated;
@@ -4502,7 +4511,7 @@ export default function App() {
         if (c.id !== activeCombat.id) return c;
         return {
           ...c,
-          npcs: c.npcs.map((n) => {
+          npcs: (Array.isArray(c.npcs) ? c.npcs : []).map((n) => {
             if (n.id !== npcId) return n;
             const currentItems = n.extraItems || [];
             const updatedItems = currentItems.map((it) => {
@@ -4724,7 +4733,7 @@ export default function App() {
     const updatedCombats = combats.map((c) => ({
       ...c,
       events: [],
-      npcs: c.npcs.map((n) => ({ ...n, history: [], updatedAt: now })),
+      npcs: (Array.isArray(c.npcs) ? c.npcs : []).map((n) => ({ ...n, history: [], updatedAt: now })),
     }));
     const updatedPlayers = players.map((p) => ({
       ...p,
@@ -5350,7 +5359,7 @@ export default function App() {
       const updatedCombats = combats.map((c) => ({
         ...c,
         events: (c.events || []).filter((e) => e.id !== entryId),
-        npcs: c.npcs.map((n) => ({
+        npcs: (Array.isArray(c.npcs) ? c.npcs : []).map((n) => ({
           ...n,
           history: (n.history || []).filter((h) => h.id !== entryId),
           updatedAt: now,
@@ -5395,7 +5404,7 @@ export default function App() {
     } else {
       nextCombats = nextCombats.map((c) => ({
         ...c,
-        npcs: c.npcs.map((n) => (n.id === finalNpc.id ? finalNpc : n)),
+        npcs: (Array.isArray(c.npcs) ? c.npcs : []).map((n) => (n.id === finalNpc.id ? finalNpc : n)),
       }));
     }
 

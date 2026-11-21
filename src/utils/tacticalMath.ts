@@ -1,4 +1,33 @@
-import { FacingDirection, TacticalWall, TacticalDoor, TacticalState, TacticalFogMask, TacticalFogOp } from '../types/tactical';
+import { FacingDirection, TacticalWall, TacticalDoor, TacticalState, TacticalFogMask, TacticalFogOp, TacticalTokenSavedPosition } from '../types/tactical';
+
+export const MIN_HEX_SIZE = 10;
+export const MAX_HEX_SIZE = 140;
+export const DEFAULT_HEX_SIZE = 38;
+export const MIN_ZOOM = 0.2;
+export const MAX_ZOOM = 4;
+export const DEFAULT_ZOOM = 1;
+
+/**
+ * Normaliza e aplica clamping seguro em hexSize (evita <= 0, NaN ou loop massivo/OOM).
+ */
+export function clampHexSize(value: unknown, fallback = DEFAULT_HEX_SIZE): number {
+  const num = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(num) || num <= 0) return fallback;
+  return Math.min(MAX_HEX_SIZE, Math.max(MIN_HEX_SIZE, num));
+}
+
+/**
+ * Normaliza e aplica clamping seguro em zoom (evita <= 0, NaN ou Infinity).
+ */
+export function clampZoom(value: unknown, fallback = DEFAULT_ZOOM): number {
+  const num = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(num) || num <= 0) return fallback;
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, num));
+}
+
+function safeGridSize(size: number): number {
+  return Number.isFinite(size) && size > 0 ? size : DEFAULT_HEX_SIZE;
+}
 
 export interface Point {
   x: number;
@@ -20,9 +49,10 @@ export interface CubeCoord {
  * Retorna as coordenadas de pixel do centro de uma célula quadrada
  */
 export function getCellCenter(col: number, row: number, cellSize: number): Point {
+  const size = safeGridSize(cellSize);
   return {
-    x: col * cellSize + cellSize / 2,
-    y: row * cellSize + cellSize / 2,
+    x: col * size + size / 2,
+    y: row * size + size / 2,
   };
 }
 
@@ -30,9 +60,10 @@ export function getCellCenter(col: number, row: number, cellSize: number): Point
  * Converte coordenada de pixel para a célula quadrada mais próxima
  */
 export function pixelToCell(pixelX: number, pixelY: number, cellSize: number): HexCoord {
+  const size = safeGridSize(cellSize);
   return {
-    col: Math.floor(pixelX / cellSize),
-    row: Math.floor(pixelY / cellSize),
+    col: Math.floor(pixelX / size),
+    row: Math.floor(pixelY / size),
   };
 }
 
@@ -47,6 +78,7 @@ export function getCellDistance(a: HexCoord, b: HexCoord): number {
  * Retorna todas as células quadradas dentro de um raio de alcance (circular)
  */
 export function getCellsInRange(center: HexCoord, radius: number): HexCoord[] {
+  if (!Number.isFinite(radius) || radius < 0) return [];
   const results: HexCoord[] = [];
   const rCeil = Math.ceil(radius);
   for (let r = center.row - rCeil; r <= center.row + rCeil; r++) {
@@ -79,9 +111,10 @@ export function getCellLine(a: HexCoord, b: HexCoord): HexCoord[] {
  * Retorna as coordenadas de pixel do centro de um hexágono pointy-topped
  */
 export function getHexCenter(col: number, row: number, hexSize: number): Point {
-  const width = Math.sqrt(3) * hexSize;
+  const size = safeGridSize(hexSize);
+  const width = Math.sqrt(3) * size;
   const x = (col + (row % 2 !== 0 ? 0.5 : 0)) * width + width / 2;
-  const y = row * (1.5 * hexSize) + hexSize;
+  const y = row * (1.5 * size) + size;
   return { x, y };
 }
 
@@ -166,9 +199,10 @@ export function rotationToFacing(deg: number): FacingDirection {
  * Converte coordenada de pixel para a célula hexagonal mais próxima
  */
 export function pixelToHex(pixelX: number, pixelY: number, hexSize: number): HexCoord {
-  const width = Math.sqrt(3) * hexSize;
+  const size = safeGridSize(hexSize);
+  const width = Math.sqrt(3) * size;
   // Estimativa aproximada de linha e coluna
-  const approxRow = Math.round((pixelY - hexSize) / (1.5 * hexSize));
+  const approxRow = Math.round((pixelY - size) / (1.5 * size));
   const isOdd = approxRow % 2 !== 0;
   const approxCol = Math.round((pixelX - width / 2 - (isOdd ? 0.5 * width : 0)) / width);
 
@@ -178,7 +212,7 @@ export function pixelToHex(pixelX: number, pixelY: number, hexSize: number): Hex
 
   for (let r = approxRow - 1; r <= approxRow + 1; r++) {
     for (let c = approxCol - 1; c <= approxCol + 1; c++) {
-      const center = getHexCenter(c, r, hexSize);
+      const center = getHexCenter(c, r, size);
       const dist = Math.hypot(pixelX - center.x, pixelY - center.y);
       if (dist < bestDist) {
         bestDist = dist;
@@ -364,12 +398,14 @@ export function getHexLine(a: HexCoord, b: HexCoord): HexCoord[] {
  * Retorna todos os hexes dentro de um raio de alcance (jardas)
  */
 export function getHexesInRange(center: HexCoord, radius: number): HexCoord[] {
+  if (!Number.isFinite(radius) || radius < 0) return [];
+  const rInt = Math.max(0, Math.floor(radius));
   const results: HexCoord[] = [];
   const cubeCenter = offsetToCube(center.col, center.row);
 
-  for (let q = -radius; q <= radius; q++) {
-    const r1 = Math.max(-radius, -q - radius);
-    const r2 = Math.min(radius, -q + radius);
+  for (let q = -rInt; q <= rInt; q++) {
+    const r1 = Math.max(-rInt, -q - rInt);
+    const r2 = Math.min(rInt, -q + rInt);
     for (let r = r1; r <= r2; r++) {
       const s = -q - r;
       const cube: CubeCoord = {
@@ -815,9 +851,20 @@ export function pointsToSvgPath(points: Point[]): string {
  * Dimensões da imagem, tokens (posição e facing), focos de luz, paredes, portas, mobília e marcadores.
  */
 export function rotateTacticalState90(tacticalState: TacticalState): Partial<TacticalState> {
-  const curW = tacticalState.mapImageWidth || 2000;
-  const curH = tacticalState.mapImageHeight || 1400;
-  const hexSize = tacticalState.hexSize || 38;
+  const curW =
+    typeof tacticalState.mapImageWidth === 'number' &&
+    Number.isFinite(tacticalState.mapImageWidth) &&
+    tacticalState.mapImageWidth > 0
+      ? tacticalState.mapImageWidth
+      : 2000;
+  const curH =
+    typeof tacticalState.mapImageHeight === 'number' &&
+    Number.isFinite(tacticalState.mapImageHeight) &&
+    tacticalState.mapImageHeight > 0
+      ? tacticalState.mapImageHeight
+      : 1400;
+  const hexSize = clampHexSize(tacticalState.hexSize);
+  const isSquare = tacticalState.gridType === 'square';
   const newW = curH;
   const newH = curW;
 
@@ -826,20 +873,39 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     y: x,
   });
 
-  const nextRotation = ((tacticalState.mapRotation || 0) + 90) % 360;
+  // Em grade quadrada, Math.floor(curH / hexSize - 0.5) - row é exato e 100% reversível em 4 rotações.
+  const squareColOffset = Math.floor(curH / hexSize - 0.5);
+  const getGridPoint = (col: number, row: number): Point =>
+    isSquare ? getCellCenter(col, row, hexSize) : getHexCenter(col, row, hexSize);
+  const pointToGrid = (px: number, py: number): HexCoord =>
+    isSquare ? pixelToCell(px, py, hexSize) : pixelToHex(px, py, hexSize);
+  const rotateGridCoord = (col: number, row: number): HexCoord => {
+    if (isSquare) {
+      return {
+        col: squareColOffset - row,
+        row: col,
+      };
+    }
+    const center = getHexCenter(col, row, hexSize);
+    const p = rotPoint(center.x, center.y);
+    return pixelToHex(p.x, p.y, hexSize);
+  };
+
+  const nextRotation = ((((tacticalState.mapRotation || 0) + 90) % 360) + 360) % 360;
 
   // 1. Tokens
   const newTokens = (tacticalState.tokens || []).map((token) => {
-    const center = getHexCenter(token.gridX, token.gridY, hexSize);
-    const p = rotPoint(center.x, center.y);
-    const hex = pixelToHex(p.x, p.y, hexSize);
-    const curRot = typeof token.rotation === 'number' ? token.rotation : facingToRotation(token.facing);
-    const newRot = snapRotationToHexFace(curRot + 90);
+    const coord = rotateGridCoord(token.gridX, token.gridY);
+    const curRot =
+      typeof token.rotation === 'number' && Number.isFinite(token.rotation)
+        ? token.rotation
+        : facingToRotation(token.facing);
+    const newRot = (((curRot + 90) % 360) + 360) % 360;
     const newFacing = rotationToFacing(newRot);
     return {
       ...token,
-      gridX: hex.col,
-      gridY: hex.row,
+      gridX: coord.col,
+      gridY: coord.row,
       rotation: newRot,
       facing: newFacing,
     };
@@ -847,27 +913,25 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
 
   // 2. Focos de Luz
   const newLights = (tacticalState.lights || []).map((light) => {
-    const lx = typeof light.x === 'number' ? light.x : getHexCenter(light.gridX, light.gridY, hexSize).x;
-    const ly = typeof light.y === 'number' ? light.y : getHexCenter(light.gridX, light.gridY, hexSize).y;
+    const fallbackCenter = getGridPoint(light.gridX, light.gridY);
+    const lx = typeof light.x === 'number' && Number.isFinite(light.x) ? light.x : fallbackCenter.x;
+    const ly = typeof light.y === 'number' && Number.isFinite(light.y) ? light.y : fallbackCenter.y;
     const p = rotPoint(lx, ly);
-    const hex = pixelToHex(p.x, p.y, hexSize);
+    const coord = pointToGrid(p.x, p.y);
     return {
       ...light,
-      x: Math.round(p.x),
-      y: Math.round(p.y),
-      gridX: hex.col,
-      gridY: hex.row,
-      rotation: ((light.rotation || 0) + 90) % 360,
+      x: p.x,
+      y: p.y,
+      gridX: coord.col,
+      gridY: coord.row,
+      rotation: ((((light.rotation || 0) + 90) % 360) + 360) % 360,
     };
   });
 
   // 3. Paredes Poligonais
   const newWalls = (tacticalState.walls || []).map((wall) => ({
     ...wall,
-    points: (wall.points || []).map((pt) => {
-      const p = rotPoint(pt.x, pt.y);
-      return { x: Math.round(p.x), y: Math.round(p.y) };
-    }),
+    points: (wall.points || []).map((pt) => rotPoint(pt.x, pt.y)),
   }));
 
   // 4. Portas
@@ -876,46 +940,40 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     const p2 = rotPoint(door.x2, door.y2);
     return {
       ...door,
-      x1: Math.round(p1.x),
-      y1: Math.round(p1.y),
-      x2: Math.round(p2.x),
-      y2: Math.round(p2.y),
+      x1: p1.x,
+      y1: p1.y,
+      x2: p2.x,
+      y2: p2.y,
     };
   });
 
-  // 5. Elementos de Cenário (Props)
+  // 5. Elementos de Cenário (Props) — rotaciona o centro e soma +90° em rotation sem trocar width/height
   const newProps = (tacticalState.props || []).map((prop) => {
-    const cx = prop.x + prop.width / 2;
-    const cy = prop.y + prop.height / 2;
+    const w = prop.width || 0;
+    const h = prop.height || 0;
+    const cx = prop.x + w / 2;
+    const cy = prop.y + h / 2;
     const nc = rotPoint(cx, cy);
-    const newPropW = prop.height;
-    const newPropH = prop.width;
     return {
       ...prop,
-      x: Math.round(nc.x - newPropW / 2),
-      y: Math.round(nc.y - newPropH / 2),
-      width: newPropW,
-      height: newPropH,
-      rotation: ((prop.rotation || 0) + 90) % 360,
+      x: nc.x - w / 2,
+      y: nc.y - h / 2,
+      rotation: ((((prop.rotation || 0) + 90) % 360) + 360) % 360,
     };
   });
 
   // 6. Marcadores e Réguas
   const newMarkers = (tacticalState.markers || []).map((marker) => {
-    const pA = getHexCenter(marker.startX, marker.startY, hexSize);
-    const nA = rotPoint(pA.x, pA.y);
-    const hexA = pixelToHex(nA.x, nA.y, hexSize);
-    let hexB = undefined;
-    if (marker.endX !== undefined && marker.endY !== undefined) {
-      const pB = getHexCenter(marker.endX, marker.endY, hexSize);
-      const nB = rotPoint(pB.x, pB.y);
-      hexB = pixelToHex(nB.x, nB.y, hexSize);
-    }
+    const coordA = rotateGridCoord(marker.startX, marker.startY);
+    const coordB =
+      marker.endX !== undefined && marker.endY !== undefined
+        ? rotateGridCoord(marker.endX, marker.endY)
+        : undefined;
     return {
       ...marker,
-      startX: hexA.col,
-      startY: hexA.row,
-      ...(hexB ? { endX: hexB.col, endY: hexB.row } : {}),
+      startX: coordA.col,
+      startY: coordA.row,
+      ...(coordB ? { endX: coordB.col, endY: coordB.row } : {}),
     };
   });
 
@@ -924,12 +982,47 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     const p = rotPoint(note.x, note.y);
     return {
       ...note,
-      x: Math.round(p.x),
-      y: Math.round(p.y),
+      x: p.x,
+      y: p.y,
     };
   });
 
-  // 8. Máscara única de Névoa de Guerra
+  // 8. Células de Terreno
+  const newTerrainCells = (tacticalState.terrainCells || []).map((cell) => {
+    const coord = rotateGridCoord(cell.x, cell.y);
+    return {
+      ...cell,
+      x: coord.col,
+      y: coord.row,
+    };
+  });
+
+  // 9. Últimas posições salvas dos tokens
+  let newLastTokenPositions: Record<string, TacticalTokenSavedPosition> | undefined = undefined;
+  if (tacticalState.lastTokenPositions && typeof tacticalState.lastTokenPositions === 'object') {
+    newLastTokenPositions = {};
+    for (const [key, pos] of Object.entries(tacticalState.lastTokenPositions)) {
+      if (!pos) continue;
+      const coord = rotateGridCoord(pos.gridX, pos.gridY);
+      const curRot =
+        typeof pos.rotation === 'number' && Number.isFinite(pos.rotation)
+          ? pos.rotation
+          : pos.facing !== undefined
+          ? facingToRotation(pos.facing)
+          : undefined;
+      const newRot = curRot !== undefined ? (((curRot + 90) % 360) + 360) % 360 : undefined;
+      const newFacing = newRot !== undefined ? rotationToFacing(newRot) : pos.facing;
+      newLastTokenPositions[key] = {
+        ...pos,
+        gridX: coord.col,
+        gridY: coord.row,
+        ...(newRot !== undefined ? { rotation: newRot } : {}),
+        ...(newFacing !== undefined ? { facing: newFacing } : {}),
+      };
+    }
+  }
+
+  // 10. Máscara única de Névoa de Guerra
   const currentFogMask: TacticalFogMask =
     tacticalState.fogMask &&
     (tacticalState.fogMask.base === 'revealed' || tacticalState.fogMask.base === 'hidden') &&
@@ -941,25 +1034,25 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     if (op.shape === 'circle') {
       return {
         ...op,
-        x: Math.round(curH - op.y),
-        y: Math.round(op.x),
+        x: curH - op.y,
+        y: op.x,
       };
     }
     if (op.shape === 'polygon') {
       return {
         ...op,
-        points: op.points.map((p) => ({
-          x: Math.round(curH - p.y),
-          y: Math.round(p.x),
+        points: (Array.isArray(op.points) ? op.points : []).map((p) => ({
+          x: curH - p.y,
+          y: p.x,
         })),
       };
     }
     return {
       ...op,
-      x: Math.round(curH - (op.y + op.height)),
-      y: Math.round(op.x),
-      width: Math.round(op.height),
-      height: Math.round(op.width),
+      x: curH - (op.y + op.height),
+      y: op.x,
+      width: op.height,
+      height: op.width,
     };
   });
 
@@ -974,6 +1067,8 @@ export function rotateTacticalState90(tacticalState: TacticalState): Partial<Tac
     props: newProps,
     markers: newMarkers,
     notes: newNotes,
+    terrainCells: newTerrainCells,
+    ...(newLastTokenPositions !== undefined ? { lastTokenPositions: newLastTokenPositions } : {}),
     fogMask: {
       base: currentFogMask.base,
       ops: newFogOps,
