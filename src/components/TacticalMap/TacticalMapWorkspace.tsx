@@ -37,6 +37,29 @@ import {
 } from '../../utils/tacticalMath';
 import { getCombatManeuver, COMBAT_MANEUVERS } from '../../utils/gurps';
 import { NpcAvatar, PRESET_AVATARS, PRESET_BG_COLORS, resolveNpcPreset } from '../NpcAvatar';
+
+// Helpers para formatação compacta em linha única das medições: ex. 8(-4) Renato
+const formatRulerText = (yards: number, author?: string) => {
+  const penalty = getGurpsRangePenalty(yards);
+  const mod = penalty !== 0 ? `(${penalty})` : '';
+  const authorName = author ? author.trim() : '';
+  const measurement = `${yards}${mod}`;
+  return {
+    measurement,
+    author: authorName,
+    full: authorName ? `${measurement} ${authorName}` : measurement,
+  };
+};
+
+const formatBlastText = (radius: number, author?: string) => {
+  const authorName = author ? author.trim() : '';
+  const measurement = `Área (${radius})`;
+  return {
+    measurement,
+    author: authorName,
+    full: authorName ? `${measurement} ${authorName}` : measurement,
+  };
+};
 import {
   Shield,
   Eye,
@@ -1011,7 +1034,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           startY: hex.row,
           radius: areaRadius,
           color: areaColor,
-          label: `Área (${areaRadius}yd)`,
+          label: `Área (${areaRadius})`,
           layer: rulerVisibility === 'private' ? 'gm' : 'tokens',
           visibility: rulerVisibility,
           authorId: currentAuthorId,
@@ -1071,7 +1094,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               endY: hex.row,
               radius: distanceYards,
               color: '#f59e0b',
-              label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
+              label: `${distanceYards}${rangePenalty !== 0 ? `(${rangePenalty})` : ''}`,
               layer: rulerVisibility === 'private' ? 'gm' : 'tokens',
               visibility: rulerVisibility,
               authorId: currentAuthorId,
@@ -1237,7 +1260,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               endY: rulerCurrent.row,
               radius: distanceYards,
               color: '#f59e0b',
-              label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
+              label: `${distanceYards}${rangePenalty !== 0 ? `(${rangePenalty})` : ''}`,
               layer: rulerVisibility === 'private' ? 'gm' : 'tokens',
               visibility: rulerVisibility,
               authorId: currentAuthorId,
@@ -1858,7 +1881,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       endY: rulerCurrent.row,
       radius: distanceYards,
       color: '#f59e0b',
-      label: `${distanceYards} yd (${rangePenalty >= 0 ? `+${rangePenalty}` : rangePenalty})`,
+      label: `${distanceYards}${rangePenalty !== 0 ? `(${rangePenalty})` : ''}`,
       layer: rulerVisibility === 'private' ? 'gm' : 'tokens',
       visibility: rulerVisibility,
       authorId: currentAuthorId,
@@ -1969,6 +1992,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           onUpdateTacticalState={onUpdateTacticalState}
           activeTool={activeTool}
           onSelectTool={(tool) => {
+            if (tool === 'ruler') {
+              setRulerVisibility('private');
+              setRulerDuration('instant');
+            }
             setActiveTool(tool);
             if (tool !== 'ruler') {
               setRulerStart(null);
@@ -2953,11 +2980,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                   mapY
                 );
                 const topY = getHexRangeTopY({ col: marker.startX, row: marker.startY }, blastYards, hexSize, mapY);
-                const mainLabel = marker.label || `Área (${marker.radius} yd)`;
-                const maxChars = Math.max(mainLabel.length, authorLabel.length);
-                const badgeW = Math.max(150, Math.round(maxChars * 6.2) + (isPrivateMarker ? 28 : 10) + (canDelete ? 26 : 10));
-                const badgeH = authorLabel ? 36 : 26;
-                const textOffsetX = (isPrivateMarker ? 9 : 0) - (canDelete ? 9 : 0);
+                const formatted = formatBlastText(blastYards, marker.authorName);
+                const textWidth = Math.ceil(formatted.full.length * 5.5);
+                const badgeW = Math.max(34, textWidth + (isPrivateMarker ? 17 : 7) + (canDelete ? 17 : 7));
+                const textX = (isPrivateMarker ? 5.5 : 0) - (canDelete ? 5 : 0);
 
                 return (
                   <g
@@ -2965,7 +2991,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     id={`marker-${marker.id}`}
                     style={
                       isPrivateMarker
-                        ? { filter: 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))' }
+                        ? { filter: 'drop-shadow(0px 0px 6px rgba(168, 85, 247, 0.85))' }
                         : undefined
                     }
                     onContextMenu={(e) => {
@@ -2983,74 +3009,45 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       strokeLinejoin="round"
                       strokeDasharray="6 4"
                     />
-                    {/* Tag de Identificação com Autor, Olho Roxo (quando oculto) e Botão Individual de Excluir */}
-                    <g transform={`translate(${center.x}, ${topY - 18})`} pointerEvents="auto">
+                    {/* Tag compacta em linha única: Ícone Olho Roxo (se privada), Área (X) Autor, Botão X */}
+                    <g transform={`translate(${center.x}, ${topY - 14})`} pointerEvents="auto">
                       <rect
                         x={-badgeW / 2}
-                        y={-badgeH / 2}
+                        y="-9"
                         width={badgeW}
-                        height={badgeH}
-                        rx="7"
+                        height="18"
+                        rx="5"
                         fill="#020617"
                         stroke={isPrivateMarker ? '#a855f7' : (marker.color || '#ef4444')}
-                        strokeWidth="1.5"
+                        strokeWidth="1.2"
                         opacity="0.95"
                       />
                       {/* Indicador de Medição Oculta ("Só para mim"): Olho Roxo */}
                       {isPrivateMarker && (
-                        <g transform={`translate(${-badgeW / 2 + 13}, 0)`} pointerEvents="none">
+                        <g transform={`translate(${-badgeW / 2 + 10}, 0)`} pointerEvents="none">
                           <title>Só para mim (visível apenas para você)</title>
-                          <circle
-                            cx="0"
-                            cy="0"
-                            r="6.5"
-                            fill="#020617"
-                            fillOpacity="0.95"
-                            stroke="#a855f7"
-                            strokeWidth="1.6"
-                          />
-                          <path
-                            d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z"
-                            fill="none"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <circle cx="0" cy="0" r="1" fill="#c084fc" />
-                          <line
-                            x1="-3"
-                            y1="-3"
-                            x2="3"
-                            y2="3"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                          />
+                          <circle cx="0" cy="0" r="4.5" fill="#020617" stroke="#a855f7" strokeWidth="1.2" />
+                          <path d="M -2.8 0 C -1.5 -1.6 1.5 -1.6 2.8 0 C 1.5 1.6 -1.5 1.6 -2.8 0 Z" fill="none" stroke="#c084fc" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="0" cy="0" r="0.8" fill="#c084fc" />
+                          <line x1="-2.2" y1="-2.2" x2="2.2" y2="2.2" stroke="#c084fc" strokeWidth="0.8" strokeLinecap="round" />
                         </g>
                       )}
                       <text
-                        x={textOffsetX}
-                        y={authorLabel ? -3 : 3.5}
-                        fill={marker.color || '#ef4444'}
-                        fontSize="10"
-                        fontWeight="bold"
+                        x={textX}
+                        y="0"
+                        dominantBaseline="central"
                         textAnchor="middle"
+                        fontSize="9.5"
+                        fontWeight="bold"
+                        fill={marker.color || '#ef4444'}
                       >
-                        {mainLabel}
+                        {formatted.measurement}
+                        {formatted.author && (
+                          <tspan fill={isPrivateMarker ? '#d8b4fe' : '#cbd5e1'} fontWeight="600">
+                            {` ${formatted.author}`}
+                          </tspan>
+                        )}
                       </text>
-                      {authorLabel && (
-                        <text
-                          x={textOffsetX}
-                          y={10}
-                          fill={isPrivateMarker ? '#d8b4fe' : '#cbd5e1'}
-                          fontSize="8.5"
-                          fontWeight="600"
-                          textAnchor="middle"
-                        >
-                          {authorLabel}
-                        </text>
-                      )}
                       {/* Botão Individual de Excluir Área (Mestre: qualquer; Jogador: apenas própria) */}
                       {canDelete && (
                         <g
@@ -3066,15 +3063,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                           }}
                         >
                           <title>Apagar esta área do mapa</title>
-                          <circle cx={badgeW / 2 - 13} cy="0" r="12" fill="transparent" />
-                          <circle cx={badgeW / 2 - 13} cy="0" r="7.5" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
+                          <circle cx={badgeW / 2 - 10} cy="0" r="8" fill="transparent" />
+                          <circle cx={badgeW / 2 - 10} cy="0" r="5" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
                           <text
-                            x={badgeW / 2 - 13}
-                            y="3.5"
-                            fill="#ffffff"
-                            fontSize="10.5"
-                            fontWeight="bold"
+                            x={badgeW / 2 - 10}
+                            y="0"
+                            dominantBaseline="central"
                             textAnchor="middle"
+                            fill="#ffffff"
+                            fontSize="7.5"
+                            fontWeight="bold"
                             pointerEvents="none"
                           >
                             ✕
@@ -3093,11 +3091,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const pB = { x: mapX + relB.x, y: mapY + relB.y };
                 const midX = (pA.x + pB.x) / 2;
                 const midY = (pA.y + pB.y) / 2;
-                const mainLabel = marker.label || `${marker.radius} yd`;
-                const maxChars = Math.max(mainLabel.length, authorLabel.length);
-                const badgeW = Math.max(150, Math.round(maxChars * 6.2) + (isPrivateMarker ? 28 : 10) + (canDelete ? 26 : 10));
-                const badgeH = authorLabel ? 36 : 26;
-                const textOffsetX = (isPrivateMarker ? 9 : 0) - (canDelete ? 9 : 0);
+                const distanceYards =
+                  marker.radius ||
+                  getHexDistance(
+                    { col: marker.startX, row: marker.startY },
+                    { col: marker.endX ?? marker.startX, row: marker.endY ?? marker.startY }
+                  );
+                const formatted = formatRulerText(distanceYards, marker.authorName);
+                const textWidth = Math.ceil(formatted.full.length * 5.5);
+                const badgeW = Math.max(34, textWidth + (isPrivateMarker ? 17 : 7) + (canDelete ? 17 : 7));
+                const textX = (isPrivateMarker ? 5.5 : 0) - (canDelete ? 5 : 0);
 
                 return (
                   <g
@@ -3105,7 +3108,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     id={`marker-ruler-${marker.id}`}
                     style={
                       isPrivateMarker
-                        ? { filter: 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))' }
+                        ? { filter: 'drop-shadow(0px 0px 6px rgba(168, 85, 247, 0.85))' }
                         : undefined
                     }
                     onContextMenu={(e) => {
@@ -3127,74 +3130,45 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     />
                     <circle cx={pA.x} cy={pA.y} r="5" fill={marker.color || '#f59e0b'} />
                     <circle cx={pB.x} cy={pB.y} r="5" fill={marker.color || '#f59e0b'} />
-                    {/* Badge da Medição com Autor, Olho Roxo (quando oculto) e Botão Individual de Excluir */}
-                    <g transform={`translate(${midX}, ${midY - 22})`} pointerEvents="auto">
+                    {/* Badge compacta em linha única: Ícone Olho Roxo (se privada), 8(-4) Autor, Botão X */}
+                    <g transform={`translate(${midX}, ${midY - 15})`} pointerEvents="auto">
                       <rect
                         x={-badgeW / 2}
-                        y={-badgeH / 2}
+                        y="-9"
                         width={badgeW}
-                        height={badgeH}
-                        rx="7"
+                        height="18"
+                        rx="5"
                         fill="#020617"
                         stroke={isPrivateMarker ? '#a855f7' : (marker.color || '#f59e0b')}
-                        strokeWidth="1.5"
+                        strokeWidth="1.2"
                         opacity="0.95"
                       />
                       {/* Indicador de Medição Oculta ("Só para mim"): Olho Roxo */}
                       {isPrivateMarker && (
-                        <g transform={`translate(${-badgeW / 2 + 13}, 0)`} pointerEvents="none">
+                        <g transform={`translate(${-badgeW / 2 + 10}, 0)`} pointerEvents="none">
                           <title>Só para mim (visível apenas para você)</title>
-                          <circle
-                            cx="0"
-                            cy="0"
-                            r="6.5"
-                            fill="#020617"
-                            fillOpacity="0.95"
-                            stroke="#a855f7"
-                            strokeWidth="1.6"
-                          />
-                          <path
-                            d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z"
-                            fill="none"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <circle cx="0" cy="0" r="1" fill="#c084fc" />
-                          <line
-                            x1="-3"
-                            y1="-3"
-                            x2="3"
-                            y2="3"
-                            stroke="#c084fc"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                          />
+                          <circle cx="0" cy="0" r="4.5" fill="#020617" stroke="#a855f7" strokeWidth="1.2" />
+                          <path d="M -2.8 0 C -1.5 -1.6 1.5 -1.6 2.8 0 C 1.5 1.6 -1.5 1.6 -2.8 0 Z" fill="none" stroke="#c084fc" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="0" cy="0" r="0.8" fill="#c084fc" />
+                          <line x1="-2.2" y1="-2.2" x2="2.2" y2="2.2" stroke="#c084fc" strokeWidth="0.8" strokeLinecap="round" />
                         </g>
                       )}
                       <text
-                        x={textOffsetX}
-                        y={authorLabel ? -3 : 3.5}
-                        fill="#fbbf24"
-                        fontSize="10"
-                        fontWeight="bold"
+                        x={textX}
+                        y="0"
+                        dominantBaseline="central"
                         textAnchor="middle"
+                        fontSize="9.5"
+                        fontWeight="bold"
+                        fill="#fbbf24"
                       >
-                        {mainLabel}
+                        {formatted.measurement}
+                        {formatted.author && (
+                          <tspan fill={isPrivateMarker ? '#d8b4fe' : '#cbd5e1'} fontWeight="600">
+                            {` ${formatted.author}`}
+                          </tspan>
+                        )}
                       </text>
-                      {authorLabel && (
-                        <text
-                          x={textOffsetX}
-                          y={10}
-                          fill={isPrivateMarker ? '#d8b4fe' : '#cbd5e1'}
-                          fontSize="8.5"
-                          fontWeight="600"
-                          textAnchor="middle"
-                        >
-                          {authorLabel}
-                        </text>
-                      )}
                       {/* Botão Individual de Excluir Medição (Mestre: qualquer; Jogador: apenas própria) */}
                       {canDelete && (
                         <g
@@ -3210,15 +3184,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                           }}
                         >
                           <title>Apagar esta medição do mapa</title>
-                          <circle cx={badgeW / 2 - 13} cy="0" r="12" fill="transparent" />
-                          <circle cx={badgeW / 2 - 13} cy="0" r="7.5" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
+                          <circle cx={badgeW / 2 - 10} cy="0" r="8" fill="transparent" />
+                          <circle cx={badgeW / 2 - 10} cy="0" r="5" fill="#ef4444" className="hover:fill-rose-400 transition-colors" />
                           <text
-                            x={badgeW / 2 - 13}
-                            y="3.5"
-                            fill="#ffffff"
-                            fontSize="10.5"
-                            fontWeight="bold"
+                            x={badgeW / 2 - 10}
+                            y="0"
+                            dominantBaseline="central"
                             textAnchor="middle"
+                            fill="#ffffff"
+                            fontSize="7.5"
+                            fontWeight="bold"
                             pointerEvents="none"
                           >
                             ✕
@@ -3241,7 +3216,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               pointerEvents="none"
               style={
                 rulerVisibility === 'private'
-                  ? { filter: 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))' }
+                  ? { filter: 'drop-shadow(0px 0px 6px rgba(168, 85, 247, 0.85))' }
                   : undefined
               }
             >
@@ -3253,8 +3228,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const areaPath = getHexRangePerimeterPath(targetCenter, areaRadius, hexSize, mapX, mapY);
                 const topY = getHexRangeTopY(targetCenter, areaRadius, hexSize, mapY);
                 const isPrivatePreview = rulerVisibility === 'private';
-                const labelText = `Raio: ${areaRadius} yd (${areaRadius} hex)`;
-                const badgeW = Math.max(150, Math.round(Math.max(labelText.length, currentAuthorName.length) * 6.2) + (isPrivatePreview ? 28 : 16));
+                const formatted = formatBlastText(areaRadius, currentAuthorName);
+                const textWidth = Math.ceil(formatted.full.length * 5.5);
+                const badgeW = Math.max(34, textWidth + (isPrivatePreview ? 17 : 7) + 7);
+                const textX = isPrivatePreview ? 5 : 0;
                 return (
                   <g>
                     <path
@@ -3265,45 +3242,41 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       strokeLinejoin="round"
                       strokeDasharray="4 4"
                     />
-                    <g transform={`translate(${center.x}, ${topY - 22})`}>
+                    <g transform={`translate(${center.x}, ${topY - 14})`}>
                       <rect
                         x={-badgeW / 2}
-                        y="-18"
+                        y="-9"
                         width={badgeW}
-                        height="34"
-                        rx="7"
+                        height="18"
+                        rx="5"
                         fill="#020617"
                         stroke={isPrivatePreview ? '#a855f7' : (areaColor || '#ef4444')}
-                        strokeWidth="1.5"
+                        strokeWidth="1.2"
                         opacity="0.95"
                       />
                       {isPrivatePreview && (
-                        <g transform={`translate(${-badgeW / 2 + 13}, -1)`}>
-                          <circle cx="0" cy="0" r="6" fill="#020617" stroke="#a855f7" strokeWidth="1.5" />
-                          <path d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z" fill="none" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                          <circle cx="0" cy="0" r="1" fill="#c084fc" />
-                          <line x1="-3" y1="-3" x2="3" y2="3" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" />
+                        <g transform={`translate(${-badgeW / 2 + 10}, 0)`}>
+                          <circle cx="0" cy="0" r="4.5" fill="#020617" stroke="#a855f7" strokeWidth="1.2" />
+                          <path d="M -2.8 0 C -1.5 -1.6 1.5 -1.6 2.8 0 C 1.5 1.6 -1.5 1.6 -2.8 0 Z" fill="none" stroke="#c084fc" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="0" cy="0" r="0.8" fill="#c084fc" />
+                          <line x1="-2.2" y1="-2.2" x2="2.2" y2="2.2" stroke="#c084fc" strokeWidth="0.8" strokeLinecap="round" />
                         </g>
                       )}
                       <text
-                        x={isPrivatePreview ? 8 : 0}
-                        y="-4"
-                        fill={areaColor || '#ef4444'}
-                        fontSize="10.5"
+                        x={textX}
+                        y="0"
+                        dominantBaseline="central"
+                        textAnchor="middle"
+                        fontSize="9.5"
                         fontWeight="bold"
-                        textAnchor="middle"
+                        fill={areaColor || '#ef4444'}
                       >
-                        {labelText}
-                      </text>
-                      <text
-                        x={isPrivatePreview ? 8 : 0}
-                        y="9"
-                        fill={isPrivatePreview ? '#d8b4fe' : '#cbd5e1'}
-                        fontSize="8.5"
-                        fontWeight="600"
-                        textAnchor="middle"
-                      >
-                        {currentAuthorName}
+                        {formatted.measurement}
+                        {formatted.author && (
+                          <tspan fill={isPrivatePreview ? '#d8b4fe' : '#cbd5e1'} fontWeight="600">
+                            {` ${formatted.author}`}
+                          </tspan>
+                        )}
                       </text>
                     </g>
                   </g>
@@ -3323,6 +3296,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const fixedPath = getHexRangePerimeterPath(centerHex, rulerFixedYards, hexSize, mapX, mapY);
                 const topY = getHexRangeTopY(centerHex, rulerFixedYards, hexSize, mapY);
                 const rangePenalty = getGurpsRangePenalty(rulerFixedYards);
+                const labelText = `Fixo: ${rulerFixedYards}${rangePenalty !== 0 ? `(${rangePenalty})` : ''}`;
+                const textWidth = Math.ceil(labelText.length * 5.5);
+                const badgeW = Math.max(34, textWidth + 14);
                 return (
                   <g>
                     <path
@@ -3333,16 +3309,30 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       strokeLinejoin="round"
                       strokeDasharray="5 3"
                     />
-                    <text
-                      x={center.x}
-                      y={topY - 8}
-                      fill="#fbbf24"
-                      fontSize="11"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                    >
-                      Alcance Fixo: {rulerFixedYards} yd ({rangePenalty >= 0 ? '0' : rangePenalty} Penalidade GURPS)
-                    </text>
+                    <g transform={`translate(${center.x}, ${topY - 14})`}>
+                      <rect
+                        x={-badgeW / 2}
+                        y="-9"
+                        width={badgeW}
+                        height="18"
+                        rx="5"
+                        fill="#020617"
+                        stroke="#f59e0b"
+                        strokeWidth="1.2"
+                        opacity="0.95"
+                      />
+                      <text
+                        x="0"
+                        y="0"
+                        dominantBaseline="central"
+                        textAnchor="middle"
+                        fill="#fbbf24"
+                        fontSize="9.5"
+                        fontWeight="bold"
+                      >
+                        {labelText}
+                      </text>
+                    </g>
                   </g>
                 );
               })()}
@@ -3356,7 +3346,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               pointerEvents="none"
               style={
                 rulerVisibility === 'private'
-                  ? { filter: 'drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.9))' }
+                  ? { filter: 'drop-shadow(0px 0px 6px rgba(168, 85, 247, 0.85))' }
                   : undefined
               }
             >
@@ -3366,7 +3356,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const relB = getHexCenter(rulerCurrent.col, rulerCurrent.row, hexSize);
                 const pB = { x: mapX + relB.x, y: mapY + relB.y };
                 const distanceYards = getHexDistance(rulerStart, rulerCurrent);
-                const rangePenalty = getGurpsRangePenalty(distanceYards);
                 const isPrivatePreview = rulerVisibility === 'private';
 
                 // Detecta arco de defesa se o alvo for um token
@@ -3381,16 +3370,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     targetToken.facing,
                     { col: rulerStart.col, row: rulerStart.row }
                   );
-                  if (rel === 'front') arcText = 'Frente (Defesa Normal)';
+                  if (rel === 'front') arcText = 'Frente';
                   else if (rel === 'rightFlank' || rel === 'leftFlank')
-                    arcText = 'Flanco (-2 Defesas)';
+                    arcText = 'Flanco (-2)';
                   else if (rel === 'rear') arcText = 'Retaguarda (Sem Defesa!)';
                 }
 
                 const midX = (pA.x + pB.x) / 2;
                 const midY = (pA.y + pB.y) / 2;
-                const boxW = isPrivatePreview ? 202 : 186;
-                const boxH = arcText ? 66 : 52;
+                const formatted = formatRulerText(distanceYards, currentAuthorName);
+                const arcSuffix = arcText ? ` • ${arcText}` : '';
+                const fullText = `${formatted.full}${arcSuffix}`;
+                const textWidth = Math.ceil(fullText.length * 5.5);
+                const badgeW = Math.max(34, textWidth + (isPrivatePreview ? 17 : 7) + 7);
+                const textX = isPrivatePreview ? 5 : 0;
 
                 return (
                   <g>
@@ -3409,69 +3402,51 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     <circle cx={pA.x} cy={pA.y} r="5" fill="#f59e0b" />
                     <circle cx={pB.x} cy={pB.y} r="5" fill="#f59e0b" />
 
-                    {/* Caixa de Informações Táticas Flutuante */}
-                    <g transform={`translate(${midX}, ${midY - 24})`}>
+                    {/* Caixa de Informações Táticas Flutuante Compacta */}
+                    <g transform={`translate(${midX}, ${midY - 15})`}>
                       <rect
-                        x={-boxW / 2}
-                        y="-38"
-                        width={boxW}
-                        height={boxH}
-                        rx="8"
+                        x={-badgeW / 2}
+                        y="-9"
+                        width={badgeW}
+                        height="18"
+                        rx="5"
                         fill="#020617"
                         stroke={isPrivatePreview ? '#a855f7' : '#f59e0b'}
-                        strokeWidth="1.5"
+                        strokeWidth="1.2"
                         opacity="0.95"
                       />
                       {isPrivatePreview && (
-                        <g transform={`translate(${-boxW / 2 + 13}, -20)`}>
-                          <circle cx="0" cy="0" r="6" fill="#020617" stroke="#a855f7" strokeWidth="1.5" />
-                          <path d="M -3.6 0 C -2 -2.2 2 -2.2 3.6 0 C 2 2.2 -2 2.2 -3.6 0 Z" fill="none" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                          <circle cx="0" cy="0" r="1" fill="#c084fc" />
-                          <line x1="-3" y1="-3" x2="3" y2="3" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" />
+                        <g transform={`translate(${-badgeW / 2 + 10}, 0)`}>
+                          <circle cx="0" cy="0" r="4.5" fill="#020617" stroke="#a855f7" strokeWidth="1.2" />
+                          <path d="M -2.8 0 C -1.5 -1.6 1.5 -1.6 2.8 0 C 1.5 1.6 -1.5 1.6 -2.8 0 Z" fill="none" stroke="#c084fc" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="0" cy="0" r="0.8" fill="#c084fc" />
+                          <line x1="-2.2" y1="-2.2" x2="2.2" y2="2.2" stroke="#c084fc" strokeWidth="0.8" strokeLinecap="round" />
                         </g>
                       )}
                       <text
-                        x={isPrivatePreview ? 8 : 0}
-                        y="-22"
-                        fill="#ffffff"
-                        fontSize="11"
-                        fontWeight="bold"
+                        x={textX}
+                        y="0"
+                        dominantBaseline="central"
                         textAnchor="middle"
-                      >
-                        Distância: {distanceYards} yd ({distanceYards} hex)
-                      </text>
-                      <text
-                        x={isPrivatePreview ? 8 : 0}
-                        y="-8"
+                        fontSize="9.5"
+                        fontWeight="bold"
                         fill="#fbbf24"
-                        fontSize="10"
-                        fontWeight="bold"
-                        textAnchor="middle"
                       >
-                        Penalidade GURPS: {rangePenalty >= 0 ? '0' : rangePenalty}
+                        {formatted.measurement}
+                        {formatted.author && (
+                          <tspan fill={isPrivatePreview ? '#d8b4fe' : '#cbd5e1'} fontWeight="600">
+                            {` ${formatted.author}`}
+                          </tspan>
+                        )}
+                        {arcText && (
+                          <tspan
+                            fill={arcText.includes('Sem Defesa') ? '#ef4444' : '#38bdf8'}
+                            fontWeight="bold"
+                          >
+                            {` • ${arcText}`}
+                          </tspan>
+                        )}
                       </text>
-                      <text
-                        x={isPrivatePreview ? 8 : 0}
-                        y="6"
-                        fill={isPrivatePreview ? '#d8b4fe' : '#cbd5e1'}
-                        fontSize="9"
-                        fontWeight="600"
-                        textAnchor="middle"
-                      >
-                        {currentAuthorName}
-                      </text>
-                      {arcText && (
-                        <text
-                          x={isPrivatePreview ? 8 : 0}
-                          y="20"
-                          fill={arcText.includes('Sem Defesa') ? '#ef4444' : '#38bdf8'}
-                          fontSize="9.5"
-                          fontWeight="bold"
-                          textAnchor="middle"
-                        >
-                          {arcText}
-                        </text>
-                      )}
                     </g>
                   </g>
                 );
@@ -3496,8 +3471,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     mapY
                   );
                   const topY = getHexRangeTopY({ col: preview.startX, row: preview.startY }, blastYards, hexSize, mapY);
-                  const labelText = `Área (${blastYards} yd)`;
-                  const badgeW = Math.max(140, Math.round(Math.max(labelText.length, preview.authorName.length) * 6.2) + 20);
+                  const formatted = formatBlastText(blastYards, preview.authorName);
+                  const textWidth = Math.ceil(formatted.full.length * 5.5);
+                  const badgeW = Math.max(34, textWidth + 14);
                   return (
                     <g key={`remote-blast-${preview.clientId}`}>
                       <path
@@ -3508,23 +3484,33 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                         strokeLinejoin="round"
                         strokeDasharray="4 4"
                       />
-                      <g transform={`translate(${center.x}, ${topY - 20})`}>
+                      <g transform={`translate(${center.x}, ${topY - 14})`}>
                         <rect
                           x={-badgeW / 2}
-                          y="-17"
+                          y="-9"
                           width={badgeW}
-                          height="34"
-                          rx="7"
+                          height="18"
+                          rx="5"
                           fill="#020617"
                           stroke={preview.color || '#ef4444'}
-                          strokeWidth="1.5"
-                          opacity="0.92"
+                          strokeWidth="1.2"
+                          opacity="0.95"
                         />
-                        <text x="0" y="-3" fill={preview.color || '#ef4444'} fontSize="10" fontWeight="bold" textAnchor="middle">
-                          {labelText}
-                        </text>
-                        <text x="0" y="10" fill="#cbd5e1" fontSize="8.5" fontWeight="600" textAnchor="middle">
-                          {preview.authorName}
+                        <text
+                          x="0"
+                          y="0"
+                          dominantBaseline="central"
+                          textAnchor="middle"
+                          fontSize="9.5"
+                          fontWeight="bold"
+                          fill={preview.color || '#ef4444'}
+                        >
+                          {formatted.measurement}
+                          {formatted.author && (
+                            <tspan fill="#cbd5e1" fontWeight="600">
+                              {` ${formatted.author}`}
+                            </tspan>
+                          )}
                         </text>
                       </g>
                     </g>
@@ -3539,11 +3525,11 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                   { col: preview.startX, row: preview.startY },
                   { col: preview.endX ?? preview.startX, row: preview.endY ?? preview.startY }
                 );
-                const rangePenalty = getGurpsRangePenalty(distanceYards);
                 const midX = (pA.x + pB.x) / 2;
                 const midY = (pA.y + pB.y) / 2;
-                const labelText = `${distanceYards} yd (${rangePenalty >= 0 ? '0' : rangePenalty})`;
-                const badgeW = Math.max(140, Math.round(Math.max(labelText.length, preview.authorName.length) * 6.2) + 20);
+                const formatted = formatRulerText(distanceYards, preview.authorName);
+                const textWidth = Math.ceil(formatted.full.length * 5.5);
+                const badgeW = Math.max(34, textWidth + 14);
                 return (
                   <g key={`remote-line-${preview.clientId}`}>
                     <line
@@ -3558,23 +3544,33 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     />
                     <circle cx={pA.x} cy={pA.y} r="4.5" fill={preview.color || '#f59e0b'} />
                     <circle cx={pB.x} cy={pB.y} r="4.5" fill={preview.color || '#f59e0b'} />
-                    <g transform={`translate(${midX}, ${midY - 20})`}>
+                    <g transform={`translate(${midX}, ${midY - 15})`}>
                       <rect
                         x={-badgeW / 2}
-                        y="-17"
+                        y="-9"
                         width={badgeW}
-                        height="34"
-                        rx="7"
+                        height="18"
+                        rx="5"
                         fill="#020617"
                         stroke={preview.color || '#f59e0b'}
-                        strokeWidth="1.5"
-                        opacity="0.92"
+                        strokeWidth="1.2"
+                        opacity="0.95"
                       />
-                      <text x="0" y="-3" fill="#fbbf24" fontSize="10" fontWeight="bold" textAnchor="middle">
-                        {labelText}
-                      </text>
-                      <text x="0" y="10" fill="#cbd5e1" fontSize="8.5" fontWeight="600" textAnchor="middle">
-                        {preview.authorName}
+                      <text
+                        x="0"
+                        y="0"
+                        dominantBaseline="central"
+                        textAnchor="middle"
+                        fontSize="9.5"
+                        fontWeight="bold"
+                        fill="#fbbf24"
+                      >
+                        {formatted.measurement}
+                        {formatted.author && (
+                          <tspan fill="#cbd5e1" fontWeight="600">
+                            {` ${formatted.author}`}
+                          </tspan>
+                        )}
                       </text>
                     </g>
                   </g>
