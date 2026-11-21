@@ -4,7 +4,6 @@ export type FacingDirection = 0 | 1 | 2 | 3 | 4 | 5; // 6 hex directions (0 = To
 
 export type TacticalLayer = 'map' | 'tokens' | 'gm'; // 3 Níveis: Mapa (base), Tokens (jogo), GM (mestre)
 export type TacticalViewMode = 'gm' | 'player'; // Visão do Mestre ou Visão dos Jogadores
-export type TacticalFogMode = 'open' | 'hidden' | 'dynamic'; // 3 Níveis de Revelação: 'open' (Tudo Aberto) | 'hidden' (Tudo Oculto) | 'dynamic' (Modo Iluminação)
 
 export interface TacticalToken {
   id: string;
@@ -69,17 +68,31 @@ export interface TacticalMapPreset {
   themeColor: string;
 }
 
-export interface TacticalFogRect {
-  id?: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  mode?: 'reveal' | 'hide';
-  shape?: 'rect' | 'circle' | 'polygon';
-  radius?: number; // pixels (para círculo)
-  radiusYards?: number; // jardas (para círculo)
-  points?: Array<{ x: number; y: number }>; // vértices do polígono relativos ao mapa
+export type TacticalFogOp =
+  | {
+      op: 'reveal' | 'hide';
+      shape: 'rect';
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }
+  | {
+      op: 'reveal' | 'hide';
+      shape: 'circle';
+      x: number;
+      y: number;
+      radius: number;
+    }
+  | {
+      op: 'reveal' | 'hide';
+      shape: 'polygon';
+      points: Array<{ x: number; y: number }>;
+    };
+
+export interface TacticalFogMask {
+  base: 'revealed' | 'hidden';
+  ops: TacticalFogOp[];
 }
 
 export interface TacticalTerrainCell {
@@ -183,11 +196,8 @@ export interface TacticalState {
   gridOpacity: number;
   scalePerCell: number; // 1 hex = 1 jarda
   scaleUnit: 'yd' | 'm';
-  fogEnabled: boolean;
-  fogMode?: TacticalFogMode; // 'open' (Tudo Aberto) | 'hidden' (Tudo Oculto) | 'dynamic' (Modo Iluminação)
+  fogMask?: TacticalFogMask; // Máscara única de névoa de guerra (base + operações sequenciais)
   useLightingVision?: boolean; // Se o mapa usa iluminação como fator de visão dos jogadores (true = apenas o que estiver iluminado na visão; false = enxergam o que o mestre liberar)
-  fogRevealedCells: string[]; // "col,row" (retrocompatibilidade)
-  fogRects?: TacticalFogRect[]; // Áreas retangulares reveladas ou ocultas em linhas retas
   lights?: TacticalLightSource[]; // Focos de luz fixos no mapa
   walls?: TacticalWall[]; // Paredes poligonais para contenção de luminosidade
   doors?: TacticalDoor[]; // Portas (abertas/fechadas) para contenção de luminosidade
@@ -219,12 +229,9 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   gridOpacity: 0.28,
   scalePerCell: 1,
   scaleUnit: 'yd',
-  fogEnabled: false,
-  fogMode: 'open',
+  fogMask: { base: 'revealed', ops: [] },
   // Iluminação dinâmica desativada temporariamente (backup em src/components/TacticalMap/backup-iluminacao/)
   useLightingVision: false,
-  fogRevealedCells: [],
-  fogRects: [],
   lights: [],
   walls: [],
   doors: [],

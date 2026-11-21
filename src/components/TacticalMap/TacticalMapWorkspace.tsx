@@ -6,7 +6,8 @@ import {
   TACTICAL_MAP_PRESETS,
   TacticalMarker,
   TacticalProp,
-  TacticalFogRect,
+  TacticalFogMask,
+  TacticalFogOp,
 } from '../../types/tactical';
 import { NPC, UserAccount } from '../../types/rpg';
 import { TacticalToolbar, TacticalToolMode } from './TacticalToolbar';
@@ -29,8 +30,6 @@ import {
   getTargetArcRelationship,
   HexCoord,
   Point,
-  pruneRedundantFogRects,
-  addAndPruneFogRect,
 } from '../../utils/tacticalMath';
 import { getCombatManeuver, COMBAT_MANEUVERS } from '../../utils/gurps';
 import { NpcAvatar, PRESET_AVATARS, PRESET_BG_COLORS, resolveNpcPreset } from '../NpcAvatar';
@@ -495,27 +494,32 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     return path;
   }, [dynamicRows, dynamicCols, hexSize, mapX, mapY]);
 
-  // Lista limpa de áreas de névoa (sem sobreposições concêntricas ou ocultações já reveladas)
-  const activeFogRects = useMemo(
-    () => pruneRedundantFogRects(tacticalState.fogRects || []),
-    [tacticalState.fogRects]
-  );
+  // Máscara única de névoa de guerra (padrão: todo revelado)
+  const fogMask: TacticalFogMask = useMemo(() => {
+    const raw = tacticalState.fogMask;
+    if (raw && (raw.base === 'revealed' || raw.base === 'hidden') && Array.isArray(raw.ops)) {
+      return raw;
+    }
+    return { base: 'revealed', ops: [] };
+  }, [tacticalState.fogMask]);
+
+  const hasFog = fogMask.base === 'hidden' || fogMask.ops.length > 0;
 
   const handleRevealAllFog = useCallback(() => {
+    setFogPolyPoints([]);
+    setFogBoxStart(null);
+    setFogBoxCurrent(null);
     onUpdateTacticalState({
-      fogEnabled: false,
-      fogMode: 'open',
-      fogRects: [],
-      fogRevealedCells: [],
+      fogMask: { base: 'revealed', ops: [] },
     });
   }, [onUpdateTacticalState]);
 
   const handleHideAllFog = useCallback(() => {
+    setFogPolyPoints([]);
+    setFogBoxStart(null);
+    setFogBoxCurrent(null);
     onUpdateTacticalState({
-      fogEnabled: true,
-      fogMode: 'hidden',
-      fogRects: [],
-      fogRevealedCells: [],
+      fogMask: { base: 'hidden', ops: [] },
     });
   }, [onUpdateTacticalState]);
 
@@ -523,29 +527,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   const handleFinishFogPolygon = useCallback((pointsToFinish?: Point[]) => {
     const pts = pointsToFinish || fogPolyPoints;
     if (pts.length < 3) return;
-    const xs = pts.map((pt) => pt.x);
-    const ys = pts.map((pt) => pt.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    const newPolyArea: TacticalFogRect = {
-      id: `fog-poly-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-      mode: fogBrushMode,
+    const newPolyOp: TacticalFogOp = {
+      op: fogBrushMode,
       shape: 'polygon',
       points: pts,
     };
     onUpdateTacticalState({
-      fogEnabled: true,
-      fogMode: tacticalState.fogMode === 'hidden' ? 'hidden' : 'open',
-      fogRects: addAndPruneFogRect(tacticalState.fogRects || [], newPolyArea),
+      fogMask: {
+        base: fogMask.base,
+        ops: [...fogMask.ops, newPolyOp],
+      },
     });
     setFogPolyPoints([]);
-  }, [fogPolyPoints, fogBrushMode, tacticalState.fogMode, tacticalState.fogRects, onUpdateTacticalState]);
+  }, [fogPolyPoints, fogBrushMode, fogMask, onUpdateTacticalState]);
 
   const handleCancelFogPolygon = useCallback(() => {
     setFogPolyPoints([]);
@@ -757,21 +751,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
         const clickX = Math.round(p.x - mapX);
         const clickY = Math.round(p.y - mapY);
         const radiusPixels = Math.round((fogCircleRadius || 5) * hexWidth * 0.95);
-        const newCircleArea: TacticalFogRect = {
-          id: `fog-circle-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        const newCircleOp: TacticalFogOp = {
+          op: fogBrushMode,
+          shape: 'circle',
           x: clickX,
           y: clickY,
-          width: radiusPixels * 2,
-          height: radiusPixels * 2,
-          mode: fogBrushMode,
-          shape: 'circle',
           radius: radiusPixels,
-          radiusYards: fogCircleRadius || 5,
         };
         onUpdateTacticalState({
-          fogEnabled: true,
-          fogMode: tacticalState.fogMode === 'hidden' ? 'hidden' : 'open',
-          fogRects: addAndPruneFogRect(tacticalState.fogRects || [], newCircleArea),
+          fogMask: {
+            base: fogMask.base,
+            ops: [...fogMask.ops, newCircleOp],
+          },
         });
       } else if (fogShape === 'polygon') {
         const clickPt = { x: Math.round(p.x - mapX), y: Math.round(p.y - mapY) };
@@ -992,19 +983,19 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       const height = maxY - minY;
 
       if (width > 6 && height > 6) {
-        const newRect: TacticalFogRect = {
-          id: `fog-rect-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        const newRectOp: TacticalFogOp = {
+          op: fogBrushMode,
+          shape: 'rect',
           x: Math.round(minX),
           y: Math.round(minY),
           width: Math.round(width),
           height: Math.round(height),
-          mode: fogBrushMode,
-          shape: 'rect',
         };
         onUpdateTacticalState({
-          fogEnabled: true,
-          fogMode: tacticalState.fogMode === 'hidden' ? 'hidden' : 'open',
-          fogRects: addAndPruneFogRect(tacticalState.fogRects || [], newRect),
+          fogMask: {
+            base: fogMask.base,
+            ops: [...fogMask.ops, newRectOp],
+          },
         });
       }
       setFogBoxStart(null);
@@ -2343,87 +2334,10 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
             <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b" />
           </marker>
 
-          {/* MÁSCARA DA NÉVOA DE GUERRA MANUAL (OCULTAR / MOSTRAR ÁREAS EM ORDEM CRONOLÓGICA) */}
-          {tacticalState.fogEnabled && (() => {
-            const isFogBaseHidden = tacticalState.fogMode === 'hidden';
-
-            // Helper para renderizar a forma de uma área de névoa (retângulo, círculo ou polígono)
-            const renderFogShape = (r: TacticalFogRect, fill: string, key: string) => {
-              if (r.shape === 'circle') {
-                const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
-                return (
-                  <circle
-                    key={key}
-                    cx={mapX + r.x}
-                    cy={mapY + r.y}
-                    r={rad}
-                    fill={fill}
-                  />
-                );
-              }
-              if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
-                return (
-                  <polygon
-                    key={key}
-                    points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
-                    fill={fill}
-                  />
-                );
-              }
-              return (
-                <rect
-                  key={key}
-                  x={mapX + r.x}
-                  y={mapY + r.y}
-                  width={r.width}
-                  height={r.height}
-                  fill={fill}
-                />
-              );
-            };
-
-            return (
-              <mask
-                id="tactical-fog-mask"
-                maskUnits="userSpaceOnUse"
-                maskContentUnits="userSpaceOnUse"
-                x={mapX}
-                y={mapY}
-                width={mapW}
-                height={mapH}
-              >
-                {/* Base da máscara: preto (#000000) = aberto por padrão; branco (#ffffff) = mapa inteiro oculto */}
-                <rect x={mapX} y={mapY} width={mapW} height={mapH} fill={isFogBaseHidden ? '#ffffff' : '#000000'} />
-
-                {/* Ordem cronológica estrita: a última ação na área prevalece (revelar = preto, ocultar = branco) */}
-                {activeFogRects.map((r, idx) => {
-                  const isReveal = r.mode === 'reveal';
-                  return renderFogShape(r, isReveal ? '#000000' : '#ffffff', `fog-action-${r.id || idx}`);
-                })}
-
-                {/* Retrocompatibilidade com células reveladas antes */}
-                {isFogBaseHidden && (tacticalState.fogRevealedCells || []).map((cellKey) => {
-                  const [cStr, rStr] = cellKey.split(',');
-                  const c = parseInt(cStr, 10);
-                  const r = parseInt(rStr, 10);
-                  if (isNaN(c) || isNaN(r)) return null;
-                  const relCenter = getHexCenter(c, r, hexSize);
-                  return (
-                    <polygon
-                      key={`old-cell-${cellKey}`}
-                      points={getHexPointsString({ x: mapX + relCenter.x, y: mapY + relCenter.y }, hexSize)}
-                      fill="#000000"
-                    />
-                  );
-                })}
-              </mask>
-            );
-          })()}
-
-          {/* MÁSCARA DE ÁREAS OCULTADAS PELO MESTRE (PARA DAR OPACIDADE REFORÇADA E DESTAQUE EXCLUSIVO AO MESTRE) */}
-          {tacticalState.fogEnabled && !isPlayerView && (
+          {/* MÁSCARA ÚNICA DA NÉVOA DE GUERRA (BASE + OPERAÇÕES SEQUENCIAIS) */}
+          {hasFog && (
             <mask
-              id="master-hide-overlay-mask"
+              id="tactical-fog-mask"
               maskUnits="userSpaceOnUse"
               maskContentUnits="userSpaceOnUse"
               x={mapX}
@@ -2431,41 +2345,51 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               width={mapW}
               height={mapH}
             >
-              {/* Base preta = nada do overlay extra é ativado */}
-              <rect x={mapX} y={mapY} width={mapW} height={mapH} fill="#000000" />
+              {/* Base da máscara: preto (#000000) = revelado; branco (#ffffff) = oculto */}
+              <rect
+                x={mapX}
+                y={mapY}
+                width={mapW}
+                height={mapH}
+                fill={fogMask.base === 'hidden' ? '#ffffff' : '#000000'}
+              />
 
-              {/* Ações cronológicas de névoa:
-                  - hide: pinta branco (#ffffff) ativando o escurecimento e contorno extra
-                  - reveal: pinta preto (#000000) desativando o overlay extra naquele trecho
-              */}
-              {activeFogRects.map((r, idx) => {
-                const isHide = r.mode === 'hide';
-                const fill = isHide ? '#ffffff' : '#000000';
-                const key = `master-overlay-${r.id || idx}`;
-
-                if (r.shape === 'circle') {
-                  const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
-                  return <circle key={key} cx={mapX + r.x} cy={mapY + r.y} r={rad} fill={fill} />;
-                }
-                if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
+              {/* Sequência cronológica sobre a máscara única: reveal = preto, hide = branco */}
+              {fogMask.ops.map((item, idx) => {
+                const fill = item.op === 'reveal' ? '#000000' : '#ffffff';
+                if (item.shape === 'circle') {
                   return (
-                    <polygon
-                      key={key}
-                      points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                    <circle
+                      key={`fog-op-${idx}`}
+                      cx={mapX + item.x}
+                      cy={mapY + item.y}
+                      r={item.radius}
                       fill={fill}
                     />
                   );
                 }
-                return (
-                  <rect
-                    key={key}
-                    x={mapX + r.x}
-                    y={mapY + r.y}
-                    width={r.width}
-                    height={r.height}
-                    fill={fill}
-                  />
-                );
+                if (item.shape === 'polygon' && item.points.length >= 3) {
+                  return (
+                    <polygon
+                      key={`fog-op-${idx}`}
+                      points={item.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
+                      fill={fill}
+                    />
+                  );
+                }
+                if (item.shape === 'rect') {
+                  return (
+                    <rect
+                      key={`fog-op-${idx}`}
+                      x={mapX + item.x}
+                      y={mapY + item.y}
+                      width={item.width}
+                      height={item.height}
+                      fill={fill}
+                    />
+                  );
+                }
+                return null;
               })}
             </mask>
           )}
@@ -3411,81 +3335,23 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
             })}
           </g>
 
-          {/* CAMADA 8: OCULTAÇÃO DE ÁREAS / NÉVOA DE GUERRA (ESTILO ROLL20 - LINHAS RETANGULARES PURAS) */}
-          {tacticalState.fogEnabled && (
-            <g id="tactical-fog-layer" clipPath="url(#map-image-bounds)" pointerEvents="none">
-              {/* 1. Camada visual de Névoa base:
-                  - 35% de opacidade suave para o Mestre (fácil identificação de tokens, portas e mapa)
-                  - 100% preta e opaca para os Jogadores */}
+          {/* CAMADA 8: MÁSCARA ÚNICA DE NÉVOA DE GUERRA (ACIMA DOS TOKENS, POINTER-EVENTS NONE) */}
+          {hasFog && (
+            <g
+              id="tactical-fog-layer"
+              clipPath="url(#map-image-bounds)"
+              pointerEvents="none"
+              style={{ pointerEvents: 'none' }}
+            >
+              {/* 100% opaca para os Jogadores; semitransparente para o Mestre */}
               <rect
                 x={mapX}
                 y={mapY}
                 width={mapW}
                 height={mapH}
-                fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.35)'}
+                fill={isPlayerView ? '#000000' : 'rgba(2, 6, 23, 0.55)'}
                 mask="url(#tactical-fog-mask)"
               />
-
-              {/* 2. Destaque exclusivo para o Mestre: áreas explicitamente ocultadas pelo Mestre
-                  recebem opacidade mais forte (~65%) e contorno tracejado sutil para que o Mestre
-                  bata o olho e identifique com precisão que aquela área foi ocultada por ele! */}
-              {!isPlayerView && (
-                <g id="master-explicit-hide-layer" mask="url(#master-hide-overlay-mask)">
-                  {/* Escurecimento reforçado para diferenciar da névoa natural de falta de luz */}
-                  <rect
-                    x={mapX}
-                    y={mapY}
-                    width={mapW}
-                    height={mapH}
-                    fill="rgba(2, 6, 23, 0.30)"
-                  />
-                  {/* Borda tracejada sutil nas áreas ocultadas pelo mestre */}
-                  {activeFogRects.map((r, idx) => {
-                    if (r.mode !== 'hide') return null;
-                    const key = `master-hide-border-${r.id || idx}`;
-                    if (r.shape === 'circle') {
-                      const rad = r.radius || ((r.radiusYards || 5) * hexWidth * 0.95);
-                      return (
-                        <circle
-                          key={key}
-                          cx={mapX + r.x}
-                          cy={mapY + r.y}
-                          r={rad}
-                          fill="none"
-                          stroke="rgba(244, 63, 94, 0.55)"
-                          strokeWidth={2}
-                          strokeDasharray="6 4"
-                        />
-                      );
-                    }
-                    if (r.shape === 'polygon' && r.points && r.points.length >= 3) {
-                      return (
-                        <polygon
-                          key={key}
-                          points={r.points.map((pt) => `${mapX + pt.x},${mapY + pt.y}`).join(' ')}
-                          fill="none"
-                          stroke="rgba(244, 63, 94, 0.55)"
-                          strokeWidth={2}
-                          strokeDasharray="6 4"
-                        />
-                      );
-                    }
-                    return (
-                      <rect
-                        key={key}
-                        x={mapX + r.x}
-                        y={mapY + r.y}
-                        width={r.width}
-                        height={r.height}
-                        fill="none"
-                        stroke="rgba(244, 63, 94, 0.55)"
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                      />
-                    );
-                  })}
-                </g>
-              )}
             </g>
           )}
 

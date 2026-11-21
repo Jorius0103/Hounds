@@ -959,6 +959,11 @@ export default function App() {
   // Tactical State do combate ativo
   const activeTacticalState: TacticalState = useMemo(() => {
     const raw = activeCombat?.tacticalState;
+    const rawFog = raw?.fogMask;
+    const fogMask =
+      rawFog && (rawFog.base === 'revealed' || rawFog.base === 'hidden') && Array.isArray(rawFog.ops)
+        ? rawFog
+        : { base: 'revealed' as const, ops: [] };
     return {
       ...DEFAULT_TACTICAL_STATE,
       ...(raw || {}),
@@ -969,7 +974,7 @@ export default function App() {
       lights: Array.isArray(raw?.lights) ? raw.lights : [],
       terrainCells: Array.isArray(raw?.terrainCells) ? raw.terrainCells : [],
       markers: Array.isArray(raw?.markers) ? raw.markers : [],
-      fogRevealedCells: Array.isArray(raw?.fogRevealedCells) ? raw.fogRevealedCells : [],
+      fogMask,
     };
   }, [activeCombat?.tacticalState]);
 

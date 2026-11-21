@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { rotateTacticalState90 } from '../../utils/tacticalMath';
 import { UserAccount } from '../../types/rpg';
+import { ConfirmModal } from '../ConfirmModal';
 
 export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog';
 
@@ -113,12 +114,15 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onCloseFogPolygon,
   onUndoFogPolyPoint,
   onCancelFogPolygon,
+  onRevealAllFog,
+  onHideAllFog,
   rulerType = 'line',
   onSetRulerType,
   areaRadius = 3,
   onSetAreaRadius,
 }) => {
   const [mapConfigOpen, setMapConfigOpen] = useState(false);
+  const [fogConfirmAction, setFogConfirmAction] = useState<'reveal-all' | 'hide-all' | null>(null);
   const [sliderBaseWidth, setSliderBaseWidth] = useState<number | null>(null);
   const [sliderBaseHexSize, setSliderBaseHexSize] = useState<number | null>(null);
   const [customUrlInput, setCustomUrlInput] = useState(tacticalState.customImageUrl || '');
@@ -239,10 +243,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         ? 'bg-rose-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
-                    title="Ocultar Áreas (arraste no mapa para esconder áreas dos jogadores)"
+                    title="Ocultar na névoa de guerra (cobre o mapa para os jogadores)"
                   >
                     <EyeOff size={13} />
-                    <span>Ocultar Áreas</span>
+                    <span>Ocultar</span>
                   </button>
 
                   <button
@@ -255,10 +259,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         ? 'bg-emerald-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
-                    title="Mostrar Áreas (arraste no mapa para liberar visualização de áreas aos jogadores)"
+                    title="Revelar na névoa de guerra (libera a visão para os jogadores)"
                   >
                     <Eye size={13} />
-                    <span>Mostrar Áreas</span>
+                    <span>Revelar</span>
                   </button>
                 </>
               ) : (
@@ -286,10 +290,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         ? 'bg-rose-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
-                    title="Ocultar Áreas"
+                    title="Ocultar na névoa de guerra"
                   >
                     <EyeOff size={13} />
-                    <span>Ocultar Áreas</span>
+                    <span>Ocultar</span>
                   </button>
 
                   <button
@@ -302,10 +306,10 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         ? 'bg-emerald-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
-                    title="Mostrar Áreas"
+                    title="Revelar na névoa de guerra"
                   >
                     <Eye size={13} />
-                    <span>Mostrar Áreas</span>
+                    <span>Revelar</span>
                   </button>
                 </>
               )}
@@ -798,7 +802,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 ) : (
                   <>
                     <Eye size={13} />
-                    <span>Mostrar:</span>
+                    <span>Revelar:</span>
                   </>
                 )}
               </span>
@@ -927,23 +931,54 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 </div>
               )}
 
-              {/* Botão Limpar Névoa */}
-              {(tacticalState.fogRects || []).length > 0 && (
+              {/* Ações rápidas da máscara única (com confirmação) */}
+              <div className="flex items-center gap-1 ml-1 pl-1.5 border-l border-slate-800">
                 <button
                   type="button"
-                  onClick={() => onUpdateTacticalState({ fogRects: [], fogEnabled: false, fogMode: 'open' })}
-                  className="px-2 py-0.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ml-1"
-                  title="Limpar todas as áreas de névoa"
+                  onClick={() => setFogConfirmAction('reveal-all')}
+                  className="px-2 py-1 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/50 rounded text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                  title="Revelar o mapa inteiro para os jogadores"
                 >
-                  <Trash2 size={11} />
-                  <span>Limpar</span>
+                  <Eye size={12} />
+                  <span>Revelar tudo</span>
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setFogConfirmAction('hide-all')}
+                  className="px-2 py-1 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                  title="Ocultar o mapa inteiro com névoa de guerra"
+                >
+                  <EyeOff size={12} />
+                  <span>Ocultar tudo</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
       )}
     </div>
+
+    <ConfirmModal
+      isOpen={fogConfirmAction !== null}
+      title={fogConfirmAction === 'hide-all' ? 'Ocultar todo o tabuleiro?' : 'Revelar todo o tabuleiro?'}
+      message={
+        fogConfirmAction === 'hide-all'
+          ? 'Todo o mapa será coberto pela névoa de guerra e as revelações atuais serão descartadas. Deseja continuar?'
+          : 'Toda a névoa de guerra será removida e o mapa ficará completamente visível para os jogadores. Deseja continuar?'
+      }
+      confirmText={fogConfirmAction === 'hide-all' ? 'Ocultar tudo' : 'Revelar tudo'}
+      cancelText="Cancelar"
+      isDanger={fogConfirmAction === 'hide-all'}
+      onConfirm={() => {
+        if (fogConfirmAction === 'hide-all') {
+          onHideAllFog?.();
+        } else if (fogConfirmAction === 'reveal-all') {
+          onRevealAllFog?.();
+        }
+        setFogConfirmAction(null);
+      }}
+      onCancel={() => setFogConfirmAction(null)}
+    />
 
     </div>
   );
