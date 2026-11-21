@@ -523,7 +523,12 @@ function SupabaseStore(client, bucket) {
     }
     var ref = (opts && opts.ref) ? String(opts.ref) : (uid() + (ext || ''));
     return client.storage.from(bName).upload(ref, file, { contentType: file.type, upsert: true }).then(function (res) {
-      if (res.error) throw res.error;
+      if (res.error) {
+        var status = Number(res.error.statusCode || res.error.status || 0);
+        var msg = String(res.error.message || '').toLowerCase();
+        var isConflict = opts && opts.ref && (status === 409 || msg.indexOf('already exists') >= 0 || msg.indexOf('duplicate') >= 0);
+        if (!isConflict) throw res.error;
+      }
       return { ref: ref, type: file.type, size: file.size };
     });
   }

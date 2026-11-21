@@ -171,9 +171,19 @@ var MesaSync = (function () {
     var checkExisting = (W.store && typeof W.store.imageUrl === 'function')
       ? W.store.imageUrl(stableRef).then(function (candidate) {
           if (!isHttpUrl(candidate)) return null;
-          return fetch(candidate, { method: 'HEAD' }).then(function (res) {
-            return res && res.ok ? candidate : null;
-          }, function () { return null; });
+          var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+          var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 5000);
+          var headReq = fetch(candidate, ctrl ? { method: 'HEAD', signal: ctrl.signal } : { method: 'HEAD' });
+          var headWithTimeout = ctrl
+            ? headReq
+            : Promise.race([headReq, new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 5000); })]);
+          return headWithTimeout.then(function (res) {
+            clearTimeout(timer);
+            return (res && res.ok === true) ? candidate : null;
+          }, function () {
+            clearTimeout(timer);
+            return null;
+          });
         }, function () { return null; })
       : Promise.resolve(null);
     return checkExisting.then(function (existingUrl) {
@@ -181,6 +191,7 @@ var MesaSync = (function () {
       return fetch(dataUrl).then(function (r) { return r.blob(); }).then(function (b) {
         return W.store.upload(b, { ref: stableRef });
       }).then(function (up) {
+        if (!up || !up.ref) return null;
         return W.store.imageUrl(up.ref).then(function (u) {
           if (isHttpUrl(u)) return u;
           if (W.store && typeof W.store.dropImage === 'function' && !isImageReferenced(up.ref)) {
