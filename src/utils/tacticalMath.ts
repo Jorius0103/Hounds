@@ -372,6 +372,91 @@ export function getHexesInRange(center: HexCoord, radius: number): HexCoord[] {
 }
 
 /**
+ * Calcula o contorno externo exato (SVG path fechado) de todos os hexágonos dentro de `radiusYards` jardas
+ * a partir de `center`, seguindo estritamente as arestas externas dos hexágonos (nunca cortando no meio de um hex).
+ */
+export function getHexRangePerimeterPath(
+  center: HexCoord,
+  radiusYards: number,
+  hexSize: number,
+  offsetX = 0,
+  offsetY = 0
+): string {
+  const r = Math.max(1, Math.round(radiusYards));
+  if (r > 25) {
+    const c = getHexCenter(center.col, center.row, hexSize);
+    const cx = offsetX + c.x;
+    const cy = offsetY + c.y;
+    const radPx = (r + 0.5) * Math.sqrt(3) * hexSize;
+    return `M ${(cx - radPx).toFixed(1)} ${cy.toFixed(1)} A ${radPx.toFixed(1)} ${radPx.toFixed(1)} 0 1 0 ${(cx + radPx).toFixed(1)} ${cy.toFixed(1)} A ${radPx.toFixed(1)} ${radPx.toFixed(1)} 0 1 0 ${(cx - radPx).toFixed(1)} ${cy.toFixed(1)} Z`;
+  }
+
+  const hexes = getHexesInRange(center, r);
+  const boundaryEdges = new Map<string, { a: Point; b: Point }>();
+
+  for (const h of hexes) {
+    const c = getHexCenter(h.col, h.row, hexSize);
+    const corners = getHexCornerPoints({ x: offsetX + c.x, y: offsetY + c.y }, hexSize);
+    for (let i = 0; i < 6; i++) {
+      const a = corners[i];
+      const b = corners[(i + 1) % 6];
+      const midKey = `${Math.round((a.x + b.x) * 5)},${Math.round((a.y + b.y) * 5)}`;
+      if (boundaryEdges.has(midKey)) {
+        boundaryEdges.delete(midKey);
+      } else {
+        boundaryEdges.set(midKey, { a, b });
+      }
+    }
+  }
+
+  if (boundaryEdges.size === 0) return '';
+
+  const ptKey = (p: Point) => `${Math.round(p.x * 10)},${Math.round(p.y * 10)}`;
+  const nextByStart = new Map<string, { a: Point; b: Point }>();
+  for (const edge of boundaryEdges.values()) {
+    nextByStart.set(ptKey(edge.a), edge);
+  }
+
+  const firstEntry = nextByStart.entries().next();
+  if (firstEntry.done) return '';
+
+  const [startKey, firstEdge] = firstEntry.value;
+  const ordered: Point[] = [firstEdge.a];
+  let curKey = ptKey(firstEdge.b);
+  let guard = 0;
+  const maxSteps = boundaryEdges.size + 2;
+
+  while (curKey !== startKey && guard < maxSteps) {
+    const nextEdge = nextByStart.get(curKey);
+    if (!nextEdge) break;
+    ordered.push(nextEdge.a);
+    curKey = ptKey(nextEdge.b);
+    guard++;
+  }
+
+  if (ordered.length < 3) return '';
+  return (
+    `M ${ordered[0].x.toFixed(1)} ${ordered[0].y.toFixed(1)} ` +
+    ordered.slice(1).map((p) => `L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') +
+    ' Z'
+  );
+}
+
+/**
+ * Retorna a coordenada Y do topo externo do agrupamento de hexágonos de raio `radiusYards`.
+ */
+export function getHexRangeTopY(
+  center: HexCoord,
+  radiusYards: number,
+  hexSize: number,
+  offsetY = 0
+): number {
+  const r = Math.max(1, Math.round(radiusYards));
+  const c = getHexCenter(center.col, center.row, hexSize);
+  return offsetY + c.y - (1.5 * r + 1) * hexSize;
+}
+
+/**
  * Retorna o path SVG para um setor circular (cone de luz ou semicírculo).
  * angleDegrees: 360 = círculo completo, 180 = semicírculo, 90 = cone.
  * rotationDegrees: 0 = Direita/Leste (+X), 90 = Baixo/Sul (+Y), 180 = Esquerda/Oeste (-X), 270 = Cima/Norte (-Y).

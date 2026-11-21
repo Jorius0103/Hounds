@@ -18,6 +18,8 @@ import {
   getHexCornerPoints,
   getHexPointsString,
   getFlatHexPointsString,
+  getHexRangePerimeterPath,
+  getHexRangeTopY,
   snapRotationToHexFace,
   facingToRotation,
   rotationToFacing,
@@ -1613,7 +1615,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
           onClearMarkers={handleClearMarkers}
           onAutoPlaceTokens={handleAutoPlaceTokens}
           onOpenTokensModal={() => setIsTokensModalOpen(true)}
-          onOpenInstantTokenModal={() => setIsInstantTokenModalOpen(true)}
           tokensCount={tokens.length}
           onOpenPropsModal={() => setIsPropsModalOpen(true)}
           propsCount={(tacticalState.props || []).length}
@@ -1686,13 +1687,29 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsTokensModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                {isMaster && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsTokensModalOpen(false);
+                      setIsInstantTokenModalOpen(true);
+                    }}
+                    className="px-2.5 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    title="Criar um token instantâneo no mapa (sem precisar de personagem ou NPC)"
+                  >
+                    <Plus size={14} className="text-sky-400" />
+                    <span>Token Instantâneo</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsTokensModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Barra de Filtros e Busca */}
@@ -1901,18 +1918,6 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleTokenVisibility(t.id)}
-                          className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                            isHidden
-                              ? 'bg-purple-950/60 border-purple-500/50 text-purple-300 hover:bg-purple-900'
-                              : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900'
-                          }`}
-                          title={isHidden ? 'Revelar para jogadores' : 'Ocultar dos jogadores'}
-                        >
-                          {isHidden ? <EyeOff size={13} /> : <Eye size={13} />}
-                        </button>
                         <button
                           type="button"
                           onClick={() => handleRemoveToken(t.id)}
@@ -2220,7 +2225,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                     type="number"
                     min={0}
                     max={100}
-                    step={0.5}
+                    step={1}
                     value={instantAuraRadius}
                     onChange={(e) => setInstantAuraRadius(Math.max(0, Number(e.target.value) || 0))}
                     className="w-16 bg-slate-900 border border-slate-800 rounded-md px-2 py-1 text-[11px] font-mono text-white focus:outline-none focus:border-amber-500"
@@ -2625,7 +2630,15 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               if (marker.type === 'blast') {
                 const relCenter = getHexCenter(marker.startX, marker.startY, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const radiusPixels = (marker.radius || 3) * hexSize * 1.7;
+                const blastYards = Math.max(1, Math.round(marker.radius || 3));
+                const blastPath = getHexRangePerimeterPath(
+                  { col: marker.startX, row: marker.startY },
+                  blastYards,
+                  hexSize,
+                  mapX,
+                  mapY
+                );
+                const topY = getHexRangeTopY({ col: marker.startX, row: marker.startY }, blastYards, hexSize, mapY);
 
                 return (
                   <g
@@ -2637,17 +2650,16 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       handleDeleteMarker(marker.id);
                     }}
                   >
-                    <circle
-                      cx={center.x}
-                      cy={center.y}
-                      r={radiusPixels}
+                    <path
+                      d={blastPath}
                       fill={marker.color ? `${marker.color}33` : 'rgba(239, 68, 68, 0.2)'}
                       stroke={marker.color || '#ef4444'}
                       strokeWidth="2.5"
+                      strokeLinejoin="round"
                       strokeDasharray="6 4"
                     />
                     {/* Tag de Identificação com Botão de Excluir e Indicador de Camada M/J */}
-                    <g transform={`translate(${center.x}, ${center.y - radiusPixels - 14})`} pointerEvents="auto">
+                    <g transform={`translate(${center.x}, ${topY - 14})`} pointerEvents="auto">
                       <rect
                         x="-75"
                         y="-16"
@@ -2896,21 +2908,21 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 if (!targetCenter) return null;
                 const relCenter = getHexCenter(targetCenter.col, targetCenter.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const radiusPixels = areaRadius * hexSize * 1.7;
+                const areaPath = getHexRangePerimeterPath(targetCenter, areaRadius, hexSize, mapX, mapY);
+                const topY = getHexRangeTopY(targetCenter, areaRadius, hexSize, mapY);
                 return (
                   <g>
-                    <circle
-                      cx={center.x}
-                      cy={center.y}
-                      r={radiusPixels}
+                    <path
+                      d={areaPath}
                       fill={areaColor ? `${areaColor}33` : 'rgba(239, 68, 68, 0.2)'}
                       stroke={areaColor || '#ef4444'}
                       strokeWidth="2"
+                      strokeLinejoin="round"
                       strokeDasharray="4 4"
                     />
                     <text
                       x={center.x}
-                      y={center.y - radiusPixels - 8}
+                      y={topY - 8}
                       fill={areaColor || '#ef4444'}
                       fontSize="12"
                       fontWeight="bold"
@@ -2932,22 +2944,22 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 if (!centerHex) return null;
                 const relCenter = getHexCenter(centerHex.col, centerHex.row, hexSize);
                 const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
-                const radiusPixels = rulerFixedYards * hexSize * 1.7;
+                const fixedPath = getHexRangePerimeterPath(centerHex, rulerFixedYards, hexSize, mapX, mapY);
+                const topY = getHexRangeTopY(centerHex, rulerFixedYards, hexSize, mapY);
                 const rangePenalty = getGurpsRangePenalty(rulerFixedYards);
                 return (
                   <g>
-                    <circle
-                      cx={center.x}
-                      cy={center.y}
-                      r={radiusPixels}
+                    <path
+                      d={fixedPath}
                       fill="rgba(245, 158, 11, 0.08)"
                       stroke="#f59e0b"
                       strokeWidth="2"
+                      strokeLinejoin="round"
                       strokeDasharray="5 3"
                     />
                     <text
                       x={center.x}
-                      y={center.y - radiusPixels - 8}
+                      y={topY - 8}
                       fill="#fbbf24"
                       fontSize="11"
                       fontWeight="bold"
@@ -3087,24 +3099,31 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
               const relCenter = getHexCenter(displayGridX, displayGridY, hexSize);
               const center = { x: mapX + relCenter.x, y: mapY + relCenter.y };
               const auraColor = token.auraColor || '#38bdf8';
-              const auraRadiusPx = auraYards * hexWidth;
+              const auraYardsInt = Math.max(1, Math.round(auraYards));
+              const auraPath = getHexRangePerimeterPath(
+                { col: displayGridX, row: displayGridY },
+                auraYardsInt,
+                hexSize,
+                mapX,
+                mapY
+              );
+              const auraTopY = getHexRangeTopY({ col: displayGridX, row: displayGridY }, auraYardsInt, hexSize, mapY);
               const isMasterOnlyAura = token.auraVisibleToPlayers === false;
 
               return (
                 <g key={`aura-${token.id}`} id={`token-aura-${token.id}`} opacity={isTokenHidden ? 0.65 : 1}>
-                  <circle
-                    cx={center.x}
-                    cy={center.y}
-                    r={auraRadiusPx}
+                  <path
+                    d={auraPath}
                     fill={auraColor}
                     fillOpacity={isMasterOnlyAura ? 0.1 : 0.14}
                     stroke={auraColor}
                     strokeWidth={2}
                     strokeOpacity={0.85}
+                    strokeLinejoin="round"
                     strokeDasharray={isMasterOnlyAura ? '4 4' : '8 4'}
                   />
                   {/* Etiqueta discreta no topo da aura indicando o raio em jardas */}
-                  <g transform={`translate(${center.x}, ${center.y - auraRadiusPx - 10})`}>
+                  <g transform={`translate(${center.x}, ${auraTopY - 12})`}>
                     <rect
                       x={isMasterOnlyAura ? -36 : -24}
                       y={-9}
@@ -3124,7 +3143,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       fontWeight="bold"
                       textAnchor="middle"
                     >
-                      {isMasterOnlyAura ? `👁 ${auraYards} yd` : `${auraYards} yd`}
+                      {isMasterOnlyAura ? `👁 ${auraYardsInt} yd` : `${auraYardsInt} yd`}
                     </text>
                   </g>
                 </g>
@@ -3278,17 +3297,12 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       })()
                     )}
 
-                    {/* MARCAÇÃO DE VISIBILIDADE APENAS PARA O MESTRE (QUANDO OCULTO DOS JOGADORES): OLHO ROXO */}
+                    {/* MARCAÇÃO VISUAL DE VISIBILIDADE APENAS PARA O MESTRE (QUANDO OCULTO DOS JOGADORES): OLHO ROXO (alteração apenas via botão direito) */}
                     {isMaster && isTokenHidden && (
                       <g
                         transform={`translate(${badgeWidth / 2 + 7}, ${-tokenApothem - 8.5})`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleTokenVisibility(token.id);
-                        }}
-                        className="cursor-pointer hover:scale-125 transition-transform"
+                        pointerEvents="none"
                       >
-                        <title>Visão: Apenas Mestre (oculto dos jogadores). Clique para revelar aos jogadores.</title>
                         <circle
                           cx="0"
                           cy="0"
@@ -3822,7 +3836,7 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                       type="number"
                       min={0}
                       max={100}
-                      step={0.5}
+                      step={1}
                       value={currentAuraRadius}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}

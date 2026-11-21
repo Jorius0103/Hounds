@@ -48,7 +48,6 @@ interface TacticalToolbarProps {
   onClearMarkers: () => void;
   onAutoPlaceTokens: () => void;
   onOpenTokensModal?: () => void;
-  onOpenInstantTokenModal?: () => void;
   tokensCount?: number;
   currentUserRole: string;
   onOpenPlayerPermissions?: () => void;
@@ -102,7 +101,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onZoomIn,
   onZoomOut,
   onOpenTokensModal,
-  onOpenInstantTokenModal,
   tokensCount,
   currentUserRole,
   fogBrushMode = 'reveal',
@@ -140,8 +138,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
       onMouseMove={(e) => e.stopPropagation()}
     >
       <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-1.5 shadow-xl flex flex-col gap-1.5 z-20">
-        {/* LINHA 1: SELETOR DE CAMADAS & FERRAMENTAS DO TABULEIRO */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        {/* LINHA ÚNICA: CAMADAS + FERRAMENTAS + CONFIG. MAPA + ZOOM + TOKENS */}
+        <div className="flex items-center justify-between gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
         {/* Seletor de Camadas (Mapa, Tokens, Mestre) */}
         {isMaster && (
           <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800 shadow-inner">
@@ -153,7 +152,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 onUpdateTacticalState({ activeLayer: 'map' });
                 onSelectTool('select');
               }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'map'
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
@@ -169,7 +168,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 onUpdateTacticalState({ activeLayer: 'tokens' });
                 onSelectTool('select');
               }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'tokens'
                   ? 'bg-emerald-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
@@ -185,7 +184,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 onUpdateTacticalState({ activeLayer: 'gm' });
                 onSelectTool('select');
               }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLayer === 'gm'
                   ? 'bg-purple-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
@@ -202,27 +201,27 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
         <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800">
           <button
             onClick={() => onSelectTool('select')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
               activeTool === 'select'
                 ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
             title="Selecionar e mover combatentes (arraste os tokens pelo mapa)"
           >
-            <MousePointer size={14} />
+            <MousePointer size={13} />
             <span>Mover</span>
           </button>
 
           <button
             onClick={() => onSelectTool('ruler')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
               activeTool === 'ruler'
                 ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
             title="Régua Tática de Distância, Áreas de Efeito e Alcance GURPS"
           >
-            <Ruler size={14} />
+            <Ruler size={13} />
             <span>Medir</span>
           </button>
 
@@ -235,14 +234,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       onSelectTool('fog');
                       onSetFogBrushMode?.('hide');
                     }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'fog' && fogBrushMode === 'hide'
                         ? 'bg-rose-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                     title="Ocultar Áreas (arraste no mapa para esconder áreas dos jogadores)"
                   >
-                    <EyeOff size={14} />
+                    <EyeOff size={13} />
                     <span>Ocultar Áreas</span>
                   </button>
 
@@ -251,14 +250,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       onSelectTool('fog');
                       onSetFogBrushMode?.('reveal');
                     }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'fog' && fogBrushMode === 'reveal'
                         ? 'bg-emerald-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                     title="Mostrar Áreas (arraste no mapa para liberar visualização de áreas aos jogadores)"
                   >
-                    <Eye size={14} />
+                    <Eye size={13} />
                     <span>Mostrar Áreas</span>
                   </button>
                 </>
@@ -266,14 +265,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 <>
                   <button
                     onClick={() => onSelectTool('terrain')}
-                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'terrain'
                         ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                     title="Pincel de Terreno (Coberturas, Paredes, Terreno Difícil)"
                   >
-                    <ShieldAlert size={14} />
+                    <ShieldAlert size={13} />
                     <span>Terreno</span>
                   </button>
 
@@ -282,14 +281,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       onSelectTool('fog');
                       onSetFogBrushMode?.('hide');
                     }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'fog' && fogBrushMode === 'hide'
                         ? 'bg-rose-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                     title="Ocultar Áreas"
                   >
-                    <EyeOff size={14} />
+                    <EyeOff size={13} />
                     <span>Ocultar Áreas</span>
                   </button>
 
@@ -298,14 +297,14 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                       onSelectTool('fog');
                       onSetFogBrushMode?.('reveal');
                     }}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'fog' && fogBrushMode === 'reveal'
                         ? 'bg-emerald-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                     title="Mostrar Áreas"
                   >
-                    <Eye size={14} />
+                    <Eye size={13} />
                     <span>Mostrar Áreas</span>
                   </button>
                 </>
@@ -313,13 +312,8 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </>
           )}
         </div>
-      </div>
 
-      {/* LINHA 2: CONFIGURAÇÕES & VISÃO (ESQUERDA) | ZOOM & TOKENS (DIREITA) */}
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
-        {/* Esquerda: Configuração do Mapa e Grid + Visão Mestre/Jogador */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Opções na Camada 1. Mapa: botão Configuração do Mapa e Grid */}
+        {/* Opções na Camada 1. Mapa: botão Configuração do Mapa e Grid (na mesma linha) */}
         {isMaster && activeLayer === 'map' && (
           <div className="relative">
             <button
@@ -342,7 +336,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
               title="Configuração do Mapa e Grid"
             >
               <Sliders size={13} />
-              <span>Configuração do Mapa e Grid</span>
+              <span>Config. Mapa</span>
             </button>
 
             {mapConfigOpen && (
@@ -684,10 +678,52 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             )}
           </div>
         )}
+        </div>
+
+        {/* Direita: Controles de Zoom (sem restaurar 100%) e Tokens no Tabuleiro */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800">
+            <button
+              onClick={onZoomOut}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
+              title="Reduzir Zoom (-)"
+            >
+              <ZoomOut size={13} />
+            </button>
+            <span className="font-mono text-[11px] text-amber-300 font-bold px-1.5">
+              {Math.round((typeof zoom === 'number' ? zoom : tacticalState.zoom || 1) * 100)}%
+            </span>
+            <button
+              onClick={onZoomIn}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
+              title="Aumentar Zoom (+)"
+            >
+              <ZoomIn size={13} />
+            </button>
+          </div>
+
+          {isMaster && (
+            <button
+              type="button"
+              onClick={onOpenTokensModal}
+              className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Selecionar quais tokens exibir no tabuleiro ou criar tokens instantâneos"
+            >
+              <Users size={14} className="text-amber-400" />
+              <span>Tokens no Tabuleiro</span>
+              {typeof tokensCount === 'number' && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  {tokensCount}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
-              {/* Centro: Controles Compactos da Ferramenta Ativa (Sem textos explicativos) */}
-        <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-center overflow-x-auto no-scrollbar py-0.5">
+      {/* Controles contextuais (exibidos apenas quando Medir ou Ocultar/Mostrar Áreas estiver ativo) */}
+      {(activeTool === 'ruler' || (isMaster && activeTool === 'fog')) && (
+        <div className="flex items-center justify-center gap-1.5 pt-1 border-t border-slate-800/60 flex-wrap">
           {/* 1. Medir */}
           {activeTool === 'ruler' && (
             <div className="flex items-center gap-1.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 shrink-0">
@@ -905,74 +941,9 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
               )}
             </div>
           )}
-
-          </div>
-
-
-
-{/* Direita: Controles de Zoom e Tokens no Tabuleiro */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        {/* Controles de Zoom e Centralização */}
-        <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800">
-          <button
-            onClick={onZoomOut}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
-            title="Reduzir Zoom (-)"
-          >
-            <ZoomOut size={13} />
-          </button>
-          <span className="font-mono text-[11px] text-amber-300 font-bold px-1.5">
-            {Math.round((typeof zoom === 'number' ? zoom : tacticalState.zoom || 1) * 100)}%
-          </span>
-          <button
-            onClick={onZoomIn}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
-            title="Aumentar Zoom (+)"
-          >
-            <ZoomIn size={13} />
-          </button>
-          <button
-            onClick={onResetView}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors ml-0.5"
-            title="Restaurar Posição e Zoom 100%"
-          >
-            <RotateCcw size={13} />
-          </button>
         </div>
-
-        {/* Criar Token Instantâneo (Mestre) */}
-        {isMaster && onOpenInstantTokenModal && (
-          <button
-            type="button"
-            onClick={onOpenInstantTokenModal}
-            className="px-2.5 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
-            title="Criar um token instantâneo no mapa (sem precisar de personagem ou NPC)"
-          >
-            <Plus size={14} className="text-sky-400" />
-            <span>Token Instantâneo</span>
-          </button>
-        )}
-
-        {/* Tokens no Tabuleiro */}
-        {isMaster && (
-          <button
-            type="button"
-            onClick={onOpenTokensModal}
-            className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
-            title="Selecionar quais tokens exibir no tabuleiro"
-          >
-            <Users size={14} className="text-amber-400" />
-            <span>Tokens no Tabuleiro</span>
-            {typeof tokensCount === 'number' && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                {tokensCount}
-              </span>
-            )}
-          </button>
-        )}
-      </div>
+      )}
     </div>
-  </div>
 
     </div>
   );
