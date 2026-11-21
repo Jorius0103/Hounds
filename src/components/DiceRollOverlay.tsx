@@ -27,6 +27,8 @@ interface DiceRollOverlayProps {
  */
 export const DiceRollOverlay: React.FC<DiceRollOverlayProps> = ({ rollData, onClose }) => {
   const lastRollIdRef = useRef<string | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!rollData) return;
@@ -39,13 +41,13 @@ export const DiceRollOverlay: React.FC<DiceRollOverlayProps> = ({ rollData, onCl
     const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
     if (roller && typeof roller.roll === 'function') {
       roller.roll(rollData, () => {
-        onClose();
+        onCloseRef.current();
       });
     }
 
     // Auto-close React state after 8 seconds so it is ready for next roll
     const autoTimer = setTimeout(() => {
-      onClose();
+      onCloseRef.current();
     }, 8000);
 
     return () => {
@@ -54,7 +56,7 @@ export const DiceRollOverlay: React.FC<DiceRollOverlayProps> = ({ rollData, onCl
       // React 18 / component re-renders would cancel the 3D animation mid-flight.
       // DiceRoller3D manages its own user click/timeout lifecycle safely.
     };
-  }, [rollData, onClose]);
+  }, [rollData]);
 
   // Renders nothing to DOM tree; 3D canvas is overlaid cleanly by DiceRoller3D on body with pointer-events: none
   return null;

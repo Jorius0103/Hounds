@@ -24,6 +24,7 @@
     hasActiveBroadcast: false,
     broadcasterName: null,
     broadcasterClientId: null,
+    broadcasterRole: null,
     trackTitle: null,
     volume: 80,
     isMuted: false,
@@ -39,6 +40,44 @@
   var sendSignalFn = null;
   var listeners = [];
   var announceInterval = null;
+  var broadcastChannel = null;
+  var pagehideBound = false;
+
+  function getLocalUserRole() {
+    try {
+      var u = (typeof window !== 'undefined' && (window.hubUser || (window.parent && window.parent.hubUser))) || null;
+      if (!u && typeof localStorage !== 'undefined') {
+        var raw = localStorage.getItem('hounds_active_user');
+        if (raw) u = JSON.parse(raw);
+      }
+      if (u && (u.role === 'mestre' || u.mesaRole === 'mestre')) return 'mestre';
+      if (u && u.role) return String(u.role).toLowerCase();
+    } catch (e) {}
+    return 'jogador';
+  }
+
+  function isLocalMaster() {
+    return getLocalUserRole() === 'mestre';
+  }
+
+  function getBroadcastChannel() {
+    if (typeof BroadcastChannel === 'undefined') return null;
+    if (!broadcastChannel) {
+      try {
+        broadcastChannel = new BroadcastChannel('gurps_combat_sync_channel_v1');
+      } catch (e) {
+        broadcastChannel = null;
+      }
+    }
+    return broadcastChannel;
+  }
+
+  function closeBroadcastChannel() {
+    if (broadcastChannel) {
+      try { broadcastChannel.close(); } catch (e) {}
+      broadcastChannel = null;
+    }
+  }
 
   try {
     var v = localStorage.getItem('gurps_music_volume');
@@ -93,18 +132,22 @@
       senderClientId: myClientId,
       timestamp: Date.now()
     });
+    // Envio único pelo transporte principal disponível (evita sinalização triplicada no Realtime)
     if (typeof sendSignalFn === 'function') {
-      try { sendSignalFn(full); } catch (e) {}
+      try {
+        sendSignalFn(full);
+        return;
+      } catch (e) {}
     }
     try {
-      if (typeof window !== 'undefined' && window.parent && window.parent.hubMesaBus) {
+      if (typeof window !== 'undefined' && window.parent && window.parent.hubMesaBus && typeof window.parent.hubMesaBus.publish === 'function') {
         window.parent.hubMesaBus.publish(JSON.stringify(full));
+        return;
       }
     } catch (e) {}
     try {
-      if (typeof BroadcastChannel !== 'undefined') {
-        new BroadcastChannel('gurps_combat_sync_channel_v1').postMessage(full);
-      }
+      var ch = getBroadcastChannel();
+      if (ch) ch.postMessage(full);
     } catch (e) {}
   }
 
@@ -194,11 +237,14 @@
       state.trackTitle = title;
       notify();
       if (state.isBroadcasting) {
+        var role = getLocalUserRole();
         sendSignal({
           type: 'AUDIO_STREAM_ANNOUNCE',
           active: true,
           broadcasterClientId: myClientId,
           broadcasterName: state.broadcasterName || 'Mestre',
+          broadcasterRole: role,
+          isMaster: role === 'mestre',
           trackTitle: state.trackTitle
         });
       }
@@ -228,10 +274,14 @@
           return false;
         }
 
-        // Obtém o nome da aba selecionada (ex: "Black • Pearl Jam - Spotify")
+        // Obtém o nome da aba selecionada (ex: "Black • Pearl Jam - Spotify") e encerra a captura de vídeo imediatamente
         var videoTrack = stream.getVideoTracks()[0];
         var rawLabel = videoTrack && videoTrack.label ? videoTrack.label : '';
         var tabTitle = cleanTrackTitle(rawLabel);
+        if (videoTrack) {
+          try { videoTrack.stop(); } catch (e) {}
+          try { stream.removeTrack(videoTrack); } catch (e) {}
+        }
 
         // Se o navegador escondeu o título da aba por segurança ou se veio vazio, pergunta ao usuário
         if (!tabTitle || rawLabel.indexOf('web-contents-media-stream') >= 0) {
@@ -269,16 +319,13 @@
         audioTracks[0].onended = function () {
           AudioStreamSync.stopBroadcasting();
         };
-        if (videoTrack) {
-          videoTrack.onended = function () {
-            AudioStreamSync.stopBroadcasting();
-          };
-        }
 
+        var role = getLocalUserRole();
         state.isBroadcasting = true;
         state.hasActiveBroadcast = true;
         state.broadcasterName = broadcasterName || 'Mestre';
         state.broadcasterClientId = myClientId;
+        state.broadcasterRole = role;
         state.trackTitle = tabTitle;
         notify();
 
@@ -288,6 +335,8 @@
           active: true,
           broadcasterClientId: myClientId,
           broadcasterName: state.broadcasterName,
+          broadcasterRole: role,
+          isMaster: role === 'mestre',
           trackTitle: state.trackTitle
         });
 
@@ -295,11 +344,14 @@
         if (announceInterval) clearInterval(announceInterval);
         announceInterval = setInterval(function () {
           if (state.isBroadcasting && localStream && localStream.active) {
+            var currentRole = getLocalUserRole();
             sendSignal({
               type: 'AUDIO_STREAM_ANNOUNCE',
               active: true,
               broadcasterClientId: myClientId,
               broadcasterName: state.broadcasterName || 'Mestre',
+              broadcasterRole: currentRole,
+              isMaster: currentRole === 'mestre',
               trackTitle: state.trackTitle || 'Música / Spotify'
             });
           }
@@ -343,15 +395,19 @@
         state.hasActiveBroadcast = false;
         state.broadcasterName = null;
         state.broadcasterClientId = null;
+        state.broadcasterRole = null;
         state.trackTitle = null;
       }
       notify();
 
       if (was && !silent) {
+        var role = getLocalUserRole();
         sendSignal({
           type: 'AUDIO_STREAM_ANNOUNCE',
           active: false,
-          broadcasterClientId: myClientId
+          broadcasterClientId: myClientId,
+          broadcasterRole: role,
+          isMaster: role === 'mestre'
         });
       }
     },
@@ -362,19 +418,37 @@
       switch (payload.type) {
         case 'AUDIO_STREAM_QUERY':
           if (state.isBroadcasting && localStream && localStream.active) {
+            var queryRole = getLocalUserRole();
             sendSignal({
               type: 'AUDIO_STREAM_ANNOUNCE',
               active: true,
               broadcasterClientId: myClientId,
               broadcasterName: state.broadcasterName || 'Mestre',
+              broadcasterRole: queryRole,
+              isMaster: queryRole === 'mestre',
               trackTitle: state.trackTitle || 'Música / Spotify'
             });
           }
           break;
 
         case 'AUDIO_STREAM_ANNOUNCE':
+          // Validação de emissor: impede spoofing de broadcasterClientId por outro cliente
+          if (payload.senderClientId && payload.broadcasterClientId && payload.senderClientId !== payload.broadcasterClientId) {
+            return;
+          }
+          var incomingIsMaster = payload.isMaster === true || payload.broadcasterRole === 'mestre';
+
           if (payload.active) {
-            // Se eu estava transmitindo e outro usuário assumiu: derruba a minha transmissão local
+            // Jogador não pode derrubar a transmissão local do Mestre
+            if (state.isBroadcasting && isLocalMaster() && !incomingIsMaster) {
+              return;
+            }
+            // Jogador não pode sequestrar uma transmissão ativa do Mestre
+            if (state.hasActiveBroadcast && state.broadcasterRole === 'mestre' && state.broadcasterClientId && state.broadcasterClientId !== payload.broadcasterClientId && !incomingIsMaster) {
+              return;
+            }
+
+            // Se eu estava transmitindo e outro usuário autorizado assumiu: derruba a minha transmissão local
             if (state.isBroadcasting && payload.broadcasterClientId !== myClientId) {
               console.log('Outro usuário assumiu a transmissão de áudio. Encerrando stream local.');
               AudioStreamSync.stopBroadcasting(true /* silent */);
@@ -385,6 +459,7 @@
             state.hasActiveBroadcast = true;
             state.broadcasterClientId = payload.broadcasterClientId;
             state.broadcasterName = payload.broadcasterName || 'Mestre';
+            state.broadcasterRole = incomingIsMaster ? 'mestre' : (payload.broadcasterRole || 'jogador');
             if (payload.trackTitle) state.trackTitle = payload.trackTitle;
             notify();
 
@@ -406,8 +481,10 @@
               state.hasActiveBroadcast = false;
               state.broadcasterClientId = null;
               state.broadcasterName = null;
+              state.broadcasterRole = null;
               state.trackTitle = null;
               state.needsInteraction = false;
+              pendingCandidates = {};
               if (receiverPc) {
                 try { receiverPc.close(); } catch (e) {}
                 receiverPc = null;
@@ -546,6 +623,14 @@
         }
       };
 
+      pc.onconnectionstatechange = function () {
+        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+          try { pc.close(); } catch (e) {}
+          if (receiverPc === pc) receiverPc = null;
+          delete pendingCandidates[broadcasterId];
+        }
+      };
+
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         await flushCandidates(broadcasterId, pc);
@@ -563,6 +648,16 @@
       }
     }
   };
+
+  if (typeof window !== 'undefined' && !pagehideBound) {
+    pagehideBound = true;
+    window.addEventListener('pagehide', function () {
+      if (state.isBroadcasting) {
+        AudioStreamSync.stopBroadcasting();
+      }
+      closeBroadcastChannel();
+    });
+  }
 
   root.audioStreamSync = AudioStreamSync;
   if (typeof window !== 'undefined') {

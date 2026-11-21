@@ -8,12 +8,29 @@
 (function (global) {
   'use strict';
 
+  // Singleton AudioContext to avoid browser limit exhaustion across rolls
+  var sharedAudioCtx = null;
+
+  function getAudioContext() {
+    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new AudioCtx();
+    }
+    if (sharedAudioCtx.state === 'suspended' && typeof sharedAudioCtx.resume === 'function') {
+      try {
+        var p = sharedAudioCtx.resume();
+        if (p && typeof p.catch === 'function') p.catch(function () {});
+      } catch (e) {}
+    }
+    return sharedAudioCtx;
+  }
+
   // Sound effect using Web Audio API (tabletop wooden dice clatter)
   function playDiceClatterSound() {
     try {
-      var AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      var ctx = new AudioCtx();
+      var ctx = getAudioContext();
+      if (!ctx) return;
       var now = ctx.currentTime;
       [0, 0.1, 0.24, 0.42, 0.62, 0.85, 1.02].forEach(function (t, i) {
         var osc = ctx.createOscillator();
@@ -149,7 +166,9 @@
     }
     var cache = d10Type === 'tens' ? d10TensTextureCache : d10UnitsTextureCache;
     if (!cache[displayStr]) {
-      cache[displayStr] = createPolyhedralFaceTexture(displayStr, 10, false);
+      var tex = createPolyhedralFaceTexture(displayStr, 10, false);
+      tex._cached = true;
+      cache[displayStr] = tex;
     }
     return cache[displayStr];
   }
@@ -487,8 +506,10 @@
   // Unproject screen pixel (px, py) to 3D world ground plane (Y = 0)
   function screenToGround(px, py, camera) {
     if (camera) camera.updateMatrixWorld(true);
-    var ndcX = (px / window.innerWidth) * 2 - 1;
-    var ndcY = -(py / window.innerHeight) * 2 + 1;
+    var w = window.innerWidth || 1;
+    var h = window.innerHeight || 1;
+    var ndcX = (px / w) * 2 - 1;
+    var ndcY = -(py / h) * 2 + 1;
     var raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
     var groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -555,12 +576,6 @@
     if (rollData.id && recentRollsMap[rollData.id]) {
       return;
     }
-    if (rollData.id) {
-      rememberRoll(rollData.id);
-    }
-
-    // Clean up previous session if any immediately
-    dismiss(true);
 
     if (typeof THREE === 'undefined') {
       if (typeof window !== 'undefined' && window.parent && window.parent.THREE) {
@@ -583,6 +598,21 @@
       return;
     }
 
+    // Guarda contra iframe oculto (innerWidth/innerHeight === 0 gera NaN no Three.js)
+    var viewW = window.innerWidth || 0;
+    var viewH = window.innerHeight || 0;
+    if (viewW <= 0 || viewH <= 0) {
+      if (typeof onSettled === 'function') onSettled();
+      return;
+    }
+
+    if (rollData.id) {
+      rememberRoll(rollData.id);
+    }
+
+    // Clean up previous session if any immediately
+    dismiss(true);
+
     playDiceClatterSound();
 
     // 1. Create transparent overlay container
@@ -598,16 +628,26 @@
     overlay.style.userSelect = 'none';
     document.body.appendChild(overlay);
 
-    // 2. Setup Three.js WebGL Renderer
-    var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setClearColor(0x000000, 0);
-    overlay.appendChild(renderer.domElement);
+    // 2. Setup Three.js WebGL Renderer (com try/catch para não deixar overlay travado)
+    var renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(viewW, viewH);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setClearColor(0x000000, 0);
+      overlay.appendChild(renderer.domElement);
+    } catch (err) {
+      console.error('Failed to initialize WebGLRenderer for 3D dice:', err);
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      if (typeof onSettled === 'function') onSettled();
+      return;
+    }
 
     // 3. Setup Scene & Camera
     var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 300);
+    var camera = new THREE.PerspectiveCamera(42, viewW / viewH, 0.1, 300);
     camera.position.set(0, 28, 22);
     camera.lookAt(0, 0, -1);
     camera.updateMatrixWorld(true);
@@ -624,24 +664,34 @@
     softFillLight.position.set(-15, 30, 0);
     scene.add(softFillLight);
 
-    // 5. Shared Geometries and Materials (50% size reduction)
+    // 5. Shared Geometries and Materials (50% size reduction) + tracking for full WebGL disposal
     var dieSize = 1.8;
     var sides = rollData.diceSides || 6;
     var count = rollData.rolls.length;
     var isD100 = (sides === 100);
     var halfDie = dieSize / 2;
 
-    var cubeGeo = new THREE.BoxGeometry(dieSize, dieSize, dieSize);
+    var disposableGeometries = [];
+    var disposableMaterials = [];
+    var disposableTextures = [];
 
-    // Box face order: [+X, -X, +Y, -Y, +Z, -Z] -> [2, 5, 1, 6, 3, 4]
-    var d6Materials = [
-      new THREE.MeshStandardMaterial({ map: createD6FaceTexture(2), roughness: 0.65, metalness: 0.0 }),
-      new THREE.MeshStandardMaterial({ map: createD6FaceTexture(5), roughness: 0.65, metalness: 0.0 }),
-      new THREE.MeshStandardMaterial({ map: createD6FaceTexture(1), roughness: 0.65, metalness: 0.0 }),
-      new THREE.MeshStandardMaterial({ map: createD6FaceTexture(6), roughness: 0.65, metalness: 0.0 }),
-      new THREE.MeshStandardMaterial({ map: createD6FaceTexture(3), roughness: 0.65, metalness: 0.0 }),
-      new THREE.MeshStandardMaterial({ map: createD6FaceTexture(4), roughness: 0.65, metalness: 0.0 })
-    ];
+    var cubeGeo = null;
+    var d6Materials = null;
+    if (!isD100 && sides === 6) {
+      cubeGeo = new THREE.BoxGeometry(dieSize, dieSize, dieSize);
+      disposableGeometries.push(cubeGeo);
+
+      // Box face order: [+X, -X, +Y, -Y, +Z, -Z] -> [2, 5, 1, 6, 3, 4]
+      d6Materials = [
+        new THREE.MeshStandardMaterial({ map: createD6FaceTexture(2), roughness: 0.65, metalness: 0.0 }),
+        new THREE.MeshStandardMaterial({ map: createD6FaceTexture(5), roughness: 0.65, metalness: 0.0 }),
+        new THREE.MeshStandardMaterial({ map: createD6FaceTexture(1), roughness: 0.65, metalness: 0.0 }),
+        new THREE.MeshStandardMaterial({ map: createD6FaceTexture(6), roughness: 0.65, metalness: 0.0 }),
+        new THREE.MeshStandardMaterial({ map: createD6FaceTexture(3), roughness: 0.65, metalness: 0.0 }),
+        new THREE.MeshStandardMaterial({ map: createD6FaceTexture(4), roughness: 0.65, metalness: 0.0 })
+      ];
+      d6Materials.forEach(function (m) { disposableMaterials.push(m); });
+    }
 
     var d6FaceNormals = {
       1: new THREE.Vector3(0, 1, 0),
@@ -663,6 +713,9 @@
     var shadowGeo = new THREE.PlaneGeometry(2.6, 2.6);
     var shadowTex = createShadowTexture();
     var shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.75, depthWrite: false });
+    disposableGeometries.push(shadowGeo);
+    disposableTextures.push(shadowTex);
+    disposableMaterials.push(shadowMat);
 
     // 6. Build the list of physical 3D dice to roll:
     // For D100 (Roll20 style), each D100 roll is represented by a pair of D10 dice:
@@ -861,10 +914,15 @@
           }
         }
 
+        if (Array.isArray(polyMats)) {
+          polyMats.forEach(function (m) { disposableMaterials.push(m); });
+        }
+
         dieMesh = new THREE.Mesh(polyData.geometry, polyMats);
 
-        var faceNorm = polyData.faceNormals[item.targetFaceIndex] || new THREE.Vector3(0, 1, 0);
-        var faceUp = polyData.faceUpVectors[item.targetFaceIndex] || new THREE.Vector3(0, 1, 0);
+        var normKey = item.isD100 ? item.targetFaceIndex : targetFaceIndex;
+        var faceNorm = polyData.faceNormals[normKey] || new THREE.Vector3(0, 1, 0);
+        var faceUp = polyData.faceUpVectors[normKey] || new THREE.Vector3(0, 1, 0);
         qFinal = computeFaceOrientation(faceNorm, faceUp, dirToCam, screenUp);
       }
 
@@ -876,7 +934,9 @@
 
       scene.add(dieMesh);
 
-      var shadowMesh = new THREE.Mesh(shadowGeo, shadowMat.clone());
+      var clonedShadowMat = shadowMat.clone();
+      disposableMaterials.push(clonedShadowMat);
+      var shadowMesh = new THREE.Mesh(shadowGeo, clonedShadowMat);
       shadowMesh.rotation.x = -Math.PI / 2;
       shadowMesh.position.y = 0.02;
       shadowMesh.scale.set(perspectiveScale, perspectiveScale, 1);
@@ -1090,9 +1150,12 @@
     // Handle window resize
     function onResize() {
       if (!camera || !renderer) return;
-      camera.aspect = window.innerWidth / window.innerHeight;
+      var rw = window.innerWidth || 0;
+      var rh = window.innerHeight || 0;
+      if (rw <= 0 || rh <= 0) return;
+      camera.aspect = rw / rh;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(rw, rh);
     }
     window.addEventListener('resize', onResize);
 
@@ -1100,6 +1163,51 @@
     // The user can execute any task immediately with a single click, and the dice disappear!
     var sessionStartTime = Date.now();
     var dismissed = false;
+    var resourcesDisposed = false;
+
+    function disposeWebGLResources() {
+      if (resourcesDisposed) return;
+      resourcesDisposed = true;
+
+      var disposedMaps = [];
+      for (var mi = 0; mi < disposableMaterials.length; mi++) {
+        var mat = disposableMaterials[mi];
+        if (!mat) continue;
+        try {
+          if (mat.map && !mat.map._cached && disposedMaps.indexOf(mat.map) === -1) {
+            disposedMaps.push(mat.map);
+            mat.map.dispose();
+          }
+          mat.dispose();
+        } catch (e) {}
+      }
+      disposableMaterials.length = 0;
+
+      for (var ti = 0; ti < disposableTextures.length; ti++) {
+        var tex = disposableTextures[ti];
+        if (!tex || tex._cached || disposedMaps.indexOf(tex) !== -1) continue;
+        try { tex.dispose(); } catch (e) {}
+      }
+      disposableTextures.length = 0;
+
+      for (var gi = 0; gi < disposableGeometries.length; gi++) {
+        var geo = disposableGeometries[gi];
+        if (!geo) continue;
+        try { geo.dispose(); } catch (e) {}
+      }
+      disposableGeometries.length = 0;
+
+      try {
+        if (scene && typeof scene.clear === 'function') scene.clear();
+      } catch (e) {}
+
+      try {
+        renderer.dispose();
+        if (typeof renderer.forceContextLoss === 'function') {
+          renderer.forceContextLoss();
+        }
+      } catch (e) {}
+    }
 
     function cleanup(immediate) {
       if (dismissed) return;
@@ -1115,7 +1223,7 @@
         if (overlay && overlay.parentNode) {
           overlay.parentNode.removeChild(overlay);
         }
-        renderer.dispose();
+        disposeWebGLResources();
       } else {
         // Fade out smoothly
         overlay.style.transition = 'opacity 0.2s ease-out';
@@ -1124,7 +1232,7 @@
           if (overlay && overlay.parentNode) {
             overlay.parentNode.removeChild(overlay);
           }
-          renderer.dispose();
+          disposeWebGLResources();
         }, 220);
       }
     }

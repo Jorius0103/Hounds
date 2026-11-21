@@ -1308,10 +1308,6 @@ export default function App() {
         }
 
         if (!alreadyPlayed) {
-          const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
-          if (roller && typeof roller.roll === 'function') {
-            roller.roll(rollObj);
-          }
           setActiveDiceRoll(rollObj);
         }
 
@@ -2080,10 +2076,6 @@ export default function App() {
           }
 
           if (!alreadyPlayed) {
-            const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
-            if (roller && typeof roller.roll === 'function') {
-              roller.roll(rollObj);
-            }
             setActiveDiceRoll(rollObj);
           }
 
@@ -4686,12 +4678,12 @@ export default function App() {
       }
     }
 
-    const roller = (window as any).DiceRoller3D || (window as any).parent?.DiceRoller3D;
-    if (roller && typeof roller.roll === 'function') {
-      roller.roll(rollData);
-    }
     setActiveDiceRoll(rollData);
   };
+
+  const handleCloseDiceRollOverlay = useCallback(() => {
+    setActiveDiceRoll(null);
+  }, []);
 
   const handleClearActiveCombatHistory = () => {
     const now = Date.now();
@@ -6043,7 +6035,7 @@ export default function App() {
       {/* 3D Dice Roll Animation Overlay (Roll20 style) */}
       <DiceRollOverlay
         rollData={activeDiceRoll}
-        onClose={() => setActiveDiceRoll(null)}
+        onClose={handleCloseDiceRollOverlay}
       />
     </div>
   );
