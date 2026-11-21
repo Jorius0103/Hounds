@@ -511,9 +511,6 @@ var MesaSync = (function () {
         });
         rt().on('mesa-delete', function (m) {
           if (m && m.entryId) {
-            if (W.store && typeof W.store.deleteRoll === 'function') {
-              try { W.store.deleteRoll(m.entryId); } catch (e) {}
-            }
             if (loaded()) push({ type: 'SYNC_ENTRY_DELETE', entryId: m.entryId, timestamp: m.ts || Date.now() });
           }
         });
@@ -680,6 +677,7 @@ var MesaSync = (function () {
         return;
       }
       if (m.type === 'SYNC_ENTRY_DELETE' && m.entryId) {
+        if (!canSave()) return;
         if (rt()) rt().send('mesa-delete', { entryId: m.entryId, ts: m.timestamp || Date.now() });
         if (W.store && typeof W.store.deleteRoll === 'function') {
           try { W.store.deleteRoll(m.entryId); } catch (e) {}

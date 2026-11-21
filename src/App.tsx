@@ -926,6 +926,7 @@ export default function App() {
       } catch {}
     };
     const onMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === 'HUB_USER_UPDATE' && e.data.user) setCurrentUser(e.data.user);
     };
     const onHubUser = (e: Event) => {
@@ -1140,46 +1141,62 @@ export default function App() {
       }
     });
 
-        // Otimizacao Online: Envia pacote enxuto para rede e banco (salvo quando isFullSnapshot for true)
-    const lightweightCombats = isFullSnapshot ? finalCombats : finalCombats.map((c) => {
-      if (c.id === finalActiveCombat) {
-        const pooled = combatsPoolRef.current[c.id];
-        const npcs = (c.npcs && c.npcs.length > 0) ? c.npcs : (pooled ? pooled.npcs : []);
-        const events = (c.events && c.events.length > 0) ? c.events : (pooled ? pooled.events : (c.events || []));
-        return { ...c, npcs, events, totalNpcs: npcs.length };
-      }
-      const poolCount = combatsPoolRef.current[c.id]?.npcs?.length;
-      const count = poolCount != null ? poolCount : (c.totalNpcs != null ? c.totalNpcs : (c.npcs?.length || 0));
-      return {
-        ...c,
-        totalNpcs: count,
-        npcs: [],
-        events: []
-      };
+    const sanitizeNpcForSync = (npc: NPC): NPC => ({
+      ...npc,
+      history: Array.isArray(npc.history) ? npc.history.filter((h) => !h?.isSecret) : npc.history,
     });
+
+    const sanitizeCombatForSync = (c: Combat): Combat => ({
+      ...c,
+      npcs: Array.isArray(c.npcs) ? c.npcs.map(sanitizeNpcForSync) : [],
+      events: Array.isArray(c.events) ? c.events.filter((e) => !e?.isSecret) : [],
+    });
+
+    const sanitizedUsers = (finalUsers || []).map(({ password: _password, ...safeUser }) => safeUser) as UserAccount[];
+    const sanitizedUpdatedNpc = updatedNpc ? sanitizeNpcForSync(updatedNpc) : undefined;
+
+    // Otimizacao Online: Envia pacote enxuto para rede e banco (salvo quando isFullSnapshot for true)
+    const lightweightCombats = isFullSnapshot
+      ? finalCombats.map(sanitizeCombatForSync)
+      : finalCombats.map((c) => {
+          if (c.id === finalActiveCombat) {
+            const pooled = combatsPoolRef.current[c.id];
+            const npcs = (c.npcs && c.npcs.length > 0) ? c.npcs : (pooled ? pooled.npcs : []);
+            const events = (c.events && c.events.length > 0) ? c.events : (pooled ? pooled.events : (c.events || []));
+            return sanitizeCombatForSync({ ...c, npcs, events, totalNpcs: npcs.length });
+          }
+          const poolCount = combatsPoolRef.current[c.id]?.npcs?.length;
+          const count = poolCount != null ? poolCount : (c.totalNpcs != null ? c.totalNpcs : (c.npcs?.length || 0));
+          return {
+            ...c,
+            totalNpcs: count,
+            npcs: [],
+            events: []
+          };
+        });
 
     systemLogger.addLog('SYNC_SEND', 'Sincronização enviada (Broadcast & MQTT)', {
       combatsCount: lightweightCombats.length,
       playersCount: finalPlayers.length,
       editTimestamp,
-      npcName: updatedNpc?.name,
+      npcName: sanitizedUpdatedNpc?.name,
     });
 
     // Se houver um NPC específico alterado, envia SYNC_NPC em tempo real (1.5 KB, imediato)
-    if (updatedNpc) {
+    if (sanitizedUpdatedNpc) {
       try {
         broadcastChannelRef.current?.postMessage({
           type: 'SYNC_NPC',
           sourceId: onlineSyncService.getClientId(),
           timestamp: editTimestamp,
-          npc: updatedNpc,
+          npc: sanitizedUpdatedNpc,
         });
       } catch (e) {}
 
       onlineSyncService.sendPayloadImmediate({
         type: 'SYNC_NPC',
         timestamp: editTimestamp,
-        npc: updatedNpc,
+        npc: sanitizedUpdatedNpc,
       });
 
       if (typeof window !== 'undefined' && (window as any).parent?.hubMesaBus) {
@@ -1187,7 +1204,7 @@ export default function App() {
           (window as any).parent.hubMesaBus.publish(
             JSON.stringify({
               type: 'SYNC_NPC',
-              npc: updatedNpc,
+              npc: sanitizedUpdatedNpc,
               timestamp: editTimestamp,
             })
           );
@@ -1203,9 +1220,9 @@ export default function App() {
         timestamp: editTimestamp,
         combats: lightweightCombats,
         conditions: finalConditions,
-        users: finalUsers,
+        users: sanitizedUsers,
         activeCombatId: finalActiveCombat,
-        players: finalPlayers,
+        players: finalPlayers.map(sanitizeNpcForSync),
         sessionPlayerIds: finalSessionPlayerIds,
         deletedCombatIds: getDeletedCombatIds(),
       });
@@ -1217,9 +1234,9 @@ export default function App() {
       timestamp: editTimestamp,
       combats: lightweightCombats,
       conditions: finalConditions,
-      users: finalUsers,
+      users: sanitizedUsers,
       activeCombatId: finalActiveCombat,
-      players: finalPlayers,
+      players: finalPlayers.map(sanitizeNpcForSync),
       sessionPlayerIds: finalSessionPlayerIds,
       deletedCombatIds: getDeletedCombatIds(),
     };
@@ -1905,7 +1922,7 @@ export default function App() {
         if (bus && typeof bus.getRecentRolls === 'function') {
           bus.getRecentRolls(null, 30).then((rows: any[]) => {
             if (!Array.isArray(rows) || rows.length === 0) return;
-            const isMestre = currentUserRef.current?.role === 'mestre' || !currentUserRef.current;
+            const isMestre = currentUserRef.current?.role === 'mestre';
             const deletedSet = new Set(getDeletedLogEntryIds());
             const clearedBefore = parseInt(localStorage.getItem('gurps_log_cleared_before_timestamp') || '0', 10);
             const fetchedLogEntries: any[] = [];
@@ -4525,7 +4542,7 @@ export default function App() {
     }
     const total = rolls.reduce((acc, val) => acc + val, 0);
 
-    const isMestreUser = currentUser?.role === 'mestre' || !currentUser;
+    const isMestreUser = currentUser?.role === 'mestre';
     const curName = (currentUser?.name || '').trim().toLowerCase();
 
     let char: NPC | null = null;
@@ -4604,7 +4621,9 @@ export default function App() {
         c.id === activeCombat.id ? { ...c, events: [newEntry, ...(c.events || []).filter((e) => e.id !== newEntry.id)] } : c
       );
       setCombats(updatedCombats);
-      broadcastSync(updatedCombats);
+      if (!isSecretRoll) {
+        broadcastSync(updatedCombats);
+      }
     }
 
     const rollData: DiceRollResult = {
@@ -5508,18 +5527,27 @@ export default function App() {
     e.target.value = '';
   };
 
-  const isMaster = currentUser?.role === 'mestre';
-  const effectiveEditorIds = [...new Set(editorUserIds)];
-  const isEditor = effectiveEditorIds.some((x) => {
+  const isMaster = Boolean(currentUser && currentUser.role === 'mestre');
+  const effectiveEditorIds = [...new Set(editorUserIds)].filter((x) => {
     if (!x) return false;
-    const s = String(x).toLowerCase().trim();
-    const cid = String(currentUser?.id || '').toLowerCase().trim();
-    const cnm = String(currentUser?.name || '').toLowerCase().trim();
-    const sC = s.replace(/^user-/, '');
-    const cidC = cid.replace(/^user-/, '');
-    const cnmC = cnm.replace(/^user-/, '');
-    return s === cid || s === cnm || sC === cidC || sC === cnmC || s === `user-${cnmC}` || cid === `user-${sC}`;
+    const cleaned = String(x).toLowerCase().trim().replace(/^user-/, '');
+    return cleaned.length > 0;
   });
+  const isEditor = Boolean(
+    currentUser &&
+      effectiveEditorIds.some((x) => {
+        const s = String(x).toLowerCase().trim();
+        const cid = String(currentUser.id || '').toLowerCase().trim();
+        const cnm = String(currentUser.name || '').toLowerCase().trim();
+        const sC = s.replace(/^user-/, '');
+        const cidC = cid.replace(/^user-/, '');
+        const cnmC = cnm.replace(/^user-/, '');
+        if (!sC) return false;
+        const matchesId = Boolean(cid && cidC) && (s === cid || sC === cidC || cid === `user-${sC}`);
+        const matchesName = Boolean(cnm && cnmC) && (s === cnm || sC === cnmC || s === `user-${cnmC}`);
+        return matchesId || matchesName;
+      })
+  );
   const canEditCurrent = isMaster || isEditor;
   const isPlayerUser = !isMaster;
   const effectiveRole: MesaRole = isMaster ? 'mestre' : canEditCurrent ? 'jogador' : 'visualizador';

@@ -33,6 +33,7 @@ import {
   getHexDistance,
   getGurpsRangePenalty,
   getTargetArcRelationship,
+  isPointInPolygon,
   HexCoord,
   Point,
 } from '../../utils/tacticalMath';
@@ -827,8 +828,9 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     [panX, panY, zoom]
   );
 
-  // Manipulação de Elementos de Cenário (Props)
+  // Manipulação de Elementos de Cenário (Props) — exclusivo do Mestre
   const handleAddProp = useCallback((newProp: Omit<TacticalProp, 'id'>) => {
+    if (!isMaster) return;
     const propWithId: TacticalProp = {
       ...newProp,
       id: `prop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -836,25 +838,28 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     const currentProps = tacticalState.props || [];
     onUpdateTacticalState({ props: [...currentProps, propWithId] });
     setSelectedPropId(propWithId.id);
-  }, [tacticalState.props, onUpdateTacticalState]);
+  }, [isMaster, tacticalState.props, onUpdateTacticalState]);
 
   const handleStartDragProp = useCallback((id: string, e: React.MouseEvent) => {
+    if (!isMaster) return;
     const p = clientToMapCoords(e.clientX, e.clientY);
     const prop = (tacticalState.props || []).find((p) => p.id === id);
     if (prop) {
       setDraggedPropId(id);
       setDragPropOffset({ x: p.x - prop.x, y: p.y - prop.y });
     }
-  }, [tacticalState.props, clientToMapCoords]);
+  }, [isMaster, tacticalState.props, clientToMapCoords]);
 
   const handleRotateProp = useCallback((id: string, degreesDelta: number) => {
+    if (!isMaster) return;
     const updated = (tacticalState.props || []).map((p) =>
       p.id === id ? { ...p, rotation: ((p.rotation || 0) + degreesDelta) % 360 } : p
     );
     onUpdateTacticalState({ props: updated });
-  }, [tacticalState.props, onUpdateTacticalState]);
+  }, [isMaster, tacticalState.props, onUpdateTacticalState]);
 
   const handleResizeProp = useCallback((id: string, factor: number) => {
+    if (!isMaster) return;
     const updated = (tacticalState.props || []).map((p) => {
       if (p.id !== id) return p;
       const newW = Math.max(15, Math.round(p.width * factor));
@@ -862,16 +867,18 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
       return { ...p, width: newW, height: newH };
     });
     onUpdateTacticalState({ props: updated });
-  }, [tacticalState.props, onUpdateTacticalState]);
+  }, [isMaster, tacticalState.props, onUpdateTacticalState]);
 
   const handleToggleLockProp = useCallback((id: string) => {
+    if (!isMaster) return;
     const updated = (tacticalState.props || []).map((p) =>
       p.id === id ? { ...p, locked: !p.locked } : p
     );
     onUpdateTacticalState({ props: updated });
-  }, [tacticalState.props, onUpdateTacticalState]);
+  }, [isMaster, tacticalState.props, onUpdateTacticalState]);
 
   const handleDuplicateProp = useCallback((id: string) => {
+    if (!isMaster) return;
     const prop = (tacticalState.props || []).find((p) => p.id === id);
     if (!prop) return;
     const cloned: TacticalProp = {
@@ -882,18 +889,20 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     };
     onUpdateTacticalState({ props: [...(tacticalState.props || []), cloned] });
     setSelectedPropId(cloned.id);
-  }, [tacticalState.props, onUpdateTacticalState]);
+  }, [isMaster, tacticalState.props, onUpdateTacticalState]);
 
   const handleDeleteProp = useCallback((id: string) => {
+    if (!isMaster) return;
     const updated = (tacticalState.props || []).filter((p) => p.id !== id);
     onUpdateTacticalState({ props: updated });
     if (selectedPropId === id) setSelectedPropId(null);
-  }, [tacticalState.props, selectedPropId, onUpdateTacticalState]);
+  }, [isMaster, tacticalState.props, selectedPropId, onUpdateTacticalState]);
 
   const handleClearAllProps = useCallback(() => {
+    if (!isMaster) return;
     onUpdateTacticalState({ props: [] });
     setSelectedPropId(null);
-  }, [onUpdateTacticalState]);
+  }, [isMaster, onUpdateTacticalState]);
 
   // Zoom direcionado pelo ponteiro do mouse (scroll do mouse vai em direção ao cursor)
   const handleWheel = (e: React.WheelEvent) => {
@@ -1345,13 +1354,13 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     }
 
     if (draggedPropId) {
-      if (dragPropPos) {
+      if (isMaster && dragPropPos) {
         const updatedProps = (tacticalState.props || []).map((prop) =>
           prop.id === dragPropPos.id ? { ...prop, x: dragPropPos.x, y: dragPropPos.y } : prop
         );
         onUpdateTacticalState({ props: updatedProps });
-        setDragPropPos(null);
       }
+      setDragPropPos(null);
       setDraggedPropId(null);
     }
 
@@ -1984,12 +1993,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
     onUpdateTacticalState({ markers: updatedMarkers });
   };
 
-  // Clear ruler & markers
+  // Clear ruler & markers (Mestre limpa tudo; Jogador limpa apenas os próprios)
   const handleClearMarkers = () => {
     setRulerStart(null);
     setRulerCurrent(null);
     setAreaCenter(null);
-    onUpdateTacticalState({ markers: [] });
+    if (isMaster) {
+      onUpdateTacticalState({ markers: [] });
+      return;
+    }
+    const remaining = (tacticalState.markers || []).filter((m) => !canDeleteMarker(m));
+    onUpdateTacticalState({ markers: remaining });
   };
 
   // Fixar medição tática na mesa (compartilhado na camada Tokens para todos os jogadores)
@@ -2023,13 +2037,17 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
   const handleClearRulerMarkers = () => {
     setRulerStart(null);
     setRulerCurrent(null);
-    const remaining = (tacticalState.markers || []).filter((m) => m.type !== 'ruler');
+    const remaining = (tacticalState.markers || []).filter(
+      (m) => m.type !== 'ruler' || !canDeleteMarker(m)
+    );
     onUpdateTacticalState({ markers: remaining });
   };
 
   const handleClearAreaMarkers = () => {
     setAreaCenter(null);
-    const remaining = (tacticalState.markers || []).filter((m) => m.type !== 'blast');
+    const remaining = (tacticalState.markers || []).filter(
+      (m) => m.type !== 'blast' || !canDeleteMarker(m)
+    );
     onUpdateTacticalState({ markers: remaining });
   };
 
@@ -3847,10 +3865,48 @@ export const TacticalMapWorkspace: React.FC<TacticalMapWorkspaceProps> = React.m
                 const distanceYards = getHexDistance(rulerStart, rulerCurrent);
                 const isPrivatePreview = rulerVisibility === 'private';
 
-                // Detecta arco de defesa se o alvo for um token
-                const targetToken = tokens.find(
-                  (t) => t.gridX === rulerCurrent.col && t.gridY === rulerCurrent.row
-                );
+                // Verifica se o ponto alvo está sob névoa oculta (mesmo espaço relativo a mapX/mapY)
+                const isTargetUnderFog = (() => {
+                  if (!isPlayerView && isMaster) return false;
+                  let hidden = fogMask.base === 'hidden';
+                  for (const item of fogMask.ops) {
+                    let inside = false;
+                    if (item.shape === 'circle') {
+                      const dx = relB.x - item.x;
+                      const dy = relB.y - item.y;
+                      inside = dx * dx + dy * dy <= item.radius * item.radius;
+                    } else if (item.shape === 'rect') {
+                      inside =
+                        relB.x >= item.x &&
+                        relB.x <= item.x + item.width &&
+                        relB.y >= item.y &&
+                        relB.y <= item.y + item.height;
+                    } else if (item.shape === 'polygon' && Array.isArray(item.points) && item.points.length >= 3) {
+                      inside = isPointInPolygon(relB, item.points);
+                    }
+                    if (inside) {
+                      hidden = item.op === 'hide';
+                    }
+                  }
+                  return hidden;
+                })();
+
+                // Detecta arco de defesa se o alvo for um token visível para o usuário atual
+                const targetToken = isTargetUnderFog
+                  ? undefined
+                  : tokens.find((t) => {
+                      if (t.gridX !== rulerCurrent.col || t.gridY !== rulerCurrent.row) return false;
+                      if (isPlayerView || !isMaster) {
+                        const npc = characters.find((c) => c.id === t.npcId);
+                        const isTokenHidden = t.isInstant
+                          ? (!!t.hiddenFromPlayers || t.layer === 'gm')
+                          : npc?.characterType === 'player'
+                            ? (!!t.hiddenFromPlayers || t.layer === 'gm')
+                            : (!npc?.isVisibleToPlayer || !!t.hiddenFromPlayers || t.layer === 'gm');
+                        if (isTokenHidden) return false;
+                      }
+                      return true;
+                    });
 
                 let arcText = '';
                 if (targetToken) {

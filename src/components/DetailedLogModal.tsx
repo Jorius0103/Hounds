@@ -625,7 +625,7 @@ export const DetailedLogModal: React.FC<DetailedLogModalProps> = ({
                       showFullDateTime={true}
                       currentUserRole={currentUserRole}
                       currentUserName={currentUserName}
-                      isPlayer={currentUserRole === 'jogador'}
+                      isPlayer={currentUserRole !== 'mestre'}
                       onDeleteEntry={userCanDelete ? onDeleteEntry : undefined}
                       onUpdateEntryComment={onUpdateEntryComment}
                     />

@@ -75,7 +75,7 @@ export const TacticalPropsRenderer: React.FC<TacticalPropsRendererProps> = React
         const w = prop.width || 80;
         const h = prop.height || 60;
         const rot = prop.rotation || 0;
-        const canEdit = isMaster || activeLayer === 'map' || activeLayer === 'tokens';
+        const canEdit = isMaster;
 
         return (
           <g

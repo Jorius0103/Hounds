@@ -76,7 +76,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
       ...(activeCombat?.events || [])
     ];
     for (const ev of baseEvents) {
-      if (currentUserRole === 'jogador' && (ev.isSecret || (ev as any).hiddenFromPlayers)) {
+      if (currentUserRole !== 'mestre' && (ev.isSecret || (ev as any).hiddenFromPlayers)) {
         continue;
       }
       if (!seenIds.has(ev.id)) {
@@ -105,18 +105,18 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
       // 1. Visibilidade do combatente:
       // Personagens são SEMPRE visíveis para jogadores (podem ver completo).
       // NPCs respeitam a visibilidade isVisibleToPlayer.
-      if (currentUserRole === 'jogador' && !isPlayerChar && npc.isVisibleToPlayer === false) {
+      if (currentUserRole !== 'mestre' && !isPlayerChar && npc.isVisibleToPlayer === false) {
         continue;
       }
 
       for (const entry of npc.history || []) {
         // Se a rolagem ou evento estiver oculto para jogadores, oculta
-        if (currentUserRole === 'jogador' && (entry.isSecret || (entry as any).hiddenFromPlayers)) {
+        if (currentUserRole !== 'mestre' && (entry.isSecret || (entry as any).hiddenFromPlayers)) {
           continue;
         }
 
         // 2. As alterações de status feitas pelo mestre nos NPCs não devem refletir para os jogadores
-        if (currentUserRole === 'jogador' && !isPlayerChar && entry.author === 'mestre' && entry.type !== 'roll') {
+        if (currentUserRole !== 'mestre' && !isPlayerChar && entry.author === 'mestre' && entry.type !== 'roll') {
           continue;
         }
 
@@ -497,7 +497,7 @@ export const GeneralCombatLog: React.FC<GeneralCombatLogProps> = ({
                 isCompact={true}
                 currentUserRole={currentUserRole}
                 currentUserName={currentUserName}
-                isPlayer={currentUserRole === 'jogador'}
+                isPlayer={currentUserRole !== 'mestre'}
                 onDeleteEntry={undefined}
                 onUpdateEntryComment={onUpdateEntryComment}
               />

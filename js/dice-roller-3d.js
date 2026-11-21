@@ -944,27 +944,57 @@
     var diceNotation = count + 'D' + sides;
     var rollsFormatted = rollData.rolls.join(' + ');
 
-    var badgeHtml = '<div style="display:flex;align-items:center;gap:8px;">';
-    badgeHtml += '<span style="font-size:16px;">🎲</span>';
-    badgeHtml += '<div style="display:flex;flex-direction:column;line-height:1.1;">';
-    badgeHtml += '<div style="font-size:11px;font-weight:700;color:#cbd5e1;">' + (rollData.characterName || 'Mestre') + (rollData.playerName ? ' <span style="color:#fbbf24;font-size:10px;">(' + rollData.playerName + ')</span>' : '') + '</div>';
-    badgeHtml += '<div style="font-size:10px;color:#94a3b8;font-family:monospace;">' + diceNotation + ': [' + rollsFormatted + ']</div>';
-    badgeHtml += '</div>';
-    badgeHtml += '</div>';
+    var leftWrap = document.createElement('div');
+    leftWrap.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
-    badgeHtml += '<div style="font-family:monospace;font-size:20px;font-weight:900;padding:2px 10px;border-radius:8px;' +
+    var diceIcon = document.createElement('span');
+    diceIcon.style.cssText = 'font-size:16px;';
+    diceIcon.textContent = '🎲';
+    leftWrap.appendChild(diceIcon);
+
+    var infoCol = document.createElement('div');
+    infoCol.style.cssText = 'display:flex;flex-direction:column;line-height:1.1;';
+
+    var nameRow = document.createElement('div');
+    nameRow.style.cssText = 'font-size:11px;font-weight:700;color:#cbd5e1;';
+    nameRow.appendChild(document.createTextNode(String(rollData.characterName || 'Mestre')));
+    if (rollData.playerName) {
+      nameRow.appendChild(document.createTextNode(' '));
+      var playerSpan = document.createElement('span');
+      playerSpan.style.cssText = 'color:#fbbf24;font-size:10px;';
+      playerSpan.textContent = '(' + String(rollData.playerName) + ')';
+      nameRow.appendChild(playerSpan);
+    }
+    infoCol.appendChild(nameRow);
+
+    var notationRow = document.createElement('div');
+    notationRow.style.cssText = 'font-size:10px;color:#94a3b8;font-family:monospace;';
+    notationRow.textContent = diceNotation + ': [' + rollsFormatted + ']';
+    infoCol.appendChild(notationRow);
+
+    leftWrap.appendChild(infoCol);
+    resultBadge.appendChild(leftWrap);
+
+    var totalBox = document.createElement('div');
+    totalBox.style.cssText =
+      'font-family:monospace;font-size:20px;font-weight:900;padding:2px 10px;border-radius:8px;' +
       (isCritSuccess ? 'background:rgba(5, 150, 105, 0.3);border:1px solid #10b981;color:#34d399;' :
        isCritFail ? 'background:rgba(225, 29, 72, 0.3);border:1px solid #f43f5e;color:#fb7185;' :
-       'background:rgba(217, 119, 6, 0.25);border:1px solid #f59e0b;color:#fde047;') +
-      '">' + rollData.total + '</div>';
+       'background:rgba(217, 119, 6, 0.25);border:1px solid #f59e0b;color:#fde047;');
+    totalBox.textContent = String(rollData.total);
+    resultBadge.appendChild(totalBox);
 
     if (isCritSuccess) {
-      badgeHtml += '<span style="font-size:11px;font-weight:800;color:#34d399;text-transform:uppercase;letter-spacing:0.05em;">★ Crítico!</span>';
+      var critSuccessSpan = document.createElement('span');
+      critSuccessSpan.style.cssText = 'font-size:11px;font-weight:800;color:#34d399;text-transform:uppercase;letter-spacing:0.05em;';
+      critSuccessSpan.textContent = '★ Crítico!';
+      resultBadge.appendChild(critSuccessSpan);
     } else if (isCritFail) {
-      badgeHtml += '<span style="font-size:11px;font-weight:800;color:#fb7185;text-transform:uppercase;letter-spacing:0.05em;">☠ Falha Crítica!</span>';
+      var critFailSpan = document.createElement('span');
+      critFailSpan.style.cssText = 'font-size:11px;font-weight:800;color:#fb7185;text-transform:uppercase;letter-spacing:0.05em;';
+      critFailSpan.textContent = '☠ Falha Crítica!';
+      resultBadge.appendChild(critFailSpan);
     }
-
-    resultBadge.innerHTML = badgeHtml;
     overlay.appendChild(resultBadge);
 
     // 8. Animation Loop
