@@ -1,71 +1,40 @@
 import React, { useState, useRef } from 'react';
 import {
   TacticalState,
-  TacticalBackgroundKey,
-  TACTICAL_MAP_PRESETS,
-  GridType,
   TacticalLayer,
-  TacticalViewMode,
-  TacticalFogMode,
-  TacticalWall,
-  TacticalDoor,
 } from '../../types/tactical';
 import {
   MousePointer,
   Ruler,
   CircleDot,
-  Crosshair,
   Eye,
   EyeOff,
-  Maximize2,
   ZoomIn,
   ZoomOut,
   RotateCcw,
   RotateCw,
   Sliders,
-  Layers,
   Map as MapIcon,
-  Sparkles,
   ShieldAlert,
-  Compass,
   Upload,
-  Eraser,
   Grid,
   Users,
   Check,
-  ScrollText,
-  CheckCheck,
-  ShieldCheck,
   X,
-  Lock,
-  Unlock,
-  Move,
   Sun,
   Moon,
-  Flame,
-  Lightbulb,
-  SunMedium,
   Trash2,
   Square,
   Circle,
   Pentagon,
-  Paintbrush,
   Plus,
   Minus,
-  Pin,
-  Armchair,
   FileImage,
-  DoorClosed,
-  DoorOpen,
-  Spline,
-  PenTool,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { rotateTacticalState90 } from '../../utils/tacticalMath';
 import { UserAccount } from '../../types/rpg';
 
-export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog' | 'light' | 'wall' | 'door';
+export type TacticalToolMode = 'select' | 'ruler' | 'area' | 'terrain' | 'fog';
 
 interface TacticalToolbarProps {
   tacticalState: TacticalState;
@@ -87,25 +56,8 @@ interface TacticalToolbarProps {
   editorUserIds?: string[];
   onTogglePlayerPermission?: (userId: string) => void;
   onSetAllPlayerPermissions?: (allow: boolean) => void;
-  wallPointsCount?: number;
-  onFinishWall?: () => void;
-  onCancelWall?: () => void;
-  onUndoWallPoint?: () => void;
-  onCloseWallPolygon?: () => void;
-  onClearWalls?: () => void;
-  onDeleteWall?: (wallId: string) => void;
-  selectedWallId?: string | null;
-  onSelectWall?: (wallId: string | null) => void;
-  onClearDoors?: () => void;
-  onDeleteDoor?: (doorId: string) => void;
-  onToggleDoor?: (doorId: string) => void;
-  onToggleAllDoors?: (open: boolean) => void;
-  selectedDoorId?: string | null;
-  onSelectDoor?: (doorId: string | null) => void;
   fogBrushMode?: 'reveal' | 'hide';
   onSetFogBrushMode?: (mode: 'reveal' | 'hide') => void;
-  fogSubTool?: 'box' | 'light';
-  onSetFogSubTool?: (subTool: 'box' | 'light') => void;
   fogShape?: 'rect' | 'circle' | 'polygon';
   onSetFogShape?: (shape: 'rect' | 'circle' | 'polygon') => void;
   fogCircleRadius?: number;
@@ -114,19 +66,8 @@ interface TacticalToolbarProps {
   onCloseFogPolygon?: () => void;
   onUndoFogPolyPoint?: () => void;
   onCancelFogPolygon?: () => void;
-  lightAction?: 'add' | 'remove';
-  onSetLightAction?: (action: 'add' | 'remove') => void;
   onRevealAllFog?: () => void;
   onHideAllFog?: () => void;
-  onAddLightAtCenter?: () => void;
-  customLightRadius?: number;
-  onSetCustomLightRadius?: (radius: number) => void;
-  customLightColor?: string;
-  onSetCustomLightColor?: (color: string) => void;
-  customLightAngle?: number;
-  onSetCustomLightAngle?: (angle: number) => void;
-  customLightRotation?: number;
-  onSetCustomLightRotation?: (rot: number) => void;
   rulerMode?: 'free' | 'fixed';
   onSetRulerMode?: (mode: 'free' | 'fixed') => void;
   rulerType?: 'line' | 'blast' | 'fixed';
@@ -146,8 +87,6 @@ interface TacticalToolbarProps {
   activeRulerMarkersCount?: number;
   onOpenPropsModal?: () => void;
   propsCount?: number;
-  isPlayerView?: boolean;
-  onTogglePlayerView?: () => void;
   isLogCollapsed?: boolean;
   onToggleLogCollapse?: () => void;
 }
@@ -161,38 +100,11 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onResetView,
   onZoomIn,
   onZoomOut,
-  onClearMarkers,
-  onAutoPlaceTokens,
   onOpenTokensModal,
   tokensCount,
-  onOpenPropsModal,
-  propsCount = 0,
   currentUserRole,
-  onOpenPlayerPermissions,
-  editorCount = 0,
-  users = [],
-  editorUserIds = [],
-  onTogglePlayerPermission,
-  onSetAllPlayerPermissions,
-  wallPointsCount = 0,
-  onFinishWall,
-  onCancelWall,
-  onUndoWallPoint,
-  onCloseWallPolygon,
-  onClearWalls,
-  onDeleteWall,
-  selectedWallId,
-  onSelectWall,
-  onClearDoors,
-  onDeleteDoor,
-  onToggleDoor,
-  onToggleAllDoors,
-  selectedDoorId,
-  onSelectDoor,
   fogBrushMode = 'reveal',
   onSetFogBrushMode,
-  fogSubTool = 'box',
-  onSetFogSubTool,
   fogShape = 'rect',
   onSetFogShape,
   fogCircleRadius = 5,
@@ -201,57 +113,19 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onCloseFogPolygon,
   onUndoFogPolyPoint,
   onCancelFogPolygon,
-  lightAction = 'add',
-  onSetLightAction,
-  onRevealAllFog,
-  onHideAllFog,
-  onAddLightAtCenter,
-  customLightRadius = 5,
-  onSetCustomLightRadius,
-  customLightColor = '#f59e0b',
-  onSetCustomLightColor,
-  customLightAngle = 360,
-  onSetCustomLightAngle,
-  customLightRotation = 0,
-  onSetCustomLightRotation,
-  rulerMode = 'free',
-  onSetRulerMode,
   rulerType = 'line',
   onSetRulerType,
-  rulerFixedYards = 5,
-  onSetRulerFixedYards,
-  onFixRulerMarker,
-  onClearRulerMarkers,
-  hasActiveRuler = false,
   areaRadius = 3,
   onSetAreaRadius,
-  areaColor = '#ef4444',
-  onSetAreaColor,
-  onClearAreaMarkers,
-  keepMeasurementsOnMap = true,
-  onSetKeepMeasurementsOnMap,
-  activeRulerMarkersCount = 0,
-  isPlayerView = false,
-  onTogglePlayerView,
-  isLogCollapsed = false,
-  onToggleLogCollapse,
 }) => {
   const [mapConfigOpen, setMapConfigOpen] = useState(false);
   const [sliderBaseWidth, setSliderBaseWidth] = useState<number | null>(null);
   const [sliderBaseHexSize, setSliderBaseHexSize] = useState<number | null>(null);
   const [customUrlInput, setCustomUrlInput] = useState(tacticalState.customImageUrl || '');
-  const [isLightListOpen, setIsLightListOpen] = useState(false);
-  const [isWallsDoorsOpen, setIsWallsDoorsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isMaster = currentUserRole === 'mestre';
   const activeLayer: TacticalLayer = tacticalState.activeLayer || 'tokens';
-  const currentFogMode: TacticalFogMode =
-    tacticalState.fogMode || (tacticalState.fogEnabled ? 'dynamic' : 'open');
-
-  const currentPreset =
-    TACTICAL_MAP_PRESETS.find((p) => p.key === tacticalState.backgroundKey) ||
-    TACTICAL_MAP_PRESETS[0];
 
   return (
     <div
@@ -279,7 +153,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
               }`}
-              title="Nível 1: Camada do Mapa (Imagem base e alinhamento do grid - tokens ficam ocultos para calibrar)"
+              title="Nível 1: Camada do Mapa (Imagem base, alinhamento do grid e áreas ocultas)"
             >
               <MapIcon size={13} />
               <span>1. Mapa</span>
@@ -292,7 +166,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   ? 'bg-emerald-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
               }`}
-              title="Nível 2: Camada de Jogadores (Visão real dos Jogadores: combatentes, portas e tokens públicos)"
+              title="Nível 2: Camada de Jogadores (Visão real dos Jogadores: combatentes e tokens públicos)"
             >
               <Users size={13} />
               <span>2. Jogadores</span>
@@ -305,7 +179,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                   ? 'bg-purple-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-850'
               }`}
-              title="Nível 3: Camada do Mestre (Tokens secretos, monstros e anotações com flag do mestre)"
+              title="Nível 3: Camada do Mestre (Visão do Mestre: tokens secretos, áreas ocultas translúcidas e marcações do GM)"
             >
               <ShieldAlert size={13} />
               <span>3. Mestre (GM)</span>
@@ -346,71 +220,16 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
               {activeLayer === 'map' ? (
                 <>
                   <button
-                    onClick={() => onSelectTool('wall')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      activeTool === 'wall'
-                        ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    title="Construir Paredes por Ligação de Polígonos (bloqueia luminosidade)"
-                  >
-                    <Spline size={14} />
-                    <span>Paredes</span>
-                    {(tacticalState.walls || []).length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-amber-500/20 text-amber-300">
-                        {(tacticalState.walls || []).length}
-                      </span>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => onSelectTool('door')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      activeTool === 'door'
-                        ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    title="Inserir Portas (podem ser abertas ou fechadas para deixar luz passar)"
-                  >
-                    <DoorClosed size={14} />
-                    <span>Portas</span>
-                    {(tacticalState.doors || []).length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-amber-500/20 text-amber-300">
-                        {(tacticalState.doors || []).length}
-                      </span>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => onSelectTool('light')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      activeTool === 'light'
-                        ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    title="Inserir Luzes (Focos de luz livres no mapa com raio, ângulo e controle liga/desliga)"
-                  >
-                    <Flame size={14} />
-                    <span>Inserir Luzes</span>
-                    {(tacticalState.lights || []).length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold bg-amber-500/20 text-amber-300">
-                        {(tacticalState.lights || []).length}
-                      </span>
-                    )}
-                  </button>
-
-                  <button
                     onClick={() => {
                       onSelectTool('fog');
                       onSetFogBrushMode?.('hide');
-                      onSetFogSubTool?.('box');
                     }}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'fog' && fogBrushMode === 'hide'
                         ? 'bg-rose-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
-                    title="Ocultar Áreas (arraste no mapa para esconder áreas dos jogadores - áreas ocultadas não aparecem nem com visualização)"
+                    title="Ocultar Áreas (arraste no mapa para esconder áreas dos jogadores)"
                   >
                     <EyeOff size={14} />
                     <span>Ocultar Áreas</span>
@@ -420,7 +239,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     onClick={() => {
                       onSelectTool('fog');
                       onSetFogBrushMode?.('reveal');
-                      onSetFogSubTool?.('box');
                     }}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'fog' && fogBrushMode === 'reveal'
@@ -452,7 +270,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     onClick={() => {
                       onSelectTool('fog');
                       onSetFogBrushMode?.('hide');
-                      onSetFogSubTool?.('box');
                     }}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'fog' && fogBrushMode === 'hide'
@@ -469,7 +286,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                     onClick={() => {
                       onSelectTool('fog');
                       onSetFogBrushMode?.('reveal');
-                      onSetFogSubTool?.('box');
                     }}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                       activeTool === 'fog' && fogBrushMode === 'reveal'
@@ -851,60 +667,11 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                         className="w-full accent-amber-500"
                       />
                     </div>
-
-                    {/* SEÇÃO 3: ILUMINAÇÃO & VISÃO DOS JOGADORES */}
-                    <div className="pt-2.5 border-t border-slate-800 space-y-2">
-                      <label className="flex items-start gap-2.5 cursor-pointer select-none py-2 px-2.5 bg-slate-950/70 border border-slate-800 rounded-xl hover:border-amber-500/50 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={tacticalState.useLightingVision !== false}
-                          onChange={(e) => {
-                            onUpdateTacticalState({
-                              useLightingVision: e.target.checked,
-                              fogEnabled: true,
-                            });
-                          }}
-                          className="w-4 h-4 mt-0.5 rounded text-amber-500 focus:ring-amber-400 accent-amber-500 cursor-pointer"
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-200 text-xs flex items-center gap-1.5">
-                            <Flame size={13} className="text-amber-400" />
-                            Usar Iluminação
-                          </span>
-                          <span className="text-[10px] text-slate-400 mt-0.5 leading-tight">
-                            {tacticalState.useLightingVision !== false
-                              ? 'Habilitado: jogadores só veem o que estiver revelado pelo mestre e na visão/luz deles.'
-                              : 'Desabilitado: jogadores veem tudo o que o mestre disponibilizar no mapa.'}
-                          </span>
-                        </div>
-                      </label>
-                    </div>
                   </div>
                 </div>
               </>
             )}
           </div>
-        )}
-
-        {/* Simulação de Visão do Jogador para o Mestre */}
-        {isMaster && onTogglePlayerView && (
-          <button
-            type="button"
-            onClick={onTogglePlayerView}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer shrink-0 ${
-              isPlayerView
-                ? 'bg-purple-600 text-white border-purple-500 shadow-sm'
-                : 'bg-slate-950 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-850'
-            }`}
-            title={
-              isPlayerView
-                ? 'Simulando VISÃO DO JOGADOR (escuridão total). Clique para voltar à visão do Mestre.'
-                : 'Visão do MESTRE (névoa translúcida). Clique para ver como os Jogadores veem o mapa.'
-            }
-          >
-            {isPlayerView ? <EyeOff size={13} className="text-purple-200" /> : <Eye size={13} className="text-amber-400" />}
-            <span>{isPlayerView ? 'Visão: Jogador' : 'Visão: Mestre'}</span>
-          </button>
         )}
       </div>
 
@@ -967,165 +734,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </div>
           )}
 
-          {/* 2. Paredes */}
-          {isMaster && activeTool === 'wall' && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              {wallPointsCount > 0 ? (
-                <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-0.5 rounded-lg border border-amber-500/50">
-                  <span className="text-[11px] font-mono font-bold text-amber-300">
-                    {wallPointsCount} {wallPointsCount === 1 ? 'vértice' : 'vértices'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onFinishWall}
-                    disabled={wallPointsCount < 2}
-                    className="px-2 py-0.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold rounded text-[11px] flex items-center gap-1 cursor-pointer"
-                    title="Concluir parede (Enter)"
-                  >
-                    <Check size={11} />
-                    <span>Concluir</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onCloseWallPolygon}
-                    disabled={wallPointsCount < 3}
-                    className="px-2 py-0.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-semibold rounded text-[11px] flex items-center gap-1 cursor-pointer"
-                    title="Fechar Polígono"
-                  >
-                    <RotateCw size={11} />
-                    <span>Fechar</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onUndoWallPoint}
-                    className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded cursor-pointer"
-                    title="Desfazer último ponto"
-                  >
-                    <RotateCcw size={11} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onCancelWall}
-                    className="p-1 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 rounded cursor-pointer"
-                    title="Cancelar parede"
-                  >
-                    <X size={11} />
-                  </button>
-                </div>
-              ) : (
-                <span className="text-[11px] text-amber-300/80 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
-                  ✏️ Clique no mapa para iniciar parede
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* 3. Portas */}
-          {isMaster && activeTool === 'door' && (
-            <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800 shrink-0">
-              <button
-                type="button"
-                onClick={() => onToggleAllDoors?.(true)}
-                className="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
-                title="Abrir Todas as Portas"
-              >
-                <DoorOpen size={12} />
-                <span>Abrir Todas</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onToggleAllDoors?.(false)}
-                className="px-2 py-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
-                title="Fechar Todas as Portas"
-              >
-                <DoorClosed size={12} />
-                <span>Fechar Todas</span>
-              </button>
-            </div>
-          )}
-
-          {/* 4. Luzes */}
-          {isMaster && activeTool === 'light' && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Raio */}
-              <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 font-mono">Raio:</span>
-                <button
-                  type="button"
-                  onClick={() => onSetCustomLightRadius?.(Math.max(1, (customLightRadius || 5) - 1))}
-                  className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <Minus size={11} />
-                </button>
-                <span className="font-mono font-bold text-amber-300 text-xs px-1">
-                  {customLightRadius || 5} yd
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onSetCustomLightRadius?.((customLightRadius || 5) + 1)}
-                  className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <Plus size={11} />
-                </button>
-              </div>
-
-              {/* Ângulos */}
-              <div className="flex items-center gap-1 bg-slate-950 px-1 py-0.5 rounded-lg border border-slate-800">
-                {[360, 180, 90].map((deg) => (
-                  <button
-                    key={deg}
-                    type="button"
-                    onClick={() => onSetCustomLightAngle?.(deg)}
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
-                      (customLightAngle || 360) === deg
-                        ? 'bg-amber-500 text-slate-950'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {deg === 360 ? '360°' : deg === 180 ? '180°' : '90°'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Giro */}
-              {customLightAngle && customLightAngle < 360 && (
-                <div className="flex items-center gap-1 bg-slate-950 px-1.5 py-0.5 rounded-lg border border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-mono">Giro:</span>
-                  <button
-                    type="button"
-                    onClick={() => onSetCustomLightRotation?.(((customLightRotation ?? 0) - 15 + 360) % 360)}
-                    className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
-                  >
-                    <RotateCcw size={11} />
-                  </button>
-                  <span className="font-mono font-bold text-amber-300 text-xs px-0.5">
-                    {customLightRotation ?? 0}°
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onSetCustomLightRotation?.(((customLightRotation ?? 0) + 15) % 360)}
-                    className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
-                  >
-                    <RotateCw size={11} />
-                  </button>
-                </div>
-              )}
-
-              {onAddLightAtCenter && (
-                <button
-                  type="button"
-                  onClick={onAddLightAtCenter}
-                  className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
-                  title="Adicionar Foco de Luz no Centro do Mapa"
-                >
-                  <Plus size={11} />
-                  <span>Luz no Centro</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* 5. Ocultar / Mostrar Áreas (Fog: Retângulo, Círculo e Polígono) */}
+          {/* 2. Ocultar / Mostrar Áreas (Fog: Retângulo, Círculo e Polígono) */}
           {isMaster && activeTool === 'fog' && (
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
               {/* Badge indicativo do modo ativo */}
@@ -1275,7 +884,7 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
               {(tacticalState.fogRects || []).length > 0 && (
                 <button
                   type="button"
-                  onClick={() => onUpdateTacticalState({ fogRects: [] })}
+                  onClick={() => onUpdateTacticalState({ fogRects: [], fogEnabled: false, fogMode: 'open' })}
                   className="px-2 py-0.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ml-1"
                   title="Limpar todas as áreas de névoa"
                 >
@@ -1319,295 +928,6 @@ export const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <RotateCcw size={13} />
           </button>
         </div>
-
-        {/* Itens no Tabuleiro: Paredes, Portas & Luzes */}
-        {isMaster && (
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsWallsDoorsOpen(!isWallsDoorsOpen)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                isWallsDoorsOpen
-                  ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm font-bold'
-                  : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:text-white'
-              }`}
-              title="Gerenciar Paredes, Portas e Iluminações do Tabuleiro"
-            >
-              <Sliders size={13} className={isWallsDoorsOpen ? "text-slate-950" : "text-amber-400"} />
-              <span>Itens no Tabuleiro</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border ${
-                isWallsDoorsOpen
-                  ? 'bg-slate-950 text-amber-400 border-slate-900'
-                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-              }`}>
-                {(tacticalState.walls || []).length}P / {(tacticalState.doors || []).length}D / {(tacticalState.lights || []).length}L
-              </span>
-            </button>
-
-            {isWallsDoorsOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsWallsDoorsOpen(false)}
-                />
-                <div className="absolute top-full right-0 mt-2 w-96 max-w-[95vw] bg-slate-950 border border-amber-500/50 rounded-2xl shadow-2xl p-3.5 z-50 text-xs space-y-3.5 max-h-[85vh] overflow-y-auto">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-slate-200 font-bold">
-                    <span className="flex items-center gap-1.5 text-amber-400 text-sm">
-                      <Sliders size={15} /> Paredes, Portas & Luzes
-                    </span>
-                    <button
-                      onClick={() => setIsWallsDoorsOpen(false)}
-                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
-                      title="Fechar"
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-
-                  {/* 1. Resumo de Paredes */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-slate-300 font-semibold text-[11px]">
-                      <span className="flex items-center gap-1">
-                        <Spline size={12} className="text-amber-400" /> Paredes Poligonais ({(tacticalState.walls || []).length})
-                      </span>
-                      {(tacticalState.walls || []).length > 0 && (
-                        <button
-                          type="button"
-                          onClick={onClearWalls}
-                          className="text-rose-400 hover:text-rose-300 text-[10px] underline cursor-pointer"
-                        >
-                          Limpar todas
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-                      {(tacticalState.walls || []).length === 0 ? (
-                        <div className="text-[11px] text-slate-500 italic p-1.5 text-center">
-                          Nenhuma parede construída ainda.
-                        </div>
-                      ) : (
-                        (tacticalState.walls || []).map((w, idx) => {
-                          const isSelected = selectedWallId === w.id;
-                          return (
-                            <div
-                              key={w.id || idx}
-                              onClick={() => onSelectWall?.(isSelected ? null : w.id)}
-                              className={`flex items-center justify-between px-2 py-1.5 rounded border text-[11px] cursor-pointer transition-all ${
-                                isSelected
-                                  ? 'bg-sky-500/25 border-sky-400 text-sky-200 ring-1 ring-sky-400 font-bold shadow-xs'
-                                  : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-850'
-                              }`}
-                              title="Clique para destacar e localizar esta parede no mapa"
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <span className={`text-[10px] ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>
-                                  {isSelected ? '📍' : `#${idx + 1}`}
-                                </span>
-                                <span>
-                                  Parede #{idx + 1} ({w.points?.length || 0} vértices{w.closed ? ', fechada' : ''})
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDeleteWall?.(w.id);
-                                }}
-                                className="text-slate-400 hover:text-rose-400 p-0.5 rounded hover:bg-rose-500/20 transition-colors cursor-pointer"
-                                title="Excluir esta parede"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 2. Resumo de Portas */}
-                  <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-300 font-semibold text-[11px]">
-                      <span className="flex items-center gap-1">
-                        <DoorClosed size={12} className="text-amber-400" /> Portas ({(tacticalState.doors || []).length})
-                      </span>
-                      {(tacticalState.doors || []).length > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => onToggleAllDoors?.(true)}
-                            className="text-emerald-400 hover:text-emerald-300 text-[10px] underline cursor-pointer"
-                          >
-                            Abrir todas
-                          </button>
-                          <span className="text-slate-600">•</span>
-                          <button
-                            type="button"
-                            onClick={() => onToggleAllDoors?.(false)}
-                            className="text-amber-400 hover:text-amber-300 text-[10px] underline cursor-pointer"
-                          >
-                            Fechar todas
-                          </button>
-                          <span className="text-slate-600">•</span>
-                          <button
-                            type="button"
-                            onClick={onClearDoors}
-                            className="text-rose-400 hover:text-rose-300 text-[10px] underline cursor-pointer"
-                          >
-                            Limpar todas
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-                      {(tacticalState.doors || []).length === 0 ? (
-                        <div className="text-[11px] text-slate-500 italic p-1.5 text-center">
-                          Nenhuma porta inserida ainda.
-                        </div>
-                      ) : (
-                        (tacticalState.doors || []).map((d, idx) => {
-                          const isSelected = selectedDoorId === d.id;
-                          return (
-                            <div
-                              key={d.id || idx}
-                              onClick={() => onSelectDoor?.(isSelected ? null : d.id)}
-                              className={`flex items-center justify-between px-2 py-1.5 rounded border text-[11px] cursor-pointer transition-all ${
-                                isSelected
-                                  ? 'bg-amber-500/25 border-amber-400 text-amber-200 ring-1 ring-amber-400 font-bold'
-                                  : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                              }`}
-                              title="Clique para destacar e localizar esta porta no mapa"
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <span>{d.isOpen ? '🚪' : '🔒'}</span>
-                                <span>Porta #{idx + 1} ({d.isOpen ? 'Aberta' : 'Fechada'})</span>
-                              </div>
-                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  onClick={() => onToggleDoor?.(d.id)}
-                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
-                                    d.isOpen
-                                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-                                  }`}
-                                  title={d.isOpen ? 'Clique para FECHAR a porta' : 'Clique para ABRIR a porta'}
-                                >
-                                  {d.isOpen ? 'Aberta' : 'Fechada'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    onDeleteDoor?.(d.id);
-                                  }}
-                                  className="text-slate-400 hover:text-rose-400 p-0.5 rounded hover:bg-rose-500/20 transition-colors cursor-pointer"
-                                  title="Excluir esta porta"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 3. Resumo de Focos de Luz */}
-                  <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-300 font-semibold text-[11px]">
-                      <span className="flex items-center gap-1">
-                        <Flame size={12} className="text-amber-400" /> Iluminações ({(tacticalState.lights || []).length})
-                      </span>
-                      {(tacticalState.lights || []).length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdateTacticalState({ lights: [] })}
-                          className="text-rose-400 hover:text-rose-300 text-[10px] underline cursor-pointer"
-                        >
-                          Limpar todas
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-                      {(tacticalState.lights || []).length === 0 ? (
-                        <div className="text-[11px] text-slate-500 italic p-1.5 text-center">
-                          Nenhum foco de luz adicionado ainda.
-                        </div>
-                      ) : (
-                        (tacticalState.lights || []).map((l, idx) => (
-                          <div
-                            key={l.id || idx}
-                            className="flex items-center justify-between px-2 py-1.5 rounded border border-slate-800 bg-slate-900/80 text-[11px]"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span>{l.active !== false ? '🔥' : '🪔'}</span>
-                              <div className="truncate">
-                                <div className="font-semibold text-slate-200 truncate">
-                                  {l.label || `Luz #${idx + 1}`}
-                                </div>
-                                <div className="text-[10px] text-slate-400 font-mono">
-                                  {l.radius} yd • {l.angle ? `${l.angle}°` : '360°'}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1 shrink-0 ml-1">
-                              {l.angle && l.angle < 360 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const nextRot = (((l.rotation ?? 0) + 15) % 360);
-                                    const updated = (tacticalState.lights || []).map((item) =>
-                                      item.id === l.id ? { ...item, rotation: nextRot } : item
-                                    );
-                                    onUpdateTacticalState({ lights: updated });
-                                  }}
-                                  className="p-1 rounded text-amber-400 hover:bg-amber-500/20 cursor-pointer"
-                                  title="Girar foco (+15°)"
-                                >
-                                  <RotateCw size={11} />
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = (tacticalState.lights || []).map((item) =>
-                                    item.id === l.id ? { ...item, active: item.active === false ? true : false } : item
-                                  );
-                                  onUpdateTacticalState({ lights: updated });
-                                }}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
-                                  l.active !== false
-                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-                                    : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
-                                }`}
-                                title={l.active !== false ? 'Clique para APAGAR' : 'Clique para ACENDER'}
-                              >
-                                {l.active !== false ? 'Acesa' : 'Apagada'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = (tacticalState.lights || []).filter((item) => item.id !== l.id);
-                                  onUpdateTacticalState({ lights: updated });
-                                }}
-                                className="text-slate-400 hover:text-rose-400 p-0.5 rounded hover:bg-rose-500/20 transition-colors cursor-pointer"
-                                title="Excluir este foco de luz"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
 
         {/* Tokens no Tabuleiro */}
         {isMaster && (

@@ -46,6 +46,7 @@ interface TacticalPropsRendererProps {
   onDeleteProp: (id: string) => void;
   activeLayer: TacticalLayer;
   isMaster: boolean;
+  isPlayerView?: boolean;
 }
 
 export const TacticalPropsRenderer: React.FC<TacticalPropsRendererProps> = React.memo(({
@@ -60,14 +61,15 @@ export const TacticalPropsRenderer: React.FC<TacticalPropsRendererProps> = React
   onDeleteProp,
   activeLayer,
   isMaster,
+  isPlayerView = false,
 }) => {
   if (!props || props.length === 0) return null;
 
   return (
     <g id="tactical-props-layer">
       {props.map((prop) => {
-        // Se pertencer à camada GM e não for mestre, oculta
-        if (prop.layer === 'gm' && !isMaster) return null;
+        // Se pertencer à camada GM e estiver na visão de jogador (ou não for mestre), oculta
+        if (prop.layer === 'gm' && (isPlayerView || !isMaster)) return null;
 
         const isSelected = selectedPropId === prop.id;
         const w = prop.width || 80;

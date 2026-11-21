@@ -20,7 +20,6 @@ import {
   Footprints,
   Crosshair,
   Skull,
-  Flame,
 } from 'lucide-react';
 import { ConfirmModal } from '../ConfirmModal';
 
@@ -289,124 +288,6 @@ export const TacticalQuickActionPopover: React.FC<TacticalQuickActionPopoverProp
               +1
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Iluminação do Token (Raio e Ângulo: 360° ou 180° à frente) */}
-      <div className="pt-2 border-t border-slate-800 space-y-1.5">
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-400 flex items-center gap-1 font-medium">
-            <Flame size={12} className="text-amber-400" />
-            <span>Iluminação:</span>
-          </span>
-          <span className="font-mono text-amber-300 font-bold text-[10px]">
-            {token.hasInfiniteVision
-              ? '👁️ Visão Liberada'
-              : token.emitsLight
-              ? `${token.lightRadius || 4} yd (${token.lightAngle === 180 ? '180° Frente' : '360°'})`
-              : 'Desligada'}
-          </span>
-        </div>
-        <div className="grid grid-cols-4 gap-1">
-          <button
-            type="button"
-            onClick={() => onUpdateToken({ emitsLight: false })}
-            className={`py-1 px-1 rounded text-[9.5px] font-medium border text-center transition-all ${
-              !token.emitsLight
-                ? 'bg-slate-700 text-slate-200 border-slate-500 font-bold'
-                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-            }`}
-          >
-            Off
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              onUpdateToken({ emitsLight: true, lightRadius: 4, lightColor: '#f59e0b' })
-            }
-            className={`py-1 px-1 rounded text-[9.5px] font-medium border text-center transition-all ${
-              token.emitsLight && token.lightRadius === 4
-                ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-amber-300'
-            }`}
-          >
-            🔥 4y
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              onUpdateToken({ emitsLight: true, lightRadius: 7, lightColor: '#fbbf24' })
-            }
-            className={`py-1 px-1 rounded text-[9.5px] font-medium border text-center transition-all ${
-              token.emitsLight && token.lightRadius === 7
-                ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-amber-300'
-            }`}
-          >
-            🏮 7y
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const val = window.prompt(
-                'Raio de luz (em jardas):',
-                String(token.lightRadius || 5)
-              );
-              const parsed = parseInt(val || '0');
-              if (parsed > 0) {
-                onUpdateToken({ emitsLight: true, lightRadius: parsed, lightColor: '#f59e0b' });
-              }
-            }}
-            className={`py-1 px-1 rounded text-[9.5px] font-medium border text-center transition-all ${
-              token.emitsLight && token.lightRadius !== 4 && token.lightRadius !== 7
-                ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-amber-300'
-            }`}
-          >
-            ⚙️ Outro
-          </button>
-        </div>
-        {token.emitsLight && (
-          <div className="grid grid-cols-2 gap-1 pt-1 border-t border-slate-800/60">
-            <button
-              type="button"
-              onClick={() => onUpdateToken({ lightAngle: 360 })}
-              className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
-                (token.lightAngle || 360) === 360
-                  ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-              }`}
-            >
-              🔄 360° Todo Redor
-            </button>
-            <button
-              type="button"
-              onClick={() => onUpdateToken({ lightAngle: 180 })}
-              className={`py-1 px-1 rounded text-[9.5px] font-semibold border text-center transition-all ${
-                token.lightAngle === 180
-                  ? 'bg-amber-950/80 text-amber-200 border-amber-500/60 font-bold'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-              }`}
-            >
-              🔦 180° À Frente
-            </button>
-          </div>
-        )}
-
-        {/* Opção de Visão Liberada */}
-        <div className="pt-1.5 border-t border-slate-800/60">
-          <button
-            type="button"
-            onClick={() => onUpdateToken({ hasInfiniteVision: !token.hasInfiniteVision })}
-            className={`w-full py-1 px-2 rounded text-[9.5px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              token.hasInfiniteVision
-                ? 'bg-sky-950/90 text-sky-200 border-sky-400 shadow-sm shadow-sky-500/20'
-                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
-            }`}
-            title="Visão Liberada: o combatente enxerga todo o mapa sem limite de distância, exceto atrás de paredes"
-          >
-            <span>👁️ Visão Liberada: {token.hasInfiniteVision ? 'Ativada (Enxerga Tudo)' : 'Desativada'}</span>
-          </button>
         </div>
       </div>
 

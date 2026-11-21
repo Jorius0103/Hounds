@@ -212,7 +212,8 @@ export const DEFAULT_TACTICAL_STATE: TacticalState = {
   scaleUnit: 'yd',
   fogEnabled: false,
   fogMode: 'open',
-  useLightingVision: true,
+  // Iluminação dinâmica desativada temporariamente (backup em src/components/TacticalMap/backup-iluminacao/)
+  useLightingVision: false,
   fogRevealedCells: [],
   fogRects: [],
   lights: [],
